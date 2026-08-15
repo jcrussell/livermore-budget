@@ -1,0 +1,69 @@
+# Source registry — the ONLY place a URL or retrieval date is asserted.
+#
+# Every sha256 below was verified by re-downloading from `url_versioned` and
+# comparing against the committed file: all three matched byte-for-byte on
+# 2026-08-15. `fisc verify --full` re-runs that check.
+#
+# `url` is the stable canonical form and is what the site links to.
+# `url_versioned` carries the CMS cache-buster (a .NET ticks value) and is the
+# exact address the committed bytes were retrieved from; it changes if the city
+# re-uploads the document, which is why both are recorded.
+schema_version: 1
+
+sources:
+  - id: livermore-budget-fy2026-2027
+    #@cite City of Livermore, "FY 2025-2027 Budget Book"
+    #@cite     https://www.livermoreca.gov/government/budget (accessed 2026-08-15)
+    title: "FY 2025-2027 Budget Book"
+    publisher: "City of Livermore, California"
+    fiscal_years: [2026, 2027]
+    basis: adopted
+    document_id: 12813
+    url: "https://www.livermoreca.gov/home/showpublisheddocument/12813"
+    url_versioned: "https://www.livermoreca.gov/home/showpublisheddocument/12813/638871258781300000"
+    retrieved: 2026-08-15
+    file: data/pdf/livermore-budget-fy2026-2027.pdf
+    bytes: 35648752
+    sha256: "6838990f0668bae2f170533630ae61185ff3c94a011c7b10ea33c0890089a83d"
+    pages: 268
+
+  - id: livermore-cip-fy2026-2030
+    #@cite City of Livermore, "2025-2030 Capital Improvement Plan"
+    #@cite     https://www.livermoreca.gov/departments/community-development/capital-improvement-program (accessed 2026-08-15)
+    title: "2025-2030 Capital Improvement Plan"
+    publisher: "City of Livermore, California"
+    # Only FY2026 and FY2027 are APPROPRIATED; the document's tables run to
+    # FY2030-45 as planning intent. See bead fisc-5gk (CIP coverage).
+    fiscal_years: [2026, 2027, 2028, 2029, 2030]
+    appropriated_fiscal_years: [2026, 2027]
+    basis: adopted
+    document_id: 12793
+    url: "https://www.livermoreca.gov/home/showpublisheddocument/12793"
+    url_versioned: "https://www.livermoreca.gov/home/showpublisheddocument/12793/638859502005700000"
+    retrieved: 2026-08-15
+    file: data/pdf/livermore-cip-fy2026-2030.pdf
+    bytes: 29650797
+    sha256: "c6ed891eb20ed096cf1ddce6d7132ef940667e2b287cc6d99e89a9c1dcd2a972"
+    pages: 323
+
+  - id: livermore-acfr-fy2025
+    #@cite City of Livermore, "FY 2024-25 Annual Comprehensive Financial Report"
+    #@cite     https://www.livermoreca.gov/government/annual-financial-reports (accessed 2026-08-15)
+    title: "FY 2024-25 Annual Comprehensive Financial Report"
+    publisher: "City of Livermore, California"
+    fiscal_years: [2025]
+    basis: audited
+    document_id: 13545
+    url: "https://www.livermoreca.gov/home/showpublisheddocument/13545"
+    url_versioned: "https://www.livermoreca.gov/home/showpublisheddocument/13545/639052089687130000"
+    retrieved: 2026-08-15
+    file: data/pdf/livermore-acfr-fy2025.pdf
+    bytes: 4557225
+    sha256: "1176ab87130ba5ddc73f13bf97e8d9d44f1dc049d16334a124afe00fdfbdd1e8"
+    pages: 195
+
+# Retrieval note for `fisc verify --full` and any future re-fetch:
+# www.livermoreca.gov sits behind Akamai bot protection and returns HTTP 403 to
+# a bare curl. A full browser header set gets through — User-Agent, Accept,
+# Accept-Language, Sec-Fetch-Dest/Mode/Site/User, Upgrade-Insecure-Requests.
+# See docs/m0-spike.md.

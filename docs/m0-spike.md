@@ -63,6 +63,31 @@ meaning zero vs absent, and varying units).
 The whole corpus — 786 pages across three PDFs — extracts in **10 seconds**
 with `disable_ocr=True, layout=None`, fully offline, no model downloads.
 
+## Retrieving the source PDFs
+
+`www.livermoreca.gov` is behind Akamai bot protection and returns **HTTP 403 to
+a bare `curl`** (an `AkamaiGHost` error page, not a network failure). A full
+browser header set gets through:
+
+```bash
+curl -sSL --compressed \
+  -A "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" \
+  -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8" \
+  -H "Accept-Language: en-US,en;q=0.9" \
+  -H "Sec-Fetch-Dest: document" -H "Sec-Fetch-Mode: navigate" \
+  -H "Sec-Fetch-Site: none" -H "Sec-Fetch-User: ?1" \
+  -H "Upgrade-Insecure-Requests: 1" \
+  "https://www.livermoreca.gov/home/showpublisheddocument/12813" -o budget.pdf
+```
+
+Document permalinks take the form `/home/showpublisheddocument/<id>`. The
+longer form with a trailing .NET-ticks value is a cache-buster; both serve the
+same bytes, and `data/sources.yaml` records each.
+
+All three committed PDFs were re-downloaded and verified **byte-for-byte
+identical** to the city's published files on 2026-08-15. Because Git LFS uses
+sha256 as its object ID, the LFS OIDs double as a second copy of that check.
+
 ## Status
 
 The reference implementation is **not production code**. It exists to prove the
