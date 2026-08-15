@@ -1,0 +1,41 @@
+{
+ "bbox": [
+  54.0,
+  490.71,
+  558.0,
+  526.71
+ ],
+ "cells": [
+  [
+   "General Fund",
+   "",
+   "",
+   "",
+   "238,982",
+   "230,858",
+   "232,129"
+  ],
+  [
+   "Total Department Funding",
+   "",
+   "",
+   "",
+   "$238,982",
+   "$230,858",
+   "$232,129"
+  ]
+ ],
+ "content_hash": "sha256:9778c3a7884f8bd6611f5dc5e37e2fc8f0e2c836b92ea2336a8236f88c2e8602",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:24f446c4bbb904f51c599c5797d073b0ba277b63aaa03e26fd667b68792b3460",
+ "n_cols": 7,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 85,
+ "ragged": false,
+ "row_page_lines": [
+  10,
+  12
+ ],
+ "schema_version": 1
+}

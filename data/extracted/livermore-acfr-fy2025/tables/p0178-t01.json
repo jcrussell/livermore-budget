@@ -1,0 +1,138 @@
+{
+ "bbox": [
+  68.0,
+  234.0,
+  575.0,
+  376.0
+ ],
+ "cells": [
+  [
+   "Overlapping Other",
+   "Debt:",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Alameda County",
+   "Gen. Fund Obligations",
+   "& Coliseum Authority",
+   "",
+   "6.354% 622,687,500",
+   "39,565,564"
+  ],
+  [
+   "Tax Increment",
+   "Debt (Successor Agency)",
+   "",
+   "",
+   "100.000% 12,745,000",
+   "12,745,000"
+  ],
+  [
+   "Total overlapping",
+   "other debt",
+   "",
+   "",
+   "635,432,500",
+   "52,310,564"
+  ],
+  [
+   "Total overlapping",
+   "debt",
+   "",
+   "",
+   "$ 4,819,396,206",
+   "543,600,651"
+  ],
+  [
+   "Leases, SBITAs",
+   "and other",
+   "",
+   "",
+   "",
+   "1,742,320"
+  ],
+  [
+   "City of Livermore",
+   "Certificate of Participation",
+   "",
+   "",
+   "",
+   "75,125,001"
+  ],
+  [
+   "City of Livermore",
+   "Notes & Loans",
+   "",
+   "",
+   "",
+   "275,922"
+  ],
+  [
+   "City of Livermore",
+   "Financial Purchase",
+   "",
+   "",
+   "",
+   "3,717,146"
+  ],
+  [
+   "Total gross",
+   "direct debt",
+   "",
+   "",
+   "",
+   "80,860,389"
+  ],
+  [
+   "Less: City of",
+   "Livermore Obligations",
+   "Supported by Rate Payers'",
+   "Fees",
+   "",
+   "(5,016,812)"
+  ],
+  [
+   "Less: City of",
+   "Livermore Obligations",
+   "Funded by Grants",
+   "Revenues",
+   "",
+   "(6,865,922)"
+  ],
+  [
+   "Total net direct",
+   "debt",
+   "",
+   "",
+   "",
+   "68,977,655"
+  ]
+ ],
+ "content_hash": "sha256:656339caab886d29ef3dde1ceb77b39959489af9bfd8511c563e2b3f56a25f2b",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:17dd5d69eed55b3ba640fbf6739bddfee614a64fffc52d7f05e6bfecb9dfd969",
+ "n_cols": 6,
+ "n_rows": 13,
+ "ordinal": 1,
+ "page": 178,
+ "ragged": false,
+ "row_page_lines": [
+  18,
+  12,
+  21,
+  14,
+  14,
+  24,
+  12,
+  12,
+  12,
+  28,
+  29,
+  29,
+  31
+ ],
+ "schema_version": 1
+}

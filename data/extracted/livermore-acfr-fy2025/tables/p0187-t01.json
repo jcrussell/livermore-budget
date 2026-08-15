@@ -1,0 +1,53 @@
+{
+ "bbox": [
+  56.0,
+  527.0,
+  295.0,
+  570.0
+ ],
+ "cells": [
+  [
+   "Residential: Single Family:",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Tier 1 (1-7",
+   "Units)",
+   "$1.43",
+   "$2.44",
+   "$3.87"
+  ],
+  [
+   "Tier 2 (8+",
+   "Units)",
+   "2.05",
+   "2.44",
+   "4.49"
+  ],
+  [
+   "Multi-Family",
+   "",
+   "1.66",
+   "2.44",
+   "4.10"
+  ]
+ ],
+ "content_hash": "sha256:059d20fe4c1a2ab721a9b40c90fc910dcefef88df72a07da97797888781996d4",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:b9174e21d014fb87b3858deb3b9f85d4b7c9be5a41bc07331feab9045f7e38c0",
+ "n_cols": 5,
+ "n_rows": 4,
+ "ordinal": 1,
+ "page": 187,
+ "ragged": false,
+ "row_page_lines": [
+  11,
+  13,
+  14,
+  15
+ ],
+ "schema_version": 1
+}

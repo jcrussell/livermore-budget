@@ -1,0 +1,35 @@
+{
+ "bbox": [
+  268.0,
+  664.0,
+  547.0,
+  693.0
+ ],
+ "cells": [
+  [
+   "Actual",
+   "Revised Budget",
+   "Budget",
+   "Budget"
+  ],
+  [
+   "FY 2023-24",
+   "FY 2024-25",
+   "FY 2025-26",
+   "FY 2026-27"
+  ]
+ ],
+ "content_hash": "sha256:ae44c7c010ea760d5b5ab89e091996aaa688ac12ea91559ce5e4dc6644222a7c",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:5624bece1f996cbb4a4fb549144164d7143518f814e0551e88027e72e1d16e8f",
+ "n_cols": 4,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 131,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6
+ ],
+ "schema_version": 1
+}

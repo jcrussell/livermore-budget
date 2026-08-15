@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  235.0,
+  634.0,
+  373.0,
+  671.0
+ ],
+ "cells": [
+  [
+   "",
+   "FIDUCIARY",
+   "",
+   "FUNDS"
+  ],
+  [
+   "STATEMENT",
+   "",
+   "OF NET",
+   "POSITION"
+  ],
+  [
+   "",
+   "June",
+   "30,",
+   "2025"
+  ]
+ ],
+ "content_hash": "sha256:b399ffb8e1eced075a03cf5d4ce42c4f12c7030a2143cbb67b9bfcc418f1a105",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:36014131627c65355c108a12c810f2df8da95f0daa47218073e13a782c68520b",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 61,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  4,
+  0
+ ],
+ "schema_version": 1
+}

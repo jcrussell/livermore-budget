@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  70.0,
+  309.0,
+  732.0,
+  337.0
+ ],
+ "cells": [
+  [
+   "C ounty M@as u re B • Loca l Stree t s",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "83 2 & Roads",
+   "TC 202 0 2 0 Tr affi",
+   "c S igna l Modifi cation",
+   "60,000",
+   "60 ,000"
+  ]
+ ],
+ "content_hash": "sha256:7e9530e6b123c865180ae133fe14f79c5e1bf3fb785362e8cace9cb6686bced6",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:c32f700e87850edf9e337cf20ef24c8626200668f2b7944c8289950064938793",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 5,
+ "page": 240,
+ "ragged": false,
+ "row_page_lines": [
+  22,
+  24
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  78.0,
+  593.0,
+  308.0,
+  629.0
+ ],
+ "cells": [
+  [
+   "Fleet and",
+   "Facilities",
+   ""
+  ],
+  [
+   "Equipment",
+   "Rehabilitation",
+   ""
+  ],
+  [
+   "Services",
+   "Projects",
+   "Total"
+  ]
+ ],
+ "content_hash": "sha256:b13a136adec57d8cb6ea1a128900ab9d011057fd3f42fd31be6752789f7405dd",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:0da3633c3f9cbddcd405bc92f6f8a6b6bbb431abf776d8b4310c5738670a2d5c",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 155,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  4,
+  5
+ ],
+ "schema_version": 1
+}

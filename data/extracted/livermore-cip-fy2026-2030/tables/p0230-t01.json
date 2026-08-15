@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  55.0,
+  87.0,
+  745.0,
+  104.0
+ ],
+ "cells": [
+  [
+   "Wastewater WW",
+   "W R P P rimary & Secondary",
+   "Treatment",
+   "",
+   ""
+  ],
+  [
+   "623",
+   "201931",
+   "2,282,000",
+   "50,000",
+   "2,332,000"
+  ],
+  [
+   "Con nection Fees",
+   "Improvements , Phase",
+   "1",
+   "",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:e7cfac78af75aebb58d92e0988091b721ec4737f3e1cffc777a0f5c41b1a42cc",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:1c3db7b353870a5a6d12e5dd4ec38655334440b0c8c8e305bf10a8c30b5fc71d",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 230,
+ "ragged": false,
+ "row_page_lines": [
+  10,
+  null,
+  17
+ ],
+ "schema_version": 1
+}

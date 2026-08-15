@@ -1,0 +1,210 @@
+{
+ "bbox": [
+  35.0,
+  127.0,
+  583.0,
+  696.0
+ ],
+ "cells": [
+  [
+   "TI202526 TI200719",
+   "Valley Link Vasco ACE",
+   "Station Areas Parking Lot - Connector",
+   "Rd.",
+   "",
+   "165 291"
+  ],
+  [
+   "TI199836",
+   "Vasco Rd.",
+   "Widening-I-580",
+   "to Las Positas Rd.",
+   "",
+   "291"
+  ],
+  [
+   "TI200833",
+   "Vasco Rd.",
+   "Widening I-580",
+   "to Scenic Ave.",
+   "",
+   "291"
+  ],
+  [
+   "TI201837",
+   "Vasco Road",
+   "Widening",
+   "",
+   "",
+   "161"
+  ],
+  [
+   "TI199352",
+   "Vasco Road/I-580",
+   "Interchange",
+   "",
+   "",
+   "155"
+  ],
+  [
+   "DR202121",
+   "Veterans",
+   "Park",
+   "",
+   "",
+   "30"
+  ],
+  [
+   "WT201924",
+   "Water Main",
+   "Replacement",
+   "",
+   "",
+   "291"
+  ],
+  [
+   "WW201818",
+   "WRP Biological",
+   "Nutrient",
+   "Removal Upgrades",
+   "",
+   "291"
+  ],
+  [
+   "WW202315",
+   "WRP Digester",
+   "Heating Loop",
+   "Replacement",
+   "",
+   "178"
+  ],
+  [
+   "WW202322",
+   "WRP Occupied",
+   "Building Repairs",
+   "-Administration",
+   "",
+   "179"
+  ],
+  [
+   "WW202420",
+   "WRP Occupied",
+   "Building Repairs",
+   "-Maintenance",
+   "",
+   "180"
+  ],
+  [
+   "WW202612",
+   "WRP Occupied",
+   "Building Repairs",
+   "-Tertiary",
+   "",
+   "184"
+  ],
+  [
+   "WW201931",
+   "WRP Primary",
+   "& Secondary",
+   "Treatment Improvements,",
+   "Phase 1",
+   "170"
+  ],
+  [
+   "WW202217",
+   "WRP Primary",
+   "& Secondary",
+   "Treatment Improvements,",
+   "Phase 2",
+   "175"
+  ],
+  [
+   "WW202527",
+   "WRP Recycled",
+   "Water Fill Station",
+   "",
+   "",
+   "183"
+  ],
+  [
+   "WW202218",
+   "WRP SCADA",
+   "PLC Controls",
+   "Upgrade",
+   "",
+   "176"
+  ],
+  [
+   "WW202312",
+   "WRP SCADA",
+   "Remote Site",
+   "Upgrade",
+   "",
+   "291"
+  ],
+  [
+   "WW202129",
+   "WRP SCADA",
+   "Server & Network",
+   "Upgrade",
+   "",
+   "173"
+  ],
+  [
+   "WW202012",
+   "WRP Tertiary",
+   "and Solid Treatment",
+   "Improvements",
+   "",
+   "291"
+  ],
+  [
+   "WW202128",
+   "WRP UV",
+   "Treatment System",
+   "Replacement",
+   "",
+   "172"
+  ],
+  [
+   "WW202624",
+   "WRP Waste",
+   "Oil Tank Removal",
+   "",
+   "",
+   "185"
+  ]
+ ],
+ "content_hash": "sha256:1c59be1429ff8ba466cfbf848d368d2bf9cd5f1a42bea735bf5ad29607ef5899",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:4e1ed728e80b2d35830f11437155e4fdafb68a565455a78a27d672341270c3f8",
+ "n_cols": 6,
+ "n_rows": 21,
+ "ordinal": 1,
+ "page": 306,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23,
+  24,
+  25
+ ],
+ "schema_version": 1
+}

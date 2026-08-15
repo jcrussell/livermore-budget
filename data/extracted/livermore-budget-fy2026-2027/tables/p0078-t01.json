@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  161.0,
+  561.0,
+  456.0,
+  600.0
+ ],
+ "cells": [
+  [
+   "Assessed Value",
+   "",
+   "$ 26,264,328,578"
+  ],
+  [
+   "Debt Limit (15%",
+   "of Assessed Value)",
+   "3,939,649,287"
+  ],
+  [
+   "Less: Net Debt",
+   "Applicable to Limit",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:a677827ebf74ebbea3807952419c9c83d4c2a698fedc10991ac090987a1be56b",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:a9297033a9a3df867109fd2cc5cf2541dc07a196cd1dd7ad06e27e3760717efa",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 78,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7
+ ],
+ "schema_version": 1
+}

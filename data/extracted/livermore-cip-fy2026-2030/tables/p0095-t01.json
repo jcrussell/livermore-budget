@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.99,
+  604.78,
+  781.9
+ ],
+ "cells": [
+  [
+   "BLUEBELL DRIVE BRIDGE REPAIR AT ALTAMONT CREEK",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM201721",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:b92f793f64d3a987dbde08a16731433573b83bb6c28caf1dc5ee1ba3863ab5bd",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:8db57edbd3b61600a3ada58179674599ac65066d8bf31358ec37f3b31985f017",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 95,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

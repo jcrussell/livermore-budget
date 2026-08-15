@@ -1,0 +1,48 @@
+{
+ "bbox": [
+  90.0,
+  498.0,
+  528.0,
+  536.0
+ ],
+ "cells": [
+  [
+   "Revenue Capacity",
+   "these schedules",
+   "contain information",
+   "to help the",
+   "reader",
+   ""
+  ],
+  [
+   "assess the government",
+   "’s  two most",
+   "significant local",
+   "revenue source",
+   "-the",
+   ""
+  ],
+  [
+   "sales tax and property",
+   "tax.",
+   "",
+   "",
+   "",
+   "137 - 143"
+  ]
+ ],
+ "content_hash": "sha256:fa30db4129adcf07d0ebd2c3a0c07a9315cf3daf8996b3e7ba98b1bd917535a2",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:d38b8d38e5993b5b1f9677ce0d7a2aeb4a958c0a86d8ba71164cea235f60e9d4",
+ "n_cols": 6,
+ "n_rows": 3,
+ "ordinal": 3,
+ "page": 162,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7
+ ],
+ "schema_version": 1
+}

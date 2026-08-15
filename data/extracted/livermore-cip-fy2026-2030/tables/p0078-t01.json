@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  575.7,
+  782.04
+ ],
+ "cells": [
+  [
+   "ALTAMONT CREEK MITIGATION",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SD201941",
+   "Storm"
+  ]
+ ],
+ "content_hash": "sha256:698fb45c908096d3efc93c1c34f110381ade55049ec5df5c3622e1ecd41a86df",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:78074bc0b4a248ecbb8c010ec6405ec8f21f3f67abd3c3a810d3df10e4bf6808",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 78,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

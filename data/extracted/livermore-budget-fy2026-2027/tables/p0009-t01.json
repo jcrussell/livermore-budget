@@ -1,0 +1,51 @@
+{
+ "bbox": [
+  56.0,
+  542.0,
+  532.0,
+  594.0
+ ],
+ "cells": [
+  [
+   "Reserve Capital",
+   "for Labor Expenditure",
+   "MOUs & Addition to Reserves",
+   "",
+   "- -",
+   "$3,651,771",
+   "$5,674,705 - -"
+  ],
+  [
+   "Transfers",
+   "Out",
+   "",
+   "18,580,627",
+   "",
+   "10,037,797",
+   "10,146,598"
+  ],
+  [
+   "",
+   "Total",
+   "all Expenditures",
+   "$159,701,047",
+   "$158,340,370",
+   "",
+   "$164,835,882"
+  ]
+ ],
+ "content_hash": "sha256:554084cb4300639aa9cf39a914f6b1f2e49741ce50577eee5e11720cce1e08d7",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:f9e9d38cc01c9802d055765e404c16988a38fb7f566c38e341be0550df9dade2",
+ "n_cols": 7,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 9,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  4
+ ],
+ "schema_version": 1
+}

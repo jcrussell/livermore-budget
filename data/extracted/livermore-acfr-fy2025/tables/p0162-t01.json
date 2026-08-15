@@ -1,0 +1,48 @@
+{
+ "bbox": [
+  90.0,
+  390.0,
+  528.0,
+  428.0
+ ],
+ "cells": [
+  [
+   "Demographic and",
+   "Economic Information",
+   "these schedules",
+   "offer demographic",
+   "",
+   ""
+  ],
+  [
+   "and economic indicators",
+   "to help the",
+   "reader understand",
+   "the environment",
+   "within",
+   ""
+  ],
+  [
+   "which the government",
+   "’s financial activities",
+   "take place.",
+   "",
+   "",
+   "147 - 149"
+  ]
+ ],
+ "content_hash": "sha256:9338554becd53564a3faa3990d3f486f8efcb8bbc221ca7a2c3683d9c1eee13b",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:5e768e2a463910f8c0c7fe7c39f7cf9baa386e9938ad429547b07ff2e44b1613",
+ "n_cols": 6,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 162,
+ "ragged": false,
+ "row_page_lines": [
+  14,
+  16,
+  17
+ ],
+ "schema_version": 1
+}

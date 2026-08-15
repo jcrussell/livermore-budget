@@ -1,0 +1,49 @@
+{
+ "bbox": [
+  58.0,
+  439.0,
+  572.0,
+  474.0
+ ],
+ "cells": [
+  [
+   "",
+   "DEFERRED OUTFLOWS OF RESOURCES",
+   "",
+   ""
+  ],
+  [
+   "Related to pension",
+   "(Notes 11)",
+   "33,713,187            4,158,250",
+   "37,871,437"
+  ],
+  [
+   "Related to OPEB (Notes",
+   "12)",
+   "4,508,181",
+   "721,668 5,229,849"
+  ],
+  [
+   "Total Deferred",
+   "Outflows of Resources",
+   "38,221,368            4,879,918",
+   "43,101,286"
+  ]
+ ],
+ "content_hash": "sha256:404c745e5a95d64d2a11c85b588b5ba7443651a0f870d2290664ce9a1153f44c",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:500f6f1ce4bca2ce143c3c07be1eeb0c90d3bfab0bd489754174e471b240846d",
+ "n_cols": 4,
+ "n_rows": 4,
+ "ordinal": 2,
+ "page": 49,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  9,
+  10
+ ],
+ "schema_version": 1
+}

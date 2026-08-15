@@ -1,0 +1,57 @@
+{
+ "bbox": [
+  54.0,
+  526.09,
+  558.0,
+  667.93
+ ],
+ "cells": [
+  [
+   "",
+   "Total",
+   "$28,044,584",
+   "",
+   "$28,495,534",
+   "",
+   "$29,540,677",
+   "",
+   "$30,169,454"
+  ],
+  [
+   "FIRE DEPARTMENT",
+   "TOTAL",
+   "$28,044,584",
+   "",
+   "$28,495,534",
+   "",
+   "$29,540,677",
+   "",
+   "$30,169,454"
+  ],
+  [
+   "",
+   "Services & Supplies",
+   "132,186",
+   "",
+   "230,000",
+   "",
+   "287,000",
+   "",
+   "287,000"
+  ]
+ ],
+ "content_hash": "sha256:7ce6588f2ceed5ebbe8f5951387389980bb558505cb00171b6824ce946535402",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:eebaefe5f6ca3b1b5a8adc27009d932dc7648ce9a6711bef49dac1b420c32f8c",
+ "n_cols": 9,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 170,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  479.0,
+  702.0,
+  574.0,
+  743.0
+ ],
+ "cells": [
+  [
+   "City",
+   "of Livermore",
+   ""
+  ],
+  [
+   "Letter",
+   "of Transmittal",
+   ""
+  ],
+  [
+   "",
+   "June",
+   "30, 2025"
+  ]
+ ],
+ "content_hash": "sha256:e95a54e689945d22fc64ee8ddebc419b2a89f05f0b58fe7281c5accf59a63489",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:3eea6afb7c11d5909ce7b738def5b9b389f8005c90640ce3ac6e0563384a35ab",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 19,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  4,
+  5
+ ],
+ "schema_version": 1
+}

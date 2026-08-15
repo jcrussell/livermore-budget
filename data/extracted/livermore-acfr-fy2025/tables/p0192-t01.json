@@ -1,0 +1,85 @@
+{
+ "bbox": [
+  56.0,
+  270.0,
+  756.0,
+  311.0
+ ],
+ "cells": [
+  [
+   "Adjustments",
+   "to Gross",
+   "Revenues:",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "County",
+   "Administrative",
+   "Fees",
+   "",
+   "47",
+   "49",
+   "58",
+   "52",
+   "54",
+   "53",
+   "56",
+   "57",
+   "46"
+  ],
+  [
+   "Sections",
+   "33676 Payments",
+   "",
+   "",
+   "3",
+   "3",
+   "3",
+   "3",
+   "3",
+   "3",
+   "3",
+   "3",
+   "3"
+  ],
+  [
+   "Tax Revenues",
+   "",
+   "",
+   "$",
+   "6,845 $",
+   "7,420 $",
+   "7,553 $",
+   "7,782 $",
+   "8,098 $",
+   "8,690 $",
+   "9,583 $",
+   "10,331 $",
+   "10,965"
+  ]
+ ],
+ "content_hash": "sha256:6efab76c5bf32182518295d176c6ce2c2335f3f05fc0ef5c7a7aa3c3c3009acb",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:bc23fb53b8057dd4b2ccea55a2021246e1d5899fcb3087923ee1d71d04f86c45",
+ "n_cols": 13,
+ "n_rows": 4,
+ "ordinal": 1,
+ "page": 192,
+ "ragged": false,
+ "row_page_lines": [
+  19,
+  21,
+  22,
+  2
+ ],
+ "schema_version": 1
+}

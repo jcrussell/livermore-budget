@@ -1,0 +1,121 @@
+{
+ "bbox": [
+  54.0,
+  148.0,
+  555.0,
+  319.0
+ ],
+ "cells": [
+  [
+   "Expenditures,",
+   "Transfers,",
+   "and Allocations",
+   "Actual",
+   "Revised Budget",
+   "Budget",
+   "Budget"
+  ],
+  [
+   "to Operating",
+   "Reserves",
+   "Budget",
+   "FY 2023-24",
+   "FY 2024-25",
+   "FY 2025-26",
+   "FY 2026-27"
+  ],
+  [
+   "General Fund",
+   "",
+   "",
+   "$138,176,435",
+   "$159,701,047",
+   "$158,340,370",
+   "$164,835,882"
+  ],
+  [
+   "Enterprise",
+   "Funds",
+   "",
+   "82,485,858",
+   "101,346,806",
+   "76,866,877",
+   "82,227,970"
+  ],
+  [
+   "Debt Service",
+   "Funds",
+   "",
+   "6,967,887",
+   "7,025,000",
+   "6,984,597",
+   "6,969,898"
+  ],
+  [
+   "Permanent",
+   "Funds",
+   "",
+   "620,581",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Capital Funds",
+   "",
+   "",
+   "27,571,831",
+   "60,276,720",
+   "29,646,095",
+   "37,017,670"
+  ],
+  [
+   "Special Revenue",
+   "Funds",
+   "",
+   "11,493,254",
+   "21,871,258",
+   "20,404,611",
+   "12,708,550"
+  ],
+  [
+   "Internal Service",
+   "Funds",
+   "",
+   "24,208,045",
+   "27,810,446",
+   "25,117,367",
+   "26,906,515"
+  ],
+  [
+   "Total Uses",
+   "-All Funds",
+   "",
+   "$291,523,890",
+   "$378,031,277",
+   "$317,359,917",
+   "$330,666,485"
+  ]
+ ],
+ "content_hash": "sha256:2d5bb4fa9ea5e523f7e9179b1e7e7dceaa644c9c7171c3a5ec85f1bdd43c1783",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:bae2db25995f36b628e226f8eae897db916d3696f27cbd5c8042409ddc43ad72",
+ "n_cols": 7,
+ "n_rows": 10,
+ "ordinal": 1,
+ "page": 61,
+ "ragged": false,
+ "row_page_lines": [
+  32,
+  34,
+  14,
+  16,
+  22,
+  24,
+  20,
+  18,
+  26,
+  28
+ ],
+ "schema_version": 1
+}

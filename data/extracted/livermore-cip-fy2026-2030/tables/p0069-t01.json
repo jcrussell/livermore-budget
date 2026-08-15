@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  571.73,
+  782.04
+ ],
+ "cells": [
+  [
+   "POLICE STORAGE FACILITY",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: PS202214",
+   "Public"
+  ]
+ ],
+ "content_hash": "sha256:e93ffb385cea7f73b4f503a3277b114b74e109155fad424c50e65a31f6160b02",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:43d37545088c73daa0810eb5d709ec8bff3b29cba20d875de38b7ae1e2ef0c5d",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 69,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

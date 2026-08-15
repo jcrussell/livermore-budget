@@ -1,0 +1,63 @@
+{
+ "bbox": [
+  56.0,
+  318.0,
+  756.0,
+  346.0
+ ],
+ "cells": [
+  [
+   "Gross",
+   "Tax Increment Revenue",
+   "6,875",
+   "7,445",
+   "7,581",
+   "7,803",
+   "8,121",
+   "8,451",
+   "9,591",
+   "10,333",
+   "10,945"
+  ],
+  [
+   "Unitary",
+   "Tax Revenues",
+   "20",
+   "27",
+   "33",
+   "34",
+   "34",
+   "295",
+   "51",
+   "58",
+   "69"
+  ],
+  [
+   "Gross",
+   "Revenues",
+   "6,895",
+   "7,472",
+   "7,614",
+   "7,837",
+   "8,155",
+   "8,746",
+   "9,642",
+   "10,391",
+   "11,014"
+  ]
+ ],
+ "content_hash": "sha256:857a3a78249df6d9756547a8b0aa01d2436342c14e1ed9f8dc08413935d5f040",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:dce8e00c99a42aea6eba07bb6465db728ed0ee2946c0f5acc5799e87b4281971",
+ "n_cols": 11,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 192,
+ "ragged": false,
+ "row_page_lines": [
+  14,
+  16,
+  14
+ ],
+ "schema_version": 1
+}

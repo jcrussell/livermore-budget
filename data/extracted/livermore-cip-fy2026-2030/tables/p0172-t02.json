@@ -1,0 +1,65 @@
+{
+ "bbox": [
+  38.0,
+  332.0,
+  740.0,
+  377.0
+ ],
+ "cells": [
+  [
+   "WW202203 Sewer",
+   "Replacement",
+   "",
+   "",
+   "79,000 1,176,000",
+   "3,310,000",
+   "",
+   "4,565,000"
+  ],
+  [
+   "WRP Primary",
+   "& Secondary",
+   "Treatment",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "WW202217 Improvemen",
+   "ts, P hase",
+   "2",
+   "15,000  400,000",
+   "800 ,000 5,600,000",
+   "4,000,000",
+   "",
+   "10 ,815,000"
+  ],
+  [
+   "WW202218 WRP",
+   "S CADA PLC Controls",
+   "Upgrade",
+   "",
+   "485,000  440,000",
+   "3 1 4,000",
+   "537,000",
+   "1,776,000"
+  ]
+ ],
+ "content_hash": "sha256:396c9cbe4612b6abfe34c47d3d7699b541b23e8c8895d7677a3f10c7802a2db8",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:87ee4e930334fdd8090030973b8d965eb8721021556bcd9a33bf8b9fb7838204",
+ "n_cols": 8,
+ "n_rows": 4,
+ "ordinal": 2,
+ "page": 172,
+ "ragged": false,
+ "row_page_lines": [
+  17,
+  8,
+  20,
+  21
+ ],
+ "schema_version": 1
+}

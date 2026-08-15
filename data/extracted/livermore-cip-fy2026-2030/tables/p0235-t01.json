@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  66.0,
+  488.0,
+  733.0,
+  516.0
+ ],
+ "cells": [
+  [
+   "B -",
+   "",
+   "",
+   ". s s",
+   "- s - s - s",
+   ". s • $"
+  ],
+  [
+   "831  Bike/ P edestrian",
+   "OR20222 5 F : lagpo",
+   "l@ P l aza",
+   "290,000",
+   "$",
+   "290,000"
+  ]
+ ],
+ "content_hash": "sha256:7eacba0befd6e534ea34442da7bf97c3d0073ce428fa0edf411381d73230c328",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:5485a0a1d8a4d8fd35b1bb77f00e11ecdb0185dd2687dfd7065cd85aca337990",
+ "n_cols": 6,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 235,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6
+ ],
+ "schema_version": 1
+}

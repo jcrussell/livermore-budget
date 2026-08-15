@@ -1,0 +1,51 @@
+{
+ "bbox": [
+  56.0,
+  642.0,
+  557.0,
+  686.0
+ ],
+ "cells": [
+  [
+   "",
+   "",
+   "",
+   "Actual",
+   "Revised Budget",
+   "Budget",
+   "Budget"
+  ],
+  [
+   "",
+   "",
+   "",
+   "FY 2023-24",
+   "FY 2024-25",
+   "FY 2025-26",
+   "FY 2026-27"
+  ],
+  [
+   "Other",
+   "Maintenance",
+   "CFDs",
+   "176,138",
+   "205,071",
+   "191,931",
+   "198,542"
+  ]
+ ],
+ "content_hash": "sha256:b110f54fe2a01ed49f1240e226cc36eda86e0118dff7e8b681ed98d477ecc964",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:b76f258ba4f7b766127f629ebb61a8ae91a555b6ef32e27cb4a5cdb6a10ec997",
+ "n_cols": 7,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 125,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7
+ ],
+ "schema_version": 1
+}

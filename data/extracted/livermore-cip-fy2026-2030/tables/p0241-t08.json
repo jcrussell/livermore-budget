@@ -1,0 +1,57 @@
+{
+ "bbox": [
+  70.0,
+  488.0,
+  716.0,
+  517.0
+ ],
+ "cells": [
+  [
+   "BB • Loc al S trnets",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "s",
+   "",
+   "-",
+   "-",
+   "-",
+   ".",
+   "",
+   ""
+  ],
+  [
+   "552  &  R oads",
+   "TC2.0B",
+   "06 C rosswalk",
+   "S af@ ty Imp",
+   "rovements",
+   "$",
+   "5,00",
+   "0 145",
+   ",000  $",
+   "$",
+   "$",
+   "$",
+   "$",
+   "$",
+   "150 ,000"
+  ]
+ ],
+ "content_hash": "sha256:73305ea70038df95b22b29c92885e9f3330686eb8c645ee95658a7c64ab0fc85",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:90ebe32fc7099a6ceeffc7a2cdf9a9a13b65d590a4f621ed145e55b8763dcc0b",
+ "n_cols": 15,
+ "n_rows": 2,
+ "ordinal": 8,
+ "page": 241,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8
+ ],
+ "schema_version": 1
+}

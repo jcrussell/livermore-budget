@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  216.0,
+  485.0,
+  369.0,
+  541.0
+ ],
+ "cells": [
+  [
+   "Financial",
+   "",
+   "Section"
+  ],
+  [
+   "June",
+   "30,",
+   "2025"
+  ],
+  [
+   "City",
+   "",
+   "of Livermore"
+  ]
+ ],
+ "content_hash": "sha256:064f17d63e41a5544f7134fe0a43e7868cb97874dfce0da1c3f524bfcb287765",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:b4d58e19cf899ebab618e23affb8512d8dd589a5aa24dfe207da14ed50327383",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 25,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

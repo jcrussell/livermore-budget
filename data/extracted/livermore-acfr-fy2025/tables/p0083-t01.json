@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  312.0,
+  565.0,
+  484.0,
+  604.0
+ ],
+ "cells": [
+  [
+   "Depreciation",
+   "and amortization",
+   ""
+  ],
+  [
+   "Governmental",
+   "Business-Type",
+   ""
+  ],
+  [
+   "Activities",
+   "",
+   "Activities"
+  ]
+ ],
+ "content_hash": "sha256:b6b85264448cc5ff69a19d8e3991f924c86f292a197ae748f38f2df77cd486d4",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:6b995e24bf607a0d492b311ac90a350dbd301510ca65177a11f169a1a92fbc63",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 83,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  8,
+  9
+ ],
+ "schema_version": 1
+}

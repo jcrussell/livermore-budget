@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  56.0,
+  323.0,
+  570.0,
+  364.0
+ ],
+ "cells": [
+  [
+   "NET POSITION",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Beginning",
+   "of year",
+   "(11,222,148)",
+   "8,534,111"
+  ],
+  [
+   "End of year",
+   "",
+   "$   (9,306,411)",
+   "$   10,739,070"
+  ]
+ ],
+ "content_hash": "sha256:d3ee6112f17b23b094e174bb19e3523fb5c3dce602f1998f72f187bb12d484cd",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:b52e18f0177cb2b12e41621ae2b823e4f719377c5d867fc03836b0312a093326",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 62,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  17,
+  18
+ ],
+ "schema_version": 1
+}

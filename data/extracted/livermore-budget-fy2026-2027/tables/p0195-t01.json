@@ -1,0 +1,54 @@
+{
+ "bbox": [
+  70.0,
+  627.0,
+  541.0,
+  688.0
+ ],
+ "cells": [
+  [
+   "Expenses",
+   "Transfers Out",
+   "Transfers Out",
+   "to CIP",
+   "Reserve Increase/(Use)",
+   "Total Uses",
+   "Working Capital 6/30/25",
+   ""
+  ],
+  [
+   "9,012",
+   "",
+   "",
+   "",
+   "",
+   "-9,012",
+   "",
+   "44,645"
+  ],
+  [
+   "$              20,477,052",
+   "$                1,259,206",
+   "$                   135,000",
+   "",
+   "$",
+   "-$              21,871,258",
+   "$              77,290,073",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:4e4e24b111d523e7dc1d8dbf86f827ecd41bdb509924da5d4575d8983dcd87a3",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:b1383bf9728de4a94ee329e87d9c673c5beba380c08a8649c8f9f915d494bbe7",
+ "n_cols": 8,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 195,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  null,
+  3
+ ],
+ "schema_version": 1
+}

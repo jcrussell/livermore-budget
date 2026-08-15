@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  196.37,
+  231.71,
+  501.89,
+  266.08
+ ],
+ "cells": [
+  [
+   "$ 312.8",
+   "$ 289.8",
+   "$ 190.9",
+   "$ 172.5",
+   "$ 503.7"
+  ],
+  [
+   "416.4",
+   "401.0",
+   "165.5",
+   "159.4",
+   "581.9"
+  ],
+  [
+   "729.2",
+   "690.8",
+   "356.4",
+   "331.9",
+   "1,085.6"
+  ]
+ ],
+ "content_hash": "sha256:37503f3ba49d5ff90a811aa6bdc019ca0ccdadad94db486a39a978fe952cf1c1",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:5728dad53487b5892ee83fbf38049ac7f2c38329e2f6c06611e418c3d2e304a1",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 3,
+ "page": 34,
+ "ragged": false,
+ "row_page_lines": [
+  22,
+  null,
+  null
+ ],
+ "schema_version": 1
+}

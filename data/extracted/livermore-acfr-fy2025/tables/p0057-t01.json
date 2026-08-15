@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  79.0,
+  140.0,
+  513.0,
+  168.0
+ ],
+ "cells": [
+  [
+   "Some amounts reported",
+   "for business-type activities",
+   "in the Statement of Net",
+   "Position are different",
+   ""
+  ],
+  [
+   "because certain internal",
+   "service fund assets and",
+   "liabilities are included with",
+   "business-type activities.",
+   "2,240,339"
+  ],
+  [
+   "Net position business-type",
+   "activities",
+   "",
+   "",
+   "$ 309,250,049"
+  ]
+ ],
+ "content_hash": "sha256:0f5a372ad5aa777fc36ce86611f5f51d258aee557d96a6fd04347bd3e9081c03",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:624d161cc664508efa8a0caae9145cb378d4e5c72f40534a9c0fc4e40b50de3b",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 57,
+ "ragged": false,
+ "row_page_lines": [
+  24,
+  26,
+  27
+ ],
+ "schema_version": 1
+}

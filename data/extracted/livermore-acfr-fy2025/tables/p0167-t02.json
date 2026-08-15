@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  344.0,
+  440.0,
+  464.0,
+  466.0
+ ],
+ "cells": [
+  [
+   "Fund Balances",
+   "of Governmental Funds",
+   ""
+  ],
+  [
+   "",
+   "Last Ten Fiscal",
+   "Years"
+  ],
+  [
+   "(modified",
+   "accrual basis",
+   "of accounting)"
+  ]
+ ],
+ "content_hash": "sha256:cd5574da645aac762ad576faf2217f5dc341922c2e98bb687d680337d850c0eb",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:b9211c66ac94dd1440b87b3790fad7838d358c1d10e9224b9ca257bb66388bd7",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 167,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  2,
+  7
+ ],
+ "schema_version": 1
+}

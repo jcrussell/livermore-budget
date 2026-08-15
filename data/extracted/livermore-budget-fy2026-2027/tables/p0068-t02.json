@@ -1,0 +1,57 @@
+{
+ "bbox": [
+  61.0,
+  413.0,
+  547.0,
+  456.0
+ ],
+ "cells": [
+  [
+   "Stormwater",
+   "Enterprise",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Stormwater",
+   "",
+   "$  3,383,770",
+   "$    1,474,747",
+   "$    3,470,000",
+   "$    8,328,517"
+  ],
+  [
+   "Storm Drain",
+   "",
+   "7,184,372",
+   "437,748",
+   "",
+   "7,622,120"
+  ],
+  [
+   "Total Stormwater",
+   "Enterprise",
+   "$  10,568,142",
+   "$    1,912,494",
+   "$    3,470,000",
+   "$  15,950,637"
+  ]
+ ],
+ "content_hash": "sha256:da88755e4e457b4bf7ee4ad5562e4b5b5cea8138506b674195fdd880c6729f7b",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:cfa80f1bcf70fd880f2c80db05207aaa7273fa9a4df43644508317bd3d7e7b90",
+ "n_cols": 6,
+ "n_rows": 4,
+ "ordinal": 2,
+ "page": 68,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  4,
+  7,
+  8
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  461.0,
+  702.0,
+  574.0,
+  743.0
+ ],
+ "cells": [
+  [
+   "City",
+   "of Livermore",
+   ""
+  ],
+  [
+   "Population",
+   "Demographics",
+   ""
+  ],
+  [
+   "",
+   "June",
+   "30, 2025"
+  ]
+ ],
+ "content_hash": "sha256:36c1f01cc4a22e12fc1c10bd7cdc89579b6a4fc9487c2dd8f388fcd40a7d6d6a",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:5f8f2189adcb47ad515900ee956ab99023b3817fda233acc6f80a40df3d2dfac",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 181,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

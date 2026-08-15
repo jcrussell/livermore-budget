@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.79,
+  782.04
+ ],
+ "cells": [
+  [
+   "CARPET REPLACEMENT FOR CITY BUILDINGS",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: BL201518",
+   "Public Buildings"
+  ]
+ ],
+ "content_hash": "sha256:d63b515e8c503c4ce0acfbfa8756342a0de7bde59f5692de9546d085fb079636",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:b8f5570283788b360531ba9bba9268f641ca61243feea4eeca23936bd32cbf66",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 53,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

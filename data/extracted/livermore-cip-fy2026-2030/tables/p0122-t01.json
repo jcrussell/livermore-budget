@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  749.73,
+  604.79,
+  781.22
+ ],
+ "cells": [
+  [
+   "MISCELLANEOUS TRAFFIC SIGNING & STRIPING",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: TC202131",
+   "Traffic Control"
+  ]
+ ],
+ "content_hash": "sha256:b629b9298e372f6a383198aef46c1a7b5d46d4bff07f3ab84c5a80c7fed2e8d7",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:5569942df8b28d6e98e979de1b1973838f89ad66fc356f38271b19d4464969ca",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 122,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

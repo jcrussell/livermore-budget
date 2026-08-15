@@ -1,0 +1,13 @@
+# Extraction toolchain. Python is used for exactly one thing: running xberg
+# over the source PDFs via `make extract`. Nothing else in this project needs
+# it -- fisc reads only the committed artifacts.
+#
+# The version is pinned exactly because it is part of the provenance chain.
+# Every extraction manifest records the xberg version that produced it, and
+# `fisc verify` fails when a manifest disagrees with this file. Without the
+# pin that manifest field would be decoration.
+#
+# Bumping this version is expected to change extracted artifacts. The workflow
+# is: bump, `make extract`, review the artifact diff, then `fisc reanchor
+# --accept` to update mapping integrity hashes in one reviewable commit.
+xberg==1.0.14

@@ -1,0 +1,41 @@
+{
+ "bbox": [
+  54.0,
+  553.1,
+  558.0,
+  633.68
+ ],
+ "cells": [
+  [
+   "",
+   "Wages & Benefits Services & Supplies",
+   "",
+   "$71,118 78,080",
+   "$71,544 167,438",
+   "$74,701 156,157",
+   "$74,701 157,428"
+  ],
+  [
+   "Total Department Expenditures",
+   "Division Total",
+   "",
+   "$149,198 $149,198",
+   "$238,982 $238,982",
+   "$230,858 $230,858",
+   "$232,129 $232,129"
+  ]
+ ],
+ "content_hash": "sha256:2db09d3d396e9974d7b5f5e412fc1865e95742342f93a5cbc722b7c3077162bc",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:76b6fc970f95a407f2b1cf74f3d5aafbbe059dace15a1cff4f364c85a372fc0b",
+ "n_cols": 7,
+ "n_rows": 2,
+ "ordinal": 2,
+ "page": 85,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6
+ ],
+ "schema_version": 1
+}

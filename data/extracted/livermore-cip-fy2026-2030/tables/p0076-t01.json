@@ -1,0 +1,81 @@
+{
+ "bbox": [
+  35.0,
+  182.0,
+  579.0,
+  571.0
+ ],
+ "cells": [
+  [
+   "Livermore This condition to develop aims",
+   "a to mitigate",
+   "comprehensive future",
+   "design failure. solution",
+   "",
+   "that includes",
+   "the",
+   "upstream",
+   "reaches",
+   "of the",
+   "damaged",
+   "site."
+  ],
+  [
+   "",
+   "Fund",
+   "FY2024-25",
+   "FY2025-26",
+   "FY2026-27",
+   "FY2027-28",
+   "FY2028-29",
+   "",
+   "FY2029-30",
+   "FY2030-45",
+   "",
+   "Total"
+  ],
+  [
+   "CIP",
+   "Reserves",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "",
+   "Storm",
+   "$11,250",
+   "$17,187.50",
+   "$44,812.50",
+   "$6,250",
+   "",
+   "$0",
+   "$0",
+   "",
+   "$0",
+   "$79,500"
+  ]
+ ],
+ "content_hash": "sha256:f2a0c81497e700b2ee52feaa481f424c3dd6d7907fd3128005b6925bb590c928",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:a5aac146a9f7e7a17c3a8cfe1fe8a19e5702490737bf8607a0846034446a9d53",
+ "n_cols": 12,
+ "n_rows": 4,
+ "ordinal": 1,
+ "page": 76,
+ "ragged": false,
+ "row_page_lines": [
+  9,
+  7,
+  7,
+  2
+ ],
+ "schema_version": 1
+}

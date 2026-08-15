@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  136.0,
+  90.0,
+  494.0,
+  127.0
+ ],
+ "cells": [
+  [
+   "Safety Police",
+   "Plan",
+   "",
+   "$",
+   "(58,556,931)"
+  ],
+  [
+   "1 All Tiers of",
+   "the Safety Police",
+   "plan were combined",
+   "together on GASB 68",
+   "report by"
+  ],
+  [
+   "CalPERS.",
+   "",
+   "",
+   "",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:37b438bca4b70d20573dc6f9d0027247c91b41592cff934ca70f7be9b3182ada",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:b2723d62f28520d60f553ec6ed692ae5f86262f457b45a5b1a86c82395bf2e40",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 99,
+ "ragged": false,
+ "row_page_lines": [
+  16,
+  30,
+  10
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.79,
+  782.04
+ ],
+ "cells": [
+  [
+   "CIVIC CENTER LIBRARY TEEN SPACE IMPROVEMENT",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: BL202418",
+   "Public Buildings"
+  ]
+ ],
+ "content_hash": "sha256:811b6a989ef0f6c2a394e4da41ff07c0ab6cdc946464bb4f65f1bca63ae89c88",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:ebc1580cc3f5918bc7458562c97c7b3cfa348bf8d9321ea7793f86401e542652",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 62,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

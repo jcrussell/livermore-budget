@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  7.0,
+  737.0,
+  605.0,
+  781.0
+ ],
+ "cells": [
+  [
+   "FENCE",
+   "REPLACEMENT EAST SIDE HOLMES STREET SOUTH OF CAPITAL",
+   "IMPROVEMENT",
+   "PLAN"
+  ],
+  [
+   "CONCANNON",
+   "BOULEVARD",
+   "Parks",
+   "& Beautification"
+  ],
+  [
+   "Project",
+   "No.: PB202620",
+   "",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:129e5d3ae09d7cc6a35a3a6f816eb246f3779db11373d4a16f9d3e94f814280f",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:e0a40da56c4505459839e54fc14586617ed749daf470fe61160b7ab730cb0f1f",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 49,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

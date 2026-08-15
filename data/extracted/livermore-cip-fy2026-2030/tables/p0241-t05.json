@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  70.0,
+  360.0,
+  716.0,
+  397.0
+ ],
+ "cells": [
+  [
+   "C ou nty Measure BB ·",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "55 1 Bik e/ P edestrian",
+   "TC2.02.518 S treet Lighting",
+   "55,000  500 ,00",
+   "0",
+   "555 , 000"
+  ],
+  [
+   "5 60 S ta te • Gas T ax",
+   "TC2.02.5 18 S treet Lighting",
+   "55 ,000 400",
+   ",000",
+   "455, 000"
+  ]
+ ],
+ "content_hash": "sha256:8263f3dabc36a0bdb90fa2fdfd62280362b60f92f941a601e1999f462bf3ceda",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:e9b338940374e7e3d9f2b80d9aeb81987340f51c890c9db70344f9ed86249986",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 5,
+ "page": 241,
+ "ragged": false,
+ "row_page_lines": [
+  19,
+  21,
+  22
+ ],
+ "schema_version": 1
+}

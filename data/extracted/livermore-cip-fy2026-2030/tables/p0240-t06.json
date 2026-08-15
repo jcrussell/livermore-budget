@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  70.0,
+  350.0,
+  731.0,
+  378.0
+ ],
+ "cells": [
+  [
+   "C ounty Mea s ur e BB - Loc a I S treets",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "552  & R oads",
+   "TC202 0 20 Traffi",
+   "c S ignal Modi ficatiion",
+   "240,000",
+   "2 40,000"
+  ]
+ ],
+ "content_hash": "sha256:1bd543e65efdfbd57c38d2ed010091dd48ec82d919af98198ce66c8b4ed3db96",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:803950eab048d440a07a6c1d85bff25675cc3abdc649e174e3dd62d1ba6f25dc",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 6,
+ "page": 240,
+ "ragged": false,
+ "row_page_lines": [
+  18,
+  20
+ ],
+ "schema_version": 1
+}

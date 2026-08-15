@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  367.0,
+  579.0,
+  556.0,
+  615.0
+ ],
+ "cells": [
+  [
+   "FUNDING: Project",
+   "",
+   "funding",
+   "comes from"
+  ],
+  [
+   "the",
+   "CIP Reserves",
+   "-Storm",
+   "Fund and"
+  ],
+  [
+   "FEMA",
+   "Reimbursements.",
+   "",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:91ba03086bcc3245134876455c20d10d5f47ce2bbe9e0035b08cf3b45fe2e5b3",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:7597b2c92ed72e600aeec17680658d6f225c0278ce5caeb5df3f38f0b1a4ef0c",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 92,
+ "ragged": false,
+ "row_page_lines": [
+  7,
+  5,
+  10
+ ],
+ "schema_version": 1
+}

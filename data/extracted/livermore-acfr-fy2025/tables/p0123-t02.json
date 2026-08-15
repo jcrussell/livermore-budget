@@ -1,0 +1,53 @@
+{
+ "bbox": [
+  294.0,
+  430.0,
+  521.0,
+  466.0
+ ],
+ "cells": [
+  [
+   "SCHEDULE OF CHANGES",
+   "IN THE",
+   "NET PENSION",
+   "LIABILITY",
+   "AND RELATED RATIOS"
+  ],
+  [
+   "",
+   "Miscellaneous",
+   "",
+   "1 Plan",
+   ""
+  ],
+  [
+   "An Agent Multiple-Employer",
+   "",
+   "Defined",
+   "Benefit",
+   "Pension Plan"
+  ],
+  [
+   "",
+   "",
+   "Last 10 Years2",
+   "",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:c54d1937374633df33441cecca4f89414d1bf6d956219c51111f221a5a587e24",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:0374bf0e679d9b69510616e0312e1b5610abffadd39f4e1b1621663d8fcc6233",
+ "n_cols": 5,
+ "n_rows": 4,
+ "ordinal": 2,
+ "page": 123,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  2,
+  7,
+  8
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,36 @@
+{
+ "bbox": [
+  7.26,
+  734.12,
+  604.79,
+  780.96
+ ],
+ "cells": [
+  [
+   "PORTOLA AVENUE AND SEDONA COMMON TRAFFIC SIGNAL",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "IMPROVEMENTS",
+   "Traffic Control"
+  ],
+  [
+   "Project No.: TC202326",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:573fe7551a96052a9ab35967d200d8781831d6cf6e1448ee66f461a367e5909b",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:9dbc50ba340be8953826e8f3a6c368896944be527e22b84f3cc3c422f25e93e7",
+ "n_cols": 2,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 127,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

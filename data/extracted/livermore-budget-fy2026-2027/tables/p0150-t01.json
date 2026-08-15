@@ -1,0 +1,86 @@
+{
+ "bbox": [
+  63.0,
+  362.0,
+  524.0,
+  500.0
+ ],
+ "cells": [
+  [
+   "$5.0",
+   "1,800"
+  ],
+  [
+   "$4.5",
+   "1,600"
+  ],
+  [
+   "$4.0",
+   "1,400"
+  ],
+  [
+   "$3.5 Millions",
+   "1,200"
+  ],
+  [
+   "$3.0",
+   ""
+  ],
+  [
+   "",
+   "1,000"
+  ],
+  [
+   "$2.5",
+   ""
+  ],
+  [
+   "",
+   "800"
+  ],
+  [
+   "$2.0",
+   ""
+  ],
+  [
+   "$1.5",
+   "600"
+  ],
+  [
+   "$1.0",
+   "400"
+  ],
+  [
+   "$0.5",
+   "200"
+  ],
+  [
+   "$0.0",
+   "0"
+  ]
+ ],
+ "content_hash": "sha256:5b6313c7394631f78ac00023a4d06634713e161585bbac2c339daaf927728d90",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:86a1e1e988a9be6fc37563f066c494b034abe9817de9c24f9d4ad3379efe90b6",
+ "n_cols": 2,
+ "n_rows": 13,
+ "ordinal": 1,
+ "page": 150,
+ "ragged": false,
+ "row_page_lines": [
+  null,
+  null,
+  null,
+  8,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null,
+  null
+ ],
+ "schema_version": 1
+}

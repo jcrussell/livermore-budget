@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  38.0,
+  132.0,
+  740.0,
+  165.0
+ ],
+ "cells": [
+  [
+   "WW202527 WRP Recycled",
+   "Water F ill Station 40 ,000 240,000 120 ,000",
+   "",
+   "",
+   "400 ,000"
+  ],
+  [
+   "WRP O ccupi",
+   "ed Building Repairs-",
+   "",
+   "",
+   ""
+  ],
+  [
+   "WW202612 Tert iary",
+   "",
+   "12,000",
+   "525,000  4,202,000",
+   "4,739,000"
+  ]
+ ],
+ "content_hash": "sha256:4fe048013cffaddf96e58f277386f71d2f3fac3ec63dfacbd842c4195f13a221",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:bc9ce907cfeeaeb3a10fdee2ac48480831f6f5db3da94ceca0bacc7b817a74bb",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 172,
+ "ragged": false,
+ "row_page_lines": [
+  29,
+  31,
+  32
+ ],
+ "schema_version": 1
+}

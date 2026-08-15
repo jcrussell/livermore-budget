@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  56.0,
+  140.0,
+  572.0,
+  198.0
+ ],
+ "cells": [
+  [
+   "General Fund Total Unassigned",
+   "and other funds Fund Balances",
+   "6,684,785 26,610,167",
+   "",
+   "- -",
+   "-     6,684,785 - 26,610,167"
+  ],
+  [
+   "Total Fund",
+   "Balances",
+   "$       87,043,576",
+   "$        44,406,222",
+   "$       160,154,560",
+   "$ 291,604,358"
+  ]
+ ],
+ "content_hash": "sha256:14128f830bd0e37242fcd868edc0a72f495c26925bc1946a4dcea1ba41b055cc",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:586dd3b3c525f996f14f2d5e365ce209edaee8669d5d5250a22e70dd7027ba2f",
+ "n_cols": 6,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 93,
+ "ragged": false,
+ "row_page_lines": [
+  38,
+  40
+ ],
+ "schema_version": 1
+}

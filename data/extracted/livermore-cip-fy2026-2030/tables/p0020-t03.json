@@ -1,0 +1,36 @@
+{
+ "bbox": [
+  520.0,
+  593.0,
+  561.0,
+  622.0
+ ],
+ "cells": [
+  [
+   "Strategic",
+   ""
+  ],
+  [
+   "Plan",
+   "Pillar"
+  ],
+  [
+   "&",
+   "Goal"
+  ]
+ ],
+ "content_hash": "sha256:d90fc1c6a842681c3553b9d833681e44cfe2758b09bfb2a5b489f351a38104e4",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:22dc8842d53e9072886b3b826197f3cd989735f51271c63081b179e3f8db0562",
+ "n_cols": 2,
+ "n_rows": 3,
+ "ordinal": 3,
+ "page": 20,
+ "ragged": false,
+ "row_page_lines": [
+  8,
+  10,
+  11
+ ],
+ "schema_version": 1
+}

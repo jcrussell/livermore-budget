@@ -1,0 +1,36 @@
+{
+ "bbox": [
+  7.0,
+  737.0,
+  605.0,
+  781.0
+ ],
+ "cells": [
+  [
+   "WRP PRIMARY & SECONDARY TREATMENT IMPROVEMENTS, CAPITAL IMPROVEMENT",
+   "PLAN"
+  ],
+  [
+   "PHASE 2",
+   "Wastewater"
+  ],
+  [
+   "Project No.: WW202217",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:e6f9302ed3fb7747519ac234beed0542a783806b2b2b7aa176c6258afc4ce9c7",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:987676c8b6bf6ad098ec510e0c4c3c7562a945b2849ee1c35742a95deff5face",
+ "n_cols": 2,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 179,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

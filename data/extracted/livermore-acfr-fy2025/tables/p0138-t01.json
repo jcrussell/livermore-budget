@@ -1,0 +1,43 @@
+{
+ "bbox": [
+  58.0,
+  215.0,
+  569.0,
+  266.0
+ ],
+ "cells": [
+  [
+   "Transfers",
+   "(out) Total",
+   "Other Financing Sources (Uses)",
+   "- -",
+   "- -     470,000",
+   "-",
+   "- - (312,432) 23,577 - -",
+   ""
+  ],
+  [
+   "Net change",
+   "in",
+   "fund balances",
+   "92,767",
+   "2,193          317,783",
+   "67,725",
+   "356,982",
+   "211,115"
+  ]
+ ],
+ "content_hash": "sha256:25f179b321c8504a56b31c042d6fc5c6f8973ca710a8820e932bf5c43140ea53",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:33d60c42e024c2fa0494df4cb2d81572cbb760dd90479d228db0448a214cc189",
+ "n_cols": 8,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 138,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,36 @@
+{
+ "bbox": [
+  7.26,
+  734.12,
+  604.78,
+  781.9
+ ],
+ "cells": [
+  [
+   "RAILROAD CROSSINGS AT JUNCTION AVENUE AND L",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "STREET",
+   "Street Maintenance"
+  ],
+  [
+   "Project No.: SM202522",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:dbbec379f17b678e39c382f8794c8592c415f36d6fb6c3096870d1c411402b0f",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:95fff5af61cfe4ee9e53491c3c33dd75f3de432b1b9049674b6239869d5b0bd1",
+ "n_cols": 2,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 110,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

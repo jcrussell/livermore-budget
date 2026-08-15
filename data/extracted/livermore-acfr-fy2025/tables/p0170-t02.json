@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  357.0,
+  437.0,
+  458.0,
+  466.0
+ ],
+ "cells": [
+  [
+   "TAXABLE",
+   "SALES BY CATEGORY *",
+   ""
+  ],
+  [
+   "LAST",
+   "TEN CALENDAR",
+   "YEARS"
+  ],
+  [
+   "",
+   "(In thousands)",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:c49fc48470820f95d3f6eae3b055b5d6db1e0d259e9a952436b1650f3c5b4420",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:b601a1a10010599932979673de6973eef7732fd25b13db22d2f5ddc9abdbe725",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 170,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7
+ ],
+ "schema_version": 1
+}

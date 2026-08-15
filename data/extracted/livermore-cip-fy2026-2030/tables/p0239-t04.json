@@ -1,0 +1,77 @@
+{
+ "bbox": [
+  61.0,
+  330.0,
+  734.0,
+  410.0
+ ],
+ "cells": [
+  [
+   "C oun ty M@a s ure BB • Loc al S treets",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "552  &  Roads",
+   "SM2020 01 Street",
+   "R esurfacing",
+   "1,673 , 000",
+   "1 ,673,000"
+  ],
+  [
+   "56 1 State · SBl",
+   "SM2020 01 S treet",
+   "R esurfacin g",
+   "1 50,000 740 ,000",
+   "8 9 0 ,000"
+  ],
+  [
+   "56 0 State • Gas T a x",
+   "SM2 021 07 ADA",
+   "Access R amps",
+   "900,000",
+   "900 ,000"
+  ],
+  [
+   "56 1 Stat e · SBl",
+   "SM202201 S t r@e",
+   "t R esur facing",
+   "3,5 00,00 0",
+   "3,500 ,000"
+  ],
+  [
+   "561 S tate · S Bl",
+   "S M20 2.204 S l u~ry",
+   "S eal",
+   "700,000  2,357 , 000",
+   "3,0 57 ,000"
+  ],
+  [
+   "56 0 State • Gas Tax",
+   "SM202207 ADA",
+   "Access R amps",
+   "40,00 0 300 ,000",
+   "340 ,000"
+  ]
+ ],
+ "content_hash": "sha256:e3dc73fde74ec6e0b14c09074b6b8efb750df8d626801430daa50c0d00e8c18a",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:c58dcdd49c99df8a7f73388b2b1de5ee1b53ae8cb6ccb1f4a59fb17343945aef",
+ "n_cols": 5,
+ "n_rows": 7,
+ "ordinal": 4,
+ "page": 239,
+ "ragged": false,
+ "row_page_lines": [
+  16,
+  18,
+  19,
+  20,
+  21,
+  22,
+  23
+ ],
+ "schema_version": 1
+}

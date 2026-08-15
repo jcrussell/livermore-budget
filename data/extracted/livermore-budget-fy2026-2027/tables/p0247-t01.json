@@ -1,0 +1,453 @@
+{
+ "bbox": [
+  53.0,
+  65.0,
+  547.0,
+  657.0
+ ],
+ "cells": [
+  [
+   "ADMINISTRATIVE SERVICES",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Administrative Services Admin",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Administrative Services Director",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Assistant Administrative Services Director",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Senior Management Analyst",
+   "",
+   "",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Administrative Specialist I/II (Flex Staffing)",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Subtotal",
+   "3.000 ",
+   "3.000 ",
+   "4.000 ",
+   "4.000"
+  ],
+  [
+   "Finance",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Finance Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Accounting Supervisor",
+   "3.000 ",
+   "3.000 ",
+   "3.000 ",
+   "3.000"
+  ],
+  [
+   "Management Analyst II",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Junior Accountant",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Purchasing Specialist, Supervising",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Accounting Technician",
+   "3.000 ",
+   "3.000 ",
+   "3.000 ",
+   "3.000"
+  ],
+  [
+   "Senior Account Clerk",
+   "1.000 ",
+   "1.750 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Junior Account Clerk/Account Clerk (Flex Staffing)",
+   "4.250 ",
+   "3.500 ",
+   "3.500 ",
+   "3.500"
+  ],
+  [
+   "Division Clerk",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Subtotal",
+   "16.250 ",
+   "16.250 ",
+   "16.500 ",
+   "16.500"
+  ],
+  [
+   "Human Resources",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Human Resources Manager (Conf)",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Human Resources Analyst, Senior (Conf)",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Human Resources Analyst I/II (Conf) (Flex Staffing)",
+   "2.000 ",
+   "2.000 ",
+   "3.000 ",
+   "3.000"
+  ],
+  [
+   "Human Resources Technician",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Human Resources Clerk I/II (Flex Staffing)",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Subtotal",
+   "7.000 ",
+   "7.000 ",
+   "8.000 ",
+   "8.000"
+  ],
+  [
+   "Information Technology",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Information Technology Operations Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Network Engineer",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Senior Management Analyst",
+   "2.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Information Technology Coordinator",
+   "1.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Management Analyst II",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Senior Information Technology Technician",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Information Technology Technician",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Administrative Technician",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Subtotal",
+   "11.000 ",
+   "11.000 ",
+   "11.000 ",
+   "11.000"
+  ],
+  [
+   "ADMINISTRATIVE SERVICES TOTAL",
+   "37.250",
+   "37.250",
+   "39.500",
+   "39.500"
+  ],
+  [
+   "CITY ATTORNEY",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "City Attorney",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "City Attorney",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Senior Assistant City Attorney",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Assistant City Attorney",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Deputy City Attorney",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Law Office Supervisor",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Administrative Specialist I/II (Flex Staffing)",
+   "",
+   "0.500 ",
+   "0.500 ",
+   "0.500"
+  ],
+  [
+   "Legal Assistant",
+   "0.500",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Subtotal",
+   "6.500 ",
+   "6.500 ",
+   "6.500 ",
+   "6.500"
+  ],
+  [
+   "Risk Management",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Risk Manager",
+   "0.500 ",
+   "0.500 ",
+   "0.500 ",
+   "0.500"
+  ],
+  [
+   "Management Analyst II (Conf)",
+   "0.500 ",
+   "0.500 ",
+   "0.500 ",
+   "0.500"
+  ],
+  [
+   "Administrative Specialist I/II (Flex Staffing)",
+   "0.650 ",
+   "0.650 ",
+   "0.650 ",
+   "0.650"
+  ],
+  [
+   "Subtotal",
+   "1.650 ",
+   "1.650 ",
+   "1.650 ",
+   "1.650"
+  ],
+  [
+   "Workers Compensation",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Risk Manager",
+   "0.500 ",
+   "0.500 ",
+   "0.500 ",
+   "0.500"
+  ],
+  [
+   "Management Analyst II (Conf)",
+   "0.500 ",
+   "0.500 ",
+   "0.500 ",
+   "0.500"
+  ]
+ ],
+ "content_hash": "sha256:0b8ced0493cb8aef8113f8783f4a9fceac062980c8aad1e67ff835a68b321b7b",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:c50e0ec98df71071fa43bd99a4a7f3c0998595c3dd91a15b4e17d9e868555fa4",
+ "n_cols": 5,
+ "n_rows": 54,
+ "ordinal": 1,
+ "page": 247,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+  21,
+  11,
+  23,
+  24,
+  25,
+  26,
+  27,
+  28,
+  11,
+  30,
+  31,
+  32,
+  9,
+  34,
+  15,
+  36,
+  36,
+  38,
+  11,
+  40,
+  41,
+  42,
+  42,
+  44,
+  44,
+  46,
+  47,
+  10,
+  49,
+  11,
+  51,
+  52,
+  53,
+  10,
+  11,
+  56,
+  52,
+  53
+ ],
+ "schema_version": 1
+}

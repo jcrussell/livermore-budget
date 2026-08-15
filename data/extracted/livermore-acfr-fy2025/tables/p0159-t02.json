@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  56.0,
+  509.0,
+  521.0,
+  549.0
+ ],
+ "cells": [
+  [
+   "ADDITIONS",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Charges",
+   "for services",
+   "$ 6,125,738",
+   "$          51,365,916",
+   "$          57,491,654"
+  ],
+  [
+   "Total Additions",
+   "",
+   "6,125,738",
+   "51,365,916",
+   "57,491,654"
+  ]
+ ],
+ "content_hash": "sha256:c248e9ea6aeaa92a5a5a6e2484e5bfacff2836b8c9af081783f562aa2fb16f16",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:84a56539f5e05f42903200456c154b282a2d30e05696f5e453ef70cb48dbec33",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 159,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  9
+ ],
+ "schema_version": 1
+}

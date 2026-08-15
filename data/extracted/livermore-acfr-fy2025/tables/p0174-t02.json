@@ -1,0 +1,48 @@
+{
+ "bbox": [
+  56.0,
+  368.0,
+  754.0,
+  403.0
+ ],
+ "cells": [
+  [
+   "",
+   "2016 2017",
+   "2018 2019",
+   "2020 2021",
+   "2022 2023",
+   "2024 2025"
+  ],
+  [
+   "Direct Rates:",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "City Direct Rate",
+   "1.0000      1.0000      1.0000",
+   "1.0000      1.0000",
+   "1.0000      1.0000",
+   "1.0000      1.0000",
+   "1.0000"
+  ]
+ ],
+ "content_hash": "sha256:f626cb421bc8fb2e7295b7ccec7a1f1f8a6d2815d8e92f7d374b9780ae63a02a",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:ff659b2571324418f986d1904b8755cf36b0e873405232eac47101f08077ceae",
+ "n_cols": 6,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 174,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  9
+ ],
+ "schema_version": 1
+}

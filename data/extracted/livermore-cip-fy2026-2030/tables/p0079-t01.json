@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  7.0,
+  738.0,
+  605.0,
+  781.0
+ ],
+ "cells": [
+  [
+   "ARROYO",
+   "LAS POSITAS DESILTING THROUGH LAS POSITAS CAPITAL IMPROVEMENT GOLF",
+   "PLAN"
+  ],
+  [
+   "COURSE",
+   "",
+   "Storm Drain"
+  ],
+  [
+   "Project No.:",
+   "SD202015",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:659cf4d4671113ca7c498609ed7ac8283374290b189b07103505c382e283b97e",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:3d9eb1eea589b1bb0fc12ab74646999605d7e8a72e6060ac83fd92d796083959",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 79,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

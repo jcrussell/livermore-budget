@@ -1,0 +1,57 @@
+{
+ "bbox": [
+  56.0,
+  321.0,
+  563.0,
+  349.0
+ ],
+ "cells": [
+  [
+   "Net Cash",
+   "Flows",
+   "",
+   "708,346",
+   "3,476,392",
+   "276,616",
+   "537,830",
+   "2,201,673",
+   "7,200,857"
+  ],
+  [
+   "Cash and investments",
+   "at beginning",
+   "of period",
+   "6,089,805",
+   "3,444,496",
+   "2,402,045",
+   "7,857,025",
+   "5,060,723",
+   "24,854,094"
+  ],
+  [
+   "Cash and Investment",
+   "at end of period",
+   "",
+   "$      6,798,151",
+   "$      6,920,888",
+   "$      2,678,661",
+   "$      8,394,855",
+   "$      7,262,396",
+   "$ 32,054,951"
+  ]
+ ],
+ "content_hash": "sha256:264e46880df59f09c934fb4d758811c8c0e25d1827b99707bb724c8a4f464267",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:c752eec3f2a83a79e1d692ac6c12fa7ce66c85d43446f311957155ab1d79800b",
+ "n_cols": 9,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 156,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  9
+ ],
+ "schema_version": 1
+}

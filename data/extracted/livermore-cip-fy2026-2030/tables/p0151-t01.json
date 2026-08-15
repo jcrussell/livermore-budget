@@ -1,0 +1,41 @@
+{
+ "bbox": [
+  35.0,
+  466.0,
+  355.0,
+  523.0
+ ],
+ "cells": [
+  [
+   "",
+   "PROJECT LOCATION"
+  ],
+  [
+   "",
+   "From Wetmore"
+  ],
+  [
+   "",
+   "Road to Sycamore"
+  ],
+  [
+   "Project Description:",
+   "Grove Park"
+  ]
+ ],
+ "content_hash": "sha256:1b10afd6366ff19338064444a780bc514bf26d7b29640a13ee553a9e9e11cccc",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:7db01acede8f863dcba8bc9528435fd1469efb4fda84bb658a37cd55141cd135",
+ "n_cols": 2,
+ "n_rows": 4,
+ "ordinal": 1,
+ "page": 151,
+ "ragged": false,
+ "row_page_lines": [
+  15,
+  17,
+  18,
+  19
+ ],
+ "schema_version": 1
+}

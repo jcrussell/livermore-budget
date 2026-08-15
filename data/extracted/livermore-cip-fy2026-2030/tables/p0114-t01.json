@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.78,
+  782.04
+ ],
+ "cells": [
+  [
+   "STREET RESURFACING",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM202701",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:64ee2cb3db8a70e939d57c90c02c6e1b10430a69ca178e34bc3f50b975b3c15d",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:092c78cb61b10c83fecdb3756ab400fe47f2379fa74cbb51260522ef888fbece",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 114,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

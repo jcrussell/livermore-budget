@@ -1,0 +1,86 @@
+{
+ "bbox": [
+  61.0,
+  257.0,
+  734.0,
+  317.0
+ ],
+ "cells": [
+  [
+   "C oun ty Mea. sure BB • Loc al S treets",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "552  &  Roads",
+   "SM20 22 19 B ridg",
+   "e R eha b ilita tion",
+   "",
+   "",
+   "50 ,000",
+   "",
+   "",
+   "4,0 00 ,000",
+   "4,050,000"
+  ],
+  [
+   "56 1 State · SBl",
+   "SM202219 B ridge",
+   "R ehabil litation",
+   "",
+   "",
+   "50,00",
+   "0 252,0 00",
+   "8 00 , 0 00 948",
+   ",000 5,.000, 000",
+   "7,050,00 0"
+  ],
+  [
+   "56 0 S tate • Gas T ax",
+   "SM2 023 0 2 S idew",
+   "alk Repair",
+   "",
+   "1,32 0,000",
+   "",
+   "",
+   "",
+   "",
+   "1 ,320 ,000"
+  ],
+  [
+   "State • Gas T ax 56 0",
+   "SM202 325 Muff i@ta",
+   "oadway R",
+   "R !!cons truc tion",
+   "30,00 0",
+   "30 , 000 30",
+   ",000 30 ,000",
+   "3,0 20 , 0 00 1 ,805",
+   ",000",
+   "4,945 ,00 0"
+  ]
+ ],
+ "content_hash": "sha256:f7f3cfabbe8145ae886aaed02f638cde51364d0ac52b5e3ed8a32e945c630754",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:25dadcea1ed810b13a2d42c37e99887f1dd3187b540f53a1c0727b3acf6e656e",
+ "n_cols": 10,
+ "n_rows": 5,
+ "ordinal": 3,
+ "page": 239,
+ "ragged": false,
+ "row_page_lines": [
+  25,
+  18,
+  19,
+  29,
+  30
+ ],
+ "schema_version": 1
+}

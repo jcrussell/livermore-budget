@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  52.5,
+  404.08,
+  557.64,
+  436.6
+ ],
+ "cells": [
+  [
+   "FY 2019-20",
+   "14,566",
+   "62,996",
+   "176",
+   "1,426"
+  ],
+  [
+   "FY 2018-19",
+   "22,653",
+   "65,337",
+   "215",
+   "1,666"
+  ]
+ ],
+ "content_hash": "sha256:6865074e82978b0c9470617d8e79ae6154e807a3b2a16339eadeab8cadb10562",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:5080ad31fad8bf8b02e2d191e36dfaa8928c3e72e77285a570b699d408f604af",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 44,
+ "ragged": false,
+ "row_page_lines": [
+  8,
+  10
+ ],
+ "schema_version": 1
+}

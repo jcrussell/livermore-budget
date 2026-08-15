@@ -1,0 +1,57 @@
+{
+ "bbox": [
+  60.0,
+  185.0,
+  569.0,
+  280.0
+ ],
+ "cells": [
+  [
+   "Fiduciary Activities 2016 Tax",
+   "AllocationRefunding Bonds,",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "3.00%-5.00%,",
+   "2032",
+   "$ 14,295,000",
+   "$     (1,550,000)",
+   "$         12,745,000",
+   "$      1,630,000"
+  ],
+  [
+   "Unamortized",
+   "Premium",
+   "655,279",
+   "(92,489)",
+   "562,790",
+   "92,489"
+  ],
+  [
+   "Total debt",
+   "",
+   "$ 14,950,279",
+   "$     (1,642,489)",
+   "$         13,307,790",
+   "$      1,722,489"
+  ]
+ ],
+ "content_hash": "sha256:20922fc601d7ce1fc905e30cbde65dba8df15e8b70044620393597e6c36f6eba",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:eee6163403a9f2e0be131064946923262297bb5158927b3ad9f93b28286860ed",
+ "n_cols": 6,
+ "n_rows": 4,
+ "ordinal": 1,
+ "page": 114,
+ "ragged": false,
+ "row_page_lines": [
+  10,
+  12,
+  13,
+  14
+ ],
+ "schema_version": 1
+}

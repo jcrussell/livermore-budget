@@ -1,0 +1,57 @@
+{
+ "bbox": [
+  54.0,
+  164.65,
+  558.0,
+  222.25
+ ],
+ "cells": [
+  [
+   "",
+   "Total",
+   "$2,010,206",
+   "",
+   "$2,969,969",
+   "",
+   "$2,596,401",
+   "",
+   "$2,646,149"
+  ],
+  [
+   "",
+   "Wages & Benefits",
+   "3,194,404",
+   "",
+   "3,346,094",
+   "",
+   "3,451,987",
+   "",
+   "3,480,675"
+  ],
+  [
+   "",
+   "Services & Supplies",
+   "3,020,865",
+   "",
+   "3,773,387",
+   "",
+   "4,451,873",
+   "",
+   "4,576,056"
+  ]
+ ],
+ "content_hash": "sha256:15ee94286f9a832c3aec2fd23d30d1a8959eb19aabe672df1b119c5273819be4",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:8da01881e87d73077caf95df6ff7efb6e25057b6f03ffe1b651aea82ce2ec86e",
+ "n_cols": 9,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 169,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  8,
+  8
+ ],
+ "schema_version": 1
+}

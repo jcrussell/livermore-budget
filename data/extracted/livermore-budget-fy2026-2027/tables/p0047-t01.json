@@ -1,0 +1,49 @@
+{
+ "bbox": [
+  53.7,
+  367.34,
+  558.48,
+  477.36
+ ],
+ "cells": [
+  [
+   "Vacancy Rates Over Past 12 Months",
+   "Inventory",
+   "Vacancy Rate"
+  ],
+  [
+   "Industrial",
+   "21.4 M square feet",
+   "5.5% (compared to 8.4% for East Bay Market)"
+  ],
+  [
+   "Retail",
+   "5.3 M square feet",
+   "2.8% (compared to 5. 4% for East Bay Market)"
+  ],
+  [
+   "Office",
+   "2.1 M square feet",
+   "16.8% (compared to 1 4.9% for East Bay Market)"
+  ],
+  [
+   "Source: Co -Star"
+  ]
+ ],
+ "content_hash": "sha256:2181a6cb50bdc6b1bd745f40be1f6e4d83be9a9d349226233777d67799c9c271",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:3094d48fdf824e6eb36366837f84f42850f790adb75bd619b46fea61e38ceadf",
+ "n_cols": 3,
+ "n_rows": 5,
+ "ordinal": 1,
+ "page": 47,
+ "ragged": true,
+ "row_page_lines": [
+  12,
+  14,
+  15,
+  16,
+  17
+ ],
+ "schema_version": 1
+}

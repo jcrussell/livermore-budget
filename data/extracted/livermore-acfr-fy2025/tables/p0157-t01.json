@@ -1,0 +1,36 @@
+{
+ "bbox": [
+  479.0,
+  702.0,
+  574.0,
+  743.0
+ ],
+ "cells": [
+  [
+   "City of Livermore",
+   ""
+  ],
+  [
+   "Custodial",
+   "Funds"
+  ],
+  [
+   "June",
+   "30, 2025"
+  ]
+ ],
+ "content_hash": "sha256:64b3a6902f60fa494615fb08316c0b6c23392d372e5eb0656e7bf47223ad8242",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:4d387669925528ea4c9ef8bf4eced194c2b7d886ab861423ca90ae348a559dcb",
+ "n_cols": 2,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 157,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  0,
+  5
+ ],
+ "schema_version": 1
+}

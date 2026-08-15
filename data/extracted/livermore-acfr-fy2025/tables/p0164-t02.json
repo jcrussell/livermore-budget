@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  361.0,
+  440.0,
+  449.0,
+  467.0
+ ],
+ "cells": [
+  [
+   "Changes",
+   "in Net",
+   "Position"
+  ],
+  [
+   "Last",
+   "Ten Fiscal",
+   "Years"
+  ],
+  [
+   "(accrual basis",
+   "of",
+   "accounting)"
+  ]
+ ],
+ "content_hash": "sha256:6cae6a840bdf4eea0e2794a751cf4246fb7a244b1c7e039c7640f3be66a68776",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:67bef3b2bf8df0f55bead3918272b4dbe412e1454b6681d4f55a04230307e8e4",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 164,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  2,
+  7
+ ],
+ "schema_version": 1
+}

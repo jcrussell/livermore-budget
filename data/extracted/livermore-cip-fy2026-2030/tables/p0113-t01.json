@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.78,
+  782.04
+ ],
+ "cells": [
+  [
+   "NORTH L STREET UNDERGROUNDING",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM202627",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:885fb95813cc210e856cdfaff4258194ac7407df12b052d84cdbcf85636d1192",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:e704eb46de0bf90fd23198562a443fabfd694ba41314a72008177276b64c1dc0",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 113,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

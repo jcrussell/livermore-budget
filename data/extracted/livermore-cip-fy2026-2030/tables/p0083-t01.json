@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  575.7,
+  782.04
+ ],
+ "cells": [
+  [
+   "2024 STREAM MAINTENANCE BY CONTRACTORS",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SD202423",
+   "Storm"
+  ]
+ ],
+ "content_hash": "sha256:dc241a6a719bfd0a8223d0a75c2b8e92f8de7a063e2fd1935b238a3f3d204eff",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:8c8b318f66d37e2cc60e482ff83e5082bf7f8d67846c398d1c5c9018ad45ad2e",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 83,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

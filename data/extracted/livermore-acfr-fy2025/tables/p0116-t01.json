@@ -1,0 +1,51 @@
+{
+ "bbox": [
+  56.0,
+  400.0,
+  573.0,
+  437.0
+ ],
+ "cells": [
+  [
+   "Beginning",
+   "Balance, as",
+   "previosly reported",
+   "$    24,269,484",
+   "$    29,545,374",
+   "$ 169,813,099",
+   "$   7,386,142"
+  ],
+  [
+   "Adjustments",
+   "",
+   "",
+   "(41,201)",
+   "$   (8,158)",
+   "(127,030)",
+   "(38,655)"
+  ],
+  [
+   "Beginning",
+   "balance, as",
+   "restated",
+   "$       24,228,283",
+   "$       29,537,216",
+   "$ 169,686,069",
+   "$      7,347,487"
+  ]
+ ],
+ "content_hash": "sha256:8c6f9bff9981b5c04ae77eab34beadf29fee6c9af1e2050ce23db007b2f86cb1",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:80fa98df8edf6f8c6c7f89c777d0a270f0f9928e9489be501ec510c42f62365c",
+ "n_cols": 7,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 116,
+ "ragged": false,
+ "row_page_lines": [
+  8,
+  10,
+  8
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,51 @@
+{
+ "bbox": [
+  56.0,
+  605.0,
+  556.0,
+  633.0
+ ],
+ "cells": [
+  [
+   "Community Development",
+   "Wages",
+   "& Benefits",
+   "$803,509",
+   "$1,397,165",
+   "$1,255,828",
+   "$1,266,695"
+  ],
+  [
+   "Admin",
+   "",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "",
+   "Services",
+   "& Supplies",
+   "243,480",
+   "281,488",
+   "230,512",
+   "241,464"
+  ]
+ ],
+ "content_hash": "sha256:a0b957964943022d4d3b43c17718fdfd20d5ae4c31bf8be2c930c01d5e5a2a3f",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:06e02e46fd726cdddffdd4d7f155e23e513e5860c184e664ff1eb0e3a312ba45",
+ "n_cols": 7,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 101,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7
+ ],
+ "schema_version": 1
+}

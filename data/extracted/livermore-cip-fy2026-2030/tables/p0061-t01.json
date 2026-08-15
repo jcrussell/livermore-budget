@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.79,
+  781.9
+ ],
+ "cells": [
+  [
+   "MAINTENANCE SERVICE CENTER COATING PROTECTION",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: BL202416",
+   "Public Buildings"
+  ]
+ ],
+ "content_hash": "sha256:74e4f0984716ec580e6d8c3773ffdacd41d9ecc9b441f2fbe87b2ec7280f2529",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:fa11ed062de99bca8dacdca3f6f939196839e69be81935c40693a6daad060e13",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 61,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

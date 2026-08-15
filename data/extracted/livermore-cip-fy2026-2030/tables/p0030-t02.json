@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  7.0,
+  740.0,
+  599.0,
+  781.0
+ ],
+ "cells": [
+  [
+   "DOWNTOWN",
+   "SIDEWALK AND MISCELLANEOUS ADA",
+   "CAPITAL IMPROVEMENT",
+   "PLAN"
+  ],
+  [
+   "IMPROVEMENTS",
+   "",
+   "Downtown",
+   "Revitalization"
+  ],
+  [
+   "Project",
+   "No.: DR201959",
+   "",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:2906a9d6d9e68ac48be4d73f58c423abe42b48cb4e95efa0ebb92ea17ca9ddb5",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:54df95dad3459cd14e2cd803eb03c41e59f703e788743f7d0902e32c52fcdbc4",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 30,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

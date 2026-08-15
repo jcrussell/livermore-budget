@@ -1,0 +1,65 @@
+{
+ "bbox": [
+  61.0,
+  464.0,
+  732.0,
+  513.0
+ ],
+ "cells": [
+  [
+   "BB • Loc al S treets",
+   "B lueb@II D ~ iv@",
+   "B ridge R @pair at",
+   ".",
+   "",
+   "-",
+   "- s -",
+   ". s"
+  ],
+  [
+   "&  R oads  552",
+   "SM201 72 1 Al tamont C reek",
+   "",
+   "$  100, 000",
+   "$  350 ,000 $",
+   "$",
+   "$",
+   "45 0 ,000"
+  ],
+  [
+   "",
+   "B luebell D ~ ive",
+   "B ridge R epair at",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "56 0 S tate • Gas T a x",
+   "SM2 0 1 72 1 Al tamont C reek",
+   "",
+   "",
+   "",
+   "420 ,000 H0",
+   ",5 00",
+   "5 40 ,5 00"
+  ]
+ ],
+ "content_hash": "sha256:66321decbee9a020b6cd28d7e79ce8c59988701c436b6b6399411b6a3aaae15b",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:ea2cce9354f917f364855fe903d2e1e0ee04662025fbdd04d89a50ce5c425009",
+ "n_cols": 8,
+ "n_rows": 4,
+ "ordinal": 6,
+ "page": 239,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  null,
+  10
+ ],
+ "schema_version": 1
+}

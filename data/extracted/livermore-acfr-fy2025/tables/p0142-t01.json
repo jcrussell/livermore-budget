@@ -1,0 +1,73 @@
+{
+ "bbox": [
+  56.0,
+  460.0,
+  576.0,
+  557.0
+ ],
+ "cells": [
+  [
+   "Contributions Charges",
+   "for services",
+   "from outside sources",
+   "",
+   "- -",
+   "- -",
+   "- -",
+   "- -",
+   "- -",
+   "- -"
+  ],
+  [
+   "Use",
+   "of money",
+   "and property",
+   "21,790",
+   "",
+   "92,832",
+   "71,042",
+   "61,000",
+   "4,650",
+   "(56,350)"
+  ],
+  [
+   "Miscellaneous",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "",
+   "Total Revenues",
+   "",
+   "21,790",
+   "",
+   "92,832",
+   "71,042",
+   "61,000",
+   "4,650",
+   "(56,350)"
+  ]
+ ],
+ "content_hash": "sha256:630fb321ce547bc74adfbe0d52a3cef430b45e500b22d3810107820fe722d8fa",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:fb548487efb26dd456e9594f4a7d540b5fa34ea992993e5a066aa3f12492d475",
+ "n_cols": 10,
+ "n_rows": 4,
+ "ordinal": 1,
+ "page": 142,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7,
+  8
+ ],
+ "schema_version": 1
+}

@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  7.0,
+  738.0,
+  605.0,
+  781.0
+ ],
+ "cells": [
+  [
+   "2018-19",
+   "PERMANENT STORM DAMAGE REPAIRS - CAPITAL IMPROVEMENT",
+   "PLAN"
+  ],
+  [
+   "COTTONWOOD",
+   "CREEK",
+   "Storm Drain"
+  ],
+  [
+   "Project",
+   "No.: SD201726",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:d2826408aba7a6bebd3db8e6ec7f39f27bd01a360be299aca5638e08b84cfe58",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:fca95142e081f305f24b78076088e1aee0b5d2c839f833ad30f5e14d6ea813cb",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 76,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

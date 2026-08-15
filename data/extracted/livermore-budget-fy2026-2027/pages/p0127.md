@@ -1,0 +1,13 @@
+## REVENUES
+
+**Revenues Sources by Fund General Fund Revised Actual Budget Budget Budget FY 2023-24 FY 2024-25 FY 2025-26 FY 2026-27 Property Taxes**
+
+Current Year - Secured $56,400,410 $59,678,715 $62,067,470 $65,247,006 Prior Year - Secured 432,447 353,600 458,394 479,022 ERAF (14,086,438) (14,661,836) (15,175,000) (15,857,875) RPTTF Reduction (1,749,120) (1,704,595) (1,810,339) (1,891,804) Current Year - Unsecured 2,248,402 2,062,626 2,383,306 2,490,555 Prior Year - Unsecured (20,033) 33,150 34,310 35,854 Supple - Sec Roll Current 1,335,115 1,350,000 1,397,250 1,460,126 VLF Comp Fund 11,138,410 11,733,300 12,143,966 12,690,444 Unitary Utility Tax 514,260 442,710 545,116 569,646 Aircraft Taxes 467,715 275,748 495,778 518,088 RPTTF Receipts & Other PropTax 1,042,541 795,000 1,105,094 1,154,823 St Homeowner Prop Tax Re 193,530 213,000 220,455 230,375 Pen & Int On Delinq Tax 262,228 50,000 277,962 290,470
+
+**Total Property Taxes $58,179,468 $60,621,418 $64,143,762 $67,416,730 Sales Taxes**
+
+Sales & Use Tax $39,562,251 $41,903,316 $40,353,496 $41,160,566 Prop 172 - Public Sfty Augmnt 718,735 690,000 733,110 747,772
+
+**Total Sales Taxes $40,280,986 $42,593,316 $41,086,606 $41,908,338 Other Taxes**
+
+Franchise Tax- Electric $897,157 $655,000 $924,072 $951,794 Franchise Tax- Gas 450,580 350,000 464,098 478,021 Franchise Tax- Cable TV 1,136,402 1,370,000 1,170,494 1,205,609 Franchise Tax- Garbage 4,172,865 4,200,000 4,326,000 4,455,780 Business License Tax 9,829,021 10,500,000 10,418,762 10,731,325 Business License Penalty 281,518 200,000 206,000 212,180 Business License Registration 32,834 35,000 36,050 37,132 Real Property Transfer Tax 875,543 1,300,000 901,809 928,863 TOT - Hotel 3,627,890 4,363,812 4,116,954 4,240,463 TOT - Short Term Rental 46,721 63,000 49,524 51,010 Residential Construction Tax 455,121 400,000 700,000 715,000 Industrial Construction Tax - 200,000 75,000 77,250

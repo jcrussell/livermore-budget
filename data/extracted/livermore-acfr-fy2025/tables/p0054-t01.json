@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  56.0,
+  92.0,
+  570.0,
+  129.0
+ ],
+ "cells": [
+  [
+   "Net Change in Fund Balance",
+   "(5,004,168)",
+   "121,247",
+   "21,120,917",
+   "16,237,996"
+  ],
+  [
+   "FUND BALANCES-BEGINNING",
+   "92,047,744",
+   "44,284,975",
+   "139,033,643",
+   "275,366,362"
+  ],
+  [
+   "FUND BALANCES-ENDING",
+   "$   87,043,576",
+   "$   44,406,222",
+   "$ 160,154,560",
+   "$    291,604,358"
+  ]
+ ],
+ "content_hash": "sha256:840533100aec1891162b8fa348cf1f047b1449ad562fedd99327561e131e5a0c",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:fdcf2c93910b241ca091a28f8956bad05f73d349002e6b339f85799473a454c1",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 54,
+ "ragged": false,
+ "row_page_lines": [
+  20,
+  22,
+  23
+ ],
+ "schema_version": 1
+}

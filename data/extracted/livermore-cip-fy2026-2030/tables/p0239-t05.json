@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  61.0,
+  423.0,
+  731.0,
+  451.0
+ ],
+ "cells": [
+  [
+   "C oun ty Meas ure BB •",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "55 1 Bik e/ P edestrian",
+   "SM202001 Street",
+   "R esur facin g",
+   "800,000",
+   "8 00 ,000"
+  ]
+ ],
+ "content_hash": "sha256:af4eadbb3a2b57238e5bc0f50daa1c62df3d012245f8ef73e37fc7f1f2f906ac",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:886ddcaff25510bba2d9f267eeca8bebf83c0df480c4f387128f3124df7a874d",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 5,
+ "page": 239,
+ "ragged": false,
+ "row_page_lines": [
+  12,
+  14
+ ],
+ "schema_version": 1
+}

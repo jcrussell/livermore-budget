@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  70.0,
+  106.0,
+  732.0,
+  134.0
+ ],
+ "cells": [
+  [
+   "C ounty Measure BB - Loc a I S treets",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "552  & Roads",
+   "Traff ic Calming TC 20 23 05",
+   "110 ,000",
+   "250 ,000",
+   "360 , 000"
+  ]
+ ],
+ "content_hash": "sha256:a0ffcf1560a68b98e349b299c47de76ad5331052157db23b8f498013edca668c",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:e8267bf2da213869afff5d5a529395b148bf6478d57e68b579a577e064a7479a",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 240,
+ "ragged": false,
+ "row_page_lines": [
+  40,
+  16
+ ],
+ "schema_version": 1
+}

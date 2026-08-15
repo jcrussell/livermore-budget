@@ -1,0 +1,49 @@
+{
+ "bbox": [
+  70.0,
+  488.0,
+  728.0,
+  515.0
+ ],
+ "cells": [
+  [
+   "BB • Loca I Streets s . s . s",
+   "",
+   "",
+   "",
+   ".",
+   "",
+   "",
+   "",
+   ".",
+   ".",
+   ""
+  ],
+  [
+   "5 52 & Roads",
+   "T C2027G",
+   "5 Traffic",
+   "Calming",
+   "$",
+   "llG ,000",
+   "$  25G ,OOO",
+   "$",
+   "$",
+   "$",
+   "360,000"
+  ]
+ ],
+ "content_hash": "sha256:c028f68e7880354e5db14a704040bf40c8f2528577055b674c280f2be30e3789",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:2a54be33c316081110854e6404d14a6238060abb0ac3444fa7d9e5a59cb5c9d2",
+ "n_cols": 11,
+ "n_rows": 2,
+ "ordinal": 6,
+ "page": 242,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8
+ ],
+ "schema_version": 1
+}

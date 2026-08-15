@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  7.0,
+  737.0,
+  604.0,
+  781.0
+ ],
+ "cells": [
+  [
+   "STANLEY",
+   "BOULEVARD/MURRIETA AVENUE INTERSECTION",
+   "CAPITAL IMPROVEMENT",
+   "PLAN"
+  ],
+  [
+   "IMPROVEMENTS",
+   "",
+   "Transportation",
+   "Infrastructure"
+  ],
+  [
+   "Project",
+   "No.: TI200835",
+   "",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:f119d0b79cd774d400c3fbc7ca3e4cfe07cba388fb301d817d2165903769f7d5",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:0823763eae47614154a03ae12b9d64a243125d36bbfefdd3f9b33f89baf5ed7e",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 163,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

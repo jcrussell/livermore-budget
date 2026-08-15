@@ -1,0 +1,131 @@
+{
+ "bbox": [
+  53.0,
+  275.0,
+  554.0,
+  392.0
+ ],
+ "cells": [
+  [
+   "Traffic Control Street Lighting",
+   "",
+   "TC201923",
+   "Materials & Supplies",
+   "Recurring",
+   "$  - $",
+   "-",
+   "$    20,000"
+  ],
+  [
+   "Crosswalk Safety",
+   "Improvements",
+   "TC202106",
+   "Materials & Supplies",
+   "Recurring",
+   "$ -$",
+   "2,000",
+   "$  2,000"
+  ],
+  [
+   "Traffic Calming",
+   "",
+   "TC202205",
+   "Materials & Supplies",
+   "Recurring",
+   "$  -$",
+   "",
+   "$  4,000"
+  ],
+  [
+   "Stanley Boulevard",
+   "at Isabel Acenue",
+   "",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Connector Ramp",
+   "Crossing",
+   "TC202133",
+   "Materials & Supplies",
+   "Recurring",
+   "$  -$",
+   "",
+   "$  5,000"
+  ],
+  [
+   "Crosswalk Safety",
+   "Improvements",
+   "TC202306",
+   "Materials & Supplies",
+   "Recurring",
+   "$ -$",
+   "",
+   "$  1,000"
+  ],
+  [
+   "Portola Avenue",
+   "at Sedona Common",
+   "Traffic",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Signal Improvements",
+   "",
+   "TC202326",
+   "Materials & Supplies",
+   "Recurring",
+   "$  -$",
+   "",
+   "$  5,000"
+  ],
+  [
+   "Traffic Operations",
+   "Center Upgrade",
+   "TC202328",
+   "Materials & Supplies",
+   "Recurring",
+   "$ -$",
+   "20,000",
+   "$       20,000"
+  ],
+  [
+   "Street Maintenance",
+   "Total",
+   "",
+   "",
+   "",
+   "$  -$",
+   "22,000",
+   "$       57,000"
+  ]
+ ],
+ "content_hash": "sha256:0ff86586ec7cabf8be712f5b3be566a5176b4358a0a9eb8b1e6f810475ca23e6",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:e2d9a416ff43ba8a553eb4d4fcf5be3efde5f37f77a14a69da3076c825ee2629",
+ "n_cols": 8,
+ "n_rows": 10,
+ "ordinal": 2,
+ "page": 77,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  4,
+  5,
+  6,
+  7,
+  4,
+  9,
+  10,
+  11,
+  0
+ ],
+ "schema_version": 1
+}

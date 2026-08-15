@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  136.0,
+  465.0,
+  452.0,
+  505.0
+ ],
+ "cells": [
+  [
+   "Proportion - June",
+   "30, 2023",
+   "0.79476%"
+  ],
+  [
+   "Proportion-June",
+   "30, 2024",
+   "0.80316%"
+  ],
+  [
+   "Change-Increase",
+   "(Decrease)",
+   "0.00840%"
+  ]
+ ],
+ "content_hash": "sha256:6f48806b9988c2dcd6f5f8f44ac9673798c7f6e2a9d5a4e360509bc2e974a52e",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:6a973749bee0caddf55baa404fa61f2ce2600210b1ae672bea9f6f8f0fb6ad7e",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 100,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  9
+ ],
+ "schema_version": 1
+}

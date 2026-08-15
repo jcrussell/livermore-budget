@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  409.0,
+  702.0,
+  574.0,
+  743.0
+ ],
+ "cells": [
+  [
+   "",
+   "City",
+   "of Livermore",
+   ""
+  ],
+  [
+   "Demographic",
+   "and Economic",
+   "Statistics",
+   ""
+  ],
+  [
+   "",
+   "Last",
+   "Ten Fiscal",
+   "Years"
+  ]
+ ],
+ "content_hash": "sha256:3c5fd62fa476cf7ee4adfeab8fb954bec7d1b6a8960791c73170be4466bd9712",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:4a7e765b1eb9eac97140f57d98f0d7397360b4b5e4c8fe8781fbf9060e48b432",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 180,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

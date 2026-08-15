@@ -1,0 +1,36 @@
+{
+ "bbox": [
+  7.26,
+  734.12,
+  604.79,
+  780.97
+ ],
+ "cells": [
+  [
+   "STANLEY BOULEVARD AT ISABEL AVENUE CONNECTOR RAMP",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "CROSSING",
+   "Traffic Control"
+  ],
+  [
+   "Project No.: TC202133",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:4fe5307459cb88ad66f313ada96a4db9856b62e61b22f74c946092f143f4a7fa",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:d5f03b706925ad47e0224fed30f6a5d27e5e7b5509d86b4c65283fb28c00e435",
+ "n_cols": 2,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 123,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

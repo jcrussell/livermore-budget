@@ -1,0 +1,117 @@
+{
+ "bbox": [
+  73.0,
+  85.0,
+  725.0,
+  172.0
+ ],
+ "cells": [
+  [
+   "South L ive~ S pecif ic P lan",
+   "mo re &",
+   "Arroyo L as Positas",
+   "D esilting Through",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "5 83 ADO oseout",
+   "S0 202015",
+   "L as Positas",
+   "Golf C ourse",
+   "70, 000",
+   "",
+   "75 0 ,000",
+   "",
+   "820,000"
+  ],
+  [
+   "Airport  Op er",
+   "ating",
+   "Arroyo  L as Positas",
+   "D esilting T hrough",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "600  F und",
+   "S0 202 01",
+   "5 L as Posit as",
+   "Golf C ourse",
+   "100, 000",
+   "30,00 0",
+   "1,00 0 ,000",
+   "150 , 000",
+   "1 ,2 80, 000"
+  ],
+  [
+   "State G rant",
+   "",
+   "Arroyo  L as Positas",
+   "Desilting Through",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "611  S torm",
+   "5D 20201",
+   "5 L as Positas",
+   "Golf C ourse",
+   "110 , 000",
+   "",
+   "5 00 ,000",
+   "",
+   "610 ,000"
+  ],
+  [
+   "Federal Grant",
+   "•",
+   "Arroyo  L as Positas",
+   "D esilting T hrough",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "611  Storm",
+   "5D202015",
+   "L as Positas",
+   "Golf C ourse",
+   "5 0,000",
+   "",
+   "2,00 0 ,000",
+   "",
+   "2,050 ,000"
+  ]
+ ],
+ "content_hash": "sha256:ce21ff2c2fd241a6931ffd711031f3e40cf39598276772e50441270fd44a55b8",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:0798893597b86cd20bffd02e6dab69903222e09b0edb32ced6340af511c04576",
+ "n_cols": 9,
+ "n_rows": 8,
+ "ordinal": 1,
+ "page": 237,
+ "ragged": false,
+ "row_page_lines": [
+  null,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13,
+  14
+ ],
+ "schema_version": 1
+}

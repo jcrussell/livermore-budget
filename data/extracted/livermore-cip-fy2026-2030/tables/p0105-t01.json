@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.78,
+  782.04
+ ],
+ "cells": [
+  [
+   "PRIVATE SIDEWALK REPAIR REVOLVING FUND",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM202327",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:5506eab5658cac214b7dc78de58c18a6cb260997db0883bf76111f7ce5ed76ef",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:b62ede9ac32cc6e814a250eb87d45a5bf01c7fb8b2a26e5806fa4192ef5f3db0",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 105,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

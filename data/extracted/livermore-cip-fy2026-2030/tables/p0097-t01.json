@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.78,
+  782.04
+ ],
+ "cells": [
+  [
+   "ADA ACCESS RAMPS",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM202107",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:d2e7a7686e5f9b1d00aa9a04aa9c7441a0beedb6cf130a8f5d4fdb447ef3022d",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:246651c7f558e2ef0d6031da5063f9f972e47ef661bb31035ca7818a9c7ed532",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 97,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

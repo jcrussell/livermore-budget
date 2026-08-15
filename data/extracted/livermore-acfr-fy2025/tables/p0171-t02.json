@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  297.0,
+  428.0,
+  750.0,
+  466.0
+ ],
+ "cells": [
+  [
+   "Last Ten Fiscal (In Percentage)",
+   "Years",
+   "",
+   "",
+   ""
+  ],
+  [
+   "2016 2017 2018",
+   "2019",
+   "2020 2021",
+   "2022 2023 2024",
+   "2025"
+  ]
+ ],
+ "content_hash": "sha256:1740e1a3d30797e90b83653600ad308edb5b79ce3f732b1047217ba60d2f0a1b",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:25754e51d0877251ef3138ac8bdbdf13f597b95b1e4533e4337dc20f328ccb9f",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 2,
+ "page": 171,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6
+ ],
+ "schema_version": 1
+}

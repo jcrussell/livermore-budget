@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  70.0,
+  147.0,
+  731.0,
+  174.0
+ ],
+ "cells": [
+  [
+   "C ounty Meas ure B - Loca l St reet s",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "832  & Roads TC202205",
+   "Traffi c Calming",
+   "70,000  1 70",
+   ",000",
+   "240 ,000"
+  ]
+ ],
+ "content_hash": "sha256:36ad54e5fbf2434eaa83a85e5b81889cc4259e99af8a241c41571aa5a071a704",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:e07adcefeb7c3dcab688e951303aa744d2db3c9298e723effe40b26d6547ab2e",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 2,
+ "page": 240,
+ "ragged": false,
+ "row_page_lines": [
+  36,
+  38
+ ],
+ "schema_version": 1
+}

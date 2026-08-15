@@ -1,0 +1,413 @@
+{
+ "bbox": [
+  53.0,
+  65.0,
+  547.0,
+  603.0
+ ],
+ "cells": [
+  [
+   "CITY MANAGER",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "City Manager",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "City Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Assistant City Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Deputy City Manager",
+   "",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Assistant to the City Manager (Conf)",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Senior Management Analyst",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Management Analyst I",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Executive Assistant",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Administrative Specialist I/II (Flex Staffing)",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Subtotal",
+   "8.000 ",
+   "9.000 ",
+   "9.000 ",
+   "9.000"
+  ],
+  [
+   "City Clerk",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Deputy City Manager/City Clerk",
+   "1.000",
+   "",
+   "",
+   ""
+  ],
+  [
+   "City Clerk",
+   "",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Assistant City Clerk",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Deputy City Clerk",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Administrative Technician",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Division Clerk",
+   "1.000",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Subtotal",
+   "5.000 ",
+   "4.000 ",
+   "4.000 ",
+   "4.000"
+  ],
+  [
+   "CITY MANAGER TOTAL",
+   "13.000",
+   "13.000",
+   "13.000",
+   "13.000"
+  ],
+  [
+   "COMMUNITY DEVELOPMENT DEPARTMENT",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Community Development Admin",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Community Development Director",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Assistant Community Development Director",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Senior Management Analyst",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Administrative Assistant",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Administrative Clerk I/II (Flex Staffing)",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Subtotal",
+   "4.000 ",
+   "4.000 ",
+   "4.000 ",
+   "4.000"
+  ],
+  [
+   "Housing & Human Services",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Housing & Human Services Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Human Services Programs Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Housing Programs Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Management Analyst II",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Management Analyst I",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Administrative Technician",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Division Clerk",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Administrative Clerk I/II (Flex Staffing)",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Subtotal",
+   "10.000 ",
+   "10.000 ",
+   "10.000 ",
+   "10.000"
+  ],
+  [
+   "Engineering Division",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "City Engineer",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Assistant City Engineer",
+   "2.000 ",
+   "2.000 ",
+   "2.000 ",
+   "2.000"
+  ],
+  [
+   "Senior Civil Engineer",
+   "3.000 ",
+   "4.000 ",
+   "4.000 ",
+   "4.000"
+  ],
+  [
+   "Senior Transportation Engineer",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Construction Inspection Manager",
+   "1.000 ",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Senior Management Analyst",
+   "1.000",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Management Analyst I",
+   "",
+   "1.000 ",
+   "1.000 ",
+   "1.000"
+  ],
+  [
+   "Associate Transportation Engineer",
+   "1.000",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Associate Civil Engineer",
+   "6.000 ",
+   "4.000 ",
+   "4.000 ",
+   "4.000"
+  ],
+  [
+   "Junior/Junior Civil Engineer/Assistant/Asst Civil Eng (Flex)",
+   "3.000 ",
+   "7.000 ",
+   "7.000 ",
+   "7.000"
+  ]
+ ],
+ "content_hash": "sha256:e32fc103f2158331e0071431503b74c6f774ecdc176ff2137ef12c1b402af9d3",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:988454c474f19897b59a8545a948853a3fc3365887168387d59009953b145701",
+ "n_cols": 5,
+ "n_rows": 49,
+ "ordinal": 1,
+ "page": 248,
+ "ragged": false,
+ "row_page_lines": [
+  10,
+  12,
+  12,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  4,
+  7,
+  22,
+  23,
+  22,
+  25,
+  26,
+  27,
+  28,
+  7,
+  30,
+  31,
+  32,
+  33,
+  34,
+  17,
+  36,
+  37,
+  7,
+  39,
+  40,
+  41,
+  42,
+  43,
+  18,
+  27,
+  28,
+  37,
+  7,
+  49,
+  50,
+  51,
+  52,
+  53,
+  54,
+  17,
+  18,
+  57,
+  58,
+  59
+ ],
+ "schema_version": 1
+}

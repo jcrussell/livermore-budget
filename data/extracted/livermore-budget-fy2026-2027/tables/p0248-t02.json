@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  53.0,
+  615.0,
+  547.0,
+  657.0
+ ],
+ "cells": [
+  [
+   "Administrative Specialist I/II (Flex Staffing)",
+   "0.350 0.850",
+   "0.850 0.850"
+  ],
+  [
+   "Legal Assistant",
+   "0.500",
+   ""
+  ],
+  [
+   "Subtotal",
+   "1.850  1.850",
+   "1.850  1.850"
+  ],
+  [
+   "CITY ATTORNEY TOTAL",
+   "10.000 10.000",
+   "10.000 10.000"
+  ]
+ ],
+ "content_hash": "sha256:c847a3fa1c062763c47c71e77ea5ee03bc2de2eb28c9f9fad4083e64eedffc76",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:5c79e0e3f8ab6eadc0f0dbac4be047deda1e47c56818e0543b2b2bf29380b9bd",
+ "n_cols": 3,
+ "n_rows": 4,
+ "ordinal": 2,
+ "page": 248,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7,
+  8
+ ],
+ "schema_version": 1
+}

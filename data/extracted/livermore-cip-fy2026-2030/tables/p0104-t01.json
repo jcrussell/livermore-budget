@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.78,
+  782.04
+ ],
+ "cells": [
+  [
+   "MURRIETA ROADWAY RECONSTRUCTION",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM202325",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:1bd5c7ad01a6246e34be170717452fccb175e313cd7e87e9cf99ef53b3043b17",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:ab071ef90fdeb96da7e15acfcc72bc6a3320e7f225128a8f2c65dc8e05b22c09",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 104,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

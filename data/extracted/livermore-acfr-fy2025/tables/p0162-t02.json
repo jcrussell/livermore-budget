@@ -1,0 +1,48 @@
+{
+ "bbox": [
+  90.0,
+  444.0,
+  528.0,
+  482.0
+ ],
+ "cells": [
+  [
+   "Debt Capacity",
+   "these schedules",
+   "present information",
+   "to help the reader",
+   "assess",
+   ""
+  ],
+  [
+   "the affordability",
+   "of the government",
+   "’s current",
+   "levels of outstanding",
+   "debt and the",
+   ""
+  ],
+  [
+   "government ’s",
+   "ability to issue",
+   "additional debt in",
+   "the future.",
+   "",
+   "144 - 146"
+  ]
+ ],
+ "content_hash": "sha256:62a878d66878c739ad2eaa8a4980f34077a09637b7013ea5d2da8cd0951fa96f",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:1d0c78fb5a90580032413a0ec0e3fe77742f1afbc1df425b0fd0c8af36c0a479",
+ "n_cols": 6,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 162,
+ "ragged": false,
+ "row_page_lines": [
+  9,
+  11,
+  12
+ ],
+ "schema_version": 1
+}

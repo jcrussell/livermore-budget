@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  70.0,
+  447.0,
+  725.0,
+  475.0
+ ],
+ "cells": [
+  [
+   "C ounty Meas ure BB · loca I S treets",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "& Roads 552",
+   "TC2027 06 C rosswalk",
+   "S afety  Imp rovements",
+   "l 5G ,0OO",
+   "15 0,000"
+  ]
+ ],
+ "content_hash": "sha256:bb10f5818c31a0bf24609e5392d79309d1686beee756742d58334e1f5862fc38",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:1bcbed2ae567da3a3b5234b8904bf14105276a744383c68a23fecb07a2f8ac38",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 5,
+ "page": 242,
+ "ragged": false,
+ "row_page_lines": [
+  10,
+  12
+ ],
+ "schema_version": 1
+}

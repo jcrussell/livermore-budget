@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.78,
+  782.04
+ ],
+ "cells": [
+  [
+   "BRIDGE REHABILITATION",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM202219",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:1e154b76df6686412551032f01e4413fc5bd7a4a5bd28bb7301a537fa3508558",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:2737e734296dc53e1e8fb2a130a8d6117eb93743ad571246e7695a0790b5f8ee",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 102,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

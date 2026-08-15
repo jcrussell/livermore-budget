@@ -1,0 +1,53 @@
+{
+ "bbox": [
+  56.0,
+  527.0,
+  587.0,
+  576.0
+ ],
+ "cells": [
+  [
+   "OPERATING REVENUES",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Charges for services",
+   "",
+   "$   5,265,889",
+   "$   2,385,971",
+   "$   6,970,080"
+  ],
+  [
+   "Miscellaneous",
+   "",
+   "113",
+   "",
+   ""
+  ],
+  [
+   "Total Operating",
+   "Revenues",
+   "5,266,002",
+   "2,385,971",
+   "6,970,080"
+  ]
+ ],
+ "content_hash": "sha256:2d672b2d37b121ad9dfa18099e6ab528d25ae0ca23763a2d4194e2a068e1196c",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:2fb8e6a95e7c060a8f967e7ae48bbcbf020a226fd798b7014b7129ca1d5af0c7",
+ "n_cols": 5,
+ "n_rows": 4,
+ "ordinal": 1,
+ "page": 154,
+ "ragged": false,
+ "row_page_lines": [
+  4,
+  6,
+  7,
+  8
+ ],
+ "schema_version": 1
+}

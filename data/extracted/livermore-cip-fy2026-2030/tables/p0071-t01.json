@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  571.73,
+  782.04
+ ],
+ "cells": [
+  [
+   "POLICE BUILDING RENOVATIONS",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: PS202316",
+   "Public"
+  ]
+ ],
+ "content_hash": "sha256:c6b93c9afd35bcf3327bb5fe1fdc4dcc30f00f024ee278a1006234cb89d9af41",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:679cc4c582ed45ab170bf087a486f68d54318d9f5705220ae7552d190d749d74",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 71,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

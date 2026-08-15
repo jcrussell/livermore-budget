@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  70.0,
+  397.0,
+  725.0,
+  435.0
+ ],
+ "cells": [
+  [
+   "C ounty Measure BB•",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "55 1 Bik e/ P edestrian",
+   "TC202712 Street",
+   "Lighting",
+   "20 ,000 150 ,000",
+   "1 7 0,000"
+  ],
+  [
+   "560  State • Gas Tax",
+   "TC202712 Street",
+   "Ligh ting",
+   "150 ,000 20 ,000",
+   "170 ,000"
+  ]
+ ],
+ "content_hash": "sha256:9e94a00de1323144f23107044d70e0b48eced50878b75ace7ac431012406c966",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:557f7630b060f03a2b064471266705a960d9e8c3382552b6163b18159d148bf9",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 4,
+ "page": 242,
+ "ragged": false,
+ "row_page_lines": [
+  14,
+  16,
+  17
+ ],
+ "schema_version": 1
+}

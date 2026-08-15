@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  7.0,
+  738.0,
+  605.0,
+  781.0
+ ],
+ "cells": [
+  [
+   "GOLF COURSE",
+   "CLUBHOUSE PARKING LOT DRAINAGE CAPITAL IMPROVEMENT",
+   "PLAN"
+  ],
+  [
+   "IMPROVEMENTS",
+   "",
+   "Storm Drain"
+  ],
+  [
+   "Project No.:",
+   "SD202525",
+   ""
+  ]
+ ],
+ "content_hash": "sha256:ccba196c10b1fedc87196c8242ec824fd1acce2ccaa3d6fb66a39a095c11243b",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:4ec133b1ae0a648cfb3a9aa763a549db505e978a6beade5ba65a7d4c8754d88c",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 88,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

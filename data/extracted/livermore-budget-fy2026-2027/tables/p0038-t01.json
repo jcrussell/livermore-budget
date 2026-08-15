@@ -1,0 +1,46 @@
+{
+ "bbox": [
+  56.0,
+  346.0,
+  536.0,
+  413.0
+ ],
+ "cells": [
+  [
+   "1,500,000",
+   "82,000"
+  ],
+  [
+   "",
+   "80,000"
+  ],
+  [
+   "1,450,000",
+   ""
+  ],
+  [
+   "",
+   "78,000"
+  ],
+  [
+   "1,400,000",
+   "76,000"
+  ]
+ ],
+ "content_hash": "sha256:e72fc47b994e7d274164a8e1880123543272218a71b2cd529c8274843680217c",
+ "doc_id": "livermore-budget-fy2026-2027",
+ "label_fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+ "n_cols": 2,
+ "n_rows": 5,
+ "ordinal": 1,
+ "page": 38,
+ "ragged": false,
+ "row_page_lines": [
+  null,
+  null,
+  null,
+  null,
+  null
+ ],
+ "schema_version": 1
+}

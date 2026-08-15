@@ -1,0 +1,48 @@
+{
+ "bbox": [
+  61.0,
+  83.0,
+  747.0,
+  121.0
+ ],
+ "cells": [
+  [
+   "C ounty M eaSLJfl! BB - lo c a I Streets",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "55 2 & Road s",
+   "DR202225 R lagpole",
+   "P l aza",
+   "400 ,000",
+   "",
+   "400 ,000"
+  ],
+  [
+   "5 60 Sta t @ • Gas T ax",
+   "DR2022 25 R lag,pole",
+   "P l a z a",
+   "1,700,000",
+   "270 ,000",
+   "1 ,. 970 ,000"
+  ]
+ ],
+ "content_hash": "sha256:584b846558417518fbcb0f43435dff7ac41dda75b73ddb5634b0bfc26bc53733",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:6273b6856a880bd95ccade508e2e5176d5e362fa81fbb987bba872924b51ec0c",
+ "n_cols": 6,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 234,
+ "ragged": false,
+ "row_page_lines": [
+  null,
+  18,
+  19
+ ],
+ "schema_version": 1
+}

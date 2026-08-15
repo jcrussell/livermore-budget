@@ -1,0 +1,39 @@
+{
+ "bbox": [
+  216.0,
+  485.0,
+  369.0,
+  541.0
+ ],
+ "cells": [
+  [
+   "Introductory",
+   "",
+   "Section"
+  ],
+  [
+   "June",
+   "30, 2025",
+   ""
+  ],
+  [
+   "City",
+   "of",
+   "Livermore"
+  ]
+ ],
+ "content_hash": "sha256:9a258514c715aec02a94f149a48b779cdb3c90259802244b5c40e6ba602e2688",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:c1c466b90c9d9518c69cae9fd1a66bc3fa981815c61e96be2adbe4d181363cfe",
+ "n_cols": 3,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 9,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2,
+  3
+ ],
+ "schema_version": 1
+}

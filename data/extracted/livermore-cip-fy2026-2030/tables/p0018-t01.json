@@ -1,0 +1,42 @@
+{
+ "bbox": [
+  46.0,
+  541.0,
+  482.0,
+  581.0
+ ],
+ "cells": [
+  [
+   "construction,",
+   "",
+   "maintenance, and improvements to public facilities including infrastructure,",
+   ""
+  ],
+  [
+   "acquisition",
+   "",
+   "of land,",
+   ""
+  ],
+  [
+   "and",
+   "major",
+   "equipment",
+   "purchases."
+  ]
+ ],
+ "content_hash": "sha256:dbf90ce3fedb3c30f952a771ed84fd864ee358021dbe3cf0010d60fbb77da0f5",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:33e85dd94d00a653fa4300798b9157fc9312b2dc9cc450710e6dcfae8f2defbd",
+ "n_cols": 4,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 18,
+ "ragged": false,
+ "row_page_lines": [
+  6,
+  8,
+  4
+ ],
+ "schema_version": 1
+}

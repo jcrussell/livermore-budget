@@ -1,0 +1,48 @@
+{
+ "bbox": [
+  56.0,
+  579.0,
+  569.0,
+  670.0
+ ],
+ "cells": [
+  [
+   "Land Land improvements",
+   "",
+   "$   13,380,924 634,433",
+   "$ - $ -",
+   "- $ -",
+   "- $   13,380,924 -       634,433"
+  ],
+  [
+   "Construction",
+   "in progress",
+   "27,594,923",
+   "14,147,047",
+   "-(356,301)",
+   "41,385,669"
+  ],
+  [
+   "Subtotal",
+   "",
+   "41,610,280",
+   "14,147,047",
+   "-(356,301)",
+   "55,401,026"
+  ]
+ ],
+ "content_hash": "sha256:f4a0b17f796223e9de38505a651f86cc2177be06dcc83e4ab4ebac51ef8d7e69",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:25fd24e30d0181a027579936f25e5ae8f654ce0d70ed63cebbadb71951193e10",
+ "n_cols": 6,
+ "n_rows": 3,
+ "ordinal": 1,
+ "page": 82,
+ "ragged": false,
+ "row_page_lines": [
+  2,
+  4,
+  5
+ ],
+ "schema_version": 1
+}

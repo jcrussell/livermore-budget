@@ -1,0 +1,45 @@
+{
+ "bbox": [
+  56.0,
+  186.0,
+  570.0,
+  215.0
+ ],
+ "cells": [
+  [
+   "DEFERRED INFLOWS",
+   "OF RESOURCES",
+   "",
+   "",
+   ""
+  ],
+  [
+   "Related to OPEB",
+   "",
+   "10,895  3,623 39,224",
+   "32,695 11,780",
+   "98,217"
+  ],
+  [
+   "Total deferred",
+   "inflows of resources",
+   "10,895  3,623 39,224",
+   "32,695 11,780",
+   "98,217"
+  ]
+ ],
+ "content_hash": "sha256:cc9ac0cc0f9fb161da2f0ce82939b35fdeaa789d7673520366a4cd4b05b2ca79",
+ "doc_id": "livermore-acfr-fy2025",
+ "label_fingerprint": "sha256:19a029fc8ff41f4cb801325bb68ed607795ce8ace0eac8f0a069a6a3697ddaa2",
+ "n_cols": 5,
+ "n_rows": 3,
+ "ordinal": 2,
+ "page": 153,
+ "ragged": false,
+ "row_page_lines": [
+  12,
+  9,
+  10
+ ],
+ "schema_version": 1
+}

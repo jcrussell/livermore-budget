@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  70.0,
+  391.0,
+  734.0,
+  419.0
+ ],
+ "cells": [
+  [
+   "C ounty Measure BB • Loc a I Streets",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "552  & Roads TC",
+   "Traffi c S ignal Modifi 20l 933",
+   "ca t, ion",
+   "310, 000 390,000",
+   "700 , . 000"
+  ]
+ ],
+ "content_hash": "sha256:412a78234c86f055a5f7d509cddea8e7eebdabb92643ce65d4499985e061d6cb",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:6beab6c4cee2380d534fa2e8ce4a91b33bee54fe835368f65a96993b6c8affb4",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 7,
+ "page": 240,
+ "ragged": false,
+ "row_page_lines": [
+  14,
+  16
+ ],
+ "schema_version": 1
+}

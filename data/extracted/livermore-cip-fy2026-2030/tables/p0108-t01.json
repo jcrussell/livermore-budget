@@ -1,0 +1,31 @@
+{
+ "bbox": [
+  7.26,
+  750.27,
+  604.78,
+  782.04
+ ],
+ "cells": [
+  [
+   "SIDEWALK REPAIR",
+   "CAPITAL IMPROVEMENT"
+  ],
+  [
+   "Project No.: SM202502",
+   "Street Maintenance"
+  ]
+ ],
+ "content_hash": "sha256:59f4652f02f02576efb8e6e3ed97727c1bd38212878202c89bd34afc4fa0fdd6",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:6560af7e97b6440450ead9977e4eaf266c7d33b8b9e2bc5d98a003b967dcf65c",
+ "n_cols": 2,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 108,
+ "ragged": false,
+ "row_page_lines": [
+  0,
+  2
+ ],
+ "schema_version": 1
+}

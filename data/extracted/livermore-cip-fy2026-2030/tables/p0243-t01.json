@@ -1,0 +1,37 @@
+{
+ "bbox": [
+  70.0,
+  388.0,
+  724.0,
+  415.0
+ ],
+ "cells": [
+  [
+   "County Measure BB - Loca l Streets",
+   "",
+   "",
+   "",
+   ""
+  ],
+  [
+   "552  & Roads",
+   "TB202114 ATP B ike Lane",
+   "I mprovemen ts",
+   "1,000,000",
+   "1 ,000, 000"
+  ]
+ ],
+ "content_hash": "sha256:0a48b7dc63882bb10dfc63a5898bb2d602758bdb93eb438a482d11b73aa5ce31",
+ "doc_id": "livermore-cip-fy2026-2030",
+ "label_fingerprint": "sha256:8cec5fc41b7f301f6aca315736a16556c9aeebe71b8f8cf4c61131f3386f0a4c",
+ "n_cols": 5,
+ "n_rows": 2,
+ "ordinal": 1,
+ "page": 243,
+ "ragged": false,
+ "row_page_lines": [
+  36,
+  38
+ ],
+ "schema_version": 1
+}
