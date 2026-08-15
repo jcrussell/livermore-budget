@@ -33,7 +33,7 @@
  ],
  "content_hash": "sha256:17ee65ff415c87e05024ea79b823f98e72f639c88a71e98665fc33f3c8aa7ae1",
  "doc_id": "livermore-budget-fy2026-2027",
- "label_fingerprint": "sha256:8932995e2d57002c9813117dd163b237a93780cd6e69d7dcd2708521201a5f45",
+ "label_fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
  "n_cols": 6,
  "n_rows": 3,
  "ordinal": 2,
@@ -41,8 +41,8 @@
  "ragged": false,
  "row_page_lines": [
   null,
-  15,
-  16
+  null,
+  null
  ],
  "schema_version": 1
 }

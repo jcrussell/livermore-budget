@@ -49,7 +49,7 @@
  ],
  "content_hash": "sha256:66321decbee9a020b6cd28d7e79ce8c59988701c436b6b6399411b6a3aaae15b",
  "doc_id": "livermore-cip-fy2026-2030",
- "label_fingerprint": "sha256:ea2cce9354f917f364855fe903d2e1e0ee04662025fbdd04d89a50ce5c425009",
+ "label_fingerprint": "sha256:03e0541c11d49a7006e7b32e66a4559c24717e378ab030078cbb4f6482e357a8",
  "n_cols": 8,
  "n_rows": 4,
  "ordinal": 6,
@@ -58,7 +58,7 @@
  "row_page_lines": [
   6,
   8,
-  null,
+  9,
   10
  ],
  "schema_version": 1

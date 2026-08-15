@@ -37,7 +37,7 @@
  ],
  "content_hash": "sha256:a52cce9bd41c01958dd6274737c90a41911bd64907f5861623665a07fd116b22",
  "doc_id": "livermore-acfr-fy2025",
- "label_fingerprint": "sha256:9221dd259d424af08547c2423f56430a760f11cc61b14c6eefea9f3ba658d14e",
+ "label_fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
  "n_cols": 5,
  "n_rows": 4,
  "ordinal": 1,
@@ -47,7 +47,7 @@
   null,
   null,
   null,
-  56
+  null
  ],
  "schema_version": 1
 }

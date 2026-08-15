@@ -39,6 +39,14 @@ func TestParseAccepts(t *testing.T) {
 		{"thousands scale", "1.5", Thousands, 150_000},
 
 		{"non-breaking space is collapsed", "1,234 ", Dollars, 123_400},
+
+		// The currency symbol bleeds a cell to the right during extraction and
+		// lands on either side of a parenthesized negative. 23 such cells sit in
+		// the committed corpus and were previously all rejected.
+		{"negative with leading dollar sign", "$(1,234)", Dollars, -123_400},
+		{"negative with trailing dollar sign", "(1,234) $", Dollars, -123_400},
+		{"negative with spaced dollar sign", "$ (95,830,768)", Dollars, -9_583_076_800},
+		{"negative with trailing spaced sign", "(2,894,745) $", Dollars, -289_474_500},
 	}
 
 	for _, tt := range tests {
@@ -96,6 +104,25 @@ func TestParseRejects(t *testing.T) {
 		{name: "footnote marker glued to value", token: "19,250(9)", units: Dollars,
 			why: "Budget Book p76 interleaves footnote markers"},
 		{name: "unknown units", token: "1,000", units: Units("billions"), why: "unknown scale"},
+
+		// Misplaced grouping means a decimal point was lost. Stripping the
+		// commas would silently yield 100x the intended value.
+		{name: "lost decimal point", token: "1,234,56", units: Dollars,
+			why: "1,234.56 with the point dropped; a permissive parser reads $123,456"},
+		{name: "trailing comma", token: "1,234,", units: Dollars, why: "malformed grouping"},
+		{name: "short group", token: "1,23,456", units: Dollars, why: "malformed grouping"},
+
+		// int64 cents overflow. strconv bounds only the integer part, so the
+		// product can still wrap -- and a wrapped value is negative, which is
+		// the worst possible silent answer.
+		{name: "overflows at dollar scale", token: "92233720368547759", units: Dollars,
+			why: "wraps to a negative value"},
+		{name: "overflows at millions scale", token: "999999999999999", units: Millions,
+			why: "wraps"},
+		// 92233720368547758 * 100 = 9223372036854775800, which fits; adding 99
+		// cents does not. The integer-part check alone would let this through.
+		{name: "overflows via the fraction", token: "92233720368547758.99", units: Dollars,
+			why: "integer part fits, the addition wraps"},
 	}
 
 	for _, tt := range tests {
@@ -221,5 +248,39 @@ func TestLeadingMinusIsReallyPositive(t *testing.T) {
 
 	if _, err := Parse("-512,946", Dollars); err == nil {
 		t.Error("Parse accepted a leading minus; it must fail closed")
+	}
+}
+
+// TestNoOverflowIsSilent is the property the package doc promises: no input
+// produces a wrong number without an error. Overflow is the sharpest case,
+// because a wrapped int64 comes back NEGATIVE — so a huge positive figure
+// would publish as a large negative one with a working provenance link.
+func TestNoOverflowIsSilent(t *testing.T) {
+	for _, u := range []Units{Dollars, Thousands, Millions} {
+		for _, tok := range []string{
+			"92233720368547759",
+			"999999999999999999",
+			"92233720368547758.99",
+			"9,223,372,036,854,775,807",
+		} {
+			got, err := Parse(tok, u)
+			if err == nil && got < 0 {
+				t.Errorf("Parse(%q, %s) = %v with no error: overflow wrapped silently",
+					tok, u, got)
+			}
+		}
+	}
+}
+
+// TestNormalizeUnescapesMarkdownDash guards agreement with the extractor's
+// normalize_cell. The committed page markdown holds 359 backslash-escaped
+// dashes; a Go reader that left them escaped would hash identical content
+// differently from the Python that produced the artifacts.
+func TestNormalizeUnescapesMarkdownDash(t *testing.T) {
+	if got, want := Normalize(`\-`), "-"; got != want {
+		t.Errorf("Normalize(%q) = %q, want %q", `\-`, got, want)
+	}
+	if got, want := Normalize(`- \- - -`), "- - - -"; got != want {
+		t.Errorf("Normalize(%q) = %q, want %q", `- \- - -`, got, want)
 	}
 }

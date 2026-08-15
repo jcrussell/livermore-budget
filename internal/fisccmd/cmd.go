@@ -20,10 +20,12 @@ import (
 
 // Exit codes. These are a public contract: scripts branch on them.
 const (
-	exitOK     = 0
-	exitError  = 1
-	exitUsage  = 2
-	exitCancel = 2
+	exitOK    = 0
+	exitError = 1
+	exitUsage = 2
+	// 128+SIGINT, the shell convention. Distinct from exitUsage so a script
+	// can tell "the user pressed Ctrl-C" from "you called me wrong".
+	exitCancel = 130
 )
 
 // Run executes root with args and returns the process exit code. Commands
@@ -55,10 +57,13 @@ func classify(err error, ios *iostreams.IOStreams) int {
 		return exitOK
 	}
 
-	// Print the hint after the error, if there is one.
+	// A hint only makes sense alongside the error it annotates. The silent
+	// and explicit-code paths deliberately print nothing, so a bare "hint:"
+	// line with no preceding error would be worse than none.
+	printed := false
 	defer func() {
 		var h *cmdutil.ErrHint
-		if errors.As(err, &h) && h.Hint != "" {
+		if printed && errors.As(err, &h) && h.Hint != "" {
 			fmt.Fprintln(ios.ErrOut, "hint:", h.Hint)
 		}
 	}()
@@ -78,10 +83,12 @@ func classify(err error, ios *iostreams.IOStreams) int {
 	var flagErr *cmdutil.FlagError
 	if errors.As(err, &flagErr) || isUsageError(err) {
 		fmt.Fprintln(ios.ErrOut, "error:", err)
+		printed = true
 		return exitUsage
 	}
 
 	fmt.Fprintln(ios.ErrOut, "error:", err)
+	printed = true
 	return exitError
 }
 

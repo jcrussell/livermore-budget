@@ -41,7 +41,7 @@ func TestClassify(t *testing.T) {
 		},
 		{
 			name: "cancel exits 2",
-			err:  cmdutil.ErrCancel, wantCode: 2, wantErr: "",
+			err:  cmdutil.ErrCancel, wantCode: 130, wantErr: "",
 		},
 		{
 			name: "explicit exit code prints nothing",
@@ -124,5 +124,45 @@ func TestRunSucceeds(t *testing.T) {
 	}
 	if diff := cmp.Diff("built\n", out.String()); diff != "" {
 		t.Errorf("stdout mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestHintIsNotPrintedWithoutAnError guards the contract that ErrSilent and
+// ExitCodeError print nothing. A hint is an annotation on a reported error;
+// emitted alone it is a bare "hint:" line with nothing to annotate.
+func TestHintIsNotPrintedWithoutAnError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantCode int
+	}{
+		{"silent", cmdutil.WithHint(cmdutil.ErrSilent, "run make extract"), 1},
+		{"explicit exit code", cmdutil.WithHint(&cmdutil.ExitCodeError{Code: 3}, "see the log"), 3},
+		{"cancel", cmdutil.WithHint(cmdutil.ErrCancel, "nothing to undo"), 130},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ios, _, out, errOut := iostreams.Test()
+			if got := classify(tt.err, ios); got != tt.wantCode {
+				t.Errorf("got exit code %d, want %d", got, tt.wantCode)
+			}
+			if out.Len() != 0 || errOut.Len() != 0 {
+				t.Errorf("got stdout %q and stderr %q, want both empty", out, errOut)
+			}
+		})
+	}
+}
+
+// TestCancelIsDistinctFromUsage: the exit codes are a public contract, so a
+// Ctrl-C must not look like a typo'd flag.
+func TestCancelIsDistinctFromUsage(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	cancel := classify(cmdutil.ErrCancel, ios)
+	usage := classify(cmdutil.FlagErrorf("bad flag"), ios)
+	if cancel == usage {
+		t.Errorf("cancel and usage both exit %d; they must differ", cancel)
+	}
+	if cancel != 130 {
+		t.Errorf("got cancel exit %d, want 130 (128+SIGINT)", cancel)
 	}
 }

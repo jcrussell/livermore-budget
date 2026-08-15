@@ -57,8 +57,14 @@ func Test() (*IOStreams, *bytes.Buffer, *bytes.Buffer, *bytes.Buffer) {
 }
 
 // isTerminal reports whether f refers to a character device. This is a
-// stdlib-only substitute for a term/isatty dependency; it is accurate enough
-// for deciding whether to colorize or prompt, which is all it is used for.
+// stdlib-only substitute for a term/isatty dependency (byob-release.10).
+//
+// It is an approximation with one known false positive: /dev/null is a
+// character device, so `fisc build > /dev/null` reports a TTY. Pipes and
+// regular files are classified correctly. Since the only decisions this
+// drives are colorizing and prompting, and neither is observable when the
+// output is discarded, the inaccuracy has no practical effect — but do not
+// build a correctness-bearing behavior on it.
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	if err != nil {

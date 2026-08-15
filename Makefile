@@ -2,7 +2,9 @@ BIN        := fisc
 CMD        := ./cmd/fisc
 OUT        := bin/$(BIN)
 PREFIX     ?= /usr/local
-PYTHON     ?= /home/ubuntu/venv/bin/python
+# Prefer a repo-local venv, then one on PATH. Override with PYTHON=... for a
+# venv elsewhere. Must have the pinned xberg from requirements.txt installed.
+PYTHON     ?= $(shell test -x .venv/bin/python && echo .venv/bin/python || echo python3)
 
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT     := $(shell git rev-parse HEAD 2>/dev/null || echo unknown)

@@ -26,7 +26,16 @@ validating the approach — none is a generic sample.
 ## Note on numeric-only rows
 
 `acfr-p0034-t01.json` has `row_page_lines` all null, because `find_page_line`
-locates a row by its first non-numeric cell and these rows have none. That is
+locates a row by its non-numeric cells and these rows have none. That is
 expected and is itself the signal: a table whose rows cannot be located in the
-page text has lost its label column. Across the ACFR, 81% of rows and 98% of
-tables locate successfully.
+page text has lost its label column. Across the ACFR, **75% of rows and 86% of
+tables** locate successfully.
+
+Those figures were 81% and 98% before a fix, and the drop is an improvement.
+The classifier that decides whether a cell is a label previously ignored
+whitespace, so merged numeric cells like `"$ 483.9"` and
+`"$ 7,783,173 $ 20,710,479"` — 1,366 of 14,624 corpus cells — were treated as
+label words. Rows then "located" by matching a number against the page text,
+which is a false positive, and `label_fingerprint` embedded those numbers,
+destroying its purpose as an identity that survives a new fiscal year. The
+lower number is the honest one.

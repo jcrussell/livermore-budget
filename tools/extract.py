@@ -65,7 +65,14 @@ OUT_DIR = REPO / "data" / "extracted"
 
 # Tokens that carry no label information: digits, separators, currency, and
 # the several dash characters that all mean "zero" in these documents.
-_NUMERIC = re.compile(r"^[\d,.$()%+‐-―-]*$")
+#
+# \s is required. normalize_cell collapses runs of whitespace but does not
+# remove it, and extraction frequently merges adjacent numeric cells ("$ 483.9",
+# "$ 7,783,173 $ 20,710,479"). Without \s those read as label words: 1,366 of
+# 14,624 corpus cells, which both poisons label_fingerprint (destroying its
+# whole purpose as a year-stable identity) and makes find_page_line anchor rows
+# on numbers.
+_NUMERIC = re.compile(r"^[\s\d,.$()%+‐-―-]*$")
 
 
 # --------------------------------------------------------------------------
@@ -164,7 +171,10 @@ def find_page_line(page_lines: list[str], row: list[str]) -> int | None:
         for i, line in enumerate(page_lines):
             if label in normalize_cell(line):
                 return i
-        return None
+        # Keep trying later columns rather than giving up here: the first
+        # label-ish cell is often a corrupted numeric that no line contains,
+        # and abandoning the row would silently disable the dropped-column
+        # check for it.
     return None
 
 
@@ -191,17 +201,43 @@ def serialize_table(doc_id: str, page: int, ordinal: int, table, page_lines: lis
 # --------------------------------------------------------------------------
 
 async def run_xberg(path: pathlib.Path):
+    """Return (document, errors). Errors are returned rather than only logged:
+    a partial extraction that writes a clean-looking manifest would defeat the
+    manifest's entire purpose."""
     res = await xberg.extract(ExtractInput(kind="uri", uri=str(path)), CONFIG)
-    for err in res.errors:
-        print(f"  error: {err.error_type}: {err.message}", file=sys.stderr)
+    errors = [
+        {"error_type": str(e.error_type), "source": str(e.source), "message": str(e.message)}
+        for e in res.errors
+    ]
+    for e in errors:
+        print(f"  error: {e['error_type']}: {e['message']}", file=sys.stderr)
     if not res.results:
         raise SystemExit(f"extraction produced no document for {path}")
-    return res.results[0]
+    return res.results[0], errors
+
+
+def clean_output(out: pathlib.Path) -> None:
+    """Remove previously emitted artifacts before writing new ones.
+
+    Without this a re-extraction that yields fewer pages or tables leaves the
+    previous run's files on disk and in git. They would be absent from the
+    manifest, but any consumer that globs the directory would read stale data
+    as current. Also clears .tmp files an interrupted write_atomic left behind.
+    """
+    for sub in ("pages", "tables"):
+        d = out / sub
+        if d.is_dir():
+            for f in d.iterdir():
+                if f.is_file():
+                    f.unlink()
+    for f in out.glob("*.tmp"):
+        f.unlink()
 
 
 def extract_doc(doc_id: str, pdf: pathlib.Path, out_root: pathlib.Path) -> dict:
-    doc = asyncio.run(run_xberg(pdf))
+    doc, errors = asyncio.run(run_xberg(pdf))
     out = out_root / doc_id
+    clean_output(out)
     artifacts: dict[str, dict] = {}
 
     def emit(rel: str, data: bytes) -> None:
@@ -257,6 +293,9 @@ def extract_doc(doc_id: str, pdf: pathlib.Path, out_root: pathlib.Path) -> dict:
         "table_count": len(doc.tables),
         "pages_with_tables": len(per_page),
         "warnings": warnings,
+        # Recorded, not just logged. A run that failed on some pages must be
+        # visible to fisc verify rather than looking clean.
+        "errors": errors,
         "artifacts": dict(sorted(artifacts.items())),
     }
     write_atomic(out / "manifest.json", canonical_json(manifest))
@@ -293,6 +332,7 @@ def main() -> int:
         print(f"hint: available ids are {', '.join(available)}", file=sys.stderr)
         return 2
 
+    failed = []
     for doc_id in selected:
         print(f"extracting {doc_id} ...", file=sys.stderr)
         m = extract_doc(doc_id, available[doc_id], args.out)
@@ -302,6 +342,15 @@ def main() -> int:
             f"{len(m['artifacts'])} artifacts",
             file=sys.stderr,
         )
+        if m["errors"]:
+            failed.append(doc_id)
+
+    if failed:
+        # Artifacts and manifests are still written -- they record what went
+        # wrong -- but the exit code must not say everything is fine.
+        print(f"\nextraction reported errors for: {', '.join(failed)}", file=sys.stderr)
+        print("hint: the errors are recorded in each manifest.json", file=sys.stderr)
+        return 1
     return 0
 
 

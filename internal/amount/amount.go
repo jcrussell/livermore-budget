@@ -16,6 +16,7 @@ package amount
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -27,6 +28,12 @@ type Cents int64
 
 // String renders Cents as a signed dollar figure with thousands separators.
 func (c Cents) String() string {
+	if c == Cents(math.MinInt64) {
+		// Negating MinInt64 stays negative, which would corrupt the digit
+		// grouping below. Parse can no longer produce this, but Cents is a
+		// public type and arithmetic on it can.
+		return "-$92,233,720,368,547,758.08"
+	}
 	neg := c < 0
 	v := int64(c)
 	if neg {
@@ -91,12 +98,31 @@ func (e *ParseError) Error() string {
 }
 
 var (
-	// A bare number, optionally with a decimal fraction. Anchored: partial
-	// matches are rejections.
-	numeric = regexp.MustCompile(`^[0-9][0-9,]*(\.[0-9]+)?$`)
+	// An integer part with no separators at all.
+	ungrouped = regexp.MustCompile(`^[0-9]+$`)
+	// An integer part with correctly placed thousands separators. Enforcing
+	// the grouping matters: a permissive `[0-9,]+` accepts "1,234,56" — a
+	// figure whose decimal point was lost during extraction — and stripping
+	// its commas yields 123456, a silent 100x error.
+	grouped = regexp.MustCompile(`^[0-9]{1,3}(,[0-9]{3})+$`)
+	// A decimal fraction.
+	fraction = regexp.MustCompile(`^[0-9]+$`)
 	// Digits separated by whitespace — the digit-splitting artifact.
 	splitDigits = regexp.MustCompile(`[0-9][^\S\n]+[0-9]`)
 )
+
+// stripCurrency removes surrounding whitespace and currency symbols. Applied
+// both outside and inside the parentheses of a negative, because the symbol
+// bleeds a cell to the right during extraction and lands on either side.
+func stripCurrency(s string) string {
+	for {
+		t := strings.TrimSpace(strings.Trim(strings.TrimSpace(s), "$"))
+		if t == s {
+			return t
+		}
+		s = t
+	}
+}
 
 // zeroTokens are the several ways these documents write "zero". The escaped
 // form appears because the extractor emits markdown.
@@ -104,11 +130,23 @@ var zeroTokens = map[string]bool{
 	"-": true, "--": true, `\-`: true, `\--`: true, "0": false, // "0" parses normally
 }
 
-// Normalize canonicalizes a cell without interpreting it: NFKC width folding,
-// non-breaking and soft-hyphen removal, unification of the several dash and
-// minus characters, and whitespace collapse. Exported because the extraction
-// artifacts hash normalized text and the two must agree.
+// Normalize canonicalizes a cell without interpreting it: non-breaking spaces
+// become spaces, soft hyphens are dropped, the several dash and minus
+// characters unify to "-", backslash-escaped dashes from the extractor's
+// markdown are unescaped, and whitespace collapses.
+//
+// This must stay in step with normalize_cell in tools/extract.py, which is the
+// reference implementation: the committed artifacts hash normalized text with
+// it, and a Go reader that normalized differently would compute different
+// hashes for identical content.
+//
+// One divergence is deliberate. extract.py additionally applies Unicode NFKC;
+// Go does not, because that would mean a golang.org/x/text dependency
+// (byob-release.10) for a transform that changes nothing in this corpus — all
+// 382 committed tables hash identically either way. Bead fisc-1wr.5 covers the
+// cross-language agreement check that will catch it if that stops being true.
 func Normalize(s string) string {
+	s = strings.ReplaceAll(s, `\-`, "-")
 	var b strings.Builder
 	for _, r := range s {
 		switch {
@@ -153,16 +191,16 @@ func Parse(s string, u Units) (Cents, error) {
 		return 0, nil
 	}
 
+	// Strip currency before testing for parentheses: the symbol lands outside
+	// them ("$ (95,830,768)") as often as inside, and testing first would
+	// reject every parenthesized negative that carries a bled "$".
+	t = stripCurrency(t)
+
 	negative := false
 	if strings.HasPrefix(t, "(") && strings.HasSuffix(t, ")") {
 		negative = true
-		t = strings.TrimSuffix(strings.TrimPrefix(t, "("), ")")
-		t = strings.TrimSpace(t)
+		t = stripCurrency(strings.TrimSuffix(strings.TrimPrefix(t, "("), ")"))
 	}
-
-	// Currency symbols bleed one cell to the right during extraction, so a
-	// stray "$" on either end is expected and carries no meaning.
-	t = strings.TrimSpace(strings.Trim(strings.TrimSpace(t), "$"))
 
 	if t == "" {
 		return 0, &ParseError{Token: s, Reason: "no digits, only currency or bracket characters"}
@@ -181,20 +219,37 @@ func Parse(s string, u Units) (Cents, error) {
 			Reason: "leading minus sign; negatives are parenthesized in these documents, " +
 				"so this is usually a dash-as-zero glued on from the previous column"}
 	}
-	if !numeric.MatchString(t) {
+	intPart, fracPart, hasDot := strings.Cut(t, ".")
+
+	switch {
+	case strings.Contains(intPart, ","):
+		if !grouped.MatchString(intPart) {
+			return 0, &ParseError{Token: s, Reason: "misplaced thousands separator, " +
+				"which usually means a decimal point was lost during extraction " +
+				"(e.g. \"1,234,56\" for 1,234.56)"}
+		}
+	case !ungrouped.MatchString(intPart):
 		return 0, &ParseError{Token: s, Reason: "not a recognized number"}
 	}
-
-	intPart, fracPart, _ := strings.Cut(t, ".")
-	intPart = strings.ReplaceAll(intPart, ",", "")
+	if hasDot && !fraction.MatchString(fracPart) {
+		return 0, &ParseError{Token: s, Reason: "not a recognized number"}
+	}
 	if len(fracPart) > maxDecimals {
 		return 0, &ParseError{Token: s, Reason: fmt.Sprintf(
 			"%d decimal places cannot be represented exactly in %s", len(fracPart), u)}
 	}
 
-	whole, err := strconv.ParseInt(intPart, 10, 64)
+	whole, err := strconv.ParseInt(strings.ReplaceAll(intPart, ",", ""), 10, 64)
 	if err != nil {
 		return 0, &ParseError{Token: s, Reason: "integer part out of range"}
+	}
+	// Bound the product, not just the parsed integer. strconv only checked
+	// that the digits fit in an int64; multiplying by the unit scale can
+	// still wrap, and a wrapped value is a confident wrong number of exactly
+	// the kind this package exists to refuse.
+	if whole > math.MaxInt64/mult {
+		return 0, &ParseError{Token: s, Reason: fmt.Sprintf(
+			"value overflows int64 cents at %s scale", u)}
 	}
 	cents := whole * mult
 
@@ -208,7 +263,12 @@ func Parse(s string, u Units) (Cents, error) {
 		for range fracPart {
 			scale *= 10
 		}
-		cents += frac * (mult / scale)
+		add := frac * (mult / scale)
+		if cents > math.MaxInt64-add {
+			return 0, &ParseError{Token: s, Reason: fmt.Sprintf(
+				"value overflows int64 cents at %s scale", u)}
+		}
+		cents += add
 	}
 
 	if negative {

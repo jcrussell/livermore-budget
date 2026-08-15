@@ -108,7 +108,7 @@
  ],
  "content_hash": "sha256:cf6d8cbbba63613cce373d3c28492ebbab4b0c84f2ee0bee90326e15d712c6a7",
  "doc_id": "livermore-acfr-fy2025",
- "label_fingerprint": "sha256:266f832a18d06341725c87a3bb2cbce3d5827c80e9c0b72745a755c0c5f1aa89",
+ "label_fingerprint": "sha256:88ed5aff33adc8b0434fb3b2d3fd4fd13f0b56bcd6f8e65fcb6c734113de401e",
  "n_cols": 9,
  "n_rows": 9,
  "ordinal": 1,
@@ -116,7 +116,7 @@
  "ragged": false,
  "row_page_lines": [
   4,
-  6,
+  null,
   null,
   null,
   null,
