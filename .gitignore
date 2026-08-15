@@ -11,3 +11,6 @@ docs/m0-spike/spike/
 # Beads runtime is governed by .beads/.gitignore -- do not duplicate it here.
 # issues.jsonl is a passive export and IS tracked, so the roadmap is readable
 # from the git tree without a Dolt checkout.
+
+# Agent worktrees (created by subagents; never part of the tree)
+.claude/worktrees/

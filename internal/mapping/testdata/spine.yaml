@@ -1,0 +1,95 @@
+# The citywide spine: Budget Book pp. 66-67, "Citywide Revenues, Expenditures,
+# and Fund Balance/Working Capital". Every control total in the project ties to
+# this schedule, so it is mapped first and the rest is decomposed under it.
+#
+# This file is a test fixture AND the shape the real mappings/ file will take.
+# It exercises the two things that make this schema awkward:
+#   - a logical table spanning two pages where the second carries NO row labels
+#   - a continuation page that omits rows which are zero across all its columns
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  - id: spine-revenues
+    substrate: text
+    kind: revenue
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL REVENUES:"
+    note: >-
+      p66 carries the row labels and the General Fund and Enterprise columns
+      (4 values per row). p67 continues the same rows for the other four fund
+      groups with nothing but numbers, so its row identity is positional
+      against p66. Verified: all 16 column totals tie exactly to the totals
+      the document prints. See docs/m0-spike.md.
+    parts:
+      - page: 66
+        section: "REVENUES:"
+        stop_at: "TOTAL REVENUES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+      - page: 67
+        labels_from: 66
+        # p67 has no labels anywhere, so there is no "TOTAL REVENUES:" to stop
+        # at. The totals row is the first line whose figures are prefixed with
+        # "$" -- every data row above it is bare -- so "$" is the boundary.
+        # Anchoring on the total's VALUE would be circular: it is the figure
+        # the totals check exists to verify, and it changes on any revision.
+        stop_at: "$"
+        # "Licenses & Permits" is a General Fund revenue and is zero in all
+        # four of this page's fund groups, so extraction emits no row for it.
+        # Declaring it is mandatory: a positional read would otherwise shift
+        # every subsequent label by one and mismap silently.
+        omitted_rows: ["Licenses & Permits"]
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {fund_group: internal-service, fiscal_year: 2026}
+          - {fund_group: internal-service, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", category: taxes/property}
+      - {label: "Other Taxes", category: taxes/other}
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money And Property", category: use-of-money-and-property}
+      - {label: "Contributions Outsourced", category: contributions}
+      - {label: "Miscellaneous Revenue", category: miscellaneous}
+      - {label: "Sales Taxes", category: taxes/sales}
+      - {label: "Fines & Forfeitures", category: fines-and-forfeitures}
+      - {label: "Licenses & Permits", category: licenses-and-permits}
+
+  - id: spine-expenditures
+    substrate: text
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL EXPENDITURES:"
+    note: >-
+      Object categories, not departments. The city publishes department-by-
+      category only for the General Fund (p167); everywhere else the
+      department and category breakdowns are two marginals of the same total
+      with no published joint, so a four-column Sankey outside the GF would
+      require inventing numbers.
+    parts:
+      - page: 66
+        section: "EXPENDITURES:"
+        stop_at: "TOTAL EXPENDITURES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+      - {label: "Debt Services", category: debt-service}

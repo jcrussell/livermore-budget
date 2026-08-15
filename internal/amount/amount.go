@@ -60,6 +60,7 @@ func (c Cents) String() string {
 // is captioned "(in Millions)".
 type Units string
 
+// The scales these documents are printed in.
 const (
 	Dollars   Units = "dollars"
 	Thousands Units = "thousands"
@@ -149,12 +150,12 @@ func Normalize(s string) string {
 	s = strings.ReplaceAll(s, `\-`, "-")
 	var b strings.Builder
 	for _, r := range s {
-		switch {
-		case r == ' ', r == ' ', r == ' ': // non-breaking spaces
+		switch r {
+		case ' ', ' ', ' ': // non-breaking spaces
 			b.WriteRune(' ')
-		case r == '­': // soft hyphen
-		case r == '‐', r == '‑', r == '‒', r == '–',
-			r == '—', r == '―', r == '−': // dashes, minus
+		case '­': // soft hyphen
+		case '‐', '‑', '‒', '–',
+			'—', '―', '−': // dashes, minus
 			b.WriteRune('-')
 		default:
 			b.WriteRune(r)

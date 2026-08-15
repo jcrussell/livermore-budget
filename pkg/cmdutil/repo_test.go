@@ -8,21 +8,12 @@ import (
 	"testing"
 )
 
-// chdir moves into dir for the duration of the test.
+// chdir moves into dir for the duration of the test. t.Chdir handles the
+// restore and refuses to run in a parallel test, which manual save/restore
+// does not.
 func chdir(t *testing.T, dir string) {
 	t.Helper()
-	prev, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatalf("chdir %q: %v", dir, err)
-	}
-	t.Cleanup(func() {
-		if err := os.Chdir(prev); err != nil {
-			t.Errorf("restore cwd: %v", err)
-		}
-	})
+	t.Chdir(dir)
 }
 
 // newRepo lays out a fake repository root containing the marker file.

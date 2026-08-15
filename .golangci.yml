@@ -1,0 +1,71 @@
+version: "2"
+
+# Explicit opt-in rather than the default set, so adding a linter is a
+# deliberate act and the list documents what this project actually enforces
+# (byob-release.7).
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - bodyclose
+    - errorlint       # %w and errors.Is/As, which this project relies on heavily
+    - exhaustive      # a missed case in a typed-string switch is a silent misclassification
+    - gocritic
+    - gosec
+    - nilerr
+    - noctx
+    - revive
+    - unconvert
+    - usetesting
+    - wastedassign
+
+  settings:
+    errcheck:
+      # Writes to the process output streams are best-effort: if stderr is
+      # closed there is nothing useful to do about it, and threading the error
+      # back would obscure the actual failure being reported.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (*github.com/jcrussell/livermore-budget/pkg/iostreams.IOStreams).Out
+    govet:
+      enable:
+        - nilness
+        - shadow
+    exhaustive:
+      default-signifies-exhaustive: true
+    revive:
+      rules:
+        - name: exported
+        - name: var-naming
+        - name: receiver-naming
+        - name: unused-receiver
+        - name: error-strings
+        - name: context-as-argument
+
+  exclusions:
+    rules:
+      # Closing a file opened for reading cannot fail in a way the caller can
+      # act on; the read already succeeded or already errored.
+      - path: internal/mapping/parse\.go
+        linters: [errcheck]
+        text: "Close"
+      # Tests deliberately construct malformed input and ignore returns while
+      # asserting on the error, and gosec's file-permission and subprocess
+      # rules do not apply to fixtures.
+      - path: _test\.go$
+        linters: [errcheck, gosec, noctx]
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/jcrussell/livermore-budget
