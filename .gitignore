@@ -11,3 +11,4 @@ site/data/
 # Beads / Dolt files (added by bd init)
 .dolt/
 .beads-credential-key
+docs/m0-spike/spike/
