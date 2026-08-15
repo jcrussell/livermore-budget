@@ -1,0 +1,887 @@
+# Canonical fund registry — the ONLY place a fund number is bound to a name,
+# a fund type, and a spending-constraint classification.
+#
+#@cite City of Livermore, "FY 2025-2027 Budget Book" (source id: livermore-budget-fy2026-2027)
+#@cite     Appendix, "List of Funds by Fund Type", PDF pp. 253-254
+#@cite     Appendix, "Relationship Between Funds and Departments", PDF pp. 255-257
+#@cite     Appendix, "Description of Funds", PDF pp. 258-261
+#
+# `number` and `name` and `type` are PUBLISHED: they are read off the appendix
+# list of funds (pp. 253-254) and confirmed against the fund-by-department
+# tables (pp. 255-257), which print the same 112 numbers in a cleaner layout.
+# `constraint_tier` and `restriction_note` are DERIVED — our reading of the
+# "Description of Funds" narrative (pp. 258-261) — and must not be presented as
+# something the city printed. Where the document does not support a
+# classification the tier is `unknown`; a later bead resolves those.
+#
+# Scope: the budget excludes fiduciary funds (Budget Book p. 51), and the
+# appendix accordingly numbers none. Every fund here is a budgeted fund. The
+# ACFR's fiduciary activity therefore has NO fund-number join into this file.
+#
+# Type mapping. The appendix has eight section headings; the schema has seven
+# types. "CAPITAL IMPROVEMENT PROGRAM FUNDS" (811-840) is not a GASB fund type
+# — p258 lists only five governmental types and says "Funds in red are CIP
+# funds", i.e. each CIP fund is the capital-project side of an operating fund.
+# Those are recorded here as `type: capital`. CIP funds that sit inside a
+# proprietary fund keep that fund's type: 601/611/621/641 are `enterprise` and
+# 731/741 are `internal-service`, exactly as the appendix prints them.
+# The CIP-fund -> operating-fund pairing is printed in the CIP funding bridge
+# table at p. 222 and is recorded in each CIP fund's restriction_note.
+#
+# `major` is set only where the budget book itself says so: the fund-balance
+# schedules "by Major and Aggregate Non-Major Funds" (pp. 68-75) list General
+# Fund, Low Income Housing Fund, and the Airport / Stormwater / Wastewater /
+# Water enterprises under "Major Funds", and p255-256 label them the same way.
+# It is omitted (unknown) for the internal service funds — those schedules do
+# group them under "Major Funds", but an internal service fund is never a major
+# fund in GASB terms, so the label is presentational and we do not repeat it.
+# It is also omitted for the four enterprise CIP funds (601/611/621/641), which
+# were created in FY 2024-25 (footnote, p. 68) and appear in no such schedule.
+
+schema_version: 1
+
+funds:
+  # ---------------------------------------------------------------- GENERAL
+  #@cite p0253 (appendix list), p0255 ("GENERAL FUND - Major Fund")
+  #@cite p0258 "The GENERAL FUND (F.100; F.101, 811) is used to account for all
+  #@cite     the general revenues of the city that are not specifically levied
+  #@cite     or collected for other city funds"
+  - number: 100
+    name: "General Fund"
+    type: general
+    constraint_tier: discretionary
+    restriction_note: "General revenues not levied or collected for another fund; available for any general city service."
+    major: true
+
+  # -------------------------------------------------------- SPECIAL REVENUE
+  # p0258: "Special revenue funds are used to account for City revenues from
+  # sources that, by law or administrative action, are designated to finance
+  # particular functions or activities of government." The tier below records
+  # which of those two it is, fund by fund, where the document says.
+  #@cite p0258 "LOW INCOME HOUSING FUNDS (F. 200; F. 812)"; p0255 "Major Fund"
+  - number: 200
+    name: "Low Income Housing Fund"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "In-lieu housing fees collected from developers and other community housing projects; spendable only on housing."
+    major: true
+
+  #@cite p0258 "HOUSING SUCCESSOR FUND (F. 201)"
+  - number: 201
+    name: "Housing Successor Agency"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Assets and liabilities assumed from the former Redevelopment Agency Low-Moderate Income Fund; used for low and moderate income housing programs."
+
+  #@cite p0259 grants group: community development, housing and human services
+  - number: 202
+    name: "SOEF (Social Op Endowment)"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Listed among local/state/federal assistance for community development, housing and human services activities."
+
+  #@cite p0259 grants group
+  - number: 203
+    name: "Mortgage Assistance"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Housing and human services assistance funds; spendable only on the assisted housing program."
+
+  #@cite p0259 grants group
+  - number: 204
+    name: "HHS Loan Fund"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Housing and human services loan funds; repayments revolve back into the same program."
+
+  #@cite p0259 grants group
+  - number: 205
+    name: "CAL Home Reuse"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "State CalHome program reuse funds; restricted to the program's owner-occupied housing purposes."
+
+  #@cite p0259 grants group
+  - number: 206
+    name: "Calif Begin Program"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "State BEGIN down-payment assistance program funds; restricted to that program."
+
+  #@cite p0259 grants group
+  - number: 207
+    name: "Local Housing Trust"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Local housing trust monies for affordable housing; restricted to housing use."
+
+  #@cite p0259 "OTHER LOCAL ASSISTANCE, STATE AND FEDERAL GRANTS ... (F. 210,
+  #@cite     211, 221, 222, 240; ...)" — but see note
+  - number: 210
+    name: "Horizons"
+    type: special-revenue
+    constraint_tier: unknown
+    restriction_note: "Youth/community program fund. The description only lumps it with local assistance and grants, while the fund detail (p136) shows charges for services plus a General Fund transfer, so no legal restriction is established."
+
+  #@cite p0259 local/state/federal assistance for safety activities
+  - number: 211
+    name: "Asset Seizure - County"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "County asset forfeiture proceeds; restricted to law enforcement use."
+
+  #@cite p0259 "POLICE GRANTS (F. 220, F. 816)"
+  - number: 220
+    name: "Grant - Federal Grant Fund"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Federal grants, including police program grants; spendable only per each grant agreement."
+
+  #@cite p0259 local/state/federal assistance for safety activities
+  - number: 221
+    name: "Asset Seizure - Dept of Justice"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Federal DOJ equitable sharing forfeiture proceeds; restricted to law enforcement use."
+
+  #@cite p0259 local/state/federal assistance for safety activities
+  - number: 222
+    name: "Asset Seizure - Treasury"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Federal Treasury forfeiture proceeds; restricted to law enforcement use."
+
+  #@cite p0259 grants group (community development / housing)
+  - number: 223
+    name: "Grant - HUD EDI Special Grant"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "HUD Economic Development Initiative special grant; spendable only per the grant award."
+
+  #@cite p0259 grants group; CIP counterpart 838 named "CIP CDBG" (p0254)
+  - number: 224
+    name: "Grant - CDBG"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Community Development Block Grant funds; restricted to HUD-eligible activities."
+
+  #@cite p0259 grants group (housing)
+  - number: 225
+    name: "Grant - Home Grant"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "HOME Investment Partnerships grant funds; restricted to eligible affordable-housing activities."
+
+  #@cite p0259 "federal grant related to COVID-19 (F. 226)"
+  - number: 226
+    name: "FEMA Funding"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Federal disaster/COVID-19 grant reimbursements; spendable only on the eligible costs claimed."
+
+  #@cite p0258 street projects; p0259 solid waste and grants groups (F. 240)
+  - number: 240
+    name: "Grant - State Grant Fund"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "State grants for streets, solid waste, safety and community programs; spendable only per each grant agreement."
+
+  - number: 241
+    name: "Opioid Settlement"
+    type: special-revenue
+    constraint_tier: unknown
+    restriction_note: "No entry in the Description of Funds (pp258-261). Opioid settlement receipts are ordinarily restricted to remediation, but the budget document does not say so."
+
+  #@cite p0259 "POLICE GRANTS" describes F. 220/816 only; name says "Grant"
+  - number: 242
+    name: "PD COPS Grant"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Police COPS grant funds; restricted to the granted police programs. Classified from the fund name only — it has no Description of Funds entry."
+
+  #@cite p0259 grants group (community development / human services)
+  - number: 260
+    name: "Grant - Local & Other Grants"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Local and other grant awards for citywide programs; spendable only per each grant agreement."
+
+  #@cite p0260 "DOWNTOWN REVITALIZATION FEE FUND AND PARKING SPACE FUND
+  #@cite     (F. 280, 281; F. 819) ... The source of financing is developer fees."
+  - number: 280
+    name: "Downtown Revitalization Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Developer fees for downtown revitalization; restricted to that purpose."
+
+  #@cite p0260 (same entry as 280)
+  - number: 281
+    name: "Parking In-Lieu Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "In-lieu parking fees from developers; restricted to downtown parking."
+
+  #@cite p0258 "HOST COMMUNITY IMPACT FEE (F. 282; F. 820) ... restricted for
+  #@cite     the use of promoting the arts in Livermore"
+  - number: 282
+    name: "Host Community Impact Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Host community impact fees from the Altamont and Vasco Road landfills; restricted to promoting the arts in Livermore."
+
+  #@cite p0258 "CITY STREET SWEEPING (F. 283)"
+  - number: 283
+    name: "City Street Sweeping Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Ratepayer fee collected through solid waste collection charges; spent on street sweeping."
+
+  #@cite p0259 "PUBLIC ART FEE (F. 284; F. 821) ... Livermore Municipal Code 12.51"
+  - number: 284
+    name: "Public Art Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Development fees under LMC 12.51 (Art in Public Places); restricted to public art."
+
+  #@cite p0259 "VEHICLE IMPOUND FEE (F. 285) ... 30% of vehicle impound fees"
+  - number: 285
+    name: "Vehicle Impound Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "30% of vehicle impound fees; restricted to police programs that reduce vehicle collisions."
+
+  #@cite p0259 "ACCESSIBILITY COMPLIANCE (F. 286) ... as mandated by the State
+  #@cite     of California"
+  - number: 286
+    name: "Accessibility Compliance"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "State-mandated CASp fee collected with business licenses; restricted to the certified access specialist program."
+
+  #@cite p0259 "PEG CAPITAL FEES (F. 287)"
+  - number: 287
+    name: "PEG Capital Fees"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Public, Educational and Government access fees from cable TV franchises; restricted to PEG capital use."
+
+  #@cite p0259 "SOLID WASTE MANAGEMENT FUNDS (F. 240, 288, 289, 550; ...)"
+  - number: 288
+    name: "Import Mitigation Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Waste import mitigation fee within the solid waste management group; restricted to source reduction and recycling programs."
+
+  #@cite p0259 "SOLID WASTE MANAGEMENT FUNDS (F. 240, 288, 289, 550; ...)"
+  - number: 289
+    name: "Solid Waste & Recycling Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Solid waste and recycling fees; restricted to source reduction and beverage container recycling programs."
+
+  #@cite p0260 "HUMAN SERVICES FACILITY FEE (F. 290)"
+  - number: 290
+    name: "Human Services Facility Fee"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Development fees restricted to capital improvements that provide human services facilities."
+
+  #@cite p0259 "COMMUNITY BENEFIT FUND (F. 291 F. 840) ... as set in the
+  #@cite     Citywide Strategic Plan"
+  # Appendix p0253 misspells this fund "Community Beneift Fund"; the name here
+  # follows p0259 and the fund-balance schedules (pp. 198, 204).
+  - number: 291
+    name: "Community Benefit Fund"
+    type: special-revenue
+    constraint_tier: committed
+    restriction_note: "Funds economic, climate resilience and community programs and public spaces as set in the Citywide Strategic Plan; the constraint named in the document is the City's own plan, not a law."
+
+  #@cite p0259 "OPEN SPACE (F. 300) ... Altamont Landfill Settlement Agreement"
+  - number: 300
+    name: "Open Space Acquisition & Mgmt"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Receipts under the Altamont Landfill Settlement Agreement; restricted to open space acquisition and management by that agreement."
+
+  #@cite p0259 "DOWNTOWN AND OTHER LANDSCAPE MAINTENANCE DISTRICTS (F. 310, 311)"
+  - number: 310
+    name: "Downtown LMD"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Landscape maintenance district assessments; spendable only within the benefited district."
+
+  #@cite p0259 "DOWNTOWN AND OTHER LANDSCAPE MAINTENANCE DISTRICTS (F. 310, 311)"
+  - number: 311
+    name: "Other LMD"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Landscape maintenance district assessments; spendable only within the benefited district."
+
+  #@cite p0259 "EL CHARRO / OTHER MAINTENANCE COMMUNITY FACILITIES DISTRICTS
+  #@cite     (F. 320, 321)"
+  - number: 320
+    name: "El Charro CFD 2009-1 Maint"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Community facilities district special taxes; spendable only within the benefited district."
+
+  #@cite p0259 (same entry as 320)
+  - number: 321
+    name: "Other Maintenance CFDs"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Community facilities district special taxes; spendable only within the benefited district."
+
+  #@cite p0258 "DONATIONS (F. 330, 331; F. 822)"
+  - number: 330
+    name: "Library Donations"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Donations to the Library; donor-designated to specific community programs."
+
+  #@cite p0258 "DONATIONS (F. 330, 331; F. 822)"
+  - number: 331
+    name: "Police Donations"
+    type: special-revenue
+    constraint_tier: restricted-by-law
+    restriction_note: "Donations to the Police Department; donor-designated to specific community programs."
+
+  # ---------------------------------------------------------------- CAPITAL
+  #@cite p0253/p0256 list 101 under CAPITAL FUNDS; p0258 groups it with the
+  #@cite     general fund ("F.1 00; F. 101, 811"); p0222 bridge pairs 811 -> 101
+  - number: 101
+    name: "General Fund CIP Reserves"
+    type: capital
+    constraint_tier: committed
+    restriction_note: "General Fund resources set aside by the City for capital projects; constrained by City action, not by law."
+
+  #@cite p0260 "TRAFFIC IMPACT FEE (F. 510; F. 823) ... financed by developer fees"
+  - number: 510
+    name: "Traffic Impact Fee (TIF)"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Traffic impact fees paid by developers; restricted to interchange and local street improvement projects."
+
+  #@cite p0258 street projects (F. 511) and p0260 "STREET CAPITAL FUNDS (F. 511, 513)"
+  - number: 511
+    name: "TVTC 20% Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Tri-Valley Transportation Council fees; restricted to the regional street and transportation projects they fund."
+
+  #@cite p0260 "PARK FEE FUND (F. 512; F. 825) ... The source of financing is
+  #@cite     developer fees."
+  - number: 512
+    name: "Park Fee - AB 1600"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "AB 1600 (Mitigation Fee Act) park impact fees; restricted to acquisition and construction of park improvements."
+
+  #@cite p0260 "STREET CAPITAL FUNDS (F. 511, 513; F. 824, 826)"
+  - number: 513
+    name: "Solid Waste & Recyc Impact Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Solid waste and recycling impact fees; restricted to the street capital work the fee is levied for."
+
+  #@cite p0260 "2022 COP CONSTRUCTION FUND (F. 540; F. 827) ... financed with
+  #@cite     the 2022 COP debt proceeds"
+  - number: 540
+    name: "2022 COP Construction Fund"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "2022 Certificates of Participation proceeds; restricted by the debt documents to L Street Garage construction."
+
+  #@cite p0259 "SOLID WASTE MANAGEMENT FUNDS (F. 240, 288, 289, 550; ...)"
+  - number: 550
+    name: "County Measure D"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Alameda County Measure D waste-management funds; restricted to recycling and source reduction purposes."
+
+  #@cite p0258 "STREET PROJECTS FUNDS (F. ... 551, 552, 553, 560, 561; ...)"
+  - number: 551
+    name: "County Meas BB-Bike/Pedestrian"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Alameda County Measure BB bicycle/pedestrian pass-through; restricted to those street projects by the voter-approved measure."
+
+  #@cite p0258 street projects funds
+  - number: 552
+    name: "County Meas BB-Local St & Rd"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Alameda County Measure BB local streets and roads pass-through; restricted to street construction and maintenance."
+
+  #@cite p0258 street projects funds ("Local Vehicle Registration Fees")
+  - number: 553
+    name: "County Measure F Veh Reg Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "County Measure F vehicle registration fee; restricted to transportation projects."
+
+  #@cite p0258 street projects funds ("Financing is provided by the State
+  #@cite     gasoline taxes")
+  - number: 560
+    name: "State - Gas Tax"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "State gasoline tax subventions; restricted by state law to street and road purposes."
+
+  #@cite p0258 street projects funds
+  - number: 561
+    name: "State - SB1"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "SB 1 Road Maintenance and Rehabilitation Account funds; restricted by state law to eligible road work."
+
+  #@cite p0260 "DEVELOPER DEPOSITS (F.580; F. 836) ... held on their behalf"
+  - number: 580
+    name: "Developers Deposit"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Refundable performance deposits held on behalf of developers; returned when the developer performs, so not city money to spend."
+
+  #@cite p0260 "PUBLIC UTILITY UNDERGROUNDING (F. 581) ... Pacific Gas &
+  #@cite     Electric Rule 20A underground funds"
+  - number: 581
+    name: "Public Utility Undergrounding"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "PG&E Rule 20A allocations; restricted to public utility undergrounding improvements."
+
+  #@cite p0260 "TRANSFERABLE DEVELOPMENT CREDIT FUND (F. 582) ... per Livermore
+  #@cite     Municipal Code 3.27"
+  - number: 582
+    name: "Transferable Development Credits"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "In-lieu fees under LMC 3.27; restricted to open space acquisition in North Livermore."
+
+  #@cite p0259 "SO LIV SPEC PLAN & AD CLOSEOUT (F. 583; F. 837)"
+  - number: 583
+    name: "So Liv Spec Plan & AD Closeout"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Surplus from the closeout of Assessment Districts 1993-4 and 2002; dedicated to maintenance and improvements within the district boundaries per the closeout report."
+
+  # ----------------------------------------------------------- DEBT SERVICE
+  #@cite p0260 "2020 COP DEBT SERVICE FUNDS (F. 400, 401)"
+  - number: 400
+    name: "2020 COPS Series A"
+    type: debt-service
+    constraint_tier: committed
+    restriction_note: "Accumulates principal and interest payments for the 2020 COP Series A."
+
+  #@cite p0260 "2020 COP DEBT SERVICE FUNDS (F. 400, 401)"
+  - number: 401
+    name: "2020 COPS Series B"
+    type: debt-service
+    constraint_tier: committed
+    restriction_note: "Accumulates principal and interest payments for the 2020 COP Series B."
+
+  #@cite p0261 "2022 COP DEBT SERVICE FUND (F. 402)"
+  - number: 402
+    name: "2022 COPS"
+    type: debt-service
+    constraint_tier: committed
+    restriction_note: "Accumulates principal and interest payments for the 2022 COP."
+
+  # -------------------------------------------------------------- PERMANENT
+  #@cite p0260 "Permanent Funds are used to report resources that are legally
+  #@cite     restricted to the extent that only earnings, not principal, may be
+  #@cite     used"; "DOOLAN CANYON PRESERVE ENDOWMENT & OPEN SPACE (F. 470, 471)"
+  - number: 470
+    name: "Doolan Canyon Preserve Endowment"
+    type: permanent
+    constraint_tier: restricted-by-law
+    restriction_note: "Endowment principal is legally unspendable; only earnings may be used, for burrowing owl habitat mitigation."
+
+  #@cite p0260 (same entry as 470)
+  - number: 471
+    name: "Doolan Canyon Open Space"
+    type: permanent
+    constraint_tier: restricted-by-law
+    restriction_note: "Endowment resources restricted to burrowing owl habitat mitigation; principal may not be spent."
+
+  # ------------------------------------------------------------- ENTERPRISE
+  #@cite p0261 "Enterprise funds account for city operations, which are financed
+  #@cite     and operated in a manner similar to private enterprise. User charges
+  #@cite     and impact fees recover costs of providing service to the public."
+  #@cite p0261 "AIRPORT FUNDS (F. 600)"; major per pp. 68-75 "Airport Enterprise"
+  - number: 600
+    name: "Airport"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Airport operating revenues and FAA grants; restricted to airport operations, related 2020 COP Series B debt service, and airport capital."
+    major: true
+
+  #@cite p0256 lists 601 under ENTERPRISE FUNDS; p0222 bridge pairs 601 -> 600
+  - number: 601
+    name: "CIP Airport"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital projects side of the Airport enterprise (fund 600); same airport-revenue and FAA-grant restrictions."
+
+  #@cite p0261 "STORM WATER FUNDS (F. 610, 612)"; major per pp. 68-75
+  - number: 610
+    name: "Stormwater"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Self-supporting storm water operations funded by ratepayer charges; restricted to storm water service."
+    major: true
+
+  #@cite p0256 lists 611 under ENTERPRISE FUNDS; p0222 bridge pairs 611 -> 612
+  - number: 611
+    name: "CIP Stormwater & Storm Drain"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital projects side of the storm water enterprise (funds 610/612); ratepayer and impact-fee restricted."
+
+  #@cite p0261 "STORM WATER FUNDS (F. 610, 612) ... impact fees collected for
+  #@cite     storm drain infrastructure"; major per pp. 68-75
+  - number: 612
+    name: "Storm Drain"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Storm drain impact fees; restricted to storm drain infrastructure."
+    major: true
+
+  #@cite p0261 "SEWER FUNDS (F. 620, 622, 623)"; major per pp. 68-75
+  - number: 620
+    name: "Wastewater"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Self-supporting wastewater disposal plant, export pipeline and urban run-off operations funded by ratepayer charges."
+    major: true
+
+  #@cite p0256 lists 621 under ENTERPRISE FUNDS; p0222 bridge pairs 621 -> 622/623
+  - number: 621
+    name: "CIP Wastewater"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital projects side of the wastewater enterprise (funds 620/622/623); ratepayer and connection-fee restricted."
+
+  #@cite p0261 "SEWER FUNDS (F. 620, 622, 623)"; major per pp. 68-75
+  - number: 622
+    name: "Wastewater Replacement"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Ratepayer-funded reserve for replacement of wastewater system assets."
+    major: true
+
+  #@cite p0261 "SEWER FUNDS (F. 620, 622, 623)"; major per pp. 68-75
+  - number: 623
+    name: "Wastewater Connection Fees"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Wastewater connection (impact) fees; restricted to wastewater capacity and capital."
+    major: true
+
+  #@cite p0261 "WATER FUNDS (F. 640, 642, 643)"; major per pp. 68-75
+  - number: 640
+    name: "Water"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Self-supporting municipal water service funded by user charges, including related 2020 COP Series B debt service."
+    major: true
+
+  #@cite p0256 lists 641 under ENTERPRISE FUNDS; p0222 bridge pairs 641 -> 642
+  - number: 641
+    name: "CIP Water"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital projects side of the water enterprise (funds 640/642/643); ratepayer and connection-fee restricted."
+
+  #@cite p0261 "WATER FUNDS (F. 640, 642, 643)"; major per pp. 68-75
+  - number: 642
+    name: "Water Replacement"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Ratepayer-funded reserve for replacement of water system assets."
+    major: true
+
+  #@cite p0261 "Impact fees are collected for future water storage."
+  - number: 643
+    name: "Water Connection Fees"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Water connection (impact) fees; restricted to future water storage and capacity."
+    major: true
+
+  # ------------------------------------------------------- INTERNAL SERVICE
+  #@cite p0261 "Internal service funds are used to account for the financing of
+  #@cite     services and supplies provided by one city department to another on
+  #@cite     a cost-reimbursement basis."
+  # No external legal restriction is asserted for any of these; they exist by
+  # City administrative action, which is why the tier is `committed` and not
+  # `restricted-by-law`. `major` is deliberately omitted — see header note.
+  #@cite p0261 "GENERAL LIABILITY (F. 700)"
+  - number: 700
+    name: "General Liability"
+    type: internal-service
+    constraint_tier: committed
+    restriction_note: "Departmental charges funding the city's self-insured general liability risk management program."
+
+  #@cite p0261 "WORKERS' COMP INSURANCE (F. 710)"
+  - number: 710
+    name: "Workers Comp Insurance"
+    type: internal-service
+    constraint_tier: committed
+    restriction_note: "Departmental charges funding the city's self-insured workers' compensation program."
+
+  #@cite p0261 "INFORMATION TECHNOLOGY (F. 720)"
+  - number: 720
+    name: "Information Technology"
+    type: internal-service
+    constraint_tier: committed
+    restriction_note: "Departmental charges funding city software, hardware, IT governance and cybersecurity."
+
+  #@cite p0261 "FLEET AND EQUIPMENT SERVICES (F. 730)"
+  - number: 730
+    name: "Fleet & Equipment Services"
+    type: internal-service
+    constraint_tier: committed
+    restriction_note: "Departmental charges funding maintenance and acquisition of the city fleet and small equipment."
+
+  #@cite p0254/p0257 list 731 under INTERNAL SERVICE FUNDS; p0222 bridge pairs
+  #@cite     731 -> 730
+  - number: 731
+    name: "CIP Fleet & Equipment Services"
+    type: internal-service
+    constraint_tier: committed
+    restriction_note: "Capital projects side of Fleet & Equipment Services (fund 730); same internal cost-reimbursement basis."
+
+  #@cite p0261 "FACILITIES REHABILITATION (F. 740)"
+  - number: 740
+    name: "Facilities Rehab Program"
+    type: internal-service
+    constraint_tier: committed
+    restriction_note: "Departmental charges funding repair and maintenance of city facilities."
+
+  #@cite p0254/p0257 list 741 under INTERNAL SERVICE FUNDS; p0222 bridge pairs
+  #@cite     741 -> 101 (CIP Reserves - Facilities)
+  - number: 741
+    name: "CIP Facilities"
+    type: internal-service
+    constraint_tier: committed
+    restriction_note: "Capital projects side of the facilities rehabilitation program (fund 740); funded largely from General Fund CIP reserves."
+
+  # ---------------------------------------- CAPITAL IMPROVEMENT PROGRAM (CIP)
+  # Each fund below is the capital-project mirror of an operating fund and
+  # inherits that fund's constraint. The pairing is printed in the CIP funding
+  # bridge table at p0222 ("CIP fund / operating fund") except where noted.
+  #@cite p0254 and p0257 list 811-840; p0222 supplies the pairings
+  #@cite p0258 "GENERAL FUND (F.1 00; F. 101, 811)"; p0222 "811 101"
+  - number: 811
+    name: "CIP General Fund"
+    type: capital
+    constraint_tier: committed
+    restriction_note: "General Fund money appropriated to capital projects (paired with fund 101); constrained by City action, not by law."
+
+  #@cite p0258 "LOW INCOME HOUSING FUNDS (F. 200; F. 812)"
+  - number: 812
+    name: "CIP Low Income Housing"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the Low Income Housing Fund (200); housing in-lieu fees restricted to housing."
+
+  #@cite p0259 local/state/federal assistance (F. 813); p0222 "813 211"
+  - number: 813
+    name: "CIP Asset Seizure - County"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of Asset Seizure - County (211); forfeiture proceeds restricted to law enforcement use."
+
+  #@cite p0259 local/state/federal assistance (F. 814)
+  - number: 814
+    name: "CIP Asset Seizure - DOJ"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of Asset Seizure - Dept of Justice (221); forfeiture proceeds restricted to law enforcement use."
+
+  #@cite p0259 local/state/federal assistance (F. 815)
+  - number: 815
+    name: "CIP Asset Seizure - Treasury"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of Asset Seizure - Treasury (222); forfeiture proceeds restricted to law enforcement use."
+
+  #@cite p0258 street projects (F. 816); p0259 "POLICE GRANTS (F. 220, F. 816)"
+  - number: 816
+    name: "CIP Federal Grants Fund"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the federal grant fund (220); spendable only per each grant agreement."
+
+  #@cite p0258 street projects; p0259 solid waste and assistance groups (F. 817)
+  - number: 817
+    name: "CIP State Grants Fund"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the state grant fund (240); spendable only per each grant agreement."
+
+  #@cite p0259 local/state/federal assistance (F. 818)
+  - number: 818
+    name: "CIP Local Grants Fund"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of Grant - Local & Other Grants (260); spendable only per each grant agreement."
+
+  #@cite p0260 "DOWNTOWN REVITALIZATION FEE FUND AND PARKING SPACE FUND
+  #@cite     (F. 280, 281; F. 819)"
+  - number: 819
+    name: "CIP Parking-In-Lieu Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the parking in-lieu fee (281); developer fees restricted to downtown parking."
+
+  #@cite p0258 "HOST COMMUNITY IMPACT FEE (F. 282; F. 820)"
+  - number: 820
+    name: "CIP Host Community Impact Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the host community impact fee (282); restricted to promoting the arts in Livermore."
+
+  #@cite p0259 "PUBLIC ART FEE (F. 284; F. 821)"
+  - number: 821
+    name: "CIP Public Art Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the public art fee (284); LMC 12.51 development fees restricted to public art."
+
+  #@cite p0258 "DONATIONS (F. 330, 331; F. 822)"; p0222 "822 330"
+  - number: 822
+    name: "CIP Library Donations"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of Library Donations (330); donor-designated to specific library programs."
+
+  #@cite p0260 "TRAFFIC IMPACT FEE (F. 510; F. 823)"; p0222 "823 510"
+  - number: 823
+    name: "CIP Traffic Impact Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the traffic impact fee (510); developer fees restricted to interchange and local street improvements."
+
+  #@cite p0260 "STREET CAPITAL FUNDS (F. 511, 513; F. 824, 826)"; p0222 "824 511"
+  # pp. 254/257 print this one as "CIP TVTC 20% FEE"; case normalized to match
+  # its operating fund (511) and every other name in the list.
+  - number: 824
+    name: "CIP TVTC 20% Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the TVTC 20% fee (511); Tri-Valley Transportation Council fees restricted to street projects."
+
+  #@cite p0260 "PARK FEE FUND (F. 512; F. 825)"; p0222 "825 512"
+  - number: 825
+    name: "CIP Park Fee - AB 1600"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the AB 1600 park fee (512); restricted to park acquisition and construction."
+
+  #@cite p0259 solid waste group (F. 826); p0222 "826 513"
+  - number: 826
+    name: "CIP Solid Waste & Recycling"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the solid waste and recycling impact fee (513); restricted to solid waste and recycling purposes."
+
+  #@cite p0260 "2022 COP CONSTRUCTION FUND (F. 540; F. 827)"; p0222 "827 540"
+  - number: 827
+    name: "CIP 2022 COP Construction"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the 2022 COP construction fund (540); debt proceeds restricted to L Street Garage construction."
+
+  #@cite p0259 "SOLID WASTE MANAGEMENT FUNDS (F. ... 550; F. ... 828)"
+  - number: 828
+    name: "CIP County Measure D"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of County Measure D (550); county waste-management funds restricted to recycling purposes."
+
+  #@cite p0258 street projects (F. 829); p0222 "829 551"
+  - number: 829
+    name: "CIP County Measure BB-Bike/Ped"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of Measure BB bike/pedestrian (551); restricted to those street projects."
+
+  #@cite p0258 street projects (F. 830); p0222 "830 552"
+  - number: 830
+    name: "CIP County Measure BB-Street"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of Measure BB local streets and roads (552); restricted to street construction and maintenance."
+
+  #@cite p0260 "STREET PROJECTS FUNDS (F. 831, 832) ... financed by the Alameda
+  #@cite     County Measure B and BB" — no operating-fund counterpart exists
+  - number: 831
+    name: "CIP County Measure B-Bike/Ped"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Alameda County Measure B bicycle/pedestrian pass-through; restricted to street construction and maintenance. CIP-only, with no operating fund."
+
+  #@cite p0260 "STREET PROJECTS FUNDS (F. 831, 832)" — CIP-only, as for 831
+  - number: 832
+    name: "CIP County Measure B-Street"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Alameda County Measure B local streets pass-through; restricted to street construction and maintenance. CIP-only, with no operating fund."
+
+  #@cite p0258 street projects (F. 833); p0222 "833 553"
+  - number: 833
+    name: "CIP County Measure F-Veh Reg"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the Measure F vehicle registration fee (553); restricted to transportation projects."
+
+  #@cite p0258 street projects (F. 834); p0222 "834 560"
+  - number: 834
+    name: "CIP State Gas Tax"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the state gas tax fund (560); restricted by state law to street and road purposes."
+
+  #@cite p0258 street projects (F. 835); p0222 "835 561"
+  - number: 835
+    name: "CIP State SB1"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the SB 1 fund (561); restricted by state law to eligible road maintenance and rehabilitation."
+
+  #@cite p0260 "DEVELOPER DEPOSITS (F.580; F. 836)"; p0222 "836 580"
+  - number: 836
+    name: "CIP Developers Deposit"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of developer deposits (580); performance deposits held on developers' behalf and refundable to them."
+
+  #@cite p0259 "SO LIV SPEC PLAN & AD CLOSEOUT (F. 583; F. 837)"; p0222 "837 583"
+  - number: 837
+    name: "CIP So Liv Spec & AD Close"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the South Livermore specific plan / assessment district closeout fund (583); dedicated to improvements within the district boundaries."
+
+  #@cite p0259 assistance group (F. 838); operating counterpart is 224 Grant - CDBG
+  - number: 838
+    name: "CIP CDBG"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the CDBG grant fund (224); restricted to HUD-eligible activities."
+
+  #@cite p0259 assistance group (F. 839); operating counterpart is 290
+  - number: 839
+    name: "CIP Human Svcs Facility Fee"
+    type: capital
+    constraint_tier: restricted-by-law
+    restriction_note: "Capital side of the human services facility fee (290); development fees restricted to human services capital improvements."
+
+  #@cite p0259 "COMMUNITY BENEFIT FUND (F. 291 F. 840)"
+  - number: 840
+    name: "CIP Community Benefit"
+    type: capital
+    constraint_tier: committed
+    restriction_note: "Capital side of the Community Benefit Fund (291); constrained by the Citywide Strategic Plan rather than by law."
