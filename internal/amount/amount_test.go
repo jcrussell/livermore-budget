@@ -1,0 +1,225 @@
+package amount
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+)
+
+// The accepted shapes. Every token here was observed in the extracted
+// artifacts under data/extracted/.
+func TestParseAccepts(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		units Units
+		want  Cents
+	}{
+		{"plain thousands separator", "64,143,762", Dollars, 6_414_376_200},
+		{"no separator", "170000", Dollars, 17_000_000},
+		{"decimal dollars", "1,234.56", Dollars, 123_456},
+		{"single digit", "2", Dollars, 200},
+
+		{"dash is zero", "-", Dollars, 0},
+		{"escaped markdown dash is zero", `\-`, Dollars, 0},
+		{"em dash is zero", "—", Dollars, 0},
+		{"double dash is zero", "--", Dollars, 0},
+
+		{"parenthesized is negative", "(71.8)", Millions, -7_180_000_000},
+		{"parenthesized integer", "(1,034,154)", Dollars, -103_415_400},
+		{"ERAF contra revenue", "(15,857,875)", Dollars, -1_585_787_500},
+
+		{"leading dollar sign", "$157,873,470", Dollars, 15_787_347_000},
+		{"dollar sign with space", "$ 27,145,882", Dollars, 2_714_588_200},
+		{"trailing dollar sign from cell bleed", "27,799,694 $", Dollars, 2_779_969_400},
+
+		{"millions scale", "342.8", Millions, 34_280_000_000},
+		{"millions integer", "502", Millions, 50_200_000_000},
+		{"thousands scale", "1.5", Thousands, 150_000},
+
+		{"non-breaking space is collapsed", "1,234 ", Dollars, 123_400},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Parse(tt.token, tt.units)
+			if err != nil {
+				t.Fatalf("Parse(%q, %s) returned error: %v", tt.token, tt.units, err)
+			}
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("Parse(%q, %s) mismatch (-want +got):\n%s", tt.token, tt.units, diff)
+			}
+		})
+	}
+}
+
+// The corruption catalogue. Each of these would otherwise yield a plausible
+// wrong number, which is worse than an error.
+func TestParseRejects(t *testing.T) {
+	tests := []struct {
+		name  string
+		token string
+		units Units
+		why   string
+	}{
+		{
+			name: "digits split by whitespace", token: "2 40,000", units: Dollars,
+			why: "CIP p40 renders 240,000 this way; a tolerant parser reads 40,000",
+		},
+		{
+			name: "digits split mid-group", token: "1,4 50,000", units: Dollars,
+			why: "CIP p40 renders 1,450,000 this way",
+		},
+		{
+			name: "separator split from digits", token: "150 ,000", units: Dollars,
+			why: "CIP p40 renders 150,000 this way",
+		},
+		{
+			name: "leading minus from glued dash", token: "-1,315,352", units: Dollars,
+			why: "ACFR p54: an em-dash-as-zero in the prior column glues on; true value is positive",
+		},
+		{
+			name: "leading minus from glued dash, second instance", token: "-512,946", units: Dollars,
+			why: "ACFR p177, see TestLeadingMinusIsReallyPositive",
+		},
+		{
+			name: "too many decimals for the unit", token: "1.234", units: Dollars,
+			why: "cannot be represented exactly in cents",
+		},
+		{
+			name: "two values glued together", token: "2,894,745 3,102,881", units: Dollars,
+			why: "adjacent cells merged during extraction",
+		},
+		{name: "bare currency symbol", token: "$", units: Dollars, why: "no digits"},
+		{name: "text", token: "Property Taxes", units: Dollars, why: "not a number"},
+		{name: "footnote marker glued to value", token: "19,250(9)", units: Dollars,
+			why: "Budget Book p76 interleaves footnote markers"},
+		{name: "unknown units", token: "1,000", units: Units("billions"), why: "unknown scale"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Parse(tt.token, tt.units)
+			if err == nil {
+				t.Fatalf("Parse(%q, %s) = %v, want an error (%s)", tt.token, tt.units, got, tt.why)
+			}
+			if errors.Is(err, ErrAbsent) {
+				t.Fatalf("Parse(%q) returned ErrAbsent, want a parse rejection", tt.token)
+			}
+			var pe *ParseError
+			if !errors.As(err, &pe) {
+				t.Fatalf("got %T (%v), want a *ParseError naming the token", err, err)
+			}
+			if pe.Token != tt.token {
+				t.Errorf("got ParseError.Token %q, want %q", pe.Token, tt.token)
+			}
+		})
+	}
+}
+
+// Absent and zero mean different things, and conflating them invents rows.
+func TestAbsentIsNotZero(t *testing.T) {
+	for _, token := range []string{"", "   ", " "} {
+		got, err := Parse(token, Dollars)
+		if !errors.Is(err, ErrAbsent) {
+			t.Errorf("Parse(%q) = (%v, %v), want ErrAbsent", token, got, err)
+		}
+	}
+
+	// A dash, by contrast, is a real zero.
+	got, err := Parse("-", Dollars)
+	if err != nil || got != 0 {
+		t.Errorf("Parse(\"-\") = (%v, %v), want (0, nil)", got, err)
+	}
+
+	// ParseOrZero opts out, but only where a rule says blanks mean zero.
+	got, err = ParseOrZero("", Dollars)
+	if err != nil || got != 0 {
+		t.Errorf("ParseOrZero(\"\") = (%v, %v), want (0, nil)", got, err)
+	}
+}
+
+// Exactness is the whole point: these values are summed and compared against
+// published totals, so no float rounding may creep in.
+func TestSumsAreExact(t *testing.T) {
+	// Budget Book p66, General Fund FY2025-26 revenues.
+	tokens := []string{
+		"64,143,762", "23,800,196", "4,328,164", "6,130,207", "8,488,168",
+		"76,360", "2,180,708", "41,086,606", "386,500", "7,252,799",
+	}
+	var total Cents
+	for _, tok := range tokens {
+		c, err := Parse(tok, Dollars)
+		if err != nil {
+			t.Fatalf("Parse(%q): %v", tok, err)
+		}
+		total += c
+	}
+
+	stated, err := Parse("$157,873,470", Dollars)
+	if err != nil {
+		t.Fatalf("Parse stated total: %v", err)
+	}
+	if diff := cmp.Diff(stated, total); diff != "" {
+		t.Errorf("mapped rows do not sum to the document's stated total (-want +got):\n%s", diff)
+	}
+}
+
+func TestCentsString(t *testing.T) {
+	tests := []struct {
+		in   Cents
+		want string
+	}{
+		{0, "$0.00"},
+		{123_456, "$1,234.56"},
+		{15_787_347_000, "$157,873,470.00"},
+		{-103_415_400, "-$1,034,154.00"},
+		{5, "$0.05"},
+	}
+	for _, tt := range tests {
+		if got := tt.in.String(); got != tt.want {
+			t.Errorf("Cents(%d).String() = %q, want %q", int64(tt.in), got, tt.want)
+		}
+	}
+}
+
+// TestLeadingMinusIsReallyPositive is the arithmetic proof behind rejecting a
+// leading minus sign, taken from ACFR p177 (a ten-year debt schedule):
+//
+//	['2017','56,386,950','2,440,343','','10,300,691','13,003,050','','','-512,946','','82,643,980',...]
+//
+// Two columns before the "-512,946" are empty. The dash belongs to one of
+// them as a zero and glued onto the next value during extraction. Summing the
+// row proves the sign: only the POSITIVE reading reconciles to the printed
+// total. A parser that accepted the token at face value would be off by
+// twice the value and would still tie to nothing, silently.
+func TestLeadingMinusIsReallyPositive(t *testing.T) {
+	row := []string{"56,386,950", "2,440,343", "10,300,691", "13,003,050", "512,946"}
+	var sum Cents
+	for _, tok := range row {
+		c, err := Parse(tok, Dollars)
+		if err != nil {
+			t.Fatalf("Parse(%q): %v", tok, err)
+		}
+		sum += c
+	}
+	stated, err := Parse("82,643,980", Dollars)
+	if err != nil {
+		t.Fatalf("Parse stated total: %v", err)
+	}
+	if diff := cmp.Diff(stated, sum); diff != "" {
+		t.Fatalf("the positive reading should reconcile exactly (-want +got):\n%s", diff)
+	}
+
+	// And the negative reading does not reconcile, which is why the token
+	// must be rejected rather than guessed at.
+	negative := sum - 2*Cents(51_294_600)
+	if negative == stated {
+		t.Error("the negative reading also reconciles; the premise of this test is wrong")
+	}
+
+	if _, err := Parse("-512,946", Dollars); err == nil {
+		t.Error("Parse accepted a leading minus; it must fail closed")
+	}
+}
