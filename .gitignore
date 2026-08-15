@@ -1,14 +1,13 @@
+# Build output
 bin/
 dist/
-site/data/
-*.db
-.beads/embeddeddolt/
-.beads/last-touched
-.beads/interactions.jsonl
-.beads/metadata.json
-.beads/issues.jsonl
 
-# Beads / Dolt files (added by bd init)
-.dolt/
-.beads-credential-key
+# Generated site data (rebuilt by `fisc build`)
+site/data/
+
+# M0 spike scratch (regenerate with docs/m0-spike/spike.py)
 docs/m0-spike/spike/
+
+# Beads runtime is governed by .beads/.gitignore -- do not duplicate it here.
+# issues.jsonl is a passive export and IS tracked, so the roadmap is readable
+# from the git tree without a Dolt checkout.
