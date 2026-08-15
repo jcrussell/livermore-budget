@@ -1,27 +1,61 @@
 # Agent Instructions
 
-This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
+`fisc` turns the City of Livermore's published budget PDFs into a verified
+fact store, and that fact store into a static site. Every figure it publishes
+carries a provenance pointer back to a page and cell of a source PDF, and
+`fisc verify` fails if any link in that chain breaks.
 
-> **Architecture in one line:** Issues live in a local Dolt database
-> (`.beads/dolt/`); cross-machine sync uses `bd dolt push/pull` (a
-> git-compatible protocol), stored under `refs/dolt/data` on your git
-> remote — separate from `refs/heads/*` where your code lives.
-> `.beads/issues.jsonl` is a passive export, not the wire protocol.
->
-> See [SYNC_CONCEPTS.md](https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md)
-> for the one-screen overview and anti-patterns (don't treat JSONL as the
-> source of truth; don't `bd import` during normal operation; don't
-> reach for third-party Dolt hosting before trying the default).
+Start with `bd prime`, then `bd ready --exclude-type=byob` for available work.
 
-## Quick Reference
+## Read these before changing anything non-trivial
 
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work atomically
-bd close <id>         # Complete work
-bd dolt push          # Push beads data to remote
-```
+- [`docs/m0-spike.md`](docs/m0-spike.md) — what the documents actually contain,
+  which substrate is usable, and how to re-download the PDFs past the city
+  site's bot protection.
+- [`testdata/README.md`](testdata/README.md) — each fixture exists for a named
+  failure mode. Read it before writing a parser.
+- `bd list --type=byob --no-parent` — the architectural decisions this project
+  follows. **Never claim or close a `byob-*` bead**; they are reference
+  material, not work.
+
+## Remote sync — agents do NOT push
+
+**The repository owner controls when anything leaves this machine.** Do not run
+`git push`, `git pull`, or `bd dolt push/pull` unless explicitly asked. Finish
+the work, commit it locally, and stop.
+
+This overrides the "Session Completion" section in the generated beads block
+below, which asserts that pushing is mandatory. It is not, here.
+
+## Review cadence
+
+Commit after review at logical points, not continuously and not never:
+
+- **Run `/code-review` before any commit that lands a new package**, and at
+  each epic boundary (E1, E2, …).
+- **Skip it for mechanical commits** — a pinned dependency, a `.gitignore`
+  fix, a docs typo. Review has a cost and those have no design surface.
+- Fix what the review finds *before* committing, so the commit and its review
+  land together.
+
+Review complements empirical verification; it does not replace it. The
+highest-risk claims here are not structural — "the parser rejects the right
+tokens", "extraction is byte-deterministic", "the mapped rows sum to the
+published total". Reading a diff cannot confirm any of those. Guard them with
+corpus scans, arithmetic tests against figures the documents themselves print,
+and re-run-and-compare checks, and keep doing that regardless of review.
+
+## Working rules
+
+- Tests ship in the same commit as the code they cover (`byob-testing.4`), and
+  use `google/go-cmp`, not testify (`byob-testing.2`).
+- Amounts are integer cents. Never float, anywhere on the path from cell to
+  published total.
+- Extraction is not a Go responsibility. `make extract` runs `tools/extract.py`;
+  `fisc` reads only the committed artifacts and needs neither Python nor the
+  PDFs. Keep it that way — see bead `fisc-j8f` for why the Python side must not
+  learn to read `sources.yaml`.
+- Reference bead IDs in commit messages as `Refs <id>`.
 
 ## Non-Interactive Shell Commands
 

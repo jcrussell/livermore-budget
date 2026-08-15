@@ -1,6 +1,24 @@
 # Project Instructions for AI Agents
 
-This file provides instructions and context for AI coding agents working on this project.
+**Read [AGENTS.md](AGENTS.md) first.** It is the source of truth for this
+project: orientation, the review cadence, and the working rules. This file
+carries only the two points that must not be missed, plus the generated beads
+block.
+
+## Agents do NOT push
+
+The repository owner controls when anything leaves this machine. Do not run
+`git push`, `git pull`, or `bd dolt push/pull` unless explicitly asked. Commit
+locally and stop.
+
+This overrides the "Session Completion" section in the generated block below,
+which asserts that pushing is mandatory. It is not, here.
+
+## Review before committing new packages
+
+Run `/code-review` before any commit that lands a new package, and at each
+epic boundary. Skip it for mechanical commits. See AGENTS.md for the full
+cadence and for why review does not replace the empirical checks.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker
