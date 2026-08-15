@@ -1,0 +1,9 @@
+bin/
+dist/
+site/data/
+*.db
+.beads/embeddeddolt/
+.beads/last-touched
+.beads/interactions.jsonl
+.beads/metadata.json
+.beads/issues.jsonl
