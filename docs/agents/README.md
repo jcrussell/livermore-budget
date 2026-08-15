@@ -6,6 +6,7 @@ carry inline only the rules that must not be missed.
 
 | Document | Covers |
 |---|---|
+| [status.md](status.md) | **Start here.** Where the project stands, what is next, known traps |
 | [workflow.md](workflow.md) | Beads, remote sync, review cadence, commits |
 | [conventions.md](conventions.md) | Code conventions, provenance invariants, shell safety |
 
