@@ -7,3 +7,7 @@ site/data/
 .beads/interactions.jsonl
 .beads/metadata.json
 .beads/issues.jsonl
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
