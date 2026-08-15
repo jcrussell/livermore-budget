@@ -6,7 +6,6 @@ carry inline only the rules that must not be missed.
 
 | Document | Covers |
 |---|---|
-| [status.md](status.md) | **Start here.** Where the project stands, what is next, known traps |
 | [workflow.md](workflow.md) | Beads, remote sync, review cadence, commits |
 | [conventions.md](conventions.md) | Code conventions, provenance invariants, shell safety |
 
@@ -26,9 +25,14 @@ looks.
 ## Where to start
 
 ```bash
-bd prime                          # workflow context and command reference
+bd prime                          # workflow context, commands, and memories
 bd ready --exclude-type=byob      # available work, byob decisions hidden
 ```
+
+`bd prime` injects the project's memories, which carry the things a new
+session would otherwise re-derive — why page text rather than tables is the
+mapping substrate, why the amount parser is strict, and the environment traps.
+Status and next steps live in the bead graph, not in a status document.
 
 ## Read before changing anything non-trivial
 
