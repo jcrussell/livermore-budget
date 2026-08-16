@@ -505,7 +505,7 @@ func TestLabelFallback(t *testing.T) {
 // rather than a package-scope assertion so that internal/project does not
 // import the registry it was deliberately decoupled from.
 func TestRegistrySatisfiesLabels(t *testing.T) {
-	var _ labels = (*registry.Registry)(nil)
+	var _ Labels = (*registry.Registry)(nil)
 }
 
 // TestSources reports the pages actually read, so the citation on the page

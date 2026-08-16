@@ -90,7 +90,7 @@ const (
 	NodeFundBalanceContribution = "fund-balance/contribution"
 )
 
-// labels is the view of the label registry (internal/registry, fisc-6ns) this
+// Labels is the view of the label registry (internal/registry, fisc-6ns) this
 // projection needs, declared here in the consumer and kept to the one method
 // actually used (byob-interfaces.2, as internal/mapping/resolve.go does with
 // its doc interface).
@@ -103,7 +103,7 @@ const (
 // space. That matters more than it looks: "debt-service" is a fund type and
 // "debt-services" an object category, and data/taxonomy.yaml is explicit that
 // one string spanning two axes is the near-miss it exists to prevent.
-type labels interface {
+type Labels interface {
 	// Label returns the city's own words for a category slug, and whether the
 	// registry knows the slug at all. A miss is not an error: an unlabelled
 	// node falls back to a slug-derived label so a newly mapped category
@@ -304,7 +304,7 @@ type Sankey struct {
 	// and a field rather than a constructor argument because Registry hands
 	// back projections before the composition root has loaded data/: a nil
 	// Labels degrades to a readable slug rather than to no document.
-	Labels labels
+	Labels Labels
 }
 
 var _ Projection = (*Sankey)(nil)

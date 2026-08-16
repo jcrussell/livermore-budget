@@ -1,0 +1,632 @@
+/*
+ * fisc site stylesheet.
+ *
+ * Colour is not hand-picked here. Every value below comes from the dataviz
+ * skill's reference palette, and the six fund-group hues are its categorical
+ * slots 1-6 in slot order. The order the funds sit in — internal service,
+ * capital, general, special revenue, enterprise, debt service — is not
+ * cosmetic: it is the ordering whose *measured* worst adjacent pair, over the
+ * fund pairs that actually touch in this graph, clears the gates in both
+ * modes (CVD dE 9.1 light / 8.4 dark against a target of 8; normal-vision
+ * 19.6 light / 19.3 dark against a floor of 15). app.js pins the layout to
+ * that order; changing either without re-running the validator breaks the
+ * guarantee.
+ *
+ * Three light-mode slots sit below 3:1 against the light surface, which the
+ * validator reports as a relief obligation rather than a pass: every node
+ * carries a visible direct label and every value is in the table view, which
+ * is the relief.
+ */
+
+:root {
+  color-scheme: light;
+
+  --plane: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --ink-1: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --rule: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --wash: rgba(11, 11, 11, 0.04);
+  --critical: #d03b3b;
+  --good: #006300;
+
+  /* Categorical slots 1-6, light. */
+  --fund-internal-service: #2a78d6;
+  --fund-capital: #eb6834;
+  --fund-general: #1baf7a;
+  --fund-special-revenue: #eda100;
+  --fund-enterprise: #e87ba4;
+  --fund-debt-service: #008300;
+
+  --link-opacity: 0.42;
+  --link-opacity-derived: 0.24;
+  --radius: 8px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* The dark steps are the same six hues re-stepped for the dark surface, and
+   validated as a set against it — not an automatic flip of the light values.
+   Declared under both scopes so the OS setting and the page's own toggle each
+   win where they should. */
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+
+    --plane: #0d0d0d;
+    --surface-1: #1a1a19;
+    --ink-1: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --rule: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --wash: rgba(255, 255, 255, 0.06);
+    --critical: #e66767;
+    --good: #0ca30c;
+
+    --fund-internal-service: #3987e5;
+    --fund-capital: #d95926;
+    --fund-general: #199e70;
+    --fund-special-revenue: #c98500;
+    --fund-enterprise: #d55181;
+    --fund-debt-service: #008300;
+
+    --link-opacity: 0.5;
+    --link-opacity-derived: 0.3;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --plane: #0d0d0d;
+  --surface-1: #1a1a19;
+  --ink-1: #ffffff;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --rule: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+  --wash: rgba(255, 255, 255, 0.06);
+  --critical: #e66767;
+  --good: #0ca30c;
+
+  --fund-internal-service: #3987e5;
+  --fund-capital: #d95926;
+  --fund-general: #199e70;
+  --fund-special-revenue: #c98500;
+  --fund-enterprise: #d55181;
+  --fund-debt-service: #008300;
+
+  --link-opacity: 0.5;
+  --link-opacity-derived: 0.3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 20px 64px;
+  background: var(--plane);
+  color: var(--ink-1);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+main,
+.page-head {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+h1 {
+  font-size: 30px;
+  margin: 0 0 8px;
+}
+
+h2 {
+  font-size: 20px;
+  margin: 40px 0 8px;
+}
+
+h3 {
+  font-size: 15px;
+  margin: 0 0 6px;
+}
+
+.lede {
+  color: var(--ink-2);
+  max-width: 68ch;
+  margin: 0 0 4px;
+}
+
+.page-head {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 32px 0 8px;
+}
+
+.subtle {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---------- controls ---------- */
+
+button,
+.btn {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--wash);
+}
+
+button[aria-pressed="true"] {
+  color: var(--ink-1);
+  border-color: var(--rule);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink-1);
+  outline-offset: 2px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 16px 0 8px;
+}
+
+/* ---------- figures ---------- */
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.tile {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.tile .label {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.tile .value {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 2px 0 4px;
+}
+
+.tile .note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.tile.hero {
+  grid-column: 1 / -1;
+}
+
+.tile.hero .value {
+  font-size: 52px;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.tile.error .value {
+  color: var(--ink-1);
+  text-decoration: line-through;
+  text-decoration-color: var(--critical);
+  text-decoration-thickness: 2px;
+}
+
+.tile.error .label::before {
+  content: "\26A0\FE0E";
+  color: var(--critical);
+  margin-right: 6px;
+}
+
+/* ---------- chart ---------- */
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  background: none;
+  padding: 4px 8px;
+  min-height: 28px;
+}
+
+.legend button[aria-pressed="true"] {
+  border-color: var(--rule);
+  background: var(--wash);
+}
+
+.legend .key {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.legend .key.derived {
+  background: none;
+  border: 1.5px dashed var(--muted);
+}
+
+.legend .key.published {
+  background: none;
+  border: 1.5px solid var(--muted);
+}
+
+.chart-wrap {
+  position: relative;
+}
+
+svg.sankey {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+svg.sankey text {
+  font-family: var(--font);
+  font-size: 12px;
+  fill: var(--ink-1);
+}
+
+/* Node labels sit over the ribbons in the middle column; a surface-coloured
+   halo behind the glyphs keeps them legible without a box. */
+svg.sankey text.halo {
+  paint-order: stroke;
+  stroke: var(--surface-1);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+/* The value and the derived marker are tspans inside the label, not their own
+   text elements, so they share the label's position and halo. */
+svg.sankey tspan.value {
+  fill: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+svg.sankey tspan.flag {
+  fill: var(--muted);
+}
+
+svg.sankey .link {
+  fill: none;
+  stroke-opacity: var(--link-opacity);
+  cursor: pointer;
+}
+
+svg.sankey .link.derived {
+  stroke-opacity: var(--link-opacity-derived);
+  stroke-dasharray: 5 4;
+}
+
+svg.sankey .link.dim {
+  stroke-opacity: 0.07;
+}
+
+svg.sankey .link.hot {
+  stroke-opacity: 0.78;
+}
+
+svg.sankey .node rect {
+  /* The 2px surface gap between stacked ribbons is the separator; the node's
+     own hairline is a hairline, not a data-weight border. */
+  stroke: var(--surface-1);
+  stroke-width: 1;
+}
+
+svg.sankey .node.derived rect {
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+svg.sankey .node.dim {
+  opacity: 0.3;
+}
+
+svg.sankey .node {
+  cursor: pointer;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 5;
+  min-width: 200px;
+  max-width: 340px;
+  pointer-events: none;
+  background: var(--surface-1);
+  color: var(--ink-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.tooltip[hidden] {
+  display: none;
+}
+
+.tooltip .tip-value {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.tooltip .tip-label {
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tooltip .tip-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.tooltip .facts {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-2);
+  word-break: break-all;
+  margin-top: 4px;
+}
+
+.line-key {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.chip {
+  display: inline-block;
+  font-size: 11px;
+  line-height: 1.6;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--rule);
+  color: var(--ink-2);
+}
+
+.chip.derived {
+  border-style: dashed;
+}
+
+/* ---------- detail panel, caveats, tables ---------- */
+
+.detail {
+  margin-top: 12px;
+  border-top: 1px solid var(--grid);
+  padding-top: 12px;
+  font-size: 14px;
+}
+
+.detail .amount {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.detail .prov {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.caveats {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.caveats li {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.derived-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  display: grid;
+  gap: 8px;
+}
+
+.derived-list li {
+  background: var(--surface-1);
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.derived-list .what {
+  font-weight: 600;
+}
+
+.derived-list .why {
+  color: var(--ink-2);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--grid);
+  vertical-align: top;
+}
+
+th {
+  color: var(--ink-2);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+}
+
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+td.ids {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.table-scroll {
+  max-height: 460px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+}
+
+details > summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 14px;
+  padding: 6px 0;
+}
+
+footer {
+  margin-top: 48px;
+  border-top: 1px solid var(--grid);
+  padding-top: 16px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+footer ul {
+  padding-left: 18px;
+}
+
+noscript p {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  background: var(--surface-1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  svg.sankey .link,
+  svg.sankey .node {
+    transition: stroke-opacity 120ms ease-out, opacity 120ms ease-out;
+  }
+}
+
+/* Forced-colors: hue is gone, so identity falls back to the direct labels and
+   the table view, and the derived/published distinction falls back to the
+   dash pattern, which forced-colors preserves. */
+@media (forced-colors: active) {
+  svg.sankey .link {
+    stroke-opacity: 1;
+    stroke: CanvasText;
+  }
+
+  svg.sankey .link.derived {
+    stroke: GrayText;
+  }
+
+  .tile.error .value {
+    text-decoration-color: CanvasText;
+  }
+}
+
+@media print {
+  body {
+    padding: 0;
+  }
+
+  .controls,
+  .tooltip {
+    display: none;
+  }
+}

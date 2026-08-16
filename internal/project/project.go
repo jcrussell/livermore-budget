@@ -110,13 +110,16 @@ type Projection interface {
 	Build(facts []fact.Fact, o Options) ([]byte, error)
 }
 
-// Registry returns the projections a build emits, in a stable order.
+// Registry returns the projections a build emits, in a stable order, each
+// wired to l for its labels.
 //
 // It is a function rather than a package variable so no caller can append to
 // the published set, and so each call hands back projections with no shared
-// state. A caller that has a label registry sets it on the concrete type
-// afterwards; a projection with no labels falls back to slug-derived ones
-// rather than failing.
-func Registry() []Projection {
-	return []Projection{&Sankey{}}
+// state. l may be nil, in which case a projection falls back to slug-derived
+// labels rather than failing — but it is a parameter rather than a field the
+// caller may forget to set, because forgetting it is silent: the page renders,
+// and every node is labelled "Use Of Money And Property" instead of the words
+// the city printed.
+func Registry(l Labels) []Projection {
+	return []Projection{&Sankey{Labels: l}}
 }

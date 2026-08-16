@@ -59,7 +59,7 @@ func TestOptionsValidateAcceptsEveryBasis(t *testing.T) {
 }
 
 func TestRegistry(t *testing.T) {
-	got := Registry()
+	got := Registry(nil)
 	if len(got) != 1 {
 		t.Fatalf("got %d projections, want 1", len(got))
 	}
@@ -68,7 +68,7 @@ func TestRegistry(t *testing.T) {
 	}
 	// Two calls must not hand back the same instance: a caller that sets a
 	// label registry on one must not be configuring everybody else's.
-	if Registry()[0] == got[0] {
+	if Registry(nil)[0] == got[0] {
 		t.Error("got the same projection instance twice, want a fresh one per call")
 	}
 }
