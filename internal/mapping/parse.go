@@ -146,6 +146,11 @@ func Parse(r io.Reader, p string) (*File, error) {
 	return &f, nil
 }
 
+// Validate checks a rule file's internal consistency. Parse calls it, so a
+// loaded file is already validated; it is exported for callers that build a
+// File in memory, which would otherwise skip every check the schema relies on.
+func (f *File) Validate() error { return f.validate() }
+
 func (f *File) validate() error {
 	errf := func(ruleID, field, format string, args ...any) error {
 		return &ParseError{Path: f.Path, RuleID: ruleID, Field: field,
