@@ -26,6 +26,11 @@ rules:
     parts:
       - page: 66
         section: "REVENUES:"
+        # "REVENUES:" occurs twice on this page: here, and inside the
+        # "TOTAL REVENUES:" line below. The section header is the first, and
+        # saying so is what lets resolution refuse an anchor it cannot place
+        # rather than take whichever match it happens to find first.
+        section_ordinal: 1
         stop_at: "TOTAL REVENUES:"
         columns:
           - {fund_group: general, fiscal_year: 2026}
@@ -34,11 +39,21 @@ rules:
           - {fund_group: enterprise, fiscal_year: 2027}
       - page: 67
         labels_from: 66
-        # p67 has no labels anywhere, so there is no "TOTAL REVENUES:" to stop
-        # at. The totals row is the first line whose figures are prefixed with
-        # "$" -- every data row above it is bare -- so "$" is the boundary.
-        # Anchoring on the total's VALUE would be circular: it is the figure
-        # the totals check exists to verify, and it changes on any revision.
+        # p67 has no row labels, so it has no section header either. The block
+        # starts where the column headers end: the fund-group names, then eight
+        # "Budget" cells, then the four "FY 2025-26 / FY 2026-27" pairs. The
+        # last of those four "FY 2026-27" ends exactly at the end of the header
+        # line, which makes it the page's real boundary between labels and
+        # figures -- and it fails closed if the city adds a fifth fund group,
+        # since a fourth occurrence would then land mid-header and the "Budget"
+        # tokens after it are not amounts.
+        section: "FY 2026-27"
+        section_ordinal: 4
+        # There is no "TOTAL REVENUES:" to stop at. The totals row is the first
+        # line whose figures are prefixed with "$" -- every data row above it is
+        # bare -- so "$" is the boundary. Anchoring on the total's VALUE would be
+        # circular: it is the figure the totals check exists to verify, and it
+        # changes on any revision.
         stop_at: "$"
         # "Licenses & Permits" is a General Fund revenue and is zero in all
         # four of this page's fund groups, so extraction emits no row for it.
@@ -60,8 +75,8 @@ rules:
       - {label: "Intergovernmental", category: intergovernmental}
       - {label: "Charges for Services", category: charges-for-services}
       - {label: "Use of Money And Property", category: use-of-money-and-property}
-      - {label: "Contributions Outsourced", category: contributions}
-      - {label: "Miscellaneous Revenue", category: miscellaneous}
+      - {label: "Contributions Outsourced", category: contributions-outsourced}
+      - {label: "Miscellaneous Revenue", category: miscellaneous-revenue}
       - {label: "Sales Taxes", category: taxes/sales}
       - {label: "Fines & Forfeitures", category: fines-and-forfeitures}
       - {label: "Licenses & Permits", category: licenses-and-permits}
@@ -82,6 +97,9 @@ rules:
     parts:
       - page: 66
         section: "EXPENDITURES:"
+        # As with REVENUES: above, the second occurrence is inside
+        # "TOTAL EXPENDITURES:".
+        section_ordinal: 1
         stop_at: "TOTAL EXPENDITURES:"
         columns:
           - {fund_group: general, fiscal_year: 2026}
@@ -92,4 +110,4 @@ rules:
       - {label: "Wages & Benefits", category: wages-and-benefits}
       - {label: "Services & Supplies", category: services-and-supplies}
       - {label: "Capital Outlay", category: capital-outlay}
-      - {label: "Debt Services", category: debt-service}
+      - {label: "Debt Services", category: debt-services}

@@ -1,0 +1,547 @@
+# Controlled vocabulary for fact classification — the ONLY place a `category:`
+# value is defined. A mapping rule may write a slug that appears below and no
+# other. This file exists so that `taxes/property` here and `tax/property`
+# there cannot both be true.
+#
+#@cite City of Livermore, "FY 2025-2027 Budget Book" (source id: livermore-budget-fy2026-2027)
+#@cite     "Citywide Revenues, Expenditures, and Fund Balance/Working Capital", PDF pp. 66-67
+#@cite     "Fund Balance by Major and Aggregate Non-Major Funds", PDF pp. 68-75
+#@cite     "Revenues Sources by Fund" / "Revenue Sources by Funds", PDF pp. 127-140
+#@cite     "General Fund Expenditures" / "Citywide Expenditures", PDF pp. 165-183
+#
+# PUBLISHED vs DERIVED
+# --------------------
+# `document_term` and every entry in `aliases` are PUBLISHED: each is a string
+# the city prints, on the pages named in `pages`, verbatim including its
+# ampersands and its abbreviations. Nothing in those fields is normalized.
+#
+# `slug` is DERIVED in every case — it is a machine identifier we chose, and no
+# reader should be shown it. The rule is:
+#
+#     slug = the document term, lowercased, `&` -> `and`, spaces -> `-`,
+#            with the shared head noun lifted to a parent segment where the
+#            document prints sibling rows that share one.
+#
+# So "Use of Money And Property" -> `use-of-money-and-property` mechanically,
+# and "Property Taxes" -> `taxes/property` by the head-noun clause. Where a
+# slug does NOT fall out of that rule — because the printed term is an
+# abbreviation, or because we merged two schedules' labels — the entry carries
+# `derived: true` with a `rationale` and a `source_note`. Entries without
+# `derived` are a mechanical transform of a printed string and nothing more.
+#
+# HIERARCHY: real in three places, false everywhere else
+# ------------------------------------------------------
+# The Budget Book prints NO "Total Taxes", "Total Transfers", or "Total Fund
+# Balance" row anywhere (verified by grep over all 268 extracted pages). That
+# claim is scoped to the Budget Book on purpose: the ACFR does print one such
+# line, "Total Fund Balances (Deficits)" on its p134, but that is a balance
+# sheet column total, not a rollup of the five fund-balance categories below.
+# Re-check this before extending the taxonomy to ACFR facts. Every
+# parent node below is therefore our grouping, not the city's: each is
+# `derived: true` and `assignable: false`, meaning it exists so a rollup view
+# can name the group and a mapping rule may NEVER write it as a `category`.
+#
+# Hierarchy is used only where the document prints several sibling rows sharing
+# a head noun — taxes (three rows on p66), transfers (in/out), fund balance
+# (beginning/change/ending). It is deliberately NOT used below the ten revenue
+# categories, even though pp. 127-130 print 60+ detail lines under them
+# ("Current Year - Secured", "Franchise Tax- Gas", "Cell Tower Rent", ...).
+# Those detail lines are a rule's `label`, not a `category`. Giving each one a
+# slug would invent a classification the city does not make and would double
+# the surface on which two spellings of the same thing can drift apart.
+#
+# It is one level deep. Nothing here nests two segments.
+#
+# WHAT IS NOT IN THIS FILE
+# ------------------------
+# Departments. pp. 165-166 break General Fund spending into City Council, City
+# Manager, Police, Community Development, and so on, and p167-170 crosses
+# department against object category. That is a second, orthogonal axis: a fact
+# is simultaneously "Police" and "Wages & Benefits". Folding departments into
+# `category` would make those two mutually exclusive and silently halve every
+# total. Departments belong in a `department:` field with a registry of their
+# own; this file governs `category:` only.
+#
+# Fund numbers and names: see data/funds.yaml.
+#
+# NO ALIASES FOR OUR OWN SLUGS
+# ----------------------------
+# `aliases` holds spellings the CITY prints for one concept; there is
+# deliberately no mechanism for two of OUR slugs to mean one thing, because
+# that is the drift this file exists to prevent. Adopting the "slug = document
+# term" rule uniformly renamed three categories that the spine fixture already
+# wrote — `contributions` -> `contributions-outsourced`, `miscellaneous` ->
+# `miscellaneous-revenue`, and `debt-service` -> `debt-services`. Rather than
+# carry the old spellings, internal/mapping/testdata/spine.yaml was migrated
+# in the same commit. The last of the three mattered most: `debt-service` is
+# also the FUND TYPE that spine.yaml writes as `fund_group: debt-service`, and
+# one string spanning two axes is precisely the near-miss this file prevents.
+
+schema_version: 1
+
+categories:
+
+  # ==================================================================
+  # REVENUE
+  #
+  # The ten categories below are the complete revenue vocabulary of the
+  # citywide spine (p66-67) and they are the same ten the detail schedule
+  # subtotals to (pp. 127-130 print "Total <term>" for each). pp. 131-140
+  # reuse them as line labels inside each non-General fund, in a narrower
+  # column, which is where the abbreviated aliases come from.
+  # ==================================================================
+
+  #@cite p0066 rows "Property Taxes", "Other Taxes", "Sales Taxes" — three
+  #@cite     separate, non-adjacent rows; the document prints no total over them
+  - slug: taxes
+    label: "Taxes"
+    kinds: [revenue]
+    assignable: false
+    derived: true
+    rationale: >-
+      A rollup node we introduce so the site can say "taxes" once instead of
+      three times. The city never adds these three rows together: on p66 they
+      are rows 1, 2 and 8 of the revenue block, separated by Intergovernmental,
+      Charges for Services, Use of Money And Property and Contributions
+      Outsourced, and pp. 127-128 subtotal each one on its own. Marked
+      assignable:false so no rule can classify a fact as merely "taxes" — the
+      figure the city printed is always one of the three children.
+    source_note: >-
+      Budget Book p. 66 (revenue block, three tax rows, no combined subtotal);
+      pp. 127-128 ("Total Property Taxes", "Total Sales Taxes", "Total Other
+      Taxes"). A grep for "Total Taxes" over all 268 extracted pages returns
+      nothing.
+
+  #@cite p0066 "Property Taxes 64,143,762 67,416,730"
+  #@cite p0127 "Total Property Taxes $58,179,468 $60,621,418 $64,143,762 $67,416,730"
+  #@cite p0139 fund-level rows "Property Taxes 475,325 888,601 858,416 884,166"
+  - slug: taxes/property
+    label: "Property Taxes"
+    document_term: "Property Taxes"
+    parent: taxes
+    kinds: [revenue]
+    pages: [66, 127, 139]
+    # The p127 detail sums to the p66 figure only if the two parenthesized rows
+    # are read as negative: 13 detail rows tie to 64,143,762 for FY 2025-26,
+    # and to 98,114,440 — off by 33.97M — if the parentheses are ignored.
+    contra_rows:
+      #@cite p0127 "ERAF (14,086,438) (14,661,836) (15,175,000) (15,857,875)"
+      - term: "ERAF"
+        page: 127
+      #@cite p0127 "RPTTF Reduction (1,749,120) (1,704,595) (1,810,339) (1,891,804)"
+      - term: "RPTTF Reduction"
+        page: 127
+    note: >-
+      Two of the thirteen detail lines under this category are negative
+      (shift-aways of property tax to the county Educational Revenue
+      Augmentation Fund and the Redevelopment Property Tax Trust Fund). They
+      are inside the printed subtotal, so a consumer that sums the detail must
+      keep the sign, and a flow diagram must not render them as their own
+      inbound flow.
+
+  #@cite p0066 "Sales Taxes 41,086,606 41,908,338"
+  #@cite p0127 "Total Sales Taxes $40,280,986 $42,593,316 $41,086,606 $41,908,338"
+  - slug: taxes/sales
+    label: "Sales Taxes"
+    document_term: "Sales Taxes"
+    parent: taxes
+    kinds: [revenue]
+    pages: [66, 127]
+
+  #@cite p0066 "Other Taxes 23,800,196 24,508,202"
+  #@cite p0128 "Total Other Taxes $22,204,869 $24,054,312 $23,800,196 $24,508,202"
+  #@cite p0138 fund-level row "Other Taxes 57,821 150,000 150,000 150,000"
+  - slug: taxes/other
+    label: "Other Taxes"
+    document_term: "Other Taxes"
+    parent: taxes
+    kinds: [revenue]
+    pages: [66, 128, 138]
+    note: >-
+      Not a residual. p128 shows it carries the franchise taxes, the business
+      license tax, the real property transfer tax, transient occupancy tax and
+      the construction taxes — a named group the city simply did not give a
+      collective name to.
+
+  #@cite p0066 "Licenses & Permits 7,252,799 7,261,048"
+  #@cite p0128 "Total Licenses & Permits $4,051,029 $4,259,000 $7,252,799 $7,261,048"
+  - slug: licenses-and-permits
+    label: "Licenses & Permits"
+    document_term: "Licenses & Permits"
+    kinds: [revenue]
+    pages: [66, 128]
+    note: >-
+      Zero in all six non-General fund groups, which is why spine.yaml has to
+      declare it in `omitted_rows` for p67 — extraction emits no row for it
+      there. See internal/mapping/testdata/spine.yaml.
+
+  #@cite p0066 "Fines & Forfeitures 386,500 398,270"
+  #@cite p0128 "Total Fines & Forfeitures $346,405 $387,000 $386,500 $398,270"
+  #@cite p0131 fund-level row "Fines & Forfeitures 1,211 - - -"
+  - slug: fines-and-forfeitures
+    label: "Fines & Forfeitures"
+    document_term: "Fines & Forfeitures"
+    kinds: [revenue]
+    pages: [66, 128, 131]
+
+  #@cite p0066 "Intergovernmental 4,328,164 4,631,220"
+  #@cite p0128 "Total Intergovernmental $4,522,641 $3,833,548 $4,328,164 $4,631,220"
+  - slug: intergovernmental
+    label: "Intergovernmental"
+    document_term: "Intergovernmental"
+    kinds: [revenue]
+    pages: [66, 128, 131, 133, 134, 135, 136, 137, 138, 139, 140]
+    note: >-
+      Printed identically at both levels — no abbreviation in the narrow
+      fund-level column. p128 shows it holds federal and state grants, state
+      motor-vehicle in-lieu, mandated-cost reimbursement, and Interdepartmental
+      Revenue.
+
+  #@cite p0066 "Charges for Services 6,130,207 6,179,158 62,250,824 64,332,646"
+  #@cite p0129 "Total Charges for Services $4,862,047 $4,973,153 $6,130,207 $6,179,158"
+  - slug: charges-for-services
+    label: "Charges for Services"
+    document_term: "Charges for Services"
+    kinds: [revenue]
+    pages: [66, 129, 131, 132, 133, 134, 136, 137, 138, 140]
+
+  #@cite p0066 "Use of Money And Property 8,488,168 9,771,259 4,836,537 5,749,704"
+  #@cite p0129 "Total Use of Money And Property $6,557,541 $7,237,501 $8,488,168 $9,771,259"
+  - slug: use-of-money-and-property
+    label: "Use of Money And Property"
+    document_term: "Use of Money And Property"
+    kinds: [revenue]
+    pages: [66, 129]
+    aliases:
+      #@cite p0131 "Use of Money & Prop 1,738,872 1,569,826 1,654,787 1,722,954"
+      - term: "Use of Money & Prop"
+        pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
+    note: >-
+      The capital A in "And" is the document's, on both p66 and p129. Do not
+      normalize it in `document_term`; the mapping matches printed text.
+
+  #@cite p0066 "Contributions Outsourced 76,360 78,651"
+  #@cite p0129 section heading "Contributions Outsourced"; detail row
+  #@cite     "Contribution Outside Services 72,038 - 76,360 78,651"
+  #@cite p0130 "Total Contributions Outsourced $72,038 - $76,360 $78,651"
+  - slug: contributions-outsourced
+    label: "Contributions Outsourced"
+    document_term: "Contributions Outsourced"
+    kinds: [revenue]
+    pages: [66, 129, 130]
+    aliases:
+      #@cite p0131 "ContributionsOutSrce 263,000 - - -" (no space; the city's
+      #@cite     own compression to fit the narrow fund-level column)
+      - term: "ContributionsOutSrce"
+        pages: [131, 132, 135, 136, 138, 139]
+    note: >-
+      Renamed from `contributions`. The short form is not a harmless
+      abbreviation: this category has exactly one detail line, "Contribution
+      Outside Services" (p129), and a slug reading `contributions` invites a
+      later mapper to file the Library Donations and Police Donations funds
+      (pp. 139, 182) under it. Those are a different thing and roll up
+      elsewhere. spine.yaml was migrated to the long form when this
+      file landed.
+
+  #@cite p0066 "Miscellaneous Revenue 2,180,708 2,205,271 426,900 225,900"
+  #@cite p0130 "Total Miscellaneous Revenue $950,978 $840,900 $2,180,708 $2,205,271"
+  - slug: miscellaneous-revenue
+    label: "Miscellaneous Revenue"
+    document_term: "Miscellaneous Revenue"
+    kinds: [revenue]
+    pages: [66, 130]
+    aliases:
+      #@cite p0131 "Miscellaneous Rev 5,191 1,300 1,400 1,400"
+      - term: "Miscellaneous Rev"
+        pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
+    note: >-
+      Renamed from `miscellaneous` for the same reason as
+      `contributions-outsourced`: the printed term has two words and the slug
+      rule keeps both. `miscellaneous` on its own says nothing about which axis
+      it belongs to.
+
+  #@cite p0139 "ContributionsOutSrce 4,510 5,000 10,000 10,000
+  #@cite     Oth Financing Source - 500 - -" (Police Donations fund; the two
+  #@cite     lines sum to the printed "Total Police Donations $5,500")
+  - slug: other-financing-sources
+    label: "Other Financing Sources"
+    document_term: "Oth Financing Source"
+    kinds: [revenue]
+    pages: [139]
+    derived: true
+    rationale: >-
+      The slug expands an abbreviation the city prints only once, in a single
+      fund on one page, and it is the only revenue-side line in pp. 127-140
+      that is not one of the ten spine categories. It is included so a mapping
+      rule for p139 has somewhere to put it instead of guessing; without an
+      entry the row would be silently dropped or mis-filed under
+      `miscellaneous-revenue`.
+    source_note: >-
+      Budget Book p. 139, Police Donations fund. UNGROUNDED: which of the ten
+      p66 categories absorbs this line in the citywide roll-up is not printed
+      anywhere in the document. It is non-zero only in the FY 2024-25 revised
+      column ($500) and zero in both budget years, so no arithmetic tie is
+      available to settle it. Do not assert a parent for this entry until a
+      schedule says so.
+
+  # ==================================================================
+  # EXPENDITURE — object categories
+  #
+  # These four and only these four. Swept over every expenditure page,
+  # pp. 165-183: the object rows are "Wages & Benefits", "Services &
+  # Supplies", "Capital Outlay" and "Debt Services" and nothing else.
+  # Transfers out are NOT an expenditure row — p66 prints TRANSFER OUT
+  # below TOTAL EXPENDITURES, and pp. 69/71/73/75 carry it in its own
+  # column. See the transfer section.
+  # ==================================================================
+
+  #@cite p0066 "Wages & Benefits 81,801,011 83,825,633 16,066,536 16,515,484"
+  #@cite p0172 "Wages & Benefits $68,690,692 $76,972,945 $81,801,011 $83,825,633"
+  - slug: wages-and-benefits
+    label: "Wages & Benefits"
+    document_term: "Wages & Benefits"
+    kinds: [expenditure]
+    pages: [66, 167, 168, 169, 172, 173, 175, 178, 179, 180, 181, 182, 183]
+
+  #@cite p0066 "Services & Supplies 62,849,791 65,188,946 39,593,240 39,881,236"
+  #@cite p0172 "Services & Supplies 54,452,171 63,956,345 62,849,791 65,188,946"
+  - slug: services-and-supplies
+    label: "Services & Supplies"
+    document_term: "Services & Supplies"
+    kinds: [expenditure]
+    pages: [66, 167, 168, 169, 170, 172, 173, 174, 175, 176, 177, 178, 179, 180, 181, 182, 183]
+
+  #@cite p0066 "Capital Outlay - - 699,900 453,900"
+  #@cite p0183 "Capital Outlay 1,702,861 5,253,272 2,078,574 2,140,931" (Fleet)
+  - slug: capital-outlay
+    label: "Capital Outlay"
+    document_term: "Capital Outlay"
+    kinds: [expenditure]
+    pages: [66, 168, 169, 172, 173, 174, 178, 181, 182, 183]
+
+  #@cite p0066 "Debt Services - - 694,054 697,350"
+  #@cite p0183 "Debt Services 128,667 1,026,816 1,070,500 1,115,510" (Facilities Rehab)
+  - slug: debt-services
+    label: "Debt Services"
+    document_term: "Debt Services"
+    kinds: [expenditure]
+    pages: [66, 168, 172, 173, 174, 176, 179, 183]
+    note: >-
+      Renamed from `debt-service` (singular). The city prints the object
+      category as the plural "Debt Services" on every page above, and never
+      as the singular followed by a figure — a grep for a singular "Debt
+      Service" in row position across all 268 pages returns nothing. The
+      singular is reserved in this document for the FUND TYPE, "Debt Service
+      Funds" (pp. 67, 176), which spine.yaml already writes as
+      `fund_group: debt-service`. Two axes, one string, would be exactly the
+      near-miss this file exists to prevent. spine.yaml was migrated to the
+      plural when this file landed.
+
+  # ==================================================================
+  # TRANSFER
+  #
+  # A transfer is money moving between the city's own funds. It is neither
+  # revenue nor expenditure and must never be summed into either: p66 adds
+  # TRANSFER IN to TOTAL REVENUES to reach TOTAL SOURCES, and TRANSFER OUT
+  # to TOTAL EXPENDITURES to reach TOTAL USES. Counting them as revenue
+  # double-counts every dollar the city moves internally.
+  #
+  # TRAP, verified arithmetically: on pp. 131-140 the printed "Total <fund>"
+  # DOES include Transfers In. p131 Stormwater FY 2025-26 is Charges for
+  # Services 1,169,000 + Transfers In 3,247,000 = 4,416,000, the printed
+  # total. Those fund totals are source totals, not revenue totals, and do
+  # not tie to the p66-67 revenue rows.
+  # ==================================================================
+
+  #@cite p0066 "TRANSFER IN:" / "TRANSFER OUT:" as separate lines outside the
+  #@cite     revenue and expenditure blocks; no combined subtotal is printed
+  - slug: transfers
+    label: "Transfers"
+    kinds: [transfer]
+    assignable: false
+    derived: true
+    rationale: >-
+      A rollup node, same status as `taxes`: the city prints transfers in and
+      transfers out but never a net or gross "Total Transfers". Direction has
+      to live in the category because a transfer's `kind` is only "transfer";
+      a rule that wrote `category: transfers` would produce a figure whose sign
+      cannot be recovered.
+    source_note: >-
+      Budget Book p. 66 (TRANSFER IN:, TRANSFER OUT:); pp. 68-75 (Transfers In
+      under Available Funds, Transfers Out under Uses of Funds — two facing
+      schedules, never added). A grep for "Total Transfers" over all 268
+      extracted pages returns nothing.
+
+  #@cite p0068 header "Fund Balance / Working Capital Fund Name 7/1/23
+  #@cite     Revenues Transfers In Total Sources"
+  #@cite p0066 "TRANSFER IN: 480,400 486,735 13,247,000 13,330,000"
+  - slug: transfers/in
+    label: "Transfers In"
+    document_term: "Transfers In"
+    parent: transfers
+    kinds: [transfer]
+    pages: [68, 70, 72, 74, 131, 132, 134, 136, 138, 139, 140]
+    aliases:
+      #@cite p0066 "TRANSFER IN:" — the spine's singular, all-caps, colon form
+      - term: "TRANSFER IN:"
+        pages: [66]
+    note: >-
+      The alias is the same line, proven: General Fund FY 2026-27 is 486,735
+      both as p66 TRANSFER IN and as p74 Transfers In.
+
+  #@cite p0069 header (interleaved, see note) "... Transfers Out ..."
+  #@cite p0066 "TRANSFER OUT: 10,037,797 10,146,598 19,813,147 24,680,000"
+  - slug: transfers/out
+    label: "Transfers Out"
+    document_term: "Transfers Out"
+    parent: transfers
+    kinds: [transfer]
+    pages: [69, 71, 73, 75]
+    aliases:
+      - term: "TRANSFER OUT:"
+        pages: [66]
+    note: >-
+      Same line as the alias, proven: General Fund FY 2026-27 is 10,146,598
+      both as p66 TRANSFER OUT and as the p75 Transfers Out column.
+
+  #@cite p0075 header "... Expenses Transfers Out Transfers Out to CIP ...
+  #@cite     Total Uses 6/30/27"
+  - slug: transfers/out-to-cip
+    label: "Transfers Out to CIP"
+    document_term: "Transfers Out to CIP"
+    parent: transfers
+    kinds: [transfer]
+    pages: [69, 71, 73, 75]
+    note: >-
+      A SIBLING of transfers/out, not a subset of it, despite the name. On
+      pp. 69/71/73/75 the two are separate columns that both add into Total
+      Uses: General Fund FY 2026-27 is Expenses 149,014,579 + Transfers Out
+      10,146,598 + Transfers Out to CIP 0 + Reserve Increase 3,332,607 =
+      162,493,784, the printed Total Uses. Nesting it under transfers/out
+      would double-count it. Hence `parent: transfers`.
+
+  # ==================================================================
+  # FUND BALANCE
+  #
+  # A fund balance is a stock, not a flow, and the two must not be mixed in
+  # one total. The document mixes them itself, which is why this section
+  # exists: "Total Sources" means one thing on p66 (revenues + transfers in
+  # = 164,844,882 for the General Fund in FY 2026-27) and another on p74
+  # (beginning fund balance + revenues + transfers in = 165,577,341). The
+  # difference is exactly the 732,459 beginning balance. Any rule reading
+  # pp. 68-75 must classify the opening column as fund_balance, never as
+  # revenue.
+  # ==================================================================
+
+  #@cite p0066 schedule title "CITYWIDE REVENUES, EXPENDITURES, AND FUND
+  #@cite     BALANCE/WORKING CAPITAL"
+  #@cite p0068 schedule title "Fund Balance by Major and Aggregate Non-Major Funds"
+  - slug: fund-balance
+    label: "Fund Balance / Working Capital"
+    kinds: [fund_balance]
+    assignable: false
+    derived: true
+    rationale: >-
+      Rollup node. Also a naming decision: the ROWS on p66 say only "working
+      capital" ("BEGINNING WORKING CAPITAL"), including in the General Fund
+      column, while the SCHEDULE TITLES on p66 and p68 say "Fund Balance /
+      Working Capital". Governmental funds have a fund balance and proprietary
+      funds have working capital; the city writes both and means the same
+      column. We picked `fund-balance` for the slug stem because the schedule
+      that enumerates it fund by fund (pp. 68-75) leads with that word. The
+      choice is ours and is recorded here rather than implied.
+    source_note: >-
+      Budget Book p. 66 (title and the three WORKING CAPITAL rows); p. 68
+      (title, and the column header "Fund Balance / Working Capital ... 7/1/23").
+
+  #@cite p0066 "BEGINNING WORKING CAPITAL 1,766,613 732,459 103,394,450 107,288,834"
+  #@cite p0074 "Est. Fund Balance / Working Capital 7/1/26 ... General Fund $ 732,459"
+  - slug: fund-balance/beginning
+    label: "Beginning Fund Balance / Working Capital"
+    document_term: "BEGINNING WORKING CAPITAL"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [66]
+    aliases:
+      #@cite p0070 "Fund Balance / Working Capital 7/1/24"
+      #@cite p0074 "Est. Fund Balance / Working Capital 7/1/26"
+      - term: "Fund Balance / Working Capital"
+        pages: [68, 70, 72, 74]
+    derived: true
+    rationale: >-
+      The merge is ours. p66 labels the row and pp. 68/70/72/74 label a column,
+      and the city never states they are the same line. They are: General Fund
+      FY 2026-27 is 732,459 as p66 BEGINNING WORKING CAPITAL and as the p74
+      7/1/26 column, and 1,766,613 / 732,459 likewise reconcile across p72 and
+      p66's two FY columns.
+    source_note: >-
+      Budget Book p. 66 (row) and p. 74 (column, 7/1/26). The alias term is
+      disambiguated from fund-balance/ending only by the date in the header
+      (7/1 opening vs 6/30 closing), which is why both entries carry the same
+      alias string.
+
+  #@cite p0066 "ENDING WORKING CAPITAL $732,459 $3,083,557 $107,288,834 $108,699,114"
+  #@cite p0075 header "... Working Capital ... 6/30/27"; General Fund $ 3,083,557
+  - slug: fund-balance/ending
+    label: "Ending Fund Balance / Working Capital"
+    document_term: "ENDING WORKING CAPITAL"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [66]
+    aliases:
+      - term: "Fund Balance / Working Capital"
+        pages: [69, 71, 73, 75]
+    derived: true
+    rationale: >-
+      Same merge as fund-balance/beginning and proven the same way: General
+      Fund FY 2026-27 is 3,083,557 both as p66 ENDING WORKING CAPITAL and as
+      the last column of p75 (6/30/27).
+    source_note: >-
+      Budget Book p. 66 (row) and p. 75 (column, 6/30/27). On pp. 69/71/73/75
+      the header does not survive extraction contiguously: the page text reads
+      "Fund Balance / Reserve Working Capital Expenses ... Increase/(Use) Total
+      Uses 6/30/27" because the extractor walks line 1 across all columns
+      before line 2. The printed headers are "Fund Balance / Working Capital
+      6/30/27" and "Reserve Increase/(Use)". A rule matching these must not
+      expect either string as a contiguous substring.
+
+  #@cite p0066 "CHANGE IN WORKING CAPITAL (1,034,154) 2,351,098 3,894,384 1,410,280"
+  - slug: fund-balance/change
+    label: "Change in Fund Balance / Working Capital"
+    document_term: "CHANGE IN WORKING CAPITAL"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [66]
+    note: >-
+      Printed, not computed by us, though it is the identity ending minus
+      beginning — 3,083,557 - 732,459 = 2,351,098 for the General Fund in
+      FY 2026-27. Signed: the FY 2025-26 General Fund value is parenthesized
+      and negative. A consumer that also carries beginning and ending must not
+      add this row to them.
+
+  #@cite p0066 "ADDITION TO RESERVES 4,699,425 3,332,607 - -"
+  #@cite p0075 "Reserve Increase/(Use)" column; General Fund $ 3,332,607
+  - slug: fund-balance/reserve-increase
+    label: "Reserve Increase / (Use)"
+    document_term: "ADDITION TO RESERVES"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [66]
+    aliases:
+      - term: "Reserve Increase/(Use)"
+        pages: [69, 71, 73, 75]
+    derived: true
+    rationale: >-
+      Two schedules, two labels, one line — and unlike most such merges this
+      one is arithmetically proven, so it is recorded as a single category
+      rather than two. General Fund FY 2026-27 is 3,332,607 as p66 ADDITION TO
+      RESERVES and as the p75 Reserve Increase/(Use) column; FY 2025-26 is
+      4,699,425 on p66 and on p73. Classifying it as fund_balance rather than
+      expenditure is also our judgment: it sits inside p66's TOTAL USES and
+      p69-75's Total Uses, but it is a stock movement, and the four expenditure
+      object categories above account for it nowhere.
+    source_note: >-
+      Budget Book p. 66 (row, both FY columns) and pp. 73/75 (column). Same
+      extraction caveat as fund-balance/ending: on pp. 69/71/73/75 the header
+      appears in the page text as "Reserve" and "Increase/(Use)" separated by
+      the other column labels.

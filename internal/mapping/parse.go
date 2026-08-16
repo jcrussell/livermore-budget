@@ -311,6 +311,10 @@ func validateRule(r *Rule, errf errFunc) error {
 			}
 		}
 
+		if err := validatePartLocator(r, p, errf); err != nil {
+			return err
+		}
+
 		for _, label := range p.OmittedRows {
 			if !rowIndex[label] {
 				return cmdutil.WithHint(
@@ -353,6 +357,55 @@ func validateRule(r *Rule, errf errFunc) error {
 			errf(r.ID, "total_row", "is required for a manual rule"),
 			"hand-transcribed figures must be checkable against a total the "+
 				"document itself prints, or nothing catches a typo")
+	}
+	return nil
+}
+
+// validatePartLocator checks the fields that say which block on the page this
+// part reads: the section ordinal for a text part, the table locator for a
+// table part.
+func validatePartLocator(r *Rule, p *Part, errf errFunc) error {
+	field := func(name string) string {
+		return fmt.Sprintf("parts[page %d].%s", p.Page, name)
+	}
+
+	if p.SectionOrdinal < 0 {
+		return errf(r.ID, field("section_ordinal"), "is %d; ordinals count from 1",
+			p.SectionOrdinal)
+	}
+	if p.SectionOrdinal > 0 && p.Section == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, field("section_ordinal"), "is set but section is empty"),
+			"section_ordinal picks which occurrence of section starts the "+
+				"block, so it means nothing without one")
+	}
+
+	switch {
+	case r.Substrate == SubstrateTable && p.Table == nil:
+		return cmdutil.WithHint(
+			errf(r.ID, field("table"), "is required on a table rule"),
+			"a table locator is {ordinal, label_fingerprint, bbox_centroid}; "+
+				"read them from the table's JSON under data/extracted/")
+	case r.Substrate != SubstrateTable && p.Table != nil:
+		// Silently ignoring it would leave the author believing the rule reads
+		// the grid they pointed at, when it reads the page text instead.
+		return errf(r.ID, field("table"), "is set on a %s rule", r.Substrate)
+	case p.Table == nil:
+		return nil
+	}
+
+	if p.Table.Ordinal < 1 {
+		return errf(r.ID, field("table.ordinal"), "is %d; ordinals count from 1",
+			p.Table.Ordinal)
+	}
+	if p.Table.LabelFingerprint == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, field("table.label_fingerprint"), "is required"),
+			"ordinal alone is not an identity: it shifts when the extractor "+
+				"finds one more table on the page")
+	}
+	if n := len(p.Table.BBoxCentroid); n != 0 && n != 2 {
+		return errf(r.ID, field("table.bbox_centroid"), "has %d values, want [x, y]", n)
 	}
 	return nil
 }

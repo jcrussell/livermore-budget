@@ -16,6 +16,11 @@ import "github.com/jcrussell/livermore-budget/internal/amount"
 
 // SchemaVersion is the only rule-file version this package understands. A file
 // declaring anything else is refused rather than guessed at.
+//
+// Adding a field is free only while nothing is published. Once a rule file
+// ships, KnownFields(true) means an older binary treats a newly added key as a
+// fatal parse error rather than reaching the "upgrade the binary" hint in
+// validate, so the first field added after publication must bump this.
 const SchemaVersion = 1
 
 // Substrate is where a rule reads its values from.
@@ -147,6 +152,17 @@ type Part struct {
 	Section string `yaml:"section"`
 	StopAt  string `yaml:"stop_at"`
 
+	// SectionOrdinal picks which occurrence of Section starts the block, 1
+	// based. Absent means the anchor must occur exactly once on the page.
+	//
+	// It is not an optional nicety. Budget Book p66 prints "REVENUES:" twice —
+	// once as the section header and once inside "TOTAL REVENUES:" — so a
+	// unique-match rule cannot resolve the citywide spine at all. Nor can a
+	// line anchor: the whole schedule, both sections and both totals rows, is
+	// on one line of extracted text. Declaring the ordinal states which one the
+	// rule's author looked at, which is the same discipline OmittedRows uses.
+	SectionOrdinal int `yaml:"section_ordinal"`
+
 	// LabelsFrom names an earlier part's page when this part carries no row
 	// labels of its own. Budget Book p67 is exactly this: it continues p66's
 	// schedule for four more fund groups with nothing but numbers, so row
@@ -165,11 +181,51 @@ type Part struct {
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
 
+	// Table locates the grid this part reads, for a table rule. Required on a
+	// table rule and refused on any other, because a text rule that carried a
+	// table locator would silently ignore it.
+	Table *TableLocator `yaml:"table"`
+
 	// ExpectedContentHash is the integrity hash of the extracted artifact this
-	// part was written against. Checked after the part resolves; a mismatch
-	// is "the content changed", which is a different failure from "not found"
-	// and gets a diff rather than a candidate list.
+	// part was written against. It is to be checked after the part resolves,
+	// so a mismatch reads as "the content changed" — a different failure from
+	// "not found", deserving a diff rather than a candidate list.
+	//
+	// Nothing checks it yet. Resolution landed with fisc-mq4.2; the integrity
+	// check is fisc-mq4.3. A rule that sets this field today is recording an
+	// intent that is not yet enforced, so do not read a passing verify as
+	// evidence that the content still matches.
 	ExpectedContentHash string `yaml:"expected_content_hash"`
+}
+
+// TableLocator identifies one detected table. Identity is compound and
+// content-independent on purpose: no single field is enough.
+//
+// Ordinal alone moves when the extractor finds one more table on the page.
+// LabelFingerprint alone is not unique — 12 tables in the ACFR share one, and
+// the largest fingerprint group in the corpus spans two documents, because a
+// running page header extracts as a table. ContentHash cannot be an identity
+// at all, which is why it lives on Part as ExpectedContentHash and answers a
+// different question ("did it change?").
+//
+// Do not give this type an UnmarshalYAML method. yaml.v3 does not propagate
+// KnownFields into a type's own unmarshaler, so a misspelled key here would be
+// silently dropped — and a locator that quietly lost its fingerprint is exactly
+// the failure this schema exists to prevent.
+type TableLocator struct {
+	// Ordinal is the table's 1-based position on the page, in the order
+	// extract.py sorts them: by (page, y0, x0).
+	Ordinal int `yaml:"ordinal"`
+
+	// LabelFingerprint hashes only the non-numeric tokens of the grid, so it
+	// survives a new fiscal year changing every figure.
+	LabelFingerprint string `yaml:"label_fingerprint"`
+
+	// BBoxCentroid is the midpoint of the table's bounding box, [x, y] in
+	// points. It disambiguates the tables a fingerprint cannot: three tables on
+	// ACFR p34 share the empty fingerprint, and nothing in the corpus collides
+	// within a page once position is considered.
+	BBoxCentroid []float64 `yaml:"bbox_centroid"`
 }
 
 // Column identifies one value column. Column identity is compound because a

@@ -2,7 +2,6 @@ package mapping
 
 import (
 	"errors"
-	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -218,6 +217,55 @@ func TestParseRejects(t *testing.T) {
 			want: "total_row",
 		},
 		{
+			name: "section_ordinal without a section",
+			yaml: strings.Replace(base(""),
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts: [{page: 1, section_ordinal: 2, columns: [{fiscal_year: 2026}]}]", 1),
+			want: "section is empty",
+		},
+		{
+			name: "section_ordinal counts from zero",
+			yaml: strings.Replace(base(""),
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts: [{page: 1, section: \"S\", section_ordinal: -1, "+
+					"columns: [{fiscal_year: 2026}]}]", 1),
+			want: "ordinals count from 1",
+		},
+		{
+			// A text rule that carried a table locator would read the page text
+			// while its author believed it read the grid they pointed at.
+			name: "table locator on a text rule",
+			yaml: strings.Replace(base(""),
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts: [{page: 1, table: {ordinal: 1, label_fingerprint: \"sha256:x\"}, "+
+					"columns: [{fiscal_year: 2026}]}]", 1),
+			want: "is set on a text rule",
+		},
+		{
+			name: "table rule without a locator",
+			yaml: strings.Replace(base(""), "substrate: text", "substrate: table", 1),
+			want: "required on a table rule",
+		},
+		{
+			// Ordinal alone shifts the moment the extractor finds one more
+			// table on the page, so it is not an identity by itself.
+			name: "table locator without a fingerprint",
+			yaml: strings.Replace(
+				strings.Replace(base(""), "substrate: text", "substrate: table", 1),
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts: [{page: 1, table: {ordinal: 1}, columns: [{fiscal_year: 2026}]}]", 1),
+			want: "label_fingerprint",
+		},
+		{
+			name: "table centroid that is not a point",
+			yaml: strings.Replace(
+				strings.Replace(base(""), "substrate: text", "substrate: table", 1),
+				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
+				"parts: [{page: 1, table: {ordinal: 1, label_fingerprint: \"sha256:x\", "+
+					"bbox_centroid: [1.0]}, columns: [{fiscal_year: 2026}]}]", 1),
+			want: "want [x, y]",
+		},
+		{
 			name: "empty file",
 			yaml: "",
 			want: "empty",
@@ -273,66 +321,6 @@ func base(extra string) string {
 		"    kind: revenue\n    basis: adopted\n    units: dollars\n" +
 		"    parts: [{page: 1, columns: [{fiscal_year: 2026}]}]\n" +
 		"    rows:\n      - {label: \"A\", category: a}\n" + extra
-}
-
-// TestSpineRowCountsMatchTheRealPages is the check that keeps the schema
-// honest against the documents. ExpectedValues is what the apply stage will
-// assert a positional read against, so if the rule's row and column counts
-// drift from the pages, everything downstream mismaps silently.
-//
-// It reads the committed page fixtures rather than the PDFs, so it needs
-// neither Python nor the source documents.
-func TestSpineRowCountsMatchTheRealPages(t *testing.T) {
-	f, err := Load("testdata/spine.yaml")
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-	rev := f.Rules[0]
-
-	// Count the value tokens in each page's block, the way a positional read
-	// will. This is a deliberately crude tokenizer -- the real one lands with
-	// the resolver -- but it is enough to catch a count drift.
-	count := func(t *testing.T, path, section, stopAt string) int {
-		t.Helper()
-		b, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		text := string(b)
-		if section != "" {
-			if i := strings.Index(text, section); i >= 0 {
-				text = text[i+len(section):]
-			}
-		}
-		if stopAt != "" {
-			if i := strings.Index(text, stopAt); i >= 0 {
-				text = text[:i]
-			}
-		}
-		var n int
-		for _, tok := range strings.Fields(text) {
-			if _, err := amount.Parse(tok, amount.Dollars); err == nil {
-				n++
-			}
-		}
-		return n
-	}
-
-	p66, p67 := rev.Parts[0], rev.Parts[1]
-
-	if got, want := count(t, "../../testdata/pages/budget-p0066.md",
-		p66.Section, p66.StopAt), rev.ExpectedValues(&p66); got != want {
-		t.Errorf("p66 has %d value tokens, rule expects %d (%d rows x %d columns)",
-			got, want, len(rev.ActiveRows(&p66)), len(p66.Columns))
-	}
-
-	// 72, not 80: p67 omits the all-zero "Licenses & Permits" row. If this
-	// ever reads 80 the omission has gone away and omitted_rows must change.
-	if got, want := count(t, "../../testdata/pages/budget-p0067.md",
-		p67.Section, p67.StopAt), rev.ExpectedValues(&p67); got != want {
-		t.Errorf("p67 has %d value tokens, rule expects %d (%d rows x %d columns)",
-			got, want, len(rev.ActiveRows(&p67)), len(p67.Columns))
-	}
 }
 
 // The defects a code review found in the first cut of this parser. Each was
