@@ -29,7 +29,8 @@
       "transfer_residual_cents": 3808673700
     },
     "counts": {
-      "facts": 58,
+      "facts": 120,
+      "facts_cited": 58,
       "nodes": 25,
       "links": 58
     },

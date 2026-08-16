@@ -32,7 +32,7 @@ an audit trail.
     "currency": "USD", "units": "cents",
     "sources": [{"doc_id": "livermore-budget-fy2026-2027", "pages": [66, 67]}],
     "headline": { /* see below */ },
-    "counts": {"facts": 58, "nodes": 25, "links": 58},
+    "counts": {"facts": 120, "facts_cited": 58, "nodes": 25, "links": 58},
     "caveats": ["..."]
   },
   "nodes": [{
@@ -80,6 +80,26 @@ Determinism: nodes sorted by `(tier, id)`, links by `(source, target)`,
 Plus the flow endpoints that are not part of that hierarchy: `transfers/in`
 (tier 0), `transfers/out` (tier 5), `fund-balance/reserve-increase` (tier 5),
 `fund-balance/draw` (tier 0), `fund-balance/contribution` (tier 5).
+
+`counts.facts` is the filtered input count — every fact matching the fiscal
+year, basis and scope. `counts.facts_cited` is how many of those a link
+actually carries. The gap is exactly the zero-valued cells (a dash is a printed
+fact but earns no link) plus the two stock rows, so it is a quantity a check can
+assert rather than a discrepancy a reader has to explain away. For FY2026:
+120 = 58 cited + 50 zero + 12 stock.
+
+**Node labels: a built-in wins over the registry.** That inverts what you would
+expect from a curated data file, and it is deliberate. A taxonomy `label` names
+a *category*, which may span several schedules; the words on a node have to be
+the words on the page this projection read.
+`fund-balance/reserve-increase` is the case — the taxonomy calls it
+"Reserve Increase / (Use)", after the p75 column header the category was merged
+with, while p66 prints ADDITION TO RESERVES over the figures actually read here.
+The six fund-group labels are built-in for a different reason: `funds.yaml`
+binds a fund to a type and records no words for the type itself, so the labels
+come from the pp.66-67 column headers. Letting the registry win would also mean
+the rendered site and `testdata/sankey.golden.json` disagreed on any node listed
+in both, quietly retiring the golden as a contract test.
 
 The slug in every id is a `data/taxonomy.yaml` slug. Do not coin new ones — in
 particular `ADDITION TO RESERVES` is `fund-balance/reserve-increase`, whose
