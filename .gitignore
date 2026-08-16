@@ -2,7 +2,7 @@
 bin/
 dist/
 
-# Generated site data (rebuilt by `fisc build`)
+# Generated site data (written by `fisc export`, one JSON per projection)
 site/data/
 
 # M0 spike scratch (regenerate with docs/m0-spike/spike.py)
