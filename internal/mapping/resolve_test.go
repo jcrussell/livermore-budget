@@ -644,3 +644,36 @@ func loadFixtureTable(t *testing.T, fixture string) *corpus.Table {
 	}
 	return &tb
 }
+
+// TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow is the regression test for
+// fisc-gxt. Extraction puts Budget Book p67's TOTAL EXPENDITURES row and its
+// TRANSFER OUT row on one physical line, so sixteen amounts follow the "$"
+// anchor where the part has eight columns. The page marks its totals with "$"
+// and prints data rows bare, and that is the only thing separating them.
+func TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow(t *testing.T) {
+	const glued = "$1,061,355 $969,934 $6,984,597 $6,969,898 " +
+		"$19,267,561 $11,808,000 $25,077,367 $26,544,515 " +
+		"28,584,740 36,047,736 - - 1,137,050 900,550 40,000 612,000"
+
+	got, ok := amountRun(glued, 8, amount.Dollars)
+	if !ok {
+		t.Fatalf("amountRun(glued, 8) = not found; the $-marked prefix is exactly 8 wide")
+	}
+	want := []amount.Cents{
+		1_061_355_00, 969_934_00, 6_984_597_00, 6_969_898_00,
+		19_267_561_00, 11_808_000_00, 25_077_367_00, 26_544_515_00,
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("amountRun mismatch (-want +got):\n%s", diff)
+	}
+
+	// The fallback must not rescue a run of the wrong width, or it would be a
+	// licence to guess rather than a way to read what the page marked.
+	if _, ok := amountRun(glued, 7, amount.Dollars); ok {
+		t.Error("amountRun(glued, 7) found a run; a 7-wide read of an 8-wide totals row must fail")
+	}
+	// A bare run is still read exactly as before: no "$" means no prefix rule.
+	if _, ok := amountRun("10 11 12 13 14", 3, amount.Dollars); ok {
+		t.Error("amountRun on a bare 5-run found a 3-run; the maximal-run rule must still hold")
+	}
+}

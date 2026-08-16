@@ -555,6 +555,23 @@ func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
 }
 
 // amountRun returns the first maximal run of exactly n parsable amounts in s.
+//
+// Where a maximal run is the wrong width but begins with a currency-marked
+// figure, its currency-marked prefix is considered too. These documents mark a
+// totals row with "$" and print the data rows bare, and extraction routinely
+// glues the two onto one line: Budget Book p67 runs the eight TOTAL
+// EXPENDITURES figures straight into the eight TRANSFER OUT figures, so the
+// maximal run there is sixteen and the totals are unreadable without the
+// distinction the page itself draws (fisc-gxt).
+//
+// The maximal run is computed and preferred first, so the prefix is only ever
+// consulted where a run is the wrong width. A page that marks only some of its
+// totals with "$" therefore still fails closed rather than yielding a short
+// run. The preference is per start position, not global: a line whose first
+// currency-marked run is n wide now answers ahead of a later bare run of n,
+// where before the bare one won. No line in the corpus does that, and reading
+// the marked run first is the better answer anyway — but it is a behaviour
+// change, not merely an addition.
 func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
 	toks := tokens(s, 0)
 	for i := 0; i < len(toks); {
@@ -569,6 +586,17 @@ func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
 		}
 		if len(run) == n {
 			return run, true
+		}
+		if len(run) > n && strings.HasPrefix(toks[i].text, "$") {
+			marked := 0
+			for ; marked < len(run); marked++ {
+				if !strings.HasPrefix(toks[i+marked].text, "$") {
+					break
+				}
+			}
+			if marked == n {
+				return run[:n], true
+			}
 		}
 		if j == i {
 			j++ // not an amount at all; step past it
