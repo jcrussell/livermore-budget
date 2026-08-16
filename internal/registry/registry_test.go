@@ -1,0 +1,419 @@
+package registry
+
+import (
+	"os"
+	"slices"
+	"testing"
+	"testing/fstest"
+
+	"github.com/google/go-cmp/cmp"
+)
+
+// realData is the committed registry pair. Tests read it directly: it is the
+// only way to catch an edit to funds.yaml or taxonomy.yaml that still parses
+// but breaks a downstream consumer.
+const realData = "../../data"
+
+// Fixtures are inline rather than committed under testdata/ so the input and
+// the expectation read on one screen.
+const validFunds = `
+schema_version: 1
+funds:
+  - number: 100
+    name: "General Fund"
+    type: general
+    constraint_tier: discretionary
+    restriction_note: "Available for any general city service."
+    major: true
+  - number: 610
+    name: "Stormwater"
+    type: enterprise
+    constraint_tier: restricted-by-law
+    restriction_note: "Ratepayer charges restricted to storm water service."
+    major: true
+  - number: 210
+    name: "Horizons"
+    type: special-revenue
+    constraint_tier: unknown
+    restriction_note: "The document lumps it with grants but establishes no restriction."
+`
+
+// The entries are deliberately out of slug order, so Categories() sorting is
+// a real assertion rather than a restatement of the fixture.
+const validTaxonomy = `
+schema_version: 1
+categories:
+  - slug: taxes
+    label: "Taxes"
+    kinds: [revenue]
+    assignable: false
+    derived: true
+    rationale: "A rollup node; the city prints no total over the three tax rows."
+    source_note: "Budget Book p. 66."
+  - slug: taxes/property
+    label: "Property Taxes"
+    document_term: "Property Taxes"
+    parent: taxes
+    kinds: [revenue]
+    pages: [66, 127]
+    contra_rows:
+      - term: "ERAF"
+        page: 127
+    note: "Two of the detail lines are negative."
+  - slug: use-of-money-and-property
+    label: "Use of Money And Property"
+    document_term: "Use of Money And Property"
+    kinds: [revenue]
+    pages: [66, 129]
+    aliases:
+      - term: "Use of Money & Prop"
+        pages: [131, 132]
+  - slug: debt-services
+    label: "Debt Services"
+    document_term: "Debt Services"
+    kinds: [expenditure]
+    pages: [66, 183]
+`
+
+// registryFS builds an in-memory data/ directory. An empty body means "use
+// the valid fixture", so a rejection case shows only the file it breaks.
+func registryFS(t *testing.T, funds, taxonomy string) fstest.MapFS {
+	t.Helper()
+	if funds == "" {
+		funds = validFunds
+	}
+	if taxonomy == "" {
+		taxonomy = validTaxonomy
+	}
+	return fstest.MapFS{
+		FundsFile:    &fstest.MapFile{Data: []byte(funds)},
+		TaxonomyFile: &fstest.MapFile{Data: []byte(taxonomy)},
+	}
+}
+
+func load(t *testing.T, funds, taxonomy string) *Registry {
+	t.Helper()
+	r, err := Load(registryFS(t, funds, taxonomy))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return r
+}
+
+func TestCategoryReadsTheWholeEntry(t *testing.T) {
+	r := load(t, "", "")
+
+	got, ok := r.Category("taxes/property")
+	if !ok {
+		t.Fatal(`Category("taxes/property") not found`)
+	}
+	want := Category{
+		Slug:         "taxes/property",
+		Label:        "Property Taxes",
+		DocumentTerm: "Property Taxes",
+		Parent:       "taxes",
+		Kinds:        []string{"revenue"},
+		Pages:        []int{66, 127},
+		ContraRows:   []ContraRow{{Term: "ERAF", Page: 127}},
+		Note:         "Two of the detail lines are negative.",
+		Assignable:   true,
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Category(\"taxes/property\") mismatch (-want +got):\n%s", diff)
+	}
+
+	// An alias is published text and must survive load verbatim, ampersand
+	// and all: a mapping rule matches the printed label.
+	money, ok := r.Category("use-of-money-and-property")
+	if !ok {
+		t.Fatal(`Category("use-of-money-and-property") not found`)
+	}
+	if diff := cmp.Diff([]Alias{{Term: "Use of Money & Prop", Pages: []int{131, 132}}}, money.Aliases); diff != "" {
+		t.Errorf("aliases mismatch (-want +got):\n%s", diff)
+	}
+
+	if _, ok := r.Category("taxes/propery"); ok {
+		t.Error(`Category("taxes/propery") = ok, want a typo'd slug to be unknown`)
+	}
+}
+
+func TestLabelIsTheCitysWord(t *testing.T) {
+	r := load(t, "", "")
+
+	got, ok := r.Label("use-of-money-and-property")
+	if !ok {
+		t.Fatal(`Label("use-of-money-and-property") not found`)
+	}
+	if want := "Use of Money And Property"; got != want {
+		t.Errorf("Label = %q, want %q", got, want)
+	}
+	if _, ok := r.Label("nope"); ok {
+		t.Error(`Label("nope") = ok, want false`)
+	}
+}
+
+// A rollup and a typo are both unassignable, and the fixes differ: pick a
+// child versus correct the spelling. Category is what separates them.
+func TestAssignableSeparatesARollupFromATypo(t *testing.T) {
+	r := load(t, "", "")
+
+	if r.Assignable("taxes") {
+		t.Error(`Assignable("taxes") = true, want false: it is a rollup node`)
+	}
+	if _, ok := r.Category("taxes"); !ok {
+		t.Error(`Category("taxes") = not found, want the rollup to exist`)
+	}
+
+	if r.Assignable("taxs") {
+		t.Error(`Assignable("taxs") = true, want false`)
+	}
+	if _, ok := r.Category("taxs"); ok {
+		t.Error(`Category("taxs") = ok, want false`)
+	}
+
+	if !r.Assignable("taxes/property") {
+		t.Error(`Assignable("taxes/property") = false, want true`)
+	}
+}
+
+func TestCategoriesAreSortedCopies(t *testing.T) {
+	r := load(t, "", "")
+
+	got := r.Categories()
+	var slugs []string
+	for _, c := range got {
+		slugs = append(slugs, c.Slug)
+	}
+	want := []string{"debt-services", "taxes", "taxes/property", "use-of-money-and-property"}
+	if diff := cmp.Diff(want, slugs); diff != "" {
+		t.Errorf("Categories() slugs mismatch (-want +got):\n%s", diff)
+	}
+
+	// Writing through a returned value must not reach the registry: the
+	// site and `verify` share one Registry, and a consumer that trimmed a
+	// Pages slice would change what the other one reads.
+	for i := range got {
+		got[i].Slug = "clobbered"
+		got[i].Kinds = append(got[i].Kinds[:0], "clobbered")
+		if len(got[i].Pages) > 0 {
+			got[i].Pages[0] = -1
+		}
+		for j := range got[i].Aliases {
+			got[i].Aliases[j].Pages[0] = -1
+		}
+	}
+	again, ok := r.Category("taxes/property")
+	if !ok {
+		t.Fatal(`Category("taxes/property") not found after mutating a copy`)
+	}
+	if diff := cmp.Diff([]int{66, 127}, again.Pages); diff != "" {
+		t.Errorf("pages mismatch after mutating a copy (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff([]string{"revenue"}, again.Kinds); diff != "" {
+		t.Errorf("kinds mismatch after mutating a copy (-want +got):\n%s", diff)
+	}
+	money, _ := r.Category("use-of-money-and-property")
+	if diff := cmp.Diff([]int{131, 132}, money.Aliases[0].Pages); diff != "" {
+		t.Errorf("alias pages mismatch after mutating a copy (-want +got):\n%s", diff)
+	}
+}
+
+func TestFunds(t *testing.T) {
+	r := load(t, "", "")
+
+	got, ok := r.Fund(610)
+	if !ok {
+		t.Fatal("Fund(610) not found")
+	}
+	want := Fund{
+		Number:          610,
+		Name:            "Stormwater",
+		Type:            "enterprise",
+		ConstraintTier:  "restricted-by-law",
+		RestrictionNote: "Ratepayer charges restricted to storm water service.",
+		Major:           true,
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Fund(610) mismatch (-want +got):\n%s", diff)
+	}
+
+	// `major` is absent, not false, for most funds; absence reads as false
+	// because the budget book only ever says so positively.
+	horizons, ok := r.Fund(210)
+	if !ok {
+		t.Fatal("Fund(210) not found")
+	}
+	if horizons.Major {
+		t.Error("Fund(210).Major = true, want false for an unlabelled fund")
+	}
+
+	if _, ok := r.Fund(999); ok {
+		t.Error("Fund(999) = ok, want false")
+	}
+}
+
+// "we could not classify this fund" and "this fund does not exist" are
+// different failures and only the first is normal.
+func TestConstraintTierSeparatesUnknownFromAbsent(t *testing.T) {
+	r := load(t, "", "")
+
+	if got, want := r.ConstraintTier(210), "unknown"; got != want {
+		t.Errorf("ConstraintTier(210) = %q, want %q", got, want)
+	}
+	if got, want := r.ConstraintTier(100), "discretionary"; got != want {
+		t.Errorf("ConstraintTier(100) = %q, want %q", got, want)
+	}
+	if got := r.ConstraintTier(999); got != "" {
+		t.Errorf("ConstraintTier(999) = %q, want %q for a fund that is not listed", got, "")
+	}
+}
+
+func TestFundGroupsComeFromTheFile(t *testing.T) {
+	r := load(t, "", "")
+
+	got := r.FundGroups()
+	want := []string{"enterprise", "general", "special-revenue"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("FundGroups() mismatch (-want +got):\n%s", diff)
+	}
+
+	for _, name := range want {
+		if !r.FundGroup(name) {
+			t.Errorf("FundGroup(%q) = false, want true", name)
+		}
+	}
+	// A type this package knows about but the loaded file does not use is
+	// not a group: `fund_group:` names a block of funds in the document.
+	if r.FundGroup("permanent") {
+		t.Error(`FundGroup("permanent") = true, want false when no fund has that type`)
+	}
+	if r.FundGroup("Enterprise") {
+		t.Error(`FundGroup("Enterprise") = true, want false: the values are lowercase`)
+	}
+
+	got[0] = "clobbered"
+	if again := r.FundGroups(); again[0] != "enterprise" {
+		t.Errorf("FundGroups()[0] = %q after mutating a copy, want %q", again[0], "enterprise")
+	}
+}
+
+// The renaming that taxonomy.yaml's header warns about, checked against the
+// real files: `debt-service` is a fund TYPE and `debt-services` an
+// expenditure CATEGORY. Neither string may resolve on the other axis.
+func TestDebtServiceIsNotDebtServices(t *testing.T) {
+	r, err := Load(os.DirFS(realData))
+	if err != nil {
+		t.Fatalf("Load(%s): %v", realData, err)
+	}
+
+	if !r.FundGroup(fundTypeDebtService) {
+		t.Errorf("FundGroup(%q) = false, want true", fundTypeDebtService)
+	}
+	if _, ok := r.Category(fundTypeDebtService); ok {
+		t.Errorf("Category(%q) = ok, want false: it is a fund type, not a category",
+			fundTypeDebtService)
+	}
+	if !r.Assignable(categoryDebtServices) {
+		t.Errorf("Assignable(%q) = false, want true", categoryDebtServices)
+	}
+	if r.FundGroup(categoryDebtServices) {
+		t.Errorf("FundGroup(%q) = true, want false: it is a category, not a fund type",
+			categoryDebtServices)
+	}
+}
+
+func numbers(funds []Fund) []int {
+	out := make([]int, 0, len(funds))
+	for _, f := range funds {
+		out = append(out, f.Number)
+	}
+	return out
+}
+
+// The counts are the check that a registry edit which still parses has not
+// quietly changed what a downstream consumer sees.
+func TestLoadRealRegistries(t *testing.T) {
+	r, err := Load(os.DirFS(realData))
+	if err != nil {
+		t.Fatalf("Load(%s): %v", realData, err)
+	}
+
+	cats := r.Categories()
+	if got, want := len(cats), 25; got != want {
+		t.Errorf("len(Categories()) = %d, want %d", got, want)
+	}
+	if got, want := len(r.FundGroups()), 7; got != want {
+		t.Errorf("len(FundGroups()) = %d, want %d", got, want)
+	}
+	wantGroups := []string{"capital", "debt-service", "enterprise", "general",
+		"internal-service", "permanent", "special-revenue"}
+	if diff := cmp.Diff(wantGroups, r.FundGroups()); diff != "" {
+		t.Errorf("FundGroups() mismatch (-want +got):\n%s", diff)
+	}
+
+	// Every category must carry a label, because that is the string the site
+	// prints in place of the slug.
+	var unassignable, derived []string
+	for _, c := range cats {
+		if c.Label == "" {
+			t.Errorf("category %q has no label", c.Slug)
+		}
+		if !c.Assignable {
+			unassignable = append(unassignable, c.Slug)
+		}
+		if c.Derived {
+			derived = append(derived, c.Slug)
+			if c.Rationale == "" || c.SourceNote == "" {
+				t.Errorf("derived category %q has rationale %q and source_note %q, want both set",
+					c.Slug, c.Rationale, c.SourceNote)
+			}
+		}
+	}
+	// The three rollup nodes, and only those three: adding a fourth changes
+	// what a mapping rule may write and must be a deliberate edit here too.
+	wantUnassignable := []string{"fund-balance", "taxes", "transfers"}
+	if diff := cmp.Diff(wantUnassignable, unassignable); diff != "" {
+		t.Errorf("non-assignable slugs mismatch (-want +got):\n%s", diff)
+	}
+	if got, want := len(derived), 7; got != want {
+		t.Errorf("derived categories = %d %v, want %d", got, derived, want)
+	}
+
+	// 112 funds, every one with a tier this package recognizes.
+	funds := r.Funds()
+	if got, want := len(funds), 112; got != want {
+		t.Errorf("len(Funds()) = %d, want %d", got, want)
+	}
+	for _, f := range funds {
+		if !slices.Contains(constraintTiers, f.ConstraintTier) {
+			t.Errorf("fund %d has constraint_tier %q", f.Number, f.ConstraintTier)
+		}
+		if !slices.Contains(wantGroups, f.Type) {
+			t.Errorf("fund %d has type %q", f.Number, f.Type)
+		}
+	}
+	if !slices.IsSorted(numbers(funds)) {
+		t.Error("Funds() is not ordered by number")
+	}
+
+	// Spot checks that the accessors read the file rather than a default:
+	// fund 291's name follows p259 and not the appendix's "Community
+	// Beneift Fund" typo, and the taxonomy's rollups stay unassignable.
+	f291, ok := r.Fund(291)
+	if !ok {
+		t.Fatal("Fund(291) not found")
+	}
+	if got, want := f291.Name, "Community Benefit Fund"; got != want {
+		t.Errorf("Fund(291).Name = %q, want %q", got, want)
+	}
+	if got, want := r.ConstraintTier(100), "discretionary"; got != want {
+		t.Errorf("ConstraintTier(100) = %q, want %q", got, want)
+	}
+	label, ok := r.Label("use-of-money-and-property")
+	if !ok {
+		t.Fatal(`Label("use-of-money-and-property") not found`)
+	}
+	if want := "Use of Money And Property"; label != want {
+		t.Errorf("Label = %q, want %q; the capital A is the document's", label, want)
+	}
+}
