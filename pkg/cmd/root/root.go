@@ -7,6 +7,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/jcrussell/livermore-budget/internal/build"
+	// internal/build is the link-time version metadata and already holds the
+	// name `build`, so the command package that produces facts is aliased
+	// rather than renamed: `fisc build` is the user-facing name and the
+	// package should keep it.
+	buildcmd "github.com/jcrussell/livermore-budget/pkg/cmd/build"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -66,8 +71,9 @@ committed artifacts, so it needs neither Python nor the source PDFs.`,
 		&cobra.Group{ID: GroupSite, Title: "Site commands"},
 	)
 
-	// Feature commands are added here as they land: build, verify, reanchor,
-	// export. See beads fisc-mq4.* and fisc-gxa.*.
+	// Feature commands are added here as they land: verify, reanchor, export.
+	// See beads fisc-mq4.* and fisc-gxa.*.
+	cmd.AddCommand(buildcmd.NewCmdBuild(f, nil))
 
 	return cmd
 }

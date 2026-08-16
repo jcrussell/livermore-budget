@@ -21,10 +21,15 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
+
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // SchemaVersion is the only manifest version this package understands.
@@ -149,6 +154,47 @@ func Open(fsys fs.FS) (*Doc, error) {
 	// Filenames are zero-padded, so lexical order is ordinal order.
 	for page := range d.tables {
 		sort.Strings(d.tables[page])
+	}
+	return d, nil
+}
+
+// extractedDir is where tools/extract.py writes, relative to the repository
+// root. It is spelled once, here, because a command that joined its own copy
+// of the path would drift from the reader that has to find the result.
+const extractedDir = "data/extracted"
+
+// OpenDoc opens the extraction of docID beneath a repository root, and refuses
+// one whose manifest names a different document.
+//
+// The disagreement check is the whole reason this exists rather than callers
+// writing the Join themselves. NewResolver already compares a rule file's
+// doc_id against the extraction's — but it compares against the manifest, so a
+// directory holding the wrong extraction agrees with itself and yields
+// confident wrong facts carrying working-looking provenance. The directory
+// name is the one witness a self-consistent corpus cannot satisfy.
+func OpenDoc(root, docID string) (*Doc, error) {
+	// docID arrives from a rule file's doc_id, which the parser only checks is
+	// non-empty. Joining it unguarded lets "../../../etc" address anything on
+	// the filesystem, and the identity check below cannot catch that: an
+	// extraction placed out of tree is free to declare whatever doc_id it
+	// likes and would agree with itself. A document id names one directory, so
+	// it may not contain a separator or a parent reference at all.
+	if !fs.ValidPath(docID) || docID == "." || strings.ContainsAny(docID, `/\`) {
+		return nil, cmdutil.WithHint(
+			fmt.Errorf("document id %q is not a single directory name", docID),
+			"doc_id names one directory under "+extractedDir+
+				"; it may not contain a path separator or \"..\"")
+	}
+	dir := filepath.Join(root, extractedDir, docID)
+	d, err := Open(os.DirFS(dir))
+	if err != nil {
+		return nil, fmt.Errorf("open extraction %q: %w", dir, err)
+	}
+	if d.DocID() != docID {
+		return nil, cmdutil.WithHint(
+			fmt.Errorf("extraction %q declares doc_id %q, want %q", dir, d.DocID(), docID),
+			"an extraction directory is named for the document it holds; "+
+				"re-run make extract rather than renaming or copying the directory")
 	}
 	return d, nil
 }

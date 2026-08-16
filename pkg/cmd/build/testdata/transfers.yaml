@@ -1,0 +1,74 @@
+# A synthetic transfer schedule, for the totals policy. The pages it maps are
+# written by the test (build_test.go), because the corpus contains no page with
+# this shape yet: the real transfer schedule at Budget Book p76 extracts as four
+# disjoint text blocks and will be a manual rule.
+#
+# Between them the two rules here cover every case the policy has to separate:
+#
+#   transfers-out  declares no total_row at all, so neither of its parts may be
+#                  checked. Its p77 part has a stop_at, so CheckTotals would
+#                  NOT report "no stated totals" for it -- it would report
+#                  ErrNotFound, indistinguishable from a real failure. That is
+#                  why the policy asks the rule and not the error.
+#   transfers-in   declares a total_row. Its p78 part ties to the total the
+#                  page prints; its p79 part is a label-less continuation with
+#                  no stop_at, so there is no anchor to read totals from and
+#                  the part is unchecked rather than failed.
+#
+# transfers-out p77 also declares an omitted row, which is the only way a row
+# absent from a page becomes visible: it produces no fact, so facts.jsonl
+# cannot show it.
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  - id: transfers-out
+    substrate: text
+    kind: transfer_out
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    parts:
+      - page: 76
+        section: "TRANSFERS OUT:"
+        stop_at: "END OF SCHEDULE"
+        columns:
+          - {fund_group: all-funds, fiscal_year: 2026}
+          - {fund_group: all-funds, fiscal_year: 2027}
+      - page: 77
+        labels_from: 76
+        section: "TRANSFERS OUT:"
+        stop_at: "END OF SCHEDULE"
+        omitted_rows: ["Enterprise Funds"]
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+    rows:
+      - {label: "General Fund", category: transfers/general-fund}
+      - {label: "Enterprise Funds", category: transfers/enterprise-funds}
+
+  - id: transfers-in
+    substrate: text
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL TRANSFERS IN:"
+    parts:
+      - page: 78
+        section: "TRANSFERS IN:"
+        # As on Budget Book p66, the section header's words occur again inside
+        # the totals line, so the ordinal says which one starts the block.
+        section_ordinal: 1
+        stop_at: "TOTAL TRANSFERS IN:"
+        columns:
+          - {fund_group: all-funds, fiscal_year: 2026}
+          - {fund_group: all-funds, fiscal_year: 2027}
+      - page: 79
+        labels_from: 78
+        section: "TRANSFERS IN:"
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+    rows:
+      - {label: "General Fund", category: transfers/general-fund}

@@ -1,0 +1,122 @@
+# The citywide spine: Budget Book pp. 66-67, "Citywide Revenues, Expenditures,
+# and Fund Balance/Working Capital". Every control total in the project ties to
+# this schedule, so it is mapped first and the rest is decomposed under it.
+#
+# This is a copy of internal/mapping/testdata/spine.yaml, and the pages beside
+# it are copies of testdata/pages/. The build command's tests stand up a whole
+# repository in a temp dir, so they need their own copies rather than a reach
+# into another package's fixtures; they deliberately do NOT read mappings/,
+# which is the file this project publishes and must be free to change.
+#
+# This file is a test fixture AND the shape the real mappings/ file will take.
+# It exercises the two things that make this schema awkward:
+#   - a logical table spanning two pages where the second carries NO row labels
+#   - a continuation page that omits rows which are zero across all its columns
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  - id: spine-revenues
+    substrate: text
+    kind: revenue
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL REVENUES:"
+    note: >-
+      p66 carries the row labels and the General Fund and Enterprise columns
+      (4 values per row). p67 continues the same rows for the other four fund
+      groups with nothing but numbers, so its row identity is positional
+      against p66. Verified: all 16 column totals tie exactly to the totals
+      the document prints. See docs/m0-spike.md.
+    parts:
+      - page: 66
+        section: "REVENUES:"
+        # "REVENUES:" occurs twice on this page: here, and inside the
+        # "TOTAL REVENUES:" line below. The section header is the first, and
+        # saying so is what lets resolution refuse an anchor it cannot place
+        # rather than take whichever match it happens to find first.
+        section_ordinal: 1
+        stop_at: "TOTAL REVENUES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+      - page: 67
+        labels_from: 66
+        # p67 has no row labels, so it has no section header either. The block
+        # starts where the column headers end: the fund-group names, then eight
+        # "Budget" cells, then the four "FY 2025-26 / FY 2026-27" pairs. The
+        # last of those four "FY 2026-27" ends exactly at the end of the header
+        # line, which makes it the page's real boundary between labels and
+        # figures -- and it fails closed if the city adds a fifth fund group,
+        # since a fourth occurrence would then land mid-header and the "Budget"
+        # tokens after it are not amounts.
+        section: "FY 2026-27"
+        section_ordinal: 4
+        # There is no "TOTAL REVENUES:" to stop at. The totals row is the first
+        # line whose figures are prefixed with "$" -- every data row above it is
+        # bare -- so "$" is the boundary. Anchoring on the total's VALUE would be
+        # circular: it is the figure the totals check exists to verify, and it
+        # changes on any revision.
+        stop_at: "$"
+        # This part declares NO omitted rows, and that is the corrected state.
+        # It used to declare "Licenses & Permits", on the belief that the page
+        # omits the row because it is zero in all four of this page's fund
+        # groups. The page does not omit it. `pdftotext -bbox` puts ten revenue
+        # rows here at the same ten y-positions as p66's ten labelled rows;
+        # xberg's content_filter.strip_repeating_text was deleting the third of
+        # three identical all-dash rows as if it were boilerplate. See fisc-c00.
+        # The count guard is what caught it: 72 tokens where 80 were required.
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {fund_group: internal-service, fiscal_year: 2026}
+          - {fund_group: internal-service, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", category: taxes/property}
+      - {label: "Other Taxes", category: taxes/other}
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money And Property", category: use-of-money-and-property}
+      - {label: "Contributions Outsourced", category: contributions-outsourced}
+      - {label: "Miscellaneous Revenue", category: miscellaneous-revenue}
+      - {label: "Sales Taxes", category: taxes/sales}
+      - {label: "Fines & Forfeitures", category: fines-and-forfeitures}
+      - {label: "Licenses & Permits", category: licenses-and-permits}
+
+  - id: spine-expenditures
+    substrate: text
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL EXPENDITURES:"
+    note: >-
+      Object categories, not departments. The city publishes department-by-
+      category only for the General Fund (p167); everywhere else the
+      department and category breakdowns are two marginals of the same total
+      with no published joint, so a four-column Sankey outside the GF would
+      require inventing numbers.
+    parts:
+      - page: 66
+        section: "EXPENDITURES:"
+        # As with REVENUES: above, the second occurrence is inside
+        # "TOTAL EXPENDITURES:".
+        section_ordinal: 1
+        stop_at: "TOTAL EXPENDITURES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+      - {label: "Debt Services", category: debt-services}

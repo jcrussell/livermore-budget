@@ -1,0 +1,515 @@
+package build
+
+import (
+	"bytes"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+
+	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/pkg/iostreams"
+)
+
+// docID is the document every fixture here belongs to. It is the real one:
+// the rule files declare it, and OpenDoc requires the extraction directory to
+// be named for it.
+const docID = "livermore-budget-fy2026-2027"
+
+// allFundsFY2026Revenues is the control total the Budget Book prints for
+// FY2025-26 citywide revenues, in dollars. Every revenue fact the spine
+// produces for that year must add up to it.
+const allFundsFY2026Revenues = 299_969_007
+
+// The synthetic transfer schedule transfers.yaml maps. It is written here
+// rather than copied from data/extracted/ because the corpus contains no page
+// of this shape: a two-page schedule whose second page carries no labels and
+// whose totals the document never prints. Real pages are preferred wherever
+// one exercises the behaviour (see spinePages); this is a case where none does.
+const (
+	transfersOutPage = `TRANSFERS OUT:
+General Fund 10,037,797 10,146,598
+Enterprise Funds 19,813,147 24,680,000
+END OF SCHEDULE
+`
+	transfersOutContinuationPage = `TRANSFERS OUT:
+1,000 2,000
+END OF SCHEDULE
+`
+	transfersInPage = `TRANSFERS IN:
+General Fund 480,400 486,735
+TOTAL TRANSFERS IN: $480,400 $486,735
+`
+	transfersInContinuationPage = `TRANSFERS IN:
+5,000 6,000
+`
+)
+
+func writeRepoFile(t *testing.T, path, body string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+		t.Fatalf("mkdir for %s: %v", path, err)
+	}
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+// testRepo stands up a repository root: an extraction holding the given pages,
+// and a mapping directory holding the named fixtures. The mapping directory is
+// always created, so a test can ask what an empty one does.
+func testRepo(t *testing.T, pages map[int]string, rules ...string) string {
+	t.Helper()
+	root := t.TempDir()
+
+	extracted := filepath.Join(root, "data", "extracted", docID)
+	artifacts := map[string]corpus.Artifact{}
+	for n, body := range pages {
+		name := corpus.PagePath(n)
+		writeRepoFile(t, filepath.Join(extracted, filepath.FromSlash(name)), body)
+		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
+	}
+	man, err := json.Marshal(map[string]any{
+		"schema_version": corpus.SchemaVersion,
+		"doc_id":         docID,
+		"artifacts":      artifacts,
+	})
+	if err != nil {
+		t.Fatalf("marshal manifest: %v", err)
+	}
+	writeRepoFile(t, filepath.Join(extracted, "manifest.json"), string(man))
+
+	if err := os.MkdirAll(filepath.Join(root, defaultMappings), 0o750); err != nil {
+		t.Fatalf("mkdir mappings: %v", err)
+	}
+	for _, name := range rules {
+		body, err := os.ReadFile(filepath.Join("testdata", name))
+		if err != nil {
+			t.Fatalf("read rule fixture: %v", err)
+		}
+		writeRepoFile(t, filepath.Join(root, defaultMappings, name), string(body))
+	}
+	return root
+}
+
+// pageFixture reads one page of the Budget Book. The fixtures under testdata/
+// are byte-identical copies of data/extracted/, so a build that passes here
+// passes against the committed corpus, and none of this needs Python or the
+// source PDF.
+func pageFixture(t *testing.T, n int) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("testdata", "pages", fmt.Sprintf("p%04d.md", n)))
+	if err != nil {
+		t.Fatalf("read page fixture: %v", err)
+	}
+	return string(b)
+}
+
+func spinePages(t *testing.T) map[int]string {
+	t.Helper()
+	return map[int]string{66: pageFixture(t, 66), 67: pageFixture(t, 67)}
+}
+
+func transferPages() map[int]string {
+	return map[int]string{
+		76: transfersOutPage,
+		77: transfersOutContinuationPage,
+		78: transfersInPage,
+		79: transfersInContinuationPage,
+	}
+}
+
+// testOptions returns Options wired to root with the flag defaults, plus the
+// two streams a test asserts on.
+func testOptions(t *testing.T, root string) (*Options, *bytes.Buffer, *bytes.Buffer) {
+	t.Helper()
+	ios, _, out, errOut := iostreams.Test()
+	return &Options{
+		IO:       ios,
+		RepoRoot: func() (string, error) { return root, nil },
+		Output:   defaultOutput,
+		Mappings: defaultMappings,
+	}, out, errOut
+}
+
+func readFacts(t *testing.T, path string) []fact.Fact {
+	t.Helper()
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatalf("open %s: %v", path, err)
+	}
+	t.Cleanup(func() { _ = f.Close() })
+	facts, err := fact.Read(f)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return facts
+}
+
+// TestBuildTiesToTheDocumentsOwnTotals is the check this command exists to
+// make. It resolves the citywide spine end to end and asserts the published
+// file against the figures the city printed, not against a golden blob: the
+// arithmetic is what a reader of this project is being asked to trust.
+func TestBuildTiesToTheDocumentsOwnTotals(t *testing.T) {
+	root := testRepo(t, spinePages(t), "spine.yaml")
+	opts, out, errOut := testOptions(t, root)
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+
+	facts := readFacts(t, filepath.Join(root, defaultOutput))
+	// 40 revenue values on p66, 16 expenditure values on p66, 80 on p67 —
+	// every one a cell the city printed.
+	if got, want := len(facts), 136; got != want {
+		t.Errorf("wrote %d facts, want %d", got, want)
+	}
+	if err := fact.CheckSorted(facts); err != nil {
+		t.Errorf("the written file is not in canonical order: %v", err)
+	}
+	if err := fact.CheckUniqueIDs(facts); err != nil {
+		t.Errorf("the written file has colliding ids: %v", err)
+	}
+
+	var revenues int64
+	for _, f := range facts {
+		if f.Kind == mapping.KindRevenue && f.FiscalYear == 2026 {
+			revenues += f.AmountCents
+		}
+	}
+	if want := int64(allFundsFY2026Revenues) * 100; revenues != want {
+		t.Errorf("FY2025-26 citywide revenues = %d cents, want %d", revenues, want)
+	}
+
+	// The facts went to a file, so stdout must stay empty: nothing this
+	// command prints belongs in a pipe (byob-iostreams.3).
+	if got := out.String(); got != "" {
+		t.Errorf("got stdout %q, want it empty", got)
+	}
+	want := "wrote 136 facts to facts/facts.jsonl\n" +
+		"2 rules over 3 parts in 1 rule file\n" +
+		"3 of 3 parts tie to a total the document prints, covering 16 columns\n"
+	if diff := cmp.Diff(want, errOut.String()); diff != "" {
+		t.Errorf("summary mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestBuildReportsWhatItCouldNotCheck covers the totals policy from the
+// command's side: the parts it checked, the parts it could not, and why.
+func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
+	root := testRepo(t, transferPages(), "transfers.yaml")
+	opts, out, errOut := testOptions(t, root)
+	opts.JSON = true
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+
+	var got Report
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("decode report: %v\n%s", err, out)
+	}
+	want := Report{
+		Output:    "facts/facts.jsonl",
+		Facts:     10,
+		RuleFiles: 1,
+		Rules:     2,
+		Parts:     4,
+		// Only p78 has a total the document prints and a rule that names it.
+		PartsChecked: 1,
+		ColumnsTied:  2,
+		PartsUnchecked: []UncheckedPart{
+			{RuleID: "transfers-out", Page: 76, Reason: reasonNoTotalRow},
+			{RuleID: "transfers-out", Page: 77, Reason: reasonNoTotalRow},
+			{RuleID: "transfers-in", Page: 79, Reason: reasonNoStatedTotals},
+		},
+		Omissions: []DeclaredOmission{
+			{RuleID: "transfers-out", Page: 77, RowLabel: "Enterprise Funds"},
+		},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("report mismatch (-want +got):\n%s", diff)
+	}
+
+	// --json is the machine-readable form, so it replaces the chatter rather
+	// than accompanying it.
+	if got := errOut.String(); got != "" {
+		t.Errorf("got stderr %q, want it empty under --json", got)
+	}
+}
+
+// TestBuildNamesEveryUncheckedPart is the human-readable half of the same
+// policy. An unchecked part that is merely counted is an unchecked part nobody
+// will ever look up.
+func TestBuildNamesEveryUncheckedPart(t *testing.T) {
+	root := testRepo(t, transferPages(), "transfers.yaml")
+	opts, _, errOut := testOptions(t, root)
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+
+	for _, want := range []string{
+		"UNCHECKED transfers-out p76: " + reasonNoTotalRow,
+		"UNCHECKED transfers-out p77: " + reasonNoTotalRow,
+		"UNCHECKED transfers-in p79: " + reasonNoStatedTotals,
+		`DECLARED OMISSION transfers-out p77: the page does not print row "Enterprise Funds"`,
+	} {
+		if !strings.Contains(errOut.String(), want) {
+			t.Errorf("summary %q does not contain %q", errOut, want)
+		}
+	}
+}
+
+func ruleByID(t *testing.T, f *mapping.File, id string) *mapping.Rule {
+	t.Helper()
+	for i := range f.Rules {
+		if f.Rules[i].ID == id {
+			return &f.Rules[i]
+		}
+	}
+	t.Fatalf("no rule %q in %s", id, f.Path)
+	return nil
+}
+
+func partOn(t *testing.T, r *mapping.Rule, page int) *mapping.Part {
+	t.Helper()
+	for i := range r.Parts {
+		if r.Parts[i].Page == page {
+			return &r.Parts[i]
+		}
+	}
+	t.Fatalf("rule %q has no part for page %d", r.ID, page)
+	return nil
+}
+
+// TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck pins the reason
+// Report.checkTotals asks the rule rather than the error it gets back.
+//
+// A part of a rule that declares no total_row does not report "no stated
+// totals": it has a stop_at anchor, StatedTotals looks for an amount run after
+// it, and finding none reports ErrNotFound — the very error a rule WITH a
+// total row produces when that row has moved, which must fail the build. If
+// this test ever fails, the policy in checkTotals has to be revisited, because
+// treating ErrNotFound as "unchecked" would silence real breakage.
+func TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck(t *testing.T) {
+	root := testRepo(t, transferPages(), "transfers.yaml")
+	files, err := mapping.LoadDir(os.DirFS(root), defaultMappings)
+	if err != nil {
+		t.Fatalf("LoadDir: %v", err)
+	}
+	doc, err := corpus.OpenDoc(root, docID)
+	if err != nil {
+		t.Fatalf("OpenDoc: %v", err)
+	}
+	r, err := mapping.NewResolver(doc, files[0])
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+
+	noTotalRow := ruleByID(t, files[0], "transfers-out")
+	err = r.CheckTotals(noTotalRow, partOn(t, noTotalRow, 77))
+	if !errors.Is(err, mapping.ErrNotFound) {
+		t.Errorf("CheckTotals on a rule with no total_row = %v, want ErrNotFound", err)
+	}
+	if errors.Is(err, mapping.ErrNoStatedTotals) {
+		t.Error("CheckTotals reported ErrNoStatedTotals for a rule with no total_row; " +
+			"the policy could then be written as an error check")
+	}
+
+	hasTotalRow := ruleByID(t, files[0], "transfers-in")
+	err = r.CheckTotals(hasTotalRow, partOn(t, hasTotalRow, 79))
+	if !errors.Is(err, mapping.ErrNoStatedTotals) {
+		t.Errorf("CheckTotals on a part with no anchor = %v, want ErrNoStatedTotals", err)
+	}
+}
+
+// TestBuildFailsWhenAColumnDoesNotTie is the check the whole project leans on:
+// the document checking our work. A figure that has drifted must fail the
+// build, and must not replace the fact store on its way out.
+func TestBuildFailsWhenAColumnDoesNotTie(t *testing.T) {
+	pages := spinePages(t)
+	// Property Taxes, General Fund, FY2025-26, one dollar out. Everything else
+	// about the page is untouched, so the only thing that can fail is the tie.
+	const printed, drifted = "64,143,762", "64,143,763"
+	if !strings.Contains(pages[66], printed) {
+		t.Fatalf("page 66 fixture no longer prints %s", printed)
+	}
+	pages[66] = strings.Replace(pages[66], printed, drifted, 1)
+
+	root := testRepo(t, pages, "spine.yaml")
+	opts, _, errOut := testOptions(t, root)
+
+	// A previous build's output must survive a failed one.
+	target := filepath.Join(root, defaultOutput)
+	writeRepoFile(t, target, "previous build\n")
+
+	err := buildRun(opts)
+	if err == nil {
+		t.Fatal("buildRun = nil error, want the totals check to fail")
+	}
+	for _, want := range []string{"spine-revenues", "off by"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err, want)
+		}
+	}
+	if got, want := readFileString(t, target), "previous build\n"; got != want {
+		t.Errorf("fact store = %q, want the failed build to have left %q", got, want)
+	}
+	if got := errOut.String(); got != "" {
+		t.Errorf("got summary %q for a failed build, want none", got)
+	}
+}
+
+func readFileString(t *testing.T, path string) string {
+	t.Helper()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return string(b)
+}
+
+// TestBuildRefusesToWriteAnEmptyFactStore covers the mistyped --mappings: a
+// directory with no rules in it produces no facts, and writing them over a
+// good fact store would look like a successful build that deleted everything.
+func TestBuildRefusesToWriteAnEmptyFactStore(t *testing.T) {
+	root := testRepo(t, spinePages(t))
+	opts, _, _ := testOptions(t, root)
+
+	err := buildRun(opts)
+	if err == nil {
+		t.Fatal("buildRun = nil error, want a refusal")
+	}
+	if !strings.Contains(err.Error(), "no facts") {
+		t.Errorf("error %q does not say that nothing was produced", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, defaultOutput)); !errors.Is(statErr, os.ErrNotExist) {
+		t.Errorf("stat facts file = %v, want it never to have been written", statErr)
+	}
+}
+
+func TestBuildWithNoMappingDirectory(t *testing.T) {
+	root := t.TempDir()
+	opts, _, _ := testOptions(t, root)
+
+	err := buildRun(opts)
+	if err == nil {
+		t.Fatal("buildRun = nil error, want a failure")
+	}
+	var hint *cmdutil.ErrHint
+	if !errors.As(err, &hint) {
+		t.Errorf("error %q carries no hint, and the user needs to know the path is repo-relative", err)
+	}
+}
+
+// TestValidateRejectsPathsBeforeAnythingHappens covers byob-input-validation.5:
+// a bad flag must be a usage error, and must be reported before the command has
+// resolved a repository root, opened an extraction, or written a byte.
+func TestValidateRejectsPathsBeforeAnythingHappens(t *testing.T) {
+	tests := []struct {
+		name             string
+		output, mappings string
+		want             string
+	}{
+		{"empty output", "", defaultMappings, "--output is empty"},
+		{"empty mappings", defaultOutput, "", "--mappings is empty"},
+		{"absolute output", "/etc/facts.jsonl", defaultMappings, "absolute path"},
+		{"absolute mappings", defaultOutput, "/etc", "absolute path"},
+		{"escaping output", "../../facts.jsonl", defaultMappings, "climbs above"},
+		{"escaping mappings", defaultOutput, "..", "climbs above"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ios, _, _, _ := iostreams.Test()
+			opts := &Options{
+				IO: ios,
+				RepoRoot: func() (string, error) {
+					t.Error("the repository root was resolved for a flag that never validated")
+					return "", nil
+				},
+				Output:   tt.output,
+				Mappings: tt.mappings,
+			}
+
+			err := buildRun(opts)
+			if err == nil {
+				t.Fatalf("buildRun with output %q mappings %q = nil error, want %q",
+					tt.output, tt.mappings, tt.want)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error %q does not contain %q", err, tt.want)
+			}
+			// A FlagError is what makes this exit 2 rather than 1, which is
+			// how a script tells "you called me wrong" from "it broke".
+			var flagErr *cmdutil.FlagError
+			if !errors.As(err, &flagErr) {
+				t.Errorf("error %v is not a FlagError", err)
+			}
+		})
+	}
+}
+
+// TestNewCmdBuildParsesItsFlags exercises the parsing layer alone: runF takes
+// the test path, so no build runs and nothing is written.
+func TestNewCmdBuildParsesItsFlags(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	f := &cmdutil.Factory{
+		IOStreams: ios,
+		RepoRoot: func() (string, error) {
+			t.Error("RepoRoot resolved during flag parsing")
+			return "", nil
+		},
+	}
+
+	var got *Options
+	cmd := NewCmdBuild(f, func(o *Options) error {
+		got = o
+		return nil
+	})
+	cmd.SetOut(ios.Out)
+	cmd.SetErr(ios.ErrOut)
+	cmd.SetArgs([]string{"--output", "facts/draft.jsonl", "--mappings", "mappings/draft", "--json"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("Execute: %v", err)
+	}
+	if got == nil {
+		t.Fatal("runF was not called")
+	}
+	want := Options{Output: "facts/draft.jsonl", Mappings: "mappings/draft", JSON: true}
+	if diff := cmp.Diff(want, Options{Output: got.Output, Mappings: got.Mappings, JSON: got.JSON}); diff != "" {
+		t.Errorf("parsed flags mismatch (-want +got):\n%s", diff)
+	}
+	// The group is what puts build under "Data commands" in `fisc --help`;
+	// cobra panics at AddCommand time if it names a group root does not define.
+	if got, want := cmd.GroupID, "data"; got != want {
+		t.Errorf("GroupID = %q, want %q", got, want)
+	}
+}
+
+// TestNewCmdBuildRejectsPositionalArgs is the same class of bug as the
+// unknown-command one: `fisc build facts.jsonl` must not silently ignore the
+// argument and rebuild the default file.
+func TestNewCmdBuildRejectsPositionalArgs(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	cmd := NewCmdBuild(&cmdutil.Factory{IOStreams: ios}, func(*Options) error {
+		t.Error("the command ran with a stray positional argument")
+		return nil
+	})
+	cmd.SetOut(ios.Out)
+	cmd.SetErr(ios.ErrOut)
+	cmd.SetArgs([]string{"facts.jsonl"})
+
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("Execute = nil error, want a usage failure")
+	}
+}

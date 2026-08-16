@@ -3,7 +3,9 @@ package corpus
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -11,11 +13,16 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// realDoc is the committed extraction of the Budget Book. Tests read it
-// directly: it is checked in, so this needs neither Python nor the PDF, and it
-// is the only way to check that this reader and tools/extract.py still agree
-// about the artifact contract.
-const realDoc = "../../data/extracted/livermore-budget-fy2026-2027"
+// realRoot is the repository root, and realDocID the Budget Book extraction
+// committed under it. Tests read them directly: the artifacts are checked in,
+// so this needs neither Python nor the PDF, and it is the only way to check
+// that this reader and tools/extract.py still agree about the artifact
+// contract.
+const (
+	realRoot  = "../.."
+	realDocID = "livermore-budget-fy2026-2027"
+	realDoc   = realRoot + "/data/extracted/" + realDocID
+)
 
 // docFS builds a minimal in-memory document. Fixtures are inline so the
 // expectation and the input read on one screen (test-tempdir).
@@ -159,6 +166,80 @@ func TestTablesOnReturnsOrdinalOrder(t *testing.T) {
 	}
 }
 
+// writeExtraction lays down an extraction directory named dirName whose
+// manifest claims manifestDocID, so a test can make the two disagree.
+func writeExtraction(t *testing.T, root, dirName, manifestDocID string) {
+	t.Helper()
+	dir := filepath.Join(root, "data", "extracted", dirName)
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatalf("mkdir %s: %v", dir, err)
+	}
+	man, err := json.Marshal(map[string]any{
+		"schema_version": SchemaVersion,
+		"doc_id":         manifestDocID,
+		"artifacts":      map[string]Artifact{},
+	})
+	if err != nil {
+		t.Fatalf("marshal manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), man, 0o600); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+}
+
+func TestOpenDoc(t *testing.T) {
+	root := t.TempDir()
+	writeExtraction(t, root, "budget", "budget")
+
+	d, err := OpenDoc(root, "budget")
+	if err != nil {
+		t.Fatalf("OpenDoc: %v", err)
+	}
+	if got, want := d.DocID(), "budget"; got != want {
+		t.Errorf("DocID() = %q, want %q", got, want)
+	}
+}
+
+// TestOpenDocRefusesAMismatchedManifest is the check OpenDoc adds over Open.
+// A directory holding another document's extraction is internally consistent —
+// its manifest, pages and tables all agree with each other — so nothing
+// downstream can notice. The facts it produces would cite real pages of the
+// wrong document.
+func TestOpenDocRefusesAMismatchedManifest(t *testing.T) {
+	root := t.TempDir()
+	writeExtraction(t, root, "budget", "acfr")
+
+	_, err := OpenDoc(root, "budget")
+	if err == nil {
+		t.Fatal("OpenDoc = nil error, want a refusal")
+	}
+	for _, want := range []string{`"acfr"`, `"budget"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("OpenDoc error = %q, want it to contain %s", err, want)
+		}
+	}
+}
+
+func TestOpenDocWithNoSuchDocument(t *testing.T) {
+	_, err := OpenDoc(t.TempDir(), "nope")
+	if !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("OpenDoc error = %v, want it to wrap fs.ErrNotExist", err)
+	}
+	if !strings.Contains(err.Error(), filepath.Join("data", "extracted", "nope")) {
+		t.Errorf("OpenDoc error = %q, want it to name the directory it looked in", err)
+	}
+}
+
+func TestOpenDocReadsTheCommittedExtraction(t *testing.T) {
+	d, err := OpenDoc(realRoot, realDocID)
+	if err != nil {
+		t.Fatalf("OpenDoc(%s, %s): %v", realRoot, realDocID, err)
+	}
+	if got, want := d.DocID(), realDocID; got != want {
+		t.Errorf("DocID() = %q, want %q", got, want)
+	}
+}
+
 func TestCentroid(t *testing.T) {
 	tb := &Table{BBox: []float64{61, 275, 547, 398}}
 	x, y, ok := tb.Centroid()
@@ -223,5 +304,28 @@ func TestReadsTheCommittedExtraction(t *testing.T) {
 	}
 	if _, _, ok := first.Centroid(); !ok {
 		t.Error("Centroid() ok = false for a real table, want true")
+	}
+}
+
+// TestOpenDocRefusesAPathForADocumentID guards the one input to OpenDoc that
+// does not come from this repository: doc_id is whatever a mapping rule file
+// declares, and internal/mapping only checks that it is non-empty. A traversal
+// escapes the repository entirely, and the doc_id-agreement check cannot catch
+// it — an extraction sitting outside the tree declares its own doc_id and so
+// agrees with itself.
+func TestOpenDocRefusesAPathForADocumentID(t *testing.T) {
+	for _, docID := range []string{
+		"../../../../tmp/evil",
+		"..",
+		".",
+		"a/b",
+		`a\b`,
+		"",
+	} {
+		t.Run(docID, func(t *testing.T) {
+			if _, err := OpenDoc(t.TempDir(), docID); err == nil {
+				t.Fatalf("OpenDoc(root, %q) = nil error, want a refusal", docID)
+			}
+		})
 	}
 }
