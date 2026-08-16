@@ -34,9 +34,9 @@
  "page": 18,
  "ragged": false,
  "row_page_lines": [
-  6,
-  8,
-  4
+  10,
+  12,
+  8
  ],
  "schema_version": 1
 }

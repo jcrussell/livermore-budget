@@ -39,7 +39,9 @@ from xberg.options import ExtractInput
 
 # Bump when this script's output contract changes in a way that alters bytes.
 # Recorded in the manifest so a diff is attributable.
-EXTRACTOR_VERSION = 1
+#
+# 2: content_filter.strip_repeating_text=False. See fisc-c00.
+EXTRACTOR_VERSION = 2
 
 # Bump when normalize_cell changes. Separate from EXTRACTOR_VERSION so that
 # "xberg changed" stays distinguishable from "our normalizer changed" -- the
@@ -53,6 +55,17 @@ CONFIG = {
     "disable_ocr": True,
     "output_format": "markdown",
     "pages": {"extract_pages": True},
+    # strip_repeating_text is xberg's header/footer dedup heuristic and it
+    # defaults to True, where it silently deletes DATA rows. Budget Book p67
+    # prints ten revenue rows; three of them are identical all-dash lines
+    # (Sales Taxes, Fines & Forfeitures, Licenses & Permits are zero in all
+    # four of that page's fund groups) and the heuristic dropped the third as
+    # boilerplate, so the page carried nine. A positional read of a label-less
+    # continuation page identifies rows by ORDER, so a silently missing row
+    # mismaps every row after it -- see fisc-c00. Headers and footers are
+    # excluded by include_headers/include_footers, which are separate knobs;
+    # this one only ever cost us content.
+    "content_filter": {"strip_repeating_text": False},
     "pdf_options": {
         "extract_tables": True,
         "extract_metadata": True,

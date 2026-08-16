@@ -81,11 +81,11 @@
  "page": 58,
  "ragged": false,
  "row_page_lines": [
-  2,
   4,
-  5,
   6,
-  7
+  7,
+  8,
+  9
  ],
  "schema_version": 1
 }

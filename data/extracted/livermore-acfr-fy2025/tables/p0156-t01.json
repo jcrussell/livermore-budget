@@ -49,9 +49,9 @@
  "page": 156,
  "ragged": false,
  "row_page_lines": [
-  6,
   8,
-  9
+  10,
+  11
  ],
  "schema_version": 1
 }

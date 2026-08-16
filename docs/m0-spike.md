@@ -37,20 +37,30 @@ the other four fund groups (8 values per row). Row identity comes from p66's
 order, which means a logical table can span pages with the label page as the
 anchor.
 
-**4. p67 omits rows that are all-zero across its four fund groups.** The
-`Licenses & Permits` row simply is not emitted. A naive positional zip would
-silently shift every label after the gap — precisely the silent-mismapping
-failure the whole provenance design exists to catch. Mapping rules therefore
-need an explicit `omitted_rows` declaration plus a row-count assertion that
-fails loudly:
+**4. The row-count assertion caught an extractor bug — not a document quirk.**
+The spike read 72 values on p67 where 10 rows × 8 columns requires 80, and
+failed loudly:
 
 ```
 p67 row-count mismatch: 72 values is not 10 rows x 8 columns.
 Declared omissions: []
 ```
 
-The column-total check caught this immediately, which is direct evidence for
-the tier-2 reconciliation design.
+This was originally written up as "p67 omits rows that are all-zero across its
+four fund groups," and `Licenses & Permits` was declared in `omitted_rows` to
+make the count work. **That reading was wrong.** `pdftotext -bbox` puts ten
+revenue rows on p67, at the same ten y-positions as p66's ten labelled rows —
+the document omits nothing. Rows 8–10 (`Sales Taxes`, `Fines & Forfeitures`,
+`Licenses & Permits`) are three consecutive all-dash lines, and xberg's
+`content_filter.strip_repeating_text` — a header/footer dedup heuristic that
+defaults to on — deleted the third as boilerplate. It is disabled in
+`tools/extract.py` as of `EXTRACTOR_VERSION = 2`; see bead `fisc-c00`.
+
+The lesson is stronger than the original one. A positional read of a label-less
+continuation page identifies rows by order, so a row silently removed *by our
+own pipeline* mismaps every row beneath it. The count assertion is the only
+thing standing between that and 16 published facts carrying the wrong
+`row_label` — which is part of the fact id. Fail-closed paid for itself here.
 
 **5. `\-` is a seventh amount-corruption mode.** The extracted markdown escapes
 some dashes, so a backslash-dash appears as a distinct zero token alongside the

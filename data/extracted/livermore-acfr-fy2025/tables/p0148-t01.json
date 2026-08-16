@@ -88,12 +88,12 @@
  "page": 148,
  "ragged": false,
  "row_page_lines": [
-  6,
   8,
-  9,
   10,
   11,
-  12
+  12,
+  13,
+  14
  ],
  "schema_version": 1
 }

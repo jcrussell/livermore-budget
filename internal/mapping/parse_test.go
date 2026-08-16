@@ -47,27 +47,27 @@ func TestLoadSpine(t *testing.T) {
 		t.Errorf("p66 expected values = %d, want %d", got, want)
 	}
 
-	// p67 borrows them, omits one row, and has eight columns. 9*8=72 is the
-	// count the M0 spike measured; 10*8=80 is what a naive read expects, and
-	// the gap is the whole reason omitted_rows exists.
+	// p67 borrows them and has eight columns, and it declares NO omissions:
+	// the page prints all ten rows. The spike measured 9*8=72 here and the
+	// rule declared "Licenses & Permits" omitted to match, but the page was
+	// never short a row — our extractor was deleting one (fisc-c00). 10*8=80
+	// is both what a naive read expects and what the document actually prints.
 	if got := rev.LabelledPart(&p67); got == nil || got.Page != 66 {
 		t.Fatalf("p67 should borrow labels from p66")
 	}
-	if got, want := rev.ExpectedValues(&p67), 9*8; got != want {
+	if len(p67.OmittedRows) != 0 {
+		t.Errorf("p67 declares omissions %q; the page prints all ten rows", p67.OmittedRows)
+	}
+	if got, want := rev.ExpectedValues(&p67), 10*8; got != want {
 		t.Errorf("p67 expected values = %d, want %d", got, want)
 	}
 	active := rev.ActiveRows(&p67)
-	if len(active) != 9 {
-		t.Fatalf("got %d active rows on p67, want 9", len(active))
-	}
-	for _, r := range active {
-		if r.Label == "Licenses & Permits" {
-			t.Error("omitted row still present in p67's active rows")
-		}
+	if len(active) != 10 {
+		t.Fatalf("got %d active rows on p67, want 10", len(active))
 	}
 	// Order must be preserved: positional identity depends on it.
-	if active[0].Label != "Property Taxes" || active[8].Label != "Fines & Forfeitures" {
-		t.Errorf("active row order changed: first=%q last=%q", active[0].Label, active[8].Label)
+	if active[0].Label != "Property Taxes" || active[9].Label != "Licenses & Permits" {
+		t.Errorf("active row order changed: first=%q last=%q", active[0].Label, active[9].Label)
 	}
 }
 

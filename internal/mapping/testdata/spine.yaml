@@ -55,11 +55,14 @@ rules:
         # circular: it is the figure the totals check exists to verify, and it
         # changes on any revision.
         stop_at: "$"
-        # "Licenses & Permits" is a General Fund revenue and is zero in all
-        # four of this page's fund groups, so extraction emits no row for it.
-        # Declaring it is mandatory: a positional read would otherwise shift
-        # every subsequent label by one and mismap silently.
-        omitted_rows: ["Licenses & Permits"]
+        # This part declares NO omitted rows, and that is the corrected state.
+        # It used to declare "Licenses & Permits", on the belief that the page
+        # omits the row because it is zero in all four of this page's fund
+        # groups. The page does not omit it. `pdftotext -bbox` puts ten revenue
+        # rows here at the same ten y-positions as p66's ten labelled rows;
+        # xberg's content_filter.strip_repeating_text was deleting the third of
+        # three identical all-dash rows as if it were boilerplate. See fisc-c00.
+        # The count guard is what caught it: 72 tokens where 80 were required.
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}

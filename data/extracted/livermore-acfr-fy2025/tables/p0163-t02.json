@@ -72,10 +72,10 @@
  "page": 163,
  "ragged": false,
  "row_page_lines": [
+  8,
   6,
-  4,
-  4,
-  10
+  6,
+  12
  ],
  "schema_version": 1
 }

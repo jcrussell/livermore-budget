@@ -12,7 +12,7 @@ validating the approach — none is a generic sample.
 | Fixture | Source | Why |
 |---|---|---|
 | `pages/budget-p0066.md` | Budget Book p66 | The citywide spine. Every control total ties to this page. Rows are "label followed by 4 numbers" (2 fund groups × 2 fiscal years), and it is the **label anchor** for p67. |
-| `pages/budget-p0067.md` | Budget Book p67 | The spine's continuation, and the nastiest case in the corpus: **no row labels at all** (identity is positional from p66) and it **omits the all-zero `Licenses & Permits` row**. A naive positional zip silently shifts every label after the gap. Any mapping engine must fail loudly here, not guess. |
+| `pages/budget-p0067.md` | Budget Book p67 | The spine's continuation, and the nastiest case in the corpus: **no row labels at all** — identity is positional from p66, so a single missing row mismaps every row beneath it. This fixture is also the evidence for `fisc-c00`: it used to carry nine revenue rows because xberg's `strip_repeating_text` deleted the third of three identical all-dash rows, and the count assertion (72 ≠ 80) is what caught it. Any mapping engine must fail loudly here, not guess. |
 | `pages/budget-p0127.md` | Budget Book p127 | General Fund revenue by source, and the **contra-revenue** case: ERAF and RPTTF are negative rows (~26% of gross property tax) that a Sankey cannot render as links. Also shows the 4-column shape (FY23-24 actual, FY24-25 revised, FY25-26, FY26-27) that makes every revenue line a trend series. |
 
 ## Tables

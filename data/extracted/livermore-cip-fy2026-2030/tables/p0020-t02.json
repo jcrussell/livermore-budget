@@ -40,12 +40,12 @@
  "page": 20,
  "ragged": false,
  "row_page_lines": [
-  0,
-  17,
-  18,
+  2,
   19,
   20,
-  18
+  21,
+  22,
+  20
  ],
  "schema_version": 1
 }

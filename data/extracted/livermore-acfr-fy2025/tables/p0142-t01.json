@@ -64,10 +64,10 @@
  "page": 142,
  "ragged": false,
  "row_page_lines": [
-  4,
   6,
-  7,
-  8
+  8,
+  9,
+  10
  ],
  "schema_version": 1
 }

@@ -169,13 +169,22 @@ type Part struct {
 	// identity is positional against p66's order.
 	LabelsFrom int `yaml:"labels_from"`
 
-	// OmittedRows lists rows absent from THIS part although present in the
-	// rule's row order. Extraction drops rows that are entirely blank, and
-	// p67 omits "Licenses & Permits" because it is zero outside the General
-	// Fund. Declaring them is mandatory: without it a positional read shifts
-	// every label after the gap, which is a silent mismapping rather than an
-	// error. The parser cannot detect this for you — the count assertion at
-	// apply time can, and only if the declaration is here to check against.
+	// OmittedRows lists rows THE DOCUMENT does not print on this part although
+	// they are present in the rule's row order. Declaring them is mandatory:
+	// without it a positional read shifts every label after the gap, which is a
+	// silent mismapping rather than an error. The parser cannot detect this for
+	// you — the count assertion at apply time can, and only if the declaration
+	// is here to check against.
+	//
+	// It is about the DOCUMENT, never about our pipeline. This field once
+	// carried "Licenses & Permits" for Budget Book p67, on the belief that the
+	// page omits an all-zero row; `pdftotext -bbox` showed the page prints all
+	// ten rows and that our extractor was deleting one (fisc-c00). Using this
+	// field to absorb an extraction defect would launder a pipeline bug into a
+	// permanent published claim about the city's budget — and RowLabel is part
+	// of the fact id, so the mislabelled facts would be citable. If rows go
+	// missing between the PDF and the artifact, fix extraction; do not declare
+	// them here.
 	OmittedRows []string `yaml:"omitted_rows"`
 
 	// Columns describe the value columns, left to right.

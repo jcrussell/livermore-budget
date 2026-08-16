@@ -87,7 +87,7 @@ func spineFacts(t *testing.T) []Fact {
 func TestSpineFacts(t *testing.T) {
 	facts := spineFacts(t)
 
-	if want := 128; len(facts) != want {
+	if want := 136; len(facts) != want {
 		t.Errorf("got %d facts, want %d", len(facts), want)
 	}
 	if err := CheckUniqueIDs(facts); err != nil {
@@ -132,11 +132,23 @@ func TestSpineFacts(t *testing.T) {
 		}
 	}
 
-	// The row p67 omits must not appear as invented zeros.
+	// p67 prints "Licenses & Permits" as a row of dashes in all four of its
+	// fund groups, so it must produce eight facts worth zero — not zero facts,
+	// and not facts with some other row's label. This assertion used to read
+	// the other way round, because the extractor was deleting the row and the
+	// rule declared it omitted to compensate (fisc-c00). Zero is a figure the
+	// city printed; absent is not zero, and neither is it a licence to guess.
+	n := 0
 	for _, f := range facts {
 		if f.RowLabel == "Licenses & Permits" && f.Page == 67 {
-			t.Errorf("fact %s invents a p67 value for a row the page does not print", f.ID)
+			n++
+			if f.AmountCents != 0 {
+				t.Errorf("fact %s = %s, want 0", f.ID, amount.Cents(f.AmountCents))
+			}
 		}
+	}
+	if want := 8; n != want {
+		t.Errorf("got %d p67 Licenses & Permits facts, want %d", n, want)
 	}
 }
 

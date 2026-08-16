@@ -265,8 +265,8 @@
    "sha256": "474023f220ca031a9befe6846eb58476a334c5ad6fdbbaf8c4af91f2637a86d8"
   },
   "pages/p0067.md": {
-   "bytes": 1655,
-   "sha256": "e8253ff8a7d50b52e20b5323002481e411cb903ee82e5b5386b3201866fa1e8d"
+   "bytes": 1673,
+   "sha256": "e1460a5de2e33c837d9f61daa67def40fb313080dbdf931f45f9bfd15502b892"
   },
   "pages/p0068.md": {
    "bytes": 2414,
@@ -685,8 +685,8 @@
    "sha256": "fd714bda1849e4c204ce8d19fa6f73eb35c2e0b4cf854787dcd20106998ed17d"
   },
   "pages/p0172.md": {
-   "bytes": 526,
-   "sha256": "2d8627cc280dfdac763a9a6fe2db52698e3b8b1e42aaa71bffb7d2473c77ac47"
+   "bytes": 539,
+   "sha256": "fdc64eadff7f48f32d752f4325f80e5d92b856f65c0a312252deeeafdd085dc8"
   },
   "pages/p0173.md": {
    "bytes": 1424,
@@ -761,8 +761,8 @@
    "sha256": "441a6bed36a6a23bc2b80f965de023ba17017928b23b5d33fc0e33b322724641"
   },
   "pages/p0191.md": {
-   "bytes": 405,
-   "sha256": "51c1c770cc05d31b3b691a9f24886027a10eceab47904d036b08eb7cca5e189b"
+   "bytes": 811,
+   "sha256": "effe53e41349fe702bda597ecb43978894037bf5a37068e43b809591067b5643"
   },
   "pages/p0192.md": {
    "bytes": 2776,
@@ -785,8 +785,8 @@
    "sha256": "7b94a20568faf95698a14df63864a0dc466d12985d724c294ddc90c06a5fc452"
   },
   "pages/p0197.md": {
-   "bytes": 1198,
-   "sha256": "514f681f6d1abe485406dae8ab1f1b4f454843da874dec415ac22e873cf59d6c"
+   "bytes": 1226,
+   "sha256": "5111169274e777705d9e50fa520b881205e2f365c82bef0195fccd68029243aa"
   },
   "pages/p0198.md": {
    "bytes": 2767,
@@ -809,8 +809,8 @@
    "sha256": "189f589007b2338a59834147c17cda28570d72e94d8fa9745403757434d7796b"
   },
   "pages/p0203.md": {
-   "bytes": 999,
-   "sha256": "d4f7304a8917d1c7b021ef2dcaa2e3187b8705777c719f03d5c2b2d263d3e871"
+   "bytes": 1055,
+   "sha256": "850931fc9c1590c36dc04ba13c391a0adc73fc8180decbe14c9f913686c22b59"
   },
   "pages/p0204.md": {
    "bytes": 2749,
@@ -833,8 +833,8 @@
    "sha256": "61851ee98dcf9015777b0209f87f95f7e911c826a0f44cde85beb5eb4afe3b51"
   },
   "pages/p0209.md": {
-   "bytes": 1252,
-   "sha256": "c932aec0e7c48ea256714db2e9684e25a5309360bcbf97eb255133df2522f2a7"
+   "bytes": 1308,
+   "sha256": "0a098c9ec46d61ffd2721a1040a15e8106d1d0b7d017df2235ba440750732fa1"
   },
   "pages/p0210.md": {
    "bytes": 38,
@@ -1399,6 +1399,9 @@
  },
  "blank_page_count": 0,
  "config": {
+  "content_filter": {
+   "strip_repeating_text": false
+  },
   "disable_ocr": true,
   "output_format": "markdown",
   "pages": {
@@ -1410,10 +1413,10 @@
   },
   "use_cache": false
  },
- "config_sha256": "53f641d091c9c2147c97460751f0345ab5da4b5f637d57705fd041a34cb35b7f",
+ "config_sha256": "1fd1560ee986862bfd1d691146f63312d5f54375712251aed2db04f658cc2d08",
  "doc_id": "livermore-budget-fy2026-2027",
  "errors": [],
- "extractor_version": 1,
+ "extractor_version": 2,
  "normalizer_version": 1,
  "page_count": 268,
  "pages_with_tables": 67,

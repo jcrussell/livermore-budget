@@ -76,11 +76,11 @@
  "page": 90,
  "ragged": false,
  "row_page_lines": [
-  6,
-  10,
+  8,
+  12,
   null,
-  6,
-  29
+  8,
+  31
  ],
  "schema_version": 1
 }

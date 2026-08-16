@@ -33,6 +33,22 @@ func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 	return testDoc(t, "livermore-budget-fy2026-2027", pages, nil)
 }
 
+// inlineDoc builds a document from page text written in the test itself, for
+// shapes the corpus does not currently contain. Fixtures copied from
+// data/extracted/ are preferred wherever a real page exercises the behaviour;
+// this is for the cases where none does.
+func inlineDoc(t *testing.T, docID string, pages map[int]string) *corpus.Doc {
+	t.Helper()
+	fsys := fstest.MapFS{}
+	artifacts := map[string]corpus.Artifact{}
+	for n, body := range pages {
+		name := corpus.PagePath(n)
+		fsys[name] = &fstest.MapFile{Data: []byte(body)}
+		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
+	}
+	return openDoc(t, docID, fsys, artifacts)
+}
+
 func testDoc(t *testing.T, docID string, pages []int, tables map[string]string) *corpus.Doc {
 	t.Helper()
 	fsys := fstest.MapFS{}
@@ -56,6 +72,11 @@ func testDoc(t *testing.T, docID string, pages []int, tables map[string]string) 
 		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
 	}
 
+	return openDoc(t, docID, fsys, artifacts)
+}
+
+func openDoc(t *testing.T, docID string, fsys fstest.MapFS, artifacts map[string]corpus.Artifact) *corpus.Doc {
+	t.Helper()
 	man, err := json.Marshal(map[string]any{
 		"schema_version": corpus.SchemaVersion,
 		"doc_id":         docID,
@@ -158,10 +179,11 @@ func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
 		}
 	}
 
-	// 40 on p66 revenues + 16 on p66 expenditures + 72 on p67. The spike's 136
-	// is these 128 plus the 8 column positions of the one row p67 omits, which
-	// resolution reports as a declared omission rather than inventing as zeros.
-	if want := 128; readValues != want {
+	// 40 on p66 revenues + 16 on p66 expenditures + 80 on p67. The spike also
+	// reported 136, but 8 of its were invented zeros standing in for a row it
+	// believed p67 omits. The page prints that row; our extractor was dropping
+	// it (fisc-c00). Every one of these 136 is a cell the city printed.
+	if want := 136; readValues != want {
 		t.Errorf("read %d values, want %d", readValues, want)
 	}
 	if want := 16; checkedColumns != want {
@@ -184,31 +206,95 @@ func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
 	}
 }
 
+// omittedRowFixture builds a two-page document whose continuation page really
+// does omit a row, plus the rule that reads it.
+//
+// It is synthetic on purpose. The spine used to serve as this fixture, on the
+// belief that Budget Book p67 omits its all-zero "Licenses & Permits" row; the
+// page prints all ten rows and our own extractor was deleting one (fisc-c00).
+// No page in the corpus is currently known to omit a row, so exercising the
+// declaration against a real one would mean waiting for a case that may not
+// exist — while the machinery still has to work the day one turns up.
+//
+// The omitted row is deliberately in the MIDDLE. A trailing omission makes a
+// Value's RowIndex and an Omission's agree by accident, which is exactly the
+// bug the indices exist to prevent.
+func omittedRowFixture(t *testing.T, declared string) (*Resolver, *Rule) {
+	t.Helper()
+
+	const labelled = "REVENUES: Alpha 10 11 Beta 20 21 Gamma 30 31 TOTAL: 60 63\n"
+	// The continuation carries no labels and prints nothing for Beta.
+	const continuation = "HEADER 100 101 300 301 TOTAL: 400 402\n"
+
+	omitted := ""
+	if declared != "" {
+		omitted = fmt.Sprintf("        omitted_rows: [%q]\n", declared)
+	}
+	src := fmt.Sprintf(`schema_version: 1
+doc_id: omission-fixture
+rules:
+  - id: omit-demo
+    substrate: text
+    kind: revenue
+    basis: adopted
+    scope: fixture
+    units: dollars
+    total_row: "TOTAL:"
+    parts:
+      - page: 1
+        section: "REVENUES:"
+        stop_at: "TOTAL:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+      - page: 2
+        labels_from: 1
+        section: "HEADER"
+        stop_at: "TOTAL:"
+%s        columns:
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+    rows:
+      - {label: "Alpha", category: alpha}
+      - {label: "Beta", category: beta}
+      - {label: "Gamma", category: gamma}
+`, omitted)
+
+	f, err := Parse(strings.NewReader(src), "omission-fixture.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	r, err := NewResolver(
+		inlineDoc(t, "omission-fixture", map[int]string{1: labelled, 2: continuation}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	return r, &f.Rules[0]
+}
+
 // TestOmittedRowIsReportedNotInvented guards the "absent is not zero"
-// invariant: p67 does not print Licenses & Permits, and resolution says so
-// rather than manufacturing eight zero facts pointing at a row the page has
-// no line for.
+// invariant: where a page does not print a row, resolution says so rather than
+// manufacturing zero facts pointing at a line the page has no line for.
 func TestOmittedRowIsReportedNotInvented(t *testing.T) {
-	r, f := spineResolver(t, 66, 67)
-	ru := rule(t, f, "spine-revenues")
-	p := partOn(t, ru, 67)
+	r, ru := omittedRowFixture(t, "Beta")
+	p := partOn(t, ru, 2)
 
 	values, omitted, err := r.Values(ru, p)
 	if err != nil {
 		t.Fatalf("Values: %v", err)
 	}
-	if want := 72; len(values) != want {
-		t.Errorf("read %d values, want %d (9 rows × 8 columns)", len(values), want)
+	if want := 4; len(values) != want {
+		t.Errorf("read %d values, want %d (2 rows × 2 columns)", len(values), want)
 	}
 	if len(omitted) != 1 {
 		t.Fatalf("got %d declared omissions, want 1", len(omitted))
 	}
-	if got, want := omitted[0].Row.Label, "Licenses & Permits"; got != want {
+	if got, want := omitted[0].Row.Label, "Beta"; got != want {
 		t.Errorf("omitted row = %q, want %q", got, want)
 	}
 	for _, v := range values {
-		if v.Row.Label == "Licenses & Permits" {
-			t.Errorf("read a value for %q, which p67 does not print", v.Row.Label)
+		if v.Row.Label == "Beta" {
+			t.Errorf("read a value for %q, which the page does not print", v.Row.Label)
 		}
 	}
 }
@@ -247,10 +333,8 @@ func TestUnmappedRowFailsLoudly(t *testing.T) {
 // identity is positional and a missing declaration shifts every row after the
 // gap. The count is what catches it; nothing else can.
 func TestUndeclaredOmissionFailsLoudly(t *testing.T) {
-	r, f := spineResolver(t, 66, 67)
-	ru := rule(t, f, "spine-revenues")
-	p := partOn(t, ru, 67)
-	p.OmittedRows = nil
+	r, ru := omittedRowFixture(t, "")
+	p := partOn(t, ru, 2)
 
 	_, _, err := r.Values(ru, p)
 	if err == nil {
@@ -259,10 +343,55 @@ func TestUndeclaredOmissionFailsLoudly(t *testing.T) {
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("error = %v, want it to wrap ErrNotFound", err)
 	}
-	// 9 rows were read positionally where the rule now claims 10.
-	for _, want := range []string{"read 72 values", "want 80"} {
+	// 2 rows were read positionally where the rule claims 3.
+	for _, want := range []string{"read 4 values", "want 6"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error %q does not contain %q", err, want)
+		}
+	}
+}
+
+// TestExtractionDropOutIsNotAnOmission is the regression test for fisc-c00.
+//
+// xberg's strip_repeating_text deleted the third of three identical all-dash
+// rows from Budget Book p67, and the project recorded the loss as a property
+// of the document by declaring it in omitted_rows. That is the one thing
+// OmittedRows must never be used for: it is a claim about what the city
+// printed, and RowLabel is part of the fact id, so the mislabelled facts would
+// have been citable. This asserts the page carries all ten rows, so a
+// re-extraction that silently loses one fails here rather than downstream.
+func TestExtractionDropOutIsNotAnOmission(t *testing.T) {
+	r, f := spineResolver(t, 66, 67)
+	ru := rule(t, f, "spine-revenues")
+	p := partOn(t, ru, 67)
+
+	values, omitted, err := r.Values(ru, p)
+	if err != nil {
+		t.Fatalf("Values: %v", err)
+	}
+	if want := 10 * 8; len(values) != want {
+		t.Errorf("read %d values on p67, want %d (10 rows × 8 columns)", len(values), want)
+	}
+	if len(omitted) != 0 {
+		t.Errorf("got %d omissions on p67, want 0: the page prints every row", len(omitted))
+	}
+
+	// The three trailing rows are the ones the extractor used to collapse.
+	// They are zero in all four of this page's fund groups, which is why the
+	// loss was invisible to every check except the row count.
+	for _, label := range []string{"Sales Taxes", "Fines & Forfeitures", "Licenses & Permits"} {
+		n := 0
+		for _, v := range values {
+			if v.Row.Label != label {
+				continue
+			}
+			n++
+			if v.Cents != 0 {
+				t.Errorf("p67 %s column %d = %s, want 0", label, v.ColumnIndex+1, v.Cents)
+			}
+		}
+		if n != 8 {
+			t.Errorf("p67 read %d values for %q, want 8", n, label)
 		}
 	}
 }
@@ -369,20 +498,15 @@ func TestResolveRejectsWhatItCannotRead(t *testing.T) {
 // slot and leaves another empty. They agree by accident when the omitted row
 // is last, as it is in the spine, so the check moves it to the middle.
 func TestRowIndexIsStableAcrossAnOmission(t *testing.T) {
-	r, f := spineResolver(t, 66, 67)
-	ru := rule(t, f, "spine-revenues")
-	p := partOn(t, ru, 67)
-
-	// "Intergovernmental" is row 2 of 10. Standing it in for the real omission
-	// keeps the count at 9 rows, so the positional read still resolves.
-	p.OmittedRows = []string{"Intergovernmental"}
+	r, ru := omittedRowFixture(t, "Beta")
+	p := partOn(t, ru, 2)
 
 	values, omitted, err := r.Values(ru, p)
 	if err != nil {
 		t.Fatalf("Values: %v", err)
 	}
-	if len(omitted) != 1 || omitted[0].RowIndex != 2 {
-		t.Fatalf("omission = %+v, want RowIndex 2 (Intergovernmental)", omitted)
+	if len(omitted) != 1 || omitted[0].RowIndex != 1 {
+		t.Fatalf("omission = %+v, want RowIndex 1 (Beta)", omitted)
 	}
 
 	seen := map[int]string{}

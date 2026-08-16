@@ -86,13 +86,13 @@
  "page": 88,
  "ragged": false,
  "row_page_lines": [
-  4,
+  6,
   null,
   null,
   null,
   null,
   null,
-  11
+  13
  ],
  "schema_version": 1
 }
