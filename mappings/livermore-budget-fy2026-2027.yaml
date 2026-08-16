@@ -1,0 +1,397 @@
+# City of Livermore, Adopted Budget FY2025-26 / FY2026-27.
+#
+# This file maps the CITYWIDE SPINE: the two-page schedule "CITYWIDE REVENUES,
+# EXPENDITURES, AND FUND BALANCE/WORKING CAPITAL" printed at PDF pages 66 and
+# 67. It is the first published rule file in this project, and it is meant to
+# be read, so every anchor below says what it is anchored to and why.
+#
+# WHAT THE SCHEDULE LOOKS LIKE
+#
+# One logical table, six fund groups wide, split across two pages:
+#
+#   p66  General Fund and Enterprise Funds, WITH row labels.
+#   p67  Capital, Debt Service, Special Revenue and Internal Service Funds,
+#        with NO row labels at all. Row identity there is positional against
+#        p66's order, which is what `labels_from: 66` declares.
+#
+# Each page stacks two column headers — a fund-group name over a "Budget"
+# over an "FY 2025-26 / FY 2026-27" pair — so a column is identified by
+# (fund_group, fiscal_year) rather than by any single header string.
+#
+# `fiscal_year` is the ENDING year of the fiscal year, always. The column the
+# document prints as "FY 2025-26" is `fiscal_year: 2026`. This is stated once
+# here and relied on everywhere: a fact whose year means "the year printed
+# first" in one file and "the year printed second" in another is unusable.
+#
+# HOW THE PAGES EXTRACT
+#
+# The whole of p66 — both sections, both totals rows, everything but the title
+# and the working-capital lines — arrives as a SINGLE line of text. There is no
+# line structure to anchor on, so every block here is bounded by a `section`
+# string and, where one exists, a `stop_at` string. Both pages print several
+# strings twice ("REVENUES:" is also the tail of "TOTAL REVENUES:"), so most
+# anchors carry a `section_ordinal` saying which occurrence the author looked
+# at. An ordinal is a claim, not a convenience: if the page's shape changes the
+# rule fails to resolve instead of quietly reading the wrong block.
+#
+# NO ROW IS OMITTED ANYWHERE IN THIS FILE, and that is a checked claim. p67
+# prints all ten revenue rows at the same ten y-positions as p66's ten labels,
+# including the three that are zero in all four of its fund groups. The project
+# once declared "Licenses & Permits" as omitted from p67; the page prints it and
+# our extractor was deleting it (fisc-c00). `omitted_rows` is a statement about
+# what the CITY printed and must never be used to absorb a pipeline defect.
+#
+# THE PADDED BLOCKS
+#
+# p66 prints two runs of rows with no blank line or heading between them:
+#
+#   sources:  the ten revenue rows, TOTAL REVENUES:, TRANSFER IN:, TOTAL SOURCES
+#   uses:     four object rows, TOTAL EXPENDITURES:, TRANSFER OUT:,
+#             ADDITION TO RESERVES, TOTAL USES:, and the three working-capital
+#             rows
+#
+# A rule that wants only one row from the middle of such a run — the transfers
+# rules and the fund-balance rule each want one or four — cannot start its block
+# at that row: resolution refuses a block whose header carries digits, precisely
+# so that a mis-set anchor cannot swallow a row's figures into the header. So
+# those rules declare the WHOLE run and mark every row they do not own
+# `skip: true`. A skipped row still consumes its position and its figures are
+# still parsed — it just yields no fact. Three rules therefore read the same
+# text and disagree only about which rows are theirs, which is the intended use
+# of `skip` and not a workaround.
+#
+# WHAT TIES
+#
+# `total_row` is set on the two rules the document prints a total for, covering
+# 24 columns, and all 24 reconcile exactly to that printed total. Eight of them
+# read only after fisc-gxt: p67 prints its expenditure totals on the same
+# extracted line as the TRANSFER OUT: row below, so the resolver now takes the
+# "$"-marked prefix of that run, which is the distinction the page itself draws
+# between a totals row and a data row.
+#
+# The three rules with no `total_row` read single rows the document prints no
+# subtotal for, and are checked by the balance
+# identity in internal/mapping/mappings_test.go, which reconciles all six fund
+# groups in both years against the city's own TOTAL SOURCES and TOTAL USES rows.
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  # --------------------------------------------------------------------------
+  - id: spine-revenues
+    substrate: text
+    kind: revenue
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL REVENUES:"
+    note: >-
+      The ten revenue rows of the citywide schedule, for all six fund groups.
+      p66 carries the row labels and the General Fund and Enterprise columns
+      (4 values per row); p67 continues the same ten rows for the other four
+      fund groups with nothing but numbers, so its row identity is positional
+      against p66. All 12 columns reconcile exactly to the "TOTAL REVENUES:"
+      row the city prints: General Fund FY2025-26 $157,873,470, all funds
+      $299,969,007. The scope is all-funds-GROSS — it includes Internal Service
+      Fund charges the city bills to itself, which a chart must net out before
+      calling anything "revenue from outside the city".
+    parts:
+      - page: 66
+        section: "REVENUES:"
+        # "REVENUES:" occurs twice on this page: here, and as the tail of the
+        # "TOTAL REVENUES:" row below. The section header is the first, and
+        # saying so is what lets resolution refuse an anchor it cannot place
+        # rather than take whichever match it happens to find first.
+        section_ordinal: 1
+        stop_at: "TOTAL REVENUES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+      - page: 67
+        labels_from: 66
+        # p67 has no row labels, so it has no section header either. The block
+        # starts where the column headers end: the fund-group names, then eight
+        # "Budget" cells, then the four "FY 2025-26 / FY 2026-27" pairs. The
+        # last of those four "FY 2026-27" ends exactly at the end of the header
+        # line, which makes it the page's real boundary between labels and
+        # figures -- and it fails closed if the city adds a fifth fund group,
+        # since a fourth occurrence would then land mid-header and the "Budget"
+        # tokens after it are not amounts.
+        section: "FY 2026-27"
+        section_ordinal: 4
+        # There is no "TOTAL REVENUES:" to stop at. The totals row is the first
+        # line whose figures are prefixed with "$" -- every data row above it is
+        # bare -- so "$" is the boundary. Anchoring on the total's VALUE would be
+        # circular: it is the figure the totals check exists to verify, and it
+        # changes on any revision.
+        stop_at: "$"
+        # This part declares NO omitted rows, and that is the corrected state.
+        # It used to declare "Licenses & Permits", on the belief that the page
+        # omits the row because it is zero in all four of this page's fund
+        # groups. The page does not omit it. `pdftotext -bbox` puts ten revenue
+        # rows here at the same ten y-positions as p66's ten labelled rows;
+        # xberg's content_filter.strip_repeating_text was deleting the third of
+        # three identical all-dash rows as if it were boilerplate. See fisc-c00.
+        # The count guard is what caught it: 72 tokens where 80 were required.
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {fund_group: internal-service, fiscal_year: 2026}
+          - {fund_group: internal-service, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", category: taxes/property}
+      - {label: "Other Taxes", category: taxes/other}
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money And Property", category: use-of-money-and-property}
+      - {label: "Contributions Outsourced", category: contributions-outsourced}
+      - {label: "Miscellaneous Revenue", category: miscellaneous-revenue}
+      - {label: "Sales Taxes", category: taxes/sales}
+      - {label: "Fines & Forfeitures", category: fines-and-forfeitures}
+      - {label: "Licenses & Permits", category: licenses-and-permits}
+
+  # --------------------------------------------------------------------------
+  - id: spine-expenditures
+    substrate: text
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL EXPENDITURES:"
+    note: >-
+      Object categories, not departments. The city publishes department-by-
+      category only for the General Fund (p167); everywhere else the department
+      and category breakdowns are two marginals of the same total with no
+      published joint, so a four-column Sankey outside the GF would require
+      inventing numbers. Same two-page shape as the revenue rule: p66 labelled,
+      p67 positional. The four rows sum to the city's printed
+      "TOTAL EXPENDITURES:" in every column — General Fund FY2025-26
+      $144,650,802, all funds $254,095,412 — and all eight columns are
+      machine-checked against it. p67 prints its totals row on the same
+      extracted line as the TRANSFER OUT: row below, so reading it depends on
+      the "$" marking that distinguishes the two (fisc-gxt). Note that this is
+      the cost of services only:
+      transfers out and additions to reserves are separate rows and separate
+      rules, and adding all three together is the $313,708,146 double count the
+      project exists to avoid.
+    parts:
+      - page: 66
+        section: "EXPENDITURES:"
+        # As with REVENUES: above, the second occurrence is inside
+        # "TOTAL EXPENDITURES:".
+        section_ordinal: 1
+        stop_at: "TOTAL EXPENDITURES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+      - page: 67
+        labels_from: 66
+        # The expenditure half of p67 restates the four fund-group names as its
+        # own header — the page prints that run of names twice, once at the top
+        # for the revenue half and once here — so the second occurrence is this
+        # section's header and the block starts immediately after it.
+        section: "Capital Funds Debt Service Funds Special Revenue Funds Internal Service Funds"
+        section_ordinal: 2
+        # As on the revenue half, the data rows are bare and the totals row is
+        # the first one printed with "$".
+        stop_at: "$"
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {fund_group: internal-service, fiscal_year: 2026}
+          - {fund_group: internal-service, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits}
+      - {label: "Services & Supplies", category: services-and-supplies}
+      - {label: "Capital Outlay", category: capital-outlay}
+      - {label: "Debt Services", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: spine-transfers-in
+    substrate: text
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      One row: "TRANSFER IN:", money moving between the city's own funds. It
+      sits between "TOTAL REVENUES:" and "TOTAL SOURCES" inside the sources
+      block, and the block cannot start there, because resolution refuses a
+      block whose header contains digits. So this rule declares the whole
+      13-row sources run and marks the twelve rows it does not own skip: true —
+      they are read and positionally accounted for, and produce no facts. The
+      ten revenue rows and "TOTAL REVENUES:" belong to spine-revenues;
+      "TOTAL SOURCES" is the city's own control total and is claimed by no rule,
+      because mapping a subtotal alongside its components double counts. FY2026
+      total across the six fund groups is $21,525,997, against $59,612,734 out;
+      the two do not balance here because the offsetting legs are on the p76
+      transfer schedule, which is not yet mapped (fisc-5gk.3).
+    parts:
+      - page: 66
+        section: "REVENUES:"
+        section_ordinal: 1
+        # The sources block runs from the "REVENUES:" header to the
+        # "EXPENDITURES:" header, taking in the totals rows the revenue rule
+        # stops short of. The first "EXPENDITURES:" after the block start is
+        # that header; the second is the tail of "TOTAL EXPENDITURES:".
+        stop_at: "EXPENDITURES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+      - page: 67
+        labels_from: 66
+        # Same header boundary as the revenue rule's p67 part, but the block
+        # runs on past the "$" totals row to the start of the expenditure
+        # half's repeated fund-group header: 13 rows x 8 columns = 104 values.
+        section: "FY 2026-27"
+        section_ordinal: 4
+        stop_at: "Capital Funds"
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {fund_group: internal-service, fiscal_year: 2026}
+          - {fund_group: internal-service, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", skip: true}
+      - {label: "Other Taxes", skip: true}
+      - {label: "Intergovernmental", skip: true}
+      - {label: "Charges for Services", skip: true}
+      - {label: "Use of Money And Property", skip: true}
+      - {label: "Contributions Outsourced", skip: true}
+      - {label: "Miscellaneous Revenue", skip: true}
+      - {label: "Sales Taxes", skip: true}
+      - {label: "Fines & Forfeitures", skip: true}
+      - {label: "Licenses & Permits", skip: true}
+      - {label: "TOTAL REVENUES:", skip: true}
+      - {label: "TRANSFER IN:", category: transfers/in}
+      # Printed without a colon, unlike "TOTAL USES:" on the same page.
+      - {label: "TOTAL SOURCES", skip: true}
+
+  # --------------------------------------------------------------------------
+  - id: spine-transfers-out
+    substrate: text
+    kind: transfer_out
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      One row: "TRANSFER OUT:", the other leg of the internal transfers. Padded
+      the same way spine-transfers-in is, over the 11-row uses block: four
+      object rows, "TOTAL EXPENDITURES:", this row, "ADDITION TO RESERVES",
+      "TOTAL USES:", and the three working-capital rows. Everything but
+      "TRANSFER OUT:" is skip: true here and belongs to spine-expenditures or
+      spine-fund-balance. FY2026 total $59,612,734, of which $28,584,740 is the
+      Capital Funds leg — the General Fund and the enterprise funds paying for
+      the capital programme. Counting this as spending on top of the expenditure
+      rows would count the same dollar twice, once where it leaves and once
+      where it is spent.
+    parts:
+      - page: 66
+        section: "EXPENDITURES:"
+        section_ordinal: 1
+        # No stop_at: the uses block runs to the end of the page, because the
+        # three working-capital rows below "TOTAL USES:" are part of the same
+        # positional run on p67 and have to be declared to keep the count.
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+      - page: 67
+        labels_from: 66
+        section: "Capital Funds Debt Service Funds Special Revenue Funds Internal Service Funds"
+        section_ordinal: 2
+        # 11 rows x 8 columns = 88 values, running to the end of the page.
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {fund_group: internal-service, fiscal_year: 2026}
+          - {fund_group: internal-service, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", skip: true}
+      - {label: "Services & Supplies", skip: true}
+      - {label: "Capital Outlay", skip: true}
+      - {label: "Debt Services", skip: true}
+      - {label: "TOTAL EXPENDITURES:", skip: true}
+      - {label: "TRANSFER OUT:", category: transfers/out}
+      - {label: "ADDITION TO RESERVES", skip: true}
+      - {label: "TOTAL USES:", skip: true}
+      - {label: "BEGINNING WORKING CAPITAL", skip: true}
+      - {label: "CHANGE IN WORKING CAPITAL", skip: true}
+      - {label: "ENDING WORKING CAPITAL", skip: true}
+
+  # --------------------------------------------------------------------------
+  - id: spine-fund-balance
+    substrate: text
+    kind: fund_balance
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      The four fund-balance rows of the uses block, over the same padded 11-row
+      run as spine-transfers-out. They are four different things and the
+      taxonomy keeps them apart. "ADDITION TO RESERVES" is a budgeted
+      contribution to reserves and is a use of money in the year, so it appears
+      on the spending side of the balance identity. "CHANGE IN WORKING CAPITAL"
+      is a flow and is signed — the General Fund's FY2025-26 figure is printed
+      "(1,034,154)", a planned draw on accumulated balance, which the identity
+      treats as a SOURCE. "BEGINNING" and "ENDING WORKING CAPITAL" are stocks,
+      not flows: they are recorded as facts because the city printed them, but
+      they must never be summed with a flow, and the Sankey projection excludes
+      them by category rather than by guessing from the label.
+    parts:
+      - page: 66
+        section: "EXPENDITURES:"
+        section_ordinal: 1
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+      - page: 67
+        labels_from: 66
+        section: "Capital Funds Debt Service Funds Special Revenue Funds Internal Service Funds"
+        section_ordinal: 2
+        columns:
+          - {fund_group: capital, fiscal_year: 2026}
+          - {fund_group: capital, fiscal_year: 2027}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {fund_group: internal-service, fiscal_year: 2026}
+          - {fund_group: internal-service, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", skip: true}
+      - {label: "Services & Supplies", skip: true}
+      - {label: "Capital Outlay", skip: true}
+      - {label: "Debt Services", skip: true}
+      - {label: "TOTAL EXPENDITURES:", skip: true}
+      - {label: "TRANSFER OUT:", skip: true}
+      - {label: "ADDITION TO RESERVES", category: fund-balance/reserve-increase}
+      - {label: "TOTAL USES:", skip: true}
+      - {label: "BEGINNING WORKING CAPITAL", category: fund-balance/beginning}
+      - {label: "CHANGE IN WORKING CAPITAL", category: fund-balance/change}
+      - {label: "ENDING WORKING CAPITAL", category: fund-balance/ending}
