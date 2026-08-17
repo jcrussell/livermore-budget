@@ -1,0 +1,65 @@
+                                          BUDGET SUMMARY
+                     IMPACT OF CAPITAL BUDGET ON OPERATING BUDGET
+
+                            Operating and Maintenance Costs Associated with Capital Budget
+
+                                                                               Recurring or FY 2024-25 FY 2025-26 FY 2026-27
+               Project Name               Project No.     Cost Category         One-Time     Projected  Budget     Budget
+
+Downtown Revitalization
+Livermore Village Joint Trench            DR202119      Materials & Supplies    Recurring   $       -   $    2,000   $   2,000
+Flagpole Plaza                            DR202225      Materials & Supplies    Recurring           -            -      20,000
+Livermore Village Infrastructure          DR583018      Materials & Supplies    Recurring           -            -       4,000
+Livermore Village L Street Garage         DR586003      Materials & Supplies    Recurring           -            -     175,000
+  Downtown Revitalization Total                                                             $       -   $    2,000   $ 201,000
+
+Parks and Beautification
+Springtown Open Space Improvements        PB202319      Materials & Supplies    Recurring   $       -   $        -   $   50,000
+ Parks and Beautification Total                                                             $       -   $        -   $   50,000
+
+Public Buildings
+City Fleet Electrification, Phase 1        BL202320     Materials & Supplies    Recurring   $       -   $    4,000   $    4,000
+ Public Building Total                                                                      $       -   $    4,000   $    4,000
+
+Storm Drain
+2024 Storm Drain Trash Capture            SD202425      Materials & Supplies    Recurring   $       -   $        -   $   12,000
+ Storm Drain Total                                                                          $       -   $        -   $   12,000
+
+Street Maintenance
+Street Resurfacing                        SD202001      Materials & Supplies    Recurring   $       -   $        -   $    6,000
+ADA Access Ramps                          SM202107      Materials & Supplies    Recurring               $   10,000   $   10,000
+ADA Access Ramps                          SM202207      Materials & Supplies    Recurring           -            -        8,000
+ Street Maintenance Total                                                                   $       -   $   10,000   $   24,000
+
+Traffic Control
+Street Lighting                           TC201923      Materials & Supplies    Recurring   $       -   $        -   $   20,000
+Crosswalk Safety Improvements             TC202106      Materials & Supplies    Recurring   $       -   $    2,000   $    2,000
+Traffic Calming                           TC202205      Materials & Supplies    Recurring   $       -   $        -   $    4,000
+Stanley Boulevard at Isabel Acenue
+Connector Ramp Crossing                   TC202133      Materials & Supplies    Recurring   $       -   $        -   $    5,000
+Crosswalk Safety Improvements             TC202306      Materials & Supplies    Recurring   $       -   $        -   $    1,000
+Portola Avenue at Sedona Common Traffic
+Signal Improvements                       TC202326      Materials & Supplies    Recurring   $       -   $        -   $    5,000
+Traffic Operations Center Upgrade         TC202328      Materials & Supplies    Recurring   $       -   $   20,000   $   20,000
+ Street Maintenance Total                                                                   $       -   $   22,000   $   57,000
+
+Trail, Bike, and Misc. Street
+Montage Trail Connection to Collier
+Canyon Road                               TB201944      Materials & Supplies    Recurring   $   3,200   $    3,200   $    3,200
+ Street Maintenance Total                                                                   $   3,200   $    3,200   $    3,200
+
+Transportation Infrastructure
+Railroad Ave Street Improvements           TI202116     Materials & Supplies    Recurring   $   1,500   $    1,500   $    1,500
+ Transportation Infrastructure Total                                                        $   1,500   $    1,500   $    1,500
+
+Wastewater
+WRP Primary and Secondary Treatment
+Improvements, Phase 1                     WW201931      Materials & Supplies    Recurring               $   22,000   $   22,000
+  Wastewater Total                                                                          $       -   $   22,000   $   22,000
+
+   Total Operating and Maintenance Costs                                                    $   4,700   $   64,700   $ 374,700
+
+
+
+
+                                                BUDGET FY 2025-27                                            Page 73

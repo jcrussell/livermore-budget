@@ -23,7 +23,6 @@ doc_id: livermore-budget-fy2026-2027
 
 rules:
   - id: transfers-out
-    substrate: text
     kind: transfer_out
     basis: adopted
     scope: all-funds-gross
@@ -48,7 +47,6 @@ rules:
       - {label: "Enterprise Funds", category: transfers/enterprise-funds}
 
   - id: transfers-in
-    substrate: text
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross

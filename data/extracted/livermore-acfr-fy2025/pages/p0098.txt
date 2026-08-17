@@ -1,0 +1,53 @@
+                                                                                               City of Livermore
+                                                                                       Notes to Financial Statements
+                                                                                                       June 30, 2025
+
+
+The underlying mortality assumptions and all other actuarial assumptions used in the June 30, 2023 valuation were
+based on the results of the 2019 CalPERS Experience Study for the period 2001 to 2019. Further details of the
+Experience Study can be found on the CalPERS website.
+
+Discount Rate – The discount rate used to measure the total pension liability was 6.90%. The projection of cash
+flows used to determine the discount rate assumed that contributions from plan members will be made at the
+current member contribution rates and that contributions from employers will be made at statutorily required rates,
+actuarially determined. Based on those assumptions, the Plan’s fiduciary net position was projected to be available
+to make all projected future benefit payments of current plan members. Therefore, the long-term expected rate of
+return on plan investments was applied to all periods of projected benefit payments to determine the total pension
+liability.
+
+The long-term expected rate of return on pension plan investments was determined using a building-block method
+in which expected future real rates of return (expected returns, net of pension plan investment expense and
+inflation) are developed for each major asset class.
+
+In determining the long-term expected rate of return, CalPERS considered both short-term and long-term market
+return expectations as well as the expected pension fund cash flows. Using historical returns of all the funds’ asset
+classes, expected compound (geometric) returns were calculated over the short-term (first 10 years) and the long-
+term (11+ years) using a building-block approach. Using the expected nominal returns for both short-term and long-
+term, the present value of benefits was calculated for each fund. The expected rate of return was set by calculating
+the rounded single equivalent expected return that arrived at the same present value of benefits for cash flows as
+the one calculated using both short-term and long-term returns. The expected rate of return was then set equal to
+the single equivalent rate calculated above and adjusted to account for assumed administrative expenses. The table
+below reflects long-term expected real rate of return by asset class.
+
+                                                                              Assumed
+                                                                                Asset
+                                             (1)                                                              1, 2
+                               Asset Class                                    Allocation        Real Return
+     Global Equity - Cap-weighted                                               30.0%               4.54%
+     Global Equity - Non-Cap-weighted                                           12.0%               3.84%
+     Private Equity                                                             13.0%               7.28%
+     Treasury                                                                    5.0%               0.27%
+     Mortgage-backed Securities                                                  5.0%               0.50%
+     Investment Grade Corporates                                                10.0%               1.56%
+     High Yield                                                                  5.0%               2.27%
+     Emerging Market Debt                                                        5.0%               2.48%
+     Private Debt                                                                5.0%               3.57%
+     Real Assets                                                                15.0%               3.21%
+     Leverage                                                                   -5.0%              -0.59%
+                                   Total                                       100.0%
+
+     (1)
+           An expected inflation of 2.30% used for this period.
+     (2)
+           Figures are based on the 2021 Asset Liability Management study.
+                                                                                                                     72

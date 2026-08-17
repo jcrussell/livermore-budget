@@ -1,0 +1,39 @@
+                                                                                                              City of Livermore
+                                                                                                    Notes to Financial Statements
+                                                                                                                    June 30, 2025
+
+
+                                              Balance at                            Retirements       Transfers/         Balance at
+                                            June 30, 2024          Additions      and Adjustments   Reclassification   June 30, 2025
+Internal Service Fund Capital Assets
+   Capital assets not being depreciated:
+      Construction in progress              $    4,171,713     $      208,903     $            -    $   (4,311,572)    $       69,044
+         Subtotal                                4,171,713            208,903                  -        (4,311,572)            69,044
+
+  Capital assets being depreciated, cost:
+        Machinery and equipment                  4,196,415            342,500           (274,394)                -          4,264,521
+        Infrastructure                          12,406,587                  -                  -                 -         12,406,587
+        Buildings                                  359,934                  -                  -         4,007,798          4,367,732
+        Licensed vehicles                       19,284,828          3,429,889           (401,878)          303,774         22,616,613
+        Subtotal                                36,247,764          3,772,389           (676,272)        4,311,572         43,655,453
+  Accumulated Depreciation:
+        Machinery and equipment                  (3,206,922)          (187,616)          274,394                   -        (3,120,144)
+        Infrastructure                           (4,350,957)          (407,424)                -                   -        (4,758,381)
+        Buildings                                         -            (54,523)                -                   -           (54,523)
+        Licensed vehicles                       (12,576,987)        (1,541,892)          385,867                   -       (13,733,012)
+        Subtotal                                (20,134,866)        (2,191,455)          660,261                   -       (21,666,060)
+  Net Internal Service Fund
+   capital assets being depreciated             16,112,898          1,580,934            (16,011)        4,311,572         21,989,393
+
+  Right-to-use subscription IT
+   assets being amortized
+     Right-to-use subscription IT assets          592,396                 -                    -                   -         592,396
+     Accumulated amortization                    (302,398)         (151,199)                   -                   -        (453,597)
+  Net right-to-use subscription IT assets         289,998          (151,199)                   -                   -         138,799
+  Total Internal Service Funds                 20,574,609         1,638,638              (16,011)                  -      22,197,236
+Governmental activity capital assets, net   $ 400,953,536      $ 15,483,149       $      (18,515)   $              -   $ 416,418,170
+
+
+
+
+                                                                                                                                     55

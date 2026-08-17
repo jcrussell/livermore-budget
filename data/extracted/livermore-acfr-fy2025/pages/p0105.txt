@@ -1,0 +1,34 @@
+                                                                                                   City of Livermore
+                                                                                         Notes to Financial Statements
+                                                                                                         June 30, 2025
+
+
+Changes in Net OPEB Liability
+
+The changes in the Net OPEB Liability, are as follows.
+
+                                                                             Increase (Decrease)
+                                                           Total OPEB            Plan Fiduciary         Net OPEB
+                                                            Liability             Net Position       Liability/(Asset)
+Balance at June 30, 2024 1                               $   74,526,222        $     44,231,786      $     30,294,436
+Changes in the year:
+ Service cost                                                     713,709                      -              713,709
+ Interest on the total OPEB liability                           4,564,806                      -            4,564,806
+ Investment Experience                                         (1,534,307)                                 (1,534,307)
+ Changes of assumptions                                         2,065,836                    -              2,065,836
+ Contribution - employer                                                -            4,406,083             (4,406,083)
+ Net investment income                                                  -            5,281,596             (5,281,596)
+ Benefit payments, including refunds of
+   employee contributions                                      (4,406,083)          (4,406,083)                    -
+ Administrative expenses                                                -              (79,613)               79,613
+      Net changes                                               1,403,961            5,201,983            (3,798,022)
+                         1
+Balance at June 30, 2025                                 $     75,930,183     $     49,433,769      $     26,496,414
+
+Detailed information about the OPEB plan’s fiduciary net position is available in the separately issued plan financial
+report that may be obtained from PARS. The liability will be paid for by the general fund.
+
+
+
+
+                                                                                                                     79

@@ -106,11 +106,31 @@ func testRepo(t *testing.T, pages map[int]string, rules ...string) string {
 // source PDF.
 func pageFixture(t *testing.T, n int) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("testdata", "pages", fmt.Sprintf("p%04d.md", n)))
+	b, err := os.ReadFile(filepath.Join("testdata", "pages", fmt.Sprintf("p%04d.txt", n)))
 	if err != nil {
 		t.Fatalf("read page fixture: %v", err)
 	}
 	return string(b)
+}
+
+// TestPageFixturesAreVerbatimCopies keeps the claim in pageFixture's comment
+// honest. These pages are a second copy of testdata/pages/, which is itself a
+// copy of data/extracted/, and nothing regenerates either: a build that passes
+// here only tells you about the committed corpus for as long as the copies
+// still match it. They silently stopped matching once already (fisc-yqv.5).
+func TestPageFixturesAreVerbatimCopies(t *testing.T) {
+	for _, n := range []int{66, 67} {
+		extracted, err := os.ReadFile(filepath.Join("..", "..", "..",
+			"data", "extracted", docID, filepath.FromSlash(corpus.PagePath(n))))
+		if err != nil {
+			t.Fatalf("read extraction: %v", err)
+		}
+		if got := pageFixture(t, n); got != string(extracted) {
+			t.Errorf("testdata/pages/p%04d.txt is not a verbatim copy of %s; "+
+				"re-copy it rather than adjusting whatever now fails",
+				n, corpus.PagePath(n))
+		}
+	}
 }
 
 func spinePages(t *testing.T) map[int]string {

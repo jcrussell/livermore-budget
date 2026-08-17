@@ -3,7 +3,8 @@ CMD        := ./cmd/fisc
 OUT        := bin/$(BIN)
 PREFIX     ?= /usr/local
 # Prefer a repo-local venv, then one on PATH. Override with PYTHON=... for a
-# venv elsewhere. Must have the pinned xberg from requirements.txt installed.
+# venv elsewhere. Any Python 3 will do -- tools/extract.py is standard library
+# only. The extractor itself is poppler-utils on PATH; see requirements.txt.
 PYTHON     ?= $(shell test -x .venv/bin/python && echo .venv/bin/python || echo python3)
 
 VERSION    := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -57,7 +58,7 @@ pre-commit: fmt vet test ## Format, vet, and test (symlink to .git/hooks/pre-com
 #
 # DOC=<id> extracts one document; omit it for all three.
 .PHONY: extract
-extract: ## Re-extract PDFs with xberg (DOC=<id> for one)
+extract: ## Re-extract PDFs with poppler (DOC=<id> for one)
 	$(PYTHON) tools/extract.py $(if $(DOC),--doc $(DOC))
 
 .PHONY: extract-list

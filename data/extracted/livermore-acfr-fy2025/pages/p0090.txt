@@ -1,0 +1,52 @@
+                                                                                                     City of Livermore
+                                                                                           Notes to Financial Statements
+                                                                                                           June 30, 2025
+
+
+Community Facilities District No. 2016-2 (Shea Properties) Special Tax Refunding Bonds, Series 2016
+On December 22, 2016, the City sponsored the issuance of Community Facilities District No. 2016-2 (Shea Properties)
+Special Tax Refunding Bonds, Series 2016. The bonds were issued to defease and refund the remaining principal
+amount of the Community Facilities District No 2006-1 (Shea Properties) Special Tax Bonds, Series 2006.
+
+Assessment District No. 2016-2 (Pleasant View) Limited Obligation Improvement Bonds, Series 2018
+On June 14, 2018, the City issued bonds to fund certain public infrastructure improvements within the assessment
+district. The improvements included connections to the sanitary sewer service system, installation of streetlights, fire
+hydrants, provide for emergency vehicle access, and the addition of sidewalk curb and gutters to the required
+standards of the City. For additional information, see Note 3.
+
+Assessment District No. 2021-1 (Trevarno Road) Limited Obligation Improvement Bonds, Series 2022
+On January 6, 2022, the City issued bonds to fund certain public infrastructure improvements within the assessment
+district. The improvements included connections to the sanitary sewer service system and improvements to the
+water infrastructure. For additional information, see Note 3.
+
+
+Note 10 - Net Position and Fund Balances
+
+Net Position is measured on the full accrual basis, while Fund Balance is measured on the modified accrual basis. Net
+Position is the excess of all the City’s assets and deferred outflows of resources over all its liabilities and deferred
+inflows of resources, regardless of fund. Net Position is divided into three captions. These captions apply only to
+Net Position, which is determined only at the Government-wide level, and are described below:
+
+Net Investment in Capital Assets describes the portion of Net Position which is represented by the current net book
+value of the City’s capital assets, less the outstanding balance of any debt issued to finance these assets. See table
+below for calculation of Net Investment in Capital Assets from portions of the Statement of Net Position.
+
+                                                             Governmental            Business-Type
+                                                               Activities              Activities            Total
+Net Assets:
+  Land, easements and construction in progress              $   120,860,803      $      55,401,026     $   176,261,829
+  Capital assets, net of accumulated depreciation               294,058,380            109,852,329         403,910,709
+  Right-to-use subscription IT assets,
+    net of accumulated amortization                               1,498,987                278,712           1,777,699
+Total Net Assets:                                               416,418,170            165,532,067         581,950,237
+Less Debt Related to Assets:
+  Long-term debt (current portion)                               (6,421,147)              (541,014)         (6,962,161)
+  Long-term debt (due in more than one year)                    (74,439,242)            (5,545,754)        (79,984,996)
+Total Debt Related to Assets:                                   (80,860,389)            (6,086,768)        (86,947,157)
+Unspent Debt Proceeds                                             7,209,080                      -           7,209,080
+           Net Investments in Capital Assets                $   342,766,861      $     159,445,299     $   502,212,160
+
+
+
+
+                                                                                                                         64

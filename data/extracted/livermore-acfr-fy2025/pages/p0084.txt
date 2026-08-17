@@ -1,0 +1,59 @@
+                                                                                                      City of Livermore
+                                                                                               Notes to Financial Statements
+                                                                                                               June 30, 2025
+
+
+Note 8 -     Long-Term Liabilities
+
+Long-Term Debt Schedule:
+
+The City’s debt comprises bonds, loans, notes, certificates of participation (COP), and refunding certificates of
+participation. Certificates of participation are similar to debt; they allow investors to participate in a share of guaranteed
+payments, which are made by the City. Because they are similar to debt, the present value of the total of the payments
+to be made by the City is recorded as long-term debt. Details of the individual debt issues and transactions are set forth
+below:
+
+                                                           Balance at                          Balance at         Current
+                                                         June 30, 2024     (Retirements)     June 30, 2025        Portion
+ Governmental Activities
+  Certificates of Participation:
+      2020A, 4%, 2042                                    $    6,850,000   $      (260,000) $      6,590,000   $      290,000
+        Unamortized Premium                                   1,156,593           (64,255)        1,092,338           64,255
+      2020B, 4%, 2030                                        27,630,090        (2,826,794)       24,803,296        2,943,740
+        Unamortized Premium                                   4,428,991          (519,919)        3,909,072          519,919
+      2022, 5%, 2052                                         39,550,000          (695,000)       38,855,000          730,000
+      Unamortized
+        UnamortizedPremium
+                       Premium- 2022 COP                        465,691           (16,632)          449,059           16,632
+  Housing & Urban Development Loan, varies, 2030 *              366,680           (90,758)          275,922           90,758
+  Internal Service Funds:
+    Financed Purchase:
+      Banc of America Equipment Purchase Loan                 4,498,123         (921,084)         3,577,039         989,284
+  Total governmental activities debt                     $   84,946,168   $    (5,394,442) $     79,551,726   $    5,644,588
+Business-type Activities
+  Airport
+    Certificates of Participation:
+      2020B, 4%, 2030                                    $    3,219,941   $     (182,567) $       3,037,374         189,377
+        Unamortized Premium                                     543,013          (39,330)           503,683          39,330
+    Financed Purchase:
+      Banc of America Equipment Purchase Loan                   176,292           (36,185)          140,107           38,864
+  Water
+    Certificates of Participation:
+      2020B, 4%, 2030                                         2,104,971         (265,640)         1,839,331         276,884
+       Unamortized Premium                                      328,221
+                                                                      0          (46,887)           281,334          46,888
+  Total business-type activities debt                    $    6,372,438   $     (570,609) $       5,801,829   $     591,343
+  * Private Placement Debt
+
+Long Term Debt
+
+2020 Certificates of Participation
+
+On June 25, 2020, the City issued tax-exempt 2020 Certificates of Participation (2020 COP) to refinance the 2011 COP,
+2014 COP Series A and 2014 COP Series B. There are two semi‐annual debt service payments, consisting of principal
+payments due annually on April 1 and interest payments due on October 1 and April 1, which are payable solely from
+and secured by the lease payments made by the City to the Public Property Financing Corporation of California. Lease
+payments will be made by the City pursuant to the Lease Agreement for the use and occupancy of the Leased Property,
+which comprises of the City’s police facility and civic center library located in the City’s Civic Center.
+
+                                                                                                                            58

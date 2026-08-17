@@ -279,7 +279,7 @@ function citations(sources) {
       }
       if (doc.page_text_base) {
         const padded = String(page).padStart(4, "0");
-        out.push({ label: "extracted p" + page, href: doc.page_text_base + "p" + padded + ".md" });
+        out.push({ label: "extracted p" + page, href: doc.page_text_base + "p" + padded + ".txt" });
       }
     }
   }

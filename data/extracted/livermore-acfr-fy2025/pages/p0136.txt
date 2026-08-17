@@ -1,0 +1,44 @@
+                                                                                                                    City of Livermore
+                                                                        Non-Major Governmental Funds – Combining Balance Sheet
+                                                                                                                 June 30, 2025
+
+
+                                                      NON-MAJOR GOVERNMENTAL FUNDS
+                                                         COMBINING BALANCE SHEET
+                                                                June 30, 2025
+                                                         SPECIAL REVENUE                                                    CAPITAL PROJECT
+                                                              FUND               DEBT SERVICE FUND                              FUNDS
+
+                                                                 Other
+                                                               Local, State                                                      Traffic
+                                                               and Federal                                                      Impact
+ .                                                               Grants             2020 COPS           2022 COPS                 Fee
+ ASSETS
+ Cash and investments in City Treasury                    $        9,295,822    $               -   $               -   $          32,056,010
+  Cash and investments with Trustees                                       -                    -                   -                       -
+  Accounts receivables, net                                          117,707                    -                   -                       -
+  Interest receivable                                                463,352                    -                   -                       -
+  Notes receivable                                                 1,685,536                    -                   -                       -
+                 Total Assets                             $       11,562,417    $               -   $               -   $          32,056,010
+
+LIABILITIES
+  Accounts payable and other accruals                      $          281,696   $               -   $               -   $             141,872
+   Deposits payable                                                         -                   -                   -                       -
+   Advances from other funds                                                -                   -                   -                       -
+   Unearned rents and revenue                                               -                   -                   -                       -
+                 Total Liabilities                                    281,696                   -                   -                 141,872
+
+                    DEFERRED INFLOWS OF RESOURCES
+     Unavailable revenue                                              463,352                   -                   -                         -
+                    Total deferred inflows of resources               463,352                   -                   -                         -
+
+     FUND BALANCE
+     Restricted                                                   10,817,369                    -                   -              31,914,138
+                                                                  10,817,369                    -                   -              31,914,138
+                  Total Liabilities, deferred inflows of
+                   resources, and fund balances (deficits) $      11,562,417    $               -   $               -   $          32,056,010
+
+
+
+
+                                                                                                                                           106

@@ -23,7 +23,7 @@ func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 	fsys := fstest.MapFS{}
 	artifacts := map[string]corpus.Artifact{}
 	for _, p := range pages {
-		body, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.md", p))
+		body, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.txt", p))
 		if err != nil {
 			t.Fatalf("read page fixture: %v", err)
 		}
@@ -158,7 +158,7 @@ func TestSpineFacts(t *testing.T) {
 func TestOffsetPointsAtTheToken(t *testing.T) {
 	pages := map[int]string{}
 	for _, p := range []int{66, 67} {
-		b, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.md", p))
+		b, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.txt", p))
 		if err != nil {
 			t.Fatalf("read page fixture: %v", err)
 		}
@@ -203,19 +203,24 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 		DocID:         "livermore-budget-fy2026-2027",
 		Path:          "inline.yaml",
 		Rules: []mapping.Rule{{
-			ID: "gf-property-tax-detail", Substrate: mapping.SubstrateText,
+			ID:   "gf-property-tax-detail",
 			Kind: mapping.KindRevenue, Basis: mapping.BasisAdopted,
 			Scope: "general-fund", Units: amount.Dollars,
-			TotalRow: "**Total Property Taxes",
+			TotalRow: "Total Property Taxes",
 			Rows:     rows,
 			Parts: []mapping.Part{{
 				Page: 127,
-				// The "**" is load-bearing: without it the block's trailing
-				// text is "\n\n**" rather than whitespace, and the unmapped-row
-				// check rejects it. Every rule on the pp.127-140 family needs
-				// the emphasis markers in its anchors.
-				Section: "Property Taxes**",
-				StopAt:  "**Total Property Taxes",
+				// The trailing newline is load-bearing. "Property Taxes" is
+				// also the tail of "Total Property Taxes", which p127 prints
+				// below this block; the city prints the section heading alone
+				// on its line and the total with its four figures beside it, so
+				// requiring the line break is what makes this anchor unique and
+				// lets it resolve with no ordinal at all. There are no emphasis
+				// markers to anchor on: `pdftotext -layout` reproduces the
+				// printed page, and the "**" this rule used to carry was xberg's
+				// markdown, not the document's.
+				Section: "Property Taxes\n",
+				StopAt:  "Total Property Taxes",
 				// This schedule prints four years on three bases side by side.
 				Columns: []mapping.Column{
 					{FundGroup: "general", FiscalYear: 2024, Basis: mapping.BasisActual},

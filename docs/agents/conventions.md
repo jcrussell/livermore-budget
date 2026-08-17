@@ -22,8 +22,12 @@ even when tests pass.
   without them.
 - **Identity and integrity are separate.** A locator says *which* row this is
   and must be content-independent; a content hash says *whether it changed*.
-  One value cannot do both — 16 ACFR tables are byte-identical to another, one
-  group 12 deep, and the Budget Book has a 20-deep group.
+  One value cannot do both. Budget Book p67 prints four byte-identical
+  all-dash lines; content alone cannot say which row any of them is, so
+  identity has to come from position. (This invariant was originally argued
+  from 16 byte-identical ACFR *tables*. The table substrate no longer exists —
+  see the extraction boundary below — but duplicate content does, and the
+  argument is the same.)
 
 ## Go
 
@@ -53,7 +57,14 @@ Layout and idioms follow the byob decisions; read them with
 - Assert on behavior, not call counts (`byob-testing.3`).
 - **Go tests never require Python, the source PDFs, or the network.** Use the
   fixtures in `testdata/`, which are real artifacts copied from
-  `data/extracted/`.
+  `data/extracted/`. They are *copies*, and `make extract` does not touch them:
+  the five page fixtures under `testdata/pages/` and
+  `pkg/cmd/build/testdata/pages/` have to be re-copied by hand when the
+  extraction changes, and their sha256s must equal the ones the source
+  document's `manifest.json` records. A fixture that has drifted is the bad
+  case — the tests reading it stay green against a substrate that no longer
+  exists, which is exactly what happened across the xberg → poppler migration
+  (`fisc-yqv.5`). Re-copy; never edit an assertion to fit a stale fixture.
 - Smoke-test the built binary, not only the packages. The unknown-command bug
   — a typo'd command exited 0 and printed help — passed every unit test and
   was caught by running `./bin/fisc biuld`.
@@ -67,17 +78,42 @@ project. Go never shells out to it. `fisc` reads only the committed artifacts
 under `data/extracted/` and needs neither Python nor the PDFs — which is what
 lets CI run `verify` without a venv and without an LFS checkout.
 
+The extractor is poppler (`pdftotext`), a system package; the script itself is
+standard library only and PyPI is not reachable from the extraction
+environment. It emits two substrates per page: `pages/pNNNN.txt` from
+`-layout`, which reproduces the printed column grid in runs of spaces, and
+`geometry/pNNNN.json` from `-bbox`, which carries per-word bounding boxes.
+Both are needed. On a sparse grid `-layout` emits only the tokens that were
+printed and nothing that says which column each belongs to, so a positional
+read files them left to right and can land a figure under the wrong year;
+geometry gives the x-position that settles it. Page text is `.txt` and not
+`.md` because GitHub's blob view renders markdown and collapses the spaces
+that *are* the grid.
+
+Geometry gives **column identity for tokens that are present**. It does not
+recover a value the PDF never put in its text layer, and it does not settle
+"absent is not zero" on its own: CIP p40 rows PB200654 and PB202617 print `-`
+in their intervening FY columns and those dashes appear in neither substrate,
+because they are drawn as non-text. Row PB200429 on the same page does carry
+its dashes, so this is per-row and not a flag chosen wrong. A rule that needs
+to tell an absent cell from a zero one must say so itself.
+
+poppler has no structured error channel: it writes free-form English to stderr
+and exits 0. The manifest records every stderr line under `warnings`, and
+reserves `errors` for non-zero exits and unparseable output. An empty `errors`
+is not a promise that every page came out whole.
+
 `tools/extract.py` deliberately does **not** read `data/sources.yaml`. It
 discovers work from `data/pdf/<doc-id>.pdf` and records the source sha256 it
 computed; `fisc verify` cross-checks that against the registry. Two parties
 recording the hash independently is a real check — both reading the same file
 would not be. Do not "simplify" this by giving Python a YAML parser.
 
-Extraction output must stay byte-stable across runs: tables sorted by
-`(page, y0, x0)` rather than xberg's iteration order, canonical JSON with
-sorted keys, bboxes rounded to 2dp, atomic writes. Changing any of that
-changes every committed artifact, so it belongs in its own reviewed commit
-with `extractor_version` or `normalizer_version` bumped.
+Extraction output must stay byte-stable across runs: words sorted by position
+rather than by the tool's emission order, canonical JSON with sorted keys,
+bboxes rounded to 2dp, atomic writes. Changing any of that changes every
+committed artifact, so it belongs in its own reviewed commit with
+`extractor_version` bumped.
 
 ## Non-interactive shell commands
 

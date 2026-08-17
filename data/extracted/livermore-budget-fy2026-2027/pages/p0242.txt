@@ -1,0 +1,48 @@
+                   CAPITAL IMPROVEMENT PROGRAM
+                                        PROJECT LISTING BY PROGRAM
+
+PROJECT                                              PROJECT NAME                                   FY 2024-25
+TB201955 Arroyo Road Trail (T-13, Segment B)                                                    $        575,000
+TB202114 ATP Bike Lane Improvements                                                                       30,000
+TB202222 East Ave Corridor ATP Implementation                                                            100,000
+TB202618 Isabel Pedestrian Bridge and Trail                                                                      -
+TB202626 Arroyo Mocho Trail at Concannon Boulevard                                                               -
+                                              TOTAL - TRAIL, BIKE, AND MISCELLANEOUS STREET     $        830,000
+ TI199238   Isabel Avenue/I-580 Interchange                                                     $        470,000
+ TI199352   Vasco Road/I-580 Interchange                                                               1,650,000
+ TI200259   North Canyons Parkway/Dublin Bouleveard Connection                                           100,000
+ TI200720   El Charro Specific Plan Infrastructure                                                       650,000
+ TI200835   Stanley Boulevard /Murrieta Avenue Intersection Improvements                                         -
+ TI201028   Foley Road Realignment                                                                        10,000
+ TI201837   Vasco Road Widening                                                                          300,000
+ TI201937   Intersection Improvements - Jack London Boulevard and Isabel Avenue                           50,000
+ TI202116   Railroad Ave Street Improvements                                                             740,000
+ TI202414   Arroyo Las Positas at Heather Lane Bridge                                                            -
+ TI202526   Valley Link Station Areas                                                                            -
+ TI202616   Airway Blvd Culvert Replacement                                                                      -
+                                                      TOTAL - TRANSPORTATION INFRASTRUCTURE     $      3,970,000
+WW201414 Springtown Trunkline Replacement                                                       $         80,000
+WW201931 WRP Primary & Secondary Treatment Improvements, Phase 1                                       9,128,000
+WW202003 Sewer Replacement                                                                               200,000
+WW202128 WRP UV Treatment System Replacement                                                           3,600,000
+WW202129 WRP SCADA Server & Network Upgrade                                                              114,000
+WW202203 Sewer Replacement                                                                                       -
+WW202217 WRP Primary & Secondary Treatment Improvements, Phase 2                                          15,000
+WW202218 WRP SCADA PLC Controls Upgrade                                                                          -
+WW202313 South Livermore Sewer Extension                                                                  20,000
+WW202315 WRP Digester Heating Loop Replacement                                                           104,000
+WW202322 WRP Occupied Building Repairs - Administration                                                  208,000
+WW202420 WRP Occupied Building Repairs - Maintenance                                                             -
+WW202503 Sewer Improvements                                                                                      -
+WW202512 Airport Lift Station Improvements                                                                       -
+WW202527 WRP Recycled Water Fill Station                                                                  40,000
+WW202612 WRP Occupied Building Repairs - Tertiary                                                                -
+WW202624 WRP Waste Oil Tank Removal                                                                              -
+                                                                           TOTAL - WASTEWATER   $     13,509,000
+WT202130 Airway Pump Station Improvements                                                       $        115,000
+WT202314 Springtown Water Service Replacements                                                         1,000,000
+
+
+
+
+                                              BUDGET FY 2025-27                             Page 238

@@ -1,0 +1,45 @@
+                                                                                                                                                                        City of Livermore
+                                                                                                           Schedule of Changes in the City’s Net OPEB Liability and Related Ratios
+                                                                                                                                                             Last Ten Fiscal Years*
+
+
+                                                           SCHEDULE OF CHANGES IN THE CITY'S NET OPEB LIABILITY AND RELATED RATIOS
+                                                                                     Last 10 Fiscal Years
+
+Fiscal year Ended June 30,                                       2018              2019             2020             2021              2022             2023            2024            2025
+Measurement date as of June 30,                                  2017              2018             2019             2020              2021             2022            2023            2024
+Service Cost                                                 $  1,324,000     $  1,364,072     $  1,404,890      $  1,188,021     $  1,223,662      $  1,032,271    $  1,087,105    $    713,709
+Interest                                                        4,461,000        4,645,578        4,827,840         4,936,407        5,115,274         4,869,477       4,886,409       4,564,806
+Changes of benefit terms                                                -                -                -                 -                -                 -               -               -
+Changes in assumptions                                                  -                -        4,311,034                 -       (1,463,176)        1,365,243          93,577       2,065,836
+Differences between expected and actual experience                      -                -       (5,282,915)                -       (1,868,874)                -      (9,974,671)     (1,534,307)
+Benefit payments, including refunds                            (2,839,793)      (3,109,307)      (3,383,525)       (3,363,911)      (3,452,661)       (3,748,080)     (3,838,518)     (4,406,083)
+Net change in total OPEB liability                              2,945,207        2,900,343        1,877,324         2,760,517         (445,775)        3,518,911      (7,746,098)      1,403,961
+Total OPEB liability - beginning                               68,715,793       71,661,000       74,561,343        76,438,667       79,199,184        78,753,409      82,272,320      74,526,222
+Total OPEB liability - ending (a)                            $ 71,661,000     $ 74,561,343     $ 76,438,667      $ 79,199,184     $ 78,753,409      $ 82,272,320    $ 74,526,222    $ 75,930,183
+Plan fiduciary net position
+Contributions - employer                                     $  5,747,533     $  5,324,000     $  5,380,000      $  4,900,000     $  5,163,000      $  5,035,080    $  4,720,518    $  4,406,083
+Net investment income                                           2,128,521        2,012,498        1,855,034           805,844       10,050,944        (5,719,634)      4,064,254       5,281,596
+Benefit payments, including refunds                            (2,839,793)      (3,109,307)      (3,383,525)       (3,363,911)      (3,452,661)       (3,748,080)     (3,838,518)     (4,406,083)
+Administrative expense                                            (86,886)        (102,288)        (111,259)         (121,024)        (141,453)          (78,844)        (73,449)        (79,613)
+Net change in plan fiduciary net position                       4,949,375        4,124,903        3,740,250         2,220,909       11,619,830        (4,511,478)      4,872,805       5,201,983
+Plan fiduciary net position - beginning                        17,215,192       22,164,567       26,289,470        30,029,720       32,250,629        43,870,459      39,358,981      44,231,786
+Plan fiduciary net position - ending (b)                     $ 22,164,567     $ 26,289,470     $ 30,029,720      $ 32,250,629     $ 43,870,459      $ 39,358,981    $ 44,231,786    $ 49,433,769
+City's net OPEB liability - ending (a) - (b)                 $ 49,496,433     $ 48,271,873     $ 46,408,947      $ 46,948,555     $ 34,882,950      $ 42,913,339    $ 30,294,436    $ 26,496,414
+
+Plan fiduciary net position as a percentage of the
+  total pension liability                                               30.9%              35.3%            39.3%              40.7%        55.7%          47.8%             59.4          65.1%
+Covered payroll 1                                               $ 29,345,533 $ 29,169,986 $ 28,506,581 $ 26,656,102 $ 26,508,421                    $ 23,571,067    $ 20,357,510    $ 17,905,295
+City's net OPEB liability as a percentage of covered payroll           168.7%             102.3%           162.8%             176.1%       131.6%         182.1%          148.8%          148.0%
+1 With the implementation of GASB 82, Covered Payroll is defined as the actual payroll on which contributions to a pension plan are based.
+Notes to Schedule
+Benefit changes: None
+Changes in assumptions:
+  - Decreased medical trend rate for Kaiser Senior Advantage plans
+  - Medical Plan Election updated based on current experience
+  - Mortalility improvement scale was updated to Scale MP-2021
+
+
+
+
+See Notes to Required Supplementary Information                                                                                                                                             99

@@ -1,0 +1,52 @@
+                                                                                                                    City of Livermore
+                                                                                                        Notes to Financial Statements
+                                                                                                                        June 30, 2025
+
+
+At June 30, 2025, the City reported deferred outflows of resources and deferred inflows of resources related to
+pensions from the following sources:
+                                       Miscellaneous Plan                 Safety Police Plan                            Total
+                                    Deferred        Deferred          Deferred         Deferred               Deferred        Deferred
+                                    Outflows         Inflows          Outflows          Inflows               Outflows         Inflows
+                                  of Resources    of Resources      of Resources     of Resources           of Resources    of Resources
+Differences between actual
+and expected experience           $   2,480,353   $           -     $ 4,778,766    $      (155,378) $ 7,259,119               $    (155,378)
+Changes in assumptions                        -               -        1,442,722                    -            1,442,722                 -
+
+Net differences between
+projected and actual earnings
+on plan investments                   3,895,485               -        2,830,375                    -            6,725,860                 -
+Change in proportion and
+differences between actual
+contributions and
+proportionate share of
+contributions                                 -               -        1,733,257         (881,034)    1,733,257                     (881,034)
+                      Total       $   6,375,838   $           -     $ 10,785,120   $   (1,036,412) $ 17,160,958               $   (1,036,412)
+
+
+
+           Pension contributions subsequent to        Deferred Outflows Deferred Inflows of
+                   measurement date                     of Resources        Resources                                 Total
+       Miscellaneous Plan1                            $       12,927,306      $                         -    $         12,927,306
+       Safety Police Plan1                                     7,783,173                                -               7,783,173
+                        Total                         $       20,710,479      $                         -    $         20,710,479
+
+       1
+           All Tiers of the Miscellaneous and Police Safety plan were combined together on GASB 68 report by CalPERS.
+
+In the table above amounts reported as deferred outflows of resources related to contributions subsequent to the
+measurement date will be recognized as a reduction of the net pension liability in the year ended June 30, 2026.
+Other amounts reported as deferred outflows of resources and deferred inflows of resources related to pensions
+will be recognized as pension expense as follows:
+
+                                       Miscellaneous Plan           Safety Police Plan            Total
+                    Fiscal Year             Deferred                    Deferred                 Deferred
+                      Ended            Outflows/(inflows)          Outflows/(inflows)       Outflows/(inflows)
+                     June 30             of Resources                 of Resources            of Resources
+                       2026           $          1,555,721        $          3,801,585     $         5,357,306
+                       2027                      7,479,508                   6,832,026              14,311,534
+                       2028                     (1,166,333)                      83,523             (1,082,810)
+                       2029                     (1,493,059)                   (968,426)             (2,461,485)
+                                      $          6,375,837        $          9,748,708     $        16,124,545
+
+                                                                                                                                          75

@@ -8,17 +8,17 @@ import (
 	"unicode"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
-	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // doc is the view of an extracted document a resolver needs. It is declared
-// here, in the consumer, and kept to the three methods actually used
-// (byob-interfaces.1, byob-interfaces.2).
+// here, in the consumer, and kept to the two methods actually used
+// (byob-interfaces.1, byob-interfaces.2). Keeping it to these two is why this
+// package does not import internal/corpus at all: rules are resolved against
+// page text and a document identity, and nothing else.
 type doc interface {
 	DocID() string
 	Page(n int) (string, error)
-	TablesOn(n int) ([]*corpus.Table, error)
 }
 
 // Resolution failures, distinguishable with errors.Is because they call for
@@ -109,23 +109,6 @@ func (r *Resolver) page(n int) (string, error) {
 	return text, nil
 }
 
-// textPart reports whether a part is read from page text, and refuses the
-// substrates this resolver cannot read.
-//
-// Without this check a table or manual rule would be read as page text and
-// quietly succeed, which is the same failure the parser's locator validation
-// exists to prevent, arriving from the other direction.
-func (r *Resolver) textPart(rule *Rule, p *Part) error {
-	if rule.Substrate == SubstrateText {
-		return nil
-	}
-	return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
-		Page: p.Page, Field: "substrate",
-		Msg: fmt.Sprintf("is %q; this reads page text", rule.Substrate)},
-		"resolve a table rule with ResolveTable; a manual rule carries its "+
-			"figures in the rule file and has nothing to resolve")
-}
-
 // Block is a resolved span of page text: the rows one part covers, bounded by
 // the part's section and stop_at anchors.
 type Block struct {
@@ -172,9 +155,6 @@ type Omission struct {
 
 // Block resolves the span of page text a part covers.
 func (r *Resolver) Block(rule *Rule, p *Part) (*Block, error) {
-	if err := r.textPart(rule, p); err != nil {
-		return nil, err
-	}
 	text, err := r.page(p.Page)
 	if err != nil {
 		return nil, err
@@ -645,89 +625,6 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) error {
 		Field: "total_row", Msg: strings.Join(bad, "; ")},
 		"a mapped column that does not tie means a row was missed, "+
 			"double-counted, or read from the wrong column")
-}
-
-// ResolveTable finds the grid a table part points at.
-//
-// A locator that does not resolve is always an error, never a search that
-// silently settles elsewhere. If the same fingerprint appears on another page,
-// that is a table which moved — an event `fisc verify` must report and
-// `fisc reanchor` must approve, not one resolution may absorb. The other pages
-// appear in the error as candidates, and nothing more.
-func (r *Resolver) ResolveTable(rule *Rule, p *Part) (*corpus.Table, error) {
-	fail := func(msg, hint string, err error) (*corpus.Table, error) {
-		return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
-			Page: p.Page, Field: "table", Msg: msg, Err: err}, hint)
-	}
-
-	// The parser requires a locator on every table part, but a rule built in
-	// memory has not been through the parser and a nil here would panic.
-	if rule.Substrate != SubstrateTable || p.Table == nil {
-		return fail(fmt.Sprintf("the part has no table locator (substrate %q)", rule.Substrate),
-			"only a table rule resolves to a grid; a text rule reads the page text",
-			ErrNotFound)
-	}
-	loc := p.Table
-
-	tables, err := r.doc.TablesOn(p.Page)
-	if err != nil {
-		return nil, err
-	}
-
-	var found *corpus.Table
-	for _, t := range tables {
-		if t.Ordinal == loc.Ordinal {
-			found = t
-			break
-		}
-	}
-	if found == nil {
-		return fail(fmt.Sprintf("the page has %d tables, none with ordinal %d",
-			len(tables), loc.Ordinal), reanchorHint, ErrNotFound)
-	}
-	if found.LabelFingerprint != loc.LabelFingerprint {
-		return fail(fmt.Sprintf(
-			"table %d on the page has label_fingerprint %s, the rule expects %s",
-			loc.Ordinal, found.LabelFingerprint, loc.LabelFingerprint),
-			reanchorHint, ErrNotFound)
-	}
-	if err := checkCentroid(loc, found); err != nil {
-		return fail(err.Error(), reanchorHint, ErrNotFound)
-	}
-	return found, nil
-}
-
-const reanchorHint = "identity is (page, ordinal, fingerprint, position) and " +
-	"all four must agree; if the table moved, re-anchor the rule deliberately " +
-	"rather than letting resolution follow it"
-
-// centroidTolerance is how far a table may drift and still be the same table,
-// in points. Extraction rounds bboxes to 2dp, so the tolerance absorbs
-// typesetting jitter rather than measurement error; no two tables on any page
-// in this corpus are within 10pt of each other.
-const centroidTolerance = 10.0
-
-func checkCentroid(loc *TableLocator, t *corpus.Table) error {
-	if len(loc.BBoxCentroid) != 2 {
-		return nil // not declared; ordinal and fingerprint carry the identity
-	}
-	x, y, ok := t.Centroid()
-	if !ok {
-		return errors.New("the rule declares a bbox_centroid but the extractor recorded no bbox")
-	}
-	if dx, dy := abs(x-loc.BBoxCentroid[0]), abs(y-loc.BBoxCentroid[1]); dx > centroidTolerance || dy > centroidTolerance {
-		return fmt.Errorf("the table is at (%.1f, %.1f) but the rule expects (%.1f, %.1f), "+
-			"which is further than %.0fpt", x, y, loc.BBoxCentroid[0], loc.BBoxCentroid[1],
-			centroidTolerance)
-	}
-	return nil
-}
-
-func abs(f float64) float64 {
-	if f < 0 {
-		return -f
-	}
-	return f
 }
 
 // token is a whitespace-delimited run of text and where it sits in the page.

@@ -1,0 +1,56 @@
+                                                                                                City of Livermore
+                Schedule of Revenues, Expenditures and Changes in Fund Balances Budget and Actual – General Fund
+                                                                                  Fiscal Year Ended June 30, 2025
+
+
+                                                     GENERAL FUND
+                          SCHEDULE OF REVENUES, EXPENDITURES AND CHANGES IN FUND BALANCES
+                                                  BUDGET AND ACTUAL
+                                        FOR THE FISCAL YEAR ENDED JUNE 30, 2025
+                                                                                                            Variance
+                                                     Budgeted Amounts                                     Final Budget
+                                                                                   Actual Amounts           Positive
+                                                 Original            Final         Budgetary Basis         (Negative)
+REVENUES
+  Property taxes                             $    60,623,772    $    60,571,418    $    60,419,621    $        (151,797)
+  Sales taxes                                     42,593,316         42,593,316         39,115,790           (3,477,526)
+  Other taxes                                     24,054,312         24,054,312         24,765,680              711,368
+  Licenses and permits                             4,264,000          4,259,000          7,781,680            3,522,680
+  Intergovernmental                                3,833,548          3,833,548          4,306,137              472,589
+  Fines and forfeitures                              387,000            387,000            483,035               96,035
+  Charges for current services                     4,231,153          4,973,153          6,250,800            1,277,647
+  Use of money and property                        6,147,501          7,287,501         12,813,161            5,525,660
+  Miscellaneous                                      840,900            840,900          1,262,801              421,901
+    Total Revenues                               146,975,502        148,800,148        157,198,705           8,398,557
+EXPENDITURES
+  Current:
+    General Government:
+       City Council                                  238,982            238,982            223,673              15,309
+       City Manager                                5,193,796          5,593,434          5,302,677             290,757
+       City Attorney                               2,562,959          2,713,244          2,660,944              52,300
+       Administrative Services                     6,422,100          6,634,085          7,394,345            (760,260)
+       General Services                            7,127,289          5,544,978          2,870,931           2,674,047
+    Fire                                          27,779,939         28,495,534         28,618,005            (122,471)
+    Police                                        46,454,564         48,826,371         48,030,349             796,022
+    Public Works                                   9,809,484         10,401,650          9,280,768           1,120,882
+    Community Development                         20,797,983         21,338,334         19,703,075           1,635,259
+    Economic Development                           3,045,566          3,661,099          3,722,065             (60,966)
+    Library                                        7,172,141          7,567,209          7,578,813             (11,604)
+  Capital Outlay                                   7,506,000          3,594,603            822,376           2,772,227
+  Debt service:
+    Principal                                        100,000            100,000           785,260              (685,260)
+    Interest and fiscal charges                       17,500             17,500            18,360                  (860)
+      Total Expenditurs                          144,228,303        144,727,023        137,011,641           7,715,382
+EXCESS (DEFICIENCY) OF REVENUES
+  OVER EXPENDITURES                                2,747,199          4,073,125         20,187,064          16,113,939
+OTHER FINANCING SOURCES (USES)
+ Transfers in                                      1,555,206            905,500            526,133             (379,367)
+ Transfers (out)                                 (17,179,000)       (25,601,214)       (25,717,365)            (116,151)
+      Total Other Financing Sources (Uses)       (15,623,794)       (24,695,714)       (25,191,232)           (495,518)
+Net change in fund balance                       (12,876,595)       (20,622,589)        (5,004,168)   $     15,618,421
+Fund balance-beginning                            92,047,744         92,047,744         92,047,744
+Fund balance-ending                          $    79,171,149    $    71,425,155    $    87,043,576
+
+
+
+See Notes to Required Supplementary Information                                                                          93

@@ -1,0 +1,51 @@
+                                                                                                                                         City of Livermore
+                                                                                                                                       Statement of Activities
+                                                                                                                                     Year Ended June 30, 2025
+
+
+                                                                     STATEMENT OF ACTIVITIES
+                                                                 FOR THE YEAR ENDED JUNE 30, 2025
+                                                                                                                     Net (Expense) Revenue and
+                                                                           Program Revenues                           Changes in Net Position
+                                                                               Operating         Capital
+                                                            Charges for        Grants and      Grants and          Governmental        Business-type
+Functions/Programs                         Expenses          Services         Contributions   Contributions          Activities          Activities              Total
+Governmental Activities:
+  General Government                    $ 22,450,983    $        205,543    $      522,873    $            -   $      (21,722,567) $                   -   $    (21,722,567)
+  Fire                                    28,525,529           3,485,865                 -                 -          (25,039,664)                     -        (25,039,664)
+  Police                                  45,986,717           1,736,576           257,175                 -          (43,992,966)                     -        (43,992,966)
+  Public Works                            32,286,455           6,124,547         5,097,026                 -          (21,064,882)                     -        (21,064,882)
+  Community Development                   27,116,240          23,101,382        24,103,452         5,252,187           25,340,781                      -         25,340,781
+  Economic Development                     4,245,452             345,821                 -                 -           (3,899,631)                     -         (3,899,631)
+  Library                                  9,485,486              85,196                 -                 -           (9,400,290)                     -         (9,400,290)
+  Interest on long term debt               2,575,691                   -                 -                 -           (2,575,691)                     -         (2,575,691)
+     Total Governmental Activities       172,672,553          35,084,930        29,980,526         5,252,187         (102,354,910)                     -       (102,354,910)
+
+Business-type Activities:
+   Airport                                  3,205,408          3,904,909           435,320                 -                    -          1,134,821              1,134,821
+   Water                                   20,575,246         20,096,890            34,015         1,634,632                    -          1,190,291              1,190,291
+   Sewer                                   27,389,268         33,291,598               750         5,868,851                    -         11,771,931             11,771,931
+   Stormwater                               5,585,156          1,159,080                 -         1,679,034                    -         (2,747,042)            (2,747,042)
+      Total Business-type Activities       56,755,078         58,452,477           470,085         9,182,517                    -         11,350,001             11,350,001
+Total primary government                $ 229,427,631   $     93,537,407    $   30,450,611    $   14,434,704         (102,354,910)        11,350,001            (91,004,909)
+
+General revenues:
+   Property taxes                                                                                                      60,419,621                  -            60,419,621
+   Sales taxes                                                                                                         39,115,790                  -            39,115,790
+   Business license taxes                                                                                              10,156,311                  -            10,156,311
+   Transient occupancy, franchise and other taxes                                                                      14,609,369                  -            14,609,369
+   Intergovernmental, unrestricted                                                                                      4,306,137                  -             4,306,137
+   Investment income                                                                                                   18,427,802          8,423,453            26,851,255
+   Miscellaneous                                                                                                        5,781,917                  -             5,781,917
+Transfers, net (Notes 4 & 5)                                                                                           (7,363,576)         7,363,576                     -
+      Total general revenues and transfers                                                                            145,453,371         15,787,029           161,240,400
+Change in Net Position                                                                                                 43,098,461         27,137,030            70,235,491
+Net Position-Beginning, as previously reported                                                                        442,086,383        282,328,064           724,414,447
+Adjustments (Note 19)                                                                                                  (1,325,287)          (215,045)           (1,540,332)
+Net Position-Beginning, as restated                                                                                   440,761,096        282,113,019           722,874,115
+Net Position-Ending                                                                                            $      483,859,557 $      309,250,049 $         793,109,606
+
+
+
+
+See Notes to Financial Statements                                                                                                                                        24

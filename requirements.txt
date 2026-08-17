@@ -1,13 +1,30 @@
-# Extraction toolchain. Python is used for exactly one thing: running xberg
-# over the source PDFs via `make extract`. Nothing else in this project needs
-# it -- fisc reads only the committed artifacts.
+# Extraction toolchain. Python is used for exactly one thing: running
+# tools/extract.py over the source PDFs via `make extract`. Nothing else in
+# this project needs it -- fisc reads only the committed artifacts.
 #
-# The version is pinned exactly because it is part of the provenance chain.
-# Every extraction manifest records the xberg version that produced it, and
-# `fisc verify` fails when a manifest disagrees with this file. Without the
-# pin that manifest field would be decoration.
+# THIS FILE INSTALLS NOTHING. The extractor is poppler-utils, a SYSTEM package,
+# not a pip install, and tools/extract.py is standard library only:
 #
-# Bumping this version is expected to change extracted artifacts. The workflow
-# is: bump, `make extract`, review the artifact diff, then `fisc reanchor
-# --accept` to update mapping integrity hashes in one reviewable commit.
-xberg==1.0.14
+#     apt-get install -y poppler-utils      # Debian/Ubuntu
+#     brew install poppler                  # macOS
+#
+# It is kept as requirements.txt anyway because `make extract` is where anyone
+# looks for the toolchain, and an empty requirements.txt would read as "no
+# dependency" rather than "a dependency pip cannot install".
+#
+# The extractor was xberg==1.0.14 through extractor_version 2. xberg silently
+# dropped data rows -- Budget Book p167 prints a ~40-line department grid and
+# seven lines survived; p130 prints 13 Miscellaneous Revenue rows and none did
+# -- and its table output could not express column position, which is what
+# "absent is not zero" needs on a sparse grid. See fisc-yqv.
+#
+# The version is part of the provenance chain: every extraction manifest
+# records the poppler_version that produced it. Verified against:
+#
+#     pdftotext version 24.02.0
+#
+# Poppler is not pinned the way a pip requirement would be, because it is
+# whatever the platform ships. Expect a different poppler version to change
+# extracted bytes. The workflow is: `make extract`, review the artifact diff,
+# then `fisc reanchor --accept` to update mapping integrity hashes in one
+# reviewable commit.

@@ -1,0 +1,30 @@
+                                                                                                  City of Livermore
+                                                                                         Notes to Financial Statements
+                                                                                                         June 30, 2025
+
+
+Note 19 - Restatement due to Change in Accounting Principle
+
+As of June 30, 2025, the City adopted GASB Statement No. 101, Compensated Absences. The provisions of this
+standard modernize the types of leave that are considered a compensated absence and provide guidance for a
+consistent recognition and measurement of the compensated absence liability. Therefore, compensated absences
+for the governmental activities and business-type activities were increased by $1,325,287 and $215,045,
+respectively, as of July 1, 2024. The effect of this change in accounting principle is described in the table below.
+
+                                               Governmental       Business-Type
+                                                 Activities         Activities            Total
+
+Beginning Balance, as previosly reported       $ 442,086,383      $ 282,328,064       $ 724,414,447
+Adjustments                                       (1,325,287)          (215,045)         (1,540,332)
+Beginning balance, as restated                 $ 440,761,096      $ 282,113,019       $ 722,874,115
+
+                                                   Airport            Stormwater          Sewer            Water
+
+Beginning Balance, as previosly reported       $   24,269,484     $     29,545,374    $ 169,813,099     $ 7,386,142
+Adjustments                                           (41,201)    $         (8,158)        (127,030)        (38,655)
+Beginning balance, as restated                 $   24,228,283     $     29,537,216    $ 169,686,069     $ 7,347,487
+
+
+
+
+                                                                                                                       90

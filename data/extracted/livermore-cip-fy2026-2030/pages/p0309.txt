@@ -1,0 +1,50 @@
+                                                                          CAPITAL IMPROVEMENT PLAN
+                                                                                 List of Funds by Fund Number
+
+
+          LIST OF FUNDS BY FUND NUMBER
+Fund Number            Fund Name                    Fund Number              Fund Name
+   100        General Fund                              321       Other Maintenance CFDs
+   101        CIP Reserves                              330       Library Donations
+   200        Low Income Housing Fund                   331       Police Donations
+   201        Housing Successor Agency                  400       2020 COPS Series A
+   202        SOEF (Social Op Endowment)                401       2020 COPS Series B
+   203        Mortgage Assistance                       402       2022 COPS
+   204        HHS Loan Fund                             470       Doolan Canyon Preserve Endowment
+   205        CAL Home Reuse                            471       Doolan Canyon Open Space
+   206        Calif Begin Program                       510       Traffic Impact Fee (TIF)
+   207        Local Housing Trust                       511       TVTC 20% Fee
+   210        Horizons                                  512       Park Fee - AB 1600
+   211        Asset Seizure - County                    513       Solid Waste & Recyc Impact Fee
+   220        Grant - Federal Grant Fund                540       2022 COP Construction Fund
+   221        Asset Seizure - Dep of Justice            550       County Measure D
+   222        Asset Seizure - Treasury                  551       County Measure BB - Bike/Pedestrian
+   223        Grant - HUD EDI Special Grant             552       County Measure BB - Local Streets & Roads
+   224        Grant - Community Development Block Grant 553       County Measure F - Vehicle Registration Fee
+   225        Grant - Home Grant                        560       State - Gas Tax
+   226        FEMA Funding                              561       State - SB1
+   240        Grant - State Grant Fund                  580       Developers Deposit
+   241        Opioid Settlement                         581       Public Utility Undergrounding
+   242        PD COPS Grant                             582       Transferable Development Credits
+   260        Grant - Local & Other Grants              583       South Livermore Specific Plan & AD Closeout
+   280        Downtown Revitalization Fee               600       Airport
+   281        Parking In-Lieu Fee                       601       Federal Grant - Airport
+   282        Host Community Impact Fee                 610       Stormwater
+   283        City Street Sweeping Fee                  611       Federal Grant - Storm
+   284        Public Art Fee                            612       Storm Drain
+   285        Vehicle Impound Fee                       620       Wastewater
+   286        Accessibility Compliance                  621       State Grant - Sewer
+   287        PEG Capital Fees                          622       Wastewater Replacement
+   288        Import Mitigation Fee                     623       Wastewater Connection Fees
+   289        Solid Waste & Recycling Fee               640       Water
+   290        Human Services Facility Fee               641       CIP Water
+   291        Community Beneift Fund                    642       Water Replacement
+   300        Open Space Acquisition & Mgmt             643       Water Connection Fees
+   310        Downtown LMD                              700       General Liability
+   311        Other LMD                                 710       Workers Comp Insurance
+   320        El Charro CFD 2009-1 Maint                720       Information Technology
+
+
+
+
+                             FY 2025-2030 CAPITAL IMPROVEMENT PLAN                                      305

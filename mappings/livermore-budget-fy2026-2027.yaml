@@ -25,14 +25,46 @@
 #
 # HOW THE PAGES EXTRACT
 #
-# The whole of p66 — both sections, both totals rows, everything but the title
-# and the working-capital lines — arrives as a SINGLE line of text. There is no
-# line structure to anchor on, so every block here is bounded by a `section`
-# string and, where one exists, a `stop_at` string. Both pages print several
-# strings twice ("REVENUES:" is also the tail of "TOTAL REVENUES:"), so most
-# anchors carry a `section_ordinal` saying which occurrence the author looked
-# at. An ordinal is a claim, not a convenience: if the page's shape changes the
-# rule fails to resolve instead of quietly reading the wrong block.
+# `pdftotext -layout` reproduces the printed page: one text line per printed
+# line, with the columns held apart by runs of spaces. Every block below is
+# still bounded by a `section` string and a `stop_at` string — nothing in
+# internal/mapping is line-aware, an anchor is a plain substring search — but
+# the text those anchors run over now looks like the page a reader would open.
+# Three consequences shape the anchors in this file.
+#
+# FIRST, AN ANCHOR MAY NOT ASSUME SINGLE SPACING. p67's fund-group header
+# prints as "Capital Funds", fourteen spaces, "Debt Service Funds", and so on in
+# runs of nine to fifteen; and the runs are not even the same for the two halves
+# of that one page, because the revenue half and the expenditure half are
+# typeset independently. An anchor spelling the header out in full would be
+# encoding the kerning of one release. The three parts that need that header
+# anchor instead on its LAST name plus the line break, "Internal Service Funds\n",
+# which is the same idea the revenue half uses with the fourth "FY 2026-27": the
+# end of the header line is the page's real boundary between labels and figures,
+# and naming the last thing printed on it is how a rule says so without spelling
+# out the gaps. Requiring the newline is what makes "last" a claim rather than a
+# hope — the anchor fails outright if that name stops ending its line.
+#
+# SECOND, SEVERAL STRINGS OCCUR MORE THAN ONCE. "REVENUES:" is also the tail of
+# "TOTAL REVENUES:"; p67 prints its four fund-group names twice, once over each
+# half; p67's header line prints "FY 2026-27" once per fund group. So most
+# anchors carry a `section_ordinal` saying which occurrence the author looked at.
+# An ordinal is a claim, not a convenience: if the page's shape changes the rule
+# fails to resolve instead of quietly reading the wrong block.
+#
+# THIRD, EVERY BLOCK NEEDS A `stop_at`. Both pages end with the document's
+# running footer — "BUDGET FY 2025-27" and then "Page 62" on p66, "Page 63" on
+# p67 — and that page number is a bare integer, which `amount.Parse` reads as a
+# perfectly good $62. A block with no
+# `stop_at` runs to the end of the page and takes the footer with it. The four
+# parts here that read to the foot of the schedule are caught today by other
+# guards (the unmapped-row check on labelled p66, the value count on label-less
+# p67), but relying on that would be relying on luck: the footer is not part of
+# the table, a rule that includes it is making a false claim about the table's
+# extent, and on a page whose block ended differently the page number would land
+# in a column as a figure. This is a corpus-wide hazard and not a p66/p67 quirk —
+# the previous extractor deleted repeating text and hid it. So every such part
+# stops at "BUDGET FY 2025-27", the footer's own words.
 #
 # NO ROW IS OMITTED ANYWHERE IN THIS FILE, and that is a checked claim. p67
 # prints all ten revenue rows at the same ten y-positions as p66's ten labels,
@@ -63,11 +95,15 @@
 # WHAT TIES
 #
 # `total_row` is set on the two rules the document prints a total for, covering
-# 24 columns, and all 24 reconcile exactly to that printed total. Eight of them
-# read only after fisc-gxt: p67 prints its expenditure totals on the same
-# extracted line as the TRANSFER OUT: row below, so the resolver now takes the
-# "$"-marked prefix of that run, which is the distinction the page itself draws
-# between a totals row and a data row.
+# 24 columns, and all 24 reconcile exactly to that printed total. The "$" the
+# city puts on a totals row and withholds from a data row is load-bearing twice
+# over: it is the `stop_at` for both label-less p67 parts, which have no
+# "TOTAL ...:" label to stop at because p67 prints no row labels at all. It used
+# also to be the only thing separating p67's TOTAL EXPENDITURES figures from the
+# TRANSFER OUT figures below, which the previous extractor ran onto one line
+# (fisc-gxt); `-layout` keeps them on the two lines the page prints them on, so
+# the totals now read as an ordinary eight-wide run and the resolver's
+# currency-marked-prefix fallback is not exercised by this file.
 #
 # The three rules with no `total_row` read single rows the document prints no
 # subtotal for, and are checked by the balance
@@ -79,7 +115,6 @@ doc_id: livermore-budget-fy2026-2027
 rules:
   # --------------------------------------------------------------------------
   - id: spine-revenues
-    substrate: text
     kind: revenue
     basis: adopted
     scope: all-funds-gross
@@ -158,7 +193,6 @@ rules:
 
   # --------------------------------------------------------------------------
   - id: spine-expenditures
-    substrate: text
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
@@ -172,11 +206,10 @@ rules:
       inventing numbers. Same two-page shape as the revenue rule: p66 labelled,
       p67 positional. The four rows sum to the city's printed
       "TOTAL EXPENDITURES:" in every column — General Fund FY2025-26
-      $144,650,802, all funds $254,095,412 — and all eight columns are
-      machine-checked against it. p67 prints its totals row on the same
-      extracted line as the TRANSFER OUT: row below, so reading it depends on
-      the "$" marking that distinguishes the two (fisc-gxt). Note that this is
-      the cost of services only:
+      $144,650,802, all funds $254,095,412 — and all twelve columns are
+      machine-checked against it. p67 prints no row labels, so its totals row is
+      found by the "$" the city marks it with and the data rows above it lack.
+      Note that this is the cost of services only:
       transfers out and additions to reserves are separate rows and separate
       rules, and adding all three together is the $313,708,146 double count the
       project exists to avoid.
@@ -196,9 +229,20 @@ rules:
         labels_from: 66
         # The expenditure half of p67 restates the four fund-group names as its
         # own header — the page prints that run of names twice, once at the top
-        # for the revenue half and once here — so the second occurrence is this
+        # for the revenue half and once here — so the second occurrence ends this
         # section's header and the block starts immediately after it.
-        section: "Capital Funds Debt Service Funds Special Revenue Funds Internal Service Funds"
+        #
+        # The anchor is the LAST name on that line plus the line break, not the
+        # whole header: the four names are separated by runs of nine to fifteen
+        # spaces, and the runs differ between the two halves of this one page
+        # (14 here against 15 above), so a full-header anchor would be pinning
+        # the typesetting rather than the structure. Ending
+        # on "Internal Service Funds\n" says the same thing the revenue half says
+        # with its fourth "FY 2026-27" — the block starts where the header line
+        # ends — and it fails closed if the city adds a fifth fund group, because
+        # this name would then no longer end a line and the anchor would not
+        # occur at all.
+        section: "Internal Service Funds\n"
         section_ordinal: 2
         # As on the revenue half, the data rows are bare and the totals row is
         # the first one printed with "$".
@@ -220,7 +264,6 @@ rules:
 
   # --------------------------------------------------------------------------
   - id: spine-transfers-in
-    substrate: text
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
@@ -287,7 +330,6 @@ rules:
 
   # --------------------------------------------------------------------------
   - id: spine-transfers-out
-    substrate: text
     kind: transfer_out
     basis: adopted
     scope: all-funds-gross
@@ -307,9 +349,13 @@ rules:
       - page: 66
         section: "EXPENDITURES:"
         section_ordinal: 1
-        # No stop_at: the uses block runs to the end of the page, because the
-        # three working-capital rows below "TOTAL USES:" are part of the same
-        # positional run on p67 and have to be declared to keep the count.
+        # The uses block runs past "TOTAL USES:" to the last of the three
+        # working-capital rows, because those rows are part of the same
+        # positional run on p67 and have to be declared to keep the count. What
+        # is printed below them is the running footer, so that is where the block
+        # stops: leaving stop_at unset would take "BUDGET FY 2025-27 Page 62" into
+        # the block, and "62" is a figure as far as the parser is concerned.
+        stop_at: "BUDGET FY 2025-27"
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
@@ -317,9 +363,15 @@ rules:
           - {fund_group: enterprise, fiscal_year: 2027}
       - page: 67
         labels_from: 66
-        section: "Capital Funds Debt Service Funds Special Revenue Funds Internal Service Funds"
+        # Same header boundary as the expenditure rule's p67 part; see the note
+        # there for why the anchor is the header's last name and not the header.
+        section: "Internal Service Funds\n"
         section_ordinal: 2
-        # 11 rows x 8 columns = 88 values, running to the end of the page.
+        # 11 rows x 8 columns = 88 values, ending at the running footer. The
+        # count guard would catch the footer's five stray tokens, but a boundary
+        # a rule relies on another check to enforce is a boundary the rule has
+        # not stated.
+        stop_at: "BUDGET FY 2025-27"
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}
@@ -344,7 +396,6 @@ rules:
 
   # --------------------------------------------------------------------------
   - id: spine-fund-balance
-    substrate: text
     kind: fund_balance
     basis: adopted
     scope: all-funds-gross
@@ -365,6 +416,9 @@ rules:
       - page: 66
         section: "EXPENDITURES:"
         section_ordinal: 1
+        # The same 11-row uses block spine-transfers-out reads, stopped at the
+        # same running footer for the same reason.
+        stop_at: "BUDGET FY 2025-27"
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
@@ -372,8 +426,9 @@ rules:
           - {fund_group: enterprise, fiscal_year: 2027}
       - page: 67
         labels_from: 66
-        section: "Capital Funds Debt Service Funds Special Revenue Funds Internal Service Funds"
+        section: "Internal Service Funds\n"
         section_ordinal: 2
+        stop_at: "BUDGET FY 2025-27"
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}

@@ -1,0 +1,56 @@
+                                                                                                        City of Livermore
+                                                                                                 Notes to Financial Statements
+                                                                                                                 June 30, 2025
+
+
+Detailed classification of the City’s fund balances as of June 30, 2025 are below:
+
+                                                                          Low Income                Other
+                                                           General      Housing-Special          Governmental
+              Fund Balance Classifications                  Fund         Revenue Fund               Funds                 Total
+
+Nonspendable:
+  Items not in spendable form:
+     Prepaids and deposits                             $        8,000   $            3,000   $                  -   $        11,000
+     Leases                                                    43,587                    -                      -            43,587
+     Advances and notes receivable                          3,517,069                    -                      -         3,517,069
+     Land held for redevelopment                            1,704,483                    -                      -         1,704,483
+  Total Nonspendable Fund Balances                          5,273,139                3,000                      -         5,276,139
+
+Restricted for:
+  Alameda County Transportation programs                            -                 -             13,159,783           13,159,783
+  Gas tax program                                                   -                 -             14,215,490           14,215,490
+  Grant Programs                                                    -                 -             11,756,127           11,756,127
+  Host Community Impact program                                     -                 -              1,317,255            1,317,255
+  Housing and human services programs                               -        44,403,222             10,840,933           55,244,155
+  Maintenance Program                                               -                 -             15,935,827           15,935,827
+  Capital improvements programs                                     -                 -             69,239,246           69,239,246
+  Park program                                                      -                 -             11,833,166           11,833,166
+  PEG program                                                       -                 -              1,807,193            1,807,193
+  Art programs                                                      -                 -              9,198,364            9,198,364
+  Solid waste and recycling program                                 -                 -                350,572              350,572
+  Street sweeping program                                           -                 -                500,604              500,604
+  Pension 115 Trust                                         6,758,239                 -                      -            6,758,239
+  Total Restricted Fund Balances                            6,758,239        44,403,222            160,154,560          211,316,021
+
+Committed for:
+  Financial stabilization arrangement                      15,381,074                    -                      -        15,381,074
+  Encumbrances                                              1,983,088                    -                      -         1,983,088
+  Total Committed Fund Balance                             17,364,162                    -                      -        17,364,162
+Assigned for:
+   Capital improvements programs                            2,851,107                    -                      -         2,851,107
+   CIP Reserves                                            28,186,762                    -                      -        28,186,762
+   Total Assigned Fund Balances                            31,037,869                    -                      -        31,037,869
+
+Unassigned:
+  Economic Uncertainty Reserve                             19,925,382                                                  19,925,382
+  General Fund and other funds                              6,684,785                 -                      -          6,684,785
+  Total Unassigned Fund Balances                           26,610,167                 -                      -         26,610,167
+  Total Fund Balances                                  $   87,043,576   $    44,406,222      $     160,154,560      $ 291,604,358
+
+Minimum Operating Reserve Policy
+
+On June 13, 2016 the City adopted a resolution to update the City’s Fund Balance Policy. Special Revenue, Debt
+Service and Capital Projects Funds have no minimum funding levels due to the nature of the funds. The minimum
+funding levels of the policy are highlighted below.
+                                                                                                                                  67

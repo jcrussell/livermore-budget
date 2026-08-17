@@ -1,0 +1,65 @@
+                                                                                                                         City of Livermore
+Reconciliation of the Statement of Revenues, Expenditures, and Changes in Fund Balances of Governmental Funds to
+                                                                                       the Statement of Activities
+                                                                                        Year Ended June 30, 2025
+
+
+                              RECONCILIATION OF THE STATEMENT OF REVENUES, EXPENDITURES AND CHANGES IN
+                                FUND BALANCES OF GOVERNMENTAL FUNDS TO THE STATEMENT OF ACTIVITIES
+                                                   FOR THE YEAR ENDED JUNE 30, 2025
+
+Amounts reported for governmental activities in the statement of activities are different because:
+
+NET CHANGE IN FUND BALANCES - TOTAL GOVERNMENTAL FUNDS                                                                          $ 16,237,996
+
+Amounts reported for governmental activities in the Statement of Activities are different because
+ of the following:
+
+CAPITAL ASSETS TRANSACTIONS
+  Governmental Funds report capital outlays as expenditures. However, in the Statement of Activities the cost of those
+     assets is capitalized and allocated over their estimated useful lives and reported as depreciation expense.
+        The capital outlay asset addition expenditures are therefore added back to fund balance                                    26,902,091
+        Loss on sale of property added back to fund balance                                                                            (2,504)
+        Depreciation expense is deducted from the fund balance
+           (Depreciation expense is net of internal service fund depreciation of
+           $2,342,654 which has already been allocated to internal service funds.)                                                (13,057,580)
+
+LONG TERM DEBT PROCEEDS AND PAYMENTS
+  Bond proceeds provide current financial resources to governmental funds, but issuing debt increases long-term
+     liabilities in the Statement of Net Position. Repayment of bond principal is an expenditure in the governmental
+     funds, but in the Statement of Net Position the repayment reduces long-term liabilities.
+         Premium on issuance recognized                                                                                                16,632
+         Repayment of debt principal is added back to fund balance                                                                  3,872,552
+         Payment of principal on Subscription-based IT arrangements                                                                   785,260
+         Amortization of premium on long-term debt                                                                                    584,174
+
+ACCRUAL OF NON-CURRENT ITEMS
+  The amounts below included in the Statement of Activities do not provide or (require) the use of current financial
+    resources and therefore are not reported as revenue or expenditures in governmental funds (net change):
+       Long-term compensated absences                                                                                                 698,402
+       Interest payable                                                                                                                53,010
+       Unavailable revenue                                                                                                          1,921,847
+       Change in equity in JPA                                                                                                        374,675
+
+   Governmental funds report City pension and OPEB contributions as expenditures. However in the Statement
+     of Activities, the cost of pension and OPEB benefits earned net of employee contributions is reported as
+     pension expense and OPEB expense.
+        Deferred outflow of resources related to pension                                                                          (13,567,241)
+        Deferred inflow of resources related to pension                                                                             1,835,124
+        Change in net pension liability                                                                                             5,850,651
+        Deferred outflow of resources related to OPEB                                                                                (286,766)
+        Deferred inflow of resources related to OPEB                                                                                2,254,478
+        Change in net OPEB liability                                                                                                2,615,237
+
+ALLOCATION OF INTERNAL SERVICE FUND ACTIVITY
+   Internal Service Funds are used by management to charge the costs of certain activities, such as equipment
+      acquisition, maintenance, and insurance to individual funds. The portion of the net revenue (expense)
+      of these Internal Service Funds arising out of their transactions with governmental funds is reported
+      with governmental activities, because they service those activities.
+          Change in Net Position - All Internal Service Funds                                                                     10,631,001
+          Change in Net Position of Internal Service Funds reported with Business-Type Activities                                 (4,620,578)
+   CHANGE IN NET POSITION OF GOVERNMENTAL ACTIVITIES                                                                            $ 43,098,461
+
+
+
+See Notes to Financial Statements                                                                                                         29

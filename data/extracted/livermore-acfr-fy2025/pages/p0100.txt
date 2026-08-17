@@ -1,0 +1,52 @@
+                                                                                                       City of Livermore
+                                                                                              Notes to Financial Statements
+                                                                                                              June 30, 2025
+
+
+The City’s net pension liability for the Plans is measured as the proportionate share of the net pension liability. The
+net pension liability of the Plans are measured as of June 30, 2024, and the total pension liability for the Plan used to
+calculate the net pension liability was determined by an actuarial valuation as of June 30, 2023 rolled forward to
+June 30, 2024 using standard update procedures. The City’s proportion of the net pension liability was based on a
+projection of the City’s long-term share of contributions to the pension plan relative to the projected contributions
+of all participating employers, actuarially determined.
+
+The City’s proportionate share of the net pension liability for the Plan as of the measurements dates of June 30,
+2023 and 2024 was as follows:
+
+                                                                                    Safety Police
+
+                    Proportion - June 30, 2023                                       0.79476%
+                    Proportion - June 30, 2024                                       0.80316%
+                    Change - Increase (Decrease)                                     0.00840%
+                    1
+                     All Tiers of the Safety Police plan were combined together on GASB 68 report by
+                    CalPERS.
+
+Pension Plan Fiduciary Net Position – Detailed information about the pension plan’s fiduciary net position is
+available in the separately issued CalPERS financial reports.
+
+5. Sensitivity of the Net Pension Liability to Changes in the Discount Rate
+
+The following presents the net pension liability of the City’s Miscellaneous Plan and the City’s proportionate share of
+the net pension liability for the Safety Police Plan, calculated using the discount rate for the Plan, as well as what the
+City’s net pension liability would be if it were calculated using a discount rate that is 1-percentage point lower or 1-
+percentage point higher than the current rate:
+
+                                                                        Discount Rate
+                                                  1% Decrease              Current              1% Increase
+                   Net Pension Liability            (5.90%)                (6.90%)                (7.90%)
+
+              Miscellaneous Plan1                 $148,086,064             99,199,157           $58,528,893
+              Police Safety Plan1                   88,366,903             58,556,931            34,176,564
+              1
+                  All Tiers of the Miscellaneous plan and Safety Police plan were combined together into
+
+6. Pension Expenses and Deferred Outflows/Inflows of Resources Related to Pensions
+
+For the fiscal year ended June 30, 2025, the City recognized pension expense of $3,385,195 for the Miscellaneous
+Plan and $4,401,586 for the Police Safety Plan for a total pension expense of $7,786,781.
+
+
+
+
+                                                                                                                        74

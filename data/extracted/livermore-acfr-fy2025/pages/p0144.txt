@@ -1,0 +1,57 @@
+                                                                                                                               City of Livermore
+Schedule of Revenues, Expenditures and Changes in Fund Balances Budget and Actual – Budgeted Non-Major Funds
+                                                                                     Year Ended June 30, 2025
+
+
+                                                       BUDGETED NON-MAJOR FUNDS
+                                    SCHEDULE OF REVENUES, EXPENDITURES AND CHANGES IN FUND BALANCES
+                                                            BUDGET AND ACTUAL
+                                                  FOR THE FISCAL YEAR ENDED JUNE 30, 2025
+
+                                                                CITY STREET SWEEPING                                          PARK FEE                       OT
+                                                                                          Variance                                              Variance
+                                                                                          Positive                                              Positive
+                                                       Budget           Actual           (Negative)           Budget           Actual          (Negative)
+
+REVENUES
+  Taxes and special assessments                    $          -     $          -     $             -      $           -   $            -   $            -
+  Other taxes                                                 -                -                   -                  -                -                -
+  Intergovernmental                                           -                -                   -                  -                -                -
+  Contributions from outside sources                          -                -                   -                  -                -                -
+  Charges for services                                  763,350          739,161             (24,189)         6,500,000        7,520,197        1,020,197
+  Use of money and property                                   -            9,531               9,531             53,195          386,115          332,920
+  Miscellaneous                                               -                -                   -                  -                -                -
+        Total Revenues                                  763,350          748,692             (14,658)         6,553,195        7,906,312        1,353,117
+
+
+EXPENDITURES
+  Current:
+    General Government:
+      City Manager                                            -                -                      -              -                 -                -
+    Fire                                                      -                -                      -              -                 -                -
+    Police                                                    -                -                      -              -                 -                -
+    Public works                                        537,577          537,577                      -              -                 -                -
+    Community Development                                     -                -                      -         25,278             5,782           19,496
+    Economic Development                                      -                -                      -              -                 -                -
+    Library                                                   -                -                      -              -                 -                -
+  Capital Outlay:
+    Capital projects                                            -                -                    -       3,630,357          663,566        2,966,791
+  Debt service:
+    Principal                                                 -                -                      -               -                -                -
+    Interest and fiscal charges                               -                -                      -               -                -                -
+         Total Expenditures                             537,577          537,577                      -       3,655,635          669,348        2,986,287
+EXCESS (DEFICIENCY) OF REVENUE
+  OVER EXPENDITURES                                     225,773          211,115             (14,658)         2,897,560        7,236,964        4,339,404
+
+OTHER FINANCING SOURCES (USES)
+  Transfers in                                                -                -                   -                -                -               -
+  Transfers out                                               -                -                   -                -                -               -
+        Total Other Financing Sources (Uses)                  -                -                   -                -                -               -
+Net change in fund balance                         $    225,773          211,115     $       (14,658)     $ 2,897,560        7,236,964     $ 4,339,404
+Fund balances (deficits)- beginning, as restated                         289,489                                             4,596,202
+Fund balances (deficits)- ending                                    $    500,604                                          $ 11,833,166
+
+
+
+
+                                                                                                                                                       114

@@ -1,0 +1,53 @@
+POLICE DEPARTMENT RADIO REPLACEMENT                                                      CAPITAL IMPROVEMENT PLAN
+Project No.: PS202716                                                                                             Public Safety
+
+
+
+
+                                                                              COMMUNITY PILLAR: A City That Works
+
+                                                                              GOAL: 11: Modernize key business
+                                                                              systems and processes to increase
+                                                                              efficiency and improve transparency.
+
+                                                                              FUNDING: Project funding comes from
+                                                                              the CIP Reserves - Government Fund.
+
+                                                                              O&M COST ASSUMPTIONS: There will
+                                                                              be no additional O&M costs for this
+                                                                              project.
+
+
+                                                        PROJECT LOCATION
+     Project Description:
+                                                               Civic Center
+     The majority of the police radios are out of
+     warranty with the bulk being purchased in 2012.
+     Additionally, they do not comply with upcoming
+     encryption requirements. This project will replace
+     approximately 250 Police Department radios with
+     models that have encryption keys.
+
+
+
+
+     Project Justification:
+     The City of Livermore is a member of the East Bay Regional Communications System (EBRCSA) via a Joint Power
+     Agreement between Alameda and Contra Costa Counties. EBRCSA is responsible for ownership and management
+     of the radio system. The Police Department, as a law enforcement agency with access to California Department of
+     Justice (DOJ) California Law Enforcement Telecommunications System (CLETS), must adhere to the requirement
+     detailed in the CLETS Policies, Practices and Procedures (PPP) and the FBI Criminal Justice Information System
+     (CJIS) Security policy to ensure the confidentiality and integrity of the data therein. This means that any Criminal
+     Justice Information (CJI) and Personally Identifiable Information (PII) must be limited to authorized personnel, and
+     the transmission of such information over the radio must be encrypted.
+
+                     Fund         FY2024-25 FY2025-26 FY2026-27 FY2027-28 FY2028-29 FY2029-30       FY2030-45     Total
+     PROJECT     CIP Reserves -
+                                     $0    $1,700,000     $0           $0         $0        $0         $0       $1,700,000
+     FUNDING      Government
+                     TOTAL           $0    $1,700,000     $0           $0         $0        $0         $0       $1,700,000
+
+
+
+
+                                       FY 2025-2030 CAPITAL IMPROVEMENT PLAN                                              68

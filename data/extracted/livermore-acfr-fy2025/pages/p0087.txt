@@ -1,0 +1,50 @@
+                                                                                                     City of Livermore
+                                                                                            Notes to Financial Statements
+                                                                                                            June 30, 2025
+
+
+Subscription-Based Information Technology Arrangements
+
+A subscription-based IT arrangement (SBITA) is defined as a contractual agreement that conveys control of the right to-
+use another entity’s IT asset, alone, or in conjunction with a tangible capital asset, for a minimum contractual period of
+greater than one year, in an exchange or exchange-like transaction. The City enters into SBITAs such as software
+licenses downloaded or available remotely, data storage, and hardware necessary to use the IT asset. The related
+obligations are presented in the amounts equal to the present value of SBITA payments, payable during the remaining
+SBITA term. As the licensee, the City recognizes a SBITA liability and an associated intangible-SBITA asset on the
+Statement of Net Position.
+
+The City has several leasing arrangements accounted for under GASB No. 96, Subscriptions Based Information
+Technology Arrangements. These arrangements are summarized below.
+
+Licensee Activities
+
+The City has accrued liabilities for eight subscription based information technology (IT) arrangements as of June 30,
+2025. Software subscriptions accrued provide the City with remote desktops capabilities, and enterprise application
+functionality. The remaining liability for these subscriptions is $1,593,602 as of June 30, 2025, respectively. Right to use
+assets, net of amortization, for these subscriptions is $1,777,699 as of June 30, 2025. Interest expense recognized on
+these subscriptions was $71,558 for the fiscal year ended June 30, 2025. Principal payments of $1,006,413 were
+recognized in the year ended June 30, 2025. Final payment on these subscription arrangements is expected in fiscal
+year 2033.
+
+                                                  Balance at          Additions          Balance at           Current
+                                                June 30, 2024       (Retirements)      June 30, 2025          Portion
+Governmental Activities
+Governmental Fund Capital Assets
+  Subscriptions payable                         $    2,012,740     $      (785,260)    $    1,227,480     $      695,375
+Internal Service Fund Capital Assets
+   Subscriptions payable                               255,053            (173,870)            81,183              81,184
+   Total governmental activities                $    2,267,793     $      (959,130)    $    1,308,663     $      776,559
+
+Business-type Activities
+  Water
+    Subscriptions payable                       $       55,370     $        (7,880)    $       47,490     $         8,388
+   Sewer
+     Subscriptions payable                             253,122             (36,026)           217,096              38,346
+   Stormwater
+     Subscriptions payable                              23,730              (3,377)            20,353               3,595
+   Total business-type activities               $      332,222     $       (47,283)    $      284,939     $        50,329
+
+
+
+
+                                                                                                                         61

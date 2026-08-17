@@ -1,0 +1,57 @@
+WRP SCADA PLC CONTROLS UPGRADE                                                          CAPITAL IMPROVEMENT PLAN
+Project No.: WW202218                                                                                         Wastewater
+
+
+
+
+                                                                           COMMUNITY PILLAR: A Safe Community
+                                                                           That Thrives
+                                                                           GOAL: 11: Operate and maintain
+                                                                           municipal water systems that provide
+                                                                           safe, efficient delivery of potable and
+                                                                           recycled water, collect and treat
+                                                                           wastewater, and comply with all federal,
+                                                                           state, and local regulations.
+                                                                           FUNDING: Project funding comes from
+                                                                           Wastewater Replacement and
+                                                  PROJECT LOCATION         Wastewater Connection Fees.
+                                                        Water              O&M COST ASSUMPTIONS: There will
+                                                   Reclamation Plant       be no additional O&M costs for this
+    Project Description:                                                   project.
+    The City uses a Supervisory Control and Data
+    Acquisition (SCADA) system to monitor and control the
+    Water Reclamation Plant (WRP) and associated lift
+    stations. This project includes upgrading seven WRP
+    programmable logic controllers (PLCs) and replacing
+    five WRP PLCs.
+
+    Project Justification:
+    The SCADA system consists of multiple hardware and
+    software components designed to work together to
+    collect process and maintain data to support equipment
+    operation in real-time. The SCADA system and the data it
+    collects are critical to supporting operations and
+    regulatory reporting functions. The City’s SCADA Master
+    Plan focuses on upgrade and replacement needs for all
+    hardware and software components. WRP PLC upgrades
+    and replacements are anticipated to address several
+    issues and concerns that negatively impact the SCADA
+    system’s short-term reliability and long-term usefulness,
+    including communication infrastructure that has reached
+    the end of its useful life, technical obsolescence of
+    hardware and software components, and system
+    maintainability.
+
+                    Fund         FY2024-25 FY2025-26 FY2026-27 FY2027-28 FY2028-29 FY2029-30 FY2030-45        Total
+                 Wastewater
+                                    $0       $0      $361,000   $328,000     $234,000   $400,000     $0     $1,323,000
+    PROJECT      Replacement
+    FUNDING      Wastewater
+                                    $0       $0      $124,000   $112,000     $80,000    $137,000     $0      $453,000
+               Connection Fees
+                   TOTAL            $0       $0      $485,000   $440,000     $314,000   $537,000     $0     $1,776,000
+
+
+
+
+                                     FY 2025-2030 CAPITAL IMPROVEMENT PLAN                                        176

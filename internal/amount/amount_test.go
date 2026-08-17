@@ -22,7 +22,6 @@ func TestParseAccepts(t *testing.T) {
 		{"single digit", "2", Dollars, 200},
 
 		{"dash is zero", "-", Dollars, 0},
-		{"escaped markdown dash is zero", `\-`, Dollars, 0},
 		{"em dash is zero", "—", Dollars, 0},
 		{"double dash is zero", "--", Dollars, 0},
 
@@ -272,15 +271,16 @@ func TestNoOverflowIsSilent(t *testing.T) {
 	}
 }
 
-// TestNormalizeUnescapesMarkdownDash guards agreement with the extractor's
-// normalize_cell. The committed page markdown holds 359 backslash-escaped
-// dashes; a Go reader that left them escaped would hash identical content
-// differently from the Python that produced the artifacts.
-func TestNormalizeUnescapesMarkdownDash(t *testing.T) {
-	if got, want := Normalize(`\-`), "-"; got != want {
-		t.Errorf("Normalize(%q) = %q, want %q", `\-`, got, want)
+// TestNormalizeUnifiesDashes guards the transform the zero rule rests on: the
+// documents print a zero cell as a hyphen, an en dash or a true minus sign
+// depending on the schedule, and zeroTokens only lists the "-" spelling.
+func TestNormalizeUnifiesDashes(t *testing.T) {
+	if got, want := Normalize("– — − -"), "- - - -"; got != want {
+		t.Errorf("Normalize(en/em/minus/hyphen) = %q, want %q", got, want)
 	}
-	if got, want := Normalize(`- \- - -`), "- - - -"; got != want {
-		t.Errorf("Normalize(%q) = %q, want %q", `- \- - -`, got, want)
+	// A backslash is no longer stripped from anything: there is no markdown in
+	// the corpus, so `\-` is an unrecognized token rather than a zero.
+	if _, err := Parse(`\-`, Dollars); err == nil {
+		t.Error(`Parse("\\-") = nil error; an unknown token must fail closed`)
 	}
 }

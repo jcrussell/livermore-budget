@@ -194,7 +194,7 @@ func TestPageCitesThePDFPageAndNeverTheLFSPointer(t *testing.T) {
 	for _, want := range []string{
 		"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66",
 		"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=67",
-		"https://github.com/jcrussell/livermore-budget/blob/main/data/extracted/livermore-budget-fy2026-2027/pages/p0066.md",
+		"https://github.com/jcrussell/livermore-budget/blob/main/data/extracted/livermore-budget-fy2026-2027/pages/p0066.txt",
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page does not cite %q", want)

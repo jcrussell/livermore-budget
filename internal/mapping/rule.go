@@ -14,42 +14,19 @@ package mapping
 
 import "github.com/jcrussell/livermore-budget/internal/amount"
 
-// SchemaVersion is the only rule-file version this package understands. A file
-// declaring anything else is refused rather than guessed at.
+// SchemaVersion is the rule-file version this package understands, declared in
+// every file and refused if it differs. It is a compatibility marker between
+// the rule files and the reader, not a feature flag: a rule file is only
+// meaningful against the resolver that knows how to read its fields, so when
+// the meaning of an existing field changes — a renamed key, a new default, an
+// anchor that resolves differently — this bumps and the old files are edited
+// rather than silently reinterpreted.
 //
-// Adding a field is free only while nothing is published. Once a rule file
-// ships, KnownFields(true) means an older binary treats a newly added key as a
-// fatal parse error rather than reaching the "upgrade the binary" hint in
-// validate, so the first field added after publication must bump this.
+// Adding a field does not require a bump while nothing is published, because
+// there is no older binary anywhere to hand a newer file to. The refusal that
+// does the day-to-day work is KnownFields(true) in the parser, which makes a
+// misspelled key fatal; this constant only guards a change of meaning.
 const SchemaVersion = 1
-
-// Substrate is where a rule reads its values from.
-type Substrate string
-
-const (
-	// SubstrateText reads the page markdown. This is the primary path and
-	// what most rules use, but it is not a default: substrate must be stated
-	// explicitly, because table extraction misses 46% of the Budget Book's
-	// money-bearing pages, including the citywide spine and the transfer
-	// schedule.
-	SubstrateText Substrate = "text"
-	// SubstrateTable reads a detected table's cell grid, where one exists and
-	// is faithful.
-	SubstrateTable Substrate = "table"
-	// SubstrateManual carries figures transcribed by hand, for pages no
-	// parser can read — the transfer schedule at Budget Book p76 extracts as
-	// four disjoint text blocks with mismatched cardinalities. Manual rules
-	// must declare checksums so the transcription is machine-checkable.
-	SubstrateManual Substrate = "manual"
-)
-
-func (s Substrate) valid() bool {
-	switch s {
-	case SubstrateText, SubstrateTable, SubstrateManual:
-		return true
-	}
-	return false
-}
 
 // Kind is what a fact represents in the flow model.
 type Kind string
@@ -120,12 +97,11 @@ type File struct {
 
 // Rule maps a contiguous block of rows into facts.
 type Rule struct {
-	ID        string       `yaml:"id"`
-	Substrate Substrate    `yaml:"substrate"`
-	Kind      Kind         `yaml:"kind"`
-	Basis     Basis        `yaml:"basis"`
-	Scope     string       `yaml:"scope"`
-	Units     amount.Units `yaml:"units"`
+	ID    string       `yaml:"id"`
+	Kind  Kind         `yaml:"kind"`
+	Basis Basis        `yaml:"basis"`
+	Scope string       `yaml:"scope"`
+	Units amount.Units `yaml:"units"`
 
 	// Parts are the pages this logical table spans, in document order.
 	Parts []Part `yaml:"parts"`
@@ -157,10 +133,14 @@ type Part struct {
 	//
 	// It is not an optional nicety. Budget Book p66 prints "REVENUES:" twice —
 	// once as the section header and once inside "TOTAL REVENUES:" — so a
-	// unique-match rule cannot resolve the citywide spine at all. Nor can a
-	// line anchor: the whole schedule, both sections and both totals rows, is
-	// on one line of extracted text. Declaring the ordinal states which one the
-	// rule's author looked at, which is the same discipline OmittedRows uses.
+	// unique-match rule cannot resolve the citywide spine at all. Nor would
+	// "the line the anchor is on" settle it, and there is no such concept here
+	// in any case: an anchor is a plain substring search over the page text
+	// (see Resolver.anchor) and nothing in this package is line-aware. A rule
+	// that wants to assert its anchor ends a line says so by putting the "\n"
+	// in the anchor, which is how the p67 parts pin their column header.
+	// Declaring the ordinal states which occurrence the rule's author looked
+	// at, which is the same discipline OmittedRows uses.
 	SectionOrdinal int `yaml:"section_ordinal"`
 
 	// LabelsFrom names an earlier part's page when this part carries no row
@@ -189,58 +169,12 @@ type Part struct {
 
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
-
-	// Table locates the grid this part reads, for a table rule. Required on a
-	// table rule and refused on any other, because a text rule that carried a
-	// table locator would silently ignore it.
-	Table *TableLocator `yaml:"table"`
-
-	// ExpectedContentHash is the integrity hash of the extracted artifact this
-	// part was written against. It is to be checked after the part resolves,
-	// so a mismatch reads as "the content changed" — a different failure from
-	// "not found", deserving a diff rather than a candidate list.
-	//
-	// Nothing checks it yet. Resolution landed with fisc-mq4.2; the integrity
-	// check is fisc-mq4.3. A rule that sets this field today is recording an
-	// intent that is not yet enforced, so do not read a passing verify as
-	// evidence that the content still matches.
-	ExpectedContentHash string `yaml:"expected_content_hash"`
-}
-
-// TableLocator identifies one detected table. Identity is compound and
-// content-independent on purpose: no single field is enough.
-//
-// Ordinal alone moves when the extractor finds one more table on the page.
-// LabelFingerprint alone is not unique — 12 tables in the ACFR share one, and
-// the largest fingerprint group in the corpus spans two documents, because a
-// running page header extracts as a table. ContentHash cannot be an identity
-// at all, which is why it lives on Part as ExpectedContentHash and answers a
-// different question ("did it change?").
-//
-// Do not give this type an UnmarshalYAML method. yaml.v3 does not propagate
-// KnownFields into a type's own unmarshaler, so a misspelled key here would be
-// silently dropped — and a locator that quietly lost its fingerprint is exactly
-// the failure this schema exists to prevent.
-type TableLocator struct {
-	// Ordinal is the table's 1-based position on the page, in the order
-	// extract.py sorts them: by (page, y0, x0).
-	Ordinal int `yaml:"ordinal"`
-
-	// LabelFingerprint hashes only the non-numeric tokens of the grid, so it
-	// survives a new fiscal year changing every figure.
-	LabelFingerprint string `yaml:"label_fingerprint"`
-
-	// BBoxCentroid is the midpoint of the table's bounding box, [x, y] in
-	// points. It disambiguates the tables a fingerprint cannot: three tables on
-	// ACFR p34 share the empty fingerprint, and nothing in the corpus collides
-	// within a page once position is considered.
-	BBoxCentroid []float64 `yaml:"bbox_centroid"`
 }
 
 // Column identifies one value column. Column identity is compound because a
 // single header string cannot express it: these schedules stack a fund-group
-// header row above a fiscal-year header row, and the extractor's Table.columns
-// is empty for every table in the corpus.
+// header row above a fiscal-year header row, so no one line of the page names
+// a column completely.
 type Column struct {
 	FundGroup  string `yaml:"fund_group"`
 	Fund       int    `yaml:"fund"`

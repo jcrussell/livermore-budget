@@ -1,6 +1,7 @@
 package mapping
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +31,7 @@ const (
 // real corpus (testdata/README.md).
 func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 	t.Helper()
-	return testDoc(t, "livermore-budget-fy2026-2027", pages, nil)
+	return testDoc(t, "livermore-budget-fy2026-2027", pages)
 }
 
 // inlineDoc builds a document from page text written in the test itself, for
@@ -49,25 +50,17 @@ func inlineDoc(t *testing.T, docID string, pages map[int]string) *corpus.Doc {
 	return openDoc(t, docID, fsys, artifacts)
 }
 
-func testDoc(t *testing.T, docID string, pages []int, tables map[string]string) *corpus.Doc {
+func testDoc(t *testing.T, docID string, pages []int) *corpus.Doc {
 	t.Helper()
 	fsys := fstest.MapFS{}
 	artifacts := map[string]corpus.Artifact{}
 
 	for _, p := range pages {
-		body, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.md", p))
+		body, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.txt", p))
 		if err != nil {
 			t.Fatalf("read page fixture: %v", err)
 		}
 		name := corpus.PagePath(p)
-		fsys[name] = &fstest.MapFile{Data: body}
-		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
-	}
-	for name, fixture := range tables {
-		body, err := os.ReadFile("../../testdata/tables/" + fixture)
-		if err != nil {
-			t.Fatalf("read table fixture: %v", err)
-		}
 		fsys[name] = &fstest.MapFile{Data: body}
 		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
 	}
@@ -92,6 +85,31 @@ func openDoc(t *testing.T, docID string, fsys fstest.MapFS, artifacts map[string
 		t.Fatalf("corpus.Open: %v", err)
 	}
 	return d
+}
+
+// TestPageFixturesAreVerbatimCopies is what makes every other test in this
+// package mean anything. The fixtures are copies, and `make extract` does not
+// touch them, so they can drift from the extraction silently — and when they
+// do, the tests reading them stay green against a substrate that no longer
+// exists. That is not hypothetical: it is exactly what the xberg → poppler
+// migration produced (fisc-yqv.5), and the tests went on passing throughout.
+func TestPageFixturesAreVerbatimCopies(t *testing.T) {
+	for _, p := range []int{66, 67, 127} {
+		fixture, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.txt", p))
+		if err != nil {
+			t.Fatalf("read page fixture: %v", err)
+		}
+		extracted, err := os.ReadFile(fmt.Sprintf(
+			"../../data/extracted/livermore-budget-fy2026-2027/%s", corpus.PagePath(p)))
+		if err != nil {
+			t.Fatalf("read extraction: %v", err)
+		}
+		if !bytes.Equal(fixture, extracted) {
+			t.Errorf("testdata/pages/budget-p%04d.txt is not a verbatim copy of %s; "+
+				"re-copy it rather than adjusting whatever now fails",
+				p, corpus.PagePath(p))
+		}
+	}
 }
 
 func spineResolver(t *testing.T, pages ...int) (*Resolver, *File) {
@@ -234,7 +252,6 @@ func omittedRowFixture(t *testing.T, declared string) (*Resolver, *Rule) {
 doc_id: omission-fixture
 rules:
   - id: omit-demo
-    substrate: text
     kind: revenue
     basis: adopted
     scope: fixture
@@ -442,7 +459,7 @@ func TestWrongDocumentIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	_, err = NewResolver(testDoc(t, "livermore-acfr-fy2025", nil, nil), f)
+	_, err = NewResolver(testDoc(t, "livermore-acfr-fy2025", nil), f)
 	if err == nil {
 		t.Fatal("NewResolver against the wrong document = nil error, want a failure")
 	}
@@ -459,28 +476,6 @@ func TestResolveRejectsWhatItCannotRead(t *testing.T) {
 	r, f := spineResolver(t, 66)
 	ru := rule(t, f, "spine-revenues")
 	p := partOn(t, ru, 66)
-
-	t.Run("a table rule is not read as page text", func(t *testing.T) {
-		// Substrate was never consulted, so a table rule resolved as text and
-		// quietly produced figures from whatever the page happened to say.
-		ru := *ru
-		ru.Substrate = SubstrateTable
-		if _, _, err := r.Values(&ru, p); err == nil {
-			t.Fatal("Values on a table rule = nil error, want a refusal")
-		} else if !strings.Contains(err.Error(), "substrate") {
-			t.Errorf("error = %q, want it to name the substrate", err)
-		}
-	})
-
-	t.Run("a text part has no table to resolve", func(t *testing.T) {
-		// ResolveTable dereferenced p.Table unconditionally: nil for every
-		// text part, so this panicked instead of reporting anything.
-		if _, err := r.ResolveTable(ru, p); err == nil {
-			t.Fatal("ResolveTable on a text part = nil error, want a refusal")
-		} else if !errors.Is(err, ErrNotFound) {
-			t.Errorf("error = %v, want ErrNotFound", err)
-		}
-	})
 
 	t.Run("a negative section ordinal is refused, not indexed", func(t *testing.T) {
 		p := *p
@@ -524,125 +519,6 @@ func TestRowIndexIsStableAcrossAnOmission(t *testing.T) {
 		t.Errorf("a value claims RowIndex %d, which the omission also claims",
 			omitted[0].RowIndex)
 	}
-}
-
-// tableRule builds a one-part table rule pointing at a locator, for the
-// locator tests. It is inline rather than a fixture because each test varies
-// one field of it.
-func tableRule(t *testing.T, page int, loc *TableLocator) (*File, *Rule) {
-	t.Helper()
-	f := &File{SchemaVersion: SchemaVersion, DocID: "livermore-acfr-fy2025",
-		Path: "inline.yaml", Rules: []Rule{{
-			ID: "header", Substrate: SubstrateTable, Kind: KindRevenue,
-			Basis: BasisAudited, Units: amount.Dollars,
-			Rows: []Row{{Label: "City of Livermore", Category: "x"}},
-			Parts: []Part{{Page: page, Table: loc,
-				Columns: []Column{{FundGroup: "general", FiscalYear: 2025}}}},
-		}}}
-	if err := f.validate(); err != nil {
-		t.Fatalf("the inline rule is itself invalid: %v", err)
-	}
-	return f, &f.Rules[0]
-}
-
-// TestTableLocatorDoesNotFollowARelocatedTable is the point of separating
-// identity from integrity. ACFR pp. 12 and 13 carry byte-identical tables —
-// same label fingerprint, same content hash, same bounding box — so a resolver
-// that searched by fingerprint when the page missed would happily return the
-// wrong page's table and report success.
-func TestTableLocatorDoesNotFollowARelocatedTable(t *testing.T) {
-	// The real fingerprint, read from the fixture rather than hard-coded, so
-	// the test cannot drift from the artifact.
-	twelve := loadFixtureTable(t, "acfr-p0012-t01.json")
-	thirteen := loadFixtureTable(t, "acfr-p0013-t01.json")
-	if twelve.LabelFingerprint != thirteen.LabelFingerprint {
-		t.Fatalf("fixtures no longer share a fingerprint: %s vs %s",
-			twelve.LabelFingerprint, thirteen.LabelFingerprint)
-	}
-
-	// The document, with the table only on p13 — as if p12's copy had moved.
-	d := testDoc(t, "livermore-acfr-fy2025", nil, map[string]string{
-		"tables/p0013-t01.json": "acfr-p0013-t01.json",
-	})
-	f, ru := tableRule(t, 12, &TableLocator{Ordinal: 1,
-		LabelFingerprint: twelve.LabelFingerprint})
-	r, err := NewResolver(d, f)
-	if err != nil {
-		t.Fatalf("NewResolver: %v", err)
-	}
-
-	_, err = r.ResolveTable(ru, &ru.Parts[0])
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("ResolveTable for a table that moved = %v, want ErrNotFound", err)
-	}
-	if got := diagnosis(t, err); !strings.Contains(got, "re-anchor") {
-		t.Errorf("diagnosis %q does not point at re-anchoring", got)
-	}
-}
-
-func TestTableLocatorChecksFingerprintAndPosition(t *testing.T) {
-	twelve := loadFixtureTable(t, "acfr-p0012-t01.json")
-	d := testDoc(t, "livermore-acfr-fy2025", nil, map[string]string{
-		"tables/p0012-t01.json": "acfr-p0012-t01.json",
-	})
-	x, y, ok := twelve.Centroid()
-	if !ok {
-		t.Fatal("the fixture has no bbox")
-	}
-
-	tests := []struct {
-		name    string
-		loc     *TableLocator
-		wantErr string
-	}{
-		{"resolves", &TableLocator{Ordinal: 1, LabelFingerprint: twelve.LabelFingerprint,
-			BBoxCentroid: []float64{x, y}}, ""},
-		{"wrong fingerprint", &TableLocator{Ordinal: 1,
-			LabelFingerprint: "sha256:0000"}, "label_fingerprint"},
-		{"wrong ordinal", &TableLocator{Ordinal: 2,
-			LabelFingerprint: twelve.LabelFingerprint}, "none with ordinal 2"},
-		{"moved on the page", &TableLocator{Ordinal: 1,
-			LabelFingerprint: twelve.LabelFingerprint,
-			BBoxCentroid:     []float64{x, y + 40}}, "further than 10pt"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			f, ru := tableRule(t, 12, tt.loc)
-			r, err := NewResolver(d, f)
-			if err != nil {
-				t.Fatalf("NewResolver: %v", err)
-			}
-			got, err := r.ResolveTable(ru, &ru.Parts[0])
-			if tt.wantErr == "" {
-				if err != nil {
-					t.Fatalf("ResolveTable: %v", err)
-				}
-				if diff := cmp.Diff(twelve.Cells, got.Cells); diff != "" {
-					t.Errorf("resolved the wrong table (-want +got):\n%s", diff)
-				}
-				return
-			}
-			if err == nil {
-				t.Fatalf("ResolveTable = nil error, want one mentioning %q", tt.wantErr)
-			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Errorf("error = %q, want it to contain %q", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func loadFixtureTable(t *testing.T, fixture string) *corpus.Table {
-	t.Helper()
-	b, err := os.ReadFile("../../testdata/tables/" + fixture)
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	var tb corpus.Table
-	if err := json.Unmarshal(b, &tb); err != nil {
-		t.Fatalf("parse fixture: %v", err)
-	}
-	return &tb
 }
 
 // TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow is the regression test for

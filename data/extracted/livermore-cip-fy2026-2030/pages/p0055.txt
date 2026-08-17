@@ -1,0 +1,50 @@
+UPS REPLACEMENTS AT CIVIC CENTER                                                       CAPITAL IMPROVEMENT PLAN
+Project No.: BL202125                                                                                        Public Buildings
+
+
+
+
+                                                                           COMMUNITY PILLAR: A City That Works
+                                                                           GOAL: 11: Modernize key business
+                                                                           systems and processes to increase
+                                                                           efficiency and improve transparency.
+
+                                                                           FUNDING: The CIP Reserves - Facilities
+                                                                           Fund will cover these expenses.
+                                                                           O&M COST ASSUMPTIONS: There will
+                                                                           be no additional O&M costs for this
+                                                                           project.
+
+                                                   PROJECT LOCATION
+                                                      Civic Center
+     Project Description:
+     This project will replace UPS systems at City Hall,
+     Police, and the Library. The City utilizes
+     Uninterruptible Power Supplies (UPS) as a battery
+     backup as power source for important computer
+     hardware components in the event that power is lost.
+     These devices also assist in protecting computers and
+     servers from power surges, helps to keep work safe if
+     power is lost.
+
+
+
+
+     Project Justification:
+     The current UPS system located at City Hall is 19 years old and the system at the Library is 18 years old, both of
+     which are well beyond the useful lifespan of the equipment. The UPS device in the Police Department is
+     projected to need replacement in FY 2024-25. The installation of new systems that do not have proprietary
+     software will also allow the City to engage a greater number of contractors for future repairs and services.
+
+
+                        Fund       FY2024-25 FY2025-26 FY2026-27 FY2027-28 FY2028-29 FY2029-30 FY2030-45        Total
+
+     PROJECT      CIP Reserves -
+                                      $0     $400,000      $0         $0         $0         $0         $0      $400,000
+     FUNDING         Facilities
+                     TOTAL            $0     $400,000      $0         $0         $0         $0         $0      $400,000
+
+
+
+
+                                      FY 2025-2030 CAPITAL IMPROVEMENT PLAN                                             51

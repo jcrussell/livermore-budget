@@ -1,0 +1,55 @@
+                                           APPENDIX
+                                 LIST OF FUNDS BY FUND TYPE
+
+
+
+
+GENERAL Fund                                  CAPITAL FUNDS
+100     General Fund                          101      General Fund CIP Reserves
+                                              510      Traffic Impact Fee (TIF)
+SPECIAL REVENUE FUNDS                         511      TVTC 20% Fee
+200      Low Income Housing Fund              512      Park Fee - AB 1600
+201      Housing Successor Agency             513      Solid Waste & Recyc Impact Fee
+202      SOEF (Social Op Endowment)           540      2022 COP Construction Fund
+203      Mortgage Assistance                  550      County Measure D
+204      HHS Loan Fund                        551      County Meas BB-Bike/Pedestrian
+205      CAL Home Reuse                       552      County Meas BB-Local St & Rd
+206      Calif Begin Program                  553      County Measure F Veh Reg Fee
+207      Local Housing Trust                  560      State - Gas Tax
+210      Horizons                             561      State - SB1
+211      Asset Seizure - County               580      Developers Deposit
+220      Grant - Federal Grant Fund           581      Public Utility Undergrounding
+221      Asset Seizure - Dept of Justice      582      Transferable Development Credits
+222      Asset Seizure - Treasury             583      So Liv Spec Plan & AD Closeout
+223      Grant - HUD EDI Special Grant
+224      Grant - CDBG                         DEBT SERVICE FUNDS
+225      Grant - Home Grant                   400     2020 COPS Series A
+226      FEMA Funding                         401     2020 COPS Series B
+240      Grant - State Grant Fund             402     2022 COPS
+241      Opioid Settlement
+242      PD COPS Grant                        PERMANENT FUNDS
+260      Grant - Local & Other Grants         470    Doolan Canyon Preserve Endowment
+280      Downtown Revitalization Fee          471    Doolan Canyon Open Space
+281      Parking In-Lieu Fee
+282      Host Community Impact Fee            ENTERPRISE FUNDS
+283      City Street Sweeping Fee             600     Airport
+284      Public Art Fee                       601     CIP Airport
+285      Vehicle Impound Fee                  610     Stormwater
+286      Accessibility Compliance             611     CIP Stormwater & Storm Drain
+287      PEG Capital Fees                     612     Storm Drain
+288      Import Mitigation Fee                620     Wastewater
+289      Solid Waste & Recycling Fee          621     CIP Wastewater
+290      Human Services Facility Fee          622     Wastewater Replacement
+291      Community Beneift Fund               623     Wastewater Connection Fees
+300      Open Space Acquisition & Mgmt        640     Water
+310      Downtown LMD                         641     CIP Water
+311      Other LMD                            642     Water Replacement
+320      El Charro CFD 2009-1 Maint           643     Water Connection Fees
+321      Other Maintenance CFDs
+330      Library Donations
+331      Police Donations
+
+
+
+
+                                      BUDGET FY 2025-27                         Page 249

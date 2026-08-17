@@ -125,29 +125,27 @@ func stripCurrency(s string) string {
 	}
 }
 
-// zeroTokens are the several ways these documents write "zero". The escaped
-// form appears because the extractor emits markdown.
+// zeroTokens are the several ways these documents write "zero". Normalize has
+// already unified every dash character to "-", so these are the two lengths
+// the printed rules come in.
 var zeroTokens = map[string]bool{
-	"-": true, "--": true, `\-`: true, `\--`: true, "0": false, // "0" parses normally
+	"-": true, "--": true, "0": false, // "0" parses normally
 }
 
 // Normalize canonicalizes a cell without interpreting it: non-breaking spaces
 // become spaces, soft hyphens are dropped, the several dash and minus
-// characters unify to "-", backslash-escaped dashes from the extractor's
-// markdown are unescaped, and whitespace collapses.
+// characters unify to "-", and whitespace collapses.
 //
-// This must stay in step with normalize_cell in tools/extract.py, which is the
-// reference implementation: the committed artifacts hash normalized text with
-// it, and a Go reader that normalized differently would compute different
-// hashes for identical content.
+// Unifying the dashes is what makes the zero rule tractable: these documents
+// print a zero cell as a hyphen, an en dash or a true minus sign depending on
+// the schedule, and all three mean the same thing.
 //
-// One divergence is deliberate. extract.py additionally applies Unicode NFKC;
-// Go does not, because that would mean a golang.org/x/text dependency
-// (byob-release.10) for a transform that changes nothing in this corpus — all
-// 382 committed tables hash identically either way. Bead fisc-1wr.5 covers the
-// cross-language agreement check that will catch it if that stops being true.
+// Unicode NFKC is deliberately not applied. It would mean a golang.org/x/text
+// dependency (byob-release.10), and the only characters in the extracted pages
+// it would change are 45 ellipses and one trademark sign — all in prose, never
+// in a cell this package is asked to parse. The non-breaking space it would
+// also fold is handled explicitly below, because that one does land in cells.
 func Normalize(s string) string {
-	s = strings.ReplaceAll(s, `\-`, "-")
 	var b strings.Builder
 	for _, r := range s {
 		switch r {
@@ -166,7 +164,7 @@ func Normalize(s string) string {
 
 // Parse converts a single extracted cell into Cents at the given units.
 //
-// Accepted: "1,234", "1,234.56", "(71.8)" for negative, "-" and "\-" for
+// Accepted: "1,234", "1,234.56", "(71.8)" for negative, "-" and "--" for
 // zero, and a leading or trailing "$" with or without a space.
 //
 // Rejected, because each is a known corruption that would otherwise yield a

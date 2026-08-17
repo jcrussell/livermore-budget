@@ -1,0 +1,71 @@
+                                                                                                               City of Livermore
+                                                                                                          Statement of Net Position
+                                                                                                                     June 30, 2025
+
+
+                                                           STATEMENT OF NET POSITION
+                                                                 JUNE 30, 2025
+                                                                                       Governmental     Business-Type
+                                                                                         Activities       Activities           Total
+                                           ASSETS
+Cash and investments in City Treasury (Note 3)                                         $ 265,387,387    $ 145,387,481   $    410,774,868
+Cash and investments with Trustees (Note 3)                                               17,403,289                -         17,403,289
+Accounts receivables, net                                                                 14,163,710        6,299,148         20,462,858
+Interest receivable                                                                       10,912,763           31,648         10,944,411
+Lease receivables                                                                            429,408       11,093,540         11,522,948
+Inventory                                                                                    528,821                -            528,821
+Internal balances (Note 4)                                                                (2,240,339)       2,240,339                  -
+Prepaids, deposits and supplies                                                              238,650           45,393            284,043
+Notes receivable (Note 5)                                                                 42,859,080                -         42,859,080
+Investment (Deficit) in JPA Equity (Note 14)                                             (40,976,748)      25,813,755        (15,162,993)
+Land held for redevelopment (Note 1)                                                       4,105,802                -          4,105,802
+Land, easements and construction in progress (Note 7)                                    120,860,803       55,401,026        176,261,829
+Capital assets, net of accumulated depreciation (Note 7)                                 294,058,380      109,852,329        403,910,709
+Right-to-use subscription IT assets,
+   net of accumulated amortization (Note 7)                                                1,498,987          278,712           1,777,699
+          Total Assets                                                                   729,229,993      356,443,371       1,085,673,364
+                              DEFERRED OUTFLOWS OF RESOURCES
+Related to pension (Notes 11)                                                              33,713,187       4,158,250         37,871,437
+Related to OPEB (Notes 12)                                                                  4,508,181         721,668          5,229,849
+         Total Deferred Outflows of Resources                                              38,221,368       4,879,918         43,101,286
+                                      LIABILITIES
+Accounts payable and other accruals                                                        15,858,541       9,088,889         24,947,430
+Accrued payroll                                                                                17,662               -             17,662
+Interest payable                                                                              802,112          51,467            853,579
+Deposit payable and unearned revenue                                                        7,936,511         334,693          8,271,204
+Non-current liabilities:
+   Due within one year:
+      Claims payable (Note 15)                                                              2,936,113               -          2,936,113
+      Accrued compensated absences (Note 8)                                                 1,805,052         276,374          2,081,426
+      Long-term debt (Note 8)                                                               6,421,147         641,672          7,062,819
+   Due in more than one year:
+      Claims payable (Note 14B)                                                            6,796,528                -          6,796,528
+      Accrued compensated absences (Note 8)                                                3,884,938          505,937          4,390,875
+      Long-term debt (Note 8)                                                             74,439,242        5,445,096         79,884,338
+      Net pension liability (Note 11)                                                    136,386,780       21,369,308        157,756,088
+      Net OPEB liabilities (Note 12)                                                      22,840,168        3,656,246         26,496,414
+          Total Liabilities                                                              280,124,794       41,369,682        321,494,476
+                                DEFERRED INFLOWS OF RESOURCES
+Related to pension (Notes 11)                                                               1,036,412               -          1,036,412
+Related to OPEB (Notes 12)                                                                  2,044,777         327,327          2,372,104
+Related to leases (Notes 6)                                                                   385,821      10,376,231         10,762,052
+         Total Deferred Inflows of Resources                                                3,467,010      10,703,558         14,170,568
+                                 NET POSITION (Note 10)
+Net investment in capital assets                                                         342,766,861      159,445,299        502,212,160
+Restricted:
+  Capital improvement programs                                                            69,239,246                -         69,239,246
+  Landscape and Maintenance                                                               15,935,827                -         15,935,827
+  Affordable Housing                                                                      63,081,699                -         63,081,699
+  Park fee                                                                                11,833,166                -         11,833,166
+  Art programs                                                                             9,198,364                -          9,198,364
+  Grant programs                                                                          12,219,479                -         12,219,479
+  Gas tax and other transportation programs                                               27,375,273                -         27,375,273
+  Community services                                                                       3,975,624                -          3,975,624
+Unrestricted                                                                             (71,765,982)     149,804,750         78,038,768
+         Total Net Position                                                            $ 483,859,557    $ 309,250,049   $    793,109,606
+
+
+
+
+See Notes to Financial Statements
+                                                                                                                                       23

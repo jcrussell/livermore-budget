@@ -11,7 +11,6 @@ doc_id: livermore-budget-fy2026-2027
 
 rules:
   - id: spine-revenues
-    substrate: text
     kind: revenue
     basis: adopted
     scope: all-funds-gross
@@ -85,7 +84,6 @@ rules:
       - {label: "Licenses & Permits", category: licenses-and-permits}
 
   - id: spine-expenditures
-    substrate: text
     kind: expenditure
     basis: adopted
     scope: all-funds-gross

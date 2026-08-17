@@ -308,7 +308,7 @@ func pageTextBase(browseURL, docID string) string {
 // pageTextFile mirrors corpus.PagePath's zero padding. It is spelled out
 // rather than imported because it is a URL here, not a filesystem path, and
 // the two only look alike.
-func pageTextFile(page int) string { return fmt.Sprintf("p%04d.md", page) }
+func pageTextFile(page int) string { return fmt.Sprintf("p%04d.txt", page) }
 
 // dollars renders integer cents the way the schedule prints them: whole
 // dollars with thousands separators, keeping the cents only when a figure

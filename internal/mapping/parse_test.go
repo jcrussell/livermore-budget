@@ -77,7 +77,6 @@ schema_version: 1
 doc_id: doc-a
 rules:
   - id: dupe
-    substrate: text
     kind: revenue
     basis: adopted
     units: dollars
@@ -100,7 +99,7 @@ rules:
 func TestLoadDirIsDeterministic(t *testing.T) {
 	mk := func(doc, id string) string {
 		return "schema_version: 1\ndoc_id: " + doc + "\nrules:\n  - id: " + id +
-			"\n    substrate: text\n    kind: revenue\n    basis: adopted\n" +
+			"\n    kind: revenue\n    basis: adopted\n" +
 			"    units: dollars\n    parts: [{page: 1, columns: [{fiscal_year: 2026}]}]\n" +
 			"    rows: [{label: \"A\", category: a}]\n"
 	}
@@ -157,7 +156,7 @@ func TestParseRejects(t *testing.T) {
 		},
 		{
 			name: "missing units",
-			yaml: "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n    substrate: text\n" +
+			yaml: "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n" +
 				"    kind: revenue\n    basis: adopted\n" +
 				"    parts: [{page: 1, columns: [{fiscal_year: 2026}]}]\n" +
 				"    rows: [{label: \"A\"}]\n",
@@ -212,11 +211,6 @@ func TestParseRejects(t *testing.T) {
 			want: "fiscal_year",
 		},
 		{
-			name: "manual rule without a checksum row",
-			yaml: strings.Replace(base(""), "substrate: text", "substrate: manual", 1),
-			want: "total_row",
-		},
-		{
 			name: "section_ordinal without a section",
 			yaml: strings.Replace(base(""),
 				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
@@ -230,40 +224,6 @@ func TestParseRejects(t *testing.T) {
 				"parts: [{page: 1, section: \"S\", section_ordinal: -1, "+
 					"columns: [{fiscal_year: 2026}]}]", 1),
 			want: "ordinals count from 1",
-		},
-		{
-			// A text rule that carried a table locator would read the page text
-			// while its author believed it read the grid they pointed at.
-			name: "table locator on a text rule",
-			yaml: strings.Replace(base(""),
-				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
-				"parts: [{page: 1, table: {ordinal: 1, label_fingerprint: \"sha256:x\"}, "+
-					"columns: [{fiscal_year: 2026}]}]", 1),
-			want: "is set on a text rule",
-		},
-		{
-			name: "table rule without a locator",
-			yaml: strings.Replace(base(""), "substrate: text", "substrate: table", 1),
-			want: "required on a table rule",
-		},
-		{
-			// Ordinal alone shifts the moment the extractor finds one more
-			// table on the page, so it is not an identity by itself.
-			name: "table locator without a fingerprint",
-			yaml: strings.Replace(
-				strings.Replace(base(""), "substrate: text", "substrate: table", 1),
-				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
-				"parts: [{page: 1, table: {ordinal: 1}, columns: [{fiscal_year: 2026}]}]", 1),
-			want: "label_fingerprint",
-		},
-		{
-			name: "table centroid that is not a point",
-			yaml: strings.Replace(
-				strings.Replace(base(""), "substrate: text", "substrate: table", 1),
-				"parts: [{page: 1, columns: [{fiscal_year: 2026}]}]",
-				"parts: [{page: 1, table: {ordinal: 1, label_fingerprint: \"sha256:x\", "+
-					"bbox_centroid: [1.0]}, columns: [{fiscal_year: 2026}]}]", 1),
-			want: "want [x, y]",
 		},
 		{
 			name: "empty file",
@@ -317,7 +277,7 @@ func TestFutureSchemaVersionHasAHint(t *testing.T) {
 // base returns a minimal valid rule file, with extra text appended inside the
 // rule so tests can introduce one specific defect.
 func base(extra string) string {
-	return "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n    substrate: text\n" +
+	return "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n" +
 		"    kind: revenue\n    basis: adopted\n    units: dollars\n" +
 		"    parts: [{page: 1, columns: [{fiscal_year: 2026}]}]\n" +
 		"    rows:\n      - {label: \"A\", category: a}\n" + extra
