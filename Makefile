@@ -34,7 +34,10 @@ test: ## Run tests with the race detector
 	go test -race ./...
 
 .PHONY: lint
-lint: ## Run golangci-lint
+lint: ## Run golangci-lint (warns if the version differs from .golangci-version)
+	@want=$$(tr -d '[:space:]' < .golangci-version); \
+	got=$$(golangci-lint version --short 2>/dev/null | tr -d 'v[:space:]'); \
+	test "$$want" = "$$got" || echo "warning: golangci-lint $$got on PATH, .golangci-version pins $$want; CI will lint with $$want" >&2
 	golangci-lint run
 
 .PHONY: fmt

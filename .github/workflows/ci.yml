@@ -221,3 +221,30 @@ jobs:
             diff -u facts/facts.jsonl bin/facts-rebuilt.jsonl | head -n 50 >&2
             exit 1
           fi
+
+  verify:
+    name: fisc verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build
+      # This job is the reason data/pdf may stay absent: verify reads the
+      # committed fact store, the rules, the two curated registries and the
+      # extraction manifests, and nothing else. It is a separate job from `facts`
+      # rather than a step in it because the two answer different questions --
+      # "the rules still produce this file" and "this file's claims hold" -- and a
+      # single job would report only whichever failed first.
+      #
+      # Deliberately NOT --strict. Three tier 1 checks have nothing to check until
+      # the node tier hierarchy (fisc-gxa.2) and a link-level transfer pairing
+      # (fisc-4rh) exist, so --strict here would be red on every run from the day
+      # it landed, and a permanently red gate gets commented out (fisc-1wr.4). The
+      # log prints the vacuous count on every run instead, and `verify` still
+      # exits 3 the moment a check actually fails.
+      - name: Check the corpus
+        run: ./bin/fisc verify

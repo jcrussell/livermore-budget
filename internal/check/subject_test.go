@@ -1,0 +1,622 @@
+package check
+
+import (
+	"bytes"
+	"errors"
+	"math"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
+
+	"github.com/google/go-cmp/cmp"
+
+	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+)
+
+// repoRoot is this repository, which the tests below read committed artifacts
+// from. Nothing here runs the extractor or opens a PDF.
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve the repository root: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "data", "sources.yaml")); err != nil {
+		t.Fatalf("%q does not look like the repository root: %v", root, err)
+	}
+	return root
+}
+
+// copyRepoFile copies one repository-relative file into dst, creating parents.
+func copyRepoFile(t *testing.T, src, dst, rel string) {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(src, filepath.FromSlash(rel)))
+	if err != nil {
+		t.Fatalf("read %s: %v", rel, err)
+	}
+	out := filepath.Join(dst, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(out), 0o750); err != nil {
+		t.Fatalf("mkdir for %s: %v", rel, err)
+	}
+	if err := os.WriteFile(out, b, 0o600); err != nil {
+		t.Fatalf("write %s: %v", rel, err)
+	}
+}
+
+// repoWithoutPDFs copies everything Load is allowed to read into a temporary tree,
+// and nothing else: the fact store, the rule files, the two registries, each
+// document's manifest, and the extracted pages the facts actually cite. data/pdf is
+// not among it.
+//
+// This is what makes the no-PDF property a test rather than a claim: if some check
+// ever reaches for a source document it will not find one here. It is also the
+// tree the input-mutation tests below rewrite, which is the only way to make a
+// check fail from something a repository could actually contain.
+func repoWithoutPDFs(t *testing.T) string {
+	t.Helper()
+	src, dst := repoRoot(t), t.TempDir()
+
+	copyRepoFile(t, src, dst, factsFile)
+	copyRepoFile(t, src, dst, dataDir+"/funds.yaml")
+	copyRepoFile(t, src, dst, dataDir+"/taxonomy.yaml")
+
+	rules, err := os.ReadDir(filepath.Join(src, mappingsDir))
+	if err != nil {
+		t.Fatalf("read the mapping directory: %v", err)
+	}
+	for _, e := range rules {
+		if !e.IsDir() {
+			copyRepoFile(t, src, dst, mappingsDir+"/"+e.Name())
+		}
+	}
+
+	docs, err := os.ReadDir(filepath.Join(src, dataDir, "extracted"))
+	if err != nil {
+		t.Fatalf("read the extraction directory: %v", err)
+	}
+	for _, e := range docs {
+		if e.IsDir() {
+			copyRepoFile(t, src, dst, dataDir+"/extracted/"+e.Name()+"/manifest.json")
+		}
+	}
+	// The pages the facts cite, and only those: fact-offset-points-at-token reads
+	// them, and copying the whole extraction would say nothing about which parts of
+	// it verify needs.
+	for _, page := range citedPages(t, src) {
+		copyRepoFile(t, src, dst, page)
+	}
+
+	// The premise of the test, asserted rather than assumed.
+	if _, err := os.Stat(filepath.Join(dst, dataDir, "pdf")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("stat data/pdf in the copied tree = %v, want it absent", err)
+	}
+	return dst
+}
+
+// citedPages is every extracted page path the committed fact store points at.
+func citedPages(t *testing.T, root string) []string {
+	t.Helper()
+	seen := map[string]bool{}
+	var out []string
+	for _, f := range readFacts(t, root) {
+		p := dataDir + "/extracted/" + f.DocID + "/" + corpus.PagePath(f.Page)
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// readFacts reads a tree's fact store.
+func readFacts(t *testing.T, root string) []fact.Fact {
+	t.Helper()
+	f, err := os.Open(filepath.Join(root, filepath.FromSlash(factsFile)))
+	if err != nil {
+		t.Fatalf("open the fact store: %v", err)
+	}
+	defer f.Close()
+	facts, err := fact.Read(f)
+	if err != nil {
+		t.Fatalf("read the fact store: %v", err)
+	}
+	return facts
+}
+
+// mutateFacts rewrites a copied tree's fact store, which is how the tests below
+// make a check fail from an input rather than from a hand-built structure. Load is
+// the only production path to a projection graph and it always derives one from
+// these facts, so a state that this cannot produce is a state no repository can be
+// in — and a test that asserts on one proves the logic without proving the check
+// can ever fire.
+func mutateFacts(t *testing.T, root string, mutate func([]fact.Fact) []fact.Fact) {
+	t.Helper()
+	facts := mutate(readFacts(t, root))
+	path := filepath.Join(root, filepath.FromSlash(factsFile))
+	var buf bytes.Buffer
+	if err := fact.Write(&buf, facts); err != nil {
+		t.Fatalf("write the fact store: %v", err)
+	}
+	if err := os.WriteFile(path, buf.Bytes(), 0o600); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+// loadAndRun loads a tree and runs every check over it.
+func loadAndRun(t *testing.T, root string) *Report {
+	t.Helper()
+	s, err := Load(LoadOptions{Root: root, Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	return Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
+}
+
+// TestVerifyNeedsNoPDFs is the property that lets CI run this command on a plain
+// clone: every input is a committed artifact, and the source documents — 67MB of
+// PDF that is not in a shallow checkout — are read by nothing.
+func TestVerifyNeedsNoPDFs(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoWithoutPDFs(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load over a tree with no data/pdf: %v", err)
+	}
+	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
+
+	if rep.Counts.Fail > 0 || rep.Counts.Error > 0 || rep.Counts.Skipped > 0 {
+		t.Errorf("counts = %+v over a PDF-less tree, want no failure, error or skip:\n%v",
+			rep.Counts, rep.Results)
+	}
+	if rep.Failed() {
+		t.Error("Failed() = true with the source documents absent")
+	}
+}
+
+// TestTheCommittedCorpusVacuitySplit is where the claim "these checks are
+// non-vacuous today, and these three are not" stops being an assumption.
+//
+// It asserts the words and not the subject counts. The counts move with every
+// page that gets mapped, and pinning them here would make this a test of the
+// mapping's size; which checks have something to look at is the durable claim, and
+// it is the one fisc-1wr.1.1's acceptance criteria are written against.
+func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
+
+	want := map[string]Status{
+		"facts-sorted":                StatusPass,
+		"fact-ids-unique":             StatusPass,
+		"fact-token-reparses":         StatusPass,
+		"fact-offset-points-at-token": StatusPass,
+		"fact-vocabulary":             StatusPass,
+		"published-projection-built":  StatusPass,
+		"facts-are-projected":         StatusPass,
+		"graph-acyclic":               StatusPass,
+		"derived-nodes-justified":     StatusPass,
+		"link-values-tie-to-facts":    StatusPass,
+		"counts-reconcile":            StatusPass,
+		"headline-ties-to-facts":      StatusPass,
+		"headline-transfer-residual":  StatusPass,
+		"headline-naive-expenditure":  StatusPass,
+		// Vacuous, each for a reason that is recorded rather than incidental: no
+		// link can carry a transfer_id (fisc-4rh), the graph has one tier depth
+		// (fisc-gxa.2), no node carries a constraint tier because pp.66-67 publish
+		// only fund groups, no fact carries a department because pp.167-170 are
+		// unmapped (fisc-5gk.2), and no fact names a fund because this schedule's
+		// columns are fund groups (fisc-5gk.1).
+		"transfer-legs-pair":         StatusVacuous,
+		"aggregation-invariance":     StatusVacuous,
+		"constraint-tier-vocabulary": StatusVacuous,
+		"fact-departments-resolve":   StatusVacuous,
+		"fact-funds-resolve":         StatusVacuous,
+	}
+	got := make(map[string]Status, len(rep.Results))
+	for _, res := range rep.Results {
+		got[res.CheckID] = res.Status
+		if res.Status == StatusPass && res.Subjects == 0 {
+			t.Errorf("%s passed over 0 subjects, which is the one thing this package "+
+				"exists to prevent", res.CheckID)
+		}
+		if res.Status == StatusVacuous && res.Subjects != 0 {
+			t.Errorf("%s is vacuous over %d subjects", res.CheckID, res.Subjects)
+		}
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("verdicts over the committed corpus (-want +got):\n%s", diff)
+	}
+}
+
+// TestLoadWiresOneResolverPerRuleFile covers the seam tier 2 and the structural
+// sweep will read. The resolvers are memoized, and the property that matters is
+// behavioural: asking twice gives the same answer, so a check that corroborates a
+// figure corroborates the read the build published rather than a second one.
+func TestLoadWiresOneResolverPerRuleFile(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(s.Files) == 0 {
+		t.Fatal("no rule files were loaded")
+	}
+	if got, want := len(s.Resolvers), len(s.Files); got != want {
+		t.Errorf("%d resolvers for %d rule files", got, want)
+	}
+	for _, f := range s.Files {
+		r, ok := s.Resolvers[f.Path]
+		if !ok {
+			t.Fatalf("no resolver for %s", f.Path)
+		}
+		if _, ok := s.Docs[f.DocID]; !ok {
+			t.Errorf("no extraction opened for %s", f.DocID)
+		}
+		rule := &f.Rules[0]
+		first, _, err := r.Values(rule, &rule.Parts[0])
+		if err != nil {
+			t.Fatalf("resolve %s %s: %v", f.Path, rule.ID, err)
+		}
+		second, _, err := r.Values(rule, &rule.Parts[0])
+		if err != nil {
+			t.Fatalf("resolve %s %s a second time: %v", f.Path, rule.ID, err)
+		}
+		if diff := cmp.Diff(first, second); diff != "" {
+			t.Errorf("%s %s resolved differently the second time (-first +second):\n%s",
+				f.Path, rule.ID, diff)
+		}
+	}
+}
+
+// TestLoadRefusesAnUnreadableCorpus: a failure to load is a failure of the
+// harness, not a failed check, so it comes back as an error rather than as a
+// report full of red.
+func TestLoadRefusesAnUnreadableCorpus(t *testing.T) {
+	tests := []struct {
+		name string
+		opts LoadOptions
+		want string
+	}{
+		{"no root", LoadOptions{Version: testVersion}, "repository root is required"},
+		{"no version", LoadOptions{Root: repoRoot(t)}, "version is required"},
+		{"empty tree", LoadOptions{Root: t.TempDir(), Version: testVersion}, "read the fact store"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Load(tt.opts)
+			if err == nil {
+				t.Fatalf("Load(%+v) = nil error, want %q", tt.opts, tt.want)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("error %q does not contain %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// TestLoadHintsAtBuildWhenTheFactStoreIsMissing: the fact store is a build
+// product, and the fix for a missing one is a command.
+func TestLoadHintsAtBuildWhenTheFactStoreIsMissing(t *testing.T) {
+	_, err := Load(LoadOptions{Root: t.TempDir(), Version: testVersion})
+	var hint *cmdutil.ErrHint
+	if !errors.As(err, &hint) {
+		t.Fatalf("error %v carries no hint", err)
+	}
+	if !strings.Contains(hint.Hint, "fisc build") {
+		t.Errorf("hint %q does not name the command that writes the fact store", hint.Hint)
+	}
+}
+
+// TestProjectionsCoverEveryYearTheFactsCarry pins the reason the projected slices
+// are read off the fact store rather than hard-coded: both budget years live in
+// one facts.jsonl, and a graph built over both doubles every figure and still
+// balances, so each year gets its own graph and each is checked.
+func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	years := map[int]bool{}
+	for _, f := range s.Facts {
+		if f.Scope == spineScope {
+			years[f.FiscalYear] = true
+		}
+	}
+	if len(years) < 2 {
+		t.Fatalf("the fact store carries %d fiscal years in scope %q; this test needs the "+
+			"two-year budget book to mean anything", len(years), spineScope)
+	}
+
+	got := map[int]int{}
+	for _, p := range s.Projections {
+		if p.Options.Scope != spineScope {
+			t.Errorf("%s is not of scope %q", p, spineScope)
+		}
+		if p.Graph == nil {
+			t.Fatalf("%s carries no graph", p)
+		}
+		if p.Graph.Metadata.FiscalYear != p.Options.FiscalYear {
+			t.Errorf("%s published fiscal year %d", p, p.Graph.Metadata.FiscalYear)
+		}
+		got[p.Options.FiscalYear]++
+	}
+	for year := range years {
+		if got[year] == 0 {
+			t.Errorf("no projection was built for FY%d, so nothing checks it", year)
+		}
+	}
+}
+
+// The tests below are the ones that matter most in this package, and they are the
+// only shape that would have caught what peer review caught: they change an INPUT
+// and assert a check fails.
+//
+// Every other failure test here mutates a *project.Graph in memory. Those prove the
+// logic, but Load is the only production path to a graph and it always derives one
+// from the fact store, so no repository can be in the state they describe — and a
+// suite made only of those reads as proof of failability while five checks were
+// unfailable.
+
+// TestAWrongAmountFails is the check the whole tier was missing. Perturbing one
+// amount by a dollar moves the facts AND every figure internal/project derives from
+// them together, so the link, headline and counts checks all still pass; the token
+// is the only witness that does not move.
+func TestAWrongAmountFails(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	var victim fact.Fact
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		facts[7].AmountCents += 100
+		victim = facts[7]
+		return facts
+	})
+
+	rep := loadAndRun(t, root)
+	if !rep.Failed() {
+		t.Error("a $1 perturbation of a published figure did not fail the run")
+	}
+	res := resultFor(t, rep, "fact-token-reparses")
+	if res.Status != StatusFail {
+		t.Fatalf("fact-token-reparses = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if got := len(res.Findings); got != 1 {
+		t.Fatalf("findings = %d, want exactly the perturbed fact: %v", got, res.Findings)
+	}
+	if res.Findings[0].Subject != victim.ID {
+		t.Errorf("finding names %q, want the perturbed fact %s", res.Findings[0].Subject, victim.ID)
+	}
+	for _, want := range []string{victim.Token, "off by $1.00"} {
+		if !strings.Contains(res.Findings[0].Detail, want) {
+			t.Errorf("finding %q does not contain %q", res.Findings[0].Detail, want)
+		}
+	}
+}
+
+// TestACentsValueUnderADollarsUnitFails covers the shape review demonstrated: a
+// figure ending in fractional cents on a schedule printed in whole dollars. It
+// passed ten checks, because every one of them was summing the same corrupted
+// number.
+func TestACentsValueUnderADollarsUnitFails(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		facts[0].AmountCents += 69
+		return facts
+	})
+
+	res := resultFor(t, loadAndRun(t, root), "fact-token-reparses")
+	if res.Status != StatusFail {
+		t.Errorf("fact-token-reparses = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if !strings.Contains(findingDetails(res), "off by $0.69") {
+		t.Errorf("findings %v do not state the 69-cent difference", res.Findings)
+	}
+}
+
+// TestACorruptedTokenFails is the same check from the other side: the amount is
+// untouched and the text it claims to come from is not.
+func TestACorruptedTokenFails(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		facts[3].Token = "1,234"
+		return facts
+	})
+
+	rep := loadAndRun(t, root)
+	res := resultFor(t, rep, "fact-token-reparses")
+	if res.Status != StatusFail {
+		t.Fatalf("fact-token-reparses = %s, want fail", res.Status)
+	}
+	if !strings.Contains(findingDetails(res), `token "1,234"`) {
+		t.Errorf("findings %v do not name the token", res.Findings)
+	}
+	// And the page no longer says what the fact says it says, which is a second,
+	// independent failure rather than the same one twice.
+	if got := resultFor(t, rep, "fact-offset-points-at-token").Status; got != StatusFail {
+		t.Errorf("fact-offset-points-at-token = %s, want fail for a token the page does not carry", got)
+	}
+}
+
+// TestAMovedOffsetFails is the provenance pointer on its own. The amount is right,
+// the token is right, and the citation lands somewhere else on the page — which no
+// other check in the report can see.
+func TestAMovedOffsetFails(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	var victim fact.Fact
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		facts[11].Offset += 3
+		victim = facts[11]
+		return facts
+	})
+
+	rep := loadAndRun(t, root)
+	if !rep.Failed() {
+		t.Error("a citation pointing at the wrong bytes did not fail the run")
+	}
+	res := resultFor(t, rep, "fact-offset-points-at-token")
+	if res.Status != StatusFail {
+		t.Fatalf("fact-offset-points-at-token = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if got := len(res.Findings); got != 1 || res.Findings[0].Subject != victim.ID {
+		t.Fatalf("findings = %v, want exactly the moved fact %s", res.Findings, victim.ID)
+	}
+	if !strings.Contains(res.Findings[0].Detail, victim.Token) {
+		t.Errorf("finding %q does not name the token the citation claims", res.Findings[0].Detail)
+	}
+	// The amount is untouched, so the token check has nothing to say. Two axes,
+	// two checks.
+	if got := resultFor(t, rep, "fact-token-reparses").Status; got != StatusPass {
+		t.Errorf("fact-token-reparses = %s, want pass: only the offset moved", got)
+	}
+}
+
+// TestAnOffsetPastTheEndOfThePageFails guards the bounds check. The failure this
+// check exists for includes an offset that is simply too large, and reporting it
+// must not mean panicking on the slice.
+//
+// MaxInt64 is a case of its own and not paranoia about a number nobody would
+// write. The offset is read out of a JSONL file, so its value is whatever that
+// file says; the obvious bound, offset+len(token) > len(text), WRAPS NEGATIVE at
+// MaxInt64, passes, and panics one line later. Found in code review of this
+// package, which is why the comparison is a remaining-length subtraction.
+func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		offset int
+	}{
+		{"past the end", 1 << 30},
+		{"maxint64, where the naive bound overflows", math.MaxInt64},
+		{"negative", -1},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			root := repoWithoutPDFs(t)
+			mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+				facts[0].Offset = tt.offset
+				return facts
+			})
+
+			res := resultFor(t, loadAndRun(t, root), "fact-offset-points-at-token")
+			if res.Status != StatusFail {
+				t.Fatalf("fact-offset-points-at-token = %s, want fail", res.Status)
+			}
+			if !strings.Contains(findingDetails(res), "runs past the end of") {
+				t.Errorf("findings %v do not report the offset as out of bounds", res.Findings)
+			}
+		})
+	}
+}
+
+// TestFactsMovedOutOfEveryProjectionFail is the second blocker review found, and it
+// is the more dangerous of the two because it is a one-word edit to a rule file.
+// Twenty facts in a scope no projection draws are not failed by the graph checks —
+// they are invisible to them — and before facts-are-projected existed this exact
+// mutation took over half the city's revenue out of the published chart while every
+// check passed.
+func TestFactsMovedOutOfEveryProjectionFail(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	const otherScope = "all-funds-gross-detail"
+	moved := map[string]bool{}
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		for i := range facts {
+			if facts[i].Kind == "revenue" && facts[i].FundGroup == "general" {
+				facts[i].Scope = otherScope
+				moved[facts[i].ID] = true
+			}
+		}
+		return facts
+	})
+	if len(moved) == 0 {
+		t.Fatal("no fact matched the mutation, so this test covers nothing")
+	}
+
+	rep := loadAndRun(t, root)
+	if !rep.Failed() {
+		t.Error("moving facts out of every projection did not fail the run")
+	}
+	res := resultFor(t, rep, "facts-are-projected")
+	if res.Status != StatusFail {
+		t.Fatalf("facts-are-projected = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if len(res.Findings) != len(moved) {
+		t.Errorf("findings = %d, want one per moved fact (%d)", len(res.Findings), len(moved))
+	}
+	for _, f := range res.Findings {
+		if !moved[f.Subject] {
+			t.Errorf("finding names %q, which was not moved", f.Subject)
+		}
+		if !strings.Contains(f.Detail, otherScope) {
+			t.Errorf("finding %q does not name the scope that is drawn by nothing", f.Detail)
+		}
+	}
+	// The published slice still exists, so this is the coverage check firing and
+	// not a side effect of the projection disappearing.
+	if got := resultFor(t, rep, "published-projection-built").Status; got != StatusPass {
+		t.Errorf("published-projection-built = %s, want pass", got)
+	}
+}
+
+// TestEveryFactMovedOutOfScopeRefusesToLoad is the whole-store version. It cannot
+// reach a report at all: with no projection there is nothing for ten of the checks
+// to read, they would all go vacuous at once, and the run would exit 0 having
+// checked the fact store and nothing else.
+func TestEveryFactMovedOutOfScopeRefusesToLoad(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		for i := range facts {
+			facts[i].Scope = "all-funds-gross-v2"
+		}
+		return facts
+	})
+
+	_, err := Load(LoadOptions{Root: root, Version: testVersion})
+	if err == nil {
+		t.Fatal("Load = nil error over a fact store no projection covers")
+	}
+	if !strings.Contains(err.Error(), spineScope) {
+		t.Errorf("error %q does not name the scope nothing was found in", err)
+	}
+	var hint *cmdutil.ErrHint
+	if !errors.As(err, &hint) {
+		t.Errorf("error %v carries no hint, and the fix is to look at a rule's scope", err)
+	}
+}
+
+// TestTheYearTheSitePublishesMustBeBuilt is the other half of the same hole: the
+// store can carry facts, project them, and pass every graph check over a slice the
+// site does not publish.
+func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		out := facts[:0]
+		for _, f := range facts {
+			if f.FiscalYear != project.PublishedFiscalYear {
+				out = append(out, f)
+			}
+		}
+		return out
+	})
+
+	rep := loadAndRun(t, root)
+	if !rep.Failed() {
+		t.Error("dropping the published fiscal year did not fail the run")
+	}
+	res := resultFor(t, rep, "published-projection-built")
+	if res.Status != StatusFail {
+		t.Fatalf("published-projection-built = %s (%s), want fail", res.Status, res.Summary)
+	}
+	detail := findingDetails(res)
+	for _, want := range []string{"unexamined", "FY2027"} {
+		if !strings.Contains(detail, want) {
+			t.Errorf("findings %v do not contain %q", res.Findings, want)
+		}
+	}
+	// The other year is still checked, which is what makes this a report about a
+	// missing slice rather than an empty one.
+	if got := resultFor(t, rep, "counts-reconcile").Status; got != StatusPass {
+		t.Errorf("counts-reconcile = %s, want pass over the remaining year", got)
+	}
+}

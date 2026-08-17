@@ -31,8 +31,8 @@ import (
 // any working directory, which is what lets CI and a developer's shell produce
 // byte-identical output.
 const (
-	defaultOutput   = "facts/facts.jsonl"
-	defaultMappings = "mappings"
+	defaultOutput   = cmdutil.FactsPath
+	defaultMappings = cmdutil.MappingsDir
 )
 
 // factsPerm is the mode of the written fact store. It is world-readable

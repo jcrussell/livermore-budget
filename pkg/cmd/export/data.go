@@ -10,22 +10,15 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/build"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
-	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// The projection this export publishes, and the slice of the fact store it is
-// of. Both fiscal years live in one facts.jsonl, so the year is not optional:
-// a projection built over both doubles every figure and still balances.
-const (
-	factsPath = "facts/facts.jsonl"
-
-	publishFiscalYear = 2026
-	publishBasis      = mapping.BasisAdopted
-	publishScope      = "all-funds-gross"
-)
+// factsPath is the fact store this export reads. It is cmdutil's rather than
+// this package's: `fisc build` writes that path and `fisc verify` checks it, and
+// a site built from a different file than either would still export cleanly.
+const factsPath = cmdutil.FactsPath
 
 // buildProjections is the default Builder: read the committed fact store and
 // run every registered projection over it.
@@ -59,10 +52,13 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 		return nil, fmt.Errorf("load the data registries: %w", err)
 	}
 
+	// The slice is internal/project's declaration, not this command's: `fisc
+	// verify` checks the same triple, and two copies would let it pass a graph
+	// this command does not publish.
 	opts := project.Options{
-		FiscalYear: publishFiscalYear,
-		Basis:      publishBasis,
-		Scope:      publishScope,
+		FiscalYear: project.PublishedFiscalYear,
+		Basis:      project.PublishedBasis,
+		Scope:      project.PublishedScope,
 		Version:    build.Get().String(),
 	}
 	out := map[string][]byte{}

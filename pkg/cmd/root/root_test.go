@@ -80,3 +80,35 @@ func TestUnknownFlagExitsTwo(t *testing.T) {
 		t.Errorf("got stderr %q, want it to name the offending flag", errOut)
 	}
 }
+
+// TestEveryCommandIsRegisteredInAGroup guards the two ways adding a command goes
+// wrong: leaving out the AddCommand line, so the command exists and cannot be
+// run, and naming a GroupID root does not define, which cobra reports by
+// dropping the command out of the grouped help rather than by failing.
+//
+// It names verify explicitly because `fisc verify` is the command CI runs, and a
+// tree that no longer has it would still pass every other test in this package.
+func TestEveryCommandIsRegisteredInAGroup(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	cmd := NewCmdRoot(newTestFactory(t, ios))
+
+	groups := map[string]bool{}
+	for _, g := range cmd.Groups() {
+		groups[g.ID] = true
+	}
+	seen := map[string]bool{}
+	for _, c := range cmd.Commands() {
+		if c.Name() == "help" || c.Name() == "completion" {
+			continue // cobra's own, and deliberately ungrouped
+		}
+		seen[c.Name()] = true
+		if !groups[c.GroupID] {
+			t.Errorf("command %q is in group %q, which root does not define", c.Name(), c.GroupID)
+		}
+	}
+	for _, want := range []string{"build", "verify", "export"} {
+		if !seen[want] {
+			t.Errorf("command %q is not registered", want)
+		}
+	}
+}

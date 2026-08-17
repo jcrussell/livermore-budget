@@ -95,7 +95,7 @@ func Open(fsys fs.FS) (*Doc, error) {
 // extractedDir is where tools/extract.py writes, relative to the repository
 // root. It is spelled once, here, because a command that joined its own copy
 // of the path would drift from the reader that has to find the result.
-const extractedDir = "data/extracted"
+const extractedDir = cmdutil.DataDir + "/extracted"
 
 // OpenDoc opens the extraction of docID beneath a repository root, and refuses
 // one whose manifest names a different document.

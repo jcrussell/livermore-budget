@@ -49,6 +49,23 @@ import (
 // rather than discovering a renamed key halfway through rendering.
 const SchemaVersion = 1
 
+// The slice of the fact store the site publishes.
+//
+// Both budget years live in one facts.jsonl, so the year is not optional: a
+// projection built over both doubles every figure and still balances (see
+// [Options]). These are declared here, beside the type that carries them, because
+// two commands need the same answer — `fisc export` builds this slice and `fisc
+// verify` checks it — and while there were two copies, verify could pass a graph
+// the site does not publish and nothing would say so.
+//
+// The version is deliberately not here: it is a property of the binary, not of
+// the slice.
+const (
+	PublishedFiscalYear = 2026
+	PublishedBasis      = mapping.BasisAdopted
+	PublishedScope      = "all-funds-gross"
+)
+
 // Options are the slice of the corpus a projection is built from.
 //
 // The three selectors are not decoration. Every fiscal year the city publishes

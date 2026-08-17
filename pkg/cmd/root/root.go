@@ -13,6 +13,7 @@ import (
 	// package should keep it.
 	buildcmd "github.com/jcrussell/livermore-budget/pkg/cmd/build"
 	exportcmd "github.com/jcrussell/livermore-budget/pkg/cmd/export"
+	verifycmd "github.com/jcrussell/livermore-budget/pkg/cmd/verify"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -72,9 +73,10 @@ committed artifacts, so it needs neither Python nor the source PDFs.`,
 		&cobra.Group{ID: GroupSite, Title: "Site commands"},
 	)
 
-	// Feature commands are added here as they land: verify, reanchor.
+	// Feature commands are added here as they land: reanchor is still to come.
 	// See beads fisc-mq4.* and fisc-gxa.*.
 	cmd.AddCommand(buildcmd.NewCmdBuild(f, nil))
+	cmd.AddCommand(verifycmd.NewCmdVerify(f, nil))
 	cmd.AddCommand(exportcmd.NewCmdExport(f, nil))
 
 	return cmd
