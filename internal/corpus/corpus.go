@@ -18,10 +18,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
-	"path"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
@@ -39,6 +39,43 @@ import (
 // page" case -- so the mismatch has to fail here, loudly, or not at all.
 const SchemaVersion = 2
 
+// ManifestFile is the manifest at the root of every extraction directory.
+//
+// It is the one file under an extraction that is NOT one of its own artifacts:
+// it records a sha256 for everything the extractor emitted, and it cannot
+// record its own. A sweep that reads the directory has to know that, or it
+// reports the manifest as an unvouched-for extra file on every run.
+const ManifestFile = "manifest.json"
+
+// The extraction toolchain, pinned. Every manifest records the versions that
+// produced it, and these are the values the committed artifacts under
+// data/extracted/ were produced by.
+//
+// The pin lives here, next to [SchemaVersion], because this package is the only
+// Go reader of a manifest and the versions are its provenance chain. It is a Go
+// constant and not a parse of requirements.txt on purpose: that file documents
+// the poppler expectation for a human installing the toolchain and says in
+// prose that poppler "is not pinned the way a pip requirement would be, because
+// it is whatever the platform ships". Prose in a file no Go code reads cannot be
+// a machine-checked pin, and scraping a version out of a comment would make an
+// edit to that comment change what fisc accepts.
+//
+// These are NOT gated in [Open] the way SchemaVersion is, and the difference is
+// the point. SchemaVersion is a READ CONTRACT: at version 1 the artifact
+// namespace was different, so this reader cannot make sense of the directory at
+// all and has to refuse it. An extraction from a different extractor or poppler
+// build is still perfectly readable — it just is not the extraction that was
+// reviewed, which is a claim about the corpus and belongs in a `fisc verify`
+// finding that names the drift.
+const (
+	// PinnedExtractorVersion is tools/extract.py's EXTRACTOR_VERSION.
+	PinnedExtractorVersion = 3
+	// PinnedPopplerVersion is the `pdftotext -v` version that produced the
+	// committed artifacts. Expect a different poppler to change extracted bytes;
+	// see requirements.txt for the re-extraction workflow.
+	PinnedPopplerVersion = "24.02.0"
+)
+
 // ErrNotFound reports an artifact the manifest does not list. It is distinct
 // from fs.ErrNotExist: the manifest is the authority on what was extracted, so
 // "the file is missing from disk" and "the document has no such page" are
@@ -51,6 +88,43 @@ type Artifact struct {
 	SHA256 string `json:"sha256"`
 }
 
+// ExtractionError is one artifact the extractor could not produce: a poppler
+// invocation that exited non-zero, or output it could not parse.
+//
+// It is the extractor's own account of a failure, recorded in the manifest
+// rather than only logged, because a run that failed on some pages must be
+// visible to `fisc verify` instead of looking clean (tools/extract.py). The page
+// it names has NO artifact — extract.py writes nothing rather than something
+// plausible and wrong — so a reader that does not look here sees only a page the
+// document "does not have", which this package documents as normal.
+type ExtractionError struct {
+	// Stage is which invocation failed: "layout" for the page text, "bbox" for
+	// the geometry, "pdfinfo" for the page count.
+	Stage string `json:"stage"`
+	// Page is the page it failed on, or 0 for a document-level failure.
+	Page    int    `json:"page"`
+	Message string `json:"message"`
+}
+
+// Warning is one distinct line poppler wrote to stderr, folded across the
+// invocations that produced it.
+//
+// Warnings are NOT failures and must not be read as any: poppler has no
+// structured error channel, writes free-form English, and exits 0 for a damaged
+// xref and an unread metadata key alike. The manifest records every line so that
+// a human can read them; the consequence extract.py states plainly is that an
+// empty [Doc.Errors] is not a promise that every page came out whole.
+type Warning struct {
+	Stage   string `json:"stage"`
+	Message string `json:"message"`
+	// Count is how many times poppler said it, which can exceed len(Pages) when
+	// one invocation said it twice.
+	Count int `json:"count"`
+	// Pages is the pages whose invocations produced it, absent for a
+	// document-level complaint.
+	Pages []int `json:"pages"`
+}
+
 // manifest is the on-disk manifest.json. Unknown fields are tolerated rather
 // than rejected: extract.py may add reporting keys, and SchemaVersion is the
 // guard that matters for the fields this package actually reads.
@@ -58,9 +132,14 @@ type manifest struct {
 	SchemaVersion    int                 `json:"schema_version"`
 	DocID            string              `json:"doc_id"`
 	PageCount        int                 `json:"page_count"`
+	BlankPageCount   int                 `json:"blank_page_count"`
 	ExtractorVersion int                 `json:"extractor_version"`
+	PopplerVersion   string              `json:"poppler_version"`
 	SourceFile       string              `json:"source_file"`
 	SourceSHA256     string              `json:"source_sha256"`
+	SourceBytes      int64               `json:"source_bytes"`
+	Warnings         []Warning           `json:"warnings"`
+	Errors           []ExtractionError   `json:"errors"`
 	Artifacts        map[string]Artifact `json:"artifacts"`
 }
 
@@ -73,7 +152,7 @@ type Doc struct {
 
 // Open reads the manifest at the root of fsys. It does not read any page.
 func Open(fsys fs.FS) (*Doc, error) {
-	b, err := fs.ReadFile(fsys, "manifest.json")
+	b, err := fs.ReadFile(fsys, ManifestFile)
 	if err != nil {
 		return nil, fmt.Errorf("read manifest: %w", err)
 	}
@@ -91,11 +170,6 @@ func Open(fsys fs.FS) (*Doc, error) {
 
 	return &Doc{fsys: fsys, man: m}, nil
 }
-
-// extractedDir is where tools/extract.py writes, relative to the repository
-// root. It is spelled once, here, because a command that joined its own copy
-// of the path would drift from the reader that has to find the result.
-const extractedDir = cmdutil.DataDir + "/extracted"
 
 // OpenDoc opens the extraction of docID beneath a repository root, and refuses
 // one whose manifest names a different document.
@@ -116,10 +190,10 @@ func OpenDoc(root, docID string) (*Doc, error) {
 	if !fs.ValidPath(docID) || docID == "." || strings.ContainsAny(docID, `/\`) {
 		return nil, cmdutil.WithHint(
 			fmt.Errorf("document id %q is not a single directory name", docID),
-			"doc_id names one directory under "+extractedDir+
+			"doc_id names one directory under "+cmdutil.ExtractedDir+
 				"; it may not contain a path separator or \"..\"")
 	}
-	dir := filepath.Join(root, extractedDir, docID)
+	dir := filepath.Join(root, cmdutil.ExtractedDir, docID)
 	d, err := Open(os.DirFS(dir))
 	if err != nil {
 		return nil, fmt.Errorf("open extraction %q: %w", dir, err)
@@ -139,13 +213,59 @@ func OpenDoc(root, docID string) (*Doc, error) {
 // are expected to compare.
 func (d *Doc) DocID() string { return d.man.DocID }
 
-// PageCount is how many pages the source PDF had.
+// PageCount is how many pages the source PDF had, as pdfinfo reported it.
+//
+// It is the extraction's own claim about the document's SIZE, and it is the only
+// thing in the manifest that says how many artifacts there should be: the
+// artifact map is otherwise checkable only against itself, so a manifest with
+// every page deleted from it agrees with a directory with every page deleted from
+// it. `fisc verify` compares this against both the artifacts and the page count
+// data/sources.yaml records.
 func (d *Doc) PageCount() int { return d.man.PageCount }
 
-// SourceSHA256 is the hash of the PDF this extraction was made from, as
-// recorded by extract.py. `fisc verify` cross-checks it against the registry;
-// the two are recorded independently on purpose, so agreement is evidence.
+// BlankPageCount is how many pages poppler returned no text for at all.
+//
+// A blank page still HAS both artifacts — an empty pages/pNNNN.txt and a geometry
+// file with no words — so it is invisible to any count. It is the honest caveat to
+// "every page was extracted": one of the ACFR's 195 pages is genuinely blank, and
+// a run where fifty came out blank would look complete.
+func (d *Doc) BlankPageCount() int { return d.man.BlankPageCount }
+
+// Errors is every failure the extractor recorded, and a non-empty result means
+// this extraction is INCOMPLETE: the pages named have no artifact.
+//
+// The slice is a copy, for the reason [Doc.Artifacts] is.
+func (d *Doc) Errors() []ExtractionError { return slices.Clone(d.man.Errors) }
+
+// Warnings is every distinct line poppler wrote to stderr. See [Warning]: these
+// are not failures, and an empty [Doc.Errors] beside a long Warnings is the normal
+// state of this corpus.
+func (d *Doc) Warnings() []Warning { return slices.Clone(d.man.Warnings) }
+
+// SourceFile is the path extract.py read the document from, as it recorded it.
+//
+// This and the two below are the extraction's record of the document it came
+// from. `fisc verify` cross-checks all three against data/sources.yaml, which
+// records the same three claims; two parties recording them independently is
+// what makes agreement evidence, and extract.py deliberately has no YAML parser
+// so that neither copy is derived from the other
+// (docs/agents/conventions.md, "the extraction boundary").
+func (d *Doc) SourceFile() string { return d.man.SourceFile }
+
+// SourceSHA256 is the hash of the PDF this extraction was made from.
 func (d *Doc) SourceSHA256() string { return d.man.SourceSHA256 }
+
+// SourceBytes is the size of that PDF.
+func (d *Doc) SourceBytes() int64 { return d.man.SourceBytes }
+
+// ExtractorVersion is tools/extract.py's version, as this extraction recorded
+// it. Compare against [PinnedExtractorVersion]: a mismatch means the committed
+// artifacts are not the ones that were reviewed.
+func (d *Doc) ExtractorVersion() int { return d.man.ExtractorVersion }
+
+// PopplerVersion is the poppler build that produced this extraction. Compare
+// against [PinnedPopplerVersion].
+func (d *Doc) PopplerVersion() string { return d.man.PopplerVersion }
 
 // PagePath is the artifact path for page n.
 //
@@ -153,6 +273,18 @@ func (d *Doc) SourceSHA256() string { return d.man.SourceSHA256 }
 // runs of spaces that ARE the column grid, which would silently break the
 // provenance deep links these paths are published as.
 func PagePath(n int) string { return fmt.Sprintf("pages/p%04d.txt", n) }
+
+// GeometryPath is the artifact path for page n's word geometry, the `-bbox`
+// substrate that carries the x-position of every token.
+//
+// Both substrates are emitted for every page and both are needed: `-layout`
+// reproduces the printed grid in runs of spaces but says nothing about which
+// column a token belongs to on a sparse row, and geometry is what settles it
+// (docs/agents/conventions.md, "the extraction boundary"). Nothing in fisc reads
+// one of these yet, which is exactly why `fisc verify` has to know they should be
+// there: an extraction missing half its geometry would look complete until the
+// column guard lands and started reading it.
+func GeometryPath(n int) string { return fmt.Sprintf("geometry/p%04d.json", n) }
 
 // Page returns the extracted layout text for page n.
 //
@@ -170,20 +302,26 @@ func (d *Doc) Page(n int) (string, error) {
 	return string(b), nil
 }
 
-// Artifact returns the manifest's record for an artifact path.
-func (d *Doc) Artifact(p string) (Artifact, bool) {
-	a, ok := d.man.Artifacts[p]
-	return a, ok
-}
+// Artifacts is the manifest's record of every file the extractor emitted: the
+// path it wrote, and the size and sha256 of the bytes it wrote there.
+//
+// This is the input to the drift sweep in `fisc verify`, and it hands back the
+// records rather than a verdict for the reason this package does not hash: a
+// reader that failed on the first mismatch could report "something drifted" but
+// never "these eleven files drifted", which is the useful answer.
+//
+// The map is a copy, so a caller sweeping it cannot edit the manifest this Doc
+// answers questions from. The keys are the manifest's own, uncleaned: they are
+// the strings a finding has to name, and silently canonicalising one would make
+// a report cite a path the file does not contain.
+func (d *Doc) Artifacts() map[string]Artifact { return maps.Clone(d.man.Artifacts) }
 
-// ArtifactPaths returns every artifact path the manifest lists, sorted. This
-// is the input to the drift sweep in fisc-1wr.5; the hashes to compare against
-// come from Artifact.
-func (d *Doc) ArtifactPaths() []string {
-	out := make([]string, 0, len(d.man.Artifacts))
-	for p := range d.man.Artifacts {
-		out = append(out, path.Clean(p))
-	}
-	sort.Strings(out)
-	return out
-}
+// Tree is the extraction directory, as the filesystem it was opened over.
+//
+// It exists for the drift sweep, which is the one consumer that must see what
+// the manifest does NOT list: an unlisted file is how an artifact gets read that
+// nothing vouches for, and no manifest-keyed accessor can reach one by
+// definition. Reads through it are confined to the directory — an fs.FS rejects
+// an absolute path and a "..", so a hostile manifest key cannot address the
+// filesystem at large.
+func (d *Doc) Tree() fs.FS { return d.fsys }

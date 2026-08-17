@@ -208,8 +208,10 @@ func TestAnErroringCheckAlsoExitsThreeAndIsDistinguishable(t *testing.T) {
 	}
 }
 
-// TestSkippedIsReportedAndDoesNotFail wires --full end to end. No check needs it
-// today, so this is where the path is exercised before one does.
+// TestSkippedIsReportedAndDoesNotFail wires --full end to end, over injected checks
+// rather than the real set: what this command owns is the mapping from a verdict to
+// an exit code and two output shapes, and it has to be right for every verdict
+// whatever the corpus happens to produce.
 func TestSkippedIsReportedAndDoesNotFail(t *testing.T) {
 	checks := []check.Check{passing("facts-sorted"), fullOnly("manifest-sha256")}
 
@@ -220,7 +222,7 @@ func TestSkippedIsReportedAndDoesNotFail(t *testing.T) {
 	if !strings.Contains(errOut, "SKIPPED") {
 		t.Errorf("the report never says SKIPPED:\n%s", errOut)
 	}
-	if !strings.Contains(errOut, "need --full and did not run") {
+	if !strings.Contains(errOut, "--full and did not run") {
 		t.Errorf("the report does not say what would have run it:\n%s", errOut)
 	}
 	// Not even under --strict: a skipped check is the documented consequence of a

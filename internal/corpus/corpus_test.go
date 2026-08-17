@@ -243,3 +243,151 @@ func TestOpenDocRefusesAPathForADocumentID(t *testing.T) {
 		})
 	}
 }
+
+// TestReadsTheCommittedProvenance is the other half of "this reader and
+// tools/extract.py still agree": the manifest keys that are not artifacts.
+//
+// It pins the pinned versions against a real manifest, which is what makes the
+// pin a fact about this corpus rather than a constant nobody compares. A
+// re-extraction changes these numbers, and the change has to be a deliberate
+// edit here in the same commit — that is the whole mechanism.
+func TestReadsTheCommittedProvenance(t *testing.T) {
+	d, err := Open(os.DirFS(realDoc))
+	if err != nil {
+		t.Fatalf("Open(%s): %v", realDoc, err)
+	}
+	if got, want := d.ExtractorVersion(), PinnedExtractorVersion; got != want {
+		t.Errorf("ExtractorVersion() = %d, want the pinned %d", got, want)
+	}
+	if got, want := d.PopplerVersion(), PinnedPopplerVersion; got != want {
+		t.Errorf("PopplerVersion() = %q, want the pinned %q", got, want)
+	}
+	// The source records, which `fisc verify` compares against data/sources.yaml.
+	// Asserted as non-empty and self-consistent here; the comparison against the
+	// registry is verify's, because agreement between two files is not something
+	// either file's reader can claim.
+	if got, want := d.SourceFile(), "data/pdf/"+realDocID+".pdf"; got != want {
+		t.Errorf("SourceFile() = %q, want %q", got, want)
+	}
+	if len(d.SourceSHA256()) != 64 {
+		t.Errorf("SourceSHA256() = %q, want a hex sha256", d.SourceSHA256())
+	}
+	if d.SourceBytes() <= 0 {
+		t.Errorf("SourceBytes() = %d, want the size of the PDF it was made from", d.SourceBytes())
+	}
+	// The two channels the extractor reports through, and the difference between
+	// them. Errors mean artifacts were not written; warnings mean poppler complained
+	// and carried on, and this document's sibling carries three of them.
+	if got := d.Errors(); len(got) != 0 {
+		t.Errorf("Errors() = %v, want none: the committed extraction is complete", got)
+	}
+	if d.BlankPageCount() != 0 {
+		t.Errorf("BlankPageCount() = %d, want 0 for the Budget Book", d.BlankPageCount())
+	}
+}
+
+// TestReadsTheExtractorsWarnings is the ACFR, which is the document that actually
+// carries some: poppler wrote three distinct complaints and exited 0 for every one.
+// Decoding them is what lets `fisc verify` count them into its report instead of
+// dropping the extractor's only account of what it could not read.
+func TestReadsTheExtractorsWarnings(t *testing.T) {
+	d, err := OpenDoc(realRoot, "livermore-acfr-fy2025")
+	if err != nil {
+		t.Fatalf("OpenDoc: %v", err)
+	}
+	warnings := d.Warnings()
+	if len(warnings) == 0 {
+		t.Fatal("the ACFR extraction records no warnings; it recorded three when written")
+	}
+	for _, w := range warnings {
+		if w.Stage == "" || w.Message == "" || w.Count <= 0 {
+			t.Errorf("warning %+v is missing a stage, a message or a count", w)
+		}
+	}
+	// A blank page still has both artifacts, so it is invisible to any count of
+	// them: this is the one genuinely blank page in the corpus, and the reason the
+	// completeness check prints the number rather than asserting it is zero.
+	if got, want := d.BlankPageCount(), 1; got != want {
+		t.Errorf("BlankPageCount() = %d, want %d", got, want)
+	}
+	// Errors are the other channel and are empty, which is what extract.py warns is
+	// not a promise that every page came out whole.
+	if got := d.Errors(); len(got) != 0 {
+		t.Errorf("Errors() = %v, want none", got)
+	}
+}
+
+// TestGeometryPath pins the second substrate's artifact path. It is asserted rather
+// than derived because tools/extract.py writes this name and nothing in Go reads a
+// geometry file yet: the only thing keeping the two spellings together is this test
+// and the manifest the next one checks it against.
+func TestGeometryPath(t *testing.T) {
+	if got, want := GeometryPath(1), "geometry/p0001.json"; got != want {
+		t.Errorf("GeometryPath(1) = %q, want %q", got, want)
+	}
+	if got, want := GeometryPath(323), "geometry/p0323.json"; got != want {
+		t.Errorf("GeometryPath(323) = %q, want %q", got, want)
+	}
+	d, err := Open(os.DirFS(realDoc))
+	if err != nil {
+		t.Fatalf("Open(%s): %v", realDoc, err)
+	}
+	for _, rel := range []string{PagePath(66), GeometryPath(66)} {
+		if _, ok := d.Artifacts()[rel]; !ok {
+			t.Errorf("the committed manifest does not list %q, so this reader and "+
+				"tools/extract.py disagree about the artifact contract", rel)
+		}
+	}
+}
+
+// TestArtifactsIsACopy: the drift sweep in `fisc verify` walks these records and
+// must not be able to edit the manifest the Doc answers questions from.
+func TestArtifactsIsACopy(t *testing.T) {
+	d, err := Open(docFS(t, map[string]string{"pages/p0001.txt": "first page"}))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	artifacts := d.Artifacts()
+	if len(artifacts) != 1 {
+		t.Fatalf("Artifacts() = %v, want the one page", artifacts)
+	}
+	delete(artifacts, PagePath(1))
+	artifacts["pages/p0002.txt"] = Artifact{Bytes: 1}
+
+	if got := d.Artifacts(); len(got) != 1 {
+		t.Errorf("Artifacts() = %v after a caller edited an earlier result, want the one page", got)
+	}
+	// And the page is still readable, which is the consequence that would bite:
+	// Page consults the same records.
+	if _, err := d.Page(1); err != nil {
+		t.Errorf("Page(1) after a caller edited Artifacts(): %v", err)
+	}
+}
+
+// TestTreeSeesWhatTheManifestDoesNot is why Tree exists. An unlisted file is
+// unreachable through every manifest-keyed accessor by definition, and it is the
+// thing the drift sweep has to be able to find.
+func TestTreeSeesWhatTheManifestDoesNot(t *testing.T) {
+	fsys := docFS(t, map[string]string{"pages/p0001.txt": "first page"})
+	fsys["pages/p0002.txt"] = &fstest.MapFile{Data: []byte("a page nothing extracted")}
+
+	d, err := Open(fsys)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if _, ok := d.Artifacts()[PagePath(2)]; ok {
+		t.Fatal("the fixture manifest lists the stray page, so this test covers nothing")
+	}
+	b, err := fs.ReadFile(d.Tree(), PagePath(2))
+	if err != nil {
+		t.Fatalf("read the unlisted page through Tree(): %v", err)
+	}
+	if got, want := string(b), "a page nothing extracted"; got != want {
+		t.Errorf("Tree() read %q, want %q", got, want)
+	}
+	// Tree is confined to the extraction: an fs.FS refuses a path that climbs
+	// out, so a hostile manifest key cannot address the filesystem at large.
+	if _, err := fs.ReadFile(d.Tree(), "../../../etc/passwd"); err == nil {
+		t.Error("Tree() read a path outside the extraction directory")
+	}
+}

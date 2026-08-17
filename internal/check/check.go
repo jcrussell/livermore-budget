@@ -44,14 +44,21 @@
 // fail. Everything else is a ratchet on the code that shapes the figures, which is
 // worth having and is not the same claim.
 //
+// The structural checks (tier 0) are witnesses of a different kind again: they say
+// nothing about any figure, and they are the only thing here that can tell whether
+// the substrate every other check reads is still the substrate the rules were
+// written against. A page whose bytes changed produces facts whose offsets land on
+// whatever is there now, and every arithmetic check above passes over them.
+//
 // # No PDFs, no Python
 //
-// [Load] reads facts/facts.jsonl, mappings/, data/funds.yaml,
-// data/taxonomy.yaml and the extraction manifests under data/extracted/ — all
-// committed artifacts. It touches data/pdf/ nowhere, which is what lets CI
-// verify without an LFS checkout or a venv (docs/agents/conventions.md, "the
-// extraction boundary"). A check that needs the source documents themselves
-// says so with Full and is skipped, not failed, when --full is absent.
+// [Load] reads facts/facts.jsonl, mappings/, the three registries under data/, and
+// every artifact under data/extracted/ — all committed. Without Full it touches
+// data/pdf/ nowhere, which is what lets CI verify without an LFS checkout or a
+// venv (docs/agents/conventions.md, "the extraction boundary"). A check that needs
+// the source documents themselves says so with Full and is skipped, not failed,
+// when --full is absent; today that is one check, source-pdfs-match-both-records,
+// and Load is the one place allowed to open data/pdf/ for it.
 package check
 
 import (
@@ -130,10 +137,16 @@ type Check interface {
 // The order is the order a reader should read them in, and it is not
 // alphabetical:
 //
-//   - Structural checks (tier 0) come first once they land, in lane fisc-1wr.5.
-//     A drifted artifact or a manifest hash that no longer matches invalidates
-//     every arithmetic result below it, so a reader must see it at the top
-//     rather than after nine passes.
+//   - Structural checks (tier 0) come first. A drifted artifact or a manifest hash
+//     that no longer matches invalidates every arithmetic result below it, so a
+//     reader must see it at the top rather than after nine passes. Within them:
+//     the artifacts against their manifest, then the two that ask whether the
+//     manifest is COMPLETE — every page emitted, and the extractor reporting no
+//     failure — then the manifests against the source registry and the toolchain
+//     against its pin, and last the one that needs the source documents themselves
+//     and is skipped without --full. The completeness pair comes second because a
+//     matching hash over an emptied extraction is the one way the sweep above can
+//     pass while saying nothing.
 //   - Then the fact store: its order and identity, then the two independent
 //     witnesses to its figures, then the vocabularies its classifications resolve
 //     in. A projection built from an unsorted store, or from amounts that do not
@@ -147,6 +160,13 @@ type Check interface {
 //     among the passes.
 func All() []Check {
 	return []Check{
+		&artifactsMatchManifest{},
+		&extractionEmittedEveryPage{},
+		&extractorReportedNoErrors{},
+		&manifestMatchesSourceRegistry{},
+		&extractionToolchainPinned{},
+		&sourcePDFsMatchBothRecords{},
+
 		&factsSorted{},
 		&factIDsUnique{},
 		&factTokenReparses{},

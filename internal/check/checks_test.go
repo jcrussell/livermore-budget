@@ -24,6 +24,21 @@ func TestFixtureVerdicts(t *testing.T) {
 	rep := runChecks(t, testSubject(t))
 
 	want := map[string]string{
+		// The structural checks have nothing to look at here, and that is a
+		// property of the fixture rather than of the checks. This fixture is a
+		// miniature of the SPINE — ten cells and the graph they make — and it
+		// carries no extraction directory and no source registry, because the
+		// claims those checks make are about a repository on disk. They get their
+		// own fixture, in structural_test.go, which is a repository: it is
+		// mutated file by file, and every one of these four is failed there. The
+		// committed corpus is where they pass (TestTheCommittedCorpusVacuitySplit).
+		"artifacts-match-manifest":         "vacuous over 0",
+		"extraction-emitted-every-page":    "vacuous over 0",
+		"extractor-reported-no-errors":     "vacuous over 0",
+		"manifest-matches-source-registry": "vacuous over 0",
+		"extraction-toolchain-pinned":      "vacuous over 0",
+		"source-pdfs-match-both-records":   "skipped over 0",
+
 		"facts-sorted":                "pass over 10",
 		"fact-ids-unique":             "pass over 10",
 		"fact-token-reparses":         "pass over 10",
@@ -49,11 +64,11 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 14, Vacuous: 5}); got != rep.Counts {
+	if got := (Counts{Pass: 14, Vacuous: 10, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Nine passes and three vacuous is not twelve of anything, and a run with
-	// nothing wrong in it still exits 0.
+	// Fourteen passes, ten vacuous and one skipped is not twenty-five of
+	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
 	}
@@ -68,14 +83,14 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 5 {
-		t.Fatalf("vacuous count = %d, want 5", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 10 {
+		t.Fatalf("vacuous count = %d, want 10", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
-		t.Error("a run with five vacuous checks failed without --strict")
+		t.Error("a run with ten vacuous checks failed without --strict")
 	}
 	if !strict.Failed() {
-		t.Error("a run with five vacuous checks passed under --strict")
+		t.Error("a run with ten vacuous checks passed under --strict")
 	}
 	// The statuses must be identical: --strict changes what a vacuous result
 	// means for the exit code, not what any check concluded.

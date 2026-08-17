@@ -25,6 +25,12 @@ const (
 	// committed extraction. Not to be confused with export's output data
 	// directory, which is a published path and not a repository one.
 	DataDir = "data"
+	// ExtractedDir is where tools/extract.py writes, one directory per
+	// document. It is spelled once, here, because a command that joined its own
+	// copy of the path would drift from the reader that has to find the result:
+	// internal/corpus opens an extraction under it and internal/check sweeps
+	// every file in it for drift.
+	ExtractedDir = DataDir + "/extracted"
 )
 
 // repoMarker is the file whose presence identifies the repository root. It is

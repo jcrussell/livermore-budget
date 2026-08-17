@@ -3,6 +3,7 @@ package check
 import (
 	"bytes"
 	"errors"
+	"io/fs"
 	"math"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
@@ -49,14 +49,20 @@ func copyRepoFile(t *testing.T, src, dst, rel string) {
 }
 
 // repoWithoutPDFs copies everything Load is allowed to read into a temporary tree,
-// and nothing else: the fact store, the rule files, the two registries, each
-// document's manifest, and the extracted pages the facts actually cite. data/pdf is
-// not among it.
+// and nothing else: the fact store, the rule files, the three registries, and the
+// whole committed extraction. data/pdf is not among it.
 //
 // This is what makes the no-PDF property a test rather than a claim: if some check
 // ever reaches for a source document it will not find one here. It is also the
 // tree the input-mutation tests below rewrite, which is the only way to make a
 // check fail from something a repository could actually contain.
+//
+// It copies every artifact rather than only the pages the facts cite, and that
+// changed when the structural checks landed: artifacts-match-manifest hashes every
+// file the manifest lists AND reports every file the manifest does not list, so a
+// tree holding five of 1,572 pages is not a repository verify passes over — it is
+// 1,567 findings. The set copied here is exactly the set verify reads, which is
+// what the copy is for.
 func repoWithoutPDFs(t *testing.T) string {
 	t.Helper()
 	src, dst := repoRoot(t), t.TempDir()
@@ -64,6 +70,7 @@ func repoWithoutPDFs(t *testing.T) string {
 	copyRepoFile(t, src, dst, factsFile)
 	copyRepoFile(t, src, dst, dataDir+"/funds.yaml")
 	copyRepoFile(t, src, dst, dataDir+"/taxonomy.yaml")
+	copyRepoFile(t, src, dst, sourcesFile)
 
 	rules, err := os.ReadDir(filepath.Join(src, mappingsDir))
 	if err != nil {
@@ -74,21 +81,8 @@ func repoWithoutPDFs(t *testing.T) string {
 			copyRepoFile(t, src, dst, mappingsDir+"/"+e.Name())
 		}
 	}
-
-	docs, err := os.ReadDir(filepath.Join(src, dataDir, "extracted"))
-	if err != nil {
-		t.Fatalf("read the extraction directory: %v", err)
-	}
-	for _, e := range docs {
-		if e.IsDir() {
-			copyRepoFile(t, src, dst, dataDir+"/extracted/"+e.Name()+"/manifest.json")
-		}
-	}
-	// The pages the facts cite, and only those: fact-offset-points-at-token reads
-	// them, and copying the whole extraction would say nothing about which parts of
-	// it verify needs.
-	for _, page := range citedPages(t, src) {
-		copyRepoFile(t, src, dst, page)
+	for _, rel := range extractedFiles(t, src) {
+		copyRepoFile(t, src, dst, rel)
 	}
 
 	// The premise of the test, asserted rather than assumed.
@@ -98,17 +92,28 @@ func repoWithoutPDFs(t *testing.T) string {
 	return dst
 }
 
-// citedPages is every extracted page path the committed fact store points at.
-func citedPages(t *testing.T, root string) []string {
+// extractedFiles is every file under data/extracted/, as repository-relative
+// slash-separated paths.
+func extractedFiles(t *testing.T, root string) []string {
 	t.Helper()
-	seen := map[string]bool{}
+	dir := filepath.Join(root, filepath.FromSlash(extractedDir))
 	var out []string
-	for _, f := range readFacts(t, root) {
-		p := dataDir + "/extracted/" + f.DocID + "/" + corpus.PagePath(f.Page)
-		if !seen[p] {
-			seen[p] = true
-			out = append(out, p)
+	err := filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
 		}
+		rel, err := filepath.Rel(root, p)
+		if err != nil {
+			return err
+		}
+		out = append(out, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", extractedDir, err)
+	}
+	if len(out) == 0 {
+		t.Fatalf("%s holds no files, so a copy of it proves nothing", extractedDir)
 	}
 	sort.Strings(out)
 	return out
@@ -159,8 +164,12 @@ func loadAndRun(t *testing.T, root string) *Report {
 }
 
 // TestVerifyNeedsNoPDFs is the property that lets CI run this command on a plain
-// clone: every input is a committed artifact, and the source documents — 67MB of
-// PDF that is not in a shallow checkout — are read by nothing.
+// clone: every input of a default run is a committed artifact, and the source
+// documents — 67MB of PDF that is not in a shallow checkout — are read by nothing.
+//
+// One check now needs them, and the shape of that is the point: it is SKIPPED, with
+// the reason, and the run still exits clean. A --full check that failed on a
+// PDF-less tree would make this property impossible to state.
 func TestVerifyNeedsNoPDFs(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoWithoutPDFs(t), Version: testVersion})
 	if err != nil {
@@ -168,12 +177,35 @@ func TestVerifyNeedsNoPDFs(t *testing.T) {
 	}
 	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
 
-	if rep.Counts.Fail > 0 || rep.Counts.Error > 0 || rep.Counts.Skipped > 0 {
-		t.Errorf("counts = %+v over a PDF-less tree, want no failure, error or skip:\n%v",
+	if rep.Counts.Fail > 0 || rep.Counts.Error > 0 {
+		t.Errorf("counts = %+v over a PDF-less tree, want no failure or error:\n%v",
 			rep.Counts, rep.Results)
 	}
 	if rep.Failed() {
 		t.Error("Failed() = true with the source documents absent")
+	}
+
+	// Skipped is exactly the checks that say they need --full, and nothing else.
+	var wantSkipped []string
+	for _, c := range All() {
+		if c.Full() {
+			wantSkipped = append(wantSkipped, c.ID())
+		}
+	}
+	var gotSkipped []string
+	for _, res := range rep.Results {
+		if res.Status == StatusSkipped {
+			gotSkipped = append(gotSkipped, res.CheckID)
+			if !strings.Contains(res.Summary, "--full") {
+				t.Errorf("%s was skipped without saying why: %q", res.CheckID, res.Summary)
+			}
+		}
+	}
+	if diff := cmp.Diff(wantSkipped, gotSkipped); diff != "" {
+		t.Errorf("skipped checks (-want +got):\n%s", diff)
+	}
+	if len(wantSkipped) == 0 {
+		t.Error("no check declares Full(), so this test no longer covers the skip path")
 	}
 }
 
@@ -192,6 +224,16 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 	rep := Run(t.Context(), s, All(), ReportOptions{GeneratedBy: testVersion})
 
 	want := map[string]Status{
+		// The structural checks, over the three committed extractions and the
+		// source registry. The fourth is the only check in the report that needs
+		// the source PDFs, and a default run does not look for them.
+		"artifacts-match-manifest":         StatusPass,
+		"extraction-emitted-every-page":    StatusPass,
+		"extractor-reported-no-errors":     StatusPass,
+		"manifest-matches-source-registry": StatusPass,
+		"extraction-toolchain-pinned":      StatusPass,
+		"source-pdfs-match-both-records":   StatusSkipped,
+
 		"facts-sorted":                StatusPass,
 		"fact-ids-unique":             StatusPass,
 		"fact-token-reparses":         StatusPass,

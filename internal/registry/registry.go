@@ -283,9 +283,9 @@ func (r *Registry) FundGroups() []string {
 // error that says only "duplicate slug" costs the reader a search through a
 // file whose whole point is that its entries are hard to tell apart.
 type Error struct {
-	// File is FundsFile or TaxonomyFile.
+	// File is FundsFile, TaxonomyFile or SourcesFile.
 	File string
-	// Entry names the offending fund or category, already rendered
+	// Entry names the offending fund, category or source, already rendered
 	// ("fund 291", `category "taxes/property"`). It is empty for a
 	// file-level problem such as a bad schema_version.
 	Entry string

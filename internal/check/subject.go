@@ -1,12 +1,18 @@
 package check
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -21,9 +27,14 @@ import (
 // one `fisc build` writes would be checking something nobody reads. The paths are
 // cmdutil's single declaration of the layout, not this package's.
 const (
-	factsFile   = cmdutil.FactsPath
-	mappingsDir = cmdutil.MappingsDir
-	dataDir     = cmdutil.DataDir
+	factsFile    = cmdutil.FactsPath
+	mappingsDir  = cmdutil.MappingsDir
+	dataDir      = cmdutil.DataDir
+	extractedDir = cmdutil.ExtractedDir
+	// sourcesFile is the source registry, composed from the two packages that
+	// already name its parts rather than spelled a third time: the directory is
+	// cmdutil's, the file name is the registry's.
+	sourcesFile = dataDir + "/" + registry.SourcesFile
 )
 
 // spineScope is the scope of the projection this package checks: the one the site
@@ -98,7 +109,8 @@ type Subject struct {
 	// Root is the repository root every path is relative to.
 	Root string
 	// Full says whether the inputs only `--full` supplies are available. It is
-	// false in CI and in a plain clone. No check requires it yet; see Check.Full.
+	// false in CI and in a plain clone, and the checks that need them are skipped
+	// rather than failed when it is; see Check.Full.
 	Full bool
 
 	// Facts is the committed fact store, in the order the file lists them —
@@ -115,6 +127,26 @@ type Subject struct {
 	// Docs is the extraction manifest of each document the rule files name,
 	// keyed by document id. Opening one reads its manifest and no page.
 	Docs map[string]*corpus.Doc
+	// Extractions is every extraction committed under data/extracted/, keyed by
+	// the directory name — which corpus.OpenDoc has already checked the manifest
+	// agrees with.
+	//
+	// Docs is a subset of this, sharing the same values so that one object
+	// answers for one extraction. They are separate fields because they are
+	// different sets and the difference is what the structural checks are about:
+	// Docs is what the rules read pages from, and Extractions is what the
+	// repository commits. An extraction no rule maps still drifts, and an
+	// extraction with no source registry entry is drift in itself — neither is
+	// visible in Docs at all.
+	Extractions map[string]*corpus.Doc
+	// Sources is data/sources.yaml: the registry's independently recorded claim
+	// about the bytes each extraction was made from.
+	Sources []registry.Source
+	// SourcePDFs is what Full found where each source document should be, keyed
+	// by document id, and it is empty when Full is false. It carries the state of
+	// each file rather than its bytes: a hash Load computed, or the reason there
+	// was nothing to hash.
+	SourcePDFs map[string]SourcePDF
 	// Resolvers is one memoized resolver per rule file, keyed by the file's
 	// path. Nothing in tier 1 needs them: they are here because the totals
 	// reconciliation (fisc-1wr.2) and the structural sweep (fisc-1wr.5) both
@@ -136,16 +168,19 @@ type LoadOptions struct {
 	// caption. Pass build.Get().String(), which is also what `fisc export`
 	// stamps, so a future drift check can compare the two byte for byte.
 	Version string
-	// Full loads the inputs only `--full` supplies. Nothing does yet, so today
-	// this is carried through to Subject.Full and read by nobody.
+	// Full loads the inputs only `--full` supplies: the source documents under
+	// data/pdf/, hashed into Subject.SourcePDFs.
 	//
-	// When the first Full check lands, this is the one place in the program
-	// allowed to look at data/pdf/, and it is also where a missing data/pdf has
-	// to be dealt with. It is NOT dealt with here now: --full with no PDFs
-	// present currently means the checks run and find no file, rather than being
-	// skipped or refused. Deciding which of those it should be is part of
-	// building the first check that needs them (fisc-1wr.5), not something to
-	// guess at while nothing does.
+	// This is the one place in the program allowed to look at data/pdf/, which is
+	// why the hashing happens here rather than in the check that compares the
+	// results: the checks then read three recorded claims and compare them, the
+	// same shape every other check in this package has.
+	//
+	// A source document that is absent, or that is an unsmudged Git LFS pointer
+	// rather than a PDF, does NOT fail here. Load records what it found and the
+	// check reports it: "the bytes are wrong" is a claim about the corpus and "the
+	// bytes are not here" is a claim about the checkout, and collapsing the second
+	// into a load failure would mean a plain clone could not tell them apart.
 	Full bool
 }
 
@@ -170,28 +205,42 @@ func Load(o LoadOptions) (*Subject, error) {
 	}
 
 	s := &Subject{
-		Root:      o.Root,
-		Full:      o.Full,
-		Docs:      map[string]*corpus.Doc{},
-		Resolvers: map[string]*mapping.Resolver{},
+		Root:        o.Root,
+		Full:        o.Full,
+		Docs:        map[string]*corpus.Doc{},
+		Extractions: map[string]*corpus.Doc{},
+		SourcePDFs:  map[string]SourcePDF{},
+		Resolvers:   map[string]*mapping.Resolver{},
 	}
 	fsys := os.DirFS(o.Root)
+	dataFS := os.DirFS(filepath.Join(o.Root, dataDir))
 
 	var err error
 	if s.Facts, err = loadFacts(fsys); err != nil {
 		return nil, err
 	}
-	reg, err := registry.Load(os.DirFS(filepath.Join(o.Root, dataDir)))
+	reg, err := registry.Load(dataFS)
 	if err != nil {
 		return nil, fmt.Errorf("load the data registries: %w", err)
 	}
 	s.Vocabulary = reg
+	if s.Sources, err = registry.LoadSources(dataFS); err != nil {
+		return nil, fmt.Errorf("load the source registry: %w", err)
+	}
 
 	if s.Files, err = mapping.LoadDir(fsys, mappingsDir); err != nil {
 		return nil, err
 	}
+	if err = s.openExtractions(o.Root); err != nil {
+		return nil, err
+	}
 	if err = s.openDocs(o.Root); err != nil {
 		return nil, err
+	}
+	if o.Full {
+		if s.SourcePDFs, err = loadSourcePDFs(fsys, s.Sources); err != nil {
+			return nil, err
+		}
 	}
 	if s.Projections, err = buildProjections(project.Registry(reg), s.Facts, o.Version); err != nil {
 		return nil, err
@@ -232,9 +281,16 @@ func (s *Subject) openDocs(root string) error {
 	for _, f := range s.Files {
 		doc, ok := s.Docs[f.DocID]
 		if !ok {
-			var err error
-			if doc, err = corpus.OpenDoc(root, f.DocID); err != nil {
-				return fmt.Errorf("%s: %w", f.Path, err)
+			// openExtractions has already opened everything data/extracted/ holds,
+			// so this is a lookup and not a second read. It falls back to OpenDoc
+			// for the case that lookup misses, which is a rule file naming a
+			// document that has never been extracted: OpenDoc is what says so, and
+			// says which directory it looked in.
+			if doc, ok = s.Extractions[f.DocID]; !ok {
+				var err error
+				if doc, err = corpus.OpenDoc(root, f.DocID); err != nil {
+					return fmt.Errorf("%s: %w", f.Path, err)
+				}
 			}
 			s.Docs[f.DocID] = doc
 		}
@@ -245,6 +301,179 @@ func (s *Subject) openDocs(root string) error {
 		s.Resolvers[f.Path] = r
 	}
 	return nil
+}
+
+// openExtractions opens every extraction committed under data/extracted/.
+//
+// It reads the directory rather than the rule files, which is the whole point:
+// the structural checks are about what the repository commits, and two of the
+// three documents are not mapped yet. An extraction nothing reads can still drift
+// away from its manifest, and it stays drifted for as long as nobody maps it.
+//
+// A manifest this reader cannot understand fails here rather than becoming a
+// finding. That is the same line internal/corpus draws for schema_version and
+// internal/registry draws for its two files: at a schema version this fisc does
+// not know, the artifact namespace itself may be different, so there is no
+// verdict to reach about that extraction — only a statement that the checker
+// cannot read it, which is a load failure by this package's own definition.
+func (s *Subject) openExtractions(root string) error {
+	dir := filepath.Join(root, filepath.FromSlash(extractedDir))
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return cmdutil.Hintf(fmt.Errorf("read the extraction directory: %w", err),
+			"%s holds one directory per document; run `make extract` to write it", extractedDir)
+	}
+	for _, e := range entries {
+		// One directory per document. A stray file beside them is not an
+		// extraction and is not swept: what an unlisted file could get read as is
+		// a question about the inside of an extraction, which is where
+		// artifacts-match-manifest asks it.
+		if !e.IsDir() {
+			continue
+		}
+		doc, err := corpus.OpenDoc(root, e.Name())
+		if err != nil {
+			return err
+		}
+		s.Extractions[e.Name()] = doc
+	}
+	return nil
+}
+
+// SourceState is what Load found where a source document should be. The three
+// values are three different things to do about it, which is why one bool would
+// not have done: fetch the bytes, restore the file, or look at what changed them.
+type SourceState string
+
+// The states a source document can be in.
+const (
+	// SourcePresent is a readable file, whose bytes Load hashed.
+	SourcePresent SourceState = "present"
+	// SourceMissing is no file at all.
+	SourceMissing SourceState = "missing"
+	// SourcePointer is an unsmudged Git LFS pointer: the file the registry names
+	// is there, and it holds a 130-byte text stanza naming the bytes instead of
+	// the bytes. This is the NORMAL state of data/pdf/ in a clone made without
+	// git-lfs, and in CI, which sets GIT_LFS_SKIP_SMUDGE deliberately — so it
+	// must never be reported as a corrupted document.
+	SourcePointer SourceState = "pointer"
+)
+
+// SourcePDF is what Load found at one source document's path.
+//
+// It carries what was found rather than a verdict about it, because the verdict
+// needs the registry and the manifest beside it and belongs in a check.
+type SourcePDF struct {
+	// Path is the file Load looked at, repository-relative, as the registry
+	// spelled it.
+	Path  string
+	State SourceState
+	// Bytes and SHA256 are the size and hash of the bytes on disk. They are set
+	// only for SourcePresent; for the other two states there were no bytes to
+	// hash, and a zero hash must not read as one that failed to match.
+	Bytes  int64
+	SHA256 string
+	// PointerOID and PointerBytes are what an LFS pointer says the real file's
+	// hash and size are, for SourcePointer only.
+	//
+	// They are recorded because they are evidence rather than noise: the pointer
+	// is Git's own record of the same sha256 the registry and the manifest claim,
+	// so a report can say whether `git lfs pull` would fetch the expected bytes
+	// or whether the three records already disagree without the bytes present.
+	PointerOID   string
+	PointerBytes int64
+}
+
+// lfsPointerPrefix is the first line of a Git LFS pointer file, per the v1
+// pointer spec, and it is the sentinel that tells an unfetched pointer from a
+// PDF. A PDF begins "%PDF-", so there is no overlap to be careful about.
+const lfsPointerPrefix = "version https://git-lfs.github.com/spec/v1\n"
+
+// lfsPointerLimit is how much of a file is read before deciding it is not a
+// pointer. The spec caps a pointer at "less than 200 bytes"; 1 KiB is generous
+// enough to survive a future key without being enough of a PDF to matter.
+const lfsPointerLimit = 1024
+
+// loadSourcePDFs hashes the source documents the registry names.
+//
+// This is the only function in fisc that opens anything under data/pdf/, and it
+// runs only under --full. Everything is read through an fs.FS rooted at the
+// repository, so a `file:` in sources.yaml cannot address anything outside the
+// tree however it is spelled.
+//
+// A file that is not there, and a file that is an unsmudged LFS pointer, are
+// recorded and returned. Any other read failure is returned as an error: those
+// are failures of the machine rather than states of the repository, and a check
+// cannot conclude anything about bytes the filesystem would not hand over.
+func loadSourcePDFs(fsys fs.FS, sources []registry.Source) (map[string]SourcePDF, error) {
+	out := make(map[string]SourcePDF, len(sources))
+	for _, s := range sources {
+		got, err := readSourcePDF(fsys, s.File)
+		if err != nil {
+			return nil, fmt.Errorf("read the source document for %s: %w", s.ID, err)
+		}
+		out[s.ID] = got
+	}
+	return out, nil
+}
+
+// readSourcePDF classifies and, where there are bytes to hash, hashes one file.
+func readSourcePDF(fsys fs.FS, name string) (SourcePDF, error) {
+	got := SourcePDF{Path: name, State: SourceMissing}
+	f, err := fsys.Open(name)
+	if errors.Is(err, fs.ErrNotExist) {
+		return got, nil
+	}
+	if err != nil {
+		return got, err
+	}
+	defer f.Close() //nolint:errcheck // read-only file; nothing to flush
+
+	// The head is read once and then either parsed as a pointer or fed back into
+	// the hash, so a 35 MB PDF is still read exactly once and never held whole in
+	// memory.
+	head := make([]byte, lfsPointerLimit)
+	n, err := io.ReadFull(f, head)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return got, err
+	}
+	head = head[:n]
+	if oid, size, ok := parseLFSPointer(head); ok {
+		got.State, got.PointerOID, got.PointerBytes = SourcePointer, oid, size
+		return got, nil
+	}
+
+	h := sha256.New()
+	written, err := io.Copy(h, io.MultiReader(bytes.NewReader(head), f))
+	if err != nil {
+		return got, err
+	}
+	got.State, got.Bytes, got.SHA256 = SourcePresent, written, hex.EncodeToString(h.Sum(nil))
+	return got, nil
+}
+
+// parseLFSPointer reads the oid and size out of a Git LFS pointer stanza, and
+// reports whether the bytes are one at all.
+//
+// The oid is returned bare, without its "sha256:" scheme, so it can be compared
+// against the hashes the registry and the manifests record. A pointer whose keys
+// are unreadable is still a pointer — the sentinel line is what decides that —
+// and reports empty values rather than being mistaken for a document.
+func parseLFSPointer(b []byte) (oid string, size int64, ok bool) {
+	if !bytes.HasPrefix(b, []byte(lfsPointerPrefix)) {
+		return "", 0, false
+	}
+	for line := range strings.SplitSeq(string(b), "\n") {
+		switch {
+		case strings.HasPrefix(line, "oid sha256:"):
+			oid = strings.TrimPrefix(line, "oid sha256:")
+		case strings.HasPrefix(line, "size "):
+			if n, err := strconv.ParseInt(strings.TrimPrefix(line, "size "), 10, 64); err == nil {
+				size = n
+			}
+		}
+	}
+	return oid, size, true
 }
 
 // buildProjections builds every registered projection over every slice of the

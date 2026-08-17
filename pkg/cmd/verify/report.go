@@ -63,7 +63,11 @@ func printText(w io.Writer, rep *check.Report) {
 		c.Pass, c.Fail, c.Vacuous, c.Skipped, c.Error)
 
 	if c.Skipped > 0 {
-		fmt.Fprintf(w, "%d %s need --full and did not run\n", c.Skipped, plural(c.Skipped, "check", "checks"))
+		// The verb agrees along with the noun. This line was unreachable until the
+		// structural checks landed the first check that needs --full, and it read
+		// "1 check need --full" the first time anything printed it.
+		fmt.Fprintf(w, "%d %s --full and did not run\n", c.Skipped,
+			plural(c.Skipped, "check needs", "checks need"))
 	}
 	switch {
 	case c.Fail > 0 || c.Error > 0:

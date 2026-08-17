@@ -28,3 +28,9 @@
 # extracted bytes. The workflow is: `make extract`, review the artifact diff,
 # then `fisc reanchor --accept` to update mapping integrity hashes in one
 # reviewable commit.
+#
+# The MACHINE-CHECKED pin is internal/corpus.PinnedPopplerVersion, beside
+# PinnedExtractorVersion; `fisc verify` fails if any manifest records something
+# else. This file is prose for a human installing the toolchain and no Go code
+# reads it -- scraping a version out of a comment would make an edit here change
+# what fisc accepts. Change both in the same commit as the re-extraction.

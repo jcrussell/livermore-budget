@@ -89,9 +89,11 @@ func NewCmdVerify(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 		Long: `Check the committed corpus against itself and against the documents it came
 from.
 
-Verify reads facts/facts.jsonl, the rules under mappings/, the two curated
-registries under data/, and the extraction manifests. It needs neither the
-source PDFs nor Python, which is what lets it run in CI on a plain clone.
+Verify reads facts/facts.jsonl, the rules under mappings/, the three registries
+under data/, and every artifact under data/extracted/ -- which it hashes against
+the manifest that lists them. It needs neither the source PDFs nor Python, which
+is what lets it run in CI on a plain clone; --full adds the one check that reads
+the source documents.
 
 Each check reports one of five verdicts, and the distinction between two of
 them is the point of this command. PASS means the check ran over at least one
@@ -129,7 +131,8 @@ SKIPPED means the check needed --full and did not run.`,
 	cmd.Flags().BoolVar(&opts.JSON, "json", false,
 		"Emit the report as JSON on stdout instead of a summary on stderr")
 	cmd.Flags().BoolVar(&opts.Full, "full", false,
-		"Also run the checks that need the source PDFs under data/pdf/ (no check needs them yet)")
+		"Also hash the source PDFs under data/pdf/ against what the registry and the "+
+			"manifests record (needs `git lfs pull`)")
 	cmd.Flags().BoolVar(&opts.Strict, "strict", false,
 		"Fail if any check had nothing to check")
 

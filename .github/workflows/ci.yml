@@ -17,9 +17,16 @@ name: CI
 # data/pdf/ entirely absent, so nothing breaks today -- but that is a fact
 # about the current code, not a check. Nothing in this workflow FAILS if a
 # future job sets `lfs: true`, so these two lines are a convention held by
-# review, not an assertion. The assertion belongs in `fisc verify --full`,
-# which is the only thing that has a reason to read the PDFs at all (E5,
-# fisc-1wr.5).
+# review, not an assertion.
+#
+# `fisc verify --full` is the one thing that has a reason to read the PDFs, and
+# it now exists (fisc-1wr.5): it hashes each document against the sha256 that
+# data/sources.yaml and the extraction manifest independently record. It is NOT
+# run here, deliberately -- that job needs `lfs: true` and would spend the
+# bandwidth budget above on every push. A monthly schedule for it belongs to
+# fisc-gxa.5, which owns the scheduled workflows; a pointer-only checkout makes
+# that check report ERROR with `git lfs pull`, not a false failure, so the job
+# has to fetch for real.
 
 on:
   push:
@@ -234,8 +241,11 @@ jobs:
           go-version-file: go.mod
       - run: make build
       # This job is the reason data/pdf may stay absent: verify reads the
-      # committed fact store, the rules, the two curated registries and the
-      # extraction manifests, and nothing else. It is a separate job from `facts`
+      # committed fact store, the rules, the three registries under data/, and
+      # every artifact under data/extracted/ -- which it hashes against the
+      # manifest that lists them -- and nothing else. Without --full it never
+      # opens data/pdf/; the one check that would is reported as SKIPPED, with
+      # the reason, on the last lines of the log. It is a separate job from `facts`
       # rather than a step in it because the two answer different questions --
       # "the rules still produce this file" and "this file's claims hold" -- and a
       # single job would report only whichever failed first.
