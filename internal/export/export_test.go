@@ -187,7 +187,7 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 	}
 }
 
-func TestPageCitesThePDFPageAndNeverTheLFSPointer(t *testing.T) {
+func TestPageCitesThePDFPageAndTheBlobViewOfTheExtractedPage(t *testing.T) {
 	dir, _ := writeGolden(t)
 	page := readPage(t, dir)
 
@@ -200,10 +200,20 @@ func TestPageCitesThePDFPageAndNeverTheLFSPointer(t *testing.T) {
 			t.Errorf("page does not cite %q", want)
 		}
 	}
-	// raw.githubusercontent.com serves the LFS pointer instead of the file, so
-	// a citation pointing there resolves to "oid sha256:..." and nothing else.
+	// raw.githubusercontent.com would serve these bytes correctly —
+	// data/extracted/ is ordinary git, not LFS, and the artifacts are .txt, so
+	// GitHub's blob view renders the runs of spaces that ARE the column grid
+	// rather than collapsing them the way it would for .md (corpus.PagePath
+	// says the same thing from the other end). So this is a policy choice, not
+	// a correctness one: raw serves the bytes bare — no line numbers, no
+	// history, no way to reach the rest of the document — and a provenance
+	// citation should land somewhere a reader can navigate from.
+	//
+	// Asserted rather than merely preferred because the citation URL is
+	// assembled from a default in one place (export.DefaultSourceBrowseURL) and
+	// a silent change to raw would degrade every citation on the site at once.
 	if strings.Contains(page, "raw.githubusercontent.com") {
-		t.Error("page links to raw.githubusercontent.com, which serves LFS pointer text rather than the document")
+		t.Error("page links to raw.githubusercontent.com rather than the github.com blob view")
 	}
 }
 

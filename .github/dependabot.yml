@@ -1,0 +1,23 @@
+version: 2
+
+# Actions in this repository are pinned by commit SHA (byob-security.5). A SHA
+# pin is only half a policy: it stops a tag being moved under us, but it also
+# means nothing tells us a pinned action has shipped a fix. Dependabot's
+# github-actions ecosystem reads the trailing "# vX.Y.Z" comment on each pin
+# and opens a PR that moves both the SHA and the comment, which is the half
+# that keeps the pins from rotting silently.
+#
+# Go modules are deliberately not listed. The dependency set here is tiny and
+# deliberate -- anything outside cobra, go-cmp and the YAML reader needs its
+# own decision bead -- so an automated PR stream over it would be noise rather
+# than signal. The toolchain pin in go.mod is bumped by hand when govulncheck
+# reports a finding, per byob-security.2, and CI is what surfaces that.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
+      include: scope

@@ -54,10 +54,13 @@ const DataDir = "data"
 const MarkerName = cmdutil.ExportMarkerName
 
 // DefaultSourceBrowseURL is where the committed page text is browsable. It
-// points at github.com, never raw.githubusercontent.com: the PDFs and their
-// extracted artifacts are stored with Git LFS, and raw.githubusercontent.com
-// serves the LFS pointer file rather than the content — a citation link that
-// silently resolves to three lines of "oid sha256:..." is worse than none.
+// points at github.com's blob view, never at raw.githubusercontent.com. The
+// reason is not Git LFS: data/extracted/ is ordinary git — only data/pdf/** is
+// LFS — so the raw host would serve the text correctly. It is that the blob
+// view is the one worth citing, with line numbers, history and the rest of the
+// document beside it, and that the artifacts are .txt precisely so that view
+// renders them verbatim rather than collapsing the runs of spaces that are the
+// column grid (see corpus.PagePath).
 const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/blob/main"
 
 // verbatimAssets are copied from the embedded site tree byte for byte. The

@@ -1,0 +1,223 @@
+name: CI
+
+# Every job here is pure Go over the committed artifacts under
+# data/extracted/. Nothing in CI needs the source PDFs, and that is a property
+# worth spending a few lines to keep:
+#
+#   data/pdf/** is the only thing in Git LFS (3 files, ~67 MB). GitHub's free
+#   LFS tier is 1 GB of bandwidth a month, so ~14 checkouts with smudge on
+#   would exhaust it and every job in the repository would start failing on a
+#   quota error that looks nothing like its cause.
+#
+# So each checkout sets `lfs: false` explicitly rather than relying on the
+# default, and GIT_LFS_SKIP_SMUDGE is set workflow-wide so a nested action or
+# a future `git checkout` cannot turn the smudge filter back on.
+#
+# Note what this is and is not. Every job here was verified to pass with
+# data/pdf/ entirely absent, so nothing breaks today -- but that is a fact
+# about the current code, not a check. Nothing in this workflow FAILS if a
+# future job sets `lfs: true`, so these two lines are a convention held by
+# review, not an assertion. The assertion belongs in `fisc verify --full`,
+# which is the only thing that has a reason to read the PDFs at all (E5,
+# fisc-1wr.5).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Read-only by default (byob-security.5). No job here writes to the repository
+# or publishes anything; the Pages deploy is a separate workflow with its own
+# narrower grant.
+permissions:
+  contents: read
+
+# A push that supersedes an in-flight run cancels it. main is excluded from
+# cancellation by including the ref in the group: two pushes to main are two
+# different states worth knowing about, whereas two pushes to a PR branch are
+# a work in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # Belt and braces with `lfs: false` below: this stops the smudge filter even
+  # if some step runs git itself. See the bandwidth note at the top.
+  GIT_LFS_SKIP_SMUDGE: "1"
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # .golangci-version exists so the pin lives in one place; the Makefile
+      # and a developer's shell read the same file. golangci-lint-action v9
+      # expects a v2.x golangci-lint, which 2.11.4 is.
+      - name: Read the pinned golangci-lint version
+        id: golangci
+        run: echo "version=v$(tr -d '[:space:]' < .golangci-version)" >> "$GITHUB_OUTPUT"
+      # Not `make lint`: the action installs the pinned binary and caches its
+      # analysis, which a bare `golangci-lint run` on a runner cannot do. The
+      # configuration is still .golangci.yml, so this and `make lint` enforce
+      # the same rules.
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: ${{ steps.golangci.outputs.version }}
+
+  format:
+    name: gofmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Not `make fmt`: that target rewrites the tree in place and exits 0, so
+      # in CI it would launder unformatted code into a green run. Reported
+      # rather than repaired, over the same four directories the Makefile
+      # covers -- site/ is in that list because site/embed.go lives there and
+      # an earlier three-directory version of both silently skipped it.
+      #
+      # This is the gofmt half only. Import grouping is goimports with
+      # local-prefixes, which gofmt does not know about and `make fmt` will
+      # happily "fix" the wrong way; the lint job is what catches that.
+      - name: Check formatting
+        run: |
+          unformatted=$(gofmt -l ./cmd ./internal ./pkg ./site)
+          if [ -n "$unformatted" ]; then
+            echo "these files are not gofmt-clean; run 'make fmt':" >&2
+            echo "$unformatted" >&2
+            exit 1
+          fi
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build
+
+  test:
+    name: test -race
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # The tests read fixtures under testdata/ and never Python, the PDFs, or
+      # the network, so this job needs nothing the checkout did not bring.
+      - run: make test
+
+  vet:
+    name: go vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make vet
+
+  govulncheck:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      # go-version-file, like every other job, so this scans the same toolchain
+      # the build job compiles with. Most of what govulncheck reports for this
+      # module is standard library, and which standard library it sees is
+      # whichever toolchain is installed -- so scanning `stable` while shipping
+      # a binary built from the go.mod floor would answer a question nobody
+      # asked. The `toolchain` directive in go.mod is what keeps the two the
+      # same; see the comment there.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # The scanner is pinned like everything else; what has to be fresh is the
+      # vulnerability database, and govulncheck fetches that from vuln.go.dev
+      # on every run. Installed rather than added to go.mod, so it does not
+      # become a dependency of the module the tidy job checks.
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+      - run: govulncheck ./...
+
+  tidy:
+    name: go mod tidy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Not `make tidy`: that target rewrites go.mod/go.sum and exits 0. Run it
+      # and then assert the tree did not move, which is the check.
+      - name: Check go.mod and go.sum are tidy
+        run: |
+          make tidy
+          if ! git diff --quiet -- go.mod go.sum; then
+            echo "go mod tidy changed go.mod/go.sum; run 'make tidy' and commit the result:" >&2
+            git --no-pager diff -- go.mod go.sum >&2
+            exit 1
+          fi
+
+  facts:
+    name: facts.jsonl matches the rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build
+      # facts.jsonl is a build product: every line is derivable from
+      # data/extracted/ plus mappings/. Rebuild it somewhere else and compare
+      # byte for byte, rather than overwriting the committed file and diffing
+      # against the index. `git diff --exit-code` would be just as strict today
+      # -- facts.jsonl carries no CR bytes and `text eol=lf` forces LF in the
+      # worktree -- but it would leave the committed fact store overwritten in
+      # the workspace on failure, and it compares through the clean filter
+      # rather than the bytes, which is not what this check claims to do.
+      #
+      # --output is resolved against the repository root and refuses absolute
+      # paths (build.validateRepoPath), so the rebuild cannot go to $(mktemp
+      # -d). bin/ is gitignored and `make clean` already owns it, so writing
+      # there leaves the tree exactly as checked out.
+      - name: Rebuild the fact store
+        run: ./bin/fisc build --output bin/facts-rebuilt.jsonl
+      - name: Compare against the committed fact store
+        run: |
+          if ! cmp -s bin/facts-rebuilt.jsonl facts/facts.jsonl; then
+            echo "facts/facts.jsonl does not match what the rules produce." >&2
+            echo "Usual causes, most likely first: the resolver or the amount grammar" >&2
+            echo "changed (internal/mapping, internal/amount, pkg/cmd/build); mappings/ or" >&2
+            echo "data/extracted/ changed without a rebuild; or facts.jsonl was edited by" >&2
+            echo "hand. Run 'fisc build' and commit the result in the same commit as the" >&2
+            echo "change that caused it." >&2
+            echo "--- committed  +++ rebuilt (first 50 lines):" >&2
+            diff -u facts/facts.jsonl bin/facts-rebuilt.jsonl | head -n 50 >&2
+            exit 1
+          fi

@@ -260,10 +260,16 @@ function nodeRank(node) {
  * Citations for a set of source documents: the city's PDF opened at the page,
  * and the committed extraction of that page's text.
  *
- * The page text is linked on github.com and never on raw.githubusercontent.com
- * — the artifacts are stored with Git LFS and the raw host serves the pointer
- * file, so that link would resolve to three lines of "oid sha256:..." rather
- * than the page.
+ * The page text is linked on github.com's blob view and never on
+ * raw.githubusercontent.com. Not for LFS reasons — data/extracted/ is ordinary
+ * git and the raw host would serve it fine — but because the blob view is the
+ * one a reader can use: the file with line numbers, its history, and the rest
+ * of the document beside it. The artifacts are .txt precisely so that view
+ * shows them verbatim; markdown would be rendered and the runs of spaces that
+ * ARE the printed column grid would collapse.
+ *
+ * The PDFs are the LFS half of the repository, which is why a PDF citation
+ * goes to the city's own URL with #page=N rather than to GitHub at all.
  * @param {FiscSource[]} sources
  * @returns {{label:string, href:string}[]}
  */

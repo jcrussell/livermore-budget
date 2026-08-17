@@ -39,7 +39,7 @@ lint: ## Run golangci-lint
 
 .PHONY: fmt
 fmt: ## Format Go sources
-	gofmt -w ./cmd ./internal ./pkg
+	gofmt -w ./cmd ./internal ./pkg ./site
 
 .PHONY: vet
 vet: ## Run go vet
