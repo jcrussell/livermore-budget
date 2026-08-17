@@ -147,9 +147,12 @@ func readSpine(t *testing.T) spineRead {
 			if ru.TotalRow == "" {
 				continue
 			}
-			switch err := r.CheckTotals(ru, p); {
+			switch res, err := r.CheckTotals(ru, p); {
 			case err == nil:
-				out.tied += len(p.Columns)
+				// Counted from what the check compared rather than from the
+				// part, so this number and the one `fisc build` reports are
+				// the same number.
+				out.tied += res.Columns
 			case errors.Is(err, ErrNotFound):
 				out.unchecked = append(out.unchecked, fmt.Sprintf("%s p%d", ru.ID, p.Page))
 			default:

@@ -97,17 +97,14 @@ func (rep *Report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mappi
 		rep.unchecked(rule, p, reasonNoTotalRow)
 		return nil
 	}
-	err := r.CheckTotals(rule, p)
+	res, err := r.CheckTotals(rule, p)
 	switch {
 	case err == nil:
 		rep.PartsChecked++
-		for _, c := range p.Columns {
-			// A skipped column produces no facts, so tying it would count
-			// coverage this build did not earn.
-			if !c.Skip {
-				rep.ColumnsTied++
-			}
-		}
+		// TotalsResult.Columns counts the non-skip columns the check actually
+		// compared; a skipped column produces no facts, so tying it would
+		// count coverage this build did not earn.
+		rep.ColumnsTied += res.Columns
 		return nil
 	case errors.Is(err, mapping.ErrNoStatedTotals):
 		rep.unchecked(rule, p, reasonNoStatedTotals)

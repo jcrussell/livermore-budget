@@ -144,6 +144,37 @@ func TestParseRejects(t *testing.T) {
 	}
 }
 
+// TestBareCurrencyMarkStaysARejection pins the one rejection this package has
+// been under pressure to give up.
+//
+// 246 of the corpus's 786 pages print a marked figure as two whitespace-
+// delimited tokens — "Total Uses 6/30/24 $ 123,228,190" — so a reader that
+// takes the next N tokens after a row label takes marks where it wants figures
+// and fails (fisc-yun, open). Accepting a bare "$" as something — zero, absent,
+// a token to skip — is the obvious way to make that go away and the wrong one:
+// it would mean a cell whose figure the extractor lost, leaving only the mark
+// it was printed with, reads as a value rather than as the failure it is.
+//
+// Whatever eventually fixes fisc-yun belongs in the reader, which knows how
+// many amounts it is looking for and can see a whole line. This parser sees one
+// token and must keep refusing this one.
+func TestBareCurrencyMarkStaysARejection(t *testing.T) {
+	for _, token := range []string{"$", "$$", " $ "} {
+		if got, err := Parse(token, Dollars); err == nil {
+			t.Errorf("Parse(%q) = %s, want a refusal: a currency mark is not a figure", token, got)
+		} else if errors.Is(err, ErrAbsent) {
+			t.Errorf("Parse(%q) reported ErrAbsent, want a parse rejection: the cell "+
+				"is not empty, it is unreadable", token)
+		}
+	}
+	// The mark is only unreadable on its own. A cell that carries the mark AND
+	// the figure reads fine, which is what makes refusing the bare one a narrow
+	// rule rather than a hostile parser.
+	if got, err := Parse("$ 123,228,190", Dollars); err != nil || got != 12_322_819_000 {
+		t.Errorf("Parse(%q) = %s, %v; want the marked figure to read", "$ 123,228,190", got, err)
+	}
+}
+
 // Absent and zero mean different things, and conflating them invents rows.
 func TestAbsentIsNotZero(t *testing.T) {
 	for _, token := range []string{"", "   ", " "} {

@@ -189,11 +189,12 @@ func TestSpineTiesToTheDocumentsOwnTotals(t *testing.T) {
 				byColumn[fmt.Sprintf("%s/%s/%d", ru.Kind, v.Column.FundGroup, v.Column.FiscalYear)] += v.Cents
 			}
 
-			if err := r.CheckTotals(ru, p); err != nil {
+			res, err := r.CheckTotals(ru, p)
+			if err != nil {
 				t.Errorf("CheckTotals(%s, p%d): %v", ru.ID, p.Page, err)
 				continue
 			}
-			checkedColumns += len(p.Columns)
+			checkedColumns += res.Columns
 		}
 	}
 
@@ -551,5 +552,146 @@ func TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow(t *testing.T) {
 	// A bare run is still read exactly as before: no "$" means no prefix rule.
 	if _, ok := amountRun("10 11 12 13 14", 3, amount.Dollars); ok {
 		t.Error("amountRun on a bare 5-run found a 3-run; the maximal-run rule must still hold")
+	}
+}
+
+// memoFixtureRule is a one-part rule whose page prints two labelled rows and a
+// total. It is resolved against a scripted document, so a test can decide what
+// a second read of the page would say.
+const memoFixtureRule = `schema_version: 1
+doc_id: memo-fixture
+rules:
+  - id: memo-demo
+    kind: revenue
+    basis: adopted
+    scope: fixture
+    units: dollars
+    total_row: "TOTAL:"
+    parts:
+      - page: 1
+        section: "REVENUES:"
+        stop_at: "TOTAL:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Alpha", category: alpha}
+      - {label: "Beta", category: beta}
+`
+
+// The scripted page, and the same page with different figures in its first row.
+// The totals are the ones the FIRST reading ties to, so a resolver that went
+// back to the document for a second look would not merely read different
+// figures — it would fail to tie.
+const (
+	memoPageFirstRead  = "REVENUES: Alpha 10 11 Beta 20 21 TOTAL: 30 32\n"
+	memoPageSecondRead = "REVENUES: Alpha 90 91 Beta 20 21 TOTAL: 30 32\n"
+)
+
+// TestCheckTotalsSeesTheFiguresValuesReturned pins the invariant fisc-uv6's
+// memo is in service of: a build emits a part's facts and then asks the
+// document's own totals to corroborate them, and those two steps must be
+// looking at one reading of the page.
+//
+// This pins the invariant, not the mechanism, and it passed before the part
+// memo existed: the page memo (Resolver.page) already made a second read of a
+// part deterministic, which is why the part memo is a performance change and
+// not a correctness one. The discriminating case is the failed read, which
+// TestAFailedPartFailsTheSameWayEveryTime covers.
+func TestCheckTotalsSeesTheFiguresValuesReturned(t *testing.T) {
+	r, ru := scriptedResolver(t, memoFixtureRule, map[int][]pageRead{
+		1: {{text: memoPageFirstRead}, {text: memoPageSecondRead}},
+	})
+	p := &ru.Parts[0]
+
+	values, _, err := r.Values(ru, p)
+	if err != nil {
+		t.Fatalf("Values: %v", err)
+	}
+	want := []amount.Cents{10_00, 11_00, 20_00, 21_00}
+	var got []amount.Cents
+	for _, v := range values {
+		got = append(got, v.Cents)
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Values mismatch (-want +got):\n%s", diff)
+	}
+
+	res, err := r.CheckTotals(ru, p)
+	if err != nil {
+		t.Fatalf("CheckTotals after Values: %v; it checked a different reading of the page", err)
+	}
+	if res.Columns != 2 {
+		t.Errorf("TotalsResult.Columns = %d, want 2", res.Columns)
+	}
+
+	again, _, err := r.Values(ru, p)
+	if err != nil {
+		t.Fatalf("Values a second time: %v", err)
+	}
+	if diff := cmp.Diff(values, again); diff != "" {
+		t.Errorf("the second Values differs from the first (-first +second):\n%s", diff)
+	}
+}
+
+// TestAFailedPartFailsTheSameWayEveryTime is the one behavioural change
+// fisc-uv6's memo makes: the memo caches the error too, so a part that could
+// not be read does not become readable because a later caller happened to ask
+// again. That would make what a build publishes depend on how many times it
+// asked, and both answers would look equally authoritative.
+//
+// The scripted document fails the first read of the page and succeeds the
+// second, which is exactly the shape that lets CheckTotals contradict the
+// Values call before it: CheckTotals reads the page for the stated totals
+// before it looks at the figures, so without the memo the second read is the
+// one it gets.
+func TestAFailedPartFailsTheSameWayEveryTime(t *testing.T) {
+	errNoPage := errors.New("page is unavailable")
+	r, ru := scriptedResolver(t, memoFixtureRule, map[int][]pageRead{
+		1: {{err: errNoPage}, {text: memoPageFirstRead}},
+	})
+	p := &ru.Parts[0]
+
+	if _, _, err := r.Values(ru, p); !errors.Is(err, errNoPage) {
+		t.Fatalf("Values on an unreadable page = %v, want %v", err, errNoPage)
+	}
+	if _, err := r.CheckTotals(ru, p); !errors.Is(err, errNoPage) {
+		t.Errorf("CheckTotals after a failed Values = %v, want %v; a part that "+
+			"failed must not succeed on a retry the caller did not ask for", err, errNoPage)
+	}
+	if _, _, err := r.Values(ru, p); !errors.Is(err, errNoPage) {
+		t.Errorf("Values a second time = %v, want %v", err, errNoPage)
+	}
+}
+
+// TestValuesReturnsCopies: the memo hands out copies, or the first caller to
+// sort or rewrite what it got would rewrite what every later caller sees.
+// Value and Omission hold no slices, so a shallow copy is a whole one — this
+// asserts that claim rather than restating it.
+func TestValuesReturnsCopies(t *testing.T) {
+	r, ru := omittedRowFixture(t, "Beta")
+	p := partOn(t, ru, 2)
+
+	values, omitted, err := r.Values(ru, p)
+	if err != nil {
+		t.Fatalf("Values: %v", err)
+	}
+	if len(values) == 0 || len(omitted) == 0 {
+		t.Fatalf("got %d values and %d omissions, want some of each", len(values), len(omitted))
+	}
+	values[0].Cents = 99_99
+	values[0].Row.Label = "MUTATED"
+	values[0].Token = "MUTATED"
+	omitted[0].Row.Label = "MUTATED"
+
+	again, againOmitted, err := r.Values(ru, p)
+	if err != nil {
+		t.Fatalf("Values a second time: %v", err)
+	}
+	if again[0].Cents == 99_99 || again[0].Row.Label == "MUTATED" || again[0].Token == "MUTATED" {
+		t.Errorf("a caller's writes reached the cache: second read = %+v", again[0])
+	}
+	if againOmitted[0].Row.Label == "MUTATED" {
+		t.Errorf("a caller's writes reached the cached omissions: %+v", againOmitted[0])
 	}
 }

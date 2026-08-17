@@ -3,6 +3,7 @@ package mapping
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"unicode"
@@ -74,12 +75,45 @@ type Resolver struct {
 	doc  doc
 	file *File
 
+	// mu guards pages and parts, which are the resolver's two memos.
+	mu sync.Mutex
 	// pages caches page text. A rule file resolves the same handful of pages
 	// many times over — every part reads its page, and checking a part's
 	// totals reads it again — and re-decoding a page per call turned one
 	// CheckTotals into four reads of the same file.
-	mu    sync.Mutex
 	pages map[int]string
+	// parts caches each part's read, which is the expensive half of the work
+	// the page cache does not cover.
+	parts map[partKey]*resolvedPart
+}
+
+// partKey identifies one part of the rule file this resolver reads. The rule
+// id and page suffice: a resolver is built per rule file, rule ids are unique
+// within one, and the parser rejects a rule that lists a page twice. A rule
+// assembled in memory has not been through the parser, so a caller that builds
+// one by hand and gives two parts the same page gets the first part's figures
+// for both — the same class of caveat the negative-ordinal branch of anchor
+// carries.
+type partKey struct {
+	rule string
+	page int
+}
+
+// resolvedPart memoizes one part's read, error included. A part that failed
+// must fail identically when it is asked again: retrying would make the answer
+// depend on how many times a caller happened to ask, and a caller that got a
+// different answer the second time could publish either one.
+//
+// Caching the error deliberately contradicts what page does one field above,
+// which returns before storing so that a failed read IS retried. The two are
+// not symmetric and should not be read as such: a page read is I/O and may fail
+// transiently, while a part read is a pure function of page text and a rule, so
+// a second attempt can only differ if the page text did — and for a single-shot
+// CLI over local files, a page that changed mid-run is not a case to paper over.
+type resolvedPart struct {
+	values    []Value
+	omissions []Omission
+	err       error
 }
 
 // NewResolver pairs a rule file with the document it maps.
@@ -91,7 +125,8 @@ func NewResolver(d doc, f *File) (*Resolver, error) {
 			"a rule file maps exactly one document; check which extraction "+
 				"directory was opened")
 	}
-	return &Resolver{doc: d, file: f, pages: map[int]string{}}, nil
+	return &Resolver{doc: d, file: f,
+		pages: map[int]string{}, parts: map[partKey]*resolvedPart{}}, nil
 }
 
 // page returns the text of page n, reading it at most once.
@@ -279,7 +314,65 @@ func context(text string, off int) string {
 // labelled block and it silently invents rows: on Budget Book p127 it reads 14
 // rows where there are 13, because labels there contain "-" (which this corpus
 // spells zero) and digits ("Prop 172 - Public Sfty Augmnt").
+//
+// A part is read at most once per resolver. That is a performance change and
+// not a correctness one: the page memo already made a second read deterministic,
+// so a build's figures and the figures CheckTotals corroborates agreed before
+// this cache existed. What it buys is that they agree without doing the work
+// twice, which is what matters as coverage grows past ten parts. The one
+// behavioural difference is on the failing path, described on resolvedPart.
+//
+// The slices returned are copies, so a caller may sort or rewrite them without
+// changing what the next caller sees. Value and Omission carry no slices of
+// their own — every field is a scalar or a Row or Column, which are scalars
+// throughout — so a shallow copy is a whole one, the same argument
+// Rule.ActiveRows makes.
 func (r *Resolver) Values(rule *Rule, p *Part) ([]Value, []Omission, error) {
+	rp := r.resolvePart(rule, p)
+	if rp.err != nil {
+		return nil, nil, rp.err
+	}
+	return slices.Clone(rp.values), slices.Clone(rp.omissions), nil
+}
+
+// resolvePart returns the memoized read of one part, performing it on the first
+// ask.
+//
+// The lock is deliberately not held across the read: the read calls page,
+// which takes the same lock, and a sync.Mutex is not reentrant. Two callers
+// racing on one part therefore both do the work — and the first result stored
+// is the one both of them see, so the memo stays single-valued, which is the
+// property callers depend on.
+func (r *Resolver) resolvePart(rule *Rule, p *Part) *resolvedPart {
+	key := partKey{rule: rule.ID, page: p.Page}
+	if rp, ok := r.cachedPart(key); ok {
+		return rp
+	}
+	rp := &resolvedPart{}
+	rp.values, rp.omissions, rp.err = r.readPart(rule, p)
+	return r.storePart(key, rp)
+}
+
+func (r *Resolver) cachedPart(key partKey) (*resolvedPart, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	rp, ok := r.parts[key]
+	return rp, ok
+}
+
+// storePart records rp under key and returns whichever result is now canonical,
+// which is an earlier one if a racing caller got there first.
+func (r *Resolver) storePart(key partKey, rp *resolvedPart) *resolvedPart {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if first, ok := r.parts[key]; ok {
+		return first
+	}
+	r.parts[key] = rp
+	return rp
+}
+
+func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 	blk, err := r.Block(rule, p)
 	if err != nil {
 		return nil, nil, err
@@ -586,6 +679,14 @@ func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
 	return nil, false
 }
 
+// TotalsResult is what checking one part's totals established.
+type TotalsResult struct {
+	// Columns is how many non-skip columns were compared, which is the unit
+	// coverage is counted in. A skipped column produces no facts, so counting
+	// it would claim coverage the check did not earn.
+	Columns int
+}
+
 // CheckTotals asserts that the figures a part yields sum, per column, to the
 // totals the document prints for it.
 //
@@ -593,14 +694,18 @@ func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
 // checking our work rather than us checking our own. It returns
 // ErrNoStatedTotals where the document prints no total, which is not a pass:
 // callers are expected to report those parts as unchecked rather than silent.
-func (r *Resolver) CheckTotals(rule *Rule, p *Part) error {
+//
+// The figures checked are the memoized ones Values returned, not a second read
+// of the same part: a check that re-read the page would be corroborating a
+// different read from the one the caller published.
+func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 	stated, err := r.StatedTotals(rule, p)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	values, _, err := r.Values(rule, p)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	sums := make([]amount.Cents, len(p.Columns))
@@ -608,20 +713,22 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) error {
 		sums[v.ColumnIndex] += v.Cents
 	}
 
+	res := &TotalsResult{}
 	var bad []string
 	for c, col := range p.Columns {
 		if col.Skip {
 			continue
 		}
+		res.Columns++
 		if sums[c] != stated[c] {
 			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, off by %s",
 				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], sums[c]-stated[c]))
 		}
 	}
 	if len(bad) == 0 {
-		return nil
+		return res, nil
 	}
-	return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+	return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 		Field: "total_row", Msg: strings.Join(bad, "; ")},
 		"a mapped column that does not tie means a row was missed, "+
 			"double-counted, or read from the wrong column")

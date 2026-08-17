@@ -336,7 +336,7 @@ func TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck(t *testing.T) {
 	}
 
 	noTotalRow := ruleByID(t, files[0], "transfers-out")
-	err = r.CheckTotals(noTotalRow, partOn(t, noTotalRow, 77))
+	_, err = r.CheckTotals(noTotalRow, partOn(t, noTotalRow, 77))
 	if !errors.Is(err, mapping.ErrNotFound) {
 		t.Errorf("CheckTotals on a rule with no total_row = %v, want ErrNotFound", err)
 	}
@@ -346,7 +346,7 @@ func TestTheTotalsPolicyCannotBeWrittenAsAnErrorCheck(t *testing.T) {
 	}
 
 	hasTotalRow := ruleByID(t, files[0], "transfers-in")
-	err = r.CheckTotals(hasTotalRow, partOn(t, hasTotalRow, 79))
+	_, err = r.CheckTotals(hasTotalRow, partOn(t, hasTotalRow, 79))
 	if !errors.Is(err, mapping.ErrNoStatedTotals) {
 		t.Errorf("CheckTotals on a part with no anchor = %v, want ErrNoStatedTotals", err)
 	}
