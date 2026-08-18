@@ -34,6 +34,7 @@ type fixtureDoc struct{ id, prefix string }
 
 var (
 	budgetFixtures = fixtureDoc{id: "livermore-budget-fy2026-2027", prefix: "budget"}
+	cipFixtures    = fixtureDoc{id: "livermore-cip-fy2026-2030", prefix: "cip"}
 	acfrFixtures   = fixtureDoc{id: "livermore-acfr-fy2025", prefix: "acfr"}
 )
 
@@ -155,15 +156,20 @@ func (f fixtureCopy) extraction() string {
 // row here and nothing else.
 func fixtureCopies() []fixtureCopy {
 	var out []fixtureCopy
-	for _, p := range fixturePages {
-		out = append(out, pageCopy(budgetFixtures, p), geometryCopy(budgetFixtures, p))
+	for _, doc := range []fixtureDoc{budgetFixtures, cipFixtures} {
+		for _, p := range fixturePages[doc.id] {
+			out = append(out, pageCopy(doc, p), geometryCopy(doc, p))
+		}
 	}
 	return out
 }
 
-// fixturePages is every page of the Budget Book committed under testdata/.
-// Each is there for a named failure mode; see testdata/README.md.
-var fixturePages = []int{66, 67, 127, 167}
+// fixturePages is every page committed under testdata/, by document. Each is
+// there for a named failure mode; see testdata/README.md.
+var fixturePages = map[string][]int{
+	budgetFixtures.id: {66, 67, 127, 167},
+	cipFixtures.id:    {29, 40},
+}
 
 // TestFixturesAreVerbatimCopies is what makes every other test in this package
 // mean anything. The fixtures are copies, and `make extract` does not touch

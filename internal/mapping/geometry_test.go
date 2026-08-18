@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/geom"
 )
 
@@ -618,5 +619,110 @@ rules:
 		if !strings.Contains(got, want) {
 			t.Errorf("error = %s\nwant it to mention %q", got, want)
 		}
+	}
+}
+
+// cipDoc builds an extraction of the CIP from the committed fixtures.
+func cipDoc(t *testing.T, pages ...int) *corpus.Doc {
+	t.Helper()
+	return testDoc(t, cipFixtures, pages)
+}
+
+// cipRule writes a one-part rule over a CIP page, with eight columns: the seven
+// fiscal years the plan prints plus the row-wise TOTAL the page ends with.
+func cipRule(t *testing.T, page int, section, stopAt, label string) (*Resolver, *Rule, *Part) {
+	t.Helper()
+	years := []string{"2024-25", "2025-26", "2026-27", "2027-28", "2028-29", "2029-30", "2030-45"}
+	cols := make([]string, 0, len(years)+1)
+	headers := make([]string, 0, len(years)+1)
+	for i, y := range years {
+		cols = append(cols, fmt.Sprintf("{fund_group: cip, fiscal_year: %d}", 2025+i))
+		headers = append(headers, "FY "+y)
+	}
+	cols = append(cols, "{fund_group: cip, fiscal_year: 2045, skip: true}")
+	headers = append(headers, "TOTAL")
+
+	src := "schema_version: 1\ndoc_id: livermore-cip-fy2026-2030\nrules:\n" +
+		"  - id: cip\n    kind: expenditure\n    basis: adopted\n    units: dollars\n" +
+		"    parts:\n      - page: " + fmt.Sprint(page) + "\n" +
+		"        section: " + quote(section) + "\n" +
+		"        stop_at: " + quote(stopAt) + "\n" +
+		"        columns: [" + strings.Join(cols, ", ") + "]\n" +
+		headerYAML(headers) +
+		"    rows:\n      - {label: " + quote(label) + ", category: c}\n"
+	f, err := Parse(strings.NewReader(src), "cip.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	res, err := NewResolver(cipDoc(t, page), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	return res, &f.Rules[0], &f.Rules[0].Parts[0]
+}
+
+// TestCIPp29SplitFigureFailsClosed is fisc-j5p, and it disproves that bead's own
+// hypothesis about how it would be caught.
+//
+// CIP p29 prints one figure of $21,130,083 as "$21130 083". The bead expected
+// geometry to hold ONE word there, so that a count cross-check between the
+// substrates would see one word against two tokens and refuse. It does not:
+// geometry holds two words, at x1 280.45 and 299.67, the substrates agree
+// token for token and line for line, and every count matches.
+//
+// What catches it is placement. Both right edges fall in the SAME band -- band 0
+// ends at 301.54 -- so the token the rule reads as its second column is printed
+// in its first, and the guard says so. Without that, amount.Parse("$21130")
+// succeeds and $21,130 is published as the value of a printed $21,130,083, with
+// the rest of the row shifted one place; splitDigits cannot see it because the
+// split falls across a token boundary.
+//
+// The part must be LABELLED. A label-less part would be refused by the value
+// count first -- 30 tokens where 8 were wanted -- and this test would be showing
+// something other than what it claims.
+func TestCIPp29SplitFigureFailsClosed(t *testing.T) {
+	res, rule, part := cipRule(t, 29, "TOTAL - DOWNTOWN", "CITY OF", "REVITILIZATION")
+
+	_, _, err := res.Values(rule, part)
+	if err == nil {
+		t.Fatal("Values succeeded on a row whose first figure is split across a space; " +
+			"$21,130 would be published as the value of a printed $21,130,083")
+	}
+	got := diagnosis(t, err)
+	for _, want := range []string{
+		`row "REVITILIZATION" column 2`,
+		`"083" ends at x 299.67`,
+		"which is column 1",
+		"reads it as column 2",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("error = %s\nwant it to mention %q", got, want)
+		}
+	}
+}
+
+// TestCIPp40SparseRowFailsClosedButDoesNotRead is the acceptance criterion's CIP
+// half, and the name carries the half that is NOT satisfied.
+//
+// PB200654 prints two figures with six columns between them, and the page PRINTS
+// a "-" in each of those six. Those dashes are in no substrate at all -- not
+// -layout, not -raw, not the default mode, not -bbox -- because they are drawn
+// as non-text, while PB200429 on the same page does carry its dashes. So the row
+// cannot be read correctly by any amount of geometry, and this test does not
+// claim it can (fisc-8ln).
+//
+// What it does claim is the half that matters here: the read fails, and it fails
+// naming the row rather than filing the second 550,000 under a year the city
+// never put it in.
+func TestCIPp40SparseRowFailsClosedButDoesNotRead(t *testing.T) {
+	res, rule, part := cipRule(t, 40, "PROJECT NAME", "TOTAL - PARKS", "PB200654")
+
+	values, _, err := res.Values(rule, part)
+	if err == nil {
+		t.Fatalf("Values returned %d values for a row six of whose cells are in no "+
+			"substrate; it cannot have read the row", len(values))
+	}
+	if got := diagnosis(t, err); !strings.Contains(got, "PB200654") {
+		t.Errorf("error = %s\nwant it to name the row", got)
 	}
 }

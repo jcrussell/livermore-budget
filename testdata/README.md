@@ -45,6 +45,13 @@ in points, y increasing downward.
 | `geometry/budget-p0127.json` | Budget Book p127 | The four-column **labelled** shape, so the guard's labelled path is exercised against a real page rather than only against p66's four columns inside a padded block. |
 | `geometry/budget-p0167.json` | Budget Book p167 | The evidence for the filing rule. This page's `FY 2025-26` header spans x 421.99–469.01 while every figure under it *ends* at 477.8–477.9 — the figures are right-aligned to a grid offset ~+9pt right of the header text, so filing a value by whether it overlaps its header places none of them, and the tokens it loses are zero dashes. |
 
+### CIP
+
+| Fixture | Source | Why |
+|---|---|---|
+| `pages/cip-p0029.txt` + `geometry/cip-p0029.json` | CIP p29 | `fisc-j5p`: the page prints one figure of $21,130,083 as **`$21130 083`**, two whitespace-delimited tokens, so `amount.Parse("$21130")` succeeds and the rest of the row shifts one place. `internal/amount`'s digit-splitting guard cannot see it, because the split falls across a token boundary. Geometry can: both tokens' right edges (280.45 and 299.67) fall in the same column band, which ends at 301.54. The whole row is shattered this way — `$ 6 190 000` is four words — so it is also the corpus's worst case for a substrate that has lost its thousands separators. |
+| `pages/cip-p0040.txt` + `geometry/cip-p0040.json` | CIP p40 | The sparse grid, and the limit of what geometry can do. Row `PB200654` prints two figures with six columns between them and `-layout` emits exactly two tokens, which is the mis-filing this whole guard exists to prevent. But the page *prints* a `-` in each of those six columns and **those dashes are in no substrate at all** — not `-layout`, `-raw`, the default mode, or `-bbox` — because they are drawn as non-text, while `PB200429` on the same page does carry its dashes. So the row fails closed and cannot be read (`fisc-8ln`). |
+
 ## Projections
 
 | Fixture | Source | Why |
