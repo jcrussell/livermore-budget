@@ -68,6 +68,18 @@ extract: ## Re-extract PDFs with poppler (DOC=<id> for one)
 extract-list: ## List extractable documents
 	$(PYTHON) tools/extract.py --list
 
+# The site is a static export of the committed fact store: `fisc export` reads
+# facts/facts.jsonl and does NOT re-run the mapping engine, so this target
+# cannot change a published figure. The page fetches data/sankey.json, so it
+# needs a server -- app.js detects file:// and says so, but the hint belongs
+# where someone would look for it.
+.PHONY: site
+site: build ## Build the static site into dist/
+	$(OUT) export --clean
+	@echo
+	@echo "  Serve it:  python3 -m http.server -d dist 8000"
+	@echo
+
 .PHONY: clean
 clean: ## Remove build output
 	rm -rf bin dist

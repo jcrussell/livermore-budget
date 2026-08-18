@@ -80,18 +80,46 @@ bd close <id>         # Complete work
 
 ## Build & Test
 
-_Add your build and test commands here_
+Go only — neither the PDFs nor Python are needed to build, test, or verify.
 
 ```bash
-# Example:
-# npm install
-# npm test
+make build        # bin/fisc
+make test         # always -race
+make pre-commit   # fmt, vet, test — symlink it to .git/hooks/pre-commit
+make site         # static site into dist/ (gitignored)
+make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
 ```
+
+`./bin/fisc verify` is the gate. `--full` adds the PDF hash check and needs the
+LFS files. Run `./bin/fisc build --output bin/facts-rebuilt.jsonl` and `cmp`
+against the committed `facts/facts.jsonl` rather than rebuilding in place — the
+committed file is the audit trail, and CI compares byte for byte.
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+`data/pdf` → `tools/extract.py` (poppler) → `data/extracted` (786 pages of
+`-layout` text plus `-bbox` geometry, hashed in a manifest) → `mappings/*.yaml`
+resolved by `internal/mapping` → `facts/facts.jsonl` (content-addressed facts
+carrying `doc_id / page / offset / token`) → `internal/project` → `dist/`.
+
+Extraction is deliberately outside the Go binary: `fisc` reads only the
+committed artifacts. See `README.md` for the diagram and `docs/sankey-contract.md`
+for the output contract.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+Four invariants, in `docs/agents/conventions.md`:
+
+- **Amounts are integer cents**, never float. The corpus corrupts figures into
+  plausible wrong values rather than errors, so `internal/amount` recognises a
+  closed set of shapes and errors on everything else.
+- **Absent is not zero.** A printed `-` is a published zero; a blank means the
+  line does not apply.
+- **Fail closed on ambiguity.** A rule that stops resolving is an error.
+- **Published is not derived.** Inferences carry `derived: true` plus a
+  rationale, or `fisc verify` fails.
+
+A claim about these documents is proved with arithmetic, not intuition — the
+worked example is `TestLeadingMinusIsReallyPositive`, where ACFR p177 reconciles
+only if `-512,946` reads positive. Review does not substitute for that evidence;
+see `docs/agents/workflow.md`.
