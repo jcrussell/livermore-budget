@@ -100,36 +100,78 @@ func testRepo(t *testing.T, pages map[int]string, rules ...string) string {
 	return root
 }
 
+// fixtureCopy is one committed fixture and the extraction artifact it must
+// equal byte for byte.
+//
+// There is no document column, unlike the table in internal/mapping: testRepo
+// stands up exactly one extraction directory, named for the single docID const
+// above, so this package is single-document by construction rather than by
+// omission.
+type fixtureCopy struct{ fixture, artifact string }
+
+// pageCopy names the page-text fixture for one page.
+func pageCopy(n int) fixtureCopy {
+	return fixtureCopy{
+		fixture:  filepath.Join("testdata", "pages", fmt.Sprintf("p%04d.txt", n)),
+		artifact: corpus.PagePath(n),
+	}
+}
+
+// extraction is the artifact this fixture was copied from.
+func (f fixtureCopy) extraction() string {
+	return filepath.Join("..", "..", "..", "data", "extracted", docID,
+		filepath.FromSlash(f.artifact))
+}
+
+// fixtureCopies is every fixture this package reads. Adding one means adding a
+// row here and nothing else (fisc-28u).
+func fixtureCopies() []fixtureCopy {
+	var out []fixtureCopy
+	for _, n := range []int{66, 67} {
+		out = append(out, pageCopy(n))
+	}
+	return out
+}
+
 // pageFixture reads one page of the Budget Book. The fixtures under testdata/
 // are byte-identical copies of data/extracted/, so a build that passes here
 // passes against the committed corpus, and none of this needs Python or the
 // source PDF.
 func pageFixture(t *testing.T, n int) string {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join("testdata", "pages", fmt.Sprintf("p%04d.txt", n)))
+	b, err := os.ReadFile(pageCopy(n).fixture)
 	if err != nil {
 		t.Fatalf("read page fixture: %v", err)
 	}
 	return string(b)
 }
 
-// TestPageFixturesAreVerbatimCopies keeps the claim in pageFixture's comment
+// TestFixturesAreVerbatimCopies keeps the claim in pageFixture's comment
 // honest. These pages are a second copy of testdata/pages/, which is itself a
 // copy of data/extracted/, and nothing regenerates either: a build that passes
 // here only tells you about the committed corpus for as long as the copies
 // still match it. They silently stopped matching once already (fisc-yqv.5).
-func TestPageFixturesAreVerbatimCopies(t *testing.T) {
-	for _, n := range []int{66, 67} {
-		extracted, err := os.ReadFile(filepath.Join("..", "..", "..",
-			"data", "extracted", docID, filepath.FromSlash(corpus.PagePath(n))))
-		if err != nil {
-			t.Fatalf("read extraction: %v", err)
-		}
-		if got := pageFixture(t, n); got != string(extracted) {
-			t.Errorf("testdata/pages/p%04d.txt is not a verbatim copy of %s; "+
-				"re-copy it rather than adjusting whatever now fails",
-				n, corpus.PagePath(n))
-		}
+func TestFixturesAreVerbatimCopies(t *testing.T) {
+	copies := fixtureCopies()
+	if len(copies) == 0 {
+		t.Fatal("no fixtures listed, so this test asserts nothing")
+	}
+	for _, f := range copies {
+		t.Run(f.fixture, func(t *testing.T) {
+			fixture, err := os.ReadFile(f.fixture)
+			if err != nil {
+				t.Fatalf("read fixture: %v", err)
+			}
+			extracted, err := os.ReadFile(f.extraction())
+			if err != nil {
+				t.Fatalf("read extraction: %v", err)
+			}
+			if !bytes.Equal(fixture, extracted) {
+				t.Errorf("%s is not a verbatim copy of %s; "+
+					"re-copy it rather than adjusting whatever now fails",
+					f.fixture, f.extraction())
+			}
+		})
 	}
 }
 

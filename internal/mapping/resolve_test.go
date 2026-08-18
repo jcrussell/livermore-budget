@@ -25,13 +25,25 @@ const (
 	allFundsFY2026Revenues        = 299_969_007
 )
 
+// fixtureDoc is one document's extraction directory together with the prefix
+// its fixtures are named with under testdata/, because the two differ:
+// data/extracted/livermore-budget-fy2026-2027/pages/p0066.txt is copied to
+// testdata/pages/budget-p0066.txt, where it has to share a directory with the
+// other documents' pages.
+type fixtureDoc struct{ id, prefix string }
+
+var (
+	budgetFixtures = fixtureDoc{id: "livermore-budget-fy2026-2027", prefix: "budget"}
+	acfrFixtures   = fixtureDoc{id: "livermore-acfr-fy2025", prefix: "acfr"}
+)
+
 // budgetDoc builds an extraction of the Budget Book containing only the pages
 // a test needs, from the committed fixtures. The fixtures are byte-identical
 // copies of data/extracted/, so a test that passes here passes against the
 // real corpus (testdata/README.md).
 func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 	t.Helper()
-	return testDoc(t, "livermore-budget-fy2026-2027", pages)
+	return testDoc(t, budgetFixtures, pages)
 }
 
 // inlineDoc builds a document from page text written in the test itself, for
@@ -50,22 +62,22 @@ func inlineDoc(t *testing.T, docID string, pages map[int]string) *corpus.Doc {
 	return openDoc(t, docID, fsys, artifacts)
 }
 
-func testDoc(t *testing.T, docID string, pages []int) *corpus.Doc {
+func testDoc(t *testing.T, doc fixtureDoc, pages []int) *corpus.Doc {
 	t.Helper()
 	fsys := fstest.MapFS{}
 	artifacts := map[string]corpus.Artifact{}
 
 	for _, p := range pages {
-		body, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.txt", p))
+		c := pageCopy(doc, p)
+		body, err := os.ReadFile(c.fixture)
 		if err != nil {
 			t.Fatalf("read page fixture: %v", err)
 		}
-		name := corpus.PagePath(p)
-		fsys[name] = &fstest.MapFile{Data: body}
-		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
+		fsys[c.artifact] = &fstest.MapFile{Data: body}
+		artifacts[c.artifact] = corpus.Artifact{Bytes: int64(len(body))}
 	}
 
-	return openDoc(t, docID, fsys, artifacts)
+	return openDoc(t, doc.id, fsys, artifacts)
 }
 
 func openDoc(t *testing.T, docID string, fsys fstest.MapFS, artifacts map[string]corpus.Artifact) *corpus.Doc {
@@ -87,28 +99,68 @@ func openDoc(t *testing.T, docID string, fsys fstest.MapFS, artifacts map[string
 	return d
 }
 
-// TestPageFixturesAreVerbatimCopies is what makes every other test in this
-// package mean anything. The fixtures are copies, and `make extract` does not
-// touch them, so they can drift from the extraction silently — and when they
-// do, the tests reading them stay green against a substrate that no longer
-// exists. That is not hypothetical: it is exactly what the xberg → poppler
-// migration produced (fisc-yqv.5), and the tests went on passing throughout.
-func TestPageFixturesAreVerbatimCopies(t *testing.T) {
+// fixtureCopy is one committed fixture and the extraction artifact it must
+// equal byte for byte.
+type fixtureCopy struct {
+	doc fixtureDoc
+	// fixture is the committed copy, relative to this package.
+	fixture string
+	// artifact is the path within the extraction directory it was copied from.
+	artifact string
+}
+
+// pageCopy names the page-text fixture for one page of one document.
+func pageCopy(doc fixtureDoc, page int) fixtureCopy {
+	return fixtureCopy{doc: doc,
+		fixture:  fmt.Sprintf("../../testdata/pages/%s-p%04d.txt", doc.prefix, page),
+		artifact: corpus.PagePath(page)}
+}
+
+// extraction is the artifact this fixture was copied from.
+func (f fixtureCopy) extraction() string {
+	return fmt.Sprintf("../../data/extracted/%s/%s", f.doc.id, f.artifact)
+}
+
+// fixtureCopies is every fixture this package reads, as {document, artifact}
+// rows. It replaces a hard-coded list of page numbers against one document and
+// one substrate, which could express neither a second document nor the geometry
+// artifacts the column guard needs (fisc-28u). Adding a fixture means adding a
+// row here and nothing else.
+func fixtureCopies() []fixtureCopy {
+	var out []fixtureCopy
 	for _, p := range []int{66, 67, 127} {
-		fixture, err := os.ReadFile(fmt.Sprintf("../../testdata/pages/budget-p%04d.txt", p))
-		if err != nil {
-			t.Fatalf("read page fixture: %v", err)
-		}
-		extracted, err := os.ReadFile(fmt.Sprintf(
-			"../../data/extracted/livermore-budget-fy2026-2027/%s", corpus.PagePath(p)))
-		if err != nil {
-			t.Fatalf("read extraction: %v", err)
-		}
-		if !bytes.Equal(fixture, extracted) {
-			t.Errorf("testdata/pages/budget-p%04d.txt is not a verbatim copy of %s; "+
-				"re-copy it rather than adjusting whatever now fails",
-				p, corpus.PagePath(p))
-		}
+		out = append(out, pageCopy(budgetFixtures, p))
+	}
+	return out
+}
+
+// TestFixturesAreVerbatimCopies is what makes every other test in this package
+// mean anything. The fixtures are copies, and `make extract` does not touch
+// them, so they can drift from the extraction silently — and when they do, the
+// tests reading them stay green against a substrate that no longer exists. That
+// is not hypothetical: it is exactly what the xberg → poppler migration
+// produced (fisc-yqv.5), and the tests went on passing throughout.
+func TestFixturesAreVerbatimCopies(t *testing.T) {
+	copies := fixtureCopies()
+	if len(copies) == 0 {
+		t.Fatal("no fixtures listed, so this test asserts nothing")
+	}
+	for _, f := range copies {
+		t.Run(f.fixture, func(t *testing.T) {
+			fixture, err := os.ReadFile(f.fixture)
+			if err != nil {
+				t.Fatalf("read fixture: %v", err)
+			}
+			extracted, err := os.ReadFile(f.extraction())
+			if err != nil {
+				t.Fatalf("read extraction: %v", err)
+			}
+			if !bytes.Equal(fixture, extracted) {
+				t.Errorf("%s is not a verbatim copy of %s; "+
+					"re-copy it rather than adjusting whatever now fails",
+					f.fixture, f.extraction())
+			}
+		})
 	}
 }
 
@@ -460,7 +512,7 @@ func TestWrongDocumentIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	_, err = NewResolver(testDoc(t, "livermore-acfr-fy2025", nil), f)
+	_, err = NewResolver(testDoc(t, acfrFixtures, nil), f)
 	if err == nil {
 		t.Fatal("NewResolver against the wrong document = nil error, want a failure")
 	}
