@@ -358,3 +358,39 @@ func TestPublishedSpineMatchesTheSankeyContract(t *testing.T) {
 		}
 	}
 }
+
+// TestPublishedPartsDeclareColumnHeaders is the ratchet on an opt-in guard.
+//
+// A part with no column_headers is read exactly as it was before geometry
+// existed: its figures are placed by position alone, and nothing anywhere says
+// so. That is the same silent degradation the resolver refuses when it requires
+// its document to answer for geometry rather than discovering the capability by
+// type assertion, and without this assertion the next part someone adds inherits
+// it by default.
+func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
+	f, err := Load(publishedSpine)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	parts := 0
+	for i := range f.Rules {
+		ru := &f.Rules[i]
+		for j := range ru.Parts {
+			p := &ru.Parts[j]
+			parts++
+			if len(p.ColumnHeaders) == 0 {
+				t.Errorf("rule %s p%d declares no column_headers, so its figures are "+
+					"placed by position alone", ru.ID, p.Page)
+				continue
+			}
+			if got, want := len(p.ColumnHeaders), len(p.Columns); got != want {
+				t.Errorf("rule %s p%d declares %d column_headers for %d columns",
+					ru.ID, p.Page, got, want)
+			}
+		}
+	}
+	if want := 10; parts != want {
+		t.Errorf("checked %d parts, want %d; the published file's shape changed",
+			parts, want)
+	}
+}

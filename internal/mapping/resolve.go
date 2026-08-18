@@ -97,6 +97,9 @@ type Resolver struct {
 	// parts caches each part's read, which is the expensive half of the work
 	// the page cache does not cover.
 	parts map[partKey]*resolvedPart
+	// pairings caches each page's two substrates reconciled against each other,
+	// which is what the column guard reads. See Resolver.pairing.
+	pairings map[int]*pairing
 }
 
 // partKey identifies one part of the rule file this resolver reads. The rule
@@ -138,7 +141,8 @@ func NewResolver(d doc, f *File) (*Resolver, error) {
 				"directory was opened")
 	}
 	return &Resolver{doc: d, file: f,
-		pages: map[int]string{}, parts: map[partKey]*resolvedPart{}}, nil
+		pages: map[int]string{}, parts: map[partKey]*resolvedPart{},
+		pairings: map[int]*pairing{}}, nil
 }
 
 // page returns the text of page n, reading it at most once.
@@ -390,11 +394,18 @@ func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
 		return nil, nil, err
 	}
 
+	// Built once per part. A part that declares no column_headers gets a nil
+	// guard and is read exactly as it was before geometry existed.
+	guard, err := r.guard(rule, p)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	var values []Value
 	if p.LabelsFrom == 0 {
-		values, err = r.labelledValues(rule, p, blk)
+		values, err = r.labelledValues(rule, p, blk, guard)
 	} else {
-		values, err = r.positionalValues(rule, p, blk)
+		values, err = r.positionalValues(rule, p, blk, guard)
 	}
 	if err != nil {
 		return nil, nil, err
@@ -435,7 +446,7 @@ func omissions(rule *Rule, p *Part) []Omission {
 	return out
 }
 
-func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block) ([]Value, error) {
+func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
 	ncols := len(p.Columns)
 	fail := func(field, msg, hint string) error {
@@ -466,7 +477,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block) ([]Value, err
 				row.Label, len(toks), ncols), "check the part's columns against the page")
 		}
 		toks = toks[:ncols]
-		vals, err := r.parseRow(rule, p, row, rowIndex[i], toks)
+		vals, err := r.parseRow(rule, p, row, rowIndex[i], toks, guard)
 		if err != nil {
 			return nil, err
 		}
@@ -520,7 +531,17 @@ func precedingRow(rows []Row, i int) string {
 	return fmt.Sprintf("row %q", rows[i-1].Label)
 }
 
-func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []token) ([]Value, error) {
+func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []token,
+	guard *columnGuard) ([]Value, error) {
+	// The column check happens here rather than in the two callers because this
+	// is the one place that already has a row, its tokens and the columns they
+	// were filed under together. Checking in both callers would be two copies of
+	// the invariant the whole guard exists for.
+	if guard != nil {
+		if err := guard.checkRow(r, rule, p, row, toks); err != nil {
+			return nil, err
+		}
+	}
 	out := make([]Value, 0, len(toks))
 	for c, tk := range toks {
 		col := p.Columns[c]
@@ -542,7 +563,7 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 	return out, nil
 }
 
-func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *Block) ([]Value, error) {
+func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *Block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
 	ncols := len(p.Columns)
 	toks := tokens(blk.Text, blk.Start)
@@ -561,11 +582,17 @@ func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *Block) ([]Value, e
 
 	values := make([]Value, 0, want)
 	for i, row := range rows {
-		vals, err := r.parseRow(rule, p, row, rowIndex[i], toks[i*ncols:(i+1)*ncols])
+		rowToks := toks[i*ncols : (i+1)*ncols]
+		vals, err := r.parseRow(rule, p, row, rowIndex[i], rowToks, guard)
 		if err != nil {
 			return nil, err
 		}
 		values = append(values, vals...)
+	}
+	if guard != nil {
+		if err := r.checkLineAccounting(rule, p, blk, rows); err != nil {
+			return nil, err
+		}
 	}
 	return values, nil
 }

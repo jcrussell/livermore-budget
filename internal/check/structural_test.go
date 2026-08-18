@@ -103,8 +103,11 @@ func manifestArtifacts(t *testing.T, root, docID string) map[string]corpus.Artif
 // sorting so a failure message is reproducible: the first geometry file.
 //
 // Geometry rather than a page, and deliberately: no fact cites a geometry artifact,
-// so a corruption there is invisible to every check except the drift sweep. That is
-// what makes these tests a claim about THIS check rather than about the report.
+// so a corruption in one is invisible to every check except the drift sweep. It is
+// the FIRST geometry file by sort, p0001, which no rule reads -- geometry for a
+// mapped page would also break `fisc build`, and the point of choosing this one is
+// that these tests are a claim about THIS check rather than about the report or the
+// resolver.
 func anArtifactOf(t *testing.T, root, docID string) (string, corpus.Artifact) {
 	t.Helper()
 	artifacts := manifestArtifacts(t, root, docID)

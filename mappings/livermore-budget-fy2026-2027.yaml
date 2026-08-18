@@ -66,6 +66,32 @@
 # the previous extractor deleted repeating text and hid it. So every such part
 # stops at "BUDGET FY 2025-27", the footer's own words.
 #
+# WHERE THE COLUMNS ARE
+#
+# Every part below declares `column_headers`, one entry per column, and that is
+# what opts it into the resolver's column-position guard: the named headers are
+# found on the page's own header line, their x-extents give each column a band,
+# and every figure the part reads must fall in the band of the column the rule
+# assigned it to. Three things about the list are easy to get wrong.
+#
+# It has one entry per COLUMN, not one per distinct header, so the entries repeat
+# -- "FY 2025-26" appears over the General Fund and again over Enterprise Funds.
+# That is the opposite of the rule for `columns`, where a duplicate is an error:
+# a column is identified by (fund_group, fiscal_year), and the header only says
+# where on the page it sits. It would include any column marked `skip: true`,
+# because a missing entry would build a grid one band too narrow and shift every
+# figure to its right one place left -- silently, with the value count still
+# matching.
+#
+# It is a claim about column ORDER. Each header must occur after the one before
+# it on the header line, so a page that dropped a column fails to resolve instead
+# of shifting every figure one place. A page that GAINED one fails too, because
+# the header line would then carry a printed header no column claims.
+#
+# All five parts on a page declare the SAME list, and the parser enforces it. Two
+# parts describing one page's grid differently would read the same figures into
+# different columns, and each would still tie against its own printed total.
+#
 # NO ROW IS OMITTED ANYWHERE IN THIS FILE, and that is a checked claim. p67
 # prints all ten revenue rows at the same ten y-positions as p66's ten labels,
 # including the three that are zero in all four of its fund groups. The project
@@ -139,6 +165,7 @@ rules:
         # rather than take whichever match it happens to find first.
         section_ordinal: 1
         stop_at: "TOTAL REVENUES:"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
@@ -170,6 +197,8 @@ rules:
         # xberg's content_filter.strip_repeating_text was deleting the third of
         # three identical all-dash rows as if it were boilerplate. See fisc-c00.
         # The count guard is what caught it: 72 tokens where 80 were required.
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
+                         "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}
@@ -220,6 +249,7 @@ rules:
         # "TOTAL EXPENDITURES:".
         section_ordinal: 1
         stop_at: "TOTAL EXPENDITURES:"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
@@ -247,6 +277,8 @@ rules:
         # As on the revenue half, the data rows are bare and the totals row is
         # the first one printed with "$".
         stop_at: "$"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
+                         "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}
@@ -290,6 +322,7 @@ rules:
         # stops short of. The first "EXPENDITURES:" after the block start is
         # that header; the second is the tail of "TOTAL EXPENDITURES:".
         stop_at: "EXPENDITURES:"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
@@ -303,6 +336,8 @@ rules:
         section: "FY 2026-27"
         section_ordinal: 4
         stop_at: "Capital Funds"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
+                         "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}
@@ -356,6 +391,7 @@ rules:
         # stops: leaving stop_at unset would take "BUDGET FY 2025-27 Page 62" into
         # the block, and "62" is a figure as far as the parser is concerned.
         stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
@@ -372,6 +408,8 @@ rules:
         # a rule relies on another check to enforce is a boundary the rule has
         # not stated.
         stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
+                         "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}
@@ -419,6 +457,7 @@ rules:
         # The same 11-row uses block spine-transfers-out reads, stopped at the
         # same running footer for the same reason.
         stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: general, fiscal_year: 2026}
           - {fund_group: general, fiscal_year: 2027}
@@ -429,6 +468,8 @@ rules:
         section: "Internal Service Funds\n"
         section_ordinal: 2
         stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27",
+                         "FY 2025-26", "FY 2026-27", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fund_group: capital, fiscal_year: 2026}
           - {fund_group: capital, fiscal_year: 2027}

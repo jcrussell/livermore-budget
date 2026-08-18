@@ -169,6 +169,37 @@ type Part struct {
 
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
+
+	// ColumnHeaders names the header the document prints over each column,
+	// left to right, one entry per entry in Columns INCLUDING any marked
+	// skip: true. Declaring it opts this part into the column-position guard:
+	// the header line gives the page's column geometry, and every figure the
+	// part reads must fall in the band of the column the rule assigned it to.
+	//
+	// Absent, the part is read exactly as it was before geometry existed. The
+	// key is per-part rather than per-rule because a page can print more than
+	// one schedule, and per-part rather than global because opting a part in
+	// is a claim about a specific page that someone has looked at.
+	//
+	// The list is a claim about column ORDER, not just about column count.
+	// Headers are matched left to right and each must occur AFTER the one
+	// before it, so a page that dropped a column fails to resolve rather than
+	// shifting every figure one place -- which is the failure this whole guard
+	// exists to prevent, and one no count can detect.
+	//
+	// Repeats are expected and are not an error, which is the opposite of the
+	// rule for Columns: Budget Book p66 prints "FY 2025-26" over the General
+	// Fund and again over Enterprise Funds, so the header alone does not
+	// identify a column and was never meant to. Columns are identified by
+	// (fund_group, fiscal_year); these strings only say where on the page each
+	// one is.
+	//
+	// An entry that parses as an amount is refused. A header that is a figure
+	// would match a DATA row, and a grid built from a data row files that row's
+	// own values perfectly and everything else by luck. A schedule whose
+	// headers are bare years therefore has to name more of the header --
+	// "FY 2026" rather than "2026". ("2024-25" is fine; it is not an amount.)
+	ColumnHeaders []string `yaml:"column_headers"`
 }
 
 // Column identifies one value column. Column identity is compound because a

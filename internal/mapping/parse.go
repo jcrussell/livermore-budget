@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -109,6 +110,11 @@ func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 		}
 		files = append(files, parsed)
 	}
+	// Re-checked across the whole directory, not only within each file: two
+	// files may map the same document, and nothing else here compares them.
+	if err := checkColumnGrids(files); err != nil {
+		return nil, err
+	}
 	return files, nil
 }
 
@@ -188,7 +194,7 @@ func (f *File) validate() error {
 			return err
 		}
 	}
-	return nil
+	return checkColumnGrids([]*File{f})
 }
 
 type errFunc func(ruleID, field, format string, args ...any) error
@@ -373,6 +379,134 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 			errf(r.ID, field("section_ordinal"), "is set but section is empty"),
 			"section_ordinal picks which occurrence of section starts the "+
 				"block, so it means nothing without one")
+	}
+	if len(p.ColumnHeaders) == 0 {
+		return nil
+	}
+	// One entry per column, including skipped ones. A short list would build a
+	// grid one band narrower than the page and file every figure right of the
+	// missing column one place left -- silently, with the value count still
+	// matching.
+	if len(p.ColumnHeaders) != len(p.Columns) {
+		return cmdutil.WithHint(
+			errf(r.ID, field("column_headers"), "has %d entries but the part has %d columns",
+				len(p.ColumnHeaders), len(p.Columns)),
+			"name the printed header of every column left to right, including "+
+				"any marked skip: true; the list is what says where each column "+
+				"sits on the page")
+	}
+	for i, h := range p.ColumnHeaders {
+		if strings.TrimSpace(h) == "" {
+			return cmdutil.WithHint(
+				errf(r.ID, field("column_headers"), "entry %d is empty", i+1),
+				"a header is matched by joining the words printed on the header "+
+					"line, so no page can produce an empty one")
+		}
+		// Deliberately NOT the circularity argument the section/stop_at refusal
+		// makes: a header is not a total. A header that is a figure would match
+		// a DATA row, and a grid built from a data row files that row perfectly
+		// and every other row by luck.
+		if _, err := amount.Parse(h, r.Units); err == nil {
+			return cmdutil.WithHint(
+				errf(r.ID, field("column_headers"), "entry %d is a currency amount: %q",
+					i+1, h),
+				"name more of the printed header -- \"FY 2026\" rather than "+
+					"\"2026\" -- because a header that is a figure matches a data "+
+					"row as readily as the header line")
+		}
+	}
+	return nil
+}
+
+// checkColumnGrids checks the two things no per-part rule can see: that every
+// part reading a page agrees about that page's column grid, and that they all
+// opt into it or none do.
+//
+// The published spine has five rules, each with a part on p66 and a part on p67,
+// so one page's header list is written out five times. A copy that drifted would
+// build a DIFFERENT grid for the same page in one rule than in another, and both
+// reads would go on tying against their own printed totals -- confident wrong
+// figures carrying working-looking provenance, which is the class this guard
+// exists to prevent.
+//
+// The all-or-none half closes the same hole one level up. A page where four
+// parts declare a grid and the fifth does not would otherwise validate, leaving
+// that part silently unguarded with nothing saying so -- which is exactly why
+// the resolver's doc interface requires its geometry method rather than
+// discovering it by type assertion.
+//
+// Grouping is by (doc_id, page) and not by file, because a document may be
+// mapped by more than one file and nothing else compares them: LoadDir dedupes
+// rule ids and never looks at doc_id.
+//
+// A page that printed two schedules side by side with different grids would be
+// refused here. No page in this corpus does yet; when one appears, this is the
+// check to relax.
+func checkColumnGrids(files []*File) error {
+	type declaration struct {
+		path    string
+		rule    string
+		headers []string
+	}
+	type key struct {
+		docID string
+		page  int
+	}
+
+	declared := map[key]declaration{}
+	for _, f := range files {
+		for i := range f.Rules {
+			r := &f.Rules[i]
+			for j := range r.Parts {
+				p := &r.Parts[j]
+				k := key{docID: f.DocID, page: p.Page}
+				cur := declaration{path: f.Path, rule: r.ID, headers: p.ColumnHeaders}
+				if len(p.ColumnHeaders) == 0 {
+					continue
+				}
+				prev, ok := declared[k]
+				if !ok {
+					declared[k] = cur
+					continue
+				}
+				if !slices.Equal(prev.headers, p.ColumnHeaders) {
+					return cmdutil.WithHint(
+						&ParseError{Path: f.Path, RuleID: r.ID,
+							Field: fmt.Sprintf("parts[page %d].column_headers", p.Page),
+							Msg: fmt.Sprintf("is %q, but rule %q in %s declares %q for the same page",
+								p.ColumnHeaders, prev.rule, prev.path, prev.headers)},
+						"a page has one column grid; two parts describing it "+
+							"differently would read the same figures into different "+
+							"columns and each would still tie against its own total")
+				}
+			}
+		}
+	}
+
+	// Second pass, because a part with no headers may be read before the part
+	// that declares them.
+	for _, f := range files {
+		for i := range f.Rules {
+			r := &f.Rules[i]
+			for j := range r.Parts {
+				p := &r.Parts[j]
+				if len(p.ColumnHeaders) != 0 {
+					continue
+				}
+				prev, ok := declared[key{docID: f.DocID, page: p.Page}]
+				if !ok {
+					continue
+				}
+				return cmdutil.WithHint(
+					&ParseError{Path: f.Path, RuleID: r.ID,
+						Field: fmt.Sprintf("parts[page %d]", p.Page),
+						Msg: fmt.Sprintf("declares no column_headers, but rule %q in %s "+
+							"declares %q for the same page", prev.rule, prev.path, prev.headers)},
+					"every part reading a page opts into the column guard or none "+
+						"does; one part left out is a part whose figures are placed "+
+						"by position alone, with nothing saying so")
+			}
+		}
 	}
 	return nil
 }

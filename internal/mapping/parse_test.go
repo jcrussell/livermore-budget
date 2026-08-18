@@ -378,3 +378,188 @@ func TestActiveRowsDoesNotAliasTheRule(t *testing.T) {
 		t.Error("ActiveRows returned a slice aliasing rule.Rows")
 	}
 }
+
+// headerRule writes a one-rule file whose single part declares the given
+// column_headers over two columns, so the validation can be exercised without
+// restating the whole schema each time.
+func headerRule(headers string) string {
+	return "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n" +
+		"    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		"    parts:\n      - page: 1\n" +
+		"        columns: [{fiscal_year: 2026}, {fiscal_year: 2027}]\n" +
+		"        column_headers: " + headers + "\n" +
+		"    rows:\n      - {label: \"A\", category: a}\n"
+}
+
+func TestParseAcceptsColumnHeaders(t *testing.T) {
+	f, err := Parse(strings.NewReader(
+		headerRule(`["FY 2025-26", "FY 2026-27"]`)), "headers.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	got := f.Rules[0].Parts[0].ColumnHeaders
+	if diff := cmp.Diff([]string{"FY 2025-26", "FY 2026-27"}, got); diff != "" {
+		t.Errorf("column_headers (-want +got):\n%s", diff)
+	}
+}
+
+// TestParseAcceptsRepeatedColumnHeaders is the opposite of the rule for columns,
+// and the comment matters more than the assertion. Budget Book p66 prints
+// "FY 2025-26" over the General Fund and again over Enterprise Funds; the header
+// says where a column sits on the page, not which column it is. A reviewer
+// reaching for the duplicate-column check would break the spine.
+func TestParseAcceptsRepeatedColumnHeaders(t *testing.T) {
+	if _, err := Parse(strings.NewReader(
+		headerRule(`["FY 2025-26", "FY 2025-26"]`)), "headers.yaml"); err != nil {
+		t.Errorf("Parse rejected repeated headers: %v", err)
+	}
+}
+
+func TestParseRejectsBadColumnHeaders(t *testing.T) {
+	tests := []struct {
+		name, yaml, want string
+	}{
+		{
+			// One band short: every figure right of the missing column files one
+			// place left, and the value count still matches.
+			name: "fewer headers than columns",
+			yaml: headerRule(`["FY 2025-26"]`),
+			want: "has 1 entries but the part has 2 columns",
+		},
+		{
+			name: "more headers than columns",
+			yaml: headerRule(`["FY 2025-26", "FY 2026-27", "FY 2027-28"]`),
+			want: "has 3 entries but the part has 2 columns",
+		},
+		{
+			name: "an empty entry",
+			yaml: headerRule(`["FY 2025-26", ""]`),
+			want: "entry 2 is empty",
+		},
+		{
+			name: "a whitespace-only entry",
+			yaml: headerRule(`["FY 2025-26", "   "]`),
+			want: "entry 2 is empty",
+		},
+		{
+			// A grid built from a data row files that row perfectly and every
+			// other row by luck.
+			name: "a header that is a currency amount",
+			yaml: headerRule(`["FY 2025-26", "1,234"]`),
+			want: `entry 2 is a currency amount: "1,234"`,
+		},
+		{
+			name: "a header that is a bare year",
+			yaml: headerRule(`["FY 2025-26", "2026"]`),
+			want: "entry 2 is a currency amount",
+		},
+		{
+			// A dash is how this corpus spells zero, so it parses.
+			name: "a header that is a zero dash",
+			yaml: headerRule(`["FY 2025-26", "-"]`),
+			want: "entry 2 is a currency amount",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := Parse(strings.NewReader(tt.yaml), "headers.yaml")
+			if err == nil {
+				t.Fatalf("Parse = nil error, want one mentioning %q", tt.want)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("Parse error = %q, want it to mention %q", err, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseRejectsDisagreeingColumnHeaders covers the defect no per-part check
+// can see. The published spine writes one page's header list out five times, once
+// per rule; a copy that drifted would build a different grid for the same page in
+// one rule than in another, and both reads would go on tying against their own
+// printed totals.
+func TestParseRejectsDisagreeingColumnHeaders(t *testing.T) {
+	two := func(a, b string) string {
+		part := func(headers string) string {
+			return "    parts:\n      - page: 1\n" +
+				"        columns: [{fiscal_year: 2026}, {fiscal_year: 2027}]\n" +
+				"        column_headers: " + headers + "\n" +
+				"    rows:\n      - {label: \"A\", category: a}\n"
+		}
+		return "schema_version: 1\ndoc_id: d\nrules:\n" +
+			"  - id: first\n    kind: revenue\n    basis: adopted\n    units: dollars\n" + part(a) +
+			"  - id: second\n    kind: expenditure\n    basis: adopted\n    units: dollars\n" + part(b)
+	}
+
+	agree := `["FY 2025-26", "FY 2026-27"]`
+	if _, err := Parse(strings.NewReader(two(agree, agree)), "headers.yaml"); err != nil {
+		t.Fatalf("Parse rejected two parts that agree: %v", err)
+	}
+
+	_, err := Parse(strings.NewReader(
+		two(agree, `["FY 2025-26", "FY 2027-28"]`)), "headers.yaml")
+	if err == nil {
+		t.Fatal("Parse accepted two rules describing one page's grid differently")
+	}
+	want := `rule "first" in headers.yaml declares`
+	if !strings.Contains(err.Error(), want) {
+		t.Errorf("Parse error = %q, want it to name the rule that declared it first (%q)",
+			err, want)
+	}
+}
+
+// TestParseRejectsAPartLeftOutOfTheColumnGuard covers the hole a per-page
+// agreement check leaves open on its own: a page where four parts declare a grid
+// and the fifth does not validates fine, and that fifth part's figures are then
+// placed by position alone with nothing saying so.
+func TestParseRejectsAPartLeftOutOfTheColumnGuard(t *testing.T) {
+	part := func(headers string) string {
+		s := "    parts:\n      - page: 1\n" +
+			"        columns: [{fiscal_year: 2026}, {fiscal_year: 2027}]\n"
+		if headers != "" {
+			s += "        column_headers: " + headers + "\n"
+		}
+		return s + "    rows:\n      - {label: \"A\", category: a}\n"
+	}
+	src := "schema_version: 1\ndoc_id: d\nrules:\n" +
+		"  - id: guarded\n    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		part(`["FY 2025-26", "FY 2026-27"]`) +
+		"  - id: unguarded\n    kind: expenditure\n    basis: adopted\n    units: dollars\n" +
+		part("")
+
+	_, err := Parse(strings.NewReader(src), "headers.yaml")
+	if err == nil {
+		t.Fatal("Parse accepted a page one of whose parts opts out of the column guard")
+	}
+	for _, want := range []string{"unguarded", "declares no column_headers", `rule "guarded"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("Parse error = %q, want it to mention %q", err, want)
+		}
+	}
+}
+
+// TestLoadDirRejectsGridsDisagreeingAcrossFiles is the same check one level up.
+// LoadDir dedupes rule ids and never looks at doc_id, so two files mapping one
+// document are otherwise never compared.
+func TestLoadDirRejectsGridsDisagreeingAcrossFiles(t *testing.T) {
+	file := func(rule, headers string) string {
+		return "schema_version: 1\ndoc_id: shared-doc\nrules:\n  - id: " + rule +
+			"\n    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+			"    parts:\n      - page: 1\n" +
+			"        columns: [{fiscal_year: 2026}, {fiscal_year: 2027}]\n" +
+			"        column_headers: " + headers + "\n" +
+			"    rows:\n      - {label: \"A\", category: a}\n"
+	}
+	fsys := fstest.MapFS{
+		"m/a.yaml": &fstest.MapFile{Data: []byte(file("first", `["FY 2025-26", "FY 2026-27"]`))},
+		"m/b.yaml": &fstest.MapFile{Data: []byte(file("second", `["FY 2025-26", "FY 2027-28"]`))},
+	}
+	_, err := LoadDir(fsys, "m")
+	if err == nil {
+		t.Fatal("LoadDir accepted two files describing one page's grid differently")
+	}
+	if want := "m/a.yaml"; !strings.Contains(err.Error(), want) {
+		t.Errorf("LoadDir error = %q, want it to name the file that declared it first (%q)",
+			err, want)
+	}
+}

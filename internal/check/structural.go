@@ -58,10 +58,13 @@ import (
 // the extractor wrote, so the only witness to whether it wrote the right thing is
 // the source document, and only for the pages something reads. Two facts about the
 // corpus follow, and are worth stating rather than implying: no check in this
-// project reads the bytes of a page no fact cites, or of ANY of the 786 geometry
-// artifacts, so for those files "unchanged since extraction" is the whole of what
-// is known. Re-extracting is what re-establishes the rest, and reviewing the
-// artifact diff by hand is the step that cannot be automated away (`fisc reanchor`,
+// project reads the bytes of a page no fact cites, or of any geometry artifact
+// other than those the mapped pages carry -- and those are read by `fisc build`
+// rather than by a check, so it is the rebuild-and-diff in CI, not this sweep,
+// that would notice a corruption in one. For every other file "unchanged since
+// extraction" is the whole of what is known. Re-extracting is what re-establishes
+// the rest, and reviewing the artifact diff by hand is the step that cannot be
+// automated away (`fisc reanchor`,
 // which would make that reviewable in one commit, is fisc-mq4.6 and not built).
 //
 // manifest.json itself is not swept: it is not one of its own artifacts, it records
