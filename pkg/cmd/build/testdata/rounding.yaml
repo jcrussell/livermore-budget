@@ -1,0 +1,36 @@
+# A schedule whose printed total is one dollar more than its rows add to, with
+# the discrepancy declared. Modelled on Budget Book p127, where the FY2023-24
+# Actual column prints $58,179,468 over rows summing to $58,179,467 while the
+# other three columns tie exactly (fisc-2sd).
+#
+# The point of the fixture is the REPORT: a column that ties only because a
+# human wrote down the document's rounding must not be counted as one that ties
+# exactly.
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  - id: rounded-taxes
+    kind: revenue
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "TOTAL TAXES:"
+    rows:
+      - {label: "Secured", category: taxes/property}
+      - {label: "Unsecured", category: taxes/property}
+    parts:
+      - page: 80
+        section: "TAXES:"
+        section_ordinal: 1
+        stop_at: "TOTAL TAXES:"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The document's own rounding: 100 + 200 is 300, and the page
+              prints 301. Column 2 ties exactly, which is what makes this the
+              published figure's arithmetic rather than a misread row.

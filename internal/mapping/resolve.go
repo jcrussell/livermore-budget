@@ -724,6 +724,13 @@ type TotalsResult struct {
 	// coverage is counted in. A skipped column produces no facts, so counting
 	// it would claim coverage the check did not earn.
 	Columns int
+
+	// Declared is how many of those columns tied only because the rule
+	// declared a discrepancy (fisc-2sd). It is reported separately so a part
+	// that ties on the document's own rounding cannot read as one that ties
+	// exactly -- the caller says so, rather than the number quietly counting
+	// as clean coverage.
+	Declared int
 }
 
 // CheckTotals asserts that the figures a part yields sum, per column, to the
@@ -752,6 +759,14 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 		sums[v.ColumnIndex] += v.Cents
 	}
 
+	// Declared discrepancies, by 1-based column. The parser has already
+	// refused a duplicate, an out-of-range column, a skipped column, a zero
+	// delta and a missing note, so nothing here needs to re-check any of that.
+	declared := make(map[int]amount.Cents, len(p.StatedTotalDeltas))
+	for _, d := range p.StatedTotalDeltas {
+		declared[d.Column] = d.Cents
+	}
+
 	res := &TotalsResult{}
 	var bad []string
 	for c, col := range p.Columns {
@@ -759,9 +774,29 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 			continue
 		}
 		res.Columns++
-		if sums[c] != stated[c] {
+		// STATED MINUS MAPPED, the same direction StatedTotalDelta.Cents is
+		// written in, so a failure message can be pasted into a declaration.
+		diff := stated[c] - sums[c]
+		want, isDeclared := declared[c+1]
+		if isDeclared {
+			res.Declared++
+		}
+		if diff == want {
+			continue
+		}
+		switch {
+		case !isDeclared:
 			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, off by %s",
 				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], sums[c]-stated[c]))
+		case diff == 0:
+			// The declaration has outlived the discrepancy. Failing is the
+			// point: a stale claim about the city's arithmetic that nothing
+			// ever retracts is exactly what a tolerance would have hidden.
+			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): declares a delta of %s but now ties exactly; remove the declaration",
+				c+1, col.FundGroup, col.FiscalYear, want))
+		default:
+			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, declared delta %s but the difference is %s",
+				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], want, diff))
 		}
 	}
 	if len(bad) == 0 {
@@ -770,7 +805,9 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 	return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 		Field: "total_row", Msg: strings.Join(bad, "; ")},
 		"a mapped column that does not tie means a row was missed, "+
-			"double-counted, or read from the wrong column")
+			"double-counted, or read from the wrong column -- unless the "+
+			"document's own arithmetic rounds, which is declared per column "+
+			"with stated_total_deltas and never absorbed silently")
 }
 
 // token is a whitespace-delimited run of text and where it sits in the page.

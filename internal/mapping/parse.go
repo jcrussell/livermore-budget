@@ -332,6 +332,41 @@ func validateRule(r *Rule, errf errFunc) error {
 						"absent from this page")
 			}
 		}
+
+		// A declared discrepancy is a claim about one column of one page, so
+		// every way of writing one that does not say that is refused here
+		// rather than reaching CheckTotals.
+		deltas := map[int]bool{}
+		for j, d := range p.StatedTotalDeltas {
+			field := fmt.Sprintf("parts[page %d].stated_total_deltas[%d]", p.Page, j)
+			if d.Column < 1 || d.Column > len(p.Columns) {
+				return errf(r.ID, field, "column %d is out of range; this part has %d columns",
+					d.Column, len(p.Columns))
+			}
+			if p.Columns[d.Column-1].Skip {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "column %d is skipped", d.Column),
+					"a skipped column produces no facts and is never totalled, "+
+						"so there is nothing for a delta to describe")
+			}
+			if deltas[d.Column] {
+				return errf(r.ID, field, "column %d already has a delta", d.Column)
+			}
+			deltas[d.Column] = true
+			if d.Cents == 0 {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "delta_cents is zero"),
+					"a zero delta is what an undeclared column already asserts; "+
+						"remove the entry")
+			}
+			if strings.TrimSpace(d.Note) == "" {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "note is required"),
+					"the note is why this is a declaration and not a tolerance: "+
+						"say what was checked and why the difference is the "+
+						"document's rather than ours")
+			}
+		}
 	}
 
 	// LabelsFrom must point at another part of the same rule, and that part

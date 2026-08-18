@@ -34,6 +34,14 @@ type Report struct {
 	PartsChecked int `json:"parts_checked"`
 	ColumnsTied  int `json:"columns_tied_to_a_stated_total"`
 
+	// ColumnsTiedByDeclaration is how many of ColumnsTied tied only because
+	// the rule declared a discrepancy in the document's own arithmetic
+	// (fisc-2sd). Reported separately and printed whenever it is non-zero,
+	// because "24 columns tie" and "23 tie exactly and one ties to a declared
+	// $1 of the city's rounding" are different claims, and a build that stated
+	// the first while meaning the second would be overstating its evidence.
+	ColumnsTiedByDeclaration int `json:"columns_tied_by_declaration"`
+
 	PartsUnchecked []UncheckedPart    `json:"parts_unchecked"`
 	Omissions      []DeclaredOmission `json:"declared_omissions"`
 }
@@ -105,6 +113,7 @@ func (rep *Report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mappi
 		// compared; a skipped column produces no facts, so tying it would
 		// count coverage this build did not earn.
 		rep.ColumnsTied += res.Columns
+		rep.ColumnsTiedByDeclaration += res.Declared
 		return nil
 	case errors.Is(err, mapping.ErrNoStatedTotals):
 		rep.unchecked(rule, p, reasonNoStatedTotals)
@@ -147,6 +156,13 @@ func (rep *Report) print(ios *iostreams.IOStreams, asJSON bool) error {
 	fmt.Fprintf(w, "%d of %d parts tie to a total the document prints, covering %d %s\n",
 		rep.PartsChecked, rep.Parts, rep.ColumnsTied,
 		plural(rep.ColumnsTied, "column", "columns"))
+	if rep.ColumnsTiedByDeclaration > 0 {
+		// "of those columns" stays plural and the VERB agrees: one column ties,
+		// several tie. Pluralising the noun here gives "1 of those column tie".
+		fmt.Fprintf(w, "%d of those columns %s only to a declared delta in the document's own arithmetic\n",
+			rep.ColumnsTiedByDeclaration,
+			plural(rep.ColumnsTiedByDeclaration, "ties", "tie"))
+	}
 	for _, u := range rep.PartsUnchecked {
 		fmt.Fprintf(w, "UNCHECKED %s p%d: %s\n", u.RuleID, u.Page, u.Reason)
 	}

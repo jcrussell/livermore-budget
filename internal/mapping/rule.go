@@ -200,6 +200,48 @@ type Part struct {
 	// headers are bare years therefore has to name more of the header --
 	// "FY 2026" rather than "2026". ("2024-25" is fine; it is not an amount.)
 	ColumnHeaders []string `yaml:"column_headers"`
+
+	// StatedTotalDeltas declares columns where the total the DOCUMENT prints
+	// is not the sum of the rows it totals, and by how much.
+	//
+	// "All column totals tie exactly" is a property of Budget Book pp.66-67
+	// and NOT of this corpus. A correct label-anchored read of p127's thirteen
+	// property-tax rows gives $58,179,467 against a printed $58,179,468, and
+	// ten more blocks are off by <= $5 -- pp.111, 128, 129, 131, 135, 168, 172,
+	// 173, 181, 183, every one of them in the FY2023-24 Actual column. That is
+	// rounding in the city's own arithmetic, not in ours (fisc-2sd).
+	//
+	// This is a DECLARATION, not a tolerance, and the difference is the whole
+	// point. There is no global epsilon and no per-rule fuzz: an author writes
+	// down one column, one exact figure, and why. CheckTotals then accepts that
+	// figure and no other -- a column off by a different amount fails, and so
+	// does a column that now ties, because a declaration the document has
+	// stopped needing is a stale claim about the city's arithmetic and should
+	// surface rather than rot. Absent a declaration, exact equality still holds.
+	StatedTotalDeltas []StatedTotalDelta `yaml:"stated_total_deltas"`
+}
+
+// StatedTotalDelta is one column's declared discrepancy between the document's
+// printed total and the rows beneath it.
+type StatedTotalDelta struct {
+	// Column is 1 based, matching how CheckTotals numbers columns when it
+	// reports a mismatch, so a failure message can be turned into this
+	// declaration without translating an index.
+	Column int `yaml:"column"`
+
+	// Cents is STATED MINUS MAPPED: how much the printed total exceeds the sum
+	// of the rows. p127's FY2023-24 column prints $1 more than its rows add to,
+	// so it declares 100. A document that printed LESS than its rows would
+	// declare a negative.
+	//
+	// In cents, always, like every other amount in this project -- the rule's
+	// `units` says how the page prints its figures, not how this is written.
+	Cents amount.Cents `yaml:"delta_cents"`
+
+	// Note is required and says why. A bare number here would be a tolerance
+	// wearing a declaration's clothes; the reason someone looked at the page
+	// and concluded "the city rounded" is the thing worth keeping.
+	Note string `yaml:"note"`
 }
 
 // Column identifies one value column. Column identity is compound because a

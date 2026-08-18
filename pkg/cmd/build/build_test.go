@@ -51,6 +51,14 @@ TOTAL TRANSFERS IN: $480,400 $486,735
 	transfersInContinuationPage = `TRANSFERS IN:
 5,000 6,000
 `
+
+	// roundedPage's first column prints a total one dollar above its rows;
+	// the second ties exactly. See testdata/rounding.yaml.
+	roundedPage = `TAXES:
+Secured 100 1,000
+Unsecured 200 2,000
+TOTAL TAXES: $301 $3,000
+`
 )
 
 func writeRepoFile(t *testing.T, path, body string) {
@@ -305,6 +313,45 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 	// than accompanying it.
 	if got := errOut.String(); got != "" {
 		t.Errorf("got stderr %q, want it empty under --json", got)
+	}
+}
+
+// TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta guards the claim the
+// report makes. "2 columns tie" and "2 tie, one of them only to a declared
+// dollar of the city's rounding" are different statements about the evidence,
+// and fisc-2sd exists precisely so the second is never silently written as the
+// first.
+func TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta(t *testing.T) {
+	root := testRepo(t, map[int]string{80: roundedPage}, "rounding.yaml")
+	opts, out, errOut := testOptions(t, root)
+	opts.JSON = true
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+	var got Report
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("decode report: %v\n%s", err, out)
+	}
+	if got.ColumnsTied != 2 {
+		t.Errorf("ColumnsTied = %d, want 2", got.ColumnsTied)
+	}
+	if got.ColumnsTiedByDeclaration != 1 {
+		t.Errorf("ColumnsTiedByDeclaration = %d, want 1", got.ColumnsTiedByDeclaration)
+	}
+	if got := errOut.String(); got != "" {
+		t.Errorf("got stderr %q, want it empty under --json", got)
+	}
+
+	// And the human-readable form says so too, since that is the one anybody
+	// building the site actually reads.
+	opts, _, errOut = testOptions(t, root)
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun without --json: %v", err)
+	}
+	want := "1 of those columns ties only to a declared delta in the document's own arithmetic"
+	if !strings.Contains(errOut.String(), want) {
+		t.Errorf("report does not say %q:\n%s", want, errOut)
 	}
 }
 
