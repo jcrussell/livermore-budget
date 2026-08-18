@@ -1,6 +1,7 @@
 package mapping
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -44,9 +45,10 @@ var acfrYear = regexp.MustCompile(`^20\d\d$`)
 func readACFRDebtSchedule(t *testing.T) []acfrDebtRow {
 	t.Helper()
 
-	b, err := os.ReadFile("../../testdata/pages/acfr-p0177.txt")
+	path := fmt.Sprintf("../../testdata/pages/acfr-p%04d.txt", acfrDebtPage)
+	b, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("read fixture: %v", err)
+		t.Fatalf("read fixture %s: %v", path, err)
 	}
 
 	var out []acfrDebtRow
