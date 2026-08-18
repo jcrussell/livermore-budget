@@ -366,6 +366,31 @@ func TestWriteReportsAMissingAsset(t *testing.T) {
 	}
 }
 
+// The site is published before its coverage is complete, so the page has to say
+// so. The claim is about COVERAGE, not accuracy: every figure on the page is
+// traced to a printed schedule and `fisc verify` fails if one is not, so a
+// banner calling the figures preliminary would contradict the thing the project
+// exists to assert.
+func TestPageCarriesTheWorkInProgressBanner(t *testing.T) {
+	dir, _ := writeGolden(t)
+	page := readPage(t, dir)
+
+	// Exactly once: a second copy means the template grew a duplicate block,
+	// which renders as two stacked bars rather than as an error.
+	if got := strings.Count(page, `class="wip-banner"`); got != 1 {
+		t.Errorf("got %d wip-banner elements, want 1", got)
+	}
+	for _, want := range []string{
+		"Work in progress",
+		"coverage is incomplete",
+		`role="status"`,
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("banner does not carry %q", want)
+		}
+	}
+}
+
 func readPage(t *testing.T, dir string) string {
 	t.Helper()
 	b, err := os.ReadFile(filepath.Join(dir, "index.html"))

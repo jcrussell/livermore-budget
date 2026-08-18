@@ -16,6 +16,15 @@
  * validator reports as a relief obligation rather than a pass: every node
  * carries a visible direct label and every value is in the table view, which
  * is the relief.
+ *
+ * One exception to the first paragraph: --warn-bg/-fg/-edge are chrome, not a
+ * data encoding, so the categorical palette does not govern them. The light
+ * pair is carried over from solvent-streets' banner; the dark pair is a
+ * re-step for this page's dark surface rather than a flip of the light one,
+ * the same way the fund hues are. Both were measured, not eyeballed: 6.4:1
+ * light and 8.1:1 dark for text, either side of the 4.5 floor. The edge token
+ * exists because the light fill is 1.06:1 against the plane and would
+ * otherwise not read as a band at all.
  */
 
 :root {
@@ -32,6 +41,9 @@
   --wash: rgba(11, 11, 11, 0.04);
   --critical: #d03b3b;
   --good: #006300;
+  --warn-bg: #fef3c7;
+  --warn-fg: #92400e;
+  --warn-edge: #d9b64e;
 
   /* Categorical slots 1-6, light. */
   --fund-internal-service: #2a78d6;
@@ -67,6 +79,9 @@
     --wash: rgba(255, 255, 255, 0.06);
     --critical: #e66767;
     --good: #0ca30c;
+    --warn-bg: #3a2f0d;
+    --warn-fg: #f6c453;
+    --warn-edge: #6b571a;
 
     --fund-internal-service: #3987e5;
     --fund-capital: #d95926;
@@ -94,6 +109,9 @@
   --wash: rgba(255, 255, 255, 0.06);
   --critical: #e66767;
   --good: #0ca30c;
+  --warn-bg: #3a2f0d;
+  --warn-fg: #f6c453;
+  --warn-edge: #6b571a;
 
   --fund-internal-service: #3987e5;
   --fund-capital: #d95926;
@@ -157,6 +175,30 @@ h3 {
   color: var(--ink-2);
   max-width: 68ch;
   margin: 0 0 4px;
+}
+
+/* Sticky rather than fixed: the page has no other fixed element, so staying in
+   flow keeps the banner visible without a height custom property that every
+   rule below would have to offset against. The sticky `th` at the flow table
+   lives inside .table-scroll, which is `overflow: auto` and therefore its own
+   containing block, so the two never compete. */
+.wip-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  /* Cancels body's 20px side padding so the bar runs full-bleed. The print
+     block below has to undo this, because it zeroes that padding. */
+  margin: 0 -20px;
+  padding: 5px 12px;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  /* The pale amber sits ~1.06:1 against the light plane, which is to say the
+     band itself is invisible even though its text is not. The edge is what
+     makes it read as a bar rather than as a tinted paragraph. */
+  border-bottom: 1px solid var(--warn-edge);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .page-head {
@@ -396,7 +438,11 @@ svg.sankey .node {
 
 .tooltip {
   position: absolute;
-  z-index: 5;
+  /* Above .wip-banner's 10. .chart-wrap is `position: relative` with no
+     z-index, so it opens no stacking context and this value competes with the
+     banner's directly: at 5 a tooltip on a top-row node was drawn behind the
+     sticky bar once the page had scrolled. */
+  z-index: 20;
   min-width: 200px;
   max-width: 340px;
   pointer-events: none;
@@ -628,5 +674,14 @@ noscript p {
   .controls,
   .tooltip {
     display: none;
+  }
+
+  /* The banner is NOT hidden: a printed copy is exactly the artefact that
+     outlives the caveat, so it should still say so. But its negative margins
+     are tuned to body's 20px side padding, which the rule above zeroes, and
+     sticky means nothing on paper. */
+  .wip-banner {
+    position: static;
+    margin: 0;
   }
 }
