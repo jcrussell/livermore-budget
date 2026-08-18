@@ -1,0 +1,123 @@
+name: Pages
+
+# Publishes the static site. Separate from ci.yml because this is the workflow
+# that needs write scopes -- ci.yml is read-only by design and says so in its
+# own header; this file is the "narrower grant" it refers to.
+#
+# Like ci.yml, every step here is pure Go over the committed artifacts. The site
+# is built from facts/facts.jsonl by `fisc export`, which does NOT re-run the
+# mapping engine, so a deploy cannot move a published figure -- it can only
+# republish what `fisc build` already committed and `fisc verify` already
+# checked.
+#
+# The LFS discipline from ci.yml applies unchanged and matters more here,
+# because this workflow runs on every push to main:
+#
+#   data/pdf/** is the only thing in Git LFS (3 files, ~67 MB) against GitHub's
+#   1 GB/month free bandwidth tier. The site reads none of it -- data/extracted/
+#   is ordinary git -- so the checkout sets `lfs: false` explicitly and
+#   GIT_LFS_SKIP_SMUDGE is set workflow-wide.
+#
+# TODO(pin): the three actions/*-pages actions below are referenced by tag, not
+# by SHA, which is the one place this repository departs from its own
+# supply-chain convention (every other action, here and in ci.yml, is pinned to
+# a commit with a trailing version comment). They were left as tags rather than
+# guessed at: the pin has to be a SHA that was actually read off the upstream
+# repository, and a plausible-but-wrong 40-hex string is precisely the failure
+# shape this project refuses everywhere else.
+#
+# The MAJORS are themselves unverified for the same reason, and an unresolvable
+# tag fails the run at action-resolution time with "Unable to resolve action",
+# which reads as nothing to do with Pages. Confirm each tag exists before
+# trusting the first deploy, then pin:
+#
+#   gh api repos/actions/configure-pages/git/ref/tags/v5      --jq .object.sha
+#   gh api repos/actions/upload-pages-artifact/git/ref/tags/v3 --jq .object.sha
+#   gh api repos/actions/deploy-pages/git/ref/tags/v4         --jq .object.sha
+
+on:
+  push:
+    branches: [main]
+  # The first deploy of a Pages site is often triggered by hand, after the
+  # repository setting is flipped to "GitHub Actions"; without this the only way
+  # to get a run is an empty commit.
+  workflow_dispatch:
+
+# The floor, not the grant. `make build` in the build job compiles and runs
+# module code, so it must not be able to mint an OIDC token or write to Pages;
+# only the deploy job gets those, and it runs nothing of ours. This is what
+# ci.yml's header means by "its own narrower grant".
+permissions:
+  contents: read
+
+# Unlike ci.yml, nothing here is cancelled. A superseded CI run is wasted work,
+# but a superseded deploy is a half-published site, so an in-flight run finishes
+# and the next one queues behind it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  # Belt and braces with `lfs: false` below; see the bandwidth note at the top.
+  GIT_LFS_SKIP_SMUDGE: "1"
+
+jobs:
+  build:
+    name: build the site
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs the site does not read; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build
+      # The gate, not a formality: verify reads the committed fact store, the
+      # rules and every artifact under data/extracted/, and exits non-zero if a
+      # check fails. Running it here means a corpus that fails its own checks
+      # cannot reach the published page. Without --full it never opens
+      # data/pdf/, so it costs no LFS bandwidth; the PDF hash check reports
+      # SKIPPED with its reason.
+      - name: Check the corpus before publishing it
+        run: ./bin/fisc verify
+      # The second half of the gate, and the reason it is duplicated from
+      # ci.yml rather than assumed: this workflow and ci.yml run in PARALLEL on
+      # the same push, so a red CI arrives AFTER the site is already live.
+      # Publishing figures that the rules no longer reproduce is the one
+      # failure this project exists to prevent, so that specific check is
+      # re-run here rather than trusted to a race. The rest of ci.yml -- lint,
+      # vet, tidy, the Go tests -- is not duplicated; see fisc-60x.
+      - name: The published figures must be the ones the rules produce
+        run: |
+          ./bin/fisc build --output bin/facts-rebuilt.jsonl
+          if ! cmp -s bin/facts-rebuilt.jsonl facts/facts.jsonl; then
+            echo "facts/facts.jsonl does not match what the rules produce; refusing to publish." >&2
+            echo "Run 'fisc build' and commit the result. Details in ci.yml's facts job." >&2
+            exit 1
+          fi
+      # Not `make site`: that target also prints the local "serve it" hint,
+      # which is noise in a runner log. Same command underneath.
+      - name: Export the site
+        run: ./bin/fisc export --clean
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    name: deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    # The only place the write scopes exist.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

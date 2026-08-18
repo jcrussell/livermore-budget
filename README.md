@@ -120,7 +120,11 @@ run `bd ready` for available work and `bd prime` for the workflow. Agent-facing
 guidance is in [`docs/agents/`](docs/agents/); the `sankey.json` contract is
 [`docs/sankey-contract.md`](docs/sankey-contract.md).
 
-Two things a newcomer should know. There is **no git remote**, so nothing is
-deployed and CI has never run — `dist/` is a local artifact. And the extracted
-page text is currently cited by a GitHub URL that does not resolve; that is
+Two things a newcomer should know. A git remote is configured but **nothing has
+been pushed to it**, so CI has never run and the site has never deployed —
+`dist/` is a local artifact. The Pages workflow
+([`.github/workflows/pages.yml`](.github/workflows/pages.yml)) is in place and
+publishes on push to `main`, once Pages is enabled for the repository (Settings
+→ Pages → Source → *GitHub Actions*). And the extracted page text is cited by a
+GitHub URL that does not resolve until that first push lands; that is
 `fisc-ze7`.
