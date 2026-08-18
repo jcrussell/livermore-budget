@@ -3,6 +3,7 @@ package corpus
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -318,9 +319,9 @@ func TestReadsTheExtractorsWarnings(t *testing.T) {
 }
 
 // TestGeometryPath pins the second substrate's artifact path. It is asserted rather
-// than derived because tools/extract.py writes this name and nothing in Go reads a
-// geometry file yet: the only thing keeping the two spellings together is this test
-// and the manifest the next one checks it against.
+// than derived because tools/extract.py writes this name and Go only ever composes
+// it: the two spellings are held together by this test and by the manifest it
+// checks the path against.
 func TestGeometryPath(t *testing.T) {
 	if got, want := GeometryPath(1), "geometry/p0001.json"; got != want {
 		t.Errorf("GeometryPath(1) = %q, want %q", got, want)
@@ -389,5 +390,139 @@ func TestTreeSeesWhatTheManifestDoesNot(t *testing.T) {
 	// out, so a hostile manifest key cannot address the filesystem at large.
 	if _, err := fs.ReadFile(d.Tree(), "../../../etc/passwd"); err == nil {
 		t.Error("Tree() read a path outside the extraction directory")
+	}
+}
+
+// geometryJSON renders a geometry artifact the way tools/extract.py writes one.
+func geometryJSON(docID string, page int, words string) string {
+	return fmt.Sprintf(`{
+ "doc_id": %q,
+ "height": 792.0,
+ "page": %d,
+ "schema_version": 1,
+ "width": 612.0,
+ "words": [%s]
+}
+`, docID, page, words)
+}
+
+const oneWord = `[216.84,2.88,293.18,30.27,"BUDGET"]`
+
+func TestGeometryReadsTheSecondSubstrate(t *testing.T) {
+	d, err := Open(docFS(t, map[string]string{
+		GeometryPath(1): geometryJSON("test-doc", 1, oneWord),
+	}))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	g, err := d.Geometry(1)
+	if err != nil {
+		t.Fatalf("Geometry(1): %v", err)
+	}
+	if got, want := len(g.Words), 1; got != want {
+		t.Fatalf("Geometry(1) has %d words, want %d", got, want)
+	}
+	if got, want := g.Words[0].Text, "BUDGET"; got != want {
+		t.Errorf("word text = %q, want %q", got, want)
+	}
+	if got, want := g.Words[0].Right(), 293.18; got != want {
+		t.Errorf("word right edge = %v, want %v", got, want)
+	}
+}
+
+// TestGeometryRefusesWhatItCannotVouchFor covers the three ways this reader
+// declines to hand back a page. The doc_id/page disagreement is the one that
+// needs the request as a witness: an artifact copied between extraction
+// directories agrees with itself perfectly.
+func TestGeometryRefusesWhatItCannotVouchFor(t *testing.T) {
+	tests := []struct {
+		name  string
+		files map[string]string
+		page  int
+		want  string
+	}{
+		{
+			name:  "a page the manifest does not list",
+			files: map[string]string{GeometryPath(1): geometryJSON("test-doc", 1, oneWord)},
+			page:  2,
+			want:  "geometry for page 2 (geometry/p0002.json)",
+		},
+		{
+			name:  "an artifact this reader cannot decode",
+			files: map[string]string{GeometryPath(1): `{"schema_version": 99}`},
+			page:  1,
+			want:  "geometry schema_version 99, want 1",
+		},
+		{
+			name:  "geometry from another document",
+			files: map[string]string{GeometryPath(1): geometryJSON("some-other-doc", 1, oneWord)},
+			page:  1,
+			want:  `declares doc_id "some-other-doc" page 1, but was read as test-doc page 1`,
+		},
+		{
+			name:  "geometry from another page",
+			files: map[string]string{GeometryPath(1): geometryJSON("test-doc", 7, oneWord)},
+			page:  1,
+			want:  "page 7, but was read as test-doc page 1",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := Open(docFS(t, tt.files))
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			_, err = d.Geometry(tt.page)
+			if err == nil {
+				t.Fatalf("Geometry(%d) = nil error, want one mentioning %q", tt.page, tt.want)
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Errorf("Geometry(%d) error = %q, want it to mention %q", tt.page, err, tt.want)
+			}
+		})
+	}
+}
+
+// TestGeometryUnlistedPageIsErrNotFound keeps the two substrates' failure
+// vocabularies identical, so a caller can treat "this document has no page 900"
+// the same way whichever one it asked for.
+func TestGeometryUnlistedPageIsErrNotFound(t *testing.T) {
+	d, err := Open(docFS(t, map[string]string{PagePath(1): "text"}))
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if _, err := d.Geometry(1); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Geometry(1) on a page with text but no geometry = %v, want ErrNotFound", err)
+	}
+	if _, err := d.Page(900); !errors.Is(err, ErrNotFound) {
+		t.Errorf("Page(900) = %v, want ErrNotFound", err)
+	}
+}
+
+// TestGeometryReadsTheCommittedCorpus is the claim the inline fixtures above
+// cannot make: that this reader and tools/extract.py still agree about the real
+// artifacts. It reads the spine's own geometry, which is what the column guard
+// will read.
+func TestGeometryReadsTheCommittedCorpus(t *testing.T) {
+	d, err := Open(os.DirFS(realDoc))
+	if err != nil {
+		t.Fatalf("Open(%s): %v", realDoc, err)
+	}
+	for _, page := range []int{66, 67} {
+		g, err := d.Geometry(page)
+		if err != nil {
+			t.Fatalf("Geometry(%d): %v", page, err)
+		}
+		if got, want := g.DocID, realDocID; got != want {
+			t.Errorf("p%d doc_id = %q, want %q", page, got, want)
+		}
+		// Every page of this schedule is a wall of figures; a page that decoded
+		// to a handful of words would mean the artifact contract moved.
+		if len(g.Words) < 100 {
+			t.Errorf("p%d decoded %d words, want the full page", page, len(g.Words))
+		}
+		if _, ok := g.MedianWordHeight(); !ok {
+			t.Errorf("p%d reports no median word height", page)
+		}
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/geom"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -280,10 +281,10 @@ func PagePath(n int) string { return fmt.Sprintf("pages/p%04d.txt", n) }
 // Both substrates are emitted for every page and both are needed: `-layout`
 // reproduces the printed grid in runs of spaces but says nothing about which
 // column a token belongs to on a sparse row, and geometry is what settles it
-// (docs/agents/conventions.md, "the extraction boundary"). Nothing in fisc reads
-// one of these yet, which is exactly why `fisc verify` has to know they should be
-// there: an extraction missing half its geometry would look complete until the
-// column guard lands and started reading it.
+// (docs/agents/conventions.md, "the extraction boundary"). [Doc.Geometry] is the
+// reader; `fisc verify` separately checks that both artifacts exist for every
+// page, because an extraction missing half its geometry looks complete right up
+// until a rule asks for the half that is gone.
 func GeometryPath(n int) string { return fmt.Sprintf("geometry/p%04d.json", n) }
 
 // Page returns the extracted layout text for page n.
@@ -300,6 +301,47 @@ func (d *Doc) Page(n int) (string, error) {
 		return "", fmt.Errorf("read %s page %d: %w", d.man.DocID, n, err)
 	}
 	return string(b), nil
+}
+
+// Geometry returns the word geometry for page n, the `-bbox` substrate.
+//
+// It mirrors [Doc.Page] exactly, including the failure vocabulary: a page the
+// manifest does not list is [ErrNotFound], which is the normal "no such page"
+// case and not a defect. There is deliberately no separate "this page has text
+// but no geometry" sentinel -- both artifacts are emitted for every page, so a
+// missing one is a broken extraction rather than a state a caller branches on,
+// and the message names the path either way.
+//
+// Unlike Page it also decodes, so a corrupt or unrecognised artifact fails here
+// rather than downstream. The doc_id and page it carries are checked against the
+// ones asked for: an artifact copied between extraction directories agrees with
+// itself, and the request is the only witness that can catch it -- the same
+// argument [OpenDoc] makes about a directory name.
+//
+// Nothing is cached. A caller reading the same page repeatedly is expected to
+// hold on to the result, as internal/mapping's resolver does.
+func (d *Doc) Geometry(n int) (*geom.Page, error) {
+	p := GeometryPath(n)
+	if _, ok := d.man.Artifacts[p]; !ok {
+		return nil, fmt.Errorf("%s geometry for page %d (%s): %w", d.man.DocID, n, p, ErrNotFound)
+	}
+	b, err := fs.ReadFile(d.fsys, p)
+	if err != nil {
+		return nil, fmt.Errorf("read %s geometry for page %d: %w", d.man.DocID, n, err)
+	}
+	g, err := geom.ParsePage(b)
+	if err != nil {
+		return nil, fmt.Errorf("%s (%s): %w", d.man.DocID, p, err)
+	}
+	if g.DocID != d.man.DocID || g.Number != n {
+		return nil, cmdutil.WithHint(
+			fmt.Errorf("%s declares doc_id %q page %d, but was read as %s page %d",
+				p, g.DocID, g.Number, d.man.DocID, n),
+			"a geometry artifact was copied or renamed between extractions; "+
+				"re-run make extract rather than moving files between "+
+				cmdutil.ExtractedDir+" directories")
+	}
+	return g, nil
 }
 
 // Artifacts is the manifest's record of every file the extractor emitted: the
