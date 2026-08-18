@@ -122,9 +122,11 @@ guidance is in [`docs/agents/`](docs/agents/); the `sankey.json` contract is
 
 Two things a newcomer should know. A git remote is configured but **nothing has
 been pushed to it**, so CI has never run and the site has never deployed —
-`dist/` is a local artifact. The Pages workflow
-([`.github/workflows/pages.yml`](.github/workflows/pages.yml)) is in place and
-publishes on push to `main`, once Pages is enabled for the repository (Settings
-→ Pages → Source → *GitHub Actions*). And the extracted page text is cited by a
-GitHub URL that does not resolve until that first push lands; that is
-`fisc-ze7`.
+`dist/` is a local artifact. The site publishes from the `pages-build` and
+`pages-deploy` jobs at the foot of
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) — in that file rather
+than a workflow of their own so they can `needs:` the checks, on a push to
+`main` that has already gone green, once Pages is enabled for the repository
+(Settings → Pages → Source → *GitHub Actions*). And the extracted page text is
+cited by a GitHub URL that does not resolve until that first push lands; that
+is `fisc-ze7`.

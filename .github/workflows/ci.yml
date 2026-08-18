@@ -23,19 +23,25 @@ name: CI
 # it now exists (fisc-1wr.5): it hashes each document against the sha256 that
 # data/sources.yaml and the extraction manifest independently record. It is NOT
 # run here, deliberately -- that job needs `lfs: true` and would spend the
-# bandwidth budget above on every push. A monthly schedule for it belongs to
-# fisc-gxa.5, which owns the scheduled workflows; a pointer-only checkout makes
-# that check report ERROR with `git lfs pull`, not a false failure, so the job
-# has to fetch for real.
+# bandwidth budget above on every push. A monthly schedule for it is fisc-v87;
+# a pointer-only checkout makes that check report ERROR with `git lfs pull`,
+# not a false failure, so the job has to fetch for real.
+#
+# The Pages deploy lives at the bottom of this file rather than in its own
+# workflow, and that placement is the whole point. Two workflows both triggered
+# by `push: main` are two CONCURRENT runs with no ordering between them, so the
+# deploy -- having fewer jobs -- would routinely publish before the tests
+# finished, and a red CI would arrive after the site was already live. As a job
+# here it can simply `needs:` the gates (fisc-60x).
 
 on:
   push:
     branches: [main]
   pull_request:
 
-# Read-only by default (byob-security.5). No job here writes to the repository
-# or publishes anything; the Pages deploy is a separate workflow with its own
-# narrower grant.
+# Read-only by DEFAULT (byob-security.5): this is the floor every job inherits,
+# and all but one keep it. The two Pages jobs at the bottom raise it on
+# themselves and nowhere else -- see the note above `pages-build`.
 permissions:
   contents: read
 
@@ -258,3 +264,69 @@ jobs:
       # exits 3 the moment a check actually fails.
       - name: Check the corpus
         run: ./bin/fisc verify
+
+  # ---------------------------------------------------------------- publish --
+  #
+  # Everything below this line only runs on a push to main that has already gone
+  # green. On a pull request the `if` is false and both jobs are skipped, so a
+  # fork PR can never reach the write scopes.
+  #
+  # The `needs` list IS the gate, and it is why nothing here re-runs a check:
+  # `facts` already proved facts.jsonl is what the rules produce, and `verify`
+  # already proved the corpus holds. A separate workflow could not depend on
+  # either and would have had to duplicate both.
+  #
+  # govulncheck is deliberately NOT in that list. Its result depends on a
+  # vulnerability database fetched at run time, not on the commit, so the same
+  # tree can be green today and red tomorrow -- and the published artefact is
+  # static HTML, CSS and vendored d3. No Go code ships, so nothing govulncheck
+  # reports can reach a visitor. Gating publication on it would mean the site
+  # stops being republishable for reasons that have nothing to do with the site.
+  pages-build:
+    name: package the site
+    needs: [lint, format, build, test, vet, tidy, facts, verify]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs the site does not read; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build
+      # Not `make site`: that target also prints the local "serve it" hint,
+      # which is noise in a runner log. Same command underneath. `fisc export`
+      # reads facts/facts.jsonl and never re-runs the mapping engine, so this
+      # cannot move a published figure -- it republishes what `fisc build`
+      # committed and the jobs above just finished checking.
+      - name: Export the site
+        run: ./bin/fisc export --clean
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist
+
+  pages-deploy:
+    name: deploy to Pages
+    needs: pages-build
+    runs-on: ubuntu-latest
+    # The only place in this file that is not read-only. Job-level permissions
+    # REPLACE the workflow-level block rather than adding to it, so this is the
+    # complete grant: no `contents`, because deploy-pages reads the uploaded
+    # artefact and not the repository.
+    permissions:
+      pages: write
+      id-token: write
+    # The workflow-wide concurrency group is per-ref and deliberately does not
+    # cancel on main, which is right for CI but leaves two quick pushes racing
+    # for one Pages deployment. This job takes its own group so those queue.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
