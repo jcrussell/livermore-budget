@@ -52,12 +52,26 @@ func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 // this is for the cases where none does.
 func inlineDoc(t *testing.T, docID string, pages map[int]string) *corpus.Doc {
 	t.Helper()
+	return inlineDocWithGeometry(t, docID, pages, nil)
+}
+
+// inlineDocWithGeometry is inlineDoc for a test that also needs the second
+// substrate, with each page's geometry written as the extractor writes it. A
+// page with no geometry entry gets none, so a test can also state what a
+// document missing that artifact does.
+func inlineDocWithGeometry(t *testing.T, docID string, pages, geometry map[int]string) *corpus.Doc {
+	t.Helper()
 	fsys := fstest.MapFS{}
 	artifacts := map[string]corpus.Artifact{}
-	for n, body := range pages {
-		name := corpus.PagePath(n)
+	add := func(name, body string) {
 		fsys[name] = &fstest.MapFile{Data: []byte(body)}
 		artifacts[name] = corpus.Artifact{Bytes: int64(len(body))}
+	}
+	for n, body := range pages {
+		add(corpus.PagePath(n), body)
+	}
+	for n, body := range geometry {
+		add(corpus.GeometryPath(n), body)
 	}
 	return openDoc(t, docID, fsys, artifacts)
 }
@@ -67,14 +81,18 @@ func testDoc(t *testing.T, doc fixtureDoc, pages []int) *corpus.Doc {
 	fsys := fstest.MapFS{}
 	artifacts := map[string]corpus.Artifact{}
 
+	// Both substrates, always. A document that carried page text without its
+	// geometry is not a shape the extractor can produce, and building one here
+	// would let a test pass against a corpus that cannot exist.
 	for _, p := range pages {
-		c := pageCopy(doc, p)
-		body, err := os.ReadFile(c.fixture)
-		if err != nil {
-			t.Fatalf("read page fixture: %v", err)
+		for _, c := range []fixtureCopy{pageCopy(doc, p), geometryCopy(doc, p)} {
+			body, err := os.ReadFile(c.fixture)
+			if err != nil {
+				t.Fatalf("read fixture: %v", err)
+			}
+			fsys[c.artifact] = &fstest.MapFile{Data: body}
+			artifacts[c.artifact] = corpus.Artifact{Bytes: int64(len(body))}
 		}
-		fsys[c.artifact] = &fstest.MapFile{Data: body}
-		artifacts[c.artifact] = corpus.Artifact{Bytes: int64(len(body))}
 	}
 
 	return openDoc(t, doc.id, fsys, artifacts)
@@ -116,6 +134,15 @@ func pageCopy(doc fixtureDoc, page int) fixtureCopy {
 		artifact: corpus.PagePath(page)}
 }
 
+// geometryCopy names the word-geometry fixture for one page of one document.
+// Both substrates are committed for every fixture page, because a document
+// carrying one and not the other is not a shape the real corpus can take.
+func geometryCopy(doc fixtureDoc, page int) fixtureCopy {
+	return fixtureCopy{doc: doc,
+		fixture:  fmt.Sprintf("../../testdata/geometry/%s-p%04d.json", doc.prefix, page),
+		artifact: corpus.GeometryPath(page)}
+}
+
 // extraction is the artifact this fixture was copied from.
 func (f fixtureCopy) extraction() string {
 	return fmt.Sprintf("../../data/extracted/%s/%s", f.doc.id, f.artifact)
@@ -128,11 +155,15 @@ func (f fixtureCopy) extraction() string {
 // row here and nothing else.
 func fixtureCopies() []fixtureCopy {
 	var out []fixtureCopy
-	for _, p := range []int{66, 67, 127} {
-		out = append(out, pageCopy(budgetFixtures, p))
+	for _, p := range fixturePages {
+		out = append(out, pageCopy(budgetFixtures, p), geometryCopy(budgetFixtures, p))
 	}
 	return out
 }
+
+// fixturePages is every page of the Budget Book committed under testdata/.
+// Each is there for a named failure mode; see testdata/README.md.
+var fixturePages = []int{66, 67, 127, 167}
 
 // TestFixturesAreVerbatimCopies is what makes every other test in this package
 // mean anything. The fixtures are copies, and `make extract` does not touch

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/geom"
 )
 
 // scriptedDoc is a hand-rolled doc, and the only one in this package: every
@@ -38,6 +40,17 @@ func newScriptedDoc(docID string, script map[int][]pageRead) *scriptedDoc {
 }
 
 func (d *scriptedDoc) DocID() string { return d.docID }
+
+// Geometry is the third method of doc, and this double has none to give.
+//
+// That is not a gap: this document exists to answer the same page differently
+// on successive reads, which is a question about memoization, and no part any
+// of its tests resolve asks for the column guard. A part that did would fail
+// here rather than resolve without a guard it believed it had, which is the
+// behaviour the required method was chosen for.
+func (*scriptedDoc) Geometry(n int) (*geom.Page, error) {
+	return nil, fmt.Errorf("scriptedDoc carries no geometry for page %d", n)
+}
 
 func (d *scriptedDoc) Page(n int) (string, error) {
 	reads, ok := d.script[n]

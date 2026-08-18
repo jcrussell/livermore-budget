@@ -15,6 +15,11 @@ Page fixtures are `.txt`, not `.md`, for the same reason `data/extracted/`
 switched: `pdftotext -layout` encodes the printed column grid in runs of
 spaces, and GitHub's blob view renders markdown and collapses them.
 
+Every fixture page carries **both** substrates — `pages/<doc>-pNNNN.txt` and
+`geometry/<doc>-pNNNN.json`. A document holding one without the other is not a
+shape the extractor can produce, so building one in a test would let it pass
+against a corpus that cannot exist.
+
 Each fixture is here because it encodes a specific failure mode found while
 validating the approach — none is a generic sample.
 
@@ -24,7 +29,21 @@ validating the approach — none is a generic sample.
 |---|---|---|
 | `pages/budget-p0066.txt` | Budget Book p66 | The citywide spine. Every control total ties to this page. Rows are "label followed by 4 numbers" (2 fund groups × 2 fiscal years), and it is the **label anchor** for p67. It also carries the running footer `BUDGET FY 2025-27 … Page 62`, whose bare page number parses as an amount — which is why every block on this page states a `stop_at`. |
 | `pages/budget-p0067.txt` | Budget Book p67 | The spine's continuation, and the nastiest case in the corpus: **no row labels at all** — identity is positional from p66, so a single missing row mismaps every row beneath it. This fixture is also the evidence for `fisc-c00`: it used to carry nine revenue rows because xberg's `strip_repeating_text` deleted the third of three identical all-dash rows, and the count assertion (72 ≠ 80) is what caught it. Any mapping engine must fail loudly here, not guess. |
+| `pages/budget-p0167.txt` | Budget Book p167 | General Fund expenditures by department × object category, and the page with the **tightest line structure in the corpus**: the smallest gap between two printed lines is 7.99pt against a 4.16pt clustering tolerance, and the gap in question is a wrapped department name (`Devel`) sitting immediately above a data row. It is also where a *wrapped label lands between a row's figures and the next row's label* (`fisc-0cs`), so the labelled read cannot yet read it — it is here for the geometry, not for a rule. |
 | `pages/budget-p0127.txt` | Budget Book p127 | General Fund revenue by source, and the **contra-revenue** case: ERAF and RPTTF are negative rows (~26% of gross property tax) that a Sankey cannot render as links. Also shows the 4-column shape (FY23-24 actual, FY24-25 revised, FY25-26, FY26-27) that makes every revenue line a trend series. |
+
+## Geometry
+
+`pdftotext -bbox` word boxes, one file per fixture page, read by `internal/geom`
+and by the resolver's column guard. Each is `[x0, y0, x1, y1, "text"]` per word,
+in points, y increasing downward.
+
+| Fixture | Source | Why |
+|---|---|---|
+| `geometry/budget-p0066.json` | Budget Book p66 | The labelled half of the spine. Four columns, and the page whose worst intra-line y0 spread (0.96pt against a 4.55pt tolerance) sets the floor the line grouping has to tolerate — and that one cluster is a mixed label/header line, `EXPENDITURES: General Fund Enterprise Funds`, not a data row. |
+| `geometry/budget-p0067.json` | Budget Book p67 | The label-less half, and the fixture the column guard is proved on: eight columns, 24 data lines, every one carrying exactly eight value words including four byte-identical all-dash rows. Its header line prints `FY 2025-26 / FY 2026-27` once per fund group and nowhere else on the page, which is what lets a rule name its columns without an ordinal. |
+| `geometry/budget-p0127.json` | Budget Book p127 | The four-column **labelled** shape, so the guard's labelled path is exercised against a real page rather than only against p66's four columns inside a padded block. |
+| `geometry/budget-p0167.json` | Budget Book p167 | The evidence for the filing rule. This page's `FY 2025-26` header spans x 421.99–469.01 while every figure under it *ends* at 477.8–477.9 — the figures are right-aligned to a grid offset ~+9pt right of the header text, so filing a value by whether it overlaps its header places none of them, and the tokens it loses are zero dashes. |
 
 ## Projections
 

@@ -9,17 +9,29 @@ import (
 	"unicode"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/geom"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // doc is the view of an extracted document a resolver needs. It is declared
-// here, in the consumer, and kept to the two methods actually used
-// (byob-interfaces.1, byob-interfaces.2). Keeping it to these two is why this
-// package does not import internal/corpus at all: rules are resolved against
-// page text and a document identity, and nothing else.
+// here, in the consumer, and kept to the methods actually used
+// (byob-interfaces.1, byob-interfaces.2). That is why this package does not
+// import internal/corpus at all: rules are resolved against a document
+// identity and the two substrates the extractor emits, and nothing else. The
+// geometry type is named through internal/geom, which is a leaf both this
+// package and the artifact reader depend on, so naming it here does not put
+// the artifact reader above the judgment layer.
+//
+// Geometry is a required method rather than an optional capability discovered
+// by type assertion, and the difference is the whole argument. With an
+// assertion, a document that did not implement it would resolve with the
+// column guard silently switched off -- and a guard that can be absent without
+// anything saying so is the quiet degradation this package exists to refuse. A
+// part that does not ask for the guard simply never calls it.
 type doc interface {
 	DocID() string
 	Page(n int) (string, error)
+	Geometry(n int) (*geom.Page, error)
 }
 
 // Resolution failures, distinguishable with errors.Is because they call for
