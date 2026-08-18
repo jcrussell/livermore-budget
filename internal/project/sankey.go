@@ -769,15 +769,23 @@ func caveats(h Headline, links []Link) []string {
 }
 
 // transferCaveat says the transfer legs do not pair up, and by how much.
+//
+// Its two claims are kept apart on purpose. That no link carries a transfer_id
+// IS caused by p76 being unmapped, and mapping it fixes that. The residual is
+// NOT, and mapping it will not fix that: p76's own grand total is the
+// transfers-in side to the cent, so the city itemises every transfer received
+// and none of the difference. An earlier wording joined the two with a "so"
+// and told the reader the gap was this project's backlog rather than the
+// document's. See fisc-5gk.3 for the arithmetic and the residual's
+// decomposition by fund group.
 func transferCaveat(h Headline) string {
-	const unpaired = "Transfer legs are unpaired: the p76 transfer schedule is not yet " +
-		"mapped (fisc-5gk.3), so "
+	const unpaired = "Transfer legs are unpaired: no link carries a transfer_id, because " +
+		"the p76 transfer schedule is not yet mapped (fisc-5gk.3). "
 	in, out := h.InternalTransferInCents, h.InternalTransferOutCents
 	if out == in {
 		return unpaired + fmt.Sprintf(
-			"no link carries a transfer_id. That transfers out and transfers in both "+
-				"total %s is not evidence the legs pair up; nothing has checked them "+
-				"against each other.", dollars(out))
+			"That transfers out and transfers in both total %s is not evidence the "+
+				"legs pair up; nothing has checked them against each other.", dollars(out))
 	}
 	verb := "exceed"
 	residual := out - in
@@ -786,9 +794,11 @@ func transferCaveat(h Headline) string {
 		residual = -residual
 	}
 	return unpaired + fmt.Sprintf(
-		"transfers out (%s) %s transfers in (%s) and no link carries a transfer_id. "+
-			"The %s difference is stated as headline.transfer_residual_cents rather "+
-			"than netted away or padded with an invented link.",
+		"Transfers out (%s) %s transfers in (%s), and mapping p76 would not close "+
+			"the %s difference: that schedule's own grand total is the transfers-in "+
+			"side, so the gap is the city's rather than this project's. It is stated "+
+			"as headline.transfer_residual_cents rather than netted away or padded "+
+			"with an invented link.",
 		dollars(out), verb, dollars(in), dollars(residual))
 }
 

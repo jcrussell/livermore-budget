@@ -1,7 +1,11 @@
 # A synthetic transfer schedule, for the totals policy. The pages it maps are
-# written by the test (build_test.go), because the corpus contains no page with
-# this shape yet: the real transfer schedule at Budget Book p76 extracts as four
-# disjoint text blocks and will be a manual rule.
+# written by the test (build_test.go) and are NOT the real transfer schedule,
+# which lives at Budget Book p76 and reads as 22 ordinary labelled rows
+# (internal/mapping/testdata/transfers-p76.yaml). The page numbers below are
+# synthetic too: 76-79 here name inline pages this file invents, not corpus
+# pages. An earlier version of this comment called p76 unextractable and
+# destined for a manual rule; that was true of the xberg extractor and not of
+# poppler (fisc-yqv, fisc-5gk.3).
 #
 # Between them the two rules here cover every case the policy has to separate:
 #

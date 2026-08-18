@@ -310,9 +310,11 @@ rules:
       ten revenue rows and "TOTAL REVENUES:" belong to spine-revenues;
       "TOTAL SOURCES" is the city's own control total and is claimed by no rule,
       because mapping a subtotal alongside its components double counts. FY2026
-      total across the six fund groups is $21,525,997, against $59,612,734 out;
-      the two do not balance here because the offsetting legs are on the p76
-      transfer schedule, which is not yet mapped (fisc-5gk.3).
+      total across the six fund groups is $21,525,997, against $59,612,734 out.
+      The two do not balance, and the p76 transfer schedule does not explain
+      why: p76 itemises transfers RECEIVED, its grand total is this row to the
+      cent, and the $38,086,737 difference is transfers PAID that the city
+      itemises nowhere (fisc-5gk.3).
     parts:
       - page: 66
         section: "REVENUES:"

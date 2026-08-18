@@ -1,0 +1,247 @@
+# Budget Book p76, "SUMMARY OF TRANSFERS" -- a RECONCILIATION fixture, not a
+# published mapping. It lives here and not in mappings/ on purpose: resolving it
+# proves what the page says, and nothing it produces is exported (fisc-5gk.3).
+#
+# WHY IT IS NOT PUBLISHABLE AS WRITTEN. Every row label below embeds the exact
+# run of spaces the PDF prints between the source fund and the destination fund
+# -- "Transfer From Low Income Hsng          to General Fund", ten spaces, not
+# one. That is the kerning of one release encoded in a rule file, and
+# testdata/spine.yaml own doctrine forbids it ("an anchor may not assume single
+# spacing"). It is tolerable HERE only because testdata/pages/ is pinned byte
+# for byte against data/extracted/ by TestFixturesAreVerbatimCopies, so a
+# re-layout breaks this loudly rather than silently.
+#
+# The reader has no other option today. A row identity on this page is TWO
+# printed fields -- a source fund and a destination fund -- with an arbitrary
+# gap between them, and Row carries a single Label matched as one substring. A
+# label of just the source ("Transfer From Low Income Hsng") leaves "to General
+# Fund" sitting where the figures are expected, and the read fails with
+# `cannot parse amount "to"`. A label of just the destination leaves the source
+# in the gap, where checkGap refuses it. Row needs a two-part label before this
+# page can move to mappings/: that is fisc-ffy, which blocks fisc-5gk.3.1.
+#
+# WHAT THE PAGE IS. 22 transfers, grouped by the fund group RECEIVING the money,
+# four columns each (FY23-24 actual, FY24-25 revised, and the two budget years),
+# and ONE grand total for the whole page rather than one per section -- which is
+# why the reconciliation sums across these six rules in Go rather than declaring
+# a total_row here.
+#
+# Three rows carry no source: their "Transfer From" continues from the row
+# above, so the label is the destination alone. That is the document own
+# shorthand, not a wrapped line.
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  - id: p76-transfers-in-general
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      Nine transfers into the General Fund. The section anchor carries its
+      trailing newline because "General Fund" also ends every one of these
+      nine row labels: without it the anchor matches a data row rather than
+      the section header.
+    parts:
+      - page: 76
+        section: "General Fund\n"
+        section_ordinal: 1
+        stop_at: "Enterprise Funds"
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          # The footnote marker. It is not a column and the page prints no
+          # header over it, but it sits between this row's last figure and the
+          # next row label, where checkGap refuses anything that is not
+          # whitespace. A skipped column is the only channel the schema has for
+          # "present in the text, produces nothing" -- and it is load-bearing
+          # here in a second way: amount.Parse reads "(10)" as NEGATIVE TEN
+          # DOLLARS, because negatives are parenthesised in these documents.
+          # Nothing downstream sees that value only because the column is
+          # skipped.
+          - {skip: true}
+    rows:
+      - {label: "Transfer From Low Income Hsng          to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Home Grant               to General Fund", category: "transfers/in"}
+      - {label: "Transfer From State Grant              to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Downtown Revital         to General Fund", category: "transfers/in"}
+      - {label: "Transfer From CASP Fee                 to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Downtown LMD             to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Other LMDs               to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Traffic Imp Fee          to General Fund", category: "transfers/in"}
+      - {label: "Transfer From State Gas Tax            to General Fund", category: "transfers/in"}
+
+  - id: p76-transfers-in-enterprise-a
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      The first four transfers into Enterprise funds. The block stops at
+      "Connection", the wrapped tail of "to LAVWMA / Wastewater Connection",
+      which prints on its own line BETWEEN that row figures and the next row
+      label. checkGap refuses it, so one printed section is read as two
+      rules. That is fisc-0cs, on a page outside the department schedules.
+    parts:
+      - page: 76
+        section: "Enterprise Funds"
+        stop_at: "Connection"
+        columns:
+          - {fund_group: enterprise, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+          # The footnote marker. It is not a column and the page prints no
+          # header over it, but it sits between this row's last figure and the
+          # next row label, where checkGap refuses anything that is not
+          # whitespace. A skipped column is the only channel the schema has for
+          # "present in the text, produces nothing" -- and it is load-bearing
+          # here in a second way: amount.Parse reads "(10)" as NEGATIVE TEN
+          # DOLLARS, because negatives are parenthesised in these documents.
+          # Nothing downstream sees that value only because the column is
+          # skipped.
+          - {skip: true}
+    rows:
+      - {label: "Transfer From General Fund             to Stormwater", category: "transfers/in"}
+      - {label: "Transfer From Wastewater               to Stormwater", category: "transfers/in"}
+      - {label: "to Wastewater Replacement", category: "transfers/in"}
+      - {label: "Transfer From Wastewater               to LAVWMA / Wastewater", category: "transfers/in"}
+
+  - id: p76-transfers-in-enterprise-b
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      The rest of the Enterprise section, resumed after the wrapped label.
+      Anchoring ON the fragment is what makes the split visible rather than
+      silent: if the city re-typesets that row onto one line, this anchor
+      vanishes and the rule fails closed instead of quietly reading a shorter
+      section.
+    parts:
+      - page: 76
+        section: "Connection"
+        stop_at: "Debt Service Funds"
+        columns:
+          - {fund_group: enterprise, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+          # The footnote marker. It is not a column and the page prints no
+          # header over it, but it sits between this row's last figure and the
+          # next row label, where checkGap refuses anything that is not
+          # whitespace. A skipped column is the only channel the schema has for
+          # "present in the text, produces nothing" -- and it is load-bearing
+          # here in a second way: amount.Parse reads "(10)" as NEGATIVE TEN
+          # DOLLARS, because negatives are parenthesised in these documents.
+          # Nothing downstream sees that value only because the column is
+          # skipped.
+          - {skip: true}
+    rows:
+      - {label: "Transfer From Water                    to Water Replacement", category: "transfers/in"}
+      - {label: "Transfer From Water Replace            to Water", category: "transfers/in"}
+
+  - id: p76-transfers-in-debt-service
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      Three transfers servicing debt. Two are paid by the General Fund; the
+      second omits its source label because it continues from the row above.
+    parts:
+      - page: 76
+        section: "Debt Service Funds"
+        stop_at: "Permanent Funds"
+        columns:
+          - {fund_group: debt-service, fiscal_year: 2024, basis: actual}
+          - {fund_group: debt-service, fiscal_year: 2025, basis: revised}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          # The footnote marker. It is not a column and the page prints no
+          # header over it, but it sits between this row's last figure and the
+          # next row label, where checkGap refuses anything that is not
+          # whitespace. A skipped column is the only channel the schema has for
+          # "present in the text, produces nothing" -- and it is load-bearing
+          # here in a second way: amount.Parse reads "(10)" as NEGATIVE TEN
+          # DOLLARS, because negatives are parenthesised in these documents.
+          # Nothing downstream sees that value only because the column is
+          # skipped.
+          - {skip: true}
+    rows:
+      - {label: "Transfer From General Fund             to 2020 COPS Series B", category: "transfers/in"}
+      - {label: "to 2022 COPS", category: "transfers/in"}
+      - {label: "Transfer From Host Comm Impact         to 2020 COPS Series A", category: "transfers/in"}
+
+  - id: p76-transfers-in-permanent
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      One transfer, and the only published money this project has found for
+      the seventh fund type: 19,533 in FY2023-24 and dashes in the other
+      three columns. pp.66-67 print no Permanent column at all (fisc-u8o), so
+      this rule reconciles against nothing on the spine -- and its
+      budget-year zeroes are exactly why the page grand total still ties to a
+      spine that has no room for it.
+    parts:
+      - page: 76
+        section: "Permanent Funds"
+        stop_at: "Special Revenue Funds"
+        columns:
+          - {fund_group: permanent, fiscal_year: 2024, basis: actual}
+          - {fund_group: permanent, fiscal_year: 2025, basis: revised}
+          - {fund_group: permanent, fiscal_year: 2026}
+          - {fund_group: permanent, fiscal_year: 2027}
+          # The footnote marker. It is not a column and the page prints no
+          # header over it, but it sits between this row's last figure and the
+          # next row label, where checkGap refuses anything that is not
+          # whitespace. A skipped column is the only channel the schema has for
+          # "present in the text, produces nothing" -- and it is load-bearing
+          # here in a second way: amount.Parse reads "(10)" as NEGATIVE TEN
+          # DOLLARS, because negatives are parenthesised in these documents.
+          # Nothing downstream sees that value only because the column is
+          # skipped.
+          - {skip: true}
+    rows:
+      - {label: "Transfer From Open Space               to Doolan Canyon Preserve Endow", category: "transfers/in"}
+
+  - id: p76-transfers-in-special-revenue
+    kind: transfer_in
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    note: >-
+      Three transfers into Special Revenue funds, and the last section on the
+      page. It stops at "$" because the grand total is the first line whose
+      figures carry one, every data row above being bare. Anchoring on the
+      total VALUE would be circular: it is the figure the reconciliation
+      exists to check.
+    parts:
+      - page: 76
+        section: "Special Revenue Funds"
+        stop_at: "$"
+        columns:
+          - {fund_group: special-revenue, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          # The footnote marker. It is not a column and the page prints no
+          # header over it, but it sits between this row's last figure and the
+          # next row label, where checkGap refuses anything that is not
+          # whitespace. A skipped column is the only channel the schema has for
+          # "present in the text, produces nothing" -- and it is load-bearing
+          # here in a second way: amount.Parse reads "(10)" as NEGATIVE TEN
+          # DOLLARS, because negatives are parenthesised in these documents.
+          # Nothing downstream sees that value only because the column is
+          # skipped.
+          - {skip: true}
+    rows:
+      - {label: "Transfer From General Fund             to Horizons", category: "transfers/in"}
+      - {label: "to Downtown LMD", category: "transfers/in"}
+      - {label: "Transfer From Measure D                to Import Mitigation Fee", category: "transfers/in"}
+

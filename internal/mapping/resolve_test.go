@@ -167,7 +167,7 @@ func fixtureCopies() []fixtureCopy {
 // fixturePages is every page committed under testdata/, by document. Each is
 // there for a named failure mode; see testdata/README.md.
 var fixturePages = map[string][]int{
-	budgetFixtures.id: {66, 67, 127, 167},
+	budgetFixtures.id: {66, 67, 76, 127, 167},
 	cipFixtures.id:    {29, 40},
 }
 

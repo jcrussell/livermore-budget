@@ -173,17 +173,46 @@ reconciling the chart against p66 will find three rows unaccounted for, so
 
 ## The transfer residual
 
-Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737,
-because the p76 transfer schedule is not yet mapped (`fisc-5gk.3`). So
-`transfer_id` is `""` on every link and `fisc-1wr.1`'s "every transfer_id has
-two equal legs" check is **vacuous** — it must report as such, not as a pass.
+Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737.
+Two separate facts sit behind that sentence and an earlier draft of this section
+ran them together.
+
+`transfer_id` is `""` on every link **because the p76 transfer schedule is not
+yet mapped** (`fisc-5gk.3`), so `fisc-1wr.1`'s "every transfer_id has two equal
+legs" check is **vacuous** — it must report as such, not as a pass. Mapping p76
+fixes this.
+
+The residual is **not** waiting on that mapping, and mapping p76 will not close
+it. p76's own grand total *is* the transfers-in side, to the cent: each of its
+destination sections equals the matching `TRANSFER IN:` cell on pp.66-67, and
+the General Fund's out-flows equal `TRANSFER OUT:`. The city itemises every
+transfer received and none of the difference, which sits where its own schedule
+never goes:
+
+| unexplained transfers out, FY2026 | |
+|---|---|
+| Capital Funds | 28,584,740 |
+| Enterprise Funds | 9,353,147 |
+| Special Revenue Funds | 108,850 |
+| Internal Service Funds | 40,000 |
+| **total** | **38,086,737** |
+
+Read those rows as *`TRANSFER OUT:` for the group, minus the transfers p76 shows
+that group **paying*** — attributed by the payer named in each row label, not by
+`out − in` per group. The two differ: Capital and Internal Service pay nothing
+p76 lists and receive nothing, so their whole `TRANSFER OUT:` is unexplained,
+while the General Fund's $10,037,797 is itemised in full and contributes zero.
+Only the first and last rows are pinned by a test today
+(`TestP76AccountsForTheInSideAndNoneOfTheResidual`), because attributing the
+other two needs a payer-to-fund-group lookup the fact model cannot yet carry
+(`fisc-4rh`).
 
 `fisc-1wr.4` asks for a residual node. This contract states the residual as
 `headline.transfer_residual_cents` instead, and has `verify` assert it equals
 out minus in. A synthetic link into `transfers/in` or out of `transfers/out`
 would unbalance that node, and splitting the $59.6M into matched and unmatched
-portions would publish a division the city never printed. The figure still goes
-stale-red the day p76 lands, which is the property that mattered.
+portions would publish a division the city never printed. What goes stale-red
+the day p76 lands is `transfer_id` and the vacuous check, not this figure.
 
 ## What the fund groups must satisfy
 

@@ -468,11 +468,14 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 // headlineTransferResidual asserts the transfer headline is the facts, and the
 // residual is the difference between its two halves.
 //
-// The residual is not zero and the caveats say why: the p76 transfer schedule is
-// unmapped, so transfers out exceed transfers in by $38,086,737. Publishing that
-// as a figure rather than as prose is what lets it go stale-red the day p76
-// lands (fisc-1wr.4), and this check is what makes it a figure that has been
-// checked.
+// The residual is not zero and the caveats say why. It is NOT waiting on the
+// p76 transfer schedule being mapped, which an earlier version of this comment
+// and of the caveat both said: p76's own grand total is the transfers-in side
+// to the cent, so mapping it pairs every leg the city itemises and leaves the
+// $38,086,737 exactly where it is (fisc-5gk.3, proved in
+// internal/mapping/transfers_p76_test.go). Publishing it as a figure rather
+// than as prose is what lets it move when the city's own schedules move
+// (fisc-1wr.4), and this check is what makes it a figure that has been checked.
 type headlineTransferResidual struct{}
 
 var _ Check = (*headlineTransferResidual)(nil)
