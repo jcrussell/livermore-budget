@@ -156,7 +156,7 @@ func (f fixtureCopy) extraction() string {
 // row here and nothing else.
 func fixtureCopies() []fixtureCopy {
 	var out []fixtureCopy
-	for _, doc := range []fixtureDoc{budgetFixtures, cipFixtures} {
+	for _, doc := range []fixtureDoc{budgetFixtures, cipFixtures, acfrFixtures} {
 		for _, p := range fixturePages[doc.id] {
 			out = append(out, pageCopy(doc, p), geometryCopy(doc, p))
 		}
@@ -169,6 +169,7 @@ func fixtureCopies() []fixtureCopy {
 var fixturePages = map[string][]int{
 	budgetFixtures.id: {66, 67, 76, 127, 167},
 	cipFixtures.id:    {29, 40},
+	acfrFixtures.id:   {177},
 }
 
 // TestFixturesAreVerbatimCopies is what makes every other test in this package

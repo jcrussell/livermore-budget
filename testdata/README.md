@@ -47,6 +47,12 @@ in points, y increasing downward.
 | `geometry/budget-p0127.json` | Budget Book p127 | The four-column **labelled** shape, so the guard's labelled path is exercised against a real page rather than only against p66's four columns inside a padded block. |
 | `geometry/budget-p0167.json` | Budget Book p167 | The evidence for the filing rule. This page's `FY 2025-26` header spans x 421.99–469.01 while every figure under it *ends* at 477.8–477.9 — the figures are right-aligned to a grid offset ~+9pt right of the header text, so filing a value by whether it overlaps its header places none of them, and the tokens it loses are zero dashes. |
 
+### ACFR
+
+| Fixture | Source | Why |
+|---|---|---|
+| `pages/acfr-p0177.txt` + `geometry/acfr-p0177.json` | ACFR p177 | The ten-year schedule of outstanding debt, and the page behind this project's most-cited claim — `amount.TestLeadingMinusIsReallyPositive`, quoted in `CLAUDE.md` and `conventions.md` as the worked example of proving a reading with arithmetic. That test reconciles a row **transcribed into its own comment**, and the transcription is of what *xberg* produced: a `-512,946` with an empty column's dash glued to the front. Poppler reads the row with the dashes standing alone, and no token of that shape survives anywhere in the corpus. Committed so the claim rests on the page. It earns its place twice over: nine of its ten rows tie to the city's printed total exactly and **FY2024 is short by $176,292, exactly its own Financed Purchases column** — a whole column missing from a total, not the ≤$5 rounding `fisc-2sd` declares. It is also a live `fisc-yun`: the FY2016 row prints a **standalone `$`** before each figure, so the resolver cannot read this page at all. |
+
 ### CIP
 
 | Fixture | Source | Why |

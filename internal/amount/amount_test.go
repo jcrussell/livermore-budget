@@ -251,6 +251,18 @@ func TestCentsString(t *testing.T) {
 // row proves the sign: only the POSITIVE reading reconciles to the printed
 // total. A parser that accepted the token at face value would be off by
 // twice the value and would still tie to nothing, silently.
+//
+// THE ROW ABOVE IS A TRANSCRIPTION, AND IT IS XBERG'S. The committed corpus
+// holds no token of that shape -- a leading minus on a grouped number occurs
+// zero times across all 786 extracted pages, and poppler reads this row with
+// the two dashes standing alone as the published zeros they are. The rule this
+// test defends is unchanged and still earns its place: fail closed, because the
+// glued form is unreadable rather than merely unusual, and a re-extraction
+// could produce it again. What changed is where the evidence lives.
+// internal/mapping.TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus reads the
+// same row off the committed page, and its companion reconciles all ten rows of
+// the schedule against the city's own totals. This package stays corpus-free on
+// purpose; the transcription below is the input shape, not a claim about a file.
 func TestLeadingMinusIsReallyPositive(t *testing.T) {
 	row := []string{"56,386,950", "2,440,343", "10,300,691", "13,003,050", "512,946"}
 	var sum Cents
