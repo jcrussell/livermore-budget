@@ -141,60 +141,6 @@ const FUND_COLOR_VAR = {
   "fund-group/debt-service": "--fund-debt-service",
 };
 
-/**
- * The two outer columns, top to bottom: revenue and other sources on the left,
- * spending and other uses on the right.
- *
- * Measured like FUND_ORDER above, but against a different quantity: this is
- * the order that crosses the fewest ribbons. It has to be a constant at all
- * because supplying d3-sankey a .nodeSort() gates off the re-sort that would
- * otherwise reorder a column during relaxation. The barycentre sweeps still
- * move nodes vertically; they can never swap two of them. Whatever order this
- * file gives is the order that gets drawn, so it may as well be a good one.
- * Dropping .nodeSort() is not the alternative on offer, because the fund
- * column's order is the palette result above and d3 would pick its own.
- *
- * Exact one-sided crossing minimisation against that fixed fund column (a
- * subset DP over n <= 12 nodes, so an optimum rather than a heuristic),
- * fewest crossings first and ties broken on the cents of ribbon overlap. On
- * FY2026 it takes the chart from 286 crossings and $1,023M of overlap to 177
- * and $491M. Those two figures both assume ribbons stacked correctly at each
- * node, which is not what d3-sankey leaves behind on its own; as this file
- * actually drew before restackLinks() existed the fall is 394 to 177. The 177
- * that remain are structural -- 12 sources into 6 fund groups into 7 uses is
- * dense -- and freeing the fund column too would buy only 9 more.
- *
- * Ordering is all this is. Nothing here decides what is drawn or how much of
- * it, and a node named in neither array still draws -- it sorts after both, by
- * value. Re-run tools/sankey_order.py after a data change and paste its output.
- * @type {string[]}
- */
-const SOURCE_ORDER = [
-  "fund-balance/draw",                   // Fund Balance Draw
-  "revenue/intergovernmental",           // Intergovernmental
-  "revenue/fines-and-forfeitures",       // Fines & Forfeitures
-  "revenue/licenses-and-permits",        // Licenses & Permits
-  "revenue/taxes/sales",                 // Sales Taxes
-  "revenue/use-of-money-and-property",   // Use of Money And Property
-  "revenue/miscellaneous-revenue",       // Miscellaneous Revenue
-  "revenue/taxes/other",                 // Other Taxes
-  "revenue/taxes/property",              // Property Taxes
-  "revenue/charges-for-services",        // Charges for Services
-  "revenue/contributions-outsourced",    // Contributions Outsourced
-  "transfers/in",                        // Transfers In
-];
-
-/** @type {string[]} */
-const USE_ORDER = [
-  "fund-balance/reserve-increase",       // Addition to Reserves
-  "transfers/out",                       // Transfers Out
-  "expenditure/wages-and-benefits",      // Wages & Benefits
-  "expenditure/services-and-supplies",   // Services & Supplies
-  "expenditure/capital-outlay",          // Capital Outlay
-  "fund-balance/contribution",           // Fund Balance Contribution
-  "expenditure/debt-services",           // Debt Services
-];
-
 /** Human wording for link.kind. The JSON's vocabulary is not English. */
 const KIND_LABEL = {
   external: "external money",
@@ -296,25 +242,50 @@ function nodeColor(node) {
 }
 
 /**
- * Sort key inside a column: a node's index in whichever measured order names
- * it. The three arrays never have to be told apart, because d3-sankey sorts
- * each column on its own and a node only ever appears in one of them.
+ * Sort key inside a column: where in the fund column this node's money sits.
  *
- * A node in none of them ranks last and falls to the caller's tie-break on
- * value. That is the case worth stating: it is what a new revenue category or
- * a future fiscal year hits, and it draws a correct chart with an unmeasured
- * corner rather than nothing at all.
+ * A fund group is simply its own place in FUND_ORDER. Everything else takes
+ * the value-weighted mean position of the fund groups it touches, so a node
+ * comes to rest opposite the funds it actually feeds or draws on. That is the
+ * barycentre heuristic, and it is roughly what d3 would compute for itself if
+ * this file were not overriding it -- which it has to, because supplying a
+ * .nodeSort() at all is what pins the fund column to the palette's order, and
+ * d3's own pass would reorder it.
+ *
+ * Sorting on this instead of on size is worth most of what the chart's legibility
+ * was losing: 394 ribbon crossings and $1,372M of overlapping ribbon become 195
+ * and $457M, measured by laying this graph out under node. An exact search --
+ * one-sided crossing minimisation is solvable for columns this small -- reaches
+ * 177 crossings, but spends $491M of overlap doing it, so the two are points on
+ * a frontier rather than a right and a wrong answer. A rule that reads the data
+ * is worth more here than 18 crossings: it needs no re-derivation when a
+ * category is added or the fiscal year rolls over.
+ *
+ * Ties are real and wanted. Three revenue categories touch only the General
+ * Fund, so all three score exactly its index and fall to the caller's tie-break
+ * on value, which stacks them beside their fund largest first.
  * @param {LaidNode} node
  * @returns {number}
  */
 function nodeRank(node) {
   const fund = FUND_ORDER.indexOf(node.id);
   if (fund >= 0) return fund;
-  const source = SOURCE_ORDER.indexOf(node.id);
-  if (source >= 0) return source;
-  const use = USE_ORDER.indexOf(node.id);
-  if (use >= 0) return use;
-  return 1000;
+
+  let weight = 0;
+  let place = 0;
+  for (const l of node.sourceLinks.concat(node.targetLinks)) {
+    const other = l.source === node ? l.target : l.source;
+    const at = FUND_ORDER.indexOf(other.id);
+    // Every link in this graph has exactly one fund-group end, so this skips
+    // nothing today; it is here so that a link that did not would be ignored
+    // rather than counted as position zero.
+    if (at < 0) continue;
+    place += at * l.value;
+    weight += l.value;
+  }
+  // A node whose links were all dropped as zero-valued has no position to
+  // average. It sorts to the top and its own value breaks the tie.
+  return weight === 0 ? 0 : place / weight;
 }
 
 /**
@@ -410,8 +381,8 @@ let keyActivation = { id: "", at: -Infinity };
  * and the last move is never followed by another sort, so a node can be left
  * handing its ribbons out in an order its neighbours no longer sit in. The
  * result is a pair of ribbons that cross immediately at the node face, for no
- * reason in the data -- 19 of them on FY2026, and 108 under the order this
- * file used to specify. Redoing the sort against the final positions is the
+ * reason in the data -- 14 of them on FY2026, and 108 under the order this
+ * file used to sort by. Redoing the sort against the final positions is the
  * whole fix.
  *
  * Widths are not touched, only the order they are stacked in, so each node's
@@ -458,9 +429,9 @@ function render() {
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
     .nodeAlign(D3.sankeyJustify)
-    // Supplying this is what switches d3's own ordering pass off, and so
-    // what makes both the colour adjacency and the crossing count properties
-    // of the page rather than of the library. See SOURCE_ORDER.
+    // Supplying this switches d3's own ordering pass off, which is what makes
+    // the fund column's colour adjacency a property of the page rather than of
+    // the library. nodeRank puts the crossing count back.
     .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
       nodeRank(a) - nodeRank(b) || b.value - a.value)
     .extent([[LABEL_GUTTER, 12], [width - LABEL_GUTTER, height - 12]]);
@@ -511,7 +482,7 @@ function render() {
     .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => { showTip(e, d); pin(d); })
     .on("blur", hideTip)
     // Activating a node isolates its flows, the same toggle the legend does
-    // for a fund group. Layout gets this chart down to 177 ribbon crossings
+    // for a fund group. Layout gets this chart down to 195 ribbon crossings
     // from 394 and no further -- the rest are structural in a graph this
     // dense -- so the way through them is to take one flow out at a time.
     //
