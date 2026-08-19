@@ -5,7 +5,7 @@
 [`workflow.md`](docs/agents/workflow.md) and
 [`conventions.md`](docs/agents/conventions.md).
 
-Orient with `bd prime`, then `bd ready --exclude-type=byob`.
+Orient with `bd prime`, then `bd ready --exclude-type=byob,epic`.
 
 Two rules are repeated here rather than only linked, because the generated
 beads block below contradicts the first of them and a pointer would not

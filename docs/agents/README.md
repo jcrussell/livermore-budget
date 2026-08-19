@@ -26,7 +26,7 @@ looks.
 
 ```bash
 bd prime                          # workflow context, commands, and memories
-bd ready --exclude-type=byob      # available work, byob decisions hidden
+bd ready --exclude-type=byob,epic # claimable work; byob decisions and epics hidden
 ```
 
 `bd prime` injects the project's memories, which carry the things a new

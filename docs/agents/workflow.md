@@ -23,10 +23,10 @@ Beads (`bd`) is the tracker. Do not use TodoWrite, TaskCreate, or markdown
 TODO lists.
 
 ```bash
-bd ready --exclude-type=byob   # available work
-bd show <id>                   # detail, dependencies, and blockers
-bd update <id> --claim         # claim before starting
-bd close <id> --reason "..."   # close with what actually happened
+bd ready --exclude-type=byob,epic  # claimable work; an epic is never claimable
+bd show <id>                       # detail, dependencies, and blockers
+bd update <id> --claim             # claim before starting
+bd close <id> --reason "..."       # close with what actually happened
 ```
 
 The roadmap is eight epics, `E1 Foundations` through `E8 Further projections`,
