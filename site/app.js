@@ -99,7 +99,7 @@
 /**
  * A link after layout: source and target are node objects, not ids.
  * @typedef {Omit<FiscLink,"source"|"target"> & {source:LaidNode, target:LaidNode,
- *   value:number, width:number, y0:number, y1:number}} LaidLink
+ *   value:number, width:number, y0:number, y1:number, index:number}} LaidLink
  */
 
 /** d3 and d3-sankey are vendored UMD bundles with no type declarations. */
@@ -140,6 +140,60 @@ const FUND_COLOR_VAR = {
   "fund-group/enterprise": "--fund-enterprise",
   "fund-group/debt-service": "--fund-debt-service",
 };
+
+/**
+ * The two outer columns, top to bottom: revenue and other sources on the left,
+ * spending and other uses on the right.
+ *
+ * Measured like FUND_ORDER above, but against a different quantity: this is
+ * the order that crosses the fewest ribbons. It has to be a constant at all
+ * because supplying d3-sankey a .nodeSort() gates off the re-sort that would
+ * otherwise reorder a column during relaxation. The barycentre sweeps still
+ * move nodes vertically; they can never swap two of them. Whatever order this
+ * file gives is the order that gets drawn, so it may as well be a good one.
+ * Dropping .nodeSort() is not the alternative on offer, because the fund
+ * column's order is the palette result above and d3 would pick its own.
+ *
+ * Exact one-sided crossing minimisation against that fixed fund column (a
+ * subset DP over n <= 12 nodes, so an optimum rather than a heuristic),
+ * fewest crossings first and ties broken on the cents of ribbon overlap. On
+ * FY2026 it takes the chart from 286 crossings and $1,023M of overlap to 177
+ * and $491M. Those two figures both assume ribbons stacked correctly at each
+ * node, which is not what d3-sankey leaves behind on its own; as this file
+ * actually drew before restackLinks() existed the fall is 394 to 177. The 177
+ * that remain are structural -- 12 sources into 6 fund groups into 7 uses is
+ * dense -- and freeing the fund column too would buy only 9 more.
+ *
+ * Ordering is all this is. Nothing here decides what is drawn or how much of
+ * it, and a node named in neither array still draws -- it sorts after both, by
+ * value. Re-run tools/sankey_order.py after a data change and paste its output.
+ * @type {string[]}
+ */
+const SOURCE_ORDER = [
+  "fund-balance/draw",                   // Fund Balance Draw
+  "revenue/intergovernmental",           // Intergovernmental
+  "revenue/fines-and-forfeitures",       // Fines & Forfeitures
+  "revenue/licenses-and-permits",        // Licenses & Permits
+  "revenue/taxes/sales",                 // Sales Taxes
+  "revenue/use-of-money-and-property",   // Use of Money And Property
+  "revenue/miscellaneous-revenue",       // Miscellaneous Revenue
+  "revenue/taxes/other",                 // Other Taxes
+  "revenue/taxes/property",              // Property Taxes
+  "revenue/charges-for-services",        // Charges for Services
+  "revenue/contributions-outsourced",    // Contributions Outsourced
+  "transfers/in",                        // Transfers In
+];
+
+/** @type {string[]} */
+const USE_ORDER = [
+  "fund-balance/reserve-increase",       // Addition to Reserves
+  "transfers/out",                       // Transfers Out
+  "expenditure/wages-and-benefits",      // Wages & Benefits
+  "expenditure/services-and-supplies",   // Services & Supplies
+  "expenditure/capital-outlay",          // Capital Outlay
+  "fund-balance/contribution",           // Fund Balance Contribution
+  "expenditure/debt-services",           // Debt Services
+];
 
 /** Human wording for link.kind. The JSON's vocabulary is not English. */
 const KIND_LABEL = {
@@ -242,18 +296,25 @@ function nodeColor(node) {
 }
 
 /**
- * Sort key inside a column. Fund groups take the measured order above;
- * everything else leads with the published categories and puts the transfer
- * and fund-balance endpoints below them, so the spine reads top-down.
+ * Sort key inside a column: a node's index in whichever measured order names
+ * it. The three arrays never have to be told apart, because d3-sankey sorts
+ * each column on its own and a node only ever appears in one of them.
+ *
+ * A node in none of them ranks last and falls to the caller's tie-break on
+ * value. That is the case worth stating: it is what a new revenue category or
+ * a future fiscal year hits, and it draws a correct chart with an unmeasured
+ * corner rather than nothing at all.
  * @param {LaidNode} node
  * @returns {number}
  */
 function nodeRank(node) {
   const fund = FUND_ORDER.indexOf(node.id);
   if (fund >= 0) return fund;
-  if (node.role === "transfer_in" || node.role === "transfer_out") return 100;
-  if (node.role.startsWith("fund_balance") || node.role === "reserve_increase") return 200;
-  return 0;
+  const source = SOURCE_ORDER.indexOf(node.id);
+  if (source >= 0) return source;
+  const use = USE_ORDER.indexOf(node.id);
+  if (use >= 0) return use;
+  return 1000;
 }
 
 /**
@@ -326,14 +387,60 @@ function link(label, href) {
 
 /** @type {FiscProjection | null} */
 let projection = null;
-/** Fund group id the legend has isolated, or "" for all of them. */
+/** Node id whose flows are isolated, or "" for all of them. */
 let isolated = "";
 /** @type {LaidNode | LaidLink | null} */
 let pinned = null;
+/**
+ * The node and timestamp of the last Enter/Space activation, so that the click
+ * some assistive tech synthesises from that same key press does not undo it.
+ * @type {{id:string, at:number}}
+ */
+let keyActivation = { id: "", at: -Infinity };
 
 /* ------------------------------------------------------------------ *
  * Chart
  * ------------------------------------------------------------------ */
+
+/**
+ * Re-stacks each node's ribbons in the order of the ends they run to.
+ *
+ * d3-sankey does this itself, but too early to be right. Its relaxation loop
+ * sorts a node's links by where the other end sits and then moves nodes again,
+ * and the last move is never followed by another sort, so a node can be left
+ * handing its ribbons out in an order its neighbours no longer sit in. The
+ * result is a pair of ribbons that cross immediately at the node face, for no
+ * reason in the data -- 19 of them on FY2026, and 108 under the order this
+ * file used to specify. Redoing the sort against the final positions is the
+ * whole fix.
+ *
+ * Widths are not touched, only the order they are stacked in, so each node's
+ * ribbons still fill exactly its own height.
+ * @param {{nodes:LaidNode[], links:LaidLink[]}} graph
+ */
+function restackLinks(graph) {
+  /** @param {(l:LaidLink) => LaidNode} end */
+  const byOtherEnd = (end) =>
+    /** @param {LaidLink} a @param {LaidLink} b */ (a, b) =>
+      end(a).y0 - end(b).y0 || a.index - b.index;
+
+  for (const node of graph.nodes) {
+    node.sourceLinks.sort(byOtherEnd((l) => l.target));
+    node.targetLinks.sort(byOtherEnd((l) => l.source));
+  }
+  for (const node of graph.nodes) {
+    let leaving = node.y0;
+    for (const l of node.sourceLinks) {
+      l.y0 = leaving + l.width / 2;
+      leaving += l.width;
+    }
+    let arriving = node.y0;
+    for (const l of node.targetLinks) {
+      l.y1 = arriving + l.width / 2;
+      arriving += l.width;
+    }
+  }
+}
 
 function render() {
   if (!projection) return;
@@ -351,8 +458,9 @@ function render() {
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
     .nodeAlign(D3.sankeyJustify)
-    // Fixing the vertical order is what makes the colour adjacency above a
-    // property of the page rather than of d3's crossing-minimisation.
+    // Supplying this is what switches d3's own ordering pass off, and so
+    // what makes both the colour adjacency and the crossing count properties
+    // of the page rather than of the library. See SOURCE_ORDER.
     .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
       nodeRank(a) - nodeRank(b) || b.value - a.value)
     .extent([[LABEL_GUTTER, 12], [width - LABEL_GUTTER, height - 12]]);
@@ -364,6 +472,7 @@ function render() {
     nodes: projection.nodes.map((n) => Object.assign({}, n)),
     links: projection.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
   });
+  restackLinks(graph);
 
   const gLinks = svg.append("g").attr("class", "links");
   const gNodes = svg.append("g").attr("class", "nodes");
@@ -392,13 +501,51 @@ function render() {
     .attr("class", /** @param {LaidNode} d */ (d) => "node" + (d.derived ? " derived" : ""))
     .attr("tabindex", 0)
     .attr("role", "button")
+    // The isolation is a toggle, and the legend announces its copy of it the
+    // same way. applyEmphasis keeps this in step.
+    .attr("aria-pressed", "false")
     .attr("aria-label", /** @param {LaidNode} d */ (d) => nodeDescription(d))
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointerleave", hideTip)
     .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => { showTip(e, d); pin(d); })
     .on("blur", hideTip)
-    .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => { e.stopPropagation(); pin(d); });
+    // Activating a node isolates its flows, the same toggle the legend does
+    // for a fund group. Layout gets this chart down to 177 ribbon crossings
+    // from 394 and no further -- the rest are structural in a graph this
+    // dense -- so the way through them is to take one flow out at a time.
+    //
+    // Both paths are here because neither covers everyone. An SVG
+    // g[role=button] does not synthesise a click from Enter the way a real
+    // button does, so click alone leaves the toggle mouse-only. Screen
+    // readers vary: some pass the key through and synthesise nothing, some
+    // synthesise a click and swallow the key, and some do both -- and that
+    // last case would fire the toggle twice and land back where it started,
+    // for exactly the readers the keydown was added for.
+    //
+    // Hence the guard, which is on the activation and not on the input
+    // device: a click on the node a key just activated is that key's own
+    // click. Every other click still toggles, including one synthesised by
+    // assistive tech that sent no key at all.
+    //
+    // Focus itself must not isolate. Tabbing the columns would strobe the
+    // whole chart, which is also why a held key is ignored.
+    .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
+      e.stopPropagation();
+      pin(d);
+      const echo = d.id === keyActivation.id && e.timeStamp - keyActivation.at < 500;
+      if (!echo) setIsolated(isolated === d.id ? "" : d.id);
+    })
+    .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      if (e.repeat) return;
+      e.preventDefault();
+      keyActivation = { id: d.id, at: e.timeStamp };
+      // Escape unpins while leaving focus where it was, so the panel can be
+      // empty here even though focus already pinned this node once.
+      pin(d);
+      setIsolated(isolated === d.id ? "" : d.id);
+    });
 
   node.append("rect")
     .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
@@ -445,7 +592,28 @@ function paint() {
   }
 }
 
-/** Applies the legend's isolation and the pinned selection to every mark. */
+/**
+ * Isolates one node's flows, or clears the isolation for "".
+ *
+ * Every path into this state goes through here -- the legend, a click on a
+ * node, Escape -- because the legend's pressed button and the dimming are two
+ * renderings of the same one variable, and the two drift apart the moment
+ * either is set on its own. Isolating a fund group by clicking its node has to
+ * light its legend button; isolating a revenue node has to clear whichever
+ * button was lit.
+ * @param {string} id
+ */
+function setIsolated(id) {
+  isolated = id;
+  for (const element of el("legend").querySelectorAll("button")) {
+    const button = /** @type {HTMLElement} */ (element);
+    const pressed = isolated !== "" && button.dataset.node === isolated;
+    button.setAttribute("aria-pressed", String(pressed));
+  }
+  applyEmphasis();
+}
+
+/** Applies the isolation and the pinned selection to every mark. */
 function applyEmphasis() {
   const svg = D3.select("#chart");
   svg.selectAll("path.link").classed("dim", /** @param {LaidLink} d */ (d) =>
@@ -457,6 +625,8 @@ function applyEmphasis() {
     return !d.sourceLinks.concat(d.targetLinks).some((l) =>
       l.source.id === isolated || l.target.id === isolated);
   });
+  svg.selectAll("g.node").attr("aria-pressed", /** @param {LaidNode} d */ (d) =>
+    String(d.id === isolated && isolated !== ""));
 }
 
 /* ------------------------------------------------------------------ *
@@ -621,18 +791,13 @@ function buildLegend() {
     if (!node) continue;
     const button = document.createElement("button");
     button.type = "button";
+    button.dataset.node = id;
     button.setAttribute("aria-pressed", "false");
     const key = h("span", "key");
     key.dataset.var = /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[id];
     button.append(key);
     button.append(document.createTextNode(node.label));
-    button.addEventListener("click", () => {
-      isolated = isolated === id ? "" : id;
-      for (const other of legend.querySelectorAll("button")) {
-        other.setAttribute("aria-pressed", String(other === button && isolated !== ""));
-      }
-      applyEmphasis();
-    });
+    button.addEventListener("click", () => setIsolated(isolated === id ? "" : id));
     legend.append(button);
   }
 }
@@ -791,13 +956,11 @@ async function main() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       hideTip();
-      isolated = "";
       pinned = null;
       // The panel is the pin made visible, so clearing one without the other
       // leaves provenance on screen for a flow that is no longer selected.
       resetDetail();
-      for (const b of el("legend").querySelectorAll("button")) b.setAttribute("aria-pressed", "false");
-      applyEmphasis();
+      setIsolated("");
     }
   });
   if (typeof window.matchMedia === "function") {
