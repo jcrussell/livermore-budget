@@ -201,6 +201,37 @@ type Part struct {
 	// "FY 2026" rather than "2026". ("2024-25" is fine; it is not an amount.)
 	ColumnHeaders []string `yaml:"column_headers"`
 
+	// WrappedLabels are the printed fragments this part's page wraps onto a
+	// line of their own, each written out verbatim.
+	//
+	// pdftotext -layout reproduces the printed page, and a long row label
+	// wraps. The tail lands BETWEEN one row's last figure and the next row's
+	// label, which is where checkGap refuses anything that is not whitespace:
+	//
+	//	Innovation & Economic Wages & Benefits   1,028,282  1,068,663 ...
+	//	Devel
+	//	                      Services & Supplies  1,610,950  2,592,436 ...
+	//
+	// skip: true cannot express it -- a skipped row still consumes one value
+	// per column and these fragments carry none.
+	//
+	// A DECLARATION RATHER THAN A RELAXATION, and that is the whole design.
+	// checkGap keeps refusing everything it refused before; the only text it
+	// now admits is a fragment an author wrote down after reading the page,
+	// matched in full rather than by pattern. Anything else between two rows
+	// is still an unmapped row, which is what the guard is for.
+	//
+	// It is declared on the PART rather than on a Row because a fragment is
+	// not reliably a row's own: Budget Book p167 wraps "INNOVATION & ECONOMIC
+	// DEVELOPEMENT TOTAL" onto a second line too, and under one-rule-per-
+	// division that TOTAL line belongs to no rule's row set.
+	//
+	// A declared fragment the page does not use is an error, for the same
+	// reason a stated_total_delta that now ties exactly is one: the
+	// declaration is a claim about the document, and a claim that has stopped
+	// being true must be removed rather than left to pass silently.
+	WrappedLabels []string `yaml:"wrapped_labels"`
+
 	// StatedTotalDeltas declares columns where the total the DOCUMENT prints
 	// is not the sum of the rows it totals, and by how much.
 	//

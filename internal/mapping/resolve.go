@@ -455,6 +455,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 	}
 
 	values := make([]Value, 0, len(rows)*ncols)
+	used := map[string]bool{}
 	cursor := 0
 	for i, row := range rows {
 		j := strings.Index(blk.Text[cursor:], row.Label)
@@ -465,7 +466,7 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 					"be the order the page prints them")
 		}
 		gap := blk.Text[cursor : cursor+j]
-		if err := r.checkGap(rule, p, gap, rows, i); err != nil {
+		if err := r.checkGap(rule, p, gap, rows, i, used); err != nil {
 			return nil, err
 		}
 
@@ -508,12 +509,29 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 		cursor = last.off - blk.Start + len(last.text)
 	}
 
-	// Anything after the last row's figures is a row the rule did not map.
-	if rest := blk.Text[cursor:]; strings.TrimSpace(rest) != "" {
-		return nil, fail("rows", fmt.Sprintf(
-			"%q follows the last mapped row but is not mapped", strings.TrimSpace(rest)),
-			"every row inside the block must be listed in rows, with skip: true "+
-				"if it should not produce facts")
+	// Anything after the last row's figures is a row the rule did not map --
+	// unless the page wrapped a label there, which is the same shape as a gap
+	// between two rows and is declared the same way.
+	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" {
+		if !slices.Contains(p.WrappedLabels, rest) {
+			return nil, fail("rows", fmt.Sprintf(
+				"%q follows the last mapped row but is not mapped", rest),
+				"every row inside the block must be listed in rows, with skip: true "+
+					"if it should not produce facts, or in wrapped_labels if the "+
+					"page wrapped a label onto its own line")
+		}
+		used[rest] = true
+	}
+	// A declared fragment the page did not use is a claim about the document
+	// that has stopped being true. Same direction as a stated_total_delta that
+	// now ties exactly: remove the declaration rather than let it pass.
+	for _, w := range p.WrappedLabels {
+		if !used[w] {
+			return nil, fail("wrapped_labels", fmt.Sprintf(
+				"%q is declared but does not appear between this part's rows", w),
+				"a wrapped label is a claim about what the page prints; remove "+
+					"the declaration when the page stops wrapping there")
+		}
 	}
 	return values, nil
 }
@@ -522,7 +540,8 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 // row's label. Before the first row the block may carry column headers, which
 // are words; between rows nothing at all may intervene, because anything that
 // does is a row the rule has not mapped.
-func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int) error {
+func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
+	used map[string]bool) error {
 	if i == 0 {
 		if strings.ContainsFunc(gap, unicode.IsDigit) {
 			return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
@@ -535,14 +554,20 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int) 
 		}
 		return nil
 	}
-	if strings.TrimSpace(gap) == "" {
+	trimmed := strings.TrimSpace(gap)
+	if trimmed == "" {
+		return nil
+	}
+	if slices.Contains(p.WrappedLabels, trimmed) {
+		used[trimmed] = true
 		return nil
 	}
 	return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
 		Page: p.Page, Field: "rows", Err: ErrNotFound,
 		Msg: fmt.Sprintf("%q sits between rows %q and %q but is not mapped",
-			strings.TrimSpace(gap), rows[i-1].Label, rows[i].Label)},
-		"add it to rows, with skip: true if it should not produce facts; "+
+			trimmed, rows[i-1].PrintedLabel(), rows[i].PrintedLabel())},
+		"add it to rows, with skip: true if it should not produce facts, or to "+
+			"wrapped_labels if the page wrapped a label onto its own line; "+
 			"leaving it out would publish a breakdown that does not add up")
 }
 

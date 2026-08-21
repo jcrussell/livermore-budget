@@ -274,6 +274,26 @@ func validateRule(r *Rule, errf errFunc) error {
 			return errf(r.ID, "parts", "page %d listed twice", p.Page)
 		}
 		pages[p.Page] = true
+		// A wrapped label is matched against the FULLY TRIMMED text of a gap,
+		// so a declaration carrying its own whitespace could never match and
+		// would fail later as a stale declaration rather than here as the typo
+		// it is. Blank and duplicate entries are refused for the same reason.
+		seenWrapped := map[string]bool{}
+		for _, w := range p.WrappedLabels {
+			field := fmt.Sprintf("parts[page %d].wrapped_labels", p.Page)
+			if strings.TrimSpace(w) == "" {
+				return errf(r.ID, field, "has a blank entry")
+			}
+			if strings.TrimSpace(w) != w {
+				return errf(r.ID, field,
+					"%q has leading or trailing whitespace; it is matched against "+
+						"the trimmed text of the gap", w)
+			}
+			if seenWrapped[w] {
+				return errf(r.ID, field, "%q is listed twice", w)
+			}
+			seenWrapped[w] = true
+		}
 		if len(p.Columns) == 0 {
 			return errf(r.ID, fmt.Sprintf("parts[page %d].columns", p.Page), "is empty")
 		}
