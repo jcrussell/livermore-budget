@@ -265,7 +265,28 @@ type Column struct {
 
 // Row is one labelled line and the classification it maps to.
 type Row struct {
-	Label      string `yaml:"label"`
+	Label string `yaml:"label"`
+
+	// LabelTail is a SECOND published anchor that identifies the row together
+	// with Label, for a page whose row identity is two printed fields with an
+	// arbitrary gap between them. Budget Book p76 prints
+	//
+	//	Transfer From Low Income Hsng          to General Fund   257,012 ...
+	//	Transfer From Home Grant               to General Fund     8,932 ...
+	//
+	// where neither field alone identifies the row: the source is not unique
+	// and the destination is not either. A single Label spanning both would
+	// have to spell out the run of spaces between them -- ten on one row,
+	// fifteen on the next -- which is the kerning of one release written into
+	// a rule file, and testdata/spine.yaml's doctrine forbids exactly that.
+	//
+	// The gap stays CHECKABLE rather than becoming a wildcard: the text
+	// between the two anchors must be whitespace and nothing else. That is
+	// what makes this a two-anchor match rather than a relaxation of the
+	// substring match -- a word appearing between the fields is still a row
+	// the rule has not accounted for.
+	LabelTail string `yaml:"label_tail"`
+
 	Category   string `yaml:"category"`
 	Department string `yaml:"department"`
 	Sign       Sign   `yaml:"sign"`
@@ -273,6 +294,29 @@ type Row struct {
 	// Skip marks a row that occupies a position but produces no facts, such
 	// as a subtotal that would double-count.
 	Skip bool `yaml:"skip"`
+}
+
+// Identity is the row's identity within its rule: both anchors when it has
+// two, the label alone when it has one. Uniqueness is enforced on this rather
+// than on Label, because two rows may legitimately share a source fund and
+// differ only in their destination.
+func (r Row) Identity() string {
+	if r.LabelTail == "" {
+		return r.Label
+	}
+	return r.Label + "\x1f" + r.LabelTail
+}
+
+// PrintedLabel is what the document printed for this row, as the fact's
+// row_label. Both anchors are published text, so a two-anchor row publishes
+// the pair -- joined by a single space, because the run the page prints
+// between them is typesetting rather than content, and the whole point of
+// LabelTail is that a rule may not assert it.
+func (r Row) PrintedLabel() string {
+	if r.LabelTail == "" {
+		return r.Label
+	}
+	return r.Label + " " + r.LabelTail
 }
 
 // LabelledPart returns the part that carries row labels for p, which is p

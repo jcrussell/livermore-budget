@@ -2,23 +2,27 @@
 # published mapping. It lives here and not in mappings/ on purpose: resolving it
 # proves what the page says, and nothing it produces is exported (fisc-5gk.3).
 #
-# WHY IT IS NOT PUBLISHABLE AS WRITTEN. Every row label below embeds the exact
-# run of spaces the PDF prints between the source fund and the destination fund
-# -- "Transfer From Low Income Hsng          to General Fund", ten spaces, not
-# one. That is the kerning of one release encoded in a rule file, and
-# testdata/spine.yaml own doctrine forbids it ("an anchor may not assume single
-# spacing"). It is tolerable HERE only because testdata/pages/ is pinned byte
-# for byte against data/extracted/ by TestFixturesAreVerbatimCopies, so a
-# re-layout breaks this loudly rather than silently.
+# ROW IDENTITY HERE IS TWO PRINTED FIELDS. A row on this page names a source
+# fund and a destination fund with an arbitrary run of spaces between them:
 #
-# The reader has no other option today. A row identity on this page is TWO
-# printed fields -- a source fund and a destination fund -- with an arbitrary
-# gap between them, and Row carries a single Label matched as one substring. A
-# label of just the source ("Transfer From Low Income Hsng") leaves "to General
-# Fund" sitting where the figures are expected, and the read fails with
-# `cannot parse amount "to"`. A label of just the destination leaves the source
-# in the gap, where checkGap refuses it. Row needs a two-part label before this
-# page can move to mappings/: that is fisc-ffy, which blocks fisc-5gk.3.1.
+#   Transfer From Low Income Hsng          to General Fund   257,012 ...
+#   Transfer From Home Grant               to General Fund     8,932 ...
+#
+# Neither field alone identifies a row -- nine rows here share "to General
+# Fund", and "Transfer From General Fund" appears against several destinations.
+# Every label below therefore carries `label` and `label_tail`, the row's two
+# published anchors, and says NOTHING about the gap between them (fisc-ffy).
+#
+# It used to spell that gap out: one label embedded ten spaces, the next
+# fifteen, because Row carried a single Label matched as one substring and
+# there was no other way to name the row. That was the kerning of one release
+# written into a rule file, which testdata/spine.yaml's doctrine forbids ("an
+# anchor may not assume single spacing"), and it is gone.
+#
+# The gap is still CHECKED, which is what makes this a two-anchor match rather
+# than a wildcard: only whitespace may separate the anchors, so a pair that
+# matched across a row boundary fails rather than filing one row's figures
+# under another row's identity.
 #
 # WHAT THE PAGE IS. 22 transfers, grouped by the fund group RECEIVING the money,
 # four columns each (FY23-24 actual, FY24-25 revised, and the two budget years),
@@ -64,15 +68,15 @@ rules:
           # skipped.
           - {skip: true}
     rows:
-      - {label: "Transfer From Low Income Hsng          to General Fund", category: "transfers/in"}
-      - {label: "Transfer From Home Grant               to General Fund", category: "transfers/in"}
-      - {label: "Transfer From State Grant              to General Fund", category: "transfers/in"}
-      - {label: "Transfer From Downtown Revital         to General Fund", category: "transfers/in"}
-      - {label: "Transfer From CASP Fee                 to General Fund", category: "transfers/in"}
-      - {label: "Transfer From Downtown LMD             to General Fund", category: "transfers/in"}
-      - {label: "Transfer From Other LMDs               to General Fund", category: "transfers/in"}
-      - {label: "Transfer From Traffic Imp Fee          to General Fund", category: "transfers/in"}
-      - {label: "Transfer From State Gas Tax            to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Low Income Hsng", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Home Grant", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From State Grant", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Downtown Revital", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From CASP Fee", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Downtown LMD", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Other LMDs", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From Traffic Imp Fee", label_tail: "to General Fund", category: "transfers/in"}
+      - {label: "Transfer From State Gas Tax", label_tail: "to General Fund", category: "transfers/in"}
 
   - id: p76-transfers-in-enterprise-a
     kind: transfer_in
@@ -105,10 +109,10 @@ rules:
           # skipped.
           - {skip: true}
     rows:
-      - {label: "Transfer From General Fund             to Stormwater", category: "transfers/in"}
-      - {label: "Transfer From Wastewater               to Stormwater", category: "transfers/in"}
+      - {label: "Transfer From General Fund", label_tail: "to Stormwater", category: "transfers/in"}
+      - {label: "Transfer From Wastewater", label_tail: "to Stormwater", category: "transfers/in"}
       - {label: "to Wastewater Replacement", category: "transfers/in"}
-      - {label: "Transfer From Wastewater               to LAVWMA / Wastewater", category: "transfers/in"}
+      - {label: "Transfer From Wastewater", label_tail: "to LAVWMA / Wastewater", category: "transfers/in"}
 
   - id: p76-transfers-in-enterprise-b
     kind: transfer_in
@@ -141,8 +145,8 @@ rules:
           # skipped.
           - {skip: true}
     rows:
-      - {label: "Transfer From Water                    to Water Replacement", category: "transfers/in"}
-      - {label: "Transfer From Water Replace            to Water", category: "transfers/in"}
+      - {label: "Transfer From Water", label_tail: "to Water Replacement", category: "transfers/in"}
+      - {label: "Transfer From Water Replace", label_tail: "to Water", category: "transfers/in"}
 
   - id: p76-transfers-in-debt-service
     kind: transfer_in
@@ -172,9 +176,9 @@ rules:
           # skipped.
           - {skip: true}
     rows:
-      - {label: "Transfer From General Fund             to 2020 COPS Series B", category: "transfers/in"}
+      - {label: "Transfer From General Fund", label_tail: "to 2020 COPS Series B", category: "transfers/in"}
       - {label: "to 2022 COPS", category: "transfers/in"}
-      - {label: "Transfer From Host Comm Impact         to 2020 COPS Series A", category: "transfers/in"}
+      - {label: "Transfer From Host Comm Impact", label_tail: "to 2020 COPS Series A", category: "transfers/in"}
 
   - id: p76-transfers-in-permanent
     kind: transfer_in
@@ -208,7 +212,7 @@ rules:
           # skipped.
           - {skip: true}
     rows:
-      - {label: "Transfer From Open Space               to Doolan Canyon Preserve Endow", category: "transfers/in"}
+      - {label: "Transfer From Open Space", label_tail: "to Doolan Canyon Preserve Endow", category: "transfers/in"}
 
   - id: p76-transfers-in-special-revenue
     kind: transfer_in
@@ -241,7 +245,7 @@ rules:
           # skipped.
           - {skip: true}
     rows:
-      - {label: "Transfer From General Fund             to Horizons", category: "transfers/in"}
+      - {label: "Transfer From General Fund", label_tail: "to Horizons", category: "transfers/in"}
       - {label: "to Downtown LMD", category: "transfers/in"}
-      - {label: "Transfer From Measure D                to Import Mitigation Fee", category: "transfers/in"}
+      - {label: "Transfer From Measure D", label_tail: "to Import Mitigation Fee", category: "transfers/in"}
 

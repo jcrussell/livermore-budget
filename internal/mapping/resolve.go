@@ -470,6 +470,25 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 		}
 
 		after := cursor + j + len(row.Label)
+		if row.LabelTail != "" {
+			k := strings.Index(blk.Text[after:], row.LabelTail)
+			if k < 0 {
+				return nil, fail("rows", fmt.Sprintf(
+					"row %q: second anchor %q does not occur after it",
+					row.Label, row.LabelTail),
+					"label_tail names the row's second printed field; both must be "+
+						"on the row, in the order the page prints them")
+			}
+			if between := blk.Text[after : after+k]; strings.TrimSpace(between) != "" {
+				return nil, fail("rows", fmt.Sprintf(
+					"row %q: %q sits between it and %q", row.Label,
+					strings.TrimSpace(between), row.LabelTail),
+					"the two anchors identify one row, so only whitespace may "+
+						"separate them; a word here means the anchors matched "+
+						"different rows")
+			}
+			after += k + len(row.LabelTail)
+		}
 		toks, err := dropCurrencyMarks(tokens(blk.Text[after:], blk.Start+after))
 		if err != nil {
 			return nil, fail("rows", fmt.Sprintf("row %q: %s", row.Label, err), currencyHint)

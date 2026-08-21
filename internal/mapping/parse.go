@@ -229,12 +229,20 @@ func validateRule(r *Rule, errf errFunc) error {
 		if row.Label == "" {
 			return errf(r.ID, "rows", "row %d has no label", i)
 		}
-		if rowIndex[row.Label] {
+		if row.LabelTail != "" && strings.TrimSpace(row.LabelTail) != row.LabelTail {
+			return errf(r.ID, "rows",
+				"row %q: label_tail %q has leading or trailing whitespace",
+				row.Label, row.LabelTail)
+		}
+		if row.LabelTail != "" && strings.TrimSpace(row.LabelTail) == "" {
+			return errf(r.ID, "rows", "row %q: label_tail is blank", row.Label)
+		}
+		if rowIndex[row.Identity()] {
 			return cmdutil.WithHint(
-				errf(r.ID, "rows", "duplicate row label %q", row.Label),
+				errf(r.ID, "rows", "duplicate row label %q", row.PrintedLabel()),
 				"row labels are positional identities; two rows cannot share one")
 		}
-		rowIndex[row.Label] = true
+		rowIndex[row.Identity()] = true
 		if !row.Sign.valid() {
 			return errf(r.ID, "rows", "row %q: sign %q, want positive or contra",
 				row.Label, row.Sign)

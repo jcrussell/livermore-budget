@@ -223,7 +223,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			Scope:       rule.Scope,
 			FiscalYear:  v.Column.FiscalYear,
 			RowPath:     rowPath,
-			RowLabel:    v.Row.Label,
+			RowLabel:    v.Row.PrintedLabel(),
 			Category:    v.Row.Category,
 			Department:  v.Row.Department,
 			ColumnPath:  columnPath,

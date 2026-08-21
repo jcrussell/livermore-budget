@@ -100,15 +100,15 @@ func readP76(t *testing.T) p76Read {
 		// still add up.
 		source := ""
 		for _, v := range vals {
-			if s, ok := transferSource(v.Row.Label); ok {
+			if s, ok := transferSource(v.Row); ok {
 				source = s
 			}
 			if source == "" {
 				t.Fatalf("rule %s row %q: no payer named by it or any row above "+
 					"it in this block, so the source side cannot be read",
-					rule.ID, v.Row.Label)
+					rule.ID, v.Row.PrintedLabel())
 			}
-			out.rowLabels[v.Row.Label] = true
+			out.rowLabels[v.Row.PrintedLabel()] = true
 			out.byGroupYear[groupYear{v.Column.FundGroup, v.Column.FiscalYear}] += v.Cents
 			out.bySourceYear[sourceYear{source, v.Column.FiscalYear}] += v.Cents
 			out.byColumn[v.ColumnIndex] += v.Cents
@@ -119,16 +119,20 @@ func readP76(t *testing.T) p76Read {
 
 // transferSource returns the fund named after "Transfer From" in a p76 row
 // label, and false for the three rows that omit it.
-func transferSource(label string) (string, bool) {
+// transferSource reads the paying fund off a row's FIRST anchor.
+//
+// It used to cut the label on a run of two spaces, because the label was the
+// whole printed line and the two fields were separated by the page's own
+// kerning. That made this helper a second copy of the defect fisc-ffy was
+// filed for -- it would have broken on a re-layout exactly as the rule file
+// would. With Row.LabelTail the source IS Row.Label and the destination is
+// Row.LabelTail, so there is nothing left to split.
+func transferSource(row Row) (string, bool) {
 	const prefix = "Transfer From "
-	if !strings.HasPrefix(label, prefix) {
+	if !strings.HasPrefix(row.Label, prefix) || row.LabelTail == "" {
 		return "", false
 	}
-	name, _, ok := strings.Cut(label[len(prefix):], "  ")
-	if !ok {
-		return "", false
-	}
-	return strings.TrimSpace(name), true
+	return strings.TrimSpace(row.Label[len(prefix):]), true
 }
 
 // TestP76IsAnOrdinaryLabelledRead is the claim that retired this page's
