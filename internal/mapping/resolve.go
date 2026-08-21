@@ -470,7 +470,10 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 		}
 
 		after := cursor + j + len(row.Label)
-		toks := tokens(blk.Text[after:], blk.Start+after)
+		toks, err := dropCurrencyMarks(tokens(blk.Text[after:], blk.Start+after))
+		if err != nil {
+			return nil, fail("rows", fmt.Sprintf("row %q: %s", row.Label, err), currencyHint)
+		}
 		if len(toks) < ncols {
 			return nil, fail("rows", fmt.Sprintf(
 				"row %q is followed by %d values, want %d (one per column)",
@@ -848,3 +851,52 @@ func isSpace(b byte) bool {
 	}
 	return false
 }
+
+// currencyHint is the guidance for a standalone currency mark the tokenizer
+// could not attach to a figure.
+const currencyHint = "a '$' printed as its own token belongs to the figure after " +
+	"it; one with no figure after it is not a currency mark and the rule is " +
+	"reading past the end of the row"
+
+// dropCurrencyMarks removes tokens that are a currency mark and nothing else,
+// so a row printed as "$ 1,234  $ 5,678" reads as two figures rather than four
+// tokens the amount grammar cannot parse. 236 of the corpus's 786 pages print
+// the dollar sign detached from its figure; pp.66-67 print none, which is why
+// turning this on cannot move a byte of facts.jsonl.
+//
+// It DROPS the mark rather than joining it to the figure, and that is the whole
+// design. A joined token would be a string this project synthesized: Value
+// carries the token text and its offset straight through to the published fact,
+// and fisc verify's fact-offset-points-at-token asserts
+// text[Offset:Offset+len(Token)] == Token against the page. The page bytes at a
+// detached mark are "$      1,2", so a synthesized "$1,234" would fail that
+// check on every row it touched. The figure's own token is already exactly what
+// the document printed and already points at itself.
+//
+// A mark with no figure after it is an error, not a silent drop. That is the
+// case where the read has run off the end of the row, which is the failure the
+// column guard exists to catch and must not be laundered into a shorter token
+// list.
+func dropCurrencyMarks(toks []token) ([]token, error) {
+	if !slices.ContainsFunc(toks, func(t token) bool { return isCurrencyMark(t.text) }) {
+		return toks, nil
+	}
+	out := make([]token, 0, len(toks))
+	for i, t := range toks {
+		if !isCurrencyMark(t.text) {
+			out = append(out, t)
+			continue
+		}
+		if i+1 >= len(toks) || isCurrencyMark(toks[i+1].text) {
+			return nil, fmt.Errorf("%q is a currency mark with no figure after it", t.text)
+		}
+	}
+	return out, nil
+}
+
+// isCurrencyMark reports whether a token is a currency symbol carrying no
+// digits. The set is closed on purpose: amount.Parse rejects a bare "$" and
+// must keep doing so, so this is the one place that knows the mark can stand
+// alone, and it recognises only the mark itself rather than any token the
+// amount grammar happens to reject.
+func isCurrencyMark(s string) bool { return s == "$" }

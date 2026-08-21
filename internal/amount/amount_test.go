@@ -147,10 +147,12 @@ func TestParseRejects(t *testing.T) {
 // TestBareCurrencyMarkStaysARejection pins the one rejection this package has
 // been under pressure to give up.
 //
-// 246 of the corpus's 786 pages print a marked figure as two whitespace-
+// 236 of the corpus's 786 pages print a marked figure as two whitespace-
 // delimited tokens — "Total Uses 6/30/24 $ 123,228,190" — so a reader that
-// takes the next N tokens after a row label takes marks where it wants figures
-// and fails (fisc-yun, open). Accepting a bare "$" as something — zero, absent,
+// takes the next N tokens after a row label took marks where it wanted figures
+// and failed. internal/mapping's dropCurrencyMarks now drops the mark in the
+// resolver, where the caller knows it is looking for N amounts; this package's
+// rejection is what makes that the only place the mark can be handled. Accepting a bare "$" as something — zero, absent,
 // a token to skip — is the obvious way to make that go away and the wrong one:
 // it would mean a cell whose figure the extractor lost, leaving only the mark
 // it was printed with, reads as a value rather than as the failure it is.
