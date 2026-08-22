@@ -1,0 +1,108 @@
+name: verify --full
+
+# The one check in this project that reads data/pdf/.
+#
+# `fisc verify --full` recomputes the sha256 of each source PDF and compares it
+# against BOTH data/sources.yaml and the extraction manifest. That is a real
+# cross-check rather than a tautology because the two record the hash
+# independently: tools/extract.py never reads data/sources.yaml (it discovers
+# work from data/pdf/<doc-id>.pdf and records the hash it computed itself), so
+# the registry and the manifest are two parties agreeing about the same bytes.
+# Give Python a YAML parser and the check collapses into one party agreeing
+# with itself; see the `python-has-no-yaml-by-design` memory.
+#
+# WHY THIS IS ITS OWN FILE AND NOT A JOB IN ci.yml
+#
+# ci.yml sets GIT_LFS_SKIP_SMUDGE workflow-wide and every checkout in it passes
+# `lfs: false`. A job added there would inherit the smudge-skip, `data/pdf/*`
+# would be 130-byte pointer files, and `verify --full` would report the check
+# as ERROR ("an unsmudged Git LFS pointer ... run git lfs pull") instead of
+# hashing anything. That is the correct behaviour -- it refuses to hash a
+# pointer and call it a PDF -- but it makes for a job that never once does the
+# thing it exists to do. Workflow-level env cannot be unset by a job, so the
+# only way to get a real smudge is a file that never sets it. This file
+# therefore sets NO env block at all, deliberately: the absence is the point.
+#
+# WHY MONTHLY AND NOT PER-PUSH
+#
+# data/pdf/** is the only thing in Git LFS (3 files, ~67 MB). GitHub's free LFS
+# tier is 1 GB of bandwidth a month, so ~14 smudged checkouts would exhaust it
+# and every job in the repository -- including all of ci.yml, which spends none
+# of that budget itself -- would start failing on a quota error that looks
+# nothing like its cause. This is the same arithmetic as ci.yml's header note,
+# and it is why that file goes to the trouble of skipping the smudge twice
+# over. One scheduled run a month is ~67 MB against 1024 MB, which leaves the
+# budget essentially intact and still answers the question the check asks:
+# have the bytes on disk drifted from what the two registries claim? Those
+# bytes change only when a source document is replaced, which is a rare,
+# deliberate act -- so a monthly cadence is proportionate to the risk, and
+# per-push would be paying a recurring cost for an event that does not recur.
+#
+# Run it by hand from the Actions tab (workflow_dispatch, below) rather than
+# waiting for the schedule after touching data/pdf/, data/sources.yaml or
+# data/extracted/*/manifest.json.
+
+on:
+  schedule:
+    # 06:17 UTC on the 1st of each month. Off the hour on purpose: scheduled
+    # workflows queue against a shared pool and runs at :00 are the most
+    # delayed. Note two GitHub behaviours this cadence lives with -- schedules
+    # only ever run from the default branch, so editing this file on a branch
+    # does not change what is scheduled until it lands on main; and GitHub
+    # disables scheduled workflows in a repository with 60 days of no commit
+    # activity, which for a corpus that changes rarely is a plausible state to
+    # end up in. workflow_dispatch is the escape hatch for both.
+    - cron: "17 6 1 * *"
+  workflow_dispatch:
+
+# Read-only, the same floor ci.yml sets (byob-security.5). This workflow
+# publishes nothing and needs no other scope.
+permissions:
+  contents: read
+
+# A manual dispatch that lands on top of a scheduled run supersedes it: both
+# would download the same ~67 MB to ask the same question of the same commit.
+# Cancelling the older one stops it spending any more of the budget.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  verify-full:
+    name: source PDFs match both records
+    runs-on: ubuntu-latest
+    steps:
+      # The one checkout in this repository that fetches LFS for real. `lfs:
+      # true` is what makes the smudge happen; with no GIT_LFS_SKIP_SMUDGE in
+      # scope there is nothing to override it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: true # ~67 MB, once a month; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - run: make build
+      # Assert the checkout actually smudged before spending a build on it. If
+      # something reintroduced the smudge-skip, `git lfs ls-files` marks each
+      # object `-` (pointer) instead of `*` (present), and `verify --full`
+      # would report ERROR rather than a hash mismatch -- a distinction that is
+      # easy to lose in a log nobody reads for eleven months at a time. Fail
+      # here, where the message says what went wrong.
+      - name: Check the PDFs are real files and not LFS pointers
+        run: |
+          if git lfs ls-files | grep -q '^[0-9a-f]* - '; then
+            echo "data/pdf/ checked out as Git LFS pointers, not PDFs." >&2
+            echo "This workflow must not inherit GIT_LFS_SKIP_SMUDGE and its" >&2
+            echo "checkout must set 'lfs: true'; see the header note." >&2
+            git lfs ls-files >&2
+            exit 1
+          fi
+          git lfs ls-files
+      # Not --strict, for the same reason ci.yml's `verify` job is not: several
+      # checks are vacuous until later work lands, and a permanently red gate
+      # gets commented out. `verify` still exits non-zero the moment a check
+      # actually fails, which is what this run is for. --full adds exactly one
+      # check to the ci.yml run -- source-pdfs-match-both-records, reported
+      # there as SKIPPED on every push.
+      - name: Hash the source PDFs against both records
+        run: ./bin/fisc verify --full
