@@ -172,6 +172,7 @@ func All() []Check {
 		&factTokenReparses{},
 		&factOffsetPointsAtToken{},
 		&factVocabulary{},
+		&factKindMatchesCategory{},
 		&factDepartmentsResolve{},
 		&factFundsResolve{},
 

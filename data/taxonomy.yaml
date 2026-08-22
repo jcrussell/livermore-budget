@@ -357,15 +357,16 @@ categories:
   #@cite     revenue and expenditure blocks; no combined subtotal is printed
   - slug: transfers
     label: "Transfers"
-    kinds: [transfer]
+    kinds: [transfer_in, transfer_out]
     assignable: false
     derived: true
     rationale: >-
       A rollup node, same status as `taxes`: the city prints transfers in and
-      transfers out but never a net or gross "Total Transfers". Direction has
-      to live in the category because a transfer's `kind` is only "transfer";
-      a rule that wrote `category: transfers` would produce a figure whose sign
-      cannot be recovered.
+      transfers out but never a net or gross "Total Transfers". Direction lives
+      in the category, which is why this node is not assignable: a rule that
+      wrote `category: transfers` would produce a figure whose sign cannot be
+      recovered from its slug. It declares both directions because a rollup's
+      kinds are the union of its children's, not a family of its own.
     source_note: >-
       Budget Book p. 66 (TRANSFER IN:, TRANSFER OUT:); pp. 68-75 (Transfers In
       under Available Funds, Transfers Out under Uses of Funds — two facing
@@ -379,7 +380,7 @@ categories:
     label: "Transfers In"
     document_term: "Transfers In"
     parent: transfers
-    kinds: [transfer]
+    kinds: [transfer_in]
     pages: [68, 70, 72, 74, 131, 132, 134, 136, 138, 139, 140]
     aliases:
       #@cite p0066 "TRANSFER IN:" — the spine's singular, all-caps, colon form
@@ -395,7 +396,7 @@ categories:
     label: "Transfers Out"
     document_term: "Transfers Out"
     parent: transfers
-    kinds: [transfer]
+    kinds: [transfer_out]
     pages: [69, 71, 73, 75]
     aliases:
       - term: "TRANSFER OUT:"
@@ -410,7 +411,7 @@ categories:
     label: "Transfers Out to CIP"
     document_term: "Transfers Out to CIP"
     parent: transfers
-    kinds: [transfer]
+    kinds: [transfer_out]
     pages: [69, 71, 73, 75]
     note: >-
       A SIBLING of transfers/out, not a subset of it, despite the name. On

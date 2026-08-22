@@ -7,6 +7,9 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
 // factVocabulary asserts every category and fund group a fact carries resolves in
@@ -85,6 +88,98 @@ func unassignable(v Vocabulary, slug string) string {
 			slug, c.Label)
 	}
 	return fmt.Sprintf("category %q is not defined in data/taxonomy.yaml", slug)
+}
+
+// factKindMatchesCategory asserts every fact's kind is one its category declares.
+//
+// data/taxonomy.yaml carries a `kinds:` list on every category and registry.Load
+// requires it to be non-empty, and until this check nothing read it. So the two
+// halves of a fact's classification were each valid alone and never valid
+// TOGETHER:
+//
+//	category: transfers/in  +  kind: revenue
+//
+// resolves clean against factVocabulary, which asks only whether the slug is
+// assignable.
+//
+// That pair is not hypothetical. Budget Book pp.131-140 print eleven funds whose
+// single `Total <fund>` covers revenue rows AND a Transfers In row — p131's
+// Stormwater is Charges for Services 1,169,000 + Transfers In 3,247,000 =
+// 4,416,000, and the taxonomy's `transfers` entry records the trap in as many
+// words. A rule author reaching for that printed total as a total_row, without a
+// per-row kind, makes the Transfers In row revenue to make the fund tie. Enterprise
+// revenue then reads 80,761,261 against the 67,514,261 pp.66-67 print (fisc-u2v,
+// failure route 3).
+//
+// A fund-group reconciliation would catch that too, and later. This one fails at
+// the fact, naming the row and the two strings that disagree, which is the
+// difference between a finding an author can act on and an aggregate they have to
+// bisect.
+//
+// DIRECTION is caught here too, by the same literal comparison and not by a second
+// check: transfers/in declares transfer_in and transfers/out declares
+// transfer_out, so a transfer filed under the wrong one carries a kind its
+// category does not declare. That was fisc-ttq, and it was open only for as long
+// as all four transfer categories declared a `transfer` family — a string that is
+// not one of the five mapping.Kind values and never was, which is why correcting
+// the file closed the hole rather than widening the check.
+//
+// A category the taxonomy does not define is NOT counted here: it has no kinds to
+// be among, and factVocabulary already names it. One typo must not redden two
+// checks with two different fixes.
+type factKindMatchesCategory struct{}
+
+var _ Check = (*factKindMatchesCategory)(nil)
+
+func (*factKindMatchesCategory) ID() string { return "fact-kind-matches-category" }
+func (*factKindMatchesCategory) Tier() int  { return 1 }
+func (*factKindMatchesCategory) Full() bool { return false }
+func (*factKindMatchesCategory) Description() string {
+	return "every fact's kind is one the category it carries declares in data/taxonomy.yaml"
+}
+
+func (*factKindMatchesCategory) Run(_ context.Context, s *Subject) (Result, error) {
+	var findings []Finding
+	subjects := 0
+	pairs := map[string]bool{}
+
+	for _, f := range s.Facts {
+		if f.Kind == "" || f.Category == "" {
+			continue
+		}
+		c, ok := s.Vocabulary.Category(f.Category)
+		if !ok {
+			continue
+		}
+		subjects++
+		pairs[string(f.Kind)+" "+f.Category] = true
+		if !declaresKind(c, f.Kind) {
+			findings = append(findings, finding(f.ID,
+				"%s p%d %q: kind %q is not one data/taxonomy.yaml declares for category %q, "+
+					"which declares %s", f.DocID, f.Page, f.RowLabel, f.Kind, f.Category,
+				joinComma(c.Kinds)))
+		}
+	}
+
+	return conclusion{
+		subjects: subjects,
+		unit:     "facts",
+		held: fmt.Sprintf("%d facts over %d kind/category pairs, each kind one its category "+
+			"declares in data/taxonomy.yaml", subjects, len(pairs)),
+		nothing:  "no fact carries both a kind and a category data/taxonomy.yaml defines",
+		findings: findings,
+	}.result(), nil
+}
+
+// declaresKind reports whether c permits a fact of kind k.
+//
+// The comparison is literal: the `kinds:` list holds mapping.Kind values and a
+// fact's kind is one, so nothing here resolves a family or widens a match. A
+// category that means to admit two kinds says both — the `transfers` rollup
+// declares transfer_in and transfer_out — because a list that had to be
+// interpreted could not be read as the file's own answer.
+func declaresKind(c registry.Category, k mapping.Kind) bool {
+	return slices.Contains(c.Kinds, string(k))
 }
 
 // departmentSlug is the shape a department identifier must have: the same

@@ -1,6 +1,8 @@
 package check
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -10,6 +12,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
 // TestFixtureVerdicts is the one test that states what every check concludes over
@@ -44,6 +47,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-token-reparses":         "pass over 10",
 		"fact-offset-points-at-token": "pass over 10",
 		"fact-vocabulary":             "pass over 20", // 10 categories + 10 fund groups
+		"fact-kind-matches-category":  "pass over 10",
 		"published-projection-built":  "pass over 1",
 		"facts-are-projected":         "pass over 10",
 		"graph-acyclic":               "pass over 7",
@@ -64,10 +68,10 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 14, Vacuous: 10, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 15, Vacuous: 10, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Fourteen passes, ten vacuous and one skipped is not twenty-five of
+	// Fifteen passes, ten vacuous and one skipped is not twenty-six of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -223,6 +227,151 @@ func TestVocabularyCatchesAnUnknownFundGroup(t *testing.T) {
 	}
 	if !strings.Contains(res.Findings[0].Detail, `fund group "permanent"`) {
 		t.Errorf("finding %q does not name the fund group", res.Findings[0].Detail)
+	}
+}
+
+// TestATransferCountedAsRevenueIsCaughtAtTheFact is the failure fisc-u2v measured
+// as route 3, at the place it is cheapest to name.
+//
+// pp.131-140 print eleven funds whose one `Total <fund>` covers revenue rows AND a
+// Transfers In row, so a rule author without a per-row kind can make the fund tie
+// by calling the transfer revenue. `transfers/in` is a real slug and it is
+// assignable, so fact-vocabulary passes over it — which is asserted here, because
+// the whole reason this check exists is that the two halves are each valid alone.
+func TestATransferCountedAsRevenueIsCaughtAtTheFact(t *testing.T) {
+	cells := slices.Clone(fixtureCells)
+	if cells[4].category != "transfers/in" || cells[4].kind != mapping.KindTransferIn {
+		t.Fatalf("fixture cell 4 is %+v, want the transfers/in row", cells[4])
+	}
+	cells[4].kind = mapping.KindRevenue
+	rep := runChecks(t, cellsSubject(t, cells))
+
+	res := resultFor(t, rep, "fact-kind-matches-category")
+	if res.Status != StatusFail {
+		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if res.Subjects != 10 {
+		t.Errorf("subjects = %d, want all 10 facts", res.Subjects)
+	}
+	if got := len(res.Findings); got != 1 {
+		t.Fatalf("findings = %d, want 1: %v", got, res.Findings)
+	}
+	f := res.Findings[0]
+	for _, want := range []string{`kind "revenue"`, `category "transfers/in"`, "transfer_in"} {
+		if !strings.Contains(f.Detail, want) {
+			t.Errorf("finding %q does not contain %q", f.Detail, want)
+		}
+	}
+	if want := cells[4].fact().ID; f.Subject != want {
+		t.Errorf("finding subject = %q, want the fact at fault %q", f.Subject, want)
+	}
+	// The point of the bead: nothing else says a word about it.
+	if got := resultFor(t, rep, "fact-vocabulary").Status; got != StatusPass {
+		t.Errorf("fact-vocabulary = %s, want pass: transfers/in is a real assignable slug, "+
+			"which is exactly why the pair needed its own check", got)
+	}
+}
+
+// TestEveryKindIsWrongSomewhere walks the whole cross product the fixture taxonomy
+// permits, so the check is not shown failable by one lucky pair.
+func TestEveryKindIsWrongSomewhere(t *testing.T) {
+	tests := []struct {
+		category string
+		wrong    mapping.Kind
+		declares string
+	}{
+		{"taxes/property", mapping.KindExpenditure, "revenue"},
+		{"wages-and-benefits", mapping.KindRevenue, "expenditure"},
+		{"transfers/out", mapping.KindFundBalance, "transfer_out"},
+		{"fund-balance/beginning", mapping.KindTransferIn, "fund_balance"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.category+"/"+string(tt.wrong), func(t *testing.T) {
+			facts := testFacts()
+			facts[0].Category, facts[0].Kind = tt.category, tt.wrong
+			res := resultFor(t, runChecks(t, factsSubject(t, facts)),
+				"fact-kind-matches-category")
+
+			if res.Status != StatusFail {
+				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+			}
+			if got := len(res.Findings); got != 1 {
+				t.Fatalf("findings = %d, want 1: %v", got, res.Findings)
+			}
+			// HasSuffix, not Contains: the declared kinds are the last thing the
+			// message says, and "declares transfer" is a PREFIX of "declares
+			// transfer_in". An assertion that holds against a list it did not
+			// mean is one that will not fail when it goes stale.
+			if want := "which declares " + tt.declares; !strings.HasSuffix(res.Findings[0].Detail, want) {
+				t.Errorf("finding %q does not end by saying the category declares exactly %q",
+					res.Findings[0].Detail, tt.declares)
+			}
+		})
+	}
+}
+
+// TestTheCommittedTaxonomyTellsTheTransferDirectionsApart reads data/taxonomy.yaml
+// itself rather than the fixture, because the two used to disagree and the
+// disagreement was the defect. Every transfer category declared `kinds: [transfer]`
+// — a string that is not one of the five mapping.Kind values — and the `transfers`
+// rationale asserted that 'a transfer\'s `kind` is only "transfer"'. That was false
+// when it was written: transfer_in and transfer_out predate the file (2e514fb
+// against 0c43404). The check had been widened to accept the family; the file is
+// corrected instead, and the fixture taxonomy was already the corrected model.
+//
+// So both transfer errors are one literal comparison over the committed file:
+// a transfer counted as revenue (fisc-f0k) and a transfer pointing the wrong way
+// (fisc-ttq), the latter being what a declared `transfer` family could never see.
+func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
+	reg, err := registry.Load(os.DirFS(filepath.Join(repoRoot(t), "data")))
+	if err != nil {
+		t.Fatalf("load the committed registries: %v", err)
+	}
+	cells := []testCell{
+		// Correct: each direction under its own category, and out-to-cip, which
+		// is a sibling of transfers/out and carries the same kind.
+		{mapping.KindTransferIn, "transfers/in", "general", 10_000},
+		{mapping.KindTransferOut, "transfers/out", "enterprise", 30_000},
+		{mapping.KindTransferOut, "transfers/out-to-cip", "general", 5_000},
+		// Wrong family: the p131 Stormwater trap, a Transfers In row called
+		// revenue so the printed Total <fund> ties.
+		{mapping.KindRevenue, "transfers/in", "enterprise", 3_247_000},
+		// Wrong direction: fisc-ttq. This pair resolved clean while transfers/in
+		// declared `transfer`, because both directions satisfied the family.
+		{mapping.KindTransferOut, "transfers/in", "general", 7_000},
+	}
+	res := resultFor(t, runChecks(t, &Subject{Facts: testFacts(cells...), Vocabulary: reg}),
+		"fact-kind-matches-category")
+
+	if res.Status != StatusFail {
+		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if res.Subjects != len(cells) {
+		t.Errorf("subjects = %d, want %d", res.Subjects, len(cells))
+	}
+	// Exact whole-message equality, not Contains: "which declares transfer" is a
+	// prefix of "which declares transfer_in", so a containment assertion here
+	// would have held against the broken file and the corrected one alike.
+	want := []string{
+		testDoc + ` p66 "transfers/in": kind "revenue" is not one data/taxonomy.yaml ` +
+			`declares for category "transfers/in", which declares transfer_in`,
+		testDoc + ` p66 "transfers/in": kind "transfer_out" is not one data/taxonomy.yaml ` +
+			`declares for category "transfers/in", which declares transfer_in`,
+	}
+	got := make([]string, 0, len(res.Findings))
+	for _, f := range res.Findings {
+		got = append(got, f.Detail)
+	}
+	slices.Sort(got)
+	slices.Sort(want)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("findings mismatch (-want +got):\n%s", diff)
+	}
+	// The three correct rows are silent, so the check is not simply reddening
+	// every transfer it sees.
+	if got := resultFor(t, runChecks(t, &Subject{Facts: testFacts(cells[:3]...), Vocabulary: reg}),
+		"fact-kind-matches-category").Status; got != StatusPass {
+		t.Errorf("the three correct transfer rows = %s, want pass", got)
 	}
 }
 
