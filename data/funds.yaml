@@ -37,6 +37,41 @@
 # fund in GASB terms, so the label is presentational and we do not repeat it.
 # It is also omitted for the four enterprise CIP funds (601/611/621/641), which
 # were created in FY 2024-25 (footnote, p. 68) and appear in no such schedule.
+#
+# `aliases` are the OTHER spellings the city prints for the same fund, each
+# with the page it was read from. They are PUBLISHED text and are recorded
+# verbatim, including the appendix's "Community Beneift Fund" at 291: a typo
+# the city printed is stated here, not silently corrected. Every schedule that
+# names a fund in prose rather than by number resolves through
+# `registry.FundByLabel`, which matches EXACTLY — no prefix, no fuzzy, no case
+# folding — and errors on a label no fund claims. Two funds may not claim one
+# label; funds.yaml does not load if they do.
+#
+# Exactness is not fussiness. p76's transfer summary abbreviates to "Low
+# Income Hsng", "Traffic Imp Fee", "Host Comm Impact", "Measure D" and "State
+# Gas Tax", and each of those heads BOTH an operating fund and its CIP twin
+# (200/812, 510/823, 282/820, 550/828, 560/834). A prefix match answers each
+# one twice. Which fund p76 means is settled by arithmetic, in the fund-balance
+# schedules' "Uses of Funds" pages (pp. 187, 193, 199, 205), whose "Transfers
+# Out" column excludes transfers to CIP funds and is printed per fund group:
+#
+#   - the CIP funds transfer out NOTHING in any of the four years, so no row
+#     on p76 leaves a CIP fund;
+#   - the capital funds' Transfers Out — 181,971 / 210,500 / 211,150 /
+#     217,485 — is p76's Traffic Imp Fee plus State Gas Tax plus Measure D,
+#     exactly, in every year. Those three are 510, 560 and 550;
+#   - the special revenue funds' Transfers Out — 1,083,617 / 1,259,206 /
+#     817,050 / 800,550 — is p76's Low Income Hsng, Home Grant, State Grant,
+#     Downtown Revital, CASP Fee, Downtown LMD, Other LMDs, Open Space and
+#     Host Comm Impact, exactly, in every year. So "Low Income Hsng" is 200
+#     and "Host Comm Impact" is 282, and "Open Space" is the special revenue
+#     fund 300 rather than the permanent fund 471 (the permanent funds
+#     transfer out nothing either).
+#
+# Adding an alias asserts something checkable about a printed page. Where the
+# term alone does not say which fund it names — 211's "Police Evidence", 286's
+# "CASP Fee" — the alias carries a `note` holding the evidence, and says so
+# when the last step is our inference rather than the document's word.
 
 schema_version: 1
 
@@ -64,6 +99,18 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "In-lieu housing fees collected from developers and other community housing projects; spendable only on housing."
+    aliases:
+      #@cite p0076 "Transfer From Low Income Hsng          to General Fund"
+      - term: "Low Income Hsng"
+        pages: [76]
+        derived: true
+        rationale: >-
+          p76 prints the short form of both this fund and its CIP twin, CIP Low
+          Income Housing, and neither name is printed in full. The binding is
+          this file's header arithmetic: CIP funds transfer out nothing in any
+          of the four years, and the special revenue group's printed Transfers
+          Out (pp. 187, 193, 199, 205) equals the sum of this and the other
+          eight special-revenue p76 sources exactly, every year.
     major: true
 
   #@cite p0258 "HOUSING SUCCESSOR FUND (F. 201)"
@@ -100,6 +147,11 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "State CalHome program reuse funds; restricted to the program's owner-occupied housing purposes."
+    aliases:
+      #@cite p0135 "Total Cal Home Reuse - $40,000 $70,000 $70,000"
+      #@cite p0204 "Cal Home Reuse 810,548 70,000 - 880,548"
+      - term: "Cal Home Reuse"
+        pages: [135, 204]
 
   #@cite p0259 grants group
   - number: 206
@@ -107,6 +159,11 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "State BEGIN down-payment assistance program funds; restricted to that program."
+    aliases:
+      #@cite p0135 "Total California Begin Program - $120,000 $70,000 $70,000"
+      #@cite p0204 "California Begin Program 572,331 70,000 - 642,331"
+      - term: "California Begin Program"
+        pages: [135, 204]
 
   #@cite p0259 grants group
   - number: 207
@@ -129,6 +186,28 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "County asset forfeiture proceeds; restricted to law enforcement use."
+    aliases:
+      #@cite p0136 "Police Evidence / Use of Money & Prop - 12,926 25,000 31,000
+      #@cite     / ContributionsOutSrce - 50,000 - - / Total Police Evidence
+      #@cite     - $62,926 $25,000 $31,000"
+      - term: "Police Evidence"
+        pages: [136]
+        derived: true
+        rationale: >-
+          A rename, not an abbreviation: "Police Evidence" is printed on p136
+          alone, and pp. 253 and 255 number no fund of that name. It is fund
+          211 because the revenue schedule and the fund-balance schedules are
+          the same money. p136 prints Police Evidence between Horizons (210)
+          and Grant - Federal Grant Fund (220), where 211 falls in a schedule
+          ordered by fund number; it prints no Asset Seizure - County section
+          at all; and the four years it carries — -, 62,926, 25,000, 31,000 —
+          are exactly what pp. 186, 192, 198 and 204 give Asset Seizure -
+          County as revenue. The rollup closes it: the FY 2025-26 and
+          FY 2026-27 fund totals on pp. 135-139 sum to 29,279,560 and
+          21,730,522, which are the special revenue funds' printed revenues
+          plus transfers in on pp. 200 and 206 to the dollar. Counting both
+          names as separate funds would overstate each year by the same
+          25,000 and 31,000.
 
   #@cite p0259 "POLICE GRANTS (F. 220, F. 816)"
   - number: 220
@@ -143,6 +222,12 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "Federal DOJ equitable sharing forfeiture proceeds; restricted to law enforcement use."
+    aliases:
+      #@cite p0136 "Total Asset Seizure - Dep of Justice $12,559 $9,014
+      #@cite     $17,000 $22,000" — the appendix spells it "Dept"
+      #@cite p0204 "Asset Seizure - Dep of Justice 537,655 22,000 - 559,655"
+      - term: "Asset Seizure - Dep of Justice"
+        pages: [136, 204]
 
   #@cite p0259 local/state/federal assistance for safety activities
   - number: 222
@@ -171,6 +256,10 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "HOME Investment Partnerships grant funds; restricted to eligible affordable-housing activities."
+    aliases:
+      #@cite p0076 "Transfer From Home Grant               to General Fund"
+      - term: "Home Grant"
+        pages: [76]
 
   #@cite p0259 "federal grant related to COVID-19 (F. 226)"
   - number: 226
@@ -185,6 +274,10 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "State grants for streets, solid waste, safety and community programs; spendable only per each grant agreement."
+    aliases:
+      #@cite p0076 "Transfer From State Grant              to General Fund"
+      - term: "State Grant"
+        pages: [76]
 
   - number: 241
     name: "Opioid Settlement"
@@ -213,6 +306,10 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "Developer fees for downtown revitalization; restricted to that purpose."
+    aliases:
+      #@cite p0076 "Transfer From Downtown Revital         to General Fund"
+      - term: "Downtown Revital"
+        pages: [76]
 
   #@cite p0260 (same entry as 280)
   - number: 281
@@ -228,6 +325,16 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "Host community impact fees from the Altamont and Vasco Road landfills; restricted to promoting the arts in Livermore."
+    aliases:
+      #@cite p0076 "Transfer From Host Comm Impact         to 2020 COPS Series A"
+      - term: "Host Comm Impact"
+        pages: [76]
+        derived: true
+        rationale: >-
+          p76 prints the short form of both this fund and its CIP twin, CIP Host
+          Community Impact Fee. Bound by the special revenue group's Transfers
+          Out arithmetic in this file's header; CIP funds transfer out nothing
+          in any of the four years.
 
   #@cite p0258 "CITY STREET SWEEPING (F. 283)"
   - number: 283
@@ -257,6 +364,19 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "State-mandated CASp fee collected with business licenses; restricted to the certified access specialist program."
+    aliases:
+      #@cite p0076 "Transfer From CASP Fee                 to General Fund
+      #@cite     19,248 5,500 19,250 19,250 (9)"
+      #@cite p0262 glossary: "CASP: Certified Access Specialist Program"
+      - term: "CASP Fee"
+        pages: [76]
+        derived: true
+        rationale: >-
+          The transfers arithmetic in this file's header puts CASP Fee in the
+          special revenue group; naming it 286 is then ours, from the glossary
+          (p262) and from the fact that the certified-access fee is what the
+          Accessibility Compliance fund collects. No page prints the two
+          strings together.
 
   #@cite p0259 "PEG CAPITAL FEES (F. 287)"
   - number: 287
@@ -295,6 +415,16 @@ funds:
     type: special-revenue
     constraint_tier: committed
     restriction_note: "Funds economic, climate resilience and community programs and public spaces as set in the Citywide Strategic Plan; the constraint named in the document is the City's own plan, not a law."
+    aliases:
+      #@cite p0253 "291      Community Beneift Fund"
+      #@cite p0255 "291 Community Beneift Fund"
+      - term: "Community Beneift Fund"
+        pages: [253, 255]
+        note: >-
+          The city's typo, recorded rather than corrected. It is the appendix
+          spelling on both pages that print this fund, so a rule reading
+          pp. 253-255 has to resolve it; `name` follows p259 and the
+          fund-balance schedules, which spell it correctly.
 
   #@cite p0259 "OPEN SPACE (F. 300) ... Altamont Landfill Settlement Agreement"
   - number: 300
@@ -302,6 +432,17 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "Receipts under the Altamont Landfill Settlement Agreement; restricted to open space acquisition and management by that agreement."
+    aliases:
+      #@cite p0076 "Transfer From Open Space               to Doolan Canyon
+      #@cite     Preserve Endow 19,533"
+      - term: "Open Space"
+        pages: [76]
+        derived: true
+        rationale: >-
+          This fund and not the permanent fund 471, Doolan Canyon Open Space:
+          the permanent funds' printed Transfers Out is zero in all four years
+          (pp. 187, 193, 199, 205), while 19,533 is inside the special revenue
+          funds' FY 2023-24 total. See the header.
 
   #@cite p0259 "DOWNTOWN AND OTHER LANDSCAPE MAINTENANCE DISTRICTS (F. 310, 311)"
   - number: 310
@@ -316,6 +457,10 @@ funds:
     type: special-revenue
     constraint_tier: restricted-by-law
     restriction_note: "Landscape maintenance district assessments; spendable only within the benefited district."
+    aliases:
+      #@cite p0076 "Transfer From Other LMDs               to General Fund"
+      - term: "Other LMDs"
+        pages: [76]
 
   #@cite p0259 "EL CHARRO / OTHER MAINTENANCE COMMUNITY FACILITIES DISTRICTS
   #@cite     (F. 320, 321)"
@@ -361,6 +506,17 @@ funds:
     type: capital
     constraint_tier: restricted-by-law
     restriction_note: "Traffic impact fees paid by developers; restricted to interchange and local street improvement projects."
+    aliases:
+      #@cite p0076 "Transfer From Traffic Imp Fee          to General Fund"
+      - term: "Traffic Imp Fee"
+        pages: [76]
+        derived: true
+        rationale: >-
+          p76 prints the short form of both this fund and its CIP twin, CIP
+          Traffic Impact Fee. Bound by the header arithmetic: the capital
+          group's printed Transfers Out (181,971 / 210,500 / 211,150 /
+          217,485) equals Traffic Imp Fee + State Gas Tax + Measure D exactly
+          in all four years, and CIP funds transfer out nothing.
 
   #@cite p0258 street projects (F. 511) and p0260 "STREET CAPITAL FUNDS (F. 511, 513)"
   - number: 511
@@ -398,6 +554,16 @@ funds:
     type: capital
     constraint_tier: restricted-by-law
     restriction_note: "Alameda County Measure D waste-management funds; restricted to recycling and source reduction purposes."
+    aliases:
+      #@cite p0076 "Transfer From Measure D                to Import Mitigation
+      #@cite     Fee - 5,500 - -"
+      - term: "Measure D"
+        pages: [76]
+        derived: true
+        rationale: >-
+          p76 prints the short form of both this fund and its CIP twin, CIP County
+          Measure D. Bound by the capital group's Transfers Out arithmetic in
+          this file's header; CIP funds transfer out nothing in any year.
 
   #@cite p0258 "STREET PROJECTS FUNDS (F. ... 551, 552, 553, 560, 561; ...)"
   - number: 551
@@ -427,6 +593,15 @@ funds:
     type: capital
     constraint_tier: restricted-by-law
     restriction_note: "State gasoline tax subventions; restricted by state law to street and road purposes."
+    aliases:
+      #@cite p0076 "Transfer From State Gas Tax            to General Fund"
+      - term: "State Gas Tax"
+        pages: [76]
+        derived: true
+        rationale: >-
+          p76 prints the short form of both this fund and its CIP twin, CIP State
+          Gas Tax. Bound by the capital group's Transfers Out arithmetic in
+          this file's header; CIP funds transfer out nothing in any year.
 
   #@cite p0258 street projects funds
   - number: 561
@@ -457,6 +632,11 @@ funds:
     type: capital
     constraint_tier: restricted-by-law
     restriction_note: "In-lieu fees under LMC 3.27; restricted to open space acquisition in North Livermore."
+    aliases:
+      #@cite p0134 "Total Transferable Development Cred $4,723,774 $7,055,955"
+      #@cite p0206 "Transferable Development Cred 26,338,590 - - 26,338,590"
+      - term: "Transferable Development Cred"
+        pages: [134, 206]
 
   #@cite p0259 "SO LIV SPEC PLAN & AD CLOSEOUT (F. 583; F. 837)"
   - number: 583
@@ -496,6 +676,11 @@ funds:
     type: permanent
     constraint_tier: restricted-by-law
     restriction_note: "Endowment principal is legally unspendable; only earnings may be used, for burrowing owl habitat mitigation."
+    aliases:
+      #@cite p0134 "Total Doolan Canyon Preserve Endow $19,533 - - -"
+      #@cite p0076 "to Doolan Canyon Preserve Endow"; p0206 same truncation
+      - term: "Doolan Canyon Preserve Endow"
+        pages: [76, 134, 206]
 
   #@cite p0260 (same entry as 470)
   - number: 471
@@ -599,6 +784,10 @@ funds:
     type: enterprise
     constraint_tier: restricted-by-law
     restriction_note: "Ratepayer-funded reserve for replacement of water system assets."
+    aliases:
+      #@cite p0076 "Transfer From Water Replace            to Water"
+      - term: "Water Replace"
+        pages: [76]
     major: true
 
   #@cite p0261 "Impact fees are collected for future water storage."
@@ -658,6 +847,11 @@ funds:
     type: internal-service
     constraint_tier: committed
     restriction_note: "Departmental charges funding repair and maintenance of city facilities."
+    aliases:
+      #@cite p0140 "Total Facilities Rehab Pgm $6,111,465 $2,125,000"
+      #@cite p0208 "Facilities Rehab Pgm 1,677,100 2,125,000 - 3,802,100"
+      - term: "Facilities Rehab Pgm"
+        pages: [140, 208]
 
   #@cite p0254/p0257 list 741 under INTERNAL SERVICE FUNDS; p0222 bridge pairs
   #@cite     741 -> 101 (CIP Reserves - Facilities)

@@ -89,12 +89,43 @@ var constraintTiers = []string{
 	"unknown",
 }
 
-// Alias is a spelling the CITY prints for a category, on the pages named.
-// Every alias is published text, verbatim including its abbreviations, so a
-// mapping rule can match printed labels without normalizing them.
+// Alias is a spelling the CITY prints for a category or a fund, on the pages
+// named. Every alias is published text, verbatim including its abbreviations
+// and its typos, so a mapping rule can match printed labels without
+// normalizing them: normalization is what would let "Measure D" collapse onto
+// two different funds.
+//
+// Pages are required for a fund alias and say where the string was read, so
+// the claim "the city prints this" is checkable rather than asserted.
+//
+// Note carries the evidence where the term alone does not establish which
+// entry it names — a rename such as fund 211's "Police Evidence", or an
+// abbreviation that more than one fund could plausibly claim. The term is
+// published; the binding of that term to an entry is ours.
+// Alias is one string the city prints for a thing this registry names
+// differently. Term is the printed spelling, verbatim, and Pages says where to
+// go and look — an alias nobody can check is a rename we have made up.
+//
+// Derived draws the fourth provenance invariant through this channel: binding a
+// printed string to an entry is sometimes a mechanical reading and sometimes an
+// inference, and the two must not be presented alike. "Cal Home Reuse" for "CAL
+// Home Reuse" is a reading — the page names the fund and the only difference is
+// case. "Police Evidence" for fund 211 is an inference: the city never prints
+// that the two names are one fund, and the binding rests on arithmetic done
+// here. The second obliges a Rationale saying what the inference rests on, and
+// Load refuses it without one.
+//
+// There is deliberately no SourceNote to match Category's: Pages already is the
+// source note for an alias, because an alias's whole claim is "this string
+// appears on these pages". Rationale carries the different question of why the
+// string binds to THIS entry.
 type Alias struct {
-	Term  string `yaml:"term"`
-	Pages []int  `yaml:"pages"`
+	Term    string `yaml:"term"`
+	Pages   []int  `yaml:"pages"`
+	Derived bool   `yaml:"derived"`
+	// Rationale is required when Derived, refused otherwise.
+	Rationale string `yaml:"rationale"`
+	Note      string `yaml:"note"`
 }
 
 // ContraRow names a detail line that is negative inside its own printed
@@ -164,11 +195,30 @@ type Fund struct {
 	ConstraintTier  string `yaml:"constraint_tier"`
 	RestrictionNote string `yaml:"restriction_note"`
 
+	// Aliases are the other spellings the city prints for this fund. Name is
+	// the appendix's (pp. 253-257) and the schedules do not repeat it: p76
+	// prints "Low Income Hsng", p136 "Police Evidence", p140 "Facilities
+	// Rehab Pgm". Each is published text with the page it was read from, and
+	// FundByLabel resolves it — a schedule that names a fund in prose has no
+	// fund number to join on otherwise.
+	Aliases []Alias `yaml:"aliases"`
+
 	// Major is set only where the budget book itself says so, which is why it
 	// is absent rather than false for the internal service funds: those
 	// schedules do group them under "Major Funds", but the label there is
 	// presentational.
 	Major bool `yaml:"major"`
+}
+
+// clone deep-copies the slice fields, for the same reason Category.clone
+// does: a caller must not be able to write through Aliases into the
+// registry's own state.
+func (f Fund) clone() Fund {
+	f.Aliases = slices.Clone(f.Aliases)
+	for i := range f.Aliases {
+		f.Aliases[i].Pages = slices.Clone(f.Aliases[i].Pages)
+	}
+	return f
 }
 
 // Registry is the loaded pair of files. It is read-only after Load and safe
@@ -180,6 +230,10 @@ type Registry struct {
 	funds       map[int]Fund
 	fundNumbers []int    // sorted, for enumeration in a stable order
 	fundGroups  []string // sorted, deduplicated, as observed in funds.yaml
+	// fundLabels maps every published spelling — each fund's name and each
+	// of its aliases — to the one fund that may claim it. Load rejects a
+	// second claimant, so this is a function, not a set of candidates.
+	fundLabels map[string]int
 }
 
 // Category returns the taxonomy entry for slug.
@@ -234,11 +288,37 @@ func (r *Registry) Categories() []Category {
 // Fund returns the registry entry for a fund number.
 func (r *Registry) Fund(number int) (Fund, bool) {
 	f, ok := r.funds[number]
-	return f, ok
+	if !ok {
+		return Fund{}, false
+	}
+	return f.clone(), true
 }
 
-// Funds returns every fund, ordered by number. The result is a copy, and Fund
-// carries no slices, so it is safe to modify.
+// FundByLabel returns the fund the city prints as label — its name in
+// funds.yaml, or one of the aliases declared there — matched EXACTLY.
+//
+// Exactness is the point. The schedules abbreviate, and the abbreviations are
+// ambiguous rather than merely short: p76 prints "Low Income Hsng", "Traffic
+// Imp Fee", "Host Comm Impact", "Measure D" and "State Gas Tax", and each of
+// those heads both an operating fund and its CIP twin (200/812, 510/823,
+// 282/820, 550/828, 560/834). A prefix or fuzzy match picks one of each pair
+// silently, which is the plausible-wrong-value failure this project exists to
+// prevent. Which fund each label names is settled by reading the document and
+// written down as an alias, once, in funds.yaml.
+//
+// Ambiguity is therefore rejected when funds.yaml loads and cannot arise
+// here: no two funds may claim one label. A label that names no fund is an
+// UnknownFundError naming the label, never a nearest match.
+func (r *Registry) FundByLabel(label string) (Fund, error) {
+	number, ok := r.fundLabels[label]
+	if !ok {
+		return Fund{}, &UnknownFundError{Label: label}
+	}
+	return r.funds[number].clone(), nil
+}
+
+// Funds returns every fund, ordered by number. The slice and every slice
+// inside it are copies, so a caller may sort or trim the result.
 //
 // Callers need this to enumerate rather than probe: fund numbers are sparse
 // (100 to 840, with gaps), so counting or listing them by scanning a range is
@@ -246,7 +326,7 @@ func (r *Registry) Fund(number int) (Fund, bool) {
 func (r *Registry) Funds() []Fund {
 	out := make([]Fund, 0, len(r.fundNumbers))
 	for _, n := range r.fundNumbers {
-		out = append(out, r.funds[n])
+		out = append(out, r.funds[n].clone())
 	}
 	return out
 }
@@ -291,6 +371,21 @@ type Error struct {
 	Entry string
 	Field string
 	Msg   string
+}
+
+// UnknownFundError reports a printed label that names no fund. It is its own
+// type so a caller mapping a schedule can tell "this page names a fund we
+// have not written down" from any other failure, and can report every such
+// label at once instead of stopping at the first: the fix is an edit to
+// funds.yaml, and a reader wants the whole list.
+type UnknownFundError struct {
+	// Label is the string as printed, unnormalized.
+	Label string
+}
+
+func (e *UnknownFundError) Error() string {
+	return fmt.Sprintf("no fund is named %q in %s; a printed label resolves only by an exact match on a fund's name or a declared alias",
+		e.Label, FundsFile)
 }
 
 func (e *Error) Error() string {

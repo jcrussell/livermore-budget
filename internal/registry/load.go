@@ -121,7 +121,34 @@ func (r *Registry) loadFunds(fsys fs.FS) error {
 
 	r.funds = make(map[int]Fund, len(doc.Funds))
 	r.fundNumbers = make([]int, 0, len(doc.Funds))
+	r.fundLabels = make(map[string]int, 2*len(doc.Funds))
 	groups := map[string]bool{}
+
+	// claimLabel records the one fund a published spelling may resolve to.
+	// The second claimant is an error naming both, because a label two funds
+	// answer to is a label no schedule can be mapped by: this is where
+	// "Measure D" on the operating fund and on its CIP twin stops being a
+	// coin flip at lookup time and becomes a file that will not load.
+	aliased := map[string]bool{}
+	claimLabel := func(label string, f Fund, isAlias bool) error {
+		prev, dup := r.fundLabels[label]
+		if !dup {
+			r.fundLabels[label] = f.Number
+			aliased[label] = isAlias
+			return nil
+		}
+		kind, field := "name", "name"
+		if isAlias {
+			kind, field = "alias", "aliases"
+		}
+		prevKind := "name"
+		if aliased[label] {
+			prevKind = "alias"
+		}
+		return fundf(f.Number, field,
+			"%s %q is already the %s of fund %d (%q); a published label must name exactly one fund",
+			kind, label, prevKind, prev, r.funds[prev].Name)
+	}
 	for i, f := range doc.Funds {
 		// The fund number is the join key every fact carries, so an entry
 		// without one is not addressable at all.
@@ -156,6 +183,18 @@ func (r *Registry) loadFunds(fsys fs.FS) error {
 		r.funds[f.Number] = f
 		r.fundNumbers = append(r.fundNumbers, f.Number)
 		groups[f.Type] = true
+
+		if err := claimLabel(f.Name, f, false); err != nil {
+			return err
+		}
+		for j, a := range f.Aliases {
+			if err := validateFundAlias(f, j, a, fundf); err != nil {
+				return err
+			}
+			if err := claimLabel(a.Term, f, true); err != nil {
+				return err
+			}
+		}
 	}
 	slices.Sort(r.fundNumbers)
 
@@ -220,6 +259,56 @@ func (r *Registry) loadTaxonomy(fsys fs.FS) error {
 
 // errFunc formats an error against one named entry.
 type errFunc func(entry, field, format string, args ...any) error
+
+// fundErrFunc formats an error against one fund, which is named by its number
+// rather than by a slug.
+type fundErrFunc func(number int, field, format string, args ...any) error
+
+// validateFundAlias checks one published spelling. Uniqueness is not checked
+// here — that is claimLabel's job, because it spans the whole file — so this
+// is only the shape of the entry itself.
+func validateFundAlias(f Fund, i int, a Alias, fundf fundErrFunc) error {
+	at := fmt.Sprintf("aliases[%d]", i)
+	if a.Term == "" {
+		return fundf(f.Number, at+".term", "is required")
+	}
+	// An alias asserts that the city prints this string. Without a page that
+	// assertion cannot be checked, and an alias nobody can check is a rename
+	// we have made up: the whole channel exists so a reader can go and look.
+	if len(a.Pages) == 0 {
+		return fundf(f.Number, at+".pages",
+			"is required; alias %q must say which page it was read from", a.Term)
+	}
+	for j, p := range a.Pages {
+		if p <= 0 {
+			return fundf(f.Number, at+".pages",
+				"is %d for alias %q; pages are 1-based PDF page numbers", p, a.Term)
+		}
+		if j > 0 && p <= a.Pages[j-1] {
+			return fundf(f.Number, at+".pages",
+				"%d follows %d for alias %q; pages are listed once each, in ascending order",
+				p, a.Pages[j-1], a.Term)
+		}
+	}
+
+	// The fourth provenance invariant, on the alias channel. Pages says the
+	// string is printed; derived says the binding to THIS fund is ours. A
+	// reader must be able to tell the two apart without re-doing the work.
+	switch {
+	case a.Derived && a.Rationale == "":
+		return fundf(f.Number, at+".rationale",
+			"is required when derived is true; alias %q must say what the binding rests on",
+			a.Term)
+	case !a.Derived && a.Rationale != "":
+		// Same asymmetry validateCategory records: a forgotten `derived: true`
+		// is far likelier than a stray rationale, and it fails open — the entry
+		// reads as justified while nothing ever demands the justification.
+		return fundf(f.Number, at+".derived",
+			"is not set for alias %q, but a rationale is given; a binding the city prints needs none",
+			a.Term)
+	}
+	return nil
+}
 
 func validateCategory(c Category, catf errFunc) error {
 	// The label is the city's word for the slug, and it is the only field

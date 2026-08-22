@@ -69,6 +69,88 @@ funds:
 			funds: "schema_version: 1\nfunds: [{number: 100, name: x, type: general, constraint_tier: discretionary}]\n",
 			want:  `funds.yaml: fund 100: restriction_note: is required; constraint_tier "discretionary" is derived`,
 		}, {
+			// The failure the alias channel exists to prevent. "Measure D"
+			// is printed on p76 and heads both funds; if both may claim it,
+			// every later lookup is a coin flip, so the file does not load.
+			name: "one label claimed by two funds",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 550, name: "County Measure D", type: capital, constraint_tier: committed, restriction_note: y,
+     aliases: [{term: "Measure D", pages: [76]}]}
+  - {number: 828, name: "CIP County Measure D", type: capital, constraint_tier: committed, restriction_note: y,
+     aliases: [{term: "Measure D", pages: [76]}]}
+`,
+			want: `funds.yaml: fund 828: aliases: alias "Measure D" is already the alias of fund 550 ("County Measure D"); a published label must name exactly one fund`,
+		}, {
+			name: "an alias that is another fund's name",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 200, name: "Low Income Housing Fund", type: special-revenue, constraint_tier: committed, restriction_note: y}
+  - {number: 812, name: "CIP Low Income Housing", type: capital, constraint_tier: committed, restriction_note: y,
+     aliases: [{term: "Low Income Housing Fund", pages: [76]}]}
+`,
+			want: `funds.yaml: fund 812: aliases: alias "Low Income Housing Fund" is already the name of fund 200 ("Low Income Housing Fund"); a published label must name exactly one fund`,
+		}, {
+			name: "an alias that repeats its own fund's name",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 640, name: "Water", type: enterprise, constraint_tier: committed, restriction_note: y,
+     aliases: [{term: "Water", pages: [76]}]}
+`,
+			want: `funds.yaml: fund 640: aliases: alias "Water" is already the name of fund 640 ("Water")`,
+		}, {
+			name: "two funds with one name",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 610, name: "Stormwater", type: enterprise, constraint_tier: committed, restriction_note: y}
+  - {number: 611, name: "Stormwater", type: capital, constraint_tier: committed, restriction_note: y}
+`,
+			want: `funds.yaml: fund 611: name: name "Stormwater" is already the name of fund 610 ("Stormwater")`,
+		}, {
+			name: "an alias with no page",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 200, name: "Low Income Housing Fund", type: special-revenue, constraint_tier: committed, restriction_note: y,
+     aliases: [{term: "Low Income Hsng"}]}
+`,
+			want: `funds.yaml: fund 200: aliases[0].pages: is required; alias "Low Income Hsng" must say which page it was read from`,
+		}, {
+			name: "an alias with no term",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 200, name: "Low Income Housing Fund", type: special-revenue, constraint_tier: committed, restriction_note: y,
+     aliases: [{pages: [76]}]}
+`,
+			want: "funds.yaml: fund 200: aliases[0].term: is required",
+		}, {
+			name: "alias pages out of order",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 470, name: "Doolan Canyon Preserve Endowment", type: permanent, constraint_tier: committed, restriction_note: y,
+     aliases: [{term: "Doolan Canyon Preserve Endow", pages: [134, 76]}]}
+`,
+			want: `funds.yaml: fund 470: aliases[0].pages: 76 follows 134 for alias "Doolan Canyon Preserve Endow"; pages are listed once each, in ascending order`,
+		}, {
+			name: "alias page that is not a page",
+			funds: `
+schema_version: 1
+funds:
+  - {number: 470, name: "Doolan Canyon Preserve Endowment", type: permanent, constraint_tier: committed, restriction_note: y,
+     aliases: [{term: "Doolan Canyon Preserve Endow", pages: [0]}]}
+`,
+			want: `funds.yaml: fund 470: aliases[0].pages: is 0 for alias "Doolan Canyon Preserve Endow"; pages are 1-based PDF page numbers`,
+		}, {
+			name:  "unknown key in an alias",
+			funds: "schema_version: 1\nfunds: [{number: 100, name: x, type: general, constraint_tier: committed, restriction_note: y, aliases: [{term: z, page: 76}]}]\n",
+			want:  "funds.yaml: yaml: unmarshal errors",
+		}, {
 			name:  "unknown key in funds",
 			funds: "schema_version: 1\nfunds: [{number: 100, name: x, type: general, constraint_tier: committed, restriction_note: y, mayor: true}]\n",
 			want:  "funds.yaml: yaml: unmarshal errors",
