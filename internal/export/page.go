@@ -3,6 +3,7 @@ package export
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -10,10 +11,59 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // templateName is the page template inside the site asset tree.
 const templateName = "index.html.tmpl"
+
+// SchemaVersion is the projection schema this packager understands.
+//
+// It is deliberately a second copy of project.SchemaVersion and not an import
+// of it. This package consumes projections as filename stem -> JSON bytes and
+// does not import internal/project (see the package doc); reaching for the
+// producer's constant here to save a line would put back the seam the package
+// exists to hold open.
+//
+// What makes the duplication safe is TestSchemaVersionIsPinnedToTheProducer,
+// which asserts the two are equal. The test is load-bearing, not decorative:
+// without it the constants drift the first time the producer's version moves,
+// and this gate then waves through exactly the document it exists to refuse.
+// The same test pins the client's copy in site/app.js, which nothing compiles
+// against at all.
+const SchemaVersion = 1
+
+// ErrSchemaVersion reports a projection whose schema this packager does not
+// understand. It is always wrapped with the versions involved, so callers
+// match it with errors.Is rather than by string.
+var ErrSchemaVersion = errors.New("unsupported schema_version")
+
+// checkSchemaVersion refuses a projection this packager cannot read.
+//
+// A version this binary does not know is not a malformed document — nothing is
+// wrong with the file — so the two directions get the hint that says which way
+// the mismatch runs, as registry.schemaVersionErr and mapping.File.validate
+// already do for their own files. Rendering it anyway is the failure worth
+// preventing: a schema bump changes what the graph MEANS, so an old packager
+// handed a new projection would publish a page that is wrong rather than one
+// that fails.
+func checkSchemaVersion(got int) error {
+	if got == SchemaVersion {
+		return nil
+	}
+	err := fmt.Errorf("%s projection: %w: got %d, want %d",
+		PrimaryProjection, ErrSchemaVersion, got, SchemaVersion)
+	switch {
+	case got > SchemaVersion:
+		return cmdutil.WithHint(err,
+			"this projection was written by a newer fisc; upgrade the binary")
+	case got == 0:
+		return cmdutil.WithHint(err,
+			"schema_version is absent or zero; this may not be a fisc projection")
+	default:
+		return err
+	}
+}
 
 // projectionDoc is as much of a projection document as the packager reads.
 // Everything else — nodes, links — is bulk the browser fetches, and decoding
@@ -148,6 +198,12 @@ func buildPage(projections map[string][]byte, docs []Doc, browseURL, exportedBy 
 	var doc projectionDoc
 	if err := json.Unmarshal(projections[PrimaryProjection], &doc); err != nil {
 		return pageData{}, fmt.Errorf("decode %s projection: %w", PrimaryProjection, err)
+	}
+	// Before anything is read out of the document: every field below is named
+	// by a contract that a version this packager does not know may have
+	// renamed or redefined.
+	if err := checkSchemaVersion(doc.SchemaVersion); err != nil {
+		return pageData{}, err
 	}
 	if len(doc.Metadata) == 0 {
 		return pageData{}, fmt.Errorf("%s projection has no metadata block", PrimaryProjection)

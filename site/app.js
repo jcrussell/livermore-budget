@@ -109,6 +109,23 @@ const D3 = /** @type {any} */ (/** @type {any} */ (globalThis).d3);
 const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
 
 /**
+ * The projection schema this client draws.
+ *
+ * This is the third copy of one constant — project.SchemaVersion stamps the
+ * document, export.SchemaVersion gates the packager, and this gates the
+ * browser — and it is the copy nothing compiles against, so it is the one that
+ * would drift silently. A test in internal/export reads this file and pins the
+ * literal below to the producer's constant; if you change it here, change it
+ * there, and expect that test to say so if you do not.
+ *
+ * The gate matters because a schema bump changes what the graph MEANS rather
+ * than what it is spelled like. A version-2 document read by this code would
+ * draw a chart that is WRONG, not one that fails, and a wrong chart of public
+ * money is the single outcome this project exists to avoid. So it refuses.
+ */
+const SCHEMA_VERSION = 1;
+
+/**
  * The fund-group column, top to bottom, and with it the categorical slot each
  * fund group wears (position 1 gets slot 1, and so on — see style.css).
  *
@@ -892,15 +909,68 @@ function resetDetail() {
   panel.append(h("p", "subtle", "Select a flow or a node to pin its provenance here."));
 }
 
-/** @param {string} message */
+/**
+ * Refuses to draw, visibly.
+ *
+ * The provenance panel alone is not enough: it sits below the chart, and a
+ * reader who never scrolls past an empty diagram would read the blank space as
+ * "still loading" rather than as "this page declined to render". So the message
+ * also goes into a banner at the top of the content, with role="alert" so it is
+ * announced rather than merely present. A console line would be worse still —
+ * it is invisible to everyone the page is for.
+ *
+ * @param {string} message
+ */
 function fail(message) {
   const panel = el("detail");
   panel.replaceChildren();
   panel.append(h("p", "", message));
+
+  const content = document.querySelector("main");
+  if (content) {
+    const banner = h("div", "refusal", message);
+    banner.setAttribute("role", "alert");
+    // Replace rather than stack: two refusals in one visit are one story, and
+    // a second bar under the first reads as two separate faults.
+    const existing = content.querySelector(".refusal");
+    if (existing) existing.remove();
+    content.prepend(banner);
+  }
+}
+
+/**
+ * Reports whether a document is one this client understands, refusing visibly
+ * when it is not.
+ *
+ * Note which way this fails: it returns false and the caller stops, rather
+ * than drawing what it can. A partial chart of public money asserts the part
+ * it drew is the whole, which is the same class of false claim as a wrong
+ * total.
+ *
+ * @param {number} got the document's schema_version
+ * @param {string} what what to name in the message
+ * @returns {boolean}
+ */
+function understands(got, what) {
+  if (got === SCHEMA_VERSION) return true;
+  const why = got > SCHEMA_VERSION
+    ? "The data is newer than this page. If you have visited before, a cached copy of " +
+      "app.js may be the cause; reload to pick up the current one."
+    : "The data is older than this page.";
+  fail(
+    "This page will not draw " + what + ": it declares schema_version " + got +
+    ", and this page renders schema_version " + SCHEMA_VERSION + ". " + why +
+    " Drawing it anyway would produce a chart that is wrong rather than one that fails."
+  );
+  return false;
 }
 
 async function main() {
   wireTheme();
+  // Before the fetch, not after: FISC_CONFIG carries the projection's own
+  // metadata block, and the headline the page has already rendered from it
+  // server-side is read under the same contract as the graph.
+  if (!understands(CONFIG.schema_version, "this page's data")) return;
   const path = CONFIG.projections[CONFIG.primary];
   let response;
   try {
@@ -917,7 +987,13 @@ async function main() {
     fail("Could not load " + path + ": HTTP " + response.status);
     return;
   }
-  projection = /** @type {FiscProjection} */ (await response.json());
+  const doc = /** @type {FiscProjection} */ (await response.json());
+  // The fetched file is what actually gets drawn, and it is a separate
+  // document from the config: the packager stamps the config from the
+  // projection it was handed, so agreeing with the config is not evidence the
+  // file on the wire agrees too.
+  if (!understands(doc.schema_version, path)) return;
+  projection = doc;
 
   buildLegend();
   buildDerivedList();

@@ -201,6 +201,33 @@ h3 {
   font-weight: 600;
 }
 
+/* The banner app.js raises when it declines to draw: a schema_version it does
+   not understand, or a projection it could not load. It is prepended to <main>
+   rather than written only into the provenance panel because that panel sits
+   below the chart, and an empty diagram with nothing above it reads as "still
+   loading". Deliberately not sticky and not full-bleed: .wip-banner is the
+   permanent chrome, and a second bar in the same place would compete with it. */
+.refusal {
+  margin: 16px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--critical);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--ink-1);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.refusal::before {
+  /* Text presentation selector: the bare glyph, not an emoji, so it takes the
+     surrounding colour like .tile.error's does. */
+  content: "\26A0\FE0E";
+  color: var(--critical);
+  font-weight: 700;
+  margin-right: 8px;
+}
+
 .page-head {
   display: flex;
   gap: 24px;

@@ -1,9 +1,14 @@
 package export_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -11,6 +16,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/site"
 )
 
 // goldenPath is the frozen worked example of the sankey contract: real FY2026
@@ -342,6 +349,118 @@ func TestWriteRefusesBadInput(t *testing.T) {
 			}
 		})
 	}
+}
+
+// The packager's schema constant is a deliberate second copy of the producer's:
+// internal/export consumes projections as bytes and does not import
+// internal/project, so nothing but an assertion holds the two together. This
+// test is that assertion, and the reason the duplication is safe rather than
+// merely tolerated. Without it the constants drift the first time
+// project.SchemaVersion moves, and buildPage then accepts exactly the document
+// its gate exists to refuse — silently, because a schema bump changes what the
+// graph means and not what its keys are called.
+//
+// When project.SchemaVersion moves, move export.SchemaVersion and
+// SCHEMA_VERSION in site/app.js in the same change.
+func TestSchemaVersionIsPinnedToTheProducer(t *testing.T) {
+	if export.SchemaVersion != project.SchemaVersion {
+		t.Errorf("export.SchemaVersion is %d but project.SchemaVersion is %d; "+
+			"internal/export does not import internal/project, so this test is the only "+
+			"thing keeping the packager's gate in step with the producer's stamp — move both",
+			export.SchemaVersion, project.SchemaVersion)
+	}
+}
+
+// The client's copy is the one nothing compiles against, so it is the one that
+// would drift in silence. Read it out of the same embedded asset tree the
+// packager ships and pin the literal.
+func TestClientSchemaVersionIsPinnedToTheProducer(t *testing.T) {
+	b, err := fs.ReadFile(site.FS(), "app.js")
+	if err != nil {
+		t.Fatalf("read embedded app.js: %v", err)
+	}
+	want := fmt.Sprintf("const SCHEMA_VERSION = %d;", project.SchemaVersion)
+	if !bytes.Contains(b, []byte(want)) {
+		t.Errorf("site/app.js does not declare %q; the browser gate has drifted from "+
+			"project.SchemaVersion %d, so the page would draw a document it does not understand",
+			want, project.SchemaVersion)
+	}
+}
+
+// A projection whose schema this binary does not know has to be refused, not
+// rendered: the keys still decode, so the page would come out plausible and
+// wrong. Both directions are errors — an older document is as unreadable as a
+// newer one, because the version says what the numbers mean.
+func TestWriteRefusesASchemaVersionItDoesNotUnderstand(t *testing.T) {
+	// wantVersion is what the error has to report as "got": a missing key and
+	// an explicit 0 both decode to 0, and the message says so either way.
+	type badVersion struct {
+		version int
+		absent  bool
+	}
+	cases := map[string]badVersion{
+		"newer than this binary": {version: export.SchemaVersion + 1},
+		"an explicit zero":       {version: 0},
+		"no schema_version key":  {absent: true},
+	}
+	// At schema version 1 there is no older non-zero version to hand it, and
+	// faking one with 0 would just re-run the case above under another name.
+	// The case appears on its own the first time there is a real one.
+	if export.SchemaVersion > 1 {
+		cases["older than this binary"] = badVersion{version: export.SchemaVersion - 1}
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, err := export.Write(export.Options{
+				Dir:         t.TempDir(),
+				Projections: map[string][]byte{"sankey": reversionedGolden(t, tc.version, tc.absent)},
+				Docs:        budgetDocs(),
+			})
+			if err == nil {
+				t.Fatal("got nil error, want a refusal")
+			}
+			if !errors.Is(err, export.ErrSchemaVersion) {
+				t.Fatalf("got error %q, want one matching export.ErrSchemaVersion", err)
+			}
+			want := fmt.Sprintf("got %d, want %d", tc.version, export.SchemaVersion)
+			if got := err.Error(); !strings.Contains(got, want) {
+				t.Errorf("got error %q, want it to contain %q", got, want)
+			}
+		})
+	}
+}
+
+// The gate must not be a blanket refusal: the golden projection carries the
+// version this binary understands and has to go through.
+func TestWriteAcceptsTheSchemaVersionItUnderstands(t *testing.T) {
+	dir, _ := writeGolden(t)
+	if _, err := os.Stat(filepath.Join(dir, "index.html")); err != nil {
+		t.Fatalf("the current schema version did not produce a page: %v", err)
+	}
+}
+
+// reversionedGolden is the golden projection with schema_version rewritten, or
+// removed when absent is set, and nothing else touched — so a refusal cannot be
+// mistaken for a reaction to some other malformation.
+func reversionedGolden(t *testing.T, version int, absent bool) []byte {
+	t.Helper()
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(goldenSankey(t), &doc); err != nil {
+		t.Fatalf("decode golden projection: %v", err)
+	}
+	if _, ok := doc["schema_version"]; !ok {
+		t.Fatal("golden projection carries no schema_version to rewrite")
+	}
+	if absent {
+		delete(doc, "schema_version")
+	} else {
+		doc["schema_version"] = json.RawMessage(strconv.Itoa(version))
+	}
+	b, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("re-encode golden projection: %v", err)
+	}
+	return b
 }
 
 func TestWriteReportsAMissingAsset(t *testing.T) {
