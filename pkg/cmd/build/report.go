@@ -131,7 +131,7 @@ func (rep *Report) unchecked(rule *mapping.Rule, p *mapping.Part, reason string)
 func (rep *Report) addOmissions(rule *mapping.Rule, omissions []mapping.Omission) {
 	for _, o := range omissions {
 		rep.Omissions = append(rep.Omissions,
-			DeclaredOmission{RuleID: rule.ID, Page: o.Page, RowLabel: o.Row.Label})
+			DeclaredOmission{RuleID: rule.ID, Page: o.Page, RowLabel: o.Row.PrintedLabel()})
 	}
 }
 

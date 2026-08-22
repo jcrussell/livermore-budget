@@ -224,25 +224,50 @@ func validateRule(r *Rule, errf errFunc) error {
 		return errf(r.ID, "rows", "is empty")
 	}
 
+	// rowIndex is keyed on Identity(), which is what a row IS within its rule;
+	// tailed collects the two-anchor rows by their first anchor alone, so a
+	// declaration that names only that anchor can be told "which one?" rather
+	// than "no such row". printed guards the other end: row_label is what a
+	// fact publishes and what its id is hashed from (see fact.MakeID), so two
+	// rows may share neither an identity nor a printed form.
 	rowIndex := map[string]bool{}
+	tailed := map[string][]string{}
+	printed := map[string]bool{}
 	for i, row := range r.Rows {
 		if row.Label == "" {
 			return errf(r.ID, "rows", "row %d has no label", i)
 		}
-		if row.LabelTail != "" && strings.TrimSpace(row.LabelTail) != row.LabelTail {
-			return errf(r.ID, "rows",
-				"row %q: label_tail %q has leading or trailing whitespace",
-				row.Label, row.LabelTail)
-		}
-		if row.LabelTail != "" && strings.TrimSpace(row.LabelTail) == "" {
-			return errf(r.ID, "rows", "row %q: label_tail is blank", row.Label)
+		if row.LabelTail != "" {
+			// Blank first: a whitespace-only tail IS blank, and reporting it
+			// as stray whitespace would send the author looking for a
+			// character to trim rather than for the anchor they meant to name.
+			if strings.TrimSpace(row.LabelTail) == "" {
+				return errf(r.ID, "rows", "row %q: label_tail is blank", row.Label)
+			}
+			if strings.TrimSpace(row.LabelTail) != row.LabelTail {
+				return errf(r.ID, "rows",
+					"row %q: label_tail %q has leading or trailing whitespace",
+					row.Label, row.LabelTail)
+			}
 		}
 		if rowIndex[row.Identity()] {
 			return cmdutil.WithHint(
 				errf(r.ID, "rows", "duplicate row label %q", row.PrintedLabel()),
 				"row labels are positional identities; two rows cannot share one")
 		}
+		if printed[row.PrintedLabel()] {
+			return cmdutil.WithHint(
+				errf(r.ID, "rows", "two rows print as %q", row.PrintedLabel()),
+				"the two rows split that text differently between label and "+
+					"label_tail, so they are two identities to the resolver "+
+					"and one row_label to every reader of facts.jsonl, where "+
+					"a fact's id is hashed from row_label")
+		}
 		rowIndex[row.Identity()] = true
+		printed[row.PrintedLabel()] = true
+		if row.LabelTail != "" {
+			tailed[row.Label] = append(tailed[row.Label], row.PrintedLabel())
+		}
 		if !row.Sign.valid() {
 			return errf(r.ID, "rows", "row %q: sign %q, want positive or contra",
 				row.Label, row.Sign)
@@ -257,11 +282,23 @@ func validateRule(r *Rule, errf errFunc) error {
 					"would double-count")
 		}
 	}
-	if r.TotalRow != "" && rowIndex[r.TotalRow] {
-		return cmdutil.WithHint(
-			errf(r.ID, "total_row", "%q is also listed in rows", r.TotalRow),
-			"the total row is what the mapped rows are checked against; "+
-				"including it in rows would double-count it")
+	// The guard is against the row's LABEL, and deliberately not against
+	// rowIndex: a two-anchor row's identity carries a \x1f, so a total_row --
+	// which is a plain string the author types and the resolver finds in the
+	// page text -- can never equal one, and testing the index silently
+	// disabled this check for every row carrying a label_tail (fisc-gtv). The
+	// printed form is tested too, because that is the other spelling an author
+	// might reach for.
+	if r.TotalRow != "" {
+		for _, row := range r.Rows {
+			if r.TotalRow != row.Label && r.TotalRow != row.PrintedLabel() {
+				continue
+			}
+			return cmdutil.WithHint(
+				errf(r.ID, "total_row", "%q is also listed in rows", r.TotalRow),
+				"the total row is what the mapped rows are checked against; "+
+					"including it in rows would double-count it")
+		}
 	}
 
 	pages := map[int]bool{}
@@ -351,14 +388,40 @@ func validateRule(r *Rule, errf errFunc) error {
 			return err
 		}
 
-		for _, label := range p.OmittedRows {
-			if !rowIndex[label] {
-				return cmdutil.WithHint(
-					errf(r.ID, fmt.Sprintf("parts[page %d].omitted_rows", p.Page),
-						"%q is not one of this rule's rows", label),
-					"omitted_rows names rows that exist in the rule but are "+
-						"absent from this page")
+		// An omitted_rows entry must name EXACTLY ONE row. Naming none is the
+		// stale declaration this has always refused; naming more than one
+		// would drop every row sharing a label, which is the same silent
+		// mismapping the declaration exists to prevent, one page later.
+		field := fmt.Sprintf("parts[page %d].omitted_rows", p.Page)
+		declared := map[string]bool{}
+		for j, o := range p.OmittedRows {
+			switch {
+			case strings.TrimSpace(o.Label) == "":
+				return errf(r.ID, field, "entry %d has no label", j)
+			case strings.TrimSpace(o.LabelTail) != o.LabelTail:
+				return errf(r.ID, field,
+					"entry %d: label_tail %q has leading or trailing whitespace",
+					j, o.LabelTail)
 			}
+			if rowIndex[o.Identity()] {
+				if declared[o.Identity()] {
+					return errf(r.ID, field, "%q is declared twice", o.PrintedLabel())
+				}
+				declared[o.Identity()] = true
+				continue
+			}
+			if o.LabelTail == "" && len(tailed[o.Label]) > 0 {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "%q names %d rows, which differ only in "+
+						"their label_tail: %q", o.Label, len(tailed[o.Label]),
+						tailed[o.Label]),
+					"a row named by two anchors is omitted by naming both: "+
+						"- {label: ..., label_tail: ...}")
+			}
+			return cmdutil.WithHint(
+				errf(r.ID, field, "%q is not one of this rule's rows", o.PrintedLabel()),
+				"omitted_rows names rows that exist in the rule but are "+
+					"absent from this page")
 		}
 
 		// A declared discrepancy is a claim about one column of one page, so

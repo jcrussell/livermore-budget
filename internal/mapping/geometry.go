@@ -368,7 +368,7 @@ func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks [
 
 	line, num := -1, 0
 	for c, tk := range toks {
-		where := fmt.Sprintf("row %q column %d", row.Label, c+1)
+		where := fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1)
 		pl, ok := g.pair.words[tk.off]
 		if !ok {
 			// The substrates were already proved to agree token for token, so

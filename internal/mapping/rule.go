@@ -12,7 +12,13 @@
 // parts of this schema exist because of the awkward parts of the PDFs.
 package mapping
 
-import "github.com/jcrussell/livermore-budget/internal/amount"
+import (
+	"fmt"
+
+	yaml "go.yaml.in/yaml/v3"
+
+	"github.com/jcrussell/livermore-budget/internal/amount"
+)
 
 // SchemaVersion is the rule-file version this package understands, declared in
 // every file and refused if it differs. It is a compatibility marker between
@@ -165,7 +171,11 @@ type Part struct {
 	// of the fact id, so the mislabelled facts would be citable. If rows go
 	// missing between the PDF and the artifact, fix extraction; do not declare
 	// them here.
-	OmittedRows []string `yaml:"omitted_rows"`
+	//
+	// Each entry names exactly one row, as a bare label or as the pair of
+	// anchors that identifies it; see OmittedRow. An entry that names no row
+	// is refused, and so is one that names more than one.
+	OmittedRows []OmittedRow `yaml:"omitted_rows"`
 
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
@@ -350,6 +360,72 @@ func (r Row) PrintedLabel() string {
 	return r.Label + " " + r.LabelTail
 }
 
+// OmittedRow names one of the rule's rows that a part does not print. It is
+// written the way the row itself is written, and for the same reason:
+//
+//	omitted_rows: ["Licenses & Permits"]
+//	omitted_rows:
+//	  - {label: "Transfer From Wastewater", label_tail: "to Stormwater"}
+//
+// A bare string names a row identified by one anchor; the pair names a row
+// identified by two (see Row.LabelTail). The pair is not optional sugar. Row
+// identity within a rule is Row.Identity(), which joins the two anchors on a
+// \x1f no author would type — YAML "\x1f" produces one, and such an entry does
+// match, so this is a convention rather than an impossibility — and spelling
+// the pair as one string instead would
+// mean asserting the run of spaces the page prints between the fields — the
+// one thing Row.LabelTail exists in order not to do. Before this form existed,
+// a row carrying a label_tail could not be named here at all, while
+// OmittedRows' own doc called the declaration mandatory (fisc-gtv).
+type OmittedRow struct {
+	Label     string `yaml:"label"`
+	LabelTail string `yaml:"label_tail"`
+}
+
+// UnmarshalYAML accepts either spelling.
+func (o *OmittedRow) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind == yaml.ScalarNode {
+		return n.Decode(&o.Label)
+	}
+	if n.Kind != yaml.MappingNode {
+		return fmt.Errorf("line %d: an omitted_rows entry is a label, or a "+
+			"{label, label_tail} pair naming a row's two anchors", n.Line)
+	}
+	// The decoder's KnownFields does not reach a custom unmarshaler, so
+	// unknown keys are refused here instead. A typo'd `label_tial` would
+	// otherwise be dropped, and the entry would name a different row than the
+	// author wrote — silently, since the label alone may well match one.
+	for i := 0; i+1 < len(n.Content); i += 2 {
+		switch k := n.Content[i].Value; k {
+		case "label", "label_tail":
+		default:
+			return fmt.Errorf("line %d: unknown field %q in an omitted_rows "+
+				"entry; it takes label and label_tail", n.Content[i].Line, k)
+		}
+	}
+	// The alias sheds this method, so the struct tags above do the decoding
+	// rather than being decoration.
+	type entry OmittedRow
+	var e entry
+	if err := n.Decode(&e); err != nil {
+		return err
+	}
+	*o = OmittedRow(e)
+	return nil
+}
+
+// row is the Row this entry names, so identity and printed form are computed
+// by Row's own methods and cannot drift from them.
+func (o OmittedRow) row() Row { return Row{Label: o.Label, LabelTail: o.LabelTail} }
+
+// Identity is the row identity this entry claims, in the same key space the
+// rule's rows are indexed by.
+func (o OmittedRow) Identity() string { return o.row().Identity() }
+
+// PrintedLabel is how the entry reads in a message, matching what the row
+// would have published had the page printed it.
+func (o OmittedRow) PrintedLabel() string { return o.row().PrintedLabel() }
+
 // LabelledPart returns the part that carries row labels for p, which is p
 // itself unless p declares LabelsFrom.
 func (r *Rule) LabelledPart(p *Part) *Part {
@@ -376,17 +452,27 @@ func (r *Rule) ActiveRows(p *Part) []Row {
 	if len(p.OmittedRows) == 0 {
 		return append([]Row(nil), r.Rows...)
 	}
-	omitted := make(map[string]bool, len(p.OmittedRows))
-	for _, l := range p.OmittedRows {
-		omitted[l] = true
-	}
+	omitted := omittedSet(p)
 	out := make([]Row, 0, len(r.Rows))
 	for _, row := range r.Rows {
-		if !omitted[row.Label] {
+		if !omitted[row.Identity()] {
 			out = append(out, row)
 		}
 	}
 	return out
+}
+
+// omittedSet is the part's declared omissions as a set of row identities. It
+// is keyed on Identity() and not on Label because a Label is not unique within
+// a rule once a row may carry a second anchor: filtering on the bare label
+// would drop EVERY row sharing it, so declaring one of p76's two "Transfer
+// From Wastewater" rows absent would silently delete the other as well.
+func omittedSet(p *Part) map[string]bool {
+	set := make(map[string]bool, len(p.OmittedRows))
+	for _, o := range p.OmittedRows {
+		set[o.Identity()] = true
+	}
+	return set
 }
 
 // ExpectedValues is how many numbers a positional read of this part must find:

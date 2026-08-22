@@ -47,14 +47,13 @@ func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 	return d
 }
 
-// spineFacts builds every fact the citywide spine yields. It is the input to
-// most of these tests, because a fact model checked only against invented rows
-// proves nothing about the corpus.
-func spineFacts(t *testing.T) []Fact {
+// factsFrom builds every fact a rule file yields over the pages named, from
+// the committed page fixtures.
+func factsFrom(t *testing.T, rules string, pages ...int) []Fact {
 	t.Helper()
 
-	d := budgetDoc(t, 66, 67)
-	f, err := mapping.Load("../mapping/testdata/spine.yaml")
+	d := budgetDoc(t, pages...)
+	f, err := mapping.Load(rules)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -79,6 +78,14 @@ func spineFacts(t *testing.T) []Fact {
 		}
 	}
 	return facts
+}
+
+// spineFacts builds every fact the citywide spine yields. It is the input to
+// most of these tests, because a fact model checked only against invented rows
+// proves nothing about the corpus.
+func spineFacts(t *testing.T) []Fact {
+	t.Helper()
+	return factsFrom(t, "../mapping/testdata/spine.yaml", 66, 67)
 }
 
 // TestSpineFacts checks the model against the real schedule: every figure the
@@ -386,6 +393,76 @@ func TestIDIsIdentityNotContent(t *testing.T) {
 			t.Errorf("component boundary is ambiguous: both hash to %s", a)
 		}
 	})
+}
+
+// TestTwoAnchorRowsGetDistinctIDs is fisc-28h, against the page it was found
+// on. Budget Book p76 prints two rows that share a source fund and differ only
+// in their destination, both in rule p76-transfers-in-enterprise-a:
+//
+//	Transfer From Wastewater   to Stormwater          ...
+//	Transfer From Wastewater   to LAVWMA / Wastewater ...
+//
+// Hashing the bare Row.Label gave both of them one id, so the id was keyed on
+// a string that is not the row_label the fact publishes. The id is built from
+// PrintedLabel() for exactly this reason: it is what the record says, and a
+// content address a reader cannot recompute from the record is not an
+// address.
+func TestTwoAnchorRowsGetDistinctIDs(t *testing.T) {
+	facts := factsFrom(t, "../mapping/testdata/transfers-p76.yaml", 76)
+	if len(facts) == 0 {
+		t.Fatal("p76 produced no facts")
+	}
+	if err := CheckUniqueIDs(facts); err != nil {
+		t.Fatalf("p76 facts collide: %v", err)
+	}
+
+	// The confirmed pair, both in rule p76-transfers-in-enterprise-a.
+	const shared = "Transfer From Wastewater"
+	byLabel := map[string][]Fact{}
+	for _, f := range facts {
+		if f.FiscalYear == 2026 && strings.HasPrefix(f.RowLabel, shared) {
+			byLabel[f.RowLabel] = append(byLabel[f.RowLabel], f)
+		}
+	}
+	if len(byLabel) != 2 {
+		t.Fatalf("got %d FY2026 row labels beginning %q, want 2: %v",
+			len(byLabel), shared, byLabel)
+	}
+	seen := map[string]string{}
+	for label, fs := range byLabel {
+		if len(fs) != 1 {
+			t.Fatalf("row label %q claims %d FY2026 facts, want 1", label, len(fs))
+		}
+		if prev, dup := seen[fs[0].ID]; dup {
+			t.Errorf("rows %q and %q both hash to %s", prev, label, fs[0].ID)
+		}
+		seen[fs[0].ID] = label
+	}
+}
+
+// TestIDIsBuiltFromTheLabelTheFactPublishes states the fisc-28h decision as a
+// property rather than a page: whatever the id is hashed from must be
+// recoverable from the published record. row_label is that field.
+func TestIDIsBuiltFromTheLabelTheFactPublishes(t *testing.T) {
+	row := mapping.Row{Label: "Transfer From Wastewater",
+		LabelTail: "to Stormwater", Category: "transfers/in"}
+	f := &mapping.File{DocID: "doc"}
+	rule := &mapping.Rule{ID: "rule", Basis: mapping.BasisAdopted, Scope: "s"}
+	got, err := FromValues(f, rule, []mapping.Value{{
+		Row: row, Column: mapping.Column{FundGroup: "enterprise", FiscalYear: 2026},
+	}})
+	if err != nil {
+		t.Fatalf("FromValues: %v", err)
+	}
+	want := MakeID("doc", "rule", RowPath(row), got[0].RowLabel,
+		"enterprise", 2026, mapping.BasisAdopted)
+	if got[0].ID != want {
+		t.Errorf("id = %s, want %s: the id must be a function of the published "+
+			"row_label %q", got[0].ID, want, got[0].RowLabel)
+	}
+	if got[0].RowLabel != row.PrintedLabel() {
+		t.Errorf("row_label = %q, want %q", got[0].RowLabel, row.PrintedLabel())
+	}
 }
 
 func TestRowAndColumnPaths(t *testing.T) {

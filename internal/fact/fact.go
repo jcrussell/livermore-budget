@@ -116,9 +116,47 @@ type Fact struct {
 // a rule. Budget Book p127 prints thirteen detail lines that are all
 // taxes/property — data/taxonomy.yaml is explicit that those lines are a rule's
 // label, not a category — so hashing the path alone gives all thirteen the same
-// id, and the p167 department-by-category schedule has the same shape. The
-// label is the row's identity inside its rule, which the parser already
-// enforces as unique.
+// id, and the p167 department-by-category schedule has the same shape.
+//
+// THE LABEL PASSED HERE IS mapping.Row.PrintedLabel(), the same string the
+// record publishes as row_label — not Row.Label, and not Row.Identity(). A row
+// may be named by two printed anchors (Row.LabelTail), and the three differ for
+// one: "Transfer From Wastewater", "Transfer From Wastewater to Stormwater",
+// and the same pair joined by "\x1f". Hashing Row.Label collided the two rows
+// Budget Book p76 prints as "Transfer From Wastewater to Stormwater" and
+// "Transfer From Wastewater to LAVWMA / Wastewater" (fisc-28h), so the real
+// choice was between the published label and the resolver's identity. Two
+// reasons settle it for the published one:
+//
+//   - An id must be recomputable from the record it names. facts.jsonl is the
+//     audit trail; a reader holding a line must be able to re-derive its id
+//     from the fields printed on that line. Identity() is not among them, and
+//     it cannot be recovered from row_label either — "A B" could be one anchor
+//     or two.
+//   - A re-spelling is not a re-wording. A row shipped as {label: "A B"} that
+//     later needs two-anchor matching and is re-spelt {label: "A", label_tail:
+//     "B"} keeps its id here, and would change it under Identity() — though the
+//     page, the printed row and every published field are unchanged. The
+//     doctrine below is that re-WORDING a row changes its id, because the
+//     resolver anchors on the label; splitting one anchor into two is not that.
+//
+// PrintedLabel() is NOT injective, and it is worth being plain about it: it
+// joins on a space, so {label: "Transfer From Water to Water"} and {label:
+// "Transfer From Water", label_tail: "to Water"} print the same string and hash
+// to the same id. What separates them is the parser's printed-label uniqueness
+// rule, not this encoding — so id uniqueness here rests on a validation, where
+// under Identity() it would have rested on the encoding alone. That is the real
+// cost of the choice, accepted because the first reason above is decisive and
+// because the collision needs two rows whose anchor text is the same word
+// sequence, which the parser refuses outright.
+//
+// The two notions of uniqueness this leaves apart are both enforced, in the
+// place each belongs. The parser enforces that no two rows of a rule share an
+// Identity(), which is what a positional read of a page needs, AND that no two
+// share a PrintedLabel(), which is what this id needs — two rows publishing one
+// row_label would be indistinguishable to every reader of facts.jsonl whatever
+// their ids were, so that is a defect to refuse and not to route around.
+// CheckUniqueIDs is the backstop if a rule ever reaches here unparsed.
 //
 // The cost is that re-wording a row in the source changes its id. That is the
 // right trade: the label is also what the resolver anchors on, so a re-wording
@@ -206,13 +244,15 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		if missing != "" {
 			return nil, cmdutil.WithHint(
 				fmt.Errorf("%s: rule %q p%d: row %q has no addressable %s",
-					f.Path, rule.ID, v.Page, v.Row.Label, missing),
+					f.Path, rule.ID, v.Page, v.Row.PrintedLabel(), missing),
 				"a fact's id is built from its row and column paths; without "+
 					"both it cannot be addressed, cited, or diffed")
 		}
 
 		out = append(out, Fact{
-			ID:          MakeID(f.DocID, rule.ID, rowPath, v.Row.Label, columnPath, v.Column.FiscalYear, basis),
+			// PrintedLabel(), not Label and not Identity(): see MakeID.
+			ID: MakeID(f.DocID, rule.ID, rowPath, v.Row.PrintedLabel(),
+				columnPath, v.Column.FiscalYear, basis),
 			DocID:       f.DocID,
 			Page:        v.Page,
 			Offset:      v.Offset,

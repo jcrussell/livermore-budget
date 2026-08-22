@@ -421,7 +421,10 @@ func canonicalRows(rule *Rule, p *Part) ([]Row, []int) {
 	idx := make([]int, len(active))
 	at := 0
 	for i, row := range rule.Rows {
-		if at < len(active) && active[at].Label == row.Label {
+		// Identity(), like ActiveRows: two rows may share a Label, and pairing
+		// on it would give the surviving row the omitted row's index, filing
+		// its figures under a position the page does not print.
+		if at < len(active) && active[at].Identity() == row.Identity() {
 			idx[at] = i
 			at++
 		}
@@ -433,13 +436,14 @@ func omissions(rule *Rule, p *Part) []Omission {
 	if len(p.OmittedRows) == 0 {
 		return nil
 	}
-	declared := make(map[string]bool, len(p.OmittedRows))
-	for _, l := range p.OmittedRows {
-		declared[l] = true
-	}
+	// Keyed on Identity(), the same key ActiveRows drops on. Matching the bare
+	// Label here would report an omission for every row sharing it, so the
+	// omissions and the active rows would disagree about which rows the page
+	// prints (fisc-gtv).
+	declared := omittedSet(p)
 	var out []Omission
 	for i, row := range rule.Rows {
-		if declared[row.Label] {
+		if declared[row.Identity()] {
 			out = append(out, Omission{Row: row, RowIndex: i, Page: p.Page})
 		}
 	}
@@ -492,12 +496,12 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 		}
 		toks, err := dropCurrencyMarks(tokens(blk.Text[after:], blk.Start+after))
 		if err != nil {
-			return nil, fail("rows", fmt.Sprintf("row %q: %s", row.Label, err), currencyHint)
+			return nil, fail("rows", fmt.Sprintf("row %q: %s", row.PrintedLabel(), err), currencyHint)
 		}
 		if len(toks) < ncols {
 			return nil, fail("rows", fmt.Sprintf(
 				"row %q is followed by %d values, want %d (one per column)",
-				row.Label, len(toks), ncols), "check the part's columns against the page")
+				row.PrintedLabel(), len(toks), ncols), "check the part's columns against the page")
 		}
 		toks = toks[:ncols]
 		vals, err := r.parseRow(rule, p, row, rowIndex[i], toks, guard)
@@ -595,7 +599,7 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 		cents, err := amount.Parse(tk.text, rule.Units)
 		if err != nil {
 			return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
-				Field: fmt.Sprintf("row %q column %d", row.Label, c+1),
+				Field: fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1),
 				Msg:   err.Error(), Err: err}
 		}
 		// A skipped row or column still consumes its position — that is the
@@ -648,7 +652,11 @@ func declaredOmissions(p *Part) string {
 	if len(p.OmittedRows) == 0 {
 		return "none"
 	}
-	return fmt.Sprintf("%q", p.OmittedRows)
+	labels := make([]string, len(p.OmittedRows))
+	for i, o := range p.OmittedRows {
+		labels[i] = o.PrintedLabel()
+	}
+	return fmt.Sprintf("%q", labels)
 }
 
 // StatedTotals reads the totals the document itself prints for a part.
