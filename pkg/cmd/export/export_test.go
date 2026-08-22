@@ -3,6 +3,7 @@ package export
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,7 +45,37 @@ sources:
 	if err := os.WriteFile(filepath.Join(root, "data", "sources.yaml"), []byte(registry), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
+	seedExtraction(t, root)
 	return root
+}
+
+// seedExtraction writes the extraction artifacts the export copies into the
+// site: the committed text of the two pages the golden projection cites, plus
+// a page it does not, so "only the cited pages ship" can fail.
+func seedExtraction(t *testing.T, root string) {
+	t.Helper()
+	pages := filepath.Join(root, "data", "extracted", budgetDocID, "pages")
+	if err := os.MkdirAll(pages, 0o755); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	for name, body := range map[string]string{
+		"p0066.txt": pageText(66),
+		"p0067.txt": pageText(67),
+		"p0100.txt": "a page nothing cites\n",
+	} {
+		if err := os.WriteFile(filepath.Join(pages, name), []byte(body), 0o600); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+}
+
+// budgetDocID is the document the golden projection cites.
+const budgetDocID = "livermore-budget-fy2026-2027"
+
+// pageText is the seeded body of one extracted page. The runs of spaces are
+// the printed column grid, so they are part of what has to arrive unchanged.
+func pageText(page int) string {
+	return fmt.Sprintf("PAGE %d\nREVENUE      123,456      789\n", page)
 }
 
 func testOptions(t *testing.T) (*Options, *iostreams.IOStreams, func() string, func() string) {
@@ -73,7 +104,27 @@ func TestNewCmdExportFlags(t *testing.T) {
 		{name: "output", args: []string{"--output", "site"}, want: Options{OutputDir: "site"}},
 		{name: "short output", args: []string{"-o", "site"}, want: Options{OutputDir: "site"}},
 		{name: "clean", args: []string{"--clean"}, want: Options{OutputDir: "dist", Clean: true}},
+		{
+			name: "source browse url",
+			args: []string{"--source-browse-url", "https://example.test/blob/main"},
+			want: Options{OutputDir: "dist", SourceBrowseURL: "https://example.test/blob/main"},
+		},
 		{name: "empty output", args: []string{"--output", ""}, wantErr: "--output requires a directory"},
+		{
+			name:    "browse url with no scheme",
+			args:    []string{"--source-browse-url", "example.test/blob/main"},
+			wantErr: "--source-browse-url",
+		},
+		{
+			name:    "browse url on another scheme",
+			args:    []string{"--source-browse-url", "ftp://example.test/blob/main"},
+			wantErr: "must be an http or https URL",
+		},
+		{
+			name:    "browse url with no host",
+			args:    []string{"--source-browse-url", "https:///blob/main"},
+			wantErr: "has no host",
+		},
 		{name: "positional args", args: []string{"dist"}, wantErr: `unknown command "dist"`},
 	}
 	for _, tc := range cases {
@@ -102,6 +153,9 @@ func TestNewCmdExportFlags(t *testing.T) {
 					t.Errorf("got error %q, want it to contain %q", err, tc.wantErr)
 				}
 				var flagErr *cmdutil.FlagError
+				if !errors.As(err, &flagErr) && strings.HasPrefix(tc.name, "browse url") {
+					t.Errorf("got %T, want a *cmdutil.FlagError so the runner exits 2", err)
+				}
 				if strings.HasPrefix(tc.wantErr, "--") && !errors.As(err, &flagErr) {
 					t.Errorf("got %T, want a *cmdutil.FlagError so the runner exits 2", err)
 				}
@@ -115,6 +169,9 @@ func TestNewCmdExportFlags(t *testing.T) {
 			}
 			if got.Clean != tc.want.Clean {
 				t.Errorf("got --clean %v, want %v", got.Clean, tc.want.Clean)
+			}
+			if got.SourceBrowseURL != tc.want.SourceBrowseURL {
+				t.Errorf("got --source-browse-url %q, want %q", got.SourceBrowseURL, tc.want.SourceBrowseURL)
 			}
 			// Validate canonicalises the path, so compare against the
 			// resolved form of what was asked for.
@@ -160,6 +217,142 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	if strings.Contains(out(), "python3") {
 		t.Error("the serve instruction is chatter and belongs on ErrOut")
 	}
+}
+
+// The acceptance test for fisc-ze7: the exported site resolves BOTH citation
+// classes with no network access to github.com.
+//
+// It walks the page's own links rather than a list, because the failure being
+// prevented is invisible to every other test — the export succeeds, the page
+// renders, and the citation 404s only for the reader who follows it. Class one,
+// the city's PDF, stays remote by design: it is the city's publication and its
+// LFS copy is not ours to republish. Class two, the extracted text every figure
+// is traced to, has to be a file inside the output.
+func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	page := readPage(t, opts.OutputDir)
+
+	var pdfCitations, textCitations int
+	for _, ref := range pageRefs(page) {
+		switch {
+		case strings.HasPrefix(ref, "https://www.livermoreca.gov/"):
+			// The city's own document: the source heading links the document,
+			// each cited page links it again with a #page fragment.
+			if strings.Contains(ref, "#page=") {
+				pdfCitations++
+			}
+		case strings.Contains(ref, "://"):
+			t.Errorf("the page reaches %q; every citation but the city's PDF has to resolve inside the site", ref)
+		default:
+			if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(ref))); err != nil {
+				t.Errorf("the page references %q, which the site does not carry: %v", ref, err)
+			}
+			if strings.HasSuffix(ref, ".txt") {
+				textCitations++
+			}
+		}
+	}
+	if pdfCitations < 2 {
+		t.Errorf("got %d PDF citations, want one per cited page", pdfCitations)
+	}
+	if textCitations < 2 {
+		t.Errorf("got %d extracted-text citations resolving inside the site, want one per cited page", textCitations)
+	}
+	if strings.Contains(page, "github.com") {
+		t.Error("the page cites github.com; the site is supposed to carry its own provenance")
+	}
+
+	// The bytes have to be the extraction's, spaces and all: the runs of
+	// spaces ARE the printed column grid.
+	got, err := os.ReadFile(filepath.Join(opts.OutputDir, "extracted", budgetDocID, "pages", "p0066.txt"))
+	if err != nil {
+		t.Fatalf("read the shipped page text: %v", err)
+	}
+	if diff := cmp.Diff(pageText(66), string(got)); diff != "" {
+		t.Errorf("shipped page text differs from the extraction (-want +got):\n%s", diff)
+	}
+	if _, err := os.Stat(filepath.Join(opts.OutputDir, "extracted", budgetDocID, "pages", "p0100.txt")); err == nil {
+		t.Error("the site ships p0100.txt, which nothing cites")
+	}
+}
+
+// --source-browse-url is the escape hatch for a deploy that would rather link
+// to a browsable tree. It is opt-in precisely because it puts the provenance
+// back on somebody else's server.
+func TestExportRunCitesTheBrowseURLWhenAsked(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	opts.SourceBrowseURL = "https://example.test/blob/main"
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	page := readPage(t, opts.OutputDir)
+
+	want := "https://example.test/blob/main/data/extracted/" + budgetDocID + "/pages/p0066.txt"
+	if !strings.Contains(page, want) {
+		t.Errorf("page does not cite %q", want)
+	}
+	if _, err := os.Stat(filepath.Join(opts.OutputDir, "extracted")); err == nil {
+		t.Error("the export cited a remote and shipped the page text as well")
+	}
+}
+
+// An extraction the repository does not have is a broken checkout, and the
+// export has to say so rather than publish citations to files it never copied.
+func TestExportRunNeedsTheExtractionItCites(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	root, err := opts.RepoRoot()
+	if err != nil {
+		t.Fatalf("RepoRoot: %v", err)
+	}
+	if err := os.RemoveAll(filepath.Join(root, "data", "extracted")); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	err = exportRun(opts)
+	if err == nil {
+		t.Fatal("got nil error, want a refusal to cite text it cannot ship")
+	}
+	if got := err.Error(); !strings.Contains(got, "page 66") {
+		t.Errorf("got error %q, want it to name the page it could not read", got)
+	}
+}
+
+// pageRefs are the page's own href and src values.
+func pageRefs(page string) []string {
+	var refs []string
+	for _, attr := range []string{`src="`, `href="`} {
+		rest := page
+		for {
+			i := strings.Index(rest, attr)
+			if i < 0 {
+				break
+			}
+			rest = rest[i+len(attr):]
+			j := strings.Index(rest, `"`)
+			if j < 0 {
+				break
+			}
+			ref := rest[:j]
+			rest = rest[j:]
+			if ref == "" || strings.HasPrefix(ref, "#") {
+				continue
+			}
+			refs = append(refs, ref)
+		}
+	}
+	return refs
+}
+
+func readPage(t *testing.T, dir string) string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join(dir, "index.html"))
+	if err != nil {
+		t.Fatalf("read index.html: %v", err)
+	}
+	return string(b)
 }
 
 func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {

@@ -124,6 +124,15 @@ type figure struct {
 	Kind string
 }
 
+// citation is one (document, page) pair the page cites. It is what Write needs
+// out of buildPage besides the page itself: the projection's metadata says
+// which pages are cited, and re-decoding it to find out would be the second
+// implementation of the contract this package refuses to become.
+type citation struct {
+	DocID string
+	Page  int
+}
+
 // pageRef is one cited page of one source document.
 type pageRef struct {
 	Number  int
@@ -173,10 +182,15 @@ type clientDoc struct {
 	Title     string `json:"title"`
 	Publisher string `json:"publisher"`
 	PDFURL    string `json:"pdf_url"`
-	// PageTextBase is the directory URL holding the committed page text; the
-	// client appends pNNNN.md. Splitting it this way keeps the zero-padding
+	// PageTextBase is the directory holding the committed page text; the
+	// client appends pNNNN.txt. Splitting it this way keeps the zero-padding
 	// rule (corpus.PagePath) in one place per side rather than in a template
 	// string the client has to parse.
+	//
+	// It is a relative path into this site — see export.PageTextDir — whenever
+	// the export shipped the text, and an absolute URL only when it was told
+	// to cite a remote instead. The client appends the same filename either
+	// way and must not assume a scheme.
 	PageTextBase string `json:"page_text_base"`
 }
 
@@ -193,30 +207,35 @@ type clientConfig struct {
 }
 
 // buildPage decodes the primary projection and assembles everything the
-// template and the client need.
-func buildPage(projections map[string][]byte, docs []Doc, browseURL, exportedBy string) (pageData, error) {
+// template and the client need, plus the citations it composed.
+//
+// pageTextBase resolves a doc id to the directory the page text is cited from,
+// with its trailing slash. It is a function and not a URL because the caller,
+// not this file, decides between a remote browse view and the copy the site
+// ships (see Write).
+func buildPage(projections map[string][]byte, docs []Doc, pageTextBase func(docID string) string, exportedBy string) (pageData, []citation, error) {
 	var doc projectionDoc
 	if err := json.Unmarshal(projections[PrimaryProjection], &doc); err != nil {
-		return pageData{}, fmt.Errorf("decode %s projection: %w", PrimaryProjection, err)
+		return pageData{}, nil, fmt.Errorf("decode %s projection: %w", PrimaryProjection, err)
 	}
 	// Before anything is read out of the document: every field below is named
 	// by a contract that a version this packager does not know may have
 	// renamed or redefined.
 	if err := checkSchemaVersion(doc.SchemaVersion); err != nil {
-		return pageData{}, err
+		return pageData{}, nil, err
 	}
 	if len(doc.Metadata) == 0 {
-		return pageData{}, fmt.Errorf("%s projection has no metadata block", PrimaryProjection)
+		return pageData{}, nil, fmt.Errorf("%s projection has no metadata block", PrimaryProjection)
 	}
 	var meta projectionMetadata
 	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
-		return pageData{}, fmt.Errorf("decode %s metadata: %w", PrimaryProjection, err)
+		return pageData{}, nil, fmt.Errorf("decode %s metadata: %w", PrimaryProjection, err)
 	}
 	if meta.FiscalYearLabel == "" {
-		return pageData{}, fmt.Errorf("%s metadata has no fiscal_year_label", PrimaryProjection)
+		return pageData{}, nil, fmt.Errorf("%s metadata has no fiscal_year_label", PrimaryProjection)
 	}
 	if meta.Headline.AllFundsGrossExpenditureCents == 0 {
-		return pageData{}, fmt.Errorf("%s metadata has no headline expenditure", PrimaryProjection)
+		return pageData{}, nil, fmt.Errorf("%s metadata has no headline expenditure", PrimaryProjection)
 	}
 
 	byID := make(map[string]Doc, len(docs))
@@ -225,6 +244,8 @@ func buildPage(projections map[string][]byte, docs []Doc, browseURL, exportedBy 
 	}
 	sources := make([]sourceRef, 0, len(meta.Sources))
 	clientDocs := make(map[string]clientDoc, len(meta.Sources))
+	var cited []citation
+	citedSeen := make(map[citation]bool)
 	for _, s := range meta.Sources {
 		d := byID[s.DocID]
 		ref := sourceRef{
@@ -239,13 +260,19 @@ func buildPage(projections map[string][]byte, docs []Doc, browseURL, exportedBy 
 			// the provenance the page exists to show.
 			ref.Title = s.DocID
 		}
-		base := pageTextBase(browseURL, s.DocID)
+		base := pageTextBase(s.DocID)
 		for _, p := range s.Pages {
 			ref.Pages = append(ref.Pages, pageRef{
 				Number:  p,
 				PDFURL:  pdfPageURL(d.PDFURL, p),
 				TextURL: base + pageTextFile(p),
 			})
+			// Deduplicated: a document that cites a page twice is one file to
+			// ship, and shipping it twice is a write collision.
+			if key := (citation{DocID: s.DocID, Page: p}); !citedSeen[key] {
+				citedSeen[key] = true
+				cited = append(cited, key)
+			}
 		}
 		sources = append(sources, ref)
 		clientDocs[s.DocID] = clientDoc{
@@ -274,11 +301,11 @@ func buildPage(projections map[string][]byte, docs []Doc, browseURL, exportedBy 
 	}
 	blob, err := json.Marshal(cfg)
 	if err != nil {
-		return pageData{}, fmt.Errorf("encode page config: %w", err)
+		return pageData{}, nil, fmt.Errorf("encode page config: %w", err)
 	}
 
 	h := meta.Headline
-	return pageData{
+	page := pageData{
 		Title:           "City of Livermore budget flows — " + meta.FiscalYearLabel,
 		FiscalYearLabel: meta.FiscalYearLabel,
 		Basis:           meta.Basis,
@@ -330,7 +357,8 @@ func buildPage(projections map[string][]byte, docs []Doc, browseURL, exportedBy 
 		// or inject markup. The alternative, letting html/template escape a
 		// string, would corrupt the JSON.
 		ConfigJSON: template.JS(blob),
-	}, nil
+	}
+	return page, cited, nil
 }
 
 // renderPage executes the page template against the assembled data.
@@ -356,8 +384,10 @@ func pdfPageURL(pdfURL string, page int) string {
 	return fmt.Sprintf("%s#page=%d", pdfURL, page)
 }
 
-// pageTextBase is the directory URL of a document's committed page text.
-func pageTextBase(browseURL, docID string) string {
+// remotePageTextBase is the directory URL of a document's committed page text
+// in a browsable copy of the repository, so the path after the base is the
+// repository's own layout rather than the exported site's.
+func remotePageTextBase(browseURL, docID string) string {
 	return strings.TrimSuffix(browseURL, "/") + "/data/extracted/" + docID + "/pages/"
 }
 

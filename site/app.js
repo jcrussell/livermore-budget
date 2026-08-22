@@ -309,13 +309,21 @@ function nodeRank(node) {
  * Citations for a set of source documents: the city's PDF opened at the page,
  * and the committed extraction of that page's text.
  *
- * The page text is linked on github.com's blob view and never on
- * raw.githubusercontent.com. Not for LFS reasons — data/extracted/ is ordinary
- * git and the raw host would serve it fine — but because the blob view is the
- * one a reader can use: the file with line numbers, its history, and the rest
- * of the document beside it. The artifacts are .txt precisely so that view
- * shows them verbatim; markdown would be rendered and the runs of spaces that
- * ARE the printed column grid would collapse.
+ * page_text_base is normally a RELATIVE path into this site: `fisc export`
+ * copies the cited pages' committed text into the output tree, so a reader
+ * checking provenance loads it from the same origin as the page and needs no
+ * third party to be up. Do not assume a scheme, and do not compose it with
+ * `new URL(base)` — the browser resolves it against the document for us.
+ *
+ * When the export was told to cite a remote instead (--source-browse-url), the
+ * base is an absolute URL into a browsable copy of the repository: github.com's
+ * blob view and never raw.githubusercontent.com. Not for LFS reasons —
+ * data/extracted/ is ordinary git and the raw host would serve it fine — but
+ * because the blob view is the one a reader can use: the file with line
+ * numbers, its history, and the rest of the document beside it. The artifacts
+ * are .txt precisely so that view shows them verbatim; markdown would be
+ * rendered and the runs of spaces that ARE the printed column grid would
+ * collapse.
  *
  * The PDFs are the LFS half of the repository, which is why a PDF citation
  * goes to the city's own URL with #page=N rather than to GitHub at all.

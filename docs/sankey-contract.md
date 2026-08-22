@@ -20,6 +20,14 @@ One code path, one layout. The browser `fetch`es it; it is never inlined into
 the page, because a provenance file you cannot curl on its own is not much of
 an audit trail.
 
+Beside it, `<output>/extracted/<doc-id>/pages/pNNNN.txt` carries the committed
+extraction of every page `metadata.sources` cites, copied out of
+`data/extracted/` and only for the cited pages. That is what a citation on the
+page points at, so both classes — the city's PDF at `#page=N` and the extracted
+text — resolve with no third party involved; `fisc export --source-browse-url`
+cites a browsable copy of the repository instead. Anything else the site has to
+ship travels the same channel (`export.Options.Files`).
+
 ## Shape
 
 ```jsonc

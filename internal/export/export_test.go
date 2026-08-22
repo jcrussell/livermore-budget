@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -44,15 +45,50 @@ func budgetDocs() []export.Doc {
 	}}
 }
 
+// budgetDocID is the one document the golden projection cites.
+const budgetDocID = "livermore-budget-fy2026-2027"
+
+// pageTextFS stands in for data/extracted/. It holds more than the golden
+// projection cites — an uncited page of the same document and a whole second
+// document — because "only the cited pages ship" is the claim, and a tree
+// holding exactly the cited pages could not fail it.
+//
+// The bytes are synthetic rather than copied from data/extracted/: this package
+// does not read page text, it copies it, so what is asserted is that the bytes
+// arrive unchanged. A real fixture here would be one more file to re-copy when
+// the extraction changes (docs/agents/conventions.md) and would prove nothing
+// extra.
+func pageTextFS() fstest.MapFS {
+	return fstest.MapFS{
+		budgetDocID + "/pages/p0066.txt":        {Data: []byte("REVENUE    123,456    789\n")},
+		budgetDocID + "/pages/p0067.txt":        {Data: []byte("EXPENDITURE    987,654\n")},
+		budgetDocID + "/pages/p0100.txt":        {Data: []byte("a page nothing cites\n")},
+		"livermore-acfr-fy2025/pages/p0177.txt": {Data: []byte("another document\n")},
+		budgetDocID + "/geometry/p0066.json":    {Data: []byte("{}")},
+		budgetDocID + "/" + "manifest.json":     {Data: []byte("{}")},
+	}
+}
+
+// shippedPageText is where a cited page lands in the output tree.
+func shippedPageText(docID string, page int) string {
+	return fmt.Sprintf("%s/%s/pages/p%04d.txt", export.PageTextDir, docID, page)
+}
+
 func writeGolden(t *testing.T) (dir string, written []string) {
 	t.Helper()
+	return writeGoldenOpts(t, export.Options{PageText: pageTextFS()})
+}
+
+// writeGoldenOpts writes the golden projection with opts' provenance settings.
+// Dir, Projections, Docs and GeneratedBy are this helper's.
+func writeGoldenOpts(t *testing.T, opts export.Options) (dir string, written []string) {
+	t.Helper()
 	dir = t.TempDir()
-	written, err := export.Write(export.Options{
-		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t)},
-		Docs:        budgetDocs(),
-		GeneratedBy: "fisc test",
-	})
+	opts.Dir = dir
+	opts.Projections = map[string][]byte{"sankey": goldenSankey(t)}
+	opts.Docs = budgetDocs()
+	opts.GeneratedBy = "fisc test"
+	written, err := export.Write(opts)
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
@@ -73,6 +109,10 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		"vendor/d3.LICENSE",
 		"vendor/d3.min.js",
 		".nojekyll",
+		// The two pages the golden projection cites, and nothing else out of
+		// the extraction tree.
+		shippedPageText(budgetDocID, 66),
+		shippedPageText(budgetDocID, 67),
 	}
 	// The returned list is sorted; sort the expectation the same way by
 	// comparing sets of names rather than trusting two orderings to agree.
@@ -194,18 +234,117 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 	}
 }
 
-func TestPageCitesThePDFPageAndTheBlobViewOfTheExtractedPage(t *testing.T) {
+// The acceptance test for the whole change: a site exported with the extraction
+// tree in hand resolves BOTH classes of citation — the city's PDF and the
+// committed page text — and reaches github.com for neither.
+//
+// The two classes are not symmetric and the asymmetry is deliberate. The PDF is
+// the city's document at the city's URL: 1.6 GB of it lives in Git LFS and
+// republishing it would be a copy of somebody else's publication. The extracted
+// text is ours, it is small, and it is the artifact every figure on the page is
+// actually traced to — so it ships.
+func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 	dir, _ := writeGolden(t)
 	page := readPage(t, dir)
 
 	for _, want := range []string{
 		"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66",
 		"https://www.livermoreca.gov/home/showpublisheddocument/12813#page=67",
-		"https://github.com/jcrussell/livermore-budget/blob/main/data/extracted/livermore-budget-fy2026-2027/pages/p0066.txt",
+		shippedPageText(budgetDocID, 66),
+		shippedPageText(budgetDocID, 67),
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("page does not cite %q", want)
 		}
+	}
+
+	// No forge, anywhere: not in the rendered citations and not in the config
+	// the client composes its own links from. A citation that needs github.com
+	// to be up, reachable and still hosting this repository is the defect this
+	// change removes (fisc-ze7).
+	if strings.Contains(page, "github.com") {
+		t.Error("the page still cites github.com; the shipped page text should have replaced it")
+	}
+
+	// Every page-text citation has to be a file in the output. Resolve them the
+	// way a browser would — relative to the page — rather than trusting the
+	// string.
+	for _, doc := range configDocs(t, page) {
+		if strings.Contains(doc.PageTextBase, "://") {
+			t.Errorf("got page_text_base %q, want a path relative to the site", doc.PageTextBase)
+			continue
+		}
+		for _, page := range []int{66, 67} {
+			ref := fmt.Sprintf("%sp%04d.txt", doc.PageTextBase, page)
+			if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(ref))); err != nil {
+				t.Errorf("the config cites %q, which the site does not carry: %v", ref, err)
+			}
+		}
+	}
+}
+
+// The copy has to be byte-for-byte: the runs of spaces ARE the printed column
+// grid (docs/agents/conventions.md), so text that arrives reflowed is text a
+// reader cannot check a figure against.
+func TestCitedPageTextIsShippedVerbatimAndOnlyWhenCited(t *testing.T) {
+	tree := pageTextFS()
+	dir, written := writeGoldenOpts(t, export.Options{PageText: tree})
+
+	for _, page := range []int{66, 67} {
+		rel := shippedPageText(budgetDocID, page)
+		got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatalf("read shipped page text: %v", err)
+		}
+		want := tree[fmt.Sprintf("%s/pages/p%04d.txt", budgetDocID, page)].Data
+		if diff := cmp.Diff(string(want), string(got)); diff != "" {
+			t.Errorf("%s differs from the extraction (-want +got):\n%s", rel, diff)
+		}
+	}
+
+	// The corpus is 786 pages and the projection cites two. Shipping the whole
+	// extraction would put it in every deploy to publish a handful of links.
+	for _, rel := range written {
+		if !strings.HasPrefix(rel, export.PageTextDir+"/") {
+			continue
+		}
+		if rel != shippedPageText(budgetDocID, 66) && rel != shippedPageText(budgetDocID, 67) {
+			t.Errorf("the site ships %q, which nothing cites", rel)
+		}
+	}
+}
+
+// A citation the extraction cannot back is an error, not a link left dangling:
+// the page renders the citation either way, and only one of the two outcomes is
+// visible before somebody clicks it.
+func TestWriteRefusesACitedPageMissingFromTheExtraction(t *testing.T) {
+	tree := pageTextFS()
+	delete(tree, budgetDocID+"/pages/p0067.txt")
+
+	_, err := export.Write(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Docs:        budgetDocs(),
+		PageText:    tree,
+	})
+	if err == nil {
+		t.Fatal("got nil error, want a refusal to cite text it cannot ship")
+	}
+	if got := err.Error(); !strings.Contains(got, "page 67") || !strings.Contains(got, budgetDocID) {
+		t.Errorf("got error %q, want it to name the document and page", got)
+	}
+}
+
+// Without an extraction tree the citation has to go somewhere, and the
+// documented somewhere is the forge's blob view. This is the fallback, not the
+// normal path: `fisc export` always passes the tree.
+func TestPageTextFallsBackToTheBlobViewWithoutAnExtractionTree(t *testing.T) {
+	dir, written := writeGoldenOpts(t, export.Options{})
+	page := readPage(t, dir)
+
+	want := export.DefaultSourceBrowseURL + "/data/extracted/" + budgetDocID + "/pages/p0066.txt"
+	if !strings.Contains(page, want) {
+		t.Errorf("page does not cite %q", want)
 	}
 	// raw.githubusercontent.com would serve these bytes correctly —
 	// data/extracted/ is ordinary git, not LFS, and the artifacts are .txt, so
@@ -215,12 +354,116 @@ func TestPageCitesThePDFPageAndTheBlobViewOfTheExtractedPage(t *testing.T) {
 	// a correctness one: raw serves the bytes bare — no line numbers, no
 	// history, no way to reach the rest of the document — and a provenance
 	// citation should land somewhere a reader can navigate from.
-	//
-	// Asserted rather than merely preferred because the citation URL is
-	// assembled from a default in one place (export.DefaultSourceBrowseURL) and
-	// a silent change to raw would degrade every citation on the site at once.
 	if strings.Contains(page, "raw.githubusercontent.com") {
 		t.Error("page links to raw.githubusercontent.com rather than the github.com blob view")
+	}
+	for _, rel := range written {
+		if strings.HasPrefix(rel, export.PageTextDir+"/") {
+			t.Errorf("no extraction tree was given but the site shipped %q", rel)
+		}
+	}
+}
+
+// An explicit remote is the caller overruling the default, so it must not also
+// ship the text: two published answers to "where is this page" is one more than
+// the site can keep true.
+func TestSourceBrowseURLCitesTheRemoteAndShipsNothing(t *testing.T) {
+	const browse = "https://example.invalid/tree/main/"
+	dir, written := writeGoldenOpts(t, export.Options{
+		PageText:        pageTextFS(),
+		SourceBrowseURL: browse,
+	})
+	page := readPage(t, dir)
+
+	want := "https://example.invalid/tree/main/data/extracted/" + budgetDocID + "/pages/p0066.txt"
+	if !strings.Contains(page, want) {
+		t.Errorf("page does not cite %q", want)
+	}
+	for _, rel := range written {
+		if strings.HasPrefix(rel, export.PageTextDir+"/") {
+			t.Errorf("the export was told to cite %q but shipped %q as well", browse, rel)
+		}
+	}
+}
+
+// The channel fisc-4ua.8 inherits: an arbitrary path -> bytes, written verbatim
+// beside the site. The page text is its first user; the fact store is next.
+func TestFilesShipVerbatimBesideTheSite(t *testing.T) {
+	facts := []byte(`{"id":"f1","amount_cents":1234}` + "\n")
+	dir, written := writeGoldenOpts(t, export.Options{
+		PageText: pageTextFS(),
+		Files:    map[string][]byte{"provenance/facts.jsonl": facts},
+	})
+
+	got, err := os.ReadFile(filepath.Join(dir, "provenance", "facts.jsonl"))
+	if err != nil {
+		t.Fatalf("read shipped asset: %v", err)
+	}
+	if diff := cmp.Diff(string(facts), string(got)); diff != "" {
+		t.Errorf("shipped asset differs from its input (-want +got):\n%s", diff)
+	}
+	if !slices.Contains(written, "provenance/facts.jsonl") {
+		t.Errorf("Write did not report the asset it wrote:\n%v", written)
+	}
+	// The channel must not disturb the contract it sits beside.
+	if !slices.Contains(written, "data/sankey.json") {
+		t.Errorf("the projection is no longer at data/sankey.json:\n%v", written)
+	}
+}
+
+// The output is a web root somebody will serve or rsync. A path that escapes it
+// or lands on the fixed layout is refused at the door: shadowing index.html or
+// data/sankey.json would export cleanly and break only in a browser.
+func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
+	cases := map[string]string{
+		"empty":              "",
+		"absolute":           "/etc/passwd",
+		"parent":             "../escape.txt",
+		"parent within":      "assets/../../escape.txt",
+		"unclean":            "./facts.jsonl",
+		"backslash":          `assets\facts.jsonl`,
+		"the page itself":    "index.html",
+		"an embedded asset":  "app.js",
+		"the export marker":  ".fisc-export",
+		"a projection":       "data/sankey.json",
+		"the projection dir": "data/anything.json",
+		"vendored d3":        "vendor/d3.min.js",
+	}
+	for name, rel := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			_, err := export.Write(export.Options{
+				Dir:         dir,
+				Projections: map[string][]byte{"sankey": goldenSankey(t)},
+				Docs:        budgetDocs(),
+				Files:       map[string][]byte{rel: []byte("x")},
+			})
+			if err == nil {
+				t.Fatalf("got nil error, want a refusal of %q", rel)
+			}
+			if _, serr := os.Stat(filepath.Join(dir, "index.html")); serr == nil {
+				t.Error("the site was written anyway; the screen has to run before any side effect")
+			}
+		})
+	}
+}
+
+// Two writers on one path is a silent overwrite whose winner depends on map
+// order. The page text and an asset are written by different code paths, so
+// this is the collision that can actually happen.
+func TestWriteRefusesTwoAssetsClaimingOnePath(t *testing.T) {
+	_, err := export.Write(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Docs:        budgetDocs(),
+		PageText:    pageTextFS(),
+		Files:       map[string][]byte{shippedPageText(budgetDocID, 66): []byte("mine now")},
+	})
+	if err == nil {
+		t.Fatal("got nil error, want a refusal of the colliding path")
+	}
+	if got := err.Error(); !strings.Contains(got, shippedPageText(budgetDocID, 66)) {
+		t.Errorf("got error %q, want it to name the contested path", got)
 	}
 }
 
@@ -280,7 +523,10 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	if want := "https://www.livermoreca.gov/home/showpublisheddocument/12813"; doc.PDFURL != want {
 		t.Errorf("got pdf_url %q, want %q", doc.PDFURL, want)
 	}
-	if want := "https://github.com/jcrussell/livermore-budget/blob/main/data/extracted/livermore-budget-fy2026-2027/pages/"; doc.PageTextBase != want {
+	// The base moved off github.com with fisc-ze7: the site ships the cited
+	// pages, so the client composes a same-origin path and the provenance
+	// resolves with no network access to a forge.
+	if want := export.LocalPageTextBase(budgetDocID); doc.PageTextBase != want {
 		t.Errorf("got page_text_base %q, want %q", doc.PageTextBase, want)
 	}
 }
@@ -508,6 +754,27 @@ func TestPageCarriesTheWorkInProgressBanner(t *testing.T) {
 			t.Errorf("banner does not carry %q", want)
 		}
 	}
+}
+
+// configDocs decodes window.FISC_CONFIG's docs block.
+func configDocs(t *testing.T, page string) map[string]struct {
+	PDFURL       string `json:"pdf_url"`
+	PageTextBase string `json:"page_text_base"`
+} {
+	t.Helper()
+	var cfg struct {
+		Docs map[string]struct {
+			PDFURL       string `json:"pdf_url"`
+			PageTextBase string `json:"page_text_base"`
+		} `json:"docs"`
+	}
+	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
+		t.Fatalf("decode window.FISC_CONFIG: %v", err)
+	}
+	if len(cfg.Docs) == 0 {
+		t.Fatal("window.FISC_CONFIG carries no docs")
+	}
+	return cfg.Docs
 }
 
 func readPage(t *testing.T, dir string) string {
