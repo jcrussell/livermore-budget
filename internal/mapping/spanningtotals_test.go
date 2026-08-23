@@ -101,7 +101,7 @@ func TestAStraddlingBlockTiesOnlyWithTheFlag(t *testing.T) {
 	// The same rule, checked the old way, one part at a time.
 	rp, rulep := spanningResolver(t, false)
 	// The head part does not print the total row at all.
-	if _, err := rp.CheckTotals(rulep, &rulep.Parts[0]); err == nil {
+	if _, headErr := rp.CheckTotals(rulep, &rulep.Parts[0]); headErr == nil {
 		t.Error("CheckTotals(p169) succeeded; the page prints no total for this block, " +
 			"so a per-part check must not report one")
 	}
@@ -295,7 +295,12 @@ func TestTotalSpansPartsRefusesWhatItCannotMean(t *testing.T) {
 		name: "on a rule with one part",
 		want: "is set on a rule with 1 part",
 		mutate: func(src string) string {
-			return src[:strings.Index(src, "      - page: 170")]
+			// Cut rather than Index: a missing anchor would make Index return
+			// -1 and the slice panic. Returning src unmutated instead leaves a
+			// file that parses, so the subtest fails on its own "accepted"
+			// assertion — a red test either way, and a legible one.
+			head, _, _ := strings.Cut(src, "      - page: 170")
+			return head
 		},
 	}, {
 		name: "on parts whose columns differ",

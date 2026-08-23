@@ -949,9 +949,9 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 	var sums []amount.Cents
 	bearers := make([]*Part, 0, len(rules))
 	for _, rule := range rules {
-		stated, bearer, err := r.ruleStatedTotals(rule)
-		if err != nil {
-			return nil, err
+		stated, bearer, ruleErr := r.ruleStatedTotals(rule)
+		if ruleErr != nil {
+			return nil, ruleErr
 		}
 		bearers = append(bearers, bearer)
 		if cols == nil {

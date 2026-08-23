@@ -307,8 +307,8 @@ func TestExportRunNeedsTheExtractionItCites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RepoRoot: %v", err)
 	}
-	if err := os.RemoveAll(filepath.Join(root, "data", "extracted")); err != nil {
-		t.Fatalf("seed: %v", err)
+	if rmErr := os.RemoveAll(filepath.Join(root, "data", "extracted")); rmErr != nil {
+		t.Fatalf("seed: %v", rmErr)
 	}
 
 	err = exportRun(opts)
