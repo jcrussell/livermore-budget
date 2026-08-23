@@ -59,6 +59,18 @@ Secured 100 1,000
 Unsecured 200 2,000
 TOTAL TAXES: $301 $3,000
 `
+
+	// The two halves of one block, split across a page break: the printed
+	// Total on the second page covers a row that is only on the first.
+	// 2,056 + 132,186 = 134,242. See testdata/spanning.yaml.
+	straddleHead = `SERVICES:
+Wages & Benefits 2,056
+END OF PAGE
+`
+	straddleTail = `SERVICES:
+Services & Supplies 132,186
+Total Services $134,242
+`
 )
 
 func writeRepoFile(t *testing.T, path, body string) {
@@ -620,5 +632,87 @@ func TestNewCmdBuildRejectsPositionalArgs(t *testing.T) {
 
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("Execute = nil error, want a usage failure")
+	}
+}
+
+// TestAStraddlingRuleCreditsEveryPartItCovers pins the build report's
+// accounting for a total that spans its parts.
+//
+// The load-bearing assertion is parts_unchecked being EMPTY. The report's whole
+// purpose is to separate figures the document corroborates from figures resting
+// on our arithmetic alone, and before fisc-w0o a straddling block could only be
+// reported as the second while actually being the first. Crediting one part and
+// listing the other as "the rule declares no total_row" would be a false
+// statement about the rule, printed by the thing whose job is to be believed.
+func TestAStraddlingRuleCreditsEveryPartItCovers(t *testing.T) {
+	root := testRepo(t, map[int]string{81: straddleHead, 82: straddleTail}, "spanning.yaml")
+	opts, out, _ := testOptions(t, root)
+	opts.JSON = true
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+	var rep Report
+	if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
+		t.Fatalf("decode report: %v", err)
+	}
+
+	if len(rep.PartsUnchecked) != 0 {
+		t.Errorf("parts_unchecked = %+v, want none; both parts are covered by the "+
+			"printed total the rule declares it spans", rep.PartsUnchecked)
+	}
+	if rep.PartsChecked != 2 {
+		t.Errorf("parts_checked = %d, want 2", rep.PartsChecked)
+	}
+	if rep.SpanningRulesChecked != 1 {
+		t.Errorf("spanning_rules_checked = %d, want 1", rep.SpanningRulesChecked)
+	}
+	// One comparison, not two: the check ran once for the block. This is the
+	// number that would silently double if a later change credited the columns
+	// per part instead of per check.
+	if rep.ColumnsTied != 1 {
+		t.Errorf("columns_tied = %d, want 1; the rule is checked once, not once per part",
+			rep.ColumnsTied)
+	}
+	if rep.ColumnsTiedByDeclaration != 0 {
+		t.Errorf("columns_tied_by_declaration = %d, want 0; the block ties exactly",
+			rep.ColumnsTiedByDeclaration)
+	}
+	if rep.Facts != 2 {
+		t.Errorf("facts = %d, want 2", rep.Facts)
+	}
+}
+
+// TestAStraddlingRuleWhoseTotalMovedFailsTheBuild is the other half: the flag
+// is a declaration that one of the rule's pages prints the total, and a
+// declaration that has stopped being true must fail the build rather than
+// quietly downgrade itself to an unchecked part.
+//
+// Which guard catches it is deliberately not asserted. This fixture mirrors
+// production, where the block's stop_at IS the total line (Budget Book p170),
+// so moving the total trips the block boundary before the total lookup. Both
+// are fail-closed and the choice between them is not a promise this test should
+// freeze; that the build STOPS, and that nothing is written, is. The total
+// lookup's own two failure modes are pinned in internal/mapping, where the rule
+// can be mutated without moving the page.
+func TestAStraddlingRuleWhoseTotalMovedFailsTheBuild(t *testing.T) {
+	moved := strings.Replace(straddleTail, "Total Services", "Total Servcies", 1)
+	root := testRepo(t, map[int]string{81: straddleHead, 82: moved}, "spanning.yaml")
+	opts, out, errOut := testOptions(t, root)
+
+	err := buildRun(opts)
+	if err == nil {
+		t.Fatal("buildRun succeeded; the page no longer prints the declared total row")
+	}
+	if !strings.Contains(err.Error(), "straddling-services") {
+		t.Errorf("error = %v, want it to name the rule", err)
+	}
+	if out.Len() != 0 || errOut.Len() != 0 {
+		t.Errorf("a failed build reported %q / %q; it must write nothing",
+			out.String(), errOut.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, defaultOutput)); !os.IsNotExist(err) {
+		t.Errorf("the fact store exists after a failed build (%v); nothing is written "+
+			"when a rule fails to resolve", err)
 	}
 }

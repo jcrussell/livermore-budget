@@ -122,6 +122,31 @@ type Rule struct {
 	// work rather than us checking our own.
 	TotalRow string `yaml:"total_row"`
 
+	// TotalSpansParts says the printed total_row covers the rows of EVERY
+	// part, not just the rows of the part that prints it.
+	//
+	// Nine blocks in the two coverage lanes straddle a page break, so their
+	// rows land in two parts while their printed total lands in one. Without
+	// this, neither exit works: keeping total_row makes the head part fail to
+	// find it (ErrNotFound, a hard build failure), and dropping it reports
+	// both parts as "the rule declares no total_row", which is a claim about
+	// the RULE standing in for a claim about the DOCUMENT — precisely the
+	// misreport pkg/cmd/build.reasonNoTotalRow's own comment guards against.
+	//
+	// The hazard this closes is the third exit, which is worse than either:
+	// with both of the others shut, the cheapest thing left for a rule author
+	// is a stated_total_deltas entry sized to the head page's sum — a
+	// FABRICATED claim about the city's rounding absorbing a structural gap.
+	// fisc-2sd catches a declaration that has gone STALE; nothing catches one
+	// that was fiction from the start.
+	//
+	// It is refused unless every part declares an IDENTICAL column list, which
+	// is what keeps it off the p66-67 spine: those parts partition COLUMNS
+	// (p66 is four wide, p67 eight) rather than ROWS, so summing across them
+	// would produce a number that means nothing. A flag whose misuse is caught
+	// by the parser is a different thing from one that relies on the author.
+	TotalSpansParts bool `yaml:"total_spans_parts"`
+
 	// Note records why this rule looks the way it does, for the next reader.
 	Note string `yaml:"note"`
 }

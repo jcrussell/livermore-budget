@@ -813,12 +813,138 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 	for _, v := range values {
 		sums[v.ColumnIndex] += v.Cents
 	}
+	return r.compareTotals(rule, p, p, stated, sums)
+}
+
+// CheckSpanningTotals asserts that the figures EVERY part of a rule yields sum,
+// per column, to the one total the document prints for the block.
+//
+// This is CheckTotals for a block whose rows straddle a page break. Nine such
+// blocks sit in the two coverage lanes: the rows land in two parts and the
+// printed total in one, so a per-part check has nothing to compare the head
+// part against and would either fail to resolve or report the rule as
+// declaring no total at all. See Rule.TotalSpansParts for why both of those
+// exits are worse than they look.
+//
+// The parser has already established that the parts declare identical columns,
+// so summing across them is meaningful. What is established here, because it
+// needs the pages: that exactly one part prints the total row, and that a
+// declared discrepancy sits on that part rather than on one of the others.
+func (r *Resolver) CheckSpanningTotals(rule *Rule) (*TotalsResult, error) {
+	bearer, err := r.totalBearingPart(rule)
+	if err != nil {
+		return nil, err
+	}
+	stated, err := r.StatedTotals(rule, bearer)
+	if err != nil {
+		return nil, err
+	}
+
+	// A delta is a claim about the printed total, so it belongs on the part
+	// that prints it. The parser refused two parts declaring one; this refuses
+	// the one part declaring it in the wrong place, which the parser cannot
+	// see because it does not know which page prints the total.
+	for i := range rule.Parts {
+		p := &rule.Parts[i]
+		if len(p.StatedTotalDeltas) == 0 || p.Page == bearer.Page {
+			continue
+		}
+		return nil, cmdutil.WithHint(
+			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+				Field: "stated_total_deltas", Err: ErrNotFound,
+				Msg: fmt.Sprintf("declared here, but page %d is the page that prints %q",
+					bearer.Page, rule.TotalRow)},
+			"a declared delta describes the difference between a printed total "+
+				"and the rows beneath it, so it is declared where that total is printed")
+	}
+
+	sums := make([]amount.Cents, len(bearer.Columns))
+	for i := range rule.Parts {
+		p := &rule.Parts[i]
+		values, _, err := r.Values(rule, p)
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range values {
+			sums[v.ColumnIndex] += v.Cents
+		}
+	}
+	return r.compareTotals(rule, bearer, bearer, stated, sums)
+}
+
+// totalBearingPart finds the one part of a spanning rule whose page prints the
+// total row.
+//
+// Exactly one, and the count is the point. Zero means the total row has moved
+// or was mistyped, which must fail rather than quietly leave the block
+// unchecked. Two means the anchor is ambiguous across the rule's pages, and
+// taking the first would pick whichever page happens to come first in the part
+// list -- a total checked against the wrong page's figures is the confident
+// wrong answer this project exists to refuse.
+func (r *Resolver) totalBearingPart(rule *Rule) (*Part, error) {
+	var found []*Part
+	for i := range rule.Parts {
+		p := &rule.Parts[i]
+		blk, err := r.Block(rule, p)
+		if err != nil {
+			return nil, err
+		}
+		text, err := r.page(p.Page)
+		if err != nil {
+			return nil, err
+		}
+		if strings.Contains(text[blk.End:], rule.TotalRow) {
+			found = append(found, p)
+		}
+	}
+	switch len(found) {
+	case 1:
+		return found[0], nil
+	case 0:
+		pages := make([]int, len(rule.Parts))
+		for i, p := range rule.Parts {
+			pages[i] = p.Page
+		}
+		return nil, cmdutil.WithHint(
+			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
+				Field: "total_row", Err: ErrNotFound,
+				Msg: fmt.Sprintf("%q occurs after the block on none of pages %v",
+					rule.TotalRow, pages)},
+			"a rule declaring total_spans_parts asserts that one of its pages "+
+				"prints the total; if none does, the anchor is wrong or the "+
+				"document has changed")
+	default:
+		pages := make([]int, len(found))
+		for i, p := range found {
+			pages[i] = p.Page
+		}
+		return nil, cmdutil.WithHint(
+			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: found[0].Page,
+				Field: "total_row", Err: ErrNotFound,
+				Msg: fmt.Sprintf("%q occurs after the block on pages %v; it must identify one",
+					rule.TotalRow, pages)},
+			"lengthen the anchor until it names the one page that prints this "+
+				"block's total")
+	}
+}
+
+// compareTotals is the arithmetic both totals checks share: per column, the
+// mapped sum against the stated total, with any declared discrepancy applied.
+//
+// cols is the part whose column list is being compared and dec the part whose
+// stated_total_deltas apply. They are the same part for a per-part check and
+// may differ for a spanning one, where the columns are every part's (identical
+// by the parser's guard) and the declaration belongs to whichever part prints
+// the total. Passing them separately is what stops a spanning rule silently
+// reading a delta off the wrong page.
+func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amount.Cents) (*TotalsResult, error) {
+	p := cols
 
 	// Declared discrepancies, by 1-based column. The parser has already
 	// refused a duplicate, an out-of-range column, a skipped column, a zero
 	// delta and a missing note, so nothing here needs to re-check any of that.
-	declared := make(map[int]amount.Cents, len(p.StatedTotalDeltas))
-	for _, d := range p.StatedTotalDeltas {
+	declared := make(map[int]amount.Cents, len(dec.StatedTotalDeltas))
+	for _, d := range dec.StatedTotalDeltas {
 		declared[d.Column] = d.Cents
 	}
 

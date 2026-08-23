@@ -486,6 +486,69 @@ func validateRule(r *Rule, errf errFunc) error {
 		}
 	}
 
+	return validateTotalSpansParts(r, errf)
+}
+
+// validateTotalSpansParts checks the declaration that a printed total covers
+// every part's rows rather than one part's.
+//
+// Only what is knowable without the pages is checked here. That a part's page
+// actually PRINTS the total row, and that the part carrying a declared delta
+// is the one printing it, are claims about the document and are checked when
+// the rule resolves -- the parser has no page text and guessing would be the
+// fail-open this flag exists to close.
+func validateTotalSpansParts(r *Rule, errf errFunc) error {
+	if !r.TotalSpansParts {
+		return nil
+	}
+	if r.TotalRow == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, "total_spans_parts", "is set but the rule declares no total_row"),
+			"the flag says WHICH rows the printed total covers; with no total "+
+				"row declared there is nothing for it to say that about")
+	}
+	// One part cannot straddle a page break, so the flag would assert nothing
+	// -- and a declaration that cannot fail is the shape this repo refuses
+	// everywhere else (a stale wrapped_label, a delta that now ties).
+	if len(r.Parts) < 2 {
+		return cmdutil.WithHint(
+			errf(r.ID, "total_spans_parts", "is set on a rule with %d part", len(r.Parts)),
+			"the flag exists for a block whose rows straddle a page break; on "+
+				"a single part it is the per-part check already, so remove it")
+	}
+	// Identical columns, field by field. This is the guard that keeps the flag
+	// off the p66-67 spine, whose parts partition COLUMNS rather than ROWS:
+	// p66 carries four and p67 eight, so a sum across them would be adding
+	// General Fund to Capital Funds and reporting the result as a total.
+	first := r.Parts[0]
+	for i := 1; i < len(r.Parts); i++ {
+		p := r.Parts[i]
+		if slices.Equal(first.Columns, p.Columns) {
+			continue
+		}
+		return cmdutil.WithHint(
+			errf(r.ID, "total_spans_parts",
+				"page %d declares %d columns and page %d declares %d, and they must be identical",
+				first.Page, len(first.Columns), p.Page, len(p.Columns)),
+			"summing rows across parts is only meaningful where the parts "+
+				"split the same table by ROW; parts that split it by COLUMN "+
+				"are not what this flag describes")
+	}
+	// One printed total means one place to declare a discrepancy against it.
+	// Which part that is needs the page, so it is checked at resolve time;
+	// what is checkable here is that the rule does not name two.
+	declaring := make([]int, 0, len(r.Parts))
+	for _, p := range r.Parts {
+		if len(p.StatedTotalDeltas) > 0 {
+			declaring = append(declaring, p.Page)
+		}
+	}
+	if len(declaring) > 1 {
+		return cmdutil.WithHint(
+			errf(r.ID, "stated_total_deltas",
+				"pages %v each declare a delta, but this rule has one printed total", declaring),
+			"declare the discrepancy on the part whose page prints the total row")
+	}
 	return nil
 }
 

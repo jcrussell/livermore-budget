@@ -42,6 +42,20 @@ type Report struct {
 	// the first while meaning the second would be overstating its evidence.
 	ColumnsTiedByDeclaration int `json:"columns_tied_by_declaration"`
 
+	// SpanningRulesChecked is how many of the checks above were rule-level
+	// rather than per-part -- a block whose rows straddle a page break, tied
+	// once against the one total the document prints for it
+	// (mapping.Rule.TotalSpansParts).
+	//
+	// It is reported because it changes what the two counters above MEAN
+	// without changing what they COUNT. ColumnsTied is the number of column
+	// comparisons made, and PartsChecked the number of parts those comparisons
+	// corroborate; for a per-part check those coincide part by part, and for a
+	// spanning rule one set of comparisons corroborates several parts. So a
+	// build with spanning rules can report more parts checked than columns
+	// tied, which is correct and would otherwise look like a bug.
+	SpanningRulesChecked int `json:"spanning_rules_checked"`
+
 	PartsUnchecked []UncheckedPart    `json:"parts_unchecked"`
 	Omissions      []DeclaredOmission `json:"declared_omissions"`
 }
@@ -123,6 +137,31 @@ func (rep *Report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mappi
 	}
 }
 
+// checkSpanningTotals runs the rule-level totals check for a block whose rows
+// straddle a page break, and credits EVERY part of the rule.
+//
+// Crediting all of them is the honest accounting and not a generosity: the one
+// comparison covers every row the rule maps, so every one of its parts rests on
+// the document's arithmetic rather than on ours. Crediting only the part that
+// prints the total would leave the others in PartsUnchecked under a reason
+// saying the rule declares no total_row -- which is false, and is exactly the
+// misreport this whole flag exists to remove.
+func (rep *Report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) error {
+	res, err := r.CheckSpanningTotals(rule)
+	if err != nil {
+		// Unlike the per-part path there is no ErrNoStatedTotals branch here.
+		// A rule that DECLARES its total spans its parts has asserted that one
+		// of its pages prints that total; if none does, that is a false
+		// declaration and a hard failure, not an unchecked part.
+		return err
+	}
+	rep.SpanningRulesChecked++
+	rep.PartsChecked += len(rule.Parts)
+	rep.ColumnsTied += res.Columns
+	rep.ColumnsTiedByDeclaration += res.Declared
+	return nil
+}
+
 func (rep *Report) unchecked(rule *mapping.Rule, p *mapping.Part, reason string) {
 	rep.PartsUnchecked = append(rep.PartsUnchecked,
 		UncheckedPart{RuleID: rule.ID, Page: p.Page, Reason: reason})
@@ -156,6 +195,11 @@ func (rep *Report) print(ios *iostreams.IOStreams, asJSON bool) error {
 	fmt.Fprintf(w, "%d of %d parts tie to a total the document prints, covering %d %s\n",
 		rep.PartsChecked, rep.Parts, rep.ColumnsTied,
 		plural(rep.ColumnsTied, "column", "columns"))
+	if rep.SpanningRulesChecked > 0 {
+		fmt.Fprintf(w, "%d of those %s checked against a total spanning its parts\n",
+			rep.SpanningRulesChecked,
+			plural(rep.SpanningRulesChecked, "rule was", "rules were"))
+	}
 	if rep.ColumnsTiedByDeclaration > 0 {
 		// "of those columns" stays plural and the VERB agrees: one column ties,
 		// several tie. Pluralising the noun here gives "1 of those column tie".

@@ -240,7 +240,16 @@ func resolve(root string, files []*mapping.File) ([]fact.Fact, *Report, error) {
 				facts = append(facts, got...)
 				rep.addOmissions(rule, omissions)
 
-				if err := rep.checkTotals(r, rule, p); err != nil {
+				// A rule whose printed total spans its parts is checked once,
+				// after every part has been read, rather than part by part.
+				if !rule.TotalSpansParts {
+					if err := rep.checkTotals(r, rule, p); err != nil {
+						return nil, nil, err
+					}
+				}
+			}
+			if rule.TotalSpansParts {
+				if err := rep.checkSpanningTotals(r, rule); err != nil {
 					return nil, nil, err
 				}
 			}
