@@ -1,0 +1,266 @@
+# Canonical department registry — the ONLY place a `department:` value on a
+# mapping row is bound to a printed name and to the department above it.
+#
+#@cite City of Livermore, "FY 2025-2027 Budget Book" (source id: livermore-budget-fy2026-2027)
+#@cite     "General Fund Expenditures by Major Category", PDF pp. 167-170
+#
+# TWO TIERS, AND THE FACTS NAME THE LOWER ONE. pp.167-170 print 23 mixed-case
+# DIVISIONS grouped under 11 ALL-CAPS DEPARTMENTS. A mapping row's
+# `department:` field carries the DIVISION slug, because the division is the
+# level the object rows are printed under and the level whose `Total` the
+# document prints beside them. The department is reached through the division's
+# `department:` field here, and it is what the `<DEPARTMENT> TOTAL` rollups
+# assert.
+#
+# TWO NAMESPACES, NOT ONE, AND THAT IS FORCED BY THE PAGE. Five departments
+# share a name with a division beneath them, three of them exactly:
+#
+#   CITY COUNCIL            p167:7   / City Council            p167:9
+#   CITY MANAGER            p167:17  / City Manager            p167:19
+#   CITY ATTORNEY           p167:33  / City Attorney           p167:35
+#   GENERAL SERVICES        p167:63  / General Services        p168:7
+#   ADMINISTRATIVE SERVICES p168:15  / Administrative Services p168:17
+#
+# So slugs are unique WITHIN each tier and deliberately not across them:
+# requiring that would mean inventing five names the city does not print, and an
+# invented name in a registry whose whole claim is "this is what the document
+# says" is the defect this project exists to refuse. `city-council` naming both
+# a department and its sole division is the document's own structure.
+#
+# WHAT DOES NOT RELAX: no division slug may equal a data/taxonomy.yaml category
+# slug. A fact's row_path is `<division>/<category>` (internal/fact.RowPath), so
+# a string spanning those two AXES is genuinely ambiguous, where a department
+# and a division sharing a name is not.
+#
+# EVERYTHING HERE IS PUBLISHED. The slugs are mechanical transforms of printed
+# labels, and the parentage is printed too — each ALL-CAPS heading opens its
+# department, its divisions follow, and `<DEPARTMENT> TOTAL` closes it. Nothing
+# in this file is derived, which is why no entry carries a rationale.
+#
+# THREE THINGS THE PAGES DO THAT A READER WOULD NOT EXPECT, recorded rather
+# than smoothed over:
+#
+#   - PUBLIC WORKS (p169:47) closes as "PUBLIC WORKS DEPARTMENT TOTAL"
+#     (p170:11). Every other department's total row is its heading plus
+#     " TOTAL". A rule that derives the anchor from the heading is wrong here.
+#   - INNOVATION & ECONOMIC DEVELOPMENT (p167:53) closes as
+#     "INNOVATION & ECONOMIC DEVELOPEMENT TOTAL" (p167:61-62) — the city's own
+#     misspelling, and wrapped across two lines. `document_term` is the
+#     heading's spelling; the total row's is the rule file's business.
+#   - Fire Administration prints ONE object row (Services & Supplies, p170:15).
+#     The department is a contract service and has no wages line at all, so
+#     nothing may assume a division carries two or three object rows.
+#
+# Three departments and three divisions straddle a page break; `pages` lists
+# every page an entry is printed on, in ascending order.
+
+schema_version: 1
+
+departments:
+  - slug: city-council
+    label: City Council
+    document_term: CITY COUNCIL
+    pages: [167]
+
+  - slug: city-manager
+    label: City Manager
+    document_term: CITY MANAGER
+    pages: [167]
+    note: >-
+      The only department on p167 with more than one division: City Manager and
+      City Clerk are printed as separate row groups, each with its own Total,
+      under one CITY MANAGER TOTAL.
+
+  - slug: city-attorney
+    label: City Attorney
+    document_term: CITY ATTORNEY
+    pages: [167]
+
+  - slug: library-department
+    label: Library Department
+    document_term: LIBRARY DEPARTMENT
+    pages: [167]
+
+  - slug: innovation-and-economic-development
+    label: Innovation & Economic Development
+    document_term: INNOVATION & ECONOMIC DEVELOPMENT
+    pages: [167]
+    note: >-
+      The heading at p167:53 is spelled correctly; the department's own total
+      row at p167:61 prints "INNOVATION & ECONOMIC DEVELOPEMENT" and wraps
+      "TOTAL" onto p167:62. document_term is the heading.
+
+  - slug: general-services
+    label: General Services
+    document_term: GENERAL SERVICES
+    pages: [167, 168]
+
+  - slug: administrative-services
+    label: Administrative Services
+    document_term: ADMINISTRATIVE SERVICES
+    pages: [168]
+
+  - slug: police-department
+    label: Police Department
+    document_term: POLICE DEPARTMENT
+    pages: [168, 169]
+
+  - slug: community-development
+    label: Community Development
+    document_term: COMMUNITY DEVELOPMENT
+    pages: [169]
+
+  - slug: public-works
+    label: Public Works
+    document_term: PUBLIC WORKS
+    pages: [169, 170]
+    note: >-
+      Closes as "PUBLIC WORKS DEPARTMENT TOTAL" (p170:11), not "PUBLIC WORKS
+      TOTAL". The heading and the total row disagree, and only here.
+
+  - slug: fire-department
+    label: Fire Department
+    document_term: FIRE DEPARTMENT
+    pages: [170]
+
+divisions:
+  - slug: city-council
+    label: City Council
+    department: city-council
+    pages: [167]
+
+  - slug: city-manager
+    label: City Manager
+    department: city-manager
+    pages: [167]
+
+  - slug: city-clerk
+    label: City Clerk
+    department: city-manager
+    pages: [167]
+
+  - slug: city-attorney
+    label: City Attorney
+    department: city-attorney
+    pages: [167]
+
+  - slug: library
+    label: Library
+    department: library-department
+    pages: [167]
+
+  - slug: innovation-and-economic-devel
+    label: Innovation & Economic Devel
+    department: innovation-and-economic-development
+    pages: [167]
+    note: >-
+      The label wraps: "Innovation & Economic" on p167:55 and "Devel" on
+      p167:56. The city abbreviates the division where it spells the department
+      out, so the two are not the same string even ignoring case.
+
+  - slug: general-services
+    label: General Services
+    department: general-services
+    pages: [167, 168]
+    note: >-
+      Straddles a page break: Wages & Benefits on p167:65, Services & Supplies
+      and Debt Services on p168:7 and p168:9, and the printed Total on p168:11.
+
+  - slug: administrative-services
+    label: Administrative Services
+    department: administrative-services
+    pages: [168]
+
+  - slug: finance
+    label: Finance
+    department: administrative-services
+    pages: [168]
+
+  - slug: human-resources
+    label: Human Resources
+    department: administrative-services
+    pages: [168]
+
+  - slug: police-administration
+    label: Police Administration
+    department: police-department
+    pages: [168]
+
+  - slug: patrol
+    label: Patrol
+    department: police-department
+    pages: [168]
+
+  - slug: support-services
+    label: Support Services
+    department: police-department
+    pages: [168]
+
+  - slug: special-operations
+    label: Special Operations
+    department: police-department
+    pages: [168, 169]
+    note: >-
+      Straddles a page break: Wages & Benefits and Services & Supplies on p168,
+      Capital Outlay and the printed Total on p169.
+
+  - slug: community-development-admin
+    label: Community Development Admin
+    department: community-development
+    pages: [169]
+    note: >-
+      The label wraps: "Community" on p169:15 and "Development Admin" on
+      p169:16.
+
+  - slug: building-and-safety
+    label: Building & Safety
+    department: community-development
+    pages: [169]
+
+  - slug: engineering
+    label: Engineering
+    department: community-development
+    pages: [169]
+
+  - slug: housing-and-human-services
+    label: Housing & Human Services
+    department: community-development
+    pages: [169]
+    note: >-
+      The label wraps: "Housing & Human" on p169:33 and "Services" on p169:34.
+
+  - slug: planning
+    label: Planning
+    department: community-development
+    pages: [169]
+
+  - slug: public-works-administration
+    label: Public Works Administration
+    department: public-works
+    pages: [169]
+    note: >-
+      The label wraps: "Public Works" on p169:49 and "Administration" on
+      p169:50.
+
+  - slug: maintenance
+    label: Maintenance
+    department: public-works
+    pages: [169]
+
+  - slug: environmental-services
+    label: Environmental Services
+    department: public-works
+    pages: [169, 170]
+    note: >-
+      Straddles a page break: Wages & Benefits on p169:61, Services & Supplies
+      on p170:7, and the printed Total on p170:9.
+
+  - slug: fire-administration
+    label: Fire Administration
+    department: fire-department
+    pages: [170]
+    note: >-
+      One object row only — Services & Supplies, p170:15. The Livermore-
+      Pleasanton fire service is contracted, so the General Fund carries no
+      fire wages line at all, and Fire Administration's Total, FIRE DEPARTMENT
+      TOTAL and that single row are three printed statements of one figure.

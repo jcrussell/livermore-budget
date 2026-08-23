@@ -15,11 +15,12 @@ import (
 // entries long, and "duplicate slug" without a slug is a search.
 func TestLoadRejects(t *testing.T) {
 	tests := []struct {
-		name     string
-		funds    string // empty means the valid fixture
-		taxonomy string
-		blank    string // a file to truncate, for the cases an empty body cannot express
-		want     string
+		name        string
+		funds       string // empty means the valid fixture
+		taxonomy    string
+		departments string
+		blank       string // a file to truncate, for the cases an empty body cannot express
+		want        string
 	}{
 		{
 			name:  "funds schema version from a newer fisc",
@@ -269,12 +270,130 @@ categories:
 			name:     "two documents",
 			taxonomy: "schema_version: 1\ncategories: [{slug: taxes, label: x, kinds: [revenue]}]\n---\nschema_version: 1\n",
 			want:     "taxonomy.yaml: file contains more than one YAML document",
+		}, {
+			name:        "departments schema version",
+			departments: "schema_version: 2\ndepartments: []\ndivisions: []\n",
+			want:        "departments.yaml: schema_version: got 2, want 1",
+		}, {
+			name:        "no departments",
+			departments: "schema_version: 1\ndepartments: []\ndivisions: [{slug: patrol, label: x, department: y, pages: [168]}]\n",
+			want:        "departments.yaml: departments: is empty",
+		}, {
+			name:        "no divisions",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168]}]\ndivisions: []\n",
+			want:        "departments.yaml: divisions: is empty",
+		}, {
+			name: "duplicate department slug",
+			departments: `
+schema_version: 1
+departments:
+  - {slug: police-department, label: "Police Department", document_term: "POLICE DEPARTMENT", pages: [168]}
+  - {slug: police-department, label: "Police Dept", document_term: "POLICE DEPARTMENT", pages: [169]}
+divisions:
+  - {slug: patrol, label: "Patrol", department: police-department, pages: [168]}
+`,
+			want: `departments.yaml: department "police-department": slug: duplicate slug`,
+		}, {
+			name: "duplicate division slug",
+			departments: `
+schema_version: 1
+departments:
+  - {slug: police-department, label: "Police Department", document_term: "POLICE DEPARTMENT", pages: [168]}
+divisions:
+  - {slug: patrol, label: "Patrol", department: police-department, pages: [168]}
+  - {slug: patrol, label: "Patrol Division", department: police-department, pages: [169]}
+`,
+			want: `departments.yaml: division "patrol": slug: duplicate slug`,
+		}, {
+			// THE ONE COLLISION THAT MATTERS. A department and a division may
+			// share a name -- the city prints five such pairs -- but a division
+			// and a category may not, because row_path joins exactly those two.
+			name: "division slug that is also a category",
+			departments: `
+schema_version: 1
+departments:
+  - {slug: general-services, label: "General Services", document_term: "GENERAL SERVICES", pages: [168]}
+divisions:
+  - {slug: debt-services, label: "Debt Services", department: general-services, pages: [168]}
+`,
+			want: `departments.yaml: division "debt-services": slug: is also a taxonomy.yaml category slug`,
+		}, {
+			name: "division under a department that does not exist",
+			departments: `
+schema_version: 1
+departments:
+  - {slug: police-department, label: "Police Department", document_term: "POLICE DEPARTMENT", pages: [168]}
+divisions:
+  - {slug: patrol, label: "Patrol", department: police, pages: [168]}
+`,
+			want: `departments.yaml: division "patrol": department: unknown department "police"`,
+		}, {
+			name: "division with no department",
+			departments: `
+schema_version: 1
+departments:
+  - {slug: police-department, label: "Police Department", document_term: "POLICE DEPARTMENT", pages: [168]}
+divisions:
+  - {slug: patrol, label: "Patrol", pages: [168]}
+`,
+			want: `departments.yaml: division "patrol": department: is required; every division is printed under one heading`,
+		}, {
+			// A heading over nothing is a division that was dropped, and a
+			// dropped division is invisible to every object-category sum.
+			name: "department no division claims",
+			departments: `
+schema_version: 1
+departments:
+  - {slug: police-department, label: "Police Department", document_term: "POLICE DEPARTMENT", pages: [168]}
+  - {slug: fire-department, label: "Fire Department", document_term: "FIRE DEPARTMENT", pages: [170]}
+divisions:
+  - {slug: patrol, label: "Patrol", department: police-department, pages: [168]}
+`,
+			want: `departments.yaml: department "fire-department": no division names this department`,
+		}, {
+			name:        "department with no document term",
+			departments: "schema_version: 1\ndepartments: [{slug: patrol-dept, label: x, pages: [168]}]\ndivisions: [{slug: patrol, label: y, department: patrol-dept, pages: [168]}]\n",
+			want:        `departments.yaml: department "patrol-dept": document_term: is required`,
+		}, {
+			name:        "division with no label",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168]}]\ndivisions: [{slug: patrol, department: police-department, pages: [168]}]\n",
+			want:        `departments.yaml: division "patrol": label: is required`,
+		}, {
+			name:        "division with no pages",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168]}]\ndivisions: [{slug: patrol, label: y, department: police-department}]\n",
+			want:        `departments.yaml: division "patrol": pages: is required; say which page the entry is printed on`,
+		}, {
+			name:        "division pages out of order",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168]}]\ndivisions: [{slug: special-operations, label: y, department: police-department, pages: [169, 168]}]\n",
+			want:        `departments.yaml: division "special-operations": pages: 168 follows 169; pages are listed once each, in ascending order`,
+		}, {
+			// A slug with a "/" would emit a two-slash row_path that no reader
+			// could split back into its two axes.
+			name:        "division slug with a parent segment",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168]}]\ndivisions: [{slug: police/patrol, label: y, department: police-department, pages: [168]}]\n",
+			want:        `departments.yaml: division "police/patrol": slug: is not a slug: lower case, digits and single hyphens, one segment`,
+		}, {
+			name:        "division derived without a rationale",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168]}]\ndivisions: [{slug: patrol, label: y, department: police-department, pages: [168], derived: true, source_note: p}]\n",
+			want:        `departments.yaml: division "patrol": rationale: is required when derived is true`,
+		}, {
+			name:        "division rationale without derived",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168]}]\ndivisions: [{slug: patrol, label: y, department: police-department, pages: [168], rationale: r}]\n",
+			want:        `departments.yaml: division "patrol": derived: is not set, but a rationale is given`,
+		}, {
+			name:        "unknown key in departments",
+			departments: "schema_version: 1\ndepartments: [{slug: police-department, label: x, document_term: X, pages: [168], parent: y}]\ndivisions: [{slug: patrol, label: y, department: police-department, pages: [168]}]\n",
+			want:        "departments.yaml: yaml: unmarshal errors",
+		}, {
+			name:  "empty departments file",
+			blank: DepartmentsFile,
+			want:  "departments.yaml: file is empty",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fsys := registryFS(t, tt.funds, tt.taxonomy)
+			fsys := registryFS(t, tt.funds, tt.taxonomy, tt.departments)
 			if tt.blank != "" {
 				fsys[tt.blank] = &fstest.MapFile{}
 			}
@@ -299,7 +418,7 @@ categories:
 // A file from a newer fisc is not a malformed file, and telling the reader to
 // upgrade rather than to go hunting for a typo is the difference.
 func TestLoadHintsAtANewerSchema(t *testing.T) {
-	_, err := Load(registryFS(t, "schema_version: 2\nfunds: []\n", ""))
+	_, err := Load(registryFS(t, "schema_version: 2\nfunds: []\n", "", ""))
 	var hint *cmdutil.ErrHint
 	if !errors.As(err, &hint) {
 		t.Fatalf("Load error = %v (%T), want a hinted error", err, err)
@@ -309,7 +428,7 @@ func TestLoadHintsAtANewerSchema(t *testing.T) {
 	}
 
 	// An older or missing version is a broken file, not an old binary.
-	_, err = Load(registryFS(t, "funds: []\n", ""))
+	_, err = Load(registryFS(t, "funds: []\n", "", ""))
 	if errors.As(err, &hint) {
 		t.Errorf("Load error = %q carries hint %q, want none", err, hint.Hint)
 	}
@@ -355,7 +474,7 @@ categories:
   - {slug: taxes, label: "Taxes", kinds: [revenue], assignable: false, derived: true, rationale: r, source_note: s}
   - {slug: taxes/sales, label: "Sales Taxes", parent: taxes, kinds: [revenue]}
   - {slug: intergovernmental, label: "Intergovernmental", kinds: [revenue], assignable: true}
-`)
+`, "")
 	for _, tt := range []struct {
 		slug string
 		want bool

@@ -35,6 +35,10 @@ const (
 	// already name its parts rather than spelled a third time: the directory is
 	// cmdutil's, the file name is the registry's.
 	sourcesFile = dataDir + "/" + registry.SourcesFile
+	// departmentsFile is named in findings rather than only read, because
+	// "department %q is not a division departments.yaml lists" tells the reader
+	// which file to open and the slug alone does not.
+	departmentsFile = dataDir + "/" + registry.DepartmentsFile
 )
 
 // spineScope is the scope of the projection this package checks: the one the site
@@ -61,6 +65,16 @@ type Vocabulary interface {
 	// Fund is the registry entry for a fund number, which is the join key a
 	// fact carries once a single-fund schedule is mapped (fisc-5gk.1).
 	Fund(number int) (registry.Fund, bool)
+	// Division is the data/departments.yaml entry for the slug a fact's
+	// `department` field holds.
+	//
+	// The two words disagree, and the registry's own type is where that is
+	// explained: pp.167-170 print 23 mixed-case DIVISIONS under 11 ALL-CAPS
+	// DEPARTMENTS, a fact names the division, and `department` is the field
+	// name facts.jsonl has already published. The method is named for what it
+	// returns rather than for the field it answers about, so a reader here is
+	// told which tier resolves.
+	Division(slug string) (registry.Division, bool)
 	// Funds is every fund the registry lists. The checks read it to learn the
 	// constraint tiers the file actually uses, rather than carrying a second
 	// copy of that closed vocabulary.
@@ -97,6 +111,33 @@ type Projection struct {
 // slice of the corpus it covers.
 func (p Projection) String() string {
 	return fmt.Sprintf("%s FY%d %s %s", p.Name, p.Options.FiscalYear, p.Options.Basis, p.Options.Scope)
+}
+
+// ProjectionFailure is one slice a projection refused to build, with the
+// refusal.
+//
+// It is RECORDED rather than returned because a projection that will not build
+// is a claim about the corpus, and verify's whole job is to report those. Before
+// this, internal/project's refusal of a department-bearing fact reached the
+// operator as `exit 1` with no report at all — every other finding in the run
+// lost, and the reason buried in a wrapped error — which is strictly worse than
+// a red check saying the same thing.
+//
+// What stays a hard error is a projection that cannot be checked AT ALL (one
+// that does not expose its graph) and a fact store with no slice in the
+// published scope. Neither is a verdict about the corpus: the first is a
+// programming error and the second is the state in which every graph check goes
+// vacuous at once and the run exits 0.
+type ProjectionFailure struct {
+	Name    string
+	Options project.Options
+	Err     error
+}
+
+// String names the failed slice the way Projection.String names a built one, so
+// a report can list the two together.
+func (f ProjectionFailure) String() string {
+	return fmt.Sprintf("%s FY%d %s %s", f.Name, f.Options.FiscalYear, f.Options.Basis, f.Options.Scope)
 }
 
 // Subject is everything the checks read, loaded once.
@@ -156,6 +197,11 @@ type Subject struct {
 	// Projections is every graph the facts support, one per (fiscal year, basis)
 	// the fact store carries within spineScope, in that order.
 	Projections []Projection
+	// ProjectionFailures is every slice a projection refused to build. It is
+	// empty on a healthy corpus, and projectionsBuild is the check that reports
+	// it — a failure here silences every graph check at once, so it must not be
+	// reachable only through a missing entry in Projections.
+	ProjectionFailures []ProjectionFailure
 }
 
 // LoadOptions says what to load and from where.
@@ -242,7 +288,8 @@ func Load(o LoadOptions) (*Subject, error) {
 			return nil, err
 		}
 	}
-	if s.Projections, err = buildProjections(project.Registry(reg), s.Facts, o.Version); err != nil {
+	if s.Projections, s.ProjectionFailures, err = buildProjections(
+		project.Registry(reg), s.Facts, o.Version); err != nil {
 		return nil, err
 	}
 	return s, nil
@@ -485,14 +532,22 @@ func parseLFSPointer(b []byte) (oid string, size int64, ok bool) {
 // without anyone remembering to add it here. What is NOT read off the facts is
 // the scope, which selects the schedule and therefore the projection — see
 // spineScope.
-func buildProjections(ps []project.Projection, facts []fact.Fact, version string) ([]Projection, error) {
+func buildProjections(ps []project.Projection, facts []fact.Fact, version string) (
+	[]Projection, []ProjectionFailure, error,
+) {
 	slices := factSlices(facts, version)
 	// Zero slices means zero projections, and a report over zero projections is
 	// the failure mode this refusal exists to stop: ten of the checks below read
 	// nothing but the graph, so they all go vacuous at once and the run exits 0.
 	// Changing every fact's scope to a mistyped value did exactly that.
+	//
+	// This one stays a HARD ERROR and does not become a recorded failure. There
+	// is no projection here that failed — there is nothing to project, which is
+	// a statement about the fact store rather than a verdict a check could
+	// reach, and recording it would put the run back in the state where every
+	// graph check is vacuous and the exit code is 0.
 	if len(slices) == 0 {
-		return nil, cmdutil.Hintf(
+		return nil, nil, cmdutil.Hintf(
 			fmt.Errorf("no fact is in scope %q, so there is nothing to project and nothing "+
 				"to check", spineScope),
 			"the scope on every fact comes from its mapping rule; `fisc verify` checks the "+
@@ -500,23 +555,27 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 	}
 
 	out := make([]Projection, 0, len(ps)*len(slices))
+	var failed []ProjectionFailure
 	for _, p := range ps {
 		g, ok := p.(graphBuilder)
 		if !ok {
-			return nil, fmt.Errorf("projection %q does not expose its graph, so verify "+
+			return nil, nil, fmt.Errorf("projection %q does not expose its graph, so verify "+
 				"cannot check its structure without parsing back the JSON it is validating",
 				p.Name())
 		}
 		for _, o := range slices {
 			graph, err := g.Graph(facts, o)
 			if err != nil {
-				return nil, fmt.Errorf("build the %s projection for FY%d %s: %w",
-					p.Name(), o.FiscalYear, o.Basis, err)
+				// Recorded, not returned: see ProjectionFailure. The loop goes
+				// on so that one bad slice does not hide a second one, and so
+				// that the checks reading the slices that DID build still run.
+				failed = append(failed, ProjectionFailure{Name: p.Name(), Options: o, Err: err})
+				continue
 			}
 			out = append(out, Projection{Name: p.Name(), Options: o, Graph: graph})
 		}
 	}
-	return out, nil
+	return out, failed, nil
 }
 
 // factSlices returns the projection options the fact store supports, ordered by

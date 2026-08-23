@@ -176,6 +176,7 @@ func All() []Check {
 		&factDepartmentsResolve{},
 		&factFundsResolve{},
 
+		&projectionsBuild{},
 		&publishedProjectionBuilt{},
 		&factsAreProjected{},
 

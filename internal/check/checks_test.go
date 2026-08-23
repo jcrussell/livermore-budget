@@ -48,6 +48,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-offset-points-at-token": "pass over 10",
 		"fact-vocabulary":             "pass over 20", // 10 categories + 10 fund groups
 		"fact-kind-matches-category":  "pass over 10",
+		"projections-build":           "pass over 1",
 		"published-projection-built":  "pass over 1",
 		"facts-are-projected":         "pass over 10",
 		"graph-acyclic":               "pass over 7",
@@ -68,10 +69,10 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 15, Vacuous: 10, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 16, Vacuous: 10, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Fifteen passes, ten vacuous and one skipped is not twenty-six of
+	// Sixteen passes, ten vacuous and one skipped is not twenty-seven of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -375,42 +376,89 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 	}
 }
 
-// TestDepartmentsCannotResolveYetAndSaySo records what today's registries can and
-// cannot answer. data/taxonomy.yaml says in as many words that departments are a
-// second axis needing a registry of their own; until that file exists, a
-// well-formed department is not a resolved one, and the honest verdict is that this
-// check could not reach one.
+// TestDepartmentsResolveAgainstTheRegistry is what replaced this check's
+// unconditional error once data/departments.yaml existed (fisc-o15).
+//
+// It is the clause the other three used to stand in for, and it is the one that
+// makes the axis a controlled vocabulary rather than a set of free strings the
+// check happens to like the shape of: a well-formed, consistently spelled,
+// non-colliding department that names no division still joins to nothing.
 //
 // The subject is built without a projection: internal/project refuses a
-// department-carrying fact outright, which is a different and also correct answer to
-// the same problem, and it would otherwise stop this test at Load.
-func TestDepartmentsCannotResolveYetAndSaySo(t *testing.T) {
-	facts := testFacts()
-	facts[0].Department = "police"
-	facts[1].Department = "police"
-	rep := runChecks(t, factsSubject(t, facts))
+// department-carrying fact outright, which is a different and also correct answer
+// to the same problem, and it would otherwise stop this test at Load.
+func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
+	tests := []struct {
+		name   string
+		dept   string
+		status Status
+		want   string
+	}{
+		{"a listed division", "patrol", StatusPass, ""},
+		{"a division the registry does not list", "traffic", StatusFail,
+			`department "traffic" is not a division data/departments.yaml lists`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			facts := testFacts()
+			facts[0].Department = tt.dept
+			facts[1].Department = tt.dept
+			rep := runChecks(t, factsSubject(t, facts))
 
-	res := resultFor(t, rep, "fact-departments-resolve")
-	if res.Status != StatusError {
-		t.Fatalf("status = %s (%s), want error: the slugs are fine and the registry is missing",
-			res.Status, res.Summary)
-	}
-	for _, want := range []string{"police", "no department registry", "fisc-5gk.2"} {
-		if !strings.Contains(res.Summary, want) {
-			t.Errorf("summary %q does not contain %q", res.Summary, want)
-		}
-	}
-	// A category typo and an unbuilt registry must not share a verdict, because
-	// they will not share a fix — or a reconciliations.yaml entry.
-	if got := resultFor(t, rep, "fact-vocabulary").Status; got != StatusPass {
-		t.Errorf("fact-vocabulary = %s, want pass: no category or fund group is wrong here", got)
+			res := resultFor(t, rep, "fact-departments-resolve")
+			if res.Status != tt.status {
+				t.Fatalf("status = %s (%s), want %s", res.Status, res.Summary, tt.status)
+			}
+			if res.Subjects != 2 {
+				t.Errorf("subjects = %d, want the 2 facts carrying a department", res.Subjects)
+			}
+			if tt.want != "" && !strings.Contains(findingDetails(res), tt.want) {
+				t.Errorf("findings %v do not contain %q", res.Findings, tt.want)
+			}
+			// A category typo and an unresolved department must not share a
+			// verdict, because they will not share a fix — or a
+			// reconciliations.yaml entry.
+			if got := resultFor(t, rep, "fact-vocabulary").Status; got != StatusPass {
+				t.Errorf("fact-vocabulary = %s, want pass: no category or fund group is wrong here", got)
+			}
+		})
 	}
 }
 
-// TestDepartmentsAreCheckedForWhatIsCheckable covers the three claims that need no
-// registry. Each is a real way the axis goes wrong: a label used as a slug, one
-// department spelled two ways across the store, and a string that is a category on
-// the other axis — the near miss data/taxonomy.yaml exists to prevent.
+// A malformed department is reported ONCE, as the shape problem it is.
+//
+// It is also absent from the registry — departments.yaml applies the same slug
+// rule when it loads, so it could not be there — and reporting both would put two
+// findings and one fix against one fact. The specific diagnosis wins.
+func TestAMalformedDepartmentIsNotAlsoReportedAsUnlisted(t *testing.T) {
+	facts := testFacts()
+	facts[0].Department = "Patrol"
+	res := resultFor(t, runChecks(t, factsSubject(t, facts)), "fact-departments-resolve")
+
+	if res.Status != StatusFail {
+		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if got := len(res.Findings); got != 1 {
+		t.Fatalf("findings = %d, want 1:\n%s", got, findingDetails(res))
+	}
+	if !strings.Contains(findingDetails(res), "is not a slug") {
+		t.Errorf("finding %v is not the shape diagnosis", res.Findings)
+	}
+	if strings.Contains(findingDetails(res), "is not a division") {
+		t.Error("the shape failure is also reported as an unlisted division; " +
+			"one fact with one fix must not produce two findings")
+	}
+}
+
+// TestDepartmentsAreCheckedForWhatIsCheckable covers the three claims that stand
+// beside resolution. Each is a real way the axis goes wrong: a label used as a
+// slug, one department spelled two ways across the store, and a string that is a
+// category on the other axis — the near miss data/taxonomy.yaml exists to prevent.
+//
+// The last two are belt and braces now that departments.yaml refuses both at load
+// time. They stay because this check is written against the Vocabulary interface
+// and not against that one implementation, and an assertion implied by a loader is
+// not the same thing as one nobody makes.
 func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -418,9 +466,9 @@ func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 		rest  string
 		want  string
 	}{
-		{"not a slug", "Police Department", "police", "is not a slug"},
-		{"two spellings", "police", "po-lice", "spelled 2 ways"},
-		{"collides with a category", "charges-for-services", "police", "also a data/taxonomy.yaml category slug"},
+		{"not a slug", "Police Department", "patrol", "is not a slug"},
+		{"two spellings", "patrol", "pa-trol", "spelled 2 ways"},
+		{"collides with a category", "charges-for-services", "patrol", "also a data/taxonomy.yaml category slug"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -991,4 +1039,109 @@ func hasLinkKind(g *project.Graph, k project.LinkKind) bool {
 		}
 	}
 	return false
+}
+
+// A projection that refuses to build is REPORTED, not fatal — and the report
+// still has every other check in it.
+//
+// Before fisc-o15 this path aborted check.Load, so `fisc verify` exited 1 having
+// printed nothing: the reason was wrapped inside a load error and every other
+// finding in the run was lost. The refusal itself stays — internal/project is
+// right to reject a department-bearing fact, because the citywide spine has no
+// department tier — and what changed is that a check now owns saying so.
+func TestARefusedProjectionIsReportedAndNotFatal(t *testing.T) {
+	facts := testFacts()
+	facts[0].Department = "patrol"
+	rep := runChecks(t, testSubject(t, facts...))
+
+	res := resultFor(t, rep, "projections-build")
+	if res.Status != StatusFail {
+		t.Fatalf("projections-build = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if !strings.Contains(findingDetails(res), `carries department "patrol"`) {
+		t.Errorf("finding %v does not carry internal/project's own refusal", res.Findings)
+	}
+	// The checks that read the fact store rather than a graph are unaffected,
+	// which is the whole point of reporting instead of aborting.
+	for _, id := range []string{"facts-sorted", "fact-ids-unique", "fact-token-reparses"} {
+		if got := resultFor(t, rep, id).Status; got != StatusPass {
+			t.Errorf("%s = %s, want pass: a refused projection must not take the report down", id, got)
+		}
+	}
+	if !rep.Failed() {
+		t.Error("Failed() = false; a refused projection silences every graph check and must be a failure")
+	}
+}
+
+// One refusal produces ONE finding in facts-are-projected, not one per fact.
+//
+// Every fact of a refused slice is unprojected, so the naive answer restates a
+// single cause ten times here and 120 times on the committed corpus — which is a
+// report nobody reads to the end. The verdict is still a failure; only the
+// restatement is suppressed.
+func TestARefusedProjectionDoesNotDrownTheReport(t *testing.T) {
+	facts := testFacts()
+	facts[0].Department = "patrol"
+	res := resultFor(t, runChecks(t, testSubject(t, facts...)), "facts-are-projected")
+
+	if res.Status != StatusFail {
+		t.Fatalf("facts-are-projected = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if got := len(res.Findings); got != 1 {
+		t.Errorf("findings = %d over %d facts, want 1: the cause is one refused projection\n%s",
+			got, len(facts), findingDetails(res))
+	}
+	if !strings.Contains(findingDetails(res), "projections-build") {
+		t.Errorf("finding %v does not point at the check that owns the cause", res.Findings)
+	}
+}
+
+// projections-build must never be VACUOUS while a refusal is recorded.
+//
+// Vacuous is the verdict that exits 0 without --strict, and a refused projection
+// silences ten graph checks at once. This is the arm that would make the whole
+// mechanism pointless if it regressed, so it is asserted by name rather than
+// left to the status assertions above.
+func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
+	facts := testFacts()
+	facts[0].Department = "patrol"
+	s := testSubject(t, facts...)
+
+	if len(s.ProjectionFailures) == 0 {
+		t.Fatal("no projection failure was recorded, so this test proves nothing")
+	}
+	if got := resultFor(t, runChecks(t, s), "projections-build").Status; got == StatusVacuous {
+		t.Error("projections-build = vacuous with a refusal recorded; vacuous exits 0")
+	}
+}
+
+// A refused projection must not hide an undeclared scope somewhere else in the
+// store.
+//
+// Collecting the refused slice's own facts against the refusal is what keeps the
+// report readable; suppressing the whole check while any projection failed would
+// cost a second fix-and-rerun round for a finding that was already there. One
+// aggregate finding for the refusal, one ordinary finding for the fact the
+// refusal has nothing to do with.
+func TestARefusedProjectionDoesNotHideAnUndeclaredScope(t *testing.T) {
+	facts := testFacts()
+	facts[0].Department = "patrol" // refuses the spine slice
+	facts[1].Scope = "a-scope-nobody-declared"
+	res := resultFor(t, runChecks(t, testSubject(t, facts...)), "facts-are-projected")
+
+	if res.Status != StatusFail {
+		t.Fatalf("facts-are-projected = %s (%s), want fail", res.Status, res.Summary)
+	}
+	details := findingDetails(res)
+	if !strings.Contains(details, "a-scope-nobody-declared") {
+		t.Errorf("findings do not name the undeclared scope:\n%s", details)
+	}
+	if !strings.Contains(details, "projections-build") {
+		t.Errorf("findings do not point at the refusal:\n%s", details)
+	}
+	// One for the refusal, one for the stray fact — not one per fact of the
+	// refused slice.
+	if got := len(res.Findings); got != 2 {
+		t.Errorf("findings = %d, want 2 (the refusal, and the undeclared scope)\n%s", got, details)
+	}
 }

@@ -9,9 +9,9 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// realData is the committed registry pair. Tests read it directly: it is the
-// only way to catch an edit to funds.yaml or taxonomy.yaml that still parses
-// but breaks a downstream consumer.
+// realData is the committed registry set. Tests read it directly: it is the
+// only way to catch an edit to funds.yaml, taxonomy.yaml or departments.yaml
+// that still parses but breaks a downstream consumer.
 const realData = "../../data"
 
 // Fixtures are inline rather than committed under testdata/ so the input and
@@ -75,9 +75,24 @@ categories:
     pages: [66, 183]
 `
 
+// The fixture shares a name between a department and a division on purpose:
+// `city-manager` is both, because pp.167-170 print CITY MANAGER over a City
+// Manager division and a City Clerk one. If the two tiers ever collapse into a
+// single namespace this fixture stops loading, which is the point.
+const validDepartments = `
+schema_version: 1
+departments:
+  - {slug: city-manager, label: "City Manager", document_term: "CITY MANAGER", pages: [167]}
+  - {slug: police-department, label: "Police Department", document_term: "POLICE DEPARTMENT", pages: [168, 169]}
+divisions:
+  - {slug: city-manager, label: "City Manager", department: city-manager, pages: [167]}
+  - {slug: city-clerk, label: "City Clerk", department: city-manager, pages: [167]}
+  - {slug: patrol, label: "Patrol", department: police-department, pages: [168]}
+`
+
 // registryFS builds an in-memory data/ directory. An empty body means "use
 // the valid fixture", so a rejection case shows only the file it breaks.
-func registryFS(t *testing.T, funds, taxonomy string) fstest.MapFS {
+func registryFS(t *testing.T, funds, taxonomy, departments string) fstest.MapFS {
 	t.Helper()
 	if funds == "" {
 		funds = validFunds
@@ -85,15 +100,19 @@ func registryFS(t *testing.T, funds, taxonomy string) fstest.MapFS {
 	if taxonomy == "" {
 		taxonomy = validTaxonomy
 	}
+	if departments == "" {
+		departments = validDepartments
+	}
 	return fstest.MapFS{
-		FundsFile:    &fstest.MapFile{Data: []byte(funds)},
-		TaxonomyFile: &fstest.MapFile{Data: []byte(taxonomy)},
+		FundsFile:       &fstest.MapFile{Data: []byte(funds)},
+		TaxonomyFile:    &fstest.MapFile{Data: []byte(taxonomy)},
+		DepartmentsFile: &fstest.MapFile{Data: []byte(departments)},
 	}
 }
 
-func load(t *testing.T, funds, taxonomy string) *Registry {
+func load(t *testing.T, funds, taxonomy, departments string) *Registry {
 	t.Helper()
-	r, err := Load(registryFS(t, funds, taxonomy))
+	r, err := Load(registryFS(t, funds, taxonomy, departments))
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -101,7 +120,7 @@ func load(t *testing.T, funds, taxonomy string) *Registry {
 }
 
 func TestCategoryReadsTheWholeEntry(t *testing.T) {
-	r := load(t, "", "")
+	r := load(t, "", "", "")
 
 	got, ok := r.Category("taxes/property")
 	if !ok {
@@ -138,7 +157,7 @@ func TestCategoryReadsTheWholeEntry(t *testing.T) {
 }
 
 func TestLabelIsTheCitysWord(t *testing.T) {
-	r := load(t, "", "")
+	r := load(t, "", "", "")
 
 	got, ok := r.Label("use-of-money-and-property")
 	if !ok {
@@ -155,7 +174,7 @@ func TestLabelIsTheCitysWord(t *testing.T) {
 // A rollup and a typo are both unassignable, and the fixes differ: pick a
 // child versus correct the spelling. Category is what separates them.
 func TestAssignableSeparatesARollupFromATypo(t *testing.T) {
-	r := load(t, "", "")
+	r := load(t, "", "", "")
 
 	if r.Assignable("taxes") {
 		t.Error(`Assignable("taxes") = true, want false: it is a rollup node`)
@@ -177,7 +196,7 @@ func TestAssignableSeparatesARollupFromATypo(t *testing.T) {
 }
 
 func TestCategoriesAreSortedCopies(t *testing.T) {
-	r := load(t, "", "")
+	r := load(t, "", "", "")
 
 	got := r.Categories()
 	var slugs []string
@@ -219,7 +238,7 @@ func TestCategoriesAreSortedCopies(t *testing.T) {
 }
 
 func TestFunds(t *testing.T) {
-	r := load(t, "", "")
+	r := load(t, "", "", "")
 
 	got, ok := r.Fund(610)
 	if !ok {
@@ -255,7 +274,7 @@ func TestFunds(t *testing.T) {
 // "we could not classify this fund" and "this fund does not exist" are
 // different failures and only the first is normal.
 func TestConstraintTierSeparatesUnknownFromAbsent(t *testing.T) {
-	r := load(t, "", "")
+	r := load(t, "", "", "")
 
 	if got, want := r.ConstraintTier(210), "unknown"; got != want {
 		t.Errorf("ConstraintTier(210) = %q, want %q", got, want)
@@ -269,7 +288,7 @@ func TestConstraintTierSeparatesUnknownFromAbsent(t *testing.T) {
 }
 
 func TestFundGroupsComeFromTheFile(t *testing.T) {
-	r := load(t, "", "")
+	r := load(t, "", "", "")
 
 	got := r.FundGroups()
 	want := []string{"enterprise", "general", "special-revenue"}
@@ -415,5 +434,118 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 	if want := "Use of Money And Property"; label != want {
 		t.Errorf("Label = %q, want %q; the capital A is the document's", label, want)
+	}
+}
+
+// The committed department registry, checked against what Budget Book
+// pp.167-170 print. The counts are the assertion that an edit which still
+// parses has not quietly changed the axis: a dropped division is invisible to
+// every object-category sum, because its money simply moves to no other row.
+func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
+	r, err := Load(os.DirFS(realData))
+	if err != nil {
+		t.Fatalf("Load(%s): %v", realData, err)
+	}
+
+	if got, want := len(r.Departments()), 11; got != want {
+		t.Errorf("len(Departments()) = %d, want %d", got, want)
+	}
+	if got, want := len(r.Divisions()), 23; got != want {
+		t.Errorf("len(Divisions()) = %d, want %d", got, want)
+	}
+
+	// Divisions per department, counted off the printed `Total` rows: p167 6,
+	// p168 7, p169 8, p170 2. Six departments have exactly one division, which
+	// is why six of the eleven <DEPARTMENT> TOTAL rows cover a single rule.
+	want := map[string]int{
+		"administrative-services":             3,
+		"city-attorney":                       1,
+		"city-council":                        1,
+		"city-manager":                        2,
+		"community-development":               5,
+		"fire-department":                     1,
+		"general-services":                    1,
+		"innovation-and-economic-development": 1,
+		"library-department":                  1,
+		"police-department":                   4,
+		"public-works":                        3,
+	}
+	got := map[string]int{}
+	for _, d := range r.Divisions() {
+		got[d.Department]++
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("divisions per department mismatch (-want +got):\n%s", diff)
+	}
+
+	// THE TWO-NAMESPACE DECISION, pinned against the real file. These five
+	// strings name a department AND a division, three of them exactly as
+	// printed. A single namespace would need five invented names, so if this
+	// ever passes with a shared namespace it is because someone renamed the
+	// city's words.
+	for _, slug := range []string{
+		"city-council", "city-manager", "city-attorney",
+		"general-services", "administrative-services",
+	} {
+		if _, ok := r.Department(slug); !ok {
+			t.Errorf("Department(%q) not found; it names both tiers", slug)
+		}
+		if _, ok := r.Division(slug); !ok {
+			t.Errorf("Division(%q) not found; it names both tiers", slug)
+		}
+	}
+
+	// The cross-AXIS refusal, which does not relax. Load enforces it; this
+	// says so against the committed pair rather than against a fixture.
+	for _, d := range r.Divisions() {
+		if _, isCategory := r.Category(d.Slug); isCategory {
+			t.Errorf("division %q is also a taxonomy category slug", d.Slug)
+		}
+		if d.Label == "" {
+			t.Errorf("division %q has no label", d.Slug)
+		}
+		if _, ok := r.Department(d.Department); !ok {
+			t.Errorf("division %q names department %q, which does not resolve", d.Slug, d.Department)
+		}
+	}
+
+	// Nothing in this file is derived: the slugs are transforms of printed
+	// labels and the parentage is printed. An entry that becomes derived must
+	// carry its rationale, and this is what makes that visible rather than
+	// letting the first one through unnoticed.
+	for _, d := range r.Divisions() {
+		if d.Derived {
+			t.Errorf("division %q is derived; departments.yaml records only published names", d.Slug)
+		}
+	}
+	for _, d := range r.Departments() {
+		if d.Derived {
+			t.Errorf("department %q is derived; departments.yaml records only published names", d.Slug)
+		}
+		if d.DocumentTerm == "" {
+			t.Errorf("department %q has no document_term", d.Slug)
+		}
+	}
+}
+
+// PUBLIC WORKS is the one department whose printed total row is not its
+// heading plus " TOTAL" (p169:47 against p170:11), so a rule that derived the
+// rollup anchor from document_term would be wrong exactly here. The registry
+// records the heading; this pins that it is the heading and not the total.
+func TestPublicWorksHeadingIsNotItsTotalRow(t *testing.T) {
+	r, err := Load(os.DirFS(realData))
+	if err != nil {
+		t.Fatalf("Load(%s): %v", realData, err)
+	}
+	d, ok := r.Department("public-works")
+	if !ok {
+		t.Fatal(`Department("public-works") not found`)
+	}
+	if got, want := d.DocumentTerm, "PUBLIC WORKS"; got != want {
+		t.Errorf("DocumentTerm = %q, want %q", got, want)
+	}
+	if d.DocumentTerm+" TOTAL" == "PUBLIC WORKS DEPARTMENT TOTAL" {
+		t.Error("document_term + \" TOTAL\" now equals the printed total row; " +
+			"the asymmetry this test records has gone, so check p170:11")
 	}
 }

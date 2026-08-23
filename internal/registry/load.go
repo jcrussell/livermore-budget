@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"maps"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -41,6 +42,16 @@ type taxonomyDoc struct {
 	Categories    []categoryEntry `yaml:"categories"`
 }
 
+// departmentsDoc is the whole of departments.yaml. The two tiers are two
+// top-level lists rather than divisions nested inside their department,
+// because they are two NAMESPACES: nesting would read as one hierarchy and
+// invite the cross-tier uniqueness rule the file cannot satisfy.
+type departmentsDoc struct {
+	SchemaVersion int          `yaml:"schema_version"`
+	Departments   []Department `yaml:"departments"`
+	Divisions     []Division   `yaml:"divisions"`
+}
+
 // categoryEntry decodes a category. It exists only to carry `assignable`,
 // whose default is TRUE: an absent YAML key leaves a bool false, and a false
 // default here would make every ordinary category unassignable and every
@@ -51,18 +62,31 @@ type categoryEntry struct {
 	RawAssignable *bool `yaml:"assignable"`
 }
 
-// Load reads and validates both registries from the root of fsys, so a caller
-// passes os.DirFS("data") and tests pass an in-memory tree (byob-interfaces.3).
+// Load reads and validates all three registries from the root of fsys, so a
+// caller passes os.DirFS("data") and tests pass an in-memory tree
+// (byob-interfaces.3).
 //
-// Both files are required: they are two halves of one vocabulary, and a
-// half-loaded registry would answer FundGroup confidently while answering
-// every Category with "unknown".
+// ALL THREE FILES ARE REQUIRED: they are three parts of one vocabulary, and a
+// partly loaded registry would answer FundGroup confidently while answering
+// every Category with "unknown". departments.yaml joined them when the
+// pp.167-170 lane made the department axis real; before that a fact carrying a
+// department resolved against nothing and the check for it could only report
+// that it had no file to ask.
+//
+// The cost of "required" is that every in-memory fixture has to carry all
+// three. That is the intended trade: an optional registry is one a test can
+// forget, and the invariant this package sells — a registry that loaded is one
+// whose invariants already hold — is only worth anything if it covers the whole
+// vocabulary.
 func Load(fsys fs.FS) (*Registry, error) {
 	r := &Registry{}
 	if err := r.loadFunds(fsys); err != nil {
 		return nil, err
 	}
 	if err := r.loadTaxonomy(fsys); err != nil {
+		return nil, err
+	}
+	if err := r.loadDepartments(fsys); err != nil {
 		return nil, err
 	}
 	return r, nil
@@ -253,6 +277,199 @@ func (r *Registry) loadTaxonomy(fsys fs.FS) error {
 		if err := validateParent(r.categories[slug], r.categories, catf); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// slugShape is the form a departments.yaml slug must take: lowercase,
+// digits, single hyphens, ONE segment.
+//
+// One segment is not a style rule. A fact's row_path is `<division>/<category>`
+// (internal/fact.RowPath), so a slug carrying its own "/" would emit a
+// two-slash row_path that no reader could split back into its two axes. It is
+// the same shape internal/check enforces on the value a fact carries; checked
+// in both places because they are two different claims — that the file is well
+// formed, and that a published fact is.
+var slugShape = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+
+// loadDepartments reads departments.yaml.
+//
+// IT RUNS AFTER loadTaxonomy AND DEPENDS ON IT: the cross-axis check below asks
+// whether a division slug is already a category slug, and it can only ask that
+// of a loaded taxonomy. Reordering Load would turn that check silently vacuous
+// rather than failing, which is why this says so rather than relying on the
+// call order looking deliberate.
+func (r *Registry) loadDepartments(fsys fs.FS) error {
+	var doc departmentsDoc
+	if err := decodeFile(fsys, DepartmentsFile, &doc); err != nil {
+		return err
+	}
+
+	errf := func(entry, field, format string, args ...any) error {
+		return &Error{File: DepartmentsFile, Entry: entry, Field: field,
+			Msg: fmt.Sprintf(format, args...)}
+	}
+	deptf := func(slug, field, format string, args ...any) error {
+		return errf(fmt.Sprintf("department %q", slug), field, format, args...)
+	}
+	divf := func(slug, field, format string, args ...any) error {
+		return errf(fmt.Sprintf("division %q", slug), field, format, args...)
+	}
+
+	if doc.SchemaVersion != DepartmentsSchemaVersion {
+		return schemaVersionErr(DepartmentsFile, doc.SchemaVersion, DepartmentsSchemaVersion)
+	}
+	if len(doc.Departments) == 0 {
+		return errf("", "departments", "is empty")
+	}
+	if len(doc.Divisions) == 0 {
+		return errf("", "divisions", "is empty")
+	}
+
+	r.departments = make(map[string]Department, len(doc.Departments))
+	r.departmentSlugs = make([]string, 0, len(doc.Departments))
+	for i, d := range doc.Departments {
+		if d.Slug == "" {
+			return errf(fmt.Sprintf("departments[%d]", i), "slug",
+				"is required (label %q)", d.Label)
+		}
+		if _, dup := r.departments[d.Slug]; dup {
+			return deptf(d.Slug, "slug", "duplicate slug")
+		}
+		if err := validateSlug(d.Slug, deptf); err != nil {
+			return err
+		}
+		if d.Label == "" {
+			return deptf(d.Slug, "label", "is required")
+		}
+		// The heading is how a reader finds the entry on the page. Without it
+		// the parentage recorded here is an assertion about the document that
+		// nobody can go and check.
+		if d.DocumentTerm == "" {
+			return deptf(d.Slug, "document_term",
+				"is required; it is the ALL-CAPS heading pp.167-170 print for this department")
+		}
+		if err := validatePages(d.Pages, d.Slug, "", deptf); err != nil {
+			return err
+		}
+		if err := validateProvenance(d.Slug, d.Derived, d.Rationale, d.SourceNote, deptf); err != nil {
+			return err
+		}
+		r.departments[d.Slug] = d
+		r.departmentSlugs = append(r.departmentSlugs, d.Slug)
+	}
+	slices.Sort(r.departmentSlugs)
+
+	r.divisions = make(map[string]Division, len(doc.Divisions))
+	r.divisionSlugs = make([]string, 0, len(doc.Divisions))
+	claimed := map[string]bool{}
+	for i, d := range doc.Divisions {
+		if d.Slug == "" {
+			return errf(fmt.Sprintf("divisions[%d]", i), "slug",
+				"is required (label %q)", d.Label)
+		}
+		if _, dup := r.divisions[d.Slug]; dup {
+			return divf(d.Slug, "slug", "duplicate slug")
+		}
+		if err := validateSlug(d.Slug, divf); err != nil {
+			return err
+		}
+		if d.Label == "" {
+			return divf(d.Slug, "label", "is required")
+		}
+		// THE CROSS-AXIS REFUSAL, and it is the one collision in this file that
+		// matters. A department and a division may share a name -- the city
+		// prints five such pairs -- but a division and a CATEGORY may not,
+		// because row_path joins exactly those two on a "/" and a reader
+		// splitting `planning/services-and-supplies` has no way to know which
+		// half is which if one string can be either.
+		if _, isCategory := r.categories[d.Slug]; isCategory {
+			return divf(d.Slug, "slug",
+				"is also a %s category slug; a division and a category are two axes and a "+
+					"fact's row_path joins them, so one string may not be both",
+				TaxonomyFile)
+		}
+		if d.Department == "" {
+			return divf(d.Slug, "department",
+				"is required; every division is printed under one heading")
+		}
+		if _, ok := r.departments[d.Department]; !ok {
+			return divf(d.Slug, "department", "unknown department %q", d.Department)
+		}
+		claimed[d.Department] = true
+		if err := validatePages(d.Pages, d.Slug, "", divf); err != nil {
+			return err
+		}
+		if err := validateProvenance(d.Slug, d.Derived, d.Rationale, d.SourceNote, divf); err != nil {
+			return err
+		}
+		r.divisions[d.Slug] = d
+		r.divisionSlugs = append(r.divisionSlugs, d.Slug)
+	}
+	slices.Sort(r.divisionSlugs)
+
+	// A department with no divisions is a heading over nothing. On pp.167-170
+	// every heading has at least one row group beneath it, so an unclaimed
+	// department is a division that was dropped or misfiled -- and a dropped
+	// division is invisible to the object-category sums, which is the whole
+	// reason the department tier is recorded at all.
+	for _, slug := range r.departmentSlugs {
+		if !claimed[slug] {
+			return deptf(slug, "", "no division names this department")
+		}
+	}
+	return nil
+}
+
+// validateSlug checks one slug's shape against slugShape.
+func validateSlug(slug string, ef errFunc) error {
+	if !slugShape.MatchString(slug) {
+		return ef(slug, "slug",
+			"is not a slug: lower case, digits and single hyphens, one segment")
+	}
+	return nil
+}
+
+// validatePages checks a `pages` list: present, 1-based, ascending, each page
+// once. The rules are validateFundAlias's, applied to an entry rather than to
+// an alias, because the claim is the same one -- this entry is printed there,
+// go and look.
+func validatePages(pages []int, slug, at string, ef errFunc) error {
+	field := "pages"
+	if at != "" {
+		field = at + ".pages"
+	}
+	if len(pages) == 0 {
+		return ef(slug, field, "is required; say which page the entry is printed on")
+	}
+	for i, p := range pages {
+		if p <= 0 {
+			return ef(slug, field, "is %d; pages are 1-based PDF page numbers", p)
+		}
+		if i > 0 && p <= pages[i-1] {
+			return ef(slug, field,
+				"%d follows %d; pages are listed once each, in ascending order", p, pages[i-1])
+		}
+	}
+	return nil
+}
+
+// validateProvenance is the fourth invariant on an entry that carries derived,
+// rationale and source_note -- the same three-way check validateCategory makes,
+// including the asymmetry: a forgotten `derived: true` is far likelier than a
+// stray rationale, and it fails open.
+func validateProvenance(slug string, derived bool, rationale, sourceNote string, ef errFunc) error {
+	switch {
+	case derived && rationale == "":
+		return ef(slug, "rationale", "is required when derived is true")
+	case derived && sourceNote == "":
+		return ef(slug, "source_note", "is required when derived is true")
+	case !derived && rationale != "":
+		return ef(slug, "derived",
+			"is not set, but a rationale is given; a published name needs no rationale")
+	case !derived && sourceNote != "":
+		return ef(slug, "derived",
+			"is not set, but a source_note is given; a published name needs no source_note")
 	}
 	return nil
 }

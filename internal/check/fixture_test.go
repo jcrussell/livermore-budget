@@ -260,13 +260,36 @@ func testDocs(t *testing.T, facts []fact.Fact) map[string]*corpus.Doc {
 	return docs
 }
 
+// The fixture department axis. `patrol` is what the department-bearing fixture
+// facts carry; `records` is here so a test can name a division the registry
+// does NOT list without inventing a department too, and `police-department`
+// shares its name with no division on purpose -- the real file's five
+// name-sharing pairs are pinned in internal/registry, not here.
+const testDepartmentsYAML = `schema_version: 1
+departments:
+  - slug: police-department
+    label: Police Department
+    document_term: POLICE DEPARTMENT
+    pages: [168]
+divisions:
+  - slug: patrol
+    label: Patrol
+    department: police-department
+    pages: [168]
+  - slug: records
+    label: Records
+    department: police-department
+    pages: [168]
+`
+
 // testVocabulary loads the fixture registries the way Load does, through an
 // fs.FS, so the tests exercise the real validation rather than a stub.
 func testVocabulary(t *testing.T) *registry.Registry {
 	t.Helper()
 	reg, err := registry.Load(fstest.MapFS{
-		registry.FundsFile:    &fstest.MapFile{Data: []byte(testFundsYAML)},
-		registry.TaxonomyFile: &fstest.MapFile{Data: []byte(testTaxonomyYAML)},
+		registry.FundsFile:       &fstest.MapFile{Data: []byte(testFundsYAML)},
+		registry.TaxonomyFile:    &fstest.MapFile{Data: []byte(testTaxonomyYAML)},
+		registry.DepartmentsFile: &fstest.MapFile{Data: []byte(testDepartmentsYAML)},
 	})
 	if err != nil {
 		t.Fatalf("load the fixture registries: %v", err)
@@ -282,7 +305,7 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 		facts = testFacts()
 	}
 	reg := testVocabulary(t)
-	projections, err := buildProjections(project.Registry(reg), facts, testVersion)
+	projections, failures, err := buildProjections(project.Registry(reg), facts, testVersion)
 	if err != nil {
 		t.Fatalf("build the fixture projections: %v", err)
 	}
@@ -290,11 +313,12 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 	// are not — fact-offset-points-at-token reads page text, which is committed
 	// extraction and still not a PDF.
 	return &Subject{
-		Root:        t.TempDir(),
-		Facts:       facts,
-		Vocabulary:  reg,
-		Docs:        testDocs(t, facts),
-		Projections: projections,
+		Root:               t.TempDir(),
+		Facts:              facts,
+		Vocabulary:         reg,
+		Docs:               testDocs(t, facts),
+		Projections:        projections,
+		ProjectionFailures: failures,
 	}
 }
 

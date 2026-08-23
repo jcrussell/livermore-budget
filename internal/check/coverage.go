@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
@@ -23,6 +24,71 @@ import (
 // sorted, unique ids, token re-parse, offsets, vocabulary — because those read the
 // fact store directly.
 var unprojectedScopes = map[string]string{}
+
+// projectionsBuild asserts every slice of the fact store that a projection was
+// asked for actually produced a graph.
+//
+// THIS CHECK EXISTS BECAUSE ITS ABSENCE WAS SILENT IN BOTH DIRECTIONS. A
+// projection that refuses to build used to abort check.Load, so `fisc verify`
+// exited 1 having printed no report — every other finding in the run lost, and
+// the reason wrapped inside a load error. Recording the refusal instead fixes
+// that, and opens the opposite hole: a slice missing from Subject.Projections is
+// not a failure anywhere, it is silence, and ten checks below read nothing but
+// the graph. So this one must FAIL on a recorded refusal and must never be
+// vacuous while one is recorded.
+//
+// The refusal it exists for today is internal/project's: netCells rejects a fact
+// carrying a department, because the citywide spine crosses category against
+// fund group and has no department tier (fisc-gxa.2). A correctly scoped
+// pp.167-170 fact never reaches it — selectFacts filters on scope first — so on
+// a healthy corpus this is vacuous, and what makes it reachable is a rule whose
+// `scope:` says all-funds-gross when it means expenditure-by-department.
+type projectionsBuild struct{}
+
+var _ Check = (*projectionsBuild)(nil)
+
+func (*projectionsBuild) ID() string { return "projections-build" }
+func (*projectionsBuild) Tier() int  { return 1 }
+func (*projectionsBuild) Full() bool { return false }
+func (*projectionsBuild) Description() string {
+	return "every projection the fact store's slices asked for produced a graph, rather than " +
+		"refusing and taking the whole report down with it"
+}
+
+// Run counts one subject per slice a projection was asked for — the built ones
+// and the failed ones together — because the claim is about all of them and a
+// count of only the failures would read as "1 of 1" on a corpus where nine
+// slices built and one did not.
+func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
+	findings := make([]Finding, 0, len(s.ProjectionFailures))
+	for _, f := range s.ProjectionFailures {
+		findings = append(findings, finding(f.String(),
+			"this projection refused to build: %v. Every check that reads a graph is "+
+				"silent about this slice — they are not failing it, they cannot see it",
+			f.Err))
+	}
+	return conclusion{
+		subjects: len(s.Projections) + len(s.ProjectionFailures),
+		unit:     "projection slices",
+		held: fmt.Sprintf("%d projection slices built, none refused",
+			len(s.Projections)),
+		nothing:  "no projection was asked for at all",
+		findings: findings,
+	}.result(), nil
+}
+
+// sliceKey identifies one projection slice. It is the triple selectFacts
+// filters on (internal/project), so a fact and the projection that would have
+// drawn it are compared on the same three fields rather than on two of them.
+type sliceKey struct {
+	year  int
+	basis mapping.Basis
+	scope string
+}
+
+func keyOf(o project.Options) sliceKey {
+	return sliceKey{o.FiscalYear, o.Basis, o.Scope}
+}
 
 // publishedProjectionBuilt asserts the slice the site publishes was one of the
 // slices built.
@@ -110,11 +176,29 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 			projected[f.ID] = true
 		}
 	}
+	// A refused projection makes every fact of ITS slice unprojected, and each
+	// one would otherwise arrive below as its own finding: on the committed
+	// corpus that is 120 findings restating one cause. Those facts are collected
+	// against the refusal and reported once.
+	//
+	// Only that slice's facts, though. Suppressing the whole check while any
+	// projection failed would hide a genuinely undeclared scope elsewhere in the
+	// store until the refusal was fixed and verify re-run — one real finding
+	// costing two rounds, which is the thing a report exists not to do.
+	refused := map[sliceKey]int{}
+	for _, f := range s.ProjectionFailures {
+		refused[keyOf(f.Options)] = 0
+	}
 
 	var findings []Finding
 	declared := map[string]int{}
 	for _, f := range s.Facts {
 		if projected[f.ID] {
+			continue
+		}
+		k := sliceKey{f.FiscalYear, f.Basis, f.Scope}
+		if _, isRefused := refused[k]; isRefused {
+			refused[k]++
 			continue
 		}
 		if _, ok := unprojectedScopes[f.Scope]; ok {
@@ -125,6 +209,14 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 			"%s p%d %q is FY%d %s %s, which no projection is of and which no entry in "+
 				"unprojectedScopes declares unprojected",
 			f.DocID, f.Page, f.RowLabel, f.FiscalYear, f.Basis, f.Scope))
+	}
+	for _, f := range s.ProjectionFailures {
+		if n := refused[keyOf(f.Options)]; n > 0 {
+			findings = append(findings, finding(f.String(),
+				"%d facts in this slice are unprojected because the projection refused to "+
+					"build; see projections-build. Whether their scopes are declared cannot "+
+					"be established until it does", n))
+		}
 	}
 
 	held := fmt.Sprintf("%d facts, all of them in one of %d projections",

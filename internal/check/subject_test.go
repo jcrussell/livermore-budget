@@ -49,8 +49,8 @@ func copyRepoFile(t *testing.T, src, dst, rel string) {
 }
 
 // repoWithoutPDFs copies everything Load is allowed to read into a temporary tree,
-// and nothing else: the fact store, the rule files, the three registries, and the
-// whole committed extraction. data/pdf is not among it.
+// and nothing else: the fact store, the rule files, the four registry files, and
+// the whole committed extraction. data/pdf is not among it.
 //
 // This is what makes the no-PDF property a test rather than a claim: if some check
 // ever reaches for a source document it will not find one here. It is also the
@@ -70,6 +70,7 @@ func repoWithoutPDFs(t *testing.T) string {
 	copyRepoFile(t, src, dst, factsFile)
 	copyRepoFile(t, src, dst, dataDir+"/funds.yaml")
 	copyRepoFile(t, src, dst, dataDir+"/taxonomy.yaml")
+	copyRepoFile(t, src, dst, dataDir+"/departments.yaml")
 	copyRepoFile(t, src, dst, sourcesFile)
 
 	rules, err := os.ReadDir(filepath.Join(src, mappingsDir))
@@ -240,6 +241,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"fact-offset-points-at-token": StatusPass,
 		"fact-vocabulary":             StatusPass,
 		"fact-kind-matches-category":  StatusPass,
+		"projections-build":           StatusPass,
 		"published-projection-built":  StatusPass,
 		"facts-are-projected":         StatusPass,
 		"graph-acyclic":               StatusPass,

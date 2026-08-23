@@ -1,12 +1,13 @@
-// Package registry reads the two curated registries under data/: the fund list
-// (funds.yaml) and the category taxonomy (taxonomy.yaml).
+// Package registry reads the three curated registries under data/: the fund
+// list (funds.yaml), the category taxonomy (taxonomy.yaml) and the department
+// axis (departments.yaml).
 //
-// These files are the controlled vocabulary behind two of a fact's fields.
+// These files are the controlled vocabulary behind three of a fact's fields.
 // Until something reads them, a mapping rule's `category:` and a column's
 // `fund_group:` are free strings, and a rule that writes `tax/property` where
 // the taxonomy says `taxes/property` produces a fact that is confidently
 // wrong and joins to nothing. This package is what makes those fields
-// checkable (fisc-1wr.1), and it is the only place either file is parsed.
+// checkable (fisc-1wr.1), and it is the only place any of them is parsed.
 //
 // Loading validates. A registry that loaded is one whose invariants already
 // hold — no duplicate slug or fund number, every parent resolving, every
@@ -26,22 +27,26 @@ import (
 	"strings"
 )
 
-// FundsFile and TaxonomyFile are the names Load reads from the root of the
-// filesystem it is given, so a caller passes os.DirFS("data") rather than
-// composing paths this package would have to agree with.
+// These are the names Load reads from the root of the filesystem it is given,
+// so a caller passes os.DirFS("data") rather than composing paths this package
+// would have to agree with.
 const (
-	FundsFile    = "funds.yaml"
-	TaxonomyFile = "taxonomy.yaml"
+	FundsFile       = "funds.yaml"
+	TaxonomyFile    = "taxonomy.yaml"
+	DepartmentsFile = "departments.yaml"
 )
 
-// The two registries version independently: a change to the fund schema says
+// The three registries version independently: a change to the fund schema says
 // nothing about the taxonomy schema, and one shared constant would force a
-// pointless bump on the other file every time.
+// pointless bump on the others every time.
 const (
 	// FundsSchemaVersion is the only funds.yaml version this package reads.
 	FundsSchemaVersion = 1
 	// TaxonomySchemaVersion is the only taxonomy.yaml version this package reads.
 	TaxonomySchemaVersion = 1
+	// DepartmentsSchemaVersion is the only departments.yaml version this
+	// package reads.
+	DepartmentsSchemaVersion = 1
 )
 
 // The near miss this project is most likely to make: `debt-service` is a fund
@@ -221,7 +226,80 @@ func (f Fund) clone() Fund {
 	return f
 }
 
-// Registry is the loaded pair of files. It is read-only after Load and safe
+// Department is one of the eleven ALL-CAPS headings Budget Book pp.167-170
+// print over their division rows.
+//
+// A FACT NEVER NAMES ONE. A mapping row's `department:` carries a DIVISION
+// slug, because the division is the level the object rows sit under; the
+// department is reached through Division.Department, and it is what the
+// `<DEPARTMENT> TOTAL` rollups assert. This tier exists so that grouping is
+// recorded once, in the file, rather than re-derived from the page by every
+// reader.
+//
+// DocumentTerm is the heading as printed. It is not always the total row's
+// wording: PUBLIC WORKS (p169:47) closes as "PUBLIC WORKS DEPARTMENT TOTAL"
+// (p170:11), and INNOVATION & ECONOMIC DEVELOPMENT (p167:53) closes with the
+// city's own misspelling. An anchor derived from this field would be wrong
+// twice, which is why the rule file spells its anchors out.
+type Department struct {
+	Slug         string `yaml:"slug"`
+	Label        string `yaml:"label"`
+	DocumentTerm string `yaml:"document_term"`
+	Pages        []int  `yaml:"pages"`
+	Note         string `yaml:"note"`
+
+	// Derived carries the fourth provenance invariant onto this axis, on the
+	// same terms Category states it. Nothing in departments.yaml is derived
+	// today — the slugs are transforms of printed labels and the parentage is
+	// printed — but a later department that has to be inferred must not be
+	// presented like one the city printed.
+	Derived    bool   `yaml:"derived"`
+	Rationale  string `yaml:"rationale"`
+	SourceNote string `yaml:"source_note"`
+}
+
+// clone deep-copies the slice fields, for the reason Category.clone does: the
+// value is returned by copy, which copies a slice header only, so without this
+// a caller could write through Pages into the registry's own state.
+func (d Department) clone() Department {
+	d.Pages = slices.Clone(d.Pages)
+	return d
+}
+
+// Division is one of the twenty-three mixed-case row groups pp.167-170 print
+// beneath a Department, and it is what a fact's `department` field holds.
+//
+// The field and this type disagree in name, and deliberately: `department` is
+// published in facts.jsonl and in every mapping rule, so renaming it would
+// rewrite the audit trail to fix a word. What the string means is recorded
+// here instead.
+//
+// Department names the heading above this division. It is a separate NAMESPACE
+// from Slug rather than a parent segment of it: five departments share a name
+// with a division beneath them — three exactly, City Council, City Manager and
+// City Attorney — so one namespace would force five invented names. It is also
+// a field rather than a `police/patrol` slug because check's departmentSlug
+// rule is single-segment and fact.RowPath composes `<division>/<category>`; a
+// two-segment slug would emit a two-slash row_path.
+type Division struct {
+	Slug       string `yaml:"slug"`
+	Label      string `yaml:"label"`
+	Department string `yaml:"department"`
+	Pages      []int  `yaml:"pages"`
+	Note       string `yaml:"note"`
+
+	Derived    bool   `yaml:"derived"`
+	Rationale  string `yaml:"rationale"`
+	SourceNote string `yaml:"source_note"`
+}
+
+// clone deep-copies the slice fields. See Department.clone.
+func (d Division) clone() Division {
+	d.Pages = slices.Clone(d.Pages)
+	return d
+}
+
+// Registry is the loaded set of files. It is read-only after Load and safe
 // for concurrent use.
 type Registry struct {
 	categories map[string]Category
@@ -234,6 +312,11 @@ type Registry struct {
 	// of its aliases — to the one fund that may claim it. Load rejects a
 	// second claimant, so this is a function, not a set of candidates.
 	fundLabels map[string]int
+
+	departments     map[string]Department
+	departmentSlugs []string // sorted, for enumeration in a stable order
+	divisions       map[string]Division
+	divisionSlugs   []string // sorted, for enumeration in a stable order
 }
 
 // Category returns the taxonomy entry for slug.
@@ -358,15 +441,62 @@ func (r *Registry) FundGroups() []string {
 	return slices.Clone(r.fundGroups)
 }
 
+// Division returns the departments.yaml entry for slug, which is what a fact's
+// `department` field holds.
+//
+// The name mismatch is deliberate and is explained on [Division]: the fact
+// field is published and the type says what the string means.
+func (r *Registry) Division(slug string) (Division, bool) {
+	d, ok := r.divisions[slug]
+	if !ok {
+		return Division{}, false
+	}
+	return d.clone(), true
+}
+
+// Department returns the departments.yaml entry for slug — the ALL-CAPS tier,
+// which no fact names directly.
+//
+// It exists because Division.Department is a slug, and a parent nothing can
+// resolve is a field a consumer cannot use: whoever holds a Division and wants
+// the heading above it needs this.
+func (r *Registry) Department(slug string) (Department, bool) {
+	d, ok := r.departments[slug]
+	if !ok {
+		return Department{}, false
+	}
+	return d.clone(), true
+}
+
+// Divisions returns every division, ordered by slug. The slice and every slice
+// inside it are copies.
+func (r *Registry) Divisions() []Division {
+	out := make([]Division, 0, len(r.divisionSlugs))
+	for _, s := range r.divisionSlugs {
+		out = append(out, r.divisions[s].clone())
+	}
+	return out
+}
+
+// Departments returns every department, ordered by slug. The slice and every
+// slice inside it are copies.
+func (r *Registry) Departments() []Department {
+	out := make([]Department, 0, len(r.departmentSlugs))
+	for _, s := range r.departmentSlugs {
+		out = append(out, r.departments[s].clone())
+	}
+	return out
+}
+
 // Error reports a problem in one registry file, naming the entry at fault.
 // The files are long — 112 funds, 25 categories, both hand-written — so an
 // error that says only "duplicate slug" costs the reader a search through a
 // file whose whole point is that its entries are hard to tell apart.
 type Error struct {
-	// File is FundsFile, TaxonomyFile or SourcesFile.
+	// File is FundsFile, TaxonomyFile, DepartmentsFile or SourcesFile.
 	File string
-	// Entry names the offending fund, category or source, already rendered
-	// ("fund 291", `category "taxes/property"`). It is empty for a
+	// Entry names the offending fund, category, division or source, already
+	// rendered ("fund 291", `category "taxes/property"`). It is empty for a
 	// file-level problem such as a bad schema_version.
 	Entry string
 	Field string

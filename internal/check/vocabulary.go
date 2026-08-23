@@ -184,31 +184,50 @@ func declaresKind(c registry.Category, k mapping.Kind) bool {
 
 // departmentSlug is the shape a department identifier must have: the same
 // lowercase, single-segment kebab-case data/taxonomy.yaml's slug rule produces.
-// It is one level deep because a department is not a hierarchy — pp.165-166 print
-// a flat list — and because the axis-crossing this project is most likely to
-// commit is a department slug that looks like a category one.
+//
+// One segment, and NOT because the axis is flat — it is not. pp.167-170 print 23
+// divisions under 11 departments, and an earlier version of this comment cited
+// pp.165-166 as a flat list, which they are not either: p165 prints 7 headings
+// over 10 division rows. The hierarchy is real and it is recorded in
+// data/departments.yaml as a `department:` FIELD on each division. It stays out
+// of the slug because a fact's row_path is `<division>/<category>`
+// (internal/fact.RowPath), so a two-segment slug here would emit a two-slash
+// row_path that no reader could split back into its two axes.
+//
+// data/departments.yaml applies the same rule when it loads. Both are checked,
+// because they are two different claims: that the file is well formed, and that
+// a published fact is.
 var departmentSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 // factDepartmentsResolve asserts the department axis is a controlled vocabulary.
 //
-// It cannot fully do that yet, and says so rather than passing. data/taxonomy.yaml
-// is explicit that departments are deliberately absent from it — a fact is
-// simultaneously "Police" and "Wages & Benefits", two orthogonal axes, and folding
-// one into the other would make department rows and category rows sum into one
-// total — and that they belong in a registry of their own. That registry does not
-// exist. So while no fact carries a department this check is vacuous, and when one
-// does it reports what IS assertable without a registry and then refuses to call
-// the run a pass:
+// It can now do that. data/taxonomy.yaml is explicit that departments are
+// deliberately absent from it — a fact is simultaneously "Police" and "Wages &
+// Benefits", two orthogonal axes, and folding one into the other would make
+// department rows and category rows sum into one total — and that they belong in
+// a registry of their own. data/departments.yaml is that registry, and this check
+// is what reads it. Four claims, and the first is the one the other three used to
+// stand in for:
 //
-//   - the slug is well formed, so `Police` and `police_dept` are caught;
+//   - the slug names a division data/departments.yaml lists, so a fact whose
+//     `department` joins to nothing cannot be published;
+//   - the slug is well formed, so `Police` and `police_dept` are caught, and are
+//     reported as the shape problem they are rather than as a missing entry;
 //   - the same department is spelled one way across the whole store;
-//   - no department collides with a data/taxonomy.yaml category slug, which is the
-//     near miss the taxonomy warns about.
+//   - no department collides with a data/taxonomy.yaml category slug, which is
+//     the near miss the taxonomy warns about.
 //
-// The verdict is then an ERROR, not a failure: the corpus may be perfectly
-// correct, and what is missing is a file nobody has written. pp.167-170
-// (fisc-5gk.2) is in this project's scope, so this arrives with the mapping rather
-// than never, and an error is what makes the registry land in the same change.
+// THE LAST TWO ARE NOW BELT AND BRACES, and they stay. The registry refuses a
+// division whose slug is a category slug, so a resolving department cannot
+// collide — but this check is written against the [Vocabulary] interface rather
+// than against that one implementation, and an assertion that is currently
+// implied by a loader is not the same thing as one nobody makes.
+//
+// Until this bead (fisc-o15) the check ERRORED as soon as any fact carried a
+// department, because "resolves" could not be established against a file that did
+// not exist. That was the honest interim, and it was deliberately loud: an error
+// makes Report.Failed() true without --strict, so the registry had to land in the
+// same change as the first department-bearing fact. It has.
 type factDepartmentsResolve struct{}
 
 var _ Check = (*factDepartmentsResolve)(nil)
@@ -217,9 +236,8 @@ func (*factDepartmentsResolve) ID() string { return "fact-departments-resolve" }
 func (*factDepartmentsResolve) Tier() int  { return 1 }
 func (*factDepartmentsResolve) Full() bool { return false }
 func (*factDepartmentsResolve) Description() string {
-	return "every department a fact carries is a well-formed slug, spelled one way, that no " +
-		"category slug collides with — and resolves in a department registry, which data/ has " +
-		"none of yet"
+	return "every department a fact carries is a division data/departments.yaml lists: a " +
+		"well-formed slug, spelled one way, that no category slug collides with"
 }
 
 func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error) {
@@ -234,11 +252,6 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 		}
 		subjects++
 		departments[f.Department] = true
-		if !departmentSlug.MatchString(f.Department) {
-			findings = append(findings, finding(f.ID,
-				"%s p%d %q: department %q is not a slug: lower case, digits and single hyphens, "+
-					"one segment", f.DocID, f.Page, f.RowLabel, f.Department))
-		}
 		key := strings.ToLower(strings.NewReplacer(" ", "", "_", "", "-", "").Replace(f.Department))
 		if !slices.Contains(spellings[key], f.Department) {
 			spellings[key] = append(spellings[key], f.Department)
@@ -247,6 +260,21 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q: department %q is also a data/taxonomy.yaml category slug; the two "+
 					"axes must not share a string", f.DocID, f.Page, f.RowLabel, f.Department))
+		}
+		// Shape OR resolution, never both. A malformed slug is not in the
+		// registry either — departments.yaml applies the same rule when it
+		// loads — so reporting both would put two findings and one fix against
+		// one fact, and the shape is the more specific diagnosis.
+		if !departmentSlug.MatchString(f.Department) {
+			findings = append(findings, finding(f.ID,
+				"%s p%d %q: department %q is not a slug: lower case, digits and single hyphens, "+
+					"one segment", f.DocID, f.Page, f.RowLabel, f.Department))
+			continue
+		}
+		if _, ok := s.Vocabulary.Division(f.Department); !ok {
+			findings = append(findings, finding(f.ID,
+				"%s p%d %q: department %q is not a division %s lists, so the fact joins to "+
+					"nothing", f.DocID, f.Page, f.RowLabel, f.Department, departmentsFile))
 		}
 	}
 
@@ -262,30 +290,16 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 		}
 	}
 
-	if subjects == 0 {
-		return Result{
-			Status: StatusVacuous,
-			Summary: "no fact carries a department, and data/ has no department registry to " +
-				"resolve one against (pp.167-170 are unmapped: fisc-5gk.2)",
-			Findings: []Finding{},
-		}, nil
-	}
-	if len(findings) > 0 {
-		return conclusion{
-			subjects: subjects,
-			unit:     "departments",
-			findings: findings,
-		}.result(), nil
-	}
-	// Well formed, consistent, and not colliding — and still not resolved, because
-	// there is nothing to resolve against. Reporting a pass here would say the
-	// department axis is a controlled vocabulary when it is a set of free strings
-	// this check happens to like the shape of.
-	names := slices.Sorted(maps.Keys(departments))
-	return Result{}, fmt.Errorf("%d facts carry a department (%s) and every one is a well-formed "+
-		"slug that no category collides with, but data/ has no department registry, so "+
-		"\"resolves\" cannot be established; a department registry has to land with the "+
-		"pp.167-170 mapping (fisc-5gk.2)", subjects, strings.Join(names, ", "))
+	return conclusion{
+		subjects: subjects,
+		unit:     "departments",
+		held: fmt.Sprintf("%d facts name one of %d divisions, each listed in %s: %s",
+			subjects, len(departments), departmentsFile,
+			joinComma(slices.Sorted(maps.Keys(departments)))),
+		nothing: "no fact carries a department: the citywide spine crosses category against " +
+			"fund group and has no department axis (pp.167-170 are fisc-5gk.2)",
+		findings: findings,
+	}.result(), nil
 }
 
 // factFundsResolve asserts every fund number a fact carries is a fund
