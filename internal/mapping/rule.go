@@ -14,6 +14,7 @@ package mapping
 
 import (
 	"fmt"
+	"slices"
 
 	yaml "go.yaml.in/yaml/v3"
 
@@ -146,6 +147,25 @@ type Rule struct {
 	// would produce a number that means nothing. A flag whose misuse is caught
 	// by the parser is a different thing from one that relies on the author.
 	TotalSpansParts bool `yaml:"total_spans_parts"`
+
+	// TotalRowKinds names the kinds the printed total_row covers, where it
+	// covers only some of them. Absent, it covers every row the rule maps,
+	// which is the reading eleven-plus mixed fund blocks on Budget Book
+	// pp.131-140 need: their printed `Total <fund>` includes both the revenue
+	// rows and a Transfers In row.
+	//
+	// This is where a kind filter belongs, rather than in CheckTotals. A total
+	// row is the thing that knows which rows it covers, so saying which is a
+	// claim the rule author makes and review can check -- the same shape as
+	// Column.Basis overriding Rule.Basis on the column. Making CheckTotals
+	// globally kind-aware instead would break all eleven of those blocks,
+	// which is the opposite of what Row.Kind was promoted to enable.
+	//
+	// The p66-67 spine is the case that wants it: "TOTAL REVENUES:" covers
+	// only the revenue rows of a block it shares with transfers and fund
+	// balance. Declaring that is what would let those five rules become three
+	// (fisc-56f); nothing does so yet.
+	TotalRowKinds []Kind `yaml:"total_row_kinds"`
 
 	// Note records why this rule looks the way it does, for the next reader.
 	Note string `yaml:"note"`
@@ -357,6 +377,30 @@ type Row struct {
 	Department string `yaml:"department"`
 	Sign       Sign   `yaml:"sign"`
 
+	// Kind overrides the rule's kind for this row, exactly as Column.Basis
+	// overrides Rule.Basis: the thing that knows says so.
+	//
+	// Eleven or more fund blocks on Budget Book pp.131-140 print revenue rows
+	// AND a Transfers In row inside ONE printed `Total <fund>` -- Stormwater,
+	// Wastewater, Water and the rest. Kind is per RULE, so without this those
+	// printed totals cannot be used as total_row AT ALL: not "are verbose to
+	// express", cannot be expressed. The document would stop checking our work
+	// on eleven of its own totals, which is the most valuable check this
+	// project has.
+	//
+	// It does NOT make CheckTotals kind-aware, and that is deliberate. Those
+	// eleven totals cover BOTH kinds, so kind-BLINDNESS is exactly what they
+	// need; a check that summed only the rule's own kind would make p131's
+	// Stormwater block stop tying to `Total Stormwater`, whose FY2025-26
+	// column is 1,169,000 of charges plus 3,247,000 of Transfers In and is
+	// unreachable without the transfer row. (fisc-uli's note names Airport for
+	// this; Airport prints no Transfers In at all, and the 3,247,000 is
+	// Stormwater's.) Where a printed total covers only SOME of the
+	// kinds beneath it, the rule says so on the total_row declaration -- see
+	// TotalRowKinds -- because the total row is the thing that knows which
+	// rows it covers.
+	Kind Kind `yaml:"kind"`
+
 	// Skip marks a row that occupies a position but produces no facts, such
 	// as a subtotal that would double-count.
 	Skip bool `yaml:"skip"`
@@ -371,6 +415,25 @@ func (r Row) Identity() string {
 		return r.Label
 	}
 	return r.Label + "\x1f" + r.LabelTail
+}
+
+// totalCovers says whether a row of this kind is one the printed total_row
+// covers. With no TotalRowKinds declared every row is, which is the kind-blind
+// reading the mixed fund blocks on Budget Book pp.131-140 depend on.
+func (r *Rule) totalCovers(k Kind) bool {
+	if len(r.TotalRowKinds) == 0 {
+		return true
+	}
+	return slices.Contains(r.TotalRowKinds, k)
+}
+
+// EffectiveKind is the kind this row's facts carry: its own override where it
+// declares one, the rule's otherwise.
+func (r Row) EffectiveKind(rule *Rule) Kind {
+	if r.Kind != "" {
+		return r.Kind
+	}
+	return rule.Kind
 }
 
 // PrintedLabel is what the document printed for this row, as the fact's

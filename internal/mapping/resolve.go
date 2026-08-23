@@ -811,6 +811,9 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 
 	sums := make([]amount.Cents, len(p.Columns))
 	for _, v := range values {
+		if !rule.totalCovers(v.Row.EffectiveKind(rule)) {
+			continue
+		}
 		sums[v.ColumnIndex] += v.Cents
 	}
 	return r.compareTotals(rule, p, p, stated, sums)
@@ -866,6 +869,9 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*TotalsResult, error) {
 			return nil, err
 		}
 		for _, v := range values {
+			if !rule.totalCovers(v.Row.EffectiveKind(rule)) {
+				continue
+			}
 			sums[v.ColumnIndex] += v.Cents
 		}
 	}

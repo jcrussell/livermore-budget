@@ -258,7 +258,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			Offset:      v.Offset,
 			Token:       v.Token,
 			RuleID:      rule.ID,
-			Kind:        rule.Kind,
+			Kind:        v.Row.EffectiveKind(rule),
 			Basis:       basis,
 			Scope:       rule.Scope,
 			FiscalYear:  v.Column.FiscalYear,

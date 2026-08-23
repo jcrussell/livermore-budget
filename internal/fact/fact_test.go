@@ -683,3 +683,40 @@ func contains(s []string, want string) bool {
 	}
 	return false
 }
+
+// TestARowKindOverridesTheRulesKind pins mapping.Row.Kind reaching the
+// published record, which is the only place the override is observable.
+//
+// It lives here rather than in internal/mapping because that package cannot
+// import this one, and a fact is what the override is FOR: eleven-plus mixed
+// fund blocks on Budget Book pp.131-140 print revenue rows and a Transfers In
+// row inside one printed total, and the transfer's facts must say transfer_in
+// while the rule says revenue.
+func TestARowKindOverridesTheRulesKind(t *testing.T) {
+	f := &mapping.File{DocID: "doc"}
+	rule := &mapping.Rule{ID: "stormwater", Kind: mapping.KindRevenue,
+		Basis: mapping.BasisAdopted, Scope: "all-funds-gross"}
+	col := mapping.Column{FundGroup: "enterprise", FiscalYear: 2026}
+
+	got, err := FromValues(f, rule, []mapping.Value{
+		{Row: mapping.Row{Label: "Charges for Services", Category: "charges-for-services"}, Column: col},
+		{Row: mapping.Row{Label: "Transfers In", Category: "transfers/in",
+			Kind: mapping.KindTransferIn}, Column: col},
+	})
+	if err != nil {
+		t.Fatalf("FromValues: %v", err)
+	}
+	if got[0].Kind != mapping.KindRevenue {
+		t.Errorf("row with no kind = %q, want the rule's %q", got[0].Kind, mapping.KindRevenue)
+	}
+	if got[1].Kind != mapping.KindTransferIn {
+		t.Errorf("row declaring transfer_in = %q, want its own kind; without this the "+
+			"transfer is published as revenue and double-counts the fund's income",
+			got[1].Kind)
+	}
+	// The override must not leak into the id's other fields: two rows of one
+	// rule still differ by row_path, not by kind, and kind is not in MakeID.
+	if got[0].RuleID != got[1].RuleID {
+		t.Errorf("rule_id differs across the override: %q vs %q", got[0].RuleID, got[1].RuleID)
+	}
+}

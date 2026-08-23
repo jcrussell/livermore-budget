@@ -272,6 +272,10 @@ func validateRule(r *Rule, errf errFunc) error {
 			return errf(r.ID, "rows", "row %q: sign %q, want positive or contra",
 				row.Label, row.Sign)
 		}
+		if row.Kind != "" && !row.Kind.valid() {
+			return errf(r.ID, "rows", "row %q: kind %q is not one of the five",
+				row.Label, row.Kind)
+		}
 		// A row with no classification would emit facts into an empty
 		// category, where they either vanish from the breakdown or silently
 		// merge with every other uncategorised row.
@@ -486,7 +490,65 @@ func validateRule(r *Rule, errf errFunc) error {
 		}
 	}
 
+	if err := validateTotalRowKinds(r, errf); err != nil {
+		return err
+	}
 	return validateTotalSpansParts(r, errf)
+}
+
+// validateTotalRowKinds checks the claim that the printed total covers only
+// some of the kinds beneath it.
+//
+// Every refusal here is of a declaration that asserts nothing, which is the
+// same discipline a stale wrapped_label and a delta that now ties exactly get:
+// a claim that cannot fail is one that records an author's belief rather than a
+// property of the document.
+func validateTotalRowKinds(r *Rule, errf errFunc) error {
+	if len(r.TotalRowKinds) == 0 {
+		return nil
+	}
+	if r.TotalRow == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, "total_row_kinds", "is declared but the rule has no total_row"),
+			"the list says which of the rule's kinds the PRINTED total covers, "+
+				"so there must be a printed total for it to describe")
+	}
+	seen := map[Kind]bool{}
+	for _, k := range r.TotalRowKinds {
+		if !k.valid() {
+			return errf(r.ID, "total_row_kinds", "%q is not one of the five kinds", k)
+		}
+		if seen[k] {
+			return errf(r.ID, "total_row_kinds", "%q is listed twice", k)
+		}
+		seen[k] = true
+	}
+	// The kinds the rule's rows actually carry. A declaration naming a kind no
+	// row has would silently narrow the check to fewer rows than the author
+	// believed -- or, if it named ALL of them, to none.
+	have := map[Kind]bool{}
+	for _, row := range r.Rows {
+		if row.Skip {
+			continue
+		}
+		have[row.EffectiveKind(r)] = true
+	}
+	for _, k := range r.TotalRowKinds {
+		if !have[k] {
+			return cmdutil.WithHint(
+				errf(r.ID, "total_row_kinds", "no row of this rule has kind %q", k),
+				"the list names the kinds the printed total covers, and every "+
+					"one of them must be a kind this rule maps")
+		}
+	}
+	if len(seen) == len(have) {
+		return cmdutil.WithHint(
+			errf(r.ID, "total_row_kinds", "names every kind the rule maps, so it excludes nothing"),
+			"a total that covers all of its rows needs no declaration; remove "+
+				"it, and the check stays kind-blind as the mixed fund blocks "+
+				"on pp.131-140 need")
+	}
+	return nil
 }
 
 // validateTotalSpansParts checks the declaration that a printed total covers
