@@ -262,14 +262,22 @@ func validateRollups(f *File, errf errFunc) error {
 			continue
 		}
 
-		// A rollup over one rule is that rule's own total_row wearing a
-		// different name, and would report a second assertion for one printed
-		// figure.
-		if len(ro.Covers) < 2 {
-			return cmdutil.WithHint(
-				errf("", field("covers"), "names one rule"),
-				"a total covering a single rule is that rule's total_row")
-		}
+		// A ROLLUP MAY COVER ONE RULE. This used to be refused, on the
+		// reasoning that "a total covering a single rule is that rule's
+		// total_row wearing a different name". Budget Book pp.167-170 show
+		// that is false: six of the eleven <DEPARTMENT> TOTAL rows sit over a
+		// department with exactly one division, and each is a SECOND PRINTED
+		// LINE with its own figures -- CITY COUNCIL TOTAL on p0167:15, three
+		// lines below City Council's own Total on :13. Refusing them left six
+		// printed totals asserted by nothing, which is the one answer fisc-3bl
+		// calls unacceptable.
+		//
+		// What the old rule was reaching for is the guard below: a rollup may
+		// not name the same printed line as a covered rule's total. That is a
+		// claim about the LINE and not about the number of rules, and the
+		// string half of it is checked here. The page half -- same page, same
+		// line -- needs the pages and is checked in CheckRollup, for the reason
+		// the column guard below cannot be closed here either.
 		covered := map[string]bool{}
 		var first *Rule
 		for _, id := range ro.Covers {

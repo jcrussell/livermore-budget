@@ -16,6 +16,11 @@ import (
 // artifact rather than in a test fixture.
 const publishedSpine = "../../mappings/livermore-budget-fy2026-2027.yaml"
 
+// publishedSpineScope is the scope pp.66-67's rules carry. Spelled here rather
+// than imported: internal/project declares it and imports this package, so the
+// dependency cannot run the other way.
+const publishedSpineScope = "all-funds-gross"
+
 // The spine's headline figures, in dollars exactly as Budget Book pp.66-67
 // print them, so the expectation reads the way the document does.
 // resolve_test.go already states two of them (generalFundFY2026Expenditures,
@@ -119,6 +124,15 @@ func readSpine(t *testing.T) spineRead {
 	out := spineRead{totals: spineTotals{}}
 	for i := range f.Rules {
 		ru := &f.Rules[i]
+		// The published file now carries a second schedule (pp.167-170, at
+		// scope expenditure-by-department), and every assertion below is about
+		// the SPINE: its fact count, its tied columns, its headline figures.
+		// Filtering by scope here rather than by rule id keeps this file's
+		// claims true as more schedules land, and it is the same string the
+		// projection selects on.
+		if ru.Scope != publishedSpineScope {
+			continue
+		}
 		for j := range ru.Parts {
 			p := &ru.Parts[j]
 
@@ -389,7 +403,9 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 			}
 		}
 	}
-	if want := 10; parts != want {
+	// 10 spine parts over pp.66-67 plus 26 division parts over pp.167-170, of
+	// which three divisions declare two because they straddle a page break.
+	if want := 36; parts != want {
 		t.Errorf("checked %d parts, want %d; the published file's shape changed",
 			parts, want)
 	}

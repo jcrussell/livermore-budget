@@ -684,25 +684,9 @@ func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
 		return nil, err
 	}
 
-	from := blk.End
-	field := "stop_at"
-	if p.LabelsFrom == 0 {
-		if rule.TotalRow == "" {
-			return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
-				Field: "total_row", Msg: "the rule declares none", Err: ErrNoStatedTotals}
-		}
-		field = "total_row"
-		i := strings.Index(text[blk.End:], rule.TotalRow)
-		if i < 0 {
-			return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
-				Field: field, Err: ErrNotFound,
-				Msg: fmt.Sprintf("%q does not occur after the block", rule.TotalRow)}
-		}
-		from = blk.End + i + len(rule.TotalRow)
-	} else if p.StopAt == "" {
-		return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
-			Field: "stop_at", Err: ErrNoStatedTotals,
-			Msg: "a label-less part needs a stop_at anchor to find its totals"}
+	from, field, err := r.totalAnchor(rule, p, blk, text)
+	if err != nil {
+		return nil, err
 	}
 
 	line := text[from:]
@@ -963,11 +947,13 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 	// close this, because which part bears the total needs the pages.
 	var cols []Column
 	var sums []amount.Cents
+	bearers := make([]*Part, 0, len(rules))
 	for _, rule := range rules {
 		stated, bearer, err := r.ruleStatedTotals(rule)
 		if err != nil {
 			return nil, err
 		}
+		bearers = append(bearers, bearer)
 		if cols == nil {
 			cols, sums = bearer.Columns, make([]amount.Cents, len(stated))
 		}
@@ -985,8 +971,11 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 		}
 	}
 
-	stated, err := r.rollupStatedTotals(ro, len(cols), rules[0].Units)
+	stated, at, err := r.rollupStatedTotals(ro, len(cols), rules[0].Units)
 	if err != nil {
+		return nil, err
+	}
+	if err := r.rollupNamesItsOwnLine(ro, rules, bearers, at); err != nil {
 		return nil, err
 	}
 
@@ -1076,19 +1065,19 @@ func (r *Resolver) ruleStatedTotals(rule *Rule) ([]amount.Cents, *Part, error) {
 // which is searched only after that rule's block and so is already narrowed by
 // the block's own anchors, a rollup has no block to search after and would
 // otherwise take whichever occurrence came first.
-func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]amount.Cents, error) {
+func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]amount.Cents, int, error) {
 	text, err := r.page(ro.Page)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	first := strings.Index(text, ro.TotalRow)
 	if first < 0 {
-		return nil, &ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+		return nil, 0, &ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 			Field: "total_row", Err: ErrNotFound,
 			Msg: fmt.Sprintf("%q does not occur on the page", ro.TotalRow)}
 	}
 	if strings.Contains(text[first+len(ro.TotalRow):], ro.TotalRow) {
-		return nil, cmdutil.WithHint(
+		return nil, 0, cmdutil.WithHint(
 			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q occurs more than once on the page", ro.TotalRow)},
@@ -1100,7 +1089,7 @@ func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]
 	}
 	totals, ok := amountRun(line, n, units)
 	if !ok {
-		return nil, cmdutil.WithHint(
+		return nil, 0, cmdutil.WithHint(
 			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("no run of %d consecutive amounts follows %q on %q",
@@ -1109,8 +1098,95 @@ func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]
 				"anchor; where the label wraps, anchor on the part that "+
 				"carries the figures")
 	}
-	return totals, nil
+	return totals, first, nil
 }
+
+// rollupNamesItsOwnLine refuses a rollup anchored on a printed line that is
+// already one of its covered rules' totals.
+//
+// THIS IS THE INVARIANT THAT REPLACED "a rollup must cover two rules". That
+// count was a proxy, and a wrong one: six of pp.167-170's eleven
+// <DEPARTMENT> TOTAL rows sit over a single division and are a second printed
+// line, which the proxy refused. What it was protecting against is a rollup
+// that asserts a figure against itself -- always green, checking nothing -- and
+// that is a claim about the LINE.
+//
+// The parser refuses the string form (rollup.total_row equal to a covered
+// rule's) and cannot do more: which part bears a rule's total, and where on the
+// page it lands, needs the pages. So a rollup declaring `total_row: " Total"`
+// over one division whose own total_row is "Total" reaches here, resolves to
+// that division's own printed Total, and would tie by construction.
+//
+// A rule whose total is printed on another page cannot collide and is skipped
+// rather than resolved a second time.
+func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*Part, at int) error {
+	text, err := r.page(ro.Page)
+	if err != nil {
+		return err
+	}
+	want := lineAt(text, at)
+	for i, rule := range rules {
+		p := bearers[i]
+		if p.Page != ro.Page {
+			continue
+		}
+		blk, err := r.Block(rule, p)
+		if err != nil {
+			return err
+		}
+		from, _, err := r.totalAnchor(rule, p, blk, text)
+		if err != nil {
+			// StatedTotals already reported anything wrong with this rule's
+			// own anchor; this check has nothing to add about it.
+			continue
+		}
+		if lineAt(text, from) == want {
+			return cmdutil.WithHint(
+				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+					Field: "total_row", Err: ErrNotFound,
+					Msg: fmt.Sprintf("names the same printed line as rule %q's total_row %q",
+						rule.ID, rule.TotalRow)},
+				"a rollup asserts a total the document prints OVER its covered "+
+					"rules; anchored on one of their own totals it would compare "+
+					"a figure with itself and tie whatever the rows said")
+		}
+	}
+	return nil
+}
+
+// totalAnchor returns the offset just past the anchor a part's stated totals
+// are read from, and the field name an error about it should carry.
+//
+// It is split out of [Resolver.StatedTotals] because CheckRollup needs the same
+// offset for a different question -- whether a rollup names the same printed
+// line as one of the totals it covers -- and two computations of "where does
+// this rule's printed total sit" would be two things to keep in step.
+func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *Block, text string) (int, string, error) {
+	if p.LabelsFrom != 0 {
+		if p.StopAt == "" {
+			return 0, "stop_at", &ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+				Page: p.Page, Field: "stop_at", Err: ErrNoStatedTotals,
+				Msg: "a label-less part needs a stop_at anchor to find its totals"}
+		}
+		return blk.End, "stop_at", nil
+	}
+	if rule.TotalRow == "" {
+		return 0, "total_row", &ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: "total_row", Msg: "the rule declares none",
+			Err: ErrNoStatedTotals}
+	}
+	i := strings.Index(text[blk.End:], rule.TotalRow)
+	if i < 0 {
+		return 0, "total_row", &ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			Page: p.Page, Field: "total_row", Err: ErrNotFound,
+			Msg: fmt.Sprintf("%q does not occur after the block", rule.TotalRow)}
+	}
+	return blk.End + i + len(rule.TotalRow), "total_row", nil
+}
+
+// lineAt is the 0-based index of the line offset off falls on. Two anchors that
+// answer the same here name one printed line, whatever strings they are.
+func lineAt(text string, off int) int { return strings.Count(text[:off], "\n") }
 
 // compareTotals is the arithmetic both totals checks share: per column, the
 // mapped sum against the stated total, with any declared discrepancy applied.

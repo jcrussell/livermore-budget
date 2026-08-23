@@ -1,6 +1,7 @@
 package check
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -60,19 +61,22 @@ func TestFixtureVerdicts(t *testing.T) {
 		"headline-naive-expenditure":  "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
 		// constraint tier, no fact a department or a fund number.
-		"transfer-legs-pair":         "vacuous over 0",
-		"aggregation-invariance":     "vacuous over 0",
-		"constraint-tier-vocabulary": "vacuous over 0",
-		"fact-departments-resolve":   "vacuous over 0",
-		"fact-funds-resolve":         "vacuous over 0",
+		"transfer-legs-pair": "vacuous over 0",
+		// pp.167-170 are mapped, but this fixture is a miniature of the SPINE
+		// and carries none of their facts, so there is no detail to reconcile.
+		"expenditure-detail-ties-to-spine": "vacuous over 0",
+		"aggregation-invariance":           "vacuous over 0",
+		"constraint-tier-vocabulary":       "vacuous over 0",
+		"fact-departments-resolve":         "vacuous over 0",
+		"fact-funds-resolve":               "vacuous over 0",
 	}
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 16, Vacuous: 10, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 16, Vacuous: 11, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Sixteen passes, ten vacuous and one skipped is not twenty-seven of
+	// Sixteen passes, eleven vacuous and one skipped is not twenty-eight of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -88,7 +92,7 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 10 {
+	if lenient.Counts.Vacuous != 11 {
 		t.Fatalf("vacuous count = %d, want 10", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
@@ -1144,4 +1148,258 @@ func TestARefusedProjectionDoesNotHideAnUndeclaredScope(t *testing.T) {
 	if got := len(res.Findings); got != 2 {
 		t.Errorf("findings = %d, want 2 (the refusal, and the undeclared scope)\n%s", got, details)
 	}
+}
+
+// detailFact makes one pp.167-170-shaped fact: General Fund expenditure at the
+// department scope, carrying a division.
+func detailFact(t *testing.T, category string, cents int64) fact.Fact {
+	t.Helper()
+	f := testCell{mapping.KindExpenditure, category, "general", cents}.fact()
+	f.Scope = expenditureDetailScope
+	f.Department = "patrol"
+	f.RowPath = "patrol/" + category
+	return f
+}
+
+// TestExpenditureDetailTiesToTheSpine covers the check's three verdicts, which
+// are three different states of the corpus and not three ways of failing.
+func TestExpenditureDetailTiesToTheSpine(t *testing.T) {
+	// The fixture spine carries wages-and-benefits/general at 70,000 and no
+	// other General Fund expenditure.
+	const spineWages = 70_000
+
+	t.Run("no detail at all is vacuous", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, factsSubject(t, testFacts())),
+			"expenditure-detail-ties-to-spine")
+		if res.Status != StatusVacuous {
+			t.Fatalf("status = %s (%s), want vacuous", res.Status, res.Summary)
+		}
+		// This arm is why the check can be landed at all: the committed fixture
+		// holds a spine expenditure cell with no detail counterpart, and under a
+		// literal "a spine key with no detail is a failure" it would go red over
+		// a corpus with nothing wrong in it.
+		if !strings.Contains(res.Summary, expenditureDetailScope) {
+			t.Errorf("summary %q does not name the scope that is absent", res.Summary)
+		}
+	})
+
+	t.Run("a complete detail ties", func(t *testing.T) {
+		facts := append(testFacts(), detailFact(t, "wages-and-benefits", spineWages))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)),
+			"expenditure-detail-ties-to-spine")
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		if res.Subjects != 1 {
+			t.Errorf("subjects = %d, want the 1 cell both scopes carry", res.Subjects)
+		}
+	})
+
+	t.Run("a detail that does not tie fails", func(t *testing.T) {
+		facts := append(testFacts(), detailFact(t, "wages-and-benefits", spineWages+1))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)),
+			"expenditure-detail-ties-to-spine")
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "same money decomposed two ways") {
+			t.Errorf("findings %v do not say what the two figures are", res.Findings)
+		}
+	})
+
+	// THE UNION, and the reason for it. A detail that carries SOME categories
+	// must still be measured against every spine key inside the restriction: a
+	// category the schedule stopped printing is a dropped rule, not an empty
+	// cell, and a loop over the detail's own keys would compare nothing.
+	t.Run("a spine key the detail dropped fails", func(t *testing.T) {
+		facts := append(testFacts(), detailFact(t, "services-and-supplies", 5_000))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)),
+			"expenditure-detail-ties-to-spine")
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: wages-and-benefits is on the spine and "+
+				"not in the detail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "no such row at all") {
+			t.Errorf("findings %v do not name the dropped rule\n%s",
+				res.Findings, findingDetails(res))
+		}
+	})
+
+	// THE PAIR THE DETAIL DROPPED. This is the hole a "pairs present in both
+	// scopes" reading leaves open, and it is worth its own case because the
+	// obvious implementation passes it: seed the reconciled pairs from the
+	// DETAIL and a schedule that stops publishing a whole fiscal-year column
+	// takes that column out of the check with it. Measured before the fix:
+	// status=pass, one cell checked, an entire spine year unreconciled.
+	t.Run("a whole spine year the detail dropped fails", func(t *testing.T) {
+		facts := testFacts()
+		var nextYear []fact.Fact
+		for _, f := range facts {
+			g := f
+			g.FiscalYear = f.FiscalYear + 1
+			g.ID = f.ID + "-second-year"
+			nextYear = append(nextYear, g)
+		}
+		facts = append(facts, nextYear...)
+		// The detail covers the first year only.
+		facts = append(facts, detailFact(t, "wages-and-benefits", spineWages))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)),
+			"expenditure-detail-ties-to-spine")
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: the spine publishes two years of General "+
+				"Fund wages and the detail decomposes one", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "no such row at all") {
+			t.Errorf("findings %v do not name the missing year\n%s",
+				res.Findings, findingDetails(res))
+		}
+	})
+
+	// The detail's own extra columns are NOT a failure, and this is the
+	// asymmetry stated as a test: pp.66-67 print no actual or revised column,
+	// so pp.167-170's FY2024 and FY2025 figures are published with nothing to
+	// tie to. A gap in the document is not a gap in the mapping.
+	t.Run("a detail year the spine never printed is not reconciled", func(t *testing.T) {
+		extra := detailFact(t, "wages-and-benefits", 999_999)
+		extra.FiscalYear--
+		extra.Basis = mapping.BasisActual
+		extra.ID += "-actual"
+		facts := append(testFacts(),
+			detailFact(t, "wages-and-benefits", spineWages), extra)
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)),
+			"expenditure-detail-ties-to-spine")
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		if !strings.Contains(res.Summary, "no spine column") {
+			t.Errorf("summary %q does not say the extra column is unreconciled; a reader "+
+				"counting facts would think the check covers all of them", res.Summary)
+		}
+	})
+
+	// The converse: detail that the spine has no cell for. A detail scope
+	// decomposes the spine; it never extends it.
+	t.Run("a detail key the spine does not have fails", func(t *testing.T) {
+		facts := append(testFacts(),
+			detailFact(t, "wages-and-benefits", spineWages),
+			detailFact(t, "capital-outlay", 1_000))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)),
+			"expenditure-detail-ties-to-spine")
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "never extend it") {
+			t.Errorf("findings %v do not say the detail may not extend the spine", res.Findings)
+		}
+	})
+}
+
+// TestUnprojectedScopesAreDeclarations is fisc-u2v's acceptance test D, as
+// reworded on 2026-08-22: the map is a list of DECIDED exemptions, not a map of
+// a particular size.
+//
+// The count is deliberately NOT pinned. Three scopes are decided — one per
+// mapped non-spine schedule — and a test asserting "exactly one entry" would go
+// red the moment the second landed, with deleting the assertion as the cheapest
+// way to make it green again. That would retire the only test that reads the map
+// at all.
+func TestUnprojectedScopesAreDeclarations(t *testing.T) {
+	if len(unprojectedScopes) == 0 {
+		t.Fatal("unprojectedScopes is empty; pp.167-170 are mapped and must be declared")
+	}
+	seen := map[string]string{}
+	for _, scope := range sortedStrings(unprojectedScopes) {
+		reason := unprojectedScopes[scope]
+		// A bare "" is a hole with a name on it.
+		if strings.TrimSpace(reason) == "" {
+			t.Errorf("scope %q is declared with no reason", scope)
+		}
+		// Copy-paste is how a declaration stops describing its own schedule.
+		if prev, dup := seen[reason]; dup {
+			t.Errorf("scopes %q and %q share a reason verbatim", prev, scope)
+		}
+		seen[reason] = scope
+		// The reason has to say what the facts ARE, not merely that they are
+		// excluded, so a reader can tell a decision from an oversight.
+		if !strings.Contains(reason, "fisc-") && !strings.Contains(reason, "p") {
+			t.Errorf("scope %q's reason cites no page or bead: %q", scope, reason)
+		}
+	}
+}
+
+// A declaration that has stopped being true goes red rather than going quiet.
+//
+// factsAreProjected consults the map only for UNPROJECTED facts, so the moment
+// something projects a declared scope the entry falls silent while remaining a
+// false claim about the corpus. Both arms are exercised, because they need
+// different fixes: delete the entry, or find out why the rules stopped writing
+// the scope.
+func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
+	t.Run("the scope is now projected", func(t *testing.T) {
+		// The spine facts, relabelled into the declared scope, and a projection
+		// built OF that scope — which is what fisc-gxa.2 will do for real.
+		facts := testFacts()
+		for i := range facts {
+			facts[i].Scope = expenditureDetailScope
+		}
+		fact.Sort(facts)
+		s := factsSubject(t, facts)
+		s.Projections = []Projection{{
+			Name: "sankey",
+			Options: project.Options{
+				FiscalYear: facts[0].FiscalYear,
+				Basis:      facts[0].Basis,
+				Scope:      expenditureDetailScope,
+			},
+		}}
+		// The check is run directly rather than through the whole set: this
+		// Subject carries a projection with no graph behind it, which is a
+		// shape only a test produces and which the graph checks would read.
+		res, err := (&factsAreProjected{}).Run(context.Background(), s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: the declaration exempts nothing now",
+				res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "exempting nothing") {
+			t.Errorf("findings %v do not say the declaration is doing nothing", res.Findings)
+		}
+	})
+
+	t.Run("no rule writes the scope", func(t *testing.T) {
+		// A Subject WITH rule files, none of which writes the declared scope:
+		// the string here and the string in mappings/ have drifted apart.
+		// testSubject rather than factsSubject, so every fact IS projected and
+		// the only thing left for the check to report is the declaration.
+		s := testSubject(t)
+		s.Files = []*mapping.File{{
+			DocID: testDoc,
+			Rules: []mapping.Rule{{ID: "spine-revenues", Scope: spineScope}},
+		}}
+		res := resultFor(t, runChecks(t, s), "facts-are-projected")
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "drifted apart") {
+			t.Errorf("findings %v do not name the drift\n%s", res.Findings, findingDetails(res))
+		}
+	})
+
+	// And the arm that must NOT fire: a Subject with no rule files at all is not
+	// a repository in which another schedule's declaration has gone stale.
+	t.Run("a fixture with no rule files says nothing", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, testSubject(t)), "facts-are-projected")
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass: a miniature of one schedule must not "+
+				"have to carry every other schedule to stay green", res.Status, res.Summary)
+		}
+	})
 }

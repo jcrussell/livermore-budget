@@ -195,6 +195,125 @@ func TestAnUnassertableRollupIsDeclaredWithItsReason(t *testing.T) {
 	}
 }
 
+// cityCouncilPage is Budget Book p167's CITY COUNCIL section, transcribed with
+// its printed FY2023-24 Actual figures.
+//
+// It is the single-division case, and there are six of them on pp.167-170. The
+// department prints a TOTAL of its own three lines below the division's, with
+// the same figure -- which is why refusing a one-rule rollup looked reasonable
+// and was wrong: they are two printed lines, and only one of them was asserted.
+//
+// Note the two anchors differ in case, not in words: "Total" and "TOTAL". That
+// is what keeps them apart on this page, and it is also why the aliasing test
+// below can reach the resolver at all.
+const cityCouncilPage = `CITY COUNCIL
+
+City Council
+      Wages & Benefits           71,118
+      Services & Supplies        78,080
+      Total                    $149,198
+
+CITY COUNCIL TOTAL             $149,198
+`
+
+const cityCouncilRules = `schema_version: 1
+doc_id: council-doc
+
+rules:
+  - id: div-city-council
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-council}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-council}
+    parts:
+      - page: 167
+        section: "City Council\n"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+
+rollups:
+  - id: dept-city-council
+    page: 167
+    total_row: "#ANCHOR"
+    covers: [div-city-council]
+`
+
+func councilResolver(t *testing.T, anchor, page string) (*File, *Resolver) {
+	t.Helper()
+	f, err := Parse(strings.NewReader(strings.Replace(cityCouncilRules, "#ANCHOR", anchor, 1)),
+		"council.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	r, err := NewResolver(inlineDoc(t, f.DocID, map[int]string{167: page}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	return f, r
+}
+
+// A ROLLUP MAY COVER ONE RULE, and six of pp.167-170's eleven department totals
+// need it to.
+//
+// City Council, City Attorney, Library, Innovation, General Services and Fire
+// each have exactly one division, and each prints a <DEPARTMENT> TOTAL that is a
+// SECOND LINE with its own figures. The parser used to refuse this on the
+// reasoning that such a total "is that rule's total_row", which is true of the
+// number and false of the line, and it left six printed totals asserted by
+// nothing.
+//
+// The second case is what makes the first a real assertion rather than a
+// tautology: change what the department line prints and the rollup fails.
+func TestARollupMayCoverOneRule(t *testing.T) {
+	f, r := councilResolver(t, "CITY COUNCIL TOTAL", cityCouncilPage)
+	if len(f.Rollups[0].Covers) != 1 {
+		t.Fatalf("Covers = %v, want the parser to accept one rule", f.Rollups[0].Covers)
+	}
+	res, err := r.CheckRollup(&f.Rollups[0])
+	if err != nil {
+		t.Fatalf("CheckRollup: %v; 71,118 + 78,080 = 149,198, which both lines print", err)
+	}
+	if res.Rules != 1 || res.Columns != 1 {
+		t.Errorf("Rules, Columns = %d, %d, want 1, 1", res.Rules, res.Columns)
+	}
+
+	// Failable: the department line printing something the division's does not.
+	bad := strings.Replace(cityCouncilPage,
+		"CITY COUNCIL TOTAL             $149,198",
+		"CITY COUNCIL TOTAL             $149,199", 1)
+	f2, r2 := councilResolver(t, "CITY COUNCIL TOTAL", bad)
+	if _, err := r2.CheckRollup(&f2.Rollups[0]); err == nil {
+		t.Error("a one-rule rollup tied against a department total the division does not " +
+			"state; it must be a real assertion, not a restatement")
+	}
+}
+
+// The invariant that replaced the count: a rollup may not be anchored on a line
+// that is already one of its covered rules' totals.
+//
+// This is the hazard letting covers==1 through would otherwise open. `" Total"`
+// is not equal to `"Total"`, so the parser's string guard passes it; on a page
+// with one division it occurs exactly once, so the anchor-uniqueness guard
+// passes it too. It then resolves to the division's OWN printed Total -- an
+// assertion of a figure against itself, green whatever the object rows say.
+//
+// The parser cannot see this: which part bears a rule's total, and where it
+// lands on the page, needs the pages.
+func TestARollupMayNotBeAnchoredOnACoveredRulesOwnTotal(t *testing.T) {
+	f, r := councilResolver(t, " Total", cityCouncilPage)
+	if _, err := r.CheckRollup(&f.Rollups[0]); err == nil {
+		t.Fatal("a rollup anchored on its covered rule's own Total was asserted; " +
+			"it compares a figure with itself and can never fail")
+	} else if !strings.Contains(err.Error(), "same printed line") {
+		t.Errorf("error = %v, want it to say the two anchors name one line", err)
+	}
+}
+
 // TestRollupsRefuseWhatTheyCannotMean states the parser's refusals. Every one
 // is a declaration that would otherwise report a number nobody could act on.
 func TestRollupsRefuseWhatTheyCannotMean(t *testing.T) {
@@ -205,9 +324,6 @@ func TestRollupsRefuseWhatTheyCannotMean(t *testing.T) {
 		{"counting a rule twice",
 			"    covers: [div-finance, div-finance, div-human-resources]",
 			`"div-finance" is listed twice`},
-		{"covering a single rule",
-			"    covers: [div-finance]",
-			"names one rule"},
 		{"asserting and declining at once",
 			adminCovers + "\n    unassertable: \"cannot be checked\"",
 			"is declared alongside covers"},

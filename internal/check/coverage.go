@@ -11,19 +11,46 @@ import (
 // unprojectedScopes are the scopes deliberately not drawn by any projection, each
 // with the reason it is not.
 //
-// It is empty today, and an entry is a declaration rather than a note: it says a
-// human decided those facts belong in the store and not in a chart. Without the
-// declaration, a fact no projection covers is a failure — because the alternative
-// is what this map exists to stop. Moving twenty facts to a mistyped
-// `all-funds-gross-detail` took over half the city's revenue out of the published
-// chart, and every check still passed: the graph checks only ever see the facts a
-// projection selected, so facts that fall outside every slice are not checked, they
-// are ignored.
+// An entry is a declaration rather than a note: it says a human decided those
+// facts belong in the store and not in a chart. Without the declaration, a fact no
+// projection covers is a failure — because the alternative is what this map exists
+// to stop. Moving twenty facts to a mistyped `all-funds-gross-detail` took over
+// half the city's revenue out of the published chart, and every check still
+// passed: the graph checks only ever see the facts a projection selected, so facts
+// that fall outside every slice are not checked, they are ignored.
 //
 // A scope listed here is still checked by everything above the projection line —
 // sorted, unique ids, token re-parse, offsets, vocabulary — because those read the
-// fact store directly.
-var unprojectedScopes = map[string]string{}
+// fact store directly. For the entry below that is not a consolation but most of
+// the coverage: expenditure-detail-ties-to-spine ties the 98 facts pp.66-67 print
+// a column for, cell by cell, to spine facts that ARE graph-checked, so the
+// declaration hands them to a stronger check rather than excusing them from one.
+// The other 98 — the FY2024 actual and FY2025 revised columns — reconcile against
+// the schedule's OWN printed totals at build time and against nothing on the
+// spine, because the spine prints no such column. fisc-brx's reason text said
+// "all 196"; it is corrected here rather than repeated, because verify prints
+// this string verbatim.
+//
+// AN ENTRY THAT HAS STOPPED BEING TRUE MUST GO RED, NOT QUIET. factsAreProjected
+// consults this map only for UNPROJECTED facts, so the moment a projection starts
+// drawing a declared scope the entry goes silent while remaining a false claim
+// about the corpus. staleDeclarations is the branch that refuses that, and it is
+// what retires an entry automatically instead of leaving an exemption for whoever
+// forgets. Two more entries are decided and land with their own schedules:
+// revenue-by-fund (fisc-u2v, fisc-5gk.1) and transfers-by-fund (fisc-aes,
+// fisc-5gk.3.1). Do not add either before its facts.
+var unprojectedScopes = map[string]string{
+	expenditureDetailScope: "Budget Book pp.167-170, General Fund Expenditures by Major " +
+		"Category: the department x object decomposition of p66's General Fund expenditure " +
+		"block, not additional money. Its 49 object rows total 144,650,802 in FY2025-26 and " +
+		"149,014,579 in FY2026-27 -- p66's TOTAL EXPENDITURES to the cent -- so drawing them " +
+		"into the fund-group spine doubles General Fund spending. " +
+		"expenditure-detail-ties-to-spine reconciles the 98 of its 196 facts that the spine " +
+		"prints a column for -- the two adopted years -- against spine facts that ARE " +
+		"graph-checked; pp.66-67 print no actual or revised column, so the FY2024 and FY2025 " +
+		"halves are published with nothing to tie to. A department tier in the graph is " +
+		"fisc-gxa.2 / fisc-oxf.",
+}
 
 // projectionsBuild asserts every slice of the fact store that a projection was
 // asked for actually produced a graph.
@@ -219,6 +246,8 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
+	findings = append(findings, staleDeclarations(s, declared)...)
+
 	held := fmt.Sprintf("%d facts, all of them in one of %d projections",
 		len(s.Facts), len(s.Projections))
 	if len(declared) > 0 {
@@ -243,4 +272,75 @@ func describeDeclared(byScope map[string]int) string {
 			byScope[scope], scope, unprojectedScopes[scope]))
 	}
 	return joinComma(out)
+}
+
+// staleDeclarations reports every unprojectedScopes entry that exempted nothing.
+//
+// The entry is a claim about the corpus — "these facts exist and no projection
+// draws them" — and it can stop being true in two ways that need different
+// fixes, so it says which:
+//
+//   - the scope carries facts and something now PROJECTS them. The exemption is
+//     doing nothing and must be deleted; leaving it means the next reader
+//     believes a schedule is out of the chart when it is in it. This is the arm
+//     fisc-u2v (4) asks for, and it is what retires an entry automatically
+//     instead of leaving a 196-fact exemption for whoever forgets.
+//
+//     IT CANNOT FIRE THROUGH check.Load TODAY, and saying so is the difference
+//     between a guard and a promise: buildProjections builds slices in
+//     spineScope only, so no declared scope can become projected until it learns
+//     to build another (fisc-gxa.2). The arm is written now because that change
+//     is where the entry silently stops being true, and a branch added at the
+//     same time as the thing it guards is a branch nobody has to remember.
+//
+//   - no rule writes the scope and no fact carries it. Either the rules were
+//     removed and the entry outlived them, or this string and the one in
+//     mappings/ have drifted apart — which is the mistyped-scope incident this
+//     map exists for, wearing its other face: the facts would be unprojected AND
+//     undeclared, and this entry is not the declaration anyone thinks it is.
+//
+// THE SECOND ARM ASKS THE RULE FILES, not the fact store, and that is the
+// difference between "this schedule is not mapped here" and "this declaration is
+// wrong". A Subject with no rule files — a hand-built fixture, a miniature of
+// one schedule — is not a repository in which a declaration for another schedule
+// has gone stale, and reporting one would make every fixture carry every
+// schedule to stay green.
+//
+// Same direction as fisc-2sd's third failure mode, where a declared per-part
+// delta that now ties exactly must fail rather than pass quietly. A declaration
+// nobody can see expiring is a declaration that outlives its reason.
+func staleDeclarations(s *Subject, declared map[string]int) []Finding {
+	written := map[string]bool{}
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			written[f.Rules[i].Scope] = true
+		}
+	}
+
+	var out []Finding
+	for _, scope := range sortedStrings(unprojectedScopes) {
+		if declared[scope] > 0 {
+			continue
+		}
+		carried := 0
+		for _, f := range s.Facts {
+			if f.Scope == scope {
+				carried++
+			}
+		}
+		if carried > 0 {
+			out = append(out, finding(scope,
+				"unprojectedScopes declares this scope unprojected, but all %d of its facts "+
+					"are in some projection's slice; the declaration is exempting nothing "+
+					"and must be removed", carried))
+			continue
+		}
+		if len(s.Files) > 0 && !written[scope] {
+			out = append(out, finding(scope,
+				"unprojectedScopes declares this scope unprojected, and no rule in %s writes "+
+					"it and no fact carries it; the rules that wrote it are gone, or this "+
+					"string and the one they write have drifted apart", mappingsDir))
+		}
+	}
+	return out
 }

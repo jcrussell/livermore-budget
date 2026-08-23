@@ -493,3 +493,775 @@ rules:
       - {label: "BEGINNING WORKING CAPITAL", category: fund-balance/beginning}
       - {label: "CHANGE IN WORKING CAPITAL", category: fund-balance/change}
       - {label: "ENDING WORKING CAPITAL", category: fund-balance/ending}
+
+  # ==========================================================================
+  # GENERAL FUND EXPENDITURES BY MAJOR CATEGORY, PDF pp. 167-170
+  #
+  # A SECOND, FINER DECOMPOSITION OF MONEY THE SPINE ABOVE ALREADY PUBLISHES,
+  # and that is the whole reason these rules carry their own scope. The 49
+  # object rows below sum, per object category, to exactly what p66 prints for
+  # the General Fund -- Wages & Benefits 81,801,011 / 83,825,633, Services &
+  # Supplies 62,849,791 / 65,188,946, Capital Outlay and Debt Services zero in
+  # both budget years, total 144,650,802 / 149,014,579. Mapped at
+  # `all-funds-gross` they would be summed ON TOP of the spine's cells and the
+  # published General Fund expenditure would double with every check green.
+  # That is fisc-brx's decision and fisc-u2v's mechanism; `internal/check`'s
+  # unprojectedScopes carries the declaration and
+  # expenditure-detail-ties-to-spine is the check that ties the two together.
+  #
+  # WHAT THE PAGES LOOK LIKE. Eleven ALL-CAPS DEPARTMENT headings, each opening
+  # a run of mixed-case DIVISIONS. A division prints two or three object rows
+  # and then its own `Total`; a department closes with `<DEPARTMENT> TOTAL`;
+  # p170 closes the schedule with `General Fund Total Expenses`. One rule per
+  # division (fisc-28s A-prime), because the division is the level whose rows
+  # and printed total sit together, and twelve `rollups:` below for the totals
+  # that cover more than one line of rules.
+  #
+  # ANCHORS NEED NO ORDINALS HERE, and that is worth saying because every rule
+  # in the spine above needs one. The department headings are ALL CAPS and the
+  # division labels are Title Case, an anchor is a case-sensitive substring
+  # search, and each of the 23 division labels occurs exactly once on its page
+  # -- `General Services` on p167 does not match `GENERAL SERVICES` two lines
+  # above it, and `Administrative Services` on p168 does not match
+  # `ADMINISTRATIVE SERVICES`. Adding ordinals defensively would pin a
+  # coincidence rather than a claim.
+  #
+  # EVERY PART STATES A stop_at, for two reasons and not the one that is easy
+  # to assume. A part whose rule prints a total NEEDS one, because StatedTotals
+  # searches the text after the block and a block running to the end of the
+  # page leaves nothing to search. And a part with no stop_at takes the running
+  # footer with it, which the unmapped-trailing-text guard then reports -- the
+  # footer's bare page number never reaches amount.Parse, because the token
+  # list is truncated to the column count first.
+  #
+  # FOUR DIVISION LABELS WRAP, and a wrapped tail lands between one row's
+  # figures and the next row's label (fisc-0cs). Only the TAIL is declared --
+  # `Devel`, `Development Admin`, `Services`, `Administration` -- because the
+  # head is what the section anchor consumed. p167 line 62's bare `TOTAL` is a
+  # fifth wrapped fragment on these pages and is deliberately NOT declared: it
+  # belongs to the INNOVATION rollup's own line and falls outside every rule's
+  # block, so declaring it would be a declaration the page never uses.
+  #
+  # THREE DIVISIONS STRADDLE A PAGE BREAK -- General Services, Special
+  # Operations, Environmental Services -- so their rows are in two parts and
+  # their printed Total in one. `total_spans_parts` is what lets CheckTotals
+  # sum both parts against it (fisc-w0o). THREE DEPARTMENTS straddle one too,
+  # which costs nothing: a rollup names the page that PRINTS its total.
+  #
+  # FOUR DECLARED DELTAS, all in the FY2023-24 Actual column, all one dollar,
+  # two positive and two negative, each re-derived by summing that division's
+  # object rows off the page. They are the document's own arithmetic, and the
+  # two-level chain is what keeps them honest: each division's rows tie to its
+  # printed Total by way of its declared dollar, and the department rollups sum
+  # the printed TOTALS rather than the rows, so no rounding is absorbed twice.
+  # ADMINISTRATIVE SERVICES is the worked example -- $6,311,564 against object
+  # rows of $6,311,563.
+  # ==========================================================================
+
+  # --------------------------------------------------------------------------
+  - id: div-city-council
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 167
+        section: "City Council"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-council}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-council}
+
+  # --------------------------------------------------------------------------
+  - id: div-city-manager
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 167
+        section: "City Manager"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-manager}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-manager}
+
+  # --------------------------------------------------------------------------
+  - id: div-city-clerk
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 167
+        section: "City Clerk"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-clerk}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-clerk}
+
+  # --------------------------------------------------------------------------
+  - id: div-city-attorney
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 167
+        section: "City Attorney"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-attorney}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-attorney}
+
+  # --------------------------------------------------------------------------
+  - id: div-library
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 167
+        section: "Library"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: library}
+      - {label: "Services & Supplies", category: services-and-supplies, department: library}
+
+  # --------------------------------------------------------------------------
+  - id: div-innovation-and-economic-devel
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    note: >-
+      The division label wraps: "Innovation & Economic" on p167 line 55 and
+      "Devel" alone on line 56, which lands between this rule's first row's
+      figures and its second row's label.
+    parts:
+      - page: 167
+        section: "Innovation & Economic"
+        stop_at: "Total"
+        wrapped_labels: ["Devel"]
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: innovation-and-economic-devel}
+      - {label: "Services & Supplies", category: services-and-supplies, department: innovation-and-economic-devel}
+
+  # --------------------------------------------------------------------------
+  - id: div-general-services
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    total_spans_parts: true
+    note: >-
+      Straddles a page break, so its rows are in two parts and its printed Total
+      is on the second. It carries the schedule's only Debt Services row.
+    parts:
+      - page: 167
+        section: "General Services"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        omitted_rows: ["Services & Supplies", "Debt Services"]
+      - page: 168
+        section: "General Services"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        omitted_rows: ["Wages & Benefits"]
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: general-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: general-services}
+      - {label: "Debt Services", category: debt-services, department: general-services}
+
+  # --------------------------------------------------------------------------
+  - id: div-administrative-services
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 168
+        section: "Administrative Services"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: administrative-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: administrative-services}
+
+  # --------------------------------------------------------------------------
+  - id: div-finance
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 168
+        section: "Finance"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding: the object rows above sum to one dollar LESS
+              than the document states. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: finance}
+      - {label: "Services & Supplies", category: services-and-supplies, department: finance}
+
+  # --------------------------------------------------------------------------
+  - id: div-human-resources
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 168
+        section: "Human Resources"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: human-resources}
+      - {label: "Services & Supplies", category: services-and-supplies, department: human-resources}
+
+  # --------------------------------------------------------------------------
+  - id: div-police-administration
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 168
+        section: "Police Administration"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: police-administration}
+      - {label: "Services & Supplies", category: services-and-supplies, department: police-administration}
+
+  # --------------------------------------------------------------------------
+  - id: div-patrol
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 168
+        section: "Patrol"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: patrol}
+      - {label: "Services & Supplies", category: services-and-supplies, department: patrol}
+      - {label: "Capital Outlay", category: capital-outlay, department: patrol}
+
+  # --------------------------------------------------------------------------
+  - id: div-support-services
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 168
+        section: "Support Services"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: support-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: support-services}
+      - {label: "Capital Outlay", category: capital-outlay, department: support-services}
+
+  # --------------------------------------------------------------------------
+  - id: div-special-operations
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    total_spans_parts: true
+    note: >-
+      Straddles a page break: Wages & Benefits and Services & Supplies on p168,
+      Capital Outlay and the printed Total on p169.
+    parts:
+      - page: 168
+        section: "Special Operations"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        omitted_rows: ["Capital Outlay"]
+      - page: 169
+        section: "Special Operations"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        omitted_rows: ["Wages & Benefits", "Services & Supplies"]
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: special-operations}
+      - {label: "Services & Supplies", category: services-and-supplies, department: special-operations}
+      - {label: "Capital Outlay", category: capital-outlay, department: special-operations}
+
+  # --------------------------------------------------------------------------
+  - id: div-community-development-admin
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    note: >-
+      The division label wraps: "Community" on p169 line 15 and "Development
+      Admin" on line 16. The anchor is the head, which is also why it is not the
+      registry's label for this division.
+    parts:
+      - page: 169
+        section: "Community"
+        stop_at: "Total"
+        wrapped_labels: ["Development Admin"]
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: community-development-admin}
+      - {label: "Services & Supplies", category: services-and-supplies, department: community-development-admin}
+
+  # --------------------------------------------------------------------------
+  - id: div-building-and-safety
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 169
+        section: "Building & Safety"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: building-and-safety}
+      - {label: "Services & Supplies", category: services-and-supplies, department: building-and-safety}
+
+  # --------------------------------------------------------------------------
+  - id: div-engineering
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 169
+        section: "Engineering"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: engineering}
+      - {label: "Services & Supplies", category: services-and-supplies, department: engineering}
+
+  # --------------------------------------------------------------------------
+  - id: div-housing-and-human-services
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    note: >-
+      The division label wraps: "Housing & Human" on p169 line 33 and "Services"
+      on line 34.
+    parts:
+      - page: 169
+        section: "Housing & Human"
+        stop_at: "Total"
+        wrapped_labels: ["Services"]
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: housing-and-human-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: housing-and-human-services}
+
+  # --------------------------------------------------------------------------
+  - id: div-planning
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 169
+        section: "Planning"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -100
+            note: >-
+              The city's own rounding: the object rows above sum to one dollar MORE
+              than the document states. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: planning}
+      - {label: "Services & Supplies", category: services-and-supplies, department: planning}
+
+  # --------------------------------------------------------------------------
+  - id: div-public-works-administration
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    note: >-
+      The division label wraps: "Public Works" on p169 line 49 and
+      "Administration" on line 50. The ALL-CAPS heading two lines above is the
+      DEPARTMENT and does not collide: anchors are case-sensitive.
+    parts:
+      - page: 169
+        section: "Public Works"
+        stop_at: "Total"
+        wrapped_labels: ["Administration"]
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding: the object rows above sum to one dollar LESS
+              than the document states. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: public-works-administration}
+      - {label: "Services & Supplies", category: services-and-supplies, department: public-works-administration}
+
+  # --------------------------------------------------------------------------
+  - id: div-maintenance
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    parts:
+      - page: 169
+        section: "Maintenance"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: maintenance}
+      - {label: "Services & Supplies", category: services-and-supplies, department: maintenance}
+
+  # --------------------------------------------------------------------------
+  - id: div-environmental-services
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    total_spans_parts: true
+    note: >-
+      Straddles a page break. Its declared delta belongs to the p170 part, which
+      is the one printing the Total; CheckSpanningTotals refuses one declared
+      anywhere else.
+    parts:
+      - page: 169
+        section: "Environmental Services"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        omitted_rows: ["Services & Supplies"]
+      - page: 170
+        section: "Environmental Services"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+        omitted_rows: ["Wages & Benefits"]
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -100
+            note: >-
+              The city's own rounding: the object rows above sum to one dollar MORE
+              than the document states. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: environmental-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: environmental-services}
+
+  # --------------------------------------------------------------------------
+  - id: div-fire-administration
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total"
+    note: >-
+      ONE object row. The Livermore-Pleasanton fire service is contracted, so the
+      General Fund carries no fire wages line at all and the department's whole
+      expenditure is Services & Supplies.
+    parts:
+      - page: 170
+        section: "Fire Administration"
+        stop_at: "Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies, department: fire-administration}
+
+rollups:
+  # --------------------------------------------------------------------------
+  - id: dept-city-council
+    page: 167
+    total_row: "CITY COUNCIL TOTAL"
+    covers: [div-city-council]
+
+  # --------------------------------------------------------------------------
+  - id: dept-city-manager
+    page: 167
+    total_row: "CITY MANAGER TOTAL"
+    covers: [div-city-manager, div-city-clerk]
+
+  # --------------------------------------------------------------------------
+  - id: dept-city-attorney
+    page: 167
+    total_row: "CITY ATTORNEY TOTAL"
+    covers: [div-city-attorney]
+
+  # --------------------------------------------------------------------------
+  - id: dept-library
+    page: 167
+    total_row: "LIBRARY DEPARTMENT TOTAL"
+    covers: [div-library]
+
+  # --------------------------------------------------------------------------
+  - id: dept-innovation-and-economic-development
+    page: 167
+    total_row: "INNOVATION & ECONOMIC DEVELOPEMENT"
+    note: >-
+      TWO ANOMALIES IN ONE LINE, both the city's. The anchor carries the page's
+      own misspelling -- DEVELOPEMENT, where the heading on line 53 spells it
+      correctly -- and the word TOTAL wraps onto the next line, so the anchor
+      must be the department name, which is what the figures share a line with.
+    covers: [div-innovation-and-economic-devel]
+
+  # --------------------------------------------------------------------------
+  - id: dept-general-services
+    page: 168
+    total_row: "GENERAL SERVICES TOTAL"
+    covers: [div-general-services]
+
+  # --------------------------------------------------------------------------
+  - id: dept-administrative-services
+    page: 168
+    total_row: "ADMINISTRATIVE SERVICES TOTAL"
+    note: >-
+      The measurement the rollup design rests on: this total is $6,311,564 and so
+      is the sum of the three printed division Totals, while the six object rows
+      beneath them give $6,311,563. Finance's declared dollar is absorbed by its
+      own printed Total and reappears here. A rollup summing leaves would fail.
+    covers: [div-administrative-services, div-finance, div-human-resources]
+
+  # --------------------------------------------------------------------------
+  - id: dept-police
+    page: 169
+    total_row: "POLICE DEPARTMENT TOTAL"
+    covers:
+      - div-police-administration
+      - div-patrol
+      - div-support-services
+      - div-special-operations
+
+  # --------------------------------------------------------------------------
+  - id: dept-community-development
+    page: 169
+    total_row: "COMMUNITY DEVELOPMENT TOTAL"
+    note: >-
+      Planning's declared -$1 is absorbed by its own printed Total, so this total
+      ties exactly against the five printed Totals -- the same two-level chain
+      ADMINISTRATIVE SERVICES shows with the opposite sign.
+    covers:
+      - div-community-development-admin
+      - div-building-and-safety
+      - div-engineering
+      - div-housing-and-human-services
+      - div-planning
+
+  # --------------------------------------------------------------------------
+  - id: dept-public-works
+    page: 170
+    total_row: "PUBLIC WORKS DEPARTMENT TOTAL"
+    note: >-
+      The one department whose total row is not its heading plus " TOTAL": the
+      heading on p169 line 47 is PUBLIC WORKS. Its two declared dollars have
+      opposite signs and cancel, which is why this total ties against the object
+      rows too -- an accident of the document, not something to rely on.
+    covers: [div-public-works-administration, div-maintenance, div-environmental-services]
+
+  # --------------------------------------------------------------------------
+  - id: dept-fire
+    page: 170
+    total_row: "FIRE DEPARTMENT TOTAL"
+    covers: [div-fire-administration]
+
+  # --------------------------------------------------------------------------
+  - id: gf-total-expenses
+    page: 170
+    total_row: "General Fund Total Expenses"
+    note: >-
+      The schedule's own closing total, over all 23 divisions. It is what ties the
+      department axis to the citywide spine: $144,650,802 in FY2025-26 and
+      $149,014,579 in FY2026-27 are p66's TOTAL EXPENDITURES for the General
+      Fund, to the cent.
+    covers:
+      - div-city-council
+      - div-city-manager
+      - div-city-clerk
+      - div-city-attorney
+      - div-library
+      - div-innovation-and-economic-devel
+      - div-general-services
+      - div-administrative-services
+      - div-finance
+      - div-human-resources
+      - div-police-administration
+      - div-patrol
+      - div-support-services
+      - div-special-operations
+      - div-community-development-admin
+      - div-building-and-safety
+      - div-engineering
+      - div-housing-and-human-services
+      - div-planning
+      - div-public-works-administration
+      - div-maintenance
+      - div-environmental-services
+      - div-fire-administration

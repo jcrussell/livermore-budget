@@ -98,9 +98,16 @@ rollups:
 `
 
 // correctAttribution is what p167 prints: City Clerk is a division of CITY
-// MANAGER. A one-division department still declares its rollup unassertable
-// rather than covering one rule, because a total over a single rule IS that
-// rule's total_row.
+// MANAGER.
+//
+// A one-division department covers its single rule, and does NOT declare the
+// rollup unassertable. An earlier version of this comment said the opposite --
+// "a total over a single rule IS that rule's total_row" -- and it was wrong on
+// the page: CITY COUNCIL TOTAL (p0167:15) is a second printed line three lines
+// below City Council's own Total (:13), and six of the eleven departments here
+// are in that shape. Declaring them unassertable would have been a false
+// declaration, since `unassertable` means no rule structure CAN assert the
+// total. See TestARollupMayCoverOneRule.
 const correctAttribution = `  - id: dept-city-manager
     page: 167
     total_row: "CITY MANAGER TOTAL"
