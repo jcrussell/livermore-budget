@@ -71,6 +71,21 @@ END OF PAGE
 Services & Supplies 132,186
 Total Services $134,242
 `
+
+	// Two divisions and the department total printed over both, plus a total
+	// the page prints that nothing on it sums to. 300 + 700 = 1,000.
+	// See testdata/rollup.yaml.
+	rollupPage = `Division One
+Wages 100
+Supplies 200
+Total $300
+Division Two
+Wages 300
+Supplies 400
+Total $700
+DEPARTMENT TOTAL $1,000
+Total Sources $58,000
+`
 )
 
 func writeRepoFile(t *testing.T, path, body string) {
@@ -313,6 +328,10 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 			{RuleID: "transfers-out", Page: 77, Reason: reasonNoTotalRow},
 			{RuleID: "transfers-in", Page: 79, Reason: reasonNoStatedTotals},
 		},
+		// Empty rather than nil: a key that becomes null when a list is empty
+		// makes a consumer handle two shapes for one meaning, which is the
+		// contract newReport states.
+		RollupsUnasserted: []UnassertedRollup{},
 		Omissions: []DeclaredOmission{
 			{RuleID: "transfers-out", Page: 77, RowLabel: "Enterprise Funds"},
 		},
@@ -714,5 +733,64 @@ func TestAStraddlingRuleWhoseTotalMovedFailsTheBuild(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, defaultOutput)); !os.IsNotExist(err) {
 		t.Errorf("the fact store exists after a failed build (%v); nothing is written "+
 			"when a rule fails to resolve", err)
+	}
+}
+
+// TestARollupIsReportedAsItsOwnClaim pins the build report's account of a total
+// covering several rules.
+//
+// Two claims, kept apart. An ASSERTED rollup is the document checking work no
+// single rule's total_row could check; a DECLARED-UNASSERTABLE one is a total
+// the document prints that this structure cannot check, said out loud. Folding
+// the second into the first would overstate the evidence; dropping it would be
+// the silence fisc-3bl says is the one unacceptable answer.
+func TestARollupIsReportedAsItsOwnClaim(t *testing.T) {
+	root := testRepo(t, map[int]string{90: rollupPage}, "rollup.yaml")
+	opts, out, _ := testOptions(t, root)
+	opts.JSON = true
+
+	if err := buildRun(opts); err != nil {
+		t.Fatalf("buildRun: %v", err)
+	}
+	var rep Report
+	if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
+		t.Fatalf("decode report: %v", err)
+	}
+
+	if rep.RollupsAsserted != 1 {
+		t.Errorf("rollups_asserted = %d, want 1", rep.RollupsAsserted)
+	}
+	if rep.RollupColumnsTied != 1 {
+		t.Errorf("rollup_columns_tied = %d, want 1", rep.RollupColumnsTied)
+	}
+	want := []UnassertedRollup{{ID: "total-sources", Page: 90,
+		Reason: "exceeds the pages it closes by an amount that differs per column, " +
+			"so nothing on them sums to it (fisc-wev)"}}
+	if diff := cmp.Diff(want, rep.RollupsUnasserted); diff != "" {
+		t.Errorf("rollups_unasserted mismatch (-want +got):\n%s", diff)
+	}
+	// The rollup does not inflate the per-part counters: those measure a
+	// different link of the chain.
+	if rep.PartsChecked != 2 || rep.ColumnsTied != 2 {
+		t.Errorf("parts_checked = %d, columns_tied = %d, want 2 and 2",
+			rep.PartsChecked, rep.ColumnsTied)
+	}
+}
+
+// TestARollupThatDoesNotTieFailsTheBuild keeps the rollup a gate rather than a
+// note, the same way a rule's own total_row is one.
+func TestARollupThatDoesNotTieFailsTheBuild(t *testing.T) {
+	moved := strings.Replace(rollupPage, "DEPARTMENT TOTAL $1,000", "DEPARTMENT TOTAL $1,001", 1)
+	root := testRepo(t, map[int]string{90: moved}, "rollup.yaml")
+	opts, _, _ := testOptions(t, root)
+
+	err := buildRun(opts)
+	if err == nil {
+		t.Fatal("buildRun succeeded; the divisions state 1,000 and the page now prints 1,001")
+	}
+	for _, want := range []string{"dept-total", "$1,000.00", "$1,001.00"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error = %v, want it to name %s", err, want)
+		}
 	}
 }

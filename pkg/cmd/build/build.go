@@ -254,6 +254,13 @@ func resolve(root string, files []*mapping.File) ([]fact.Fact, *Report, error) {
 				}
 			}
 		}
+
+		// Rollups run after every rule in the file has resolved: a total
+		// covering several rules cannot be summed until all of them have
+		// stated their own.
+		if err := rep.checkRollups(r, f); err != nil {
+			return nil, nil, err
+		}
 	}
 	return facts, rep, nil
 }

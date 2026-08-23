@@ -98,8 +98,82 @@ type File struct {
 	DocID         string `yaml:"doc_id"`
 	Rules         []Rule `yaml:"rules"`
 
+	// Rollups are printed totals that cover several RULES.
+	//
+	// TotalRow is a field on Rule, so a total the document prints over more
+	// than one rule has no rule to be the total_row OF and cannot be asserted
+	// at all. Twelve such totals sit on the pages the coverage lanes map: the
+	// eleven <DEPARTMENT> TOTAL rows and General Fund Total Expenses on
+	// pp.167-170, Total General Fund on p130, and Total Sources on p140. The
+	// rules beneath them are one per fund block or one per division because
+	// row identity forces that, not by preference.
+	//
+	// It matters rather than being a counting nit: the department-level total
+	// is the ONLY printed figure that catches a division filed under the wrong
+	// department, since every category sum is unchanged by the move.
+	Rollups []Rollup `yaml:"rollups"`
+
 	// Path is the file this was read from, for error messages. Not serialized.
 	Path string `yaml:"-"`
+}
+
+// Rollup is one printed total that covers several rules.
+//
+// IT SUMS THE COVERED RULES' STATED TOTALS, NOT THEIR ROWS, and that is the
+// design decision rather than an implementation detail. Measured on Budget
+// Book p168: ADMINISTRATIVE SERVICES TOTAL is $6,311,564, its three printed
+// division Totals sum to exactly that, and the six OBJECT rows beneath them
+// sum to $6,311,563 -- Finance's own $1 of rounding is absorbed by its printed
+// division Total and reappears one level up. General Fund Total Expenses on
+// p170 happens to tie against the object rows too, but only because that
+// page's four declared deltas net to zero.
+//
+// So a rollup summing leaves would tie or fail depending on whether the
+// document's roundings happened to cancel, and the author's only escape would
+// be a delta declaration at the rollup level absorbing a structural artefact
+// -- which is the fabricated-declaration hazard Rule.TotalSpansParts exists to
+// close, reintroduced one level up.
+//
+// Summing stated totals instead makes a two-level chain: CheckTotals ties each
+// rule's rows to its own printed subtotal, and the rollup ties those subtotals
+// to the printed rollup. Each level is the document checking us, and neither
+// level absorbs the other's residue. It is also why a covered rule MUST carry
+// a printed total of its own -- there would otherwise be nothing to sum.
+type Rollup struct {
+	// ID names this rollup for the build report and for error messages.
+	ID string `yaml:"id"`
+
+	// Page is the page printing the total, and TotalRow the text anchoring it.
+	// The anchor must occur exactly once on the page: a rollup checked against
+	// whichever occurrence came first would be the confident wrong answer this
+	// project exists to refuse.
+	//
+	// Watch p0167.txt:61-62, which prints a department total as
+	// "INNOVATION & ECONOMIC DEVELOPEMENT  $2,639,232 ..." on one line with
+	// the city's own typo and a bare "TOTAL" wrapping onto the next. The
+	// anchor is the department name, and the figures are on its line.
+	Page     int    `yaml:"page"`
+	TotalRow string `yaml:"total_row"`
+
+	// Covers names the rules this total covers, each of which must print a
+	// total of its own.
+	Covers []string `yaml:"covers"`
+
+	// Unassertable declares that the document prints this rollup and that no
+	// rule structure here can assert it, with the reason. An entry carries
+	// EITHER covers OR this, never both and never neither.
+	//
+	// It exists because silence is the one unacceptable answer. p140's
+	// "Total Sources" exceeds the pages it closes by ~$57M, differently per
+	// column (fisc-wev), so it cannot be asserted by this or any other
+	// mechanism here -- and mapping those ten pages while declining to mention
+	// that the page's own closing total does not reconcile would be publishing
+	// the gap as though it were not there. reasonNoTotalRow cannot say this:
+	// it means "the rule declares none", which is a different claim.
+	Unassertable string `yaml:"unassertable"`
+
+	// Note records why this rollup looks the way it does.
+	Note string `yaml:"note"`
 }
 
 // Rule maps a contiguous block of rows into facts.

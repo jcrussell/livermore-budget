@@ -934,6 +934,184 @@ func (r *Resolver) totalBearingPart(rule *Rule) (*Part, error) {
 	}
 }
 
+// RollupResult is what checking one cross-rule rollup established.
+type RollupResult struct {
+	// Columns is how many non-skip columns were compared, and Rules how many
+	// covered rules' stated totals were summed into each of them.
+	Columns int
+	Rules   int
+}
+
+// CheckRollup asserts that the totals the covered rules print sum, per column,
+// to the total the document prints over all of them.
+//
+// It sums STATED TOTALS rather than mapped rows; see Rollup for the
+// measurement that decides it. Each covered rule's own total has already been
+// tied to its rows by CheckTotals, so this is the second link of a chain
+// rather than a second opinion on the first.
+func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
+	rules, err := r.coveredRules(ro)
+	if err != nil {
+		return nil, err
+	}
+
+	// The columns come from the part that PRINTS each rule's total, not from
+	// its first part. A rule may declare its columns per part, so a stated
+	// total read off part 2 is stated over part 2's columns; taking the width
+	// from Parts[0] and indexing with it read off the end of the sum. The
+	// parser's own guard compares Parts[0] for the same reason and cannot
+	// close this, because which part bears the total needs the pages.
+	var cols []Column
+	var sums []amount.Cents
+	for _, rule := range rules {
+		stated, bearer, err := r.ruleStatedTotals(rule)
+		if err != nil {
+			return nil, err
+		}
+		if cols == nil {
+			cols, sums = bearer.Columns, make([]amount.Cents, len(stated))
+		}
+		if len(stated) != len(sums) {
+			return nil, cmdutil.WithHint(
+				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+					Field: "covers", Err: ErrNotFound,
+					Msg: fmt.Sprintf("rule %q states %d columns and rule %q states %d",
+						rules[0].ID, len(sums), rule.ID, len(stated))},
+				"a rollup adds these totals column by column, so every covered "+
+					"rule must state the same number of them")
+		}
+		for i, c := range stated {
+			sums[i] += c
+		}
+	}
+
+	stated, err := r.rollupStatedTotals(ro, len(cols), rules[0].Units)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &RollupResult{Rules: len(rules)}
+	var bad []string
+	for i, col := range cols {
+		if col.Skip {
+			continue
+		}
+		res.Columns++
+		// STATED MINUS SUMMED, the same direction StatedTotalDelta is written
+		// in, so a failure reads like every other totals failure here.
+		if diff := stated[i] - sums[i]; diff != 0 {
+			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): the %d covered rules state %s, the document states %s, off by %s",
+				i+1, col.FundGroup, col.FiscalYear, len(rules), sums[i], stated[i], sums[i]-stated[i]))
+		}
+	}
+	if len(bad) == 0 {
+		return res, nil
+	}
+	return nil, cmdutil.WithHint(
+		&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+			Field: "rollups", Msg: strings.Join(bad, "; ")},
+		"a rollup sums the totals its covered rules PRINT, each already tied "+
+			"to its own rows; a gap here is a rule missing from covers, a rule "+
+			"counted twice, or a figure the document does not itemise")
+}
+
+// coveredRules resolves a rollup's rule ids in the order it names them.
+func (r *Resolver) coveredRules(ro *Rollup) ([]*Rule, error) {
+	byID := make(map[string]*Rule, len(r.file.Rules))
+	for i := range r.file.Rules {
+		byID[r.file.Rules[i].ID] = &r.file.Rules[i]
+	}
+	out := make([]*Rule, 0, len(ro.Covers))
+	for _, id := range ro.Covers {
+		rule, ok := byID[id]
+		if !ok {
+			return nil, &ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				Field: "covers", Err: ErrNotFound,
+				Msg: fmt.Sprintf("no rule %q in this file", id)}
+		}
+		out = append(out, rule)
+	}
+	return out, nil
+}
+
+// ruleStatedTotals is the ONE total a covered rule prints.
+//
+// One, and the count is load-bearing. A rule printing a total on each of two
+// pages has two, and adding them would be a guess about which the rollup meant
+// -- so this refuses rather than choosing. A rule whose rows straddle a page
+// break says so with total_spans_parts and has one total again.
+func (r *Resolver) ruleStatedTotals(rule *Rule) ([]amount.Cents, *Part, error) {
+	if rule.TotalSpansParts {
+		bearer, err := r.totalBearingPart(rule)
+		if err != nil {
+			return nil, nil, err
+		}
+		stated, err := r.StatedTotals(rule, bearer)
+		return stated, bearer, err
+	}
+	var bearing []*Part
+	for i := range rule.Parts {
+		p := &rule.Parts[i]
+		if p.LabelsFrom == 0 && rule.TotalRow != "" {
+			bearing = append(bearing, p)
+		}
+	}
+	if len(bearing) != 1 {
+		return nil, nil, cmdutil.WithHint(
+			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
+				Field: "total_row", Err: ErrNotFound,
+				Msg: fmt.Sprintf("%d of this rule's parts print a total, and a rollup needs one",
+					len(bearing))},
+			"a rule covered by a rollup contributes one printed total; where "+
+				"its rows straddle a page break, declare total_spans_parts")
+	}
+	stated, err := r.StatedTotals(rule, bearing[0])
+	return stated, bearing[0], err
+}
+
+// rollupStatedTotals reads the figures the document prints on the rollup's own
+// line.
+//
+// The anchor must occur exactly once on the page. Unlike a rule's total_row,
+// which is searched only after that rule's block and so is already narrowed by
+// the block's own anchors, a rollup has no block to search after and would
+// otherwise take whichever occurrence came first.
+func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]amount.Cents, error) {
+	text, err := r.page(ro.Page)
+	if err != nil {
+		return nil, err
+	}
+	first := strings.Index(text, ro.TotalRow)
+	if first < 0 {
+		return nil, &ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+			Field: "total_row", Err: ErrNotFound,
+			Msg: fmt.Sprintf("%q does not occur on the page", ro.TotalRow)}
+	}
+	if strings.Contains(text[first+len(ro.TotalRow):], ro.TotalRow) {
+		return nil, cmdutil.WithHint(
+			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				Field: "total_row", Err: ErrNotFound,
+				Msg: fmt.Sprintf("%q occurs more than once on the page", ro.TotalRow)},
+			"lengthen the anchor until it names one printed line")
+	}
+	line := text[first+len(ro.TotalRow):]
+	if i := strings.IndexByte(line, '\n'); i >= 0 {
+		line = line[:i]
+	}
+	totals, ok := amountRun(line, n, units)
+	if !ok {
+		return nil, cmdutil.WithHint(
+			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				Field: "total_row", Err: ErrNotFound,
+				Msg: fmt.Sprintf("no run of %d consecutive amounts follows %q on %q",
+					n, ro.TotalRow, strings.TrimSpace(line))},
+			"the rollup's figures must be on the same printed line as its "+
+				"anchor; where the label wraps, anchor on the part that "+
+				"carries the figures")
+	}
+	return totals, nil
+}
+
 // compareTotals is the arithmetic both totals checks share: per column, the
 // mapped sum against the stated total, with any declared discrepancy applied.
 //

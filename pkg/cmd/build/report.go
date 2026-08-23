@@ -56,8 +56,30 @@ type Report struct {
 	// tied, which is correct and would otherwise look like a bug.
 	SpanningRulesChecked int `json:"spanning_rules_checked"`
 
-	PartsUnchecked []UncheckedPart    `json:"parts_unchecked"`
-	Omissions      []DeclaredOmission `json:"declared_omissions"`
+	// RollupsAsserted is how many printed totals covering SEVERAL rules were
+	// tied, and RollupColumnsTied the columns they compared. They are separate
+	// from the counters above because they measure a different link of the
+	// chain: a rollup ties printed subtotals to a printed total, where
+	// CheckTotals ties mapped rows to a printed total.
+	RollupsAsserted   int `json:"rollups_asserted"`
+	RollupColumnsTied int `json:"rollup_columns_tied"`
+
+	PartsUnchecked    []UncheckedPart    `json:"parts_unchecked"`
+	RollupsUnasserted []UnassertedRollup `json:"rollups_unasserted"`
+	Omissions         []DeclaredOmission `json:"declared_omissions"`
+}
+
+// UnassertedRollup is a total the DOCUMENT prints over several rules that no
+// rule structure here can assert, with the declared reason.
+//
+// It is reported rather than omitted because silence is the failure mode. A
+// build that mapped p140's ten pages and never mentioned that the page's own
+// closing total exceeds them by ~$57M would be publishing the gap as though it
+// were not there.
+type UnassertedRollup struct {
+	ID     string `json:"id"`
+	Page   int    `json:"page"`
+	Reason string `json:"reason"`
 }
 
 // UncheckedPart is a part whose figures no printed total corroborates.
@@ -95,8 +117,9 @@ const (
 // a list is empty makes a consumer handle two shapes for one meaning.
 func newReport() *Report {
 	return &Report{
-		PartsUnchecked: []UncheckedPart{},
-		Omissions:      []DeclaredOmission{},
+		PartsUnchecked:    []UncheckedPart{},
+		RollupsUnasserted: []UnassertedRollup{},
+		Omissions:         []DeclaredOmission{},
 	}
 }
 
@@ -162,6 +185,29 @@ func (rep *Report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) 
 	return nil
 }
 
+// checkRollups asserts each printed total that covers several rules, and
+// records the ones the document prints that cannot be asserted.
+func (rep *Report) checkRollups(r *mapping.Resolver, f *mapping.File) error {
+	for i := range f.Rollups {
+		ro := &f.Rollups[i]
+		// Empty is spelled one way: the parser refuses a whitespace-only
+		// reason, so this and validateRollups cannot disagree about which
+		// entries are declarations.
+		if ro.Unassertable != "" {
+			rep.RollupsUnasserted = append(rep.RollupsUnasserted,
+				UnassertedRollup{ID: ro.ID, Page: ro.Page, Reason: ro.Unassertable})
+			continue
+		}
+		res, err := r.CheckRollup(ro)
+		if err != nil {
+			return err
+		}
+		rep.RollupsAsserted++
+		rep.RollupColumnsTied += res.Columns
+	}
+	return nil
+}
+
 func (rep *Report) unchecked(rule *mapping.Rule, p *mapping.Part, reason string) {
 	rep.PartsUnchecked = append(rep.PartsUnchecked,
 		UncheckedPart{RuleID: rule.ID, Page: p.Page, Reason: reason})
@@ -206,6 +252,16 @@ func (rep *Report) print(ios *iostreams.IOStreams, asJSON bool) error {
 		fmt.Fprintf(w, "%d of those columns %s only to a declared delta in the document's own arithmetic\n",
 			rep.ColumnsTiedByDeclaration,
 			plural(rep.ColumnsTiedByDeclaration, "ties", "tie"))
+	}
+	if rep.RollupsAsserted > 0 {
+		fmt.Fprintf(w, "%d printed %s covering several rules %s, over %d %s\n",
+			rep.RollupsAsserted, plural(rep.RollupsAsserted, "total", "totals"),
+			plural(rep.RollupsAsserted, "ties", "tie"), rep.RollupColumnsTied,
+			plural(rep.RollupColumnsTied, "column", "columns"))
+	}
+	for _, u := range rep.RollupsUnasserted {
+		fmt.Fprintf(w, "UNASSERTED ROLLUP %s p%d: the document prints this total and %s\n",
+			u.ID, u.Page, u.Reason)
 	}
 	for _, u := range rep.PartsUnchecked {
 		fmt.Fprintf(w, "UNCHECKED %s p%d: %s\n", u.RuleID, u.Page, u.Reason)

@@ -1,0 +1,56 @@
+# Two rules whose printed totals are covered by a third total the document
+# prints over both, plus a rollup the document prints that cannot be asserted.
+# Modelled on Budget Book p168, where three division Totals sum to
+# ADMINISTRATIVE SERVICES TOTAL, and on p140's Total Sources, which exceeds the
+# pages it closes by ~$57M and can only be declared (fisc-3bl, fisc-wev).
+#
+# The point of the fixture is the REPORT: an asserted rollup and a declared-
+# unassertable one are different claims and must read differently.
+schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+
+rules:
+  - id: div-one
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+      - {label: "Supplies", category: services-and-supplies}
+    parts:
+      - page: 90
+        section: "Division One"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+
+  - id: div-two
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+      - {label: "Supplies", category: services-and-supplies}
+    parts:
+      - page: 90
+        section: "Division Two"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+
+rollups:
+  - id: dept-total
+    page: 90
+    total_row: "DEPARTMENT TOTAL"
+    covers: [div-one, div-two]
+
+  - id: total-sources
+    page: 90
+    total_row: "Total Sources"
+    unassertable: >-
+      exceeds the pages it closes by an amount that differs per column, so
+      nothing on them sums to it (fisc-wev)

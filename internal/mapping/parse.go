@@ -194,7 +194,129 @@ func (f *File) validate() error {
 			return err
 		}
 	}
+	if err := validateRollups(f, errf); err != nil {
+		return err
+	}
 	return checkColumnGrids([]*File{f})
+}
+
+// validateRollups checks the declarations that a printed total covers several
+// rules, or that the document prints one this rule structure cannot assert.
+//
+// Everything checkable without the pages is checked here. That the anchor
+// occurs on the page, occurs once, and that the covered rules' totals actually
+// add up are claims about the document and are made when the rollup resolves.
+func validateRollups(f *File, errf errFunc) error {
+	byID := make(map[string]*Rule, len(f.Rules))
+	for i := range f.Rules {
+		byID[f.Rules[i].ID] = &f.Rules[i]
+	}
+	seen := map[string]bool{}
+	for i := range f.Rollups {
+		ro := &f.Rollups[i]
+		field := func(name string) string {
+			return fmt.Sprintf("rollups[%s].%s", ro.ID, name)
+		}
+		if ro.ID == "" {
+			return errf("", "rollups", "rollup %d has no id", i)
+		}
+		if seen[ro.ID] {
+			return errf("", "rollups", "duplicate rollup id %q", ro.ID)
+		}
+		seen[ro.ID] = true
+		if byID[ro.ID] != nil {
+			return cmdutil.WithHint(
+				errf("", "rollups", "%q is also a rule id", ro.ID),
+				"a rollup and a rule are reported side by side, so one id must "+
+					"not name both")
+		}
+
+		// Either it asserts or it says why it cannot. Neither would be the
+		// silence this whole field exists to refuse; both would be a claim
+		// that contradicts itself.
+		// The declaration is compared trimmed here and untrimmed by the build,
+		// so a whitespace-only reason would pass validation as "no reason" and
+		// then suppress the check as "a reason". Refusing it outright keeps
+		// one spelling of empty.
+		if ro.Unassertable != "" && strings.TrimSpace(ro.Unassertable) == "" {
+			return errf("", field("unassertable"), "is whitespace; omit it or give the reason")
+		}
+		asserts, declines := len(ro.Covers) > 0, ro.Unassertable != ""
+		switch {
+		case asserts && declines:
+			return errf("", field("unassertable"),
+				"is declared alongside covers; a rollup either asserts or says why it cannot")
+		case !asserts && !declines:
+			return cmdutil.WithHint(
+				errf("", field("covers"), "is empty and no reason is declared"),
+				"say which rules the printed total covers, or declare "+
+					"unassertable with the reason it cannot be checked")
+		}
+		if ro.Page <= 0 {
+			return errf("", field("page"), "is required")
+		}
+		if strings.TrimSpace(ro.TotalRow) == "" {
+			return errf("", field("total_row"), "is required")
+		}
+		if declines {
+			continue
+		}
+
+		// A rollup over one rule is that rule's own total_row wearing a
+		// different name, and would report a second assertion for one printed
+		// figure.
+		if len(ro.Covers) < 2 {
+			return cmdutil.WithHint(
+				errf("", field("covers"), "names one rule"),
+				"a total covering a single rule is that rule's total_row")
+		}
+		covered := map[string]bool{}
+		var first *Rule
+		for _, id := range ro.Covers {
+			rule := byID[id]
+			if rule == nil {
+				return errf("", field("covers"), "no rule %q in this file", id)
+			}
+			if covered[id] {
+				return cmdutil.WithHint(
+					errf("", field("covers"), "%q is listed twice", id),
+					"a rule counted twice inflates the sum by its own total")
+			}
+			covered[id] = true
+			// The chain's first link. Without a printed total of its own a
+			// covered rule contributes nothing to sum, and the rollup would
+			// silently be a check over fewer rules than it names.
+			if rule.TotalRow == "" {
+				return cmdutil.WithHint(
+					errf("", field("covers"), "rule %q declares no total_row", id),
+					"a rollup sums the totals its covered rules PRINT, so every "+
+						"one of them must print one")
+			}
+			if rule.TotalRow == ro.TotalRow {
+				return cmdutil.WithHint(
+					errf("", field("total_row"), "is also rule %q's total_row", id),
+					"the rollup's anchor must name the line printing the ROLLUP, "+
+						"not one of the totals it covers")
+			}
+			if first == nil {
+				first = rule
+				continue
+			}
+			if first.Units != rule.Units {
+				return errf("", field("covers"),
+					"rule %q states its figures in %s and rule %q in %s",
+					first.ID, first.Units, id, rule.Units)
+			}
+			if !slices.Equal(first.Parts[0].Columns, rule.Parts[0].Columns) {
+				return cmdutil.WithHint(
+					errf("", field("covers"),
+						"rules %q and %q do not declare the same columns", first.ID, id),
+					"the rollup adds these totals column by column, which is "+
+						"only meaningful where the columns are the same")
+			}
+		}
+	}
+	return nil
 }
 
 type errFunc func(ruleID, field, format string, args ...any) error
