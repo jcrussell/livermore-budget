@@ -450,6 +450,29 @@ func validateRule(r *Rule, errf errFunc) error {
 		// would fail later as a stale declaration rather than here as the typo
 		// it is. Blank and duplicate entries are refused for the same reason.
 		seenWrapped := map[string]bool{}
+		// A LABELS_FROM PART CANNOT WRAP A LABEL, because it carries none.
+		// Row identity there is positional: the part routes to positionalValues,
+		// which never reads this field and never staleness-checks it, so a
+		// declaration was ACCEPTED AND INERT -- the one shape a declaration in
+		// this repository must not have. Every other one fails when it stops
+		// being true: a stated_total_delta that now ties exactly, an omitted-row
+		// count that no longer matches, a wrapped label the page stopped
+		// wrapping. Measured on the production mapping (fisc-ekj): adding a
+		// fragment that appears nowhere on p67 built cleanly with byte-identical
+		// facts, and five parts of the shipped rule file take labels_from.
+		//
+		// Refusing is right rather than honouring it. A wrapped label is a
+		// property of the part that CARRIES the label, and this part has
+		// delegated that to another page -- which is where the declaration
+		// belongs.
+		if p.LabelsFrom != 0 && len(p.WrappedLabels) > 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, fmt.Sprintf("parts[page %d].wrapped_labels", p.Page),
+					"is declared on a part whose labels_from takes its row labels from page %d",
+					p.LabelsFrom),
+				"a wrapped label is a claim about the page that PRINTS the "+
+					"label; declare it on that part, where it is checked")
+		}
 		for _, w := range p.WrappedLabels {
 			field := fmt.Sprintf("parts[page %d].wrapped_labels", p.Page)
 			if strings.TrimSpace(w) == "" {

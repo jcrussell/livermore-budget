@@ -127,3 +127,111 @@ func TestStaleWrappedLabelIsAnError(t *testing.T) {
 		}
 	}
 }
+
+// TestAWrappedLabelBeforeTheFirstRowIsDeclarable is fisc-2jk, and it is the one
+// shape a fragment used to be invisible in EITHER direction.
+//
+// checkGap's i == 0 branch admitted the text before the first mapped row
+// without consulting WrappedLabels and without marking anything used. So a
+// label wrapping there could not be declared -- declaring it failed as a stale
+// declaration, "is declared but does not appear between this part's rows",
+// because only the between-rows and after-last-row paths marked a fragment
+// used -- and not declaring it passed silently. Neither answer states what the
+// page does.
+//
+// The page is the same real block as the tests above, anchored one word
+// earlier. pp.167-170 as mapped do not reach this: every wrapping division
+// label there puts its head in the section anchor and its tail between two
+// rows. Moving the anchor is all it takes.
+func TestAWrappedLabelBeforeTheFirstRowIsDeclarable(t *testing.T) {
+	early := strings.Replace(p167Innovation,
+		`section: "Innovation & Economic "`, `section: "Innovation & "`, 1)
+
+	t.Run("declared, it resolves", func(t *testing.T) {
+		src := strings.Replace(early, "        #WRAPPED",
+			`        wrapped_labels: ["Economic", "Devel"]`, 1)
+		f, err := Parse(strings.NewReader(src), "p167.yaml")
+		if err != nil {
+			t.Fatalf("Parse: %v", err)
+		}
+		r, err := NewResolver(budgetDoc(t, 167), f)
+		if err != nil {
+			t.Fatalf("NewResolver: %v", err)
+		}
+		vals, _, err := r.Values(&f.Rules[0], &f.Rules[0].Parts[0])
+		if err != nil {
+			t.Fatalf("a leading wrapped label was declared and still failed: %v", err)
+		}
+		// Eight values, the same two rows by four columns the later anchor
+		// gives: declaring the fragment must not change what is read.
+		if len(vals) != 8 {
+			t.Errorf("got %d values, want 8", len(vals))
+		}
+	})
+
+	// And the declaration is still a claim that fails when it stops being true.
+	// Admitting the leading gap must not make this one corner permanently
+	// unfalsifiable, which is the failure mode the fix could have introduced.
+	t.Run("stale, it is still refused", func(t *testing.T) {
+		src := strings.Replace(early, "        #WRAPPED",
+			`        wrapped_labels: ["Economic", "Devel", "Nowhere On This Page"]`, 1)
+		f, err := Parse(strings.NewReader(src), "p167.yaml")
+		if err != nil {
+			t.Fatalf("Parse: %v", err)
+		}
+		r, err := NewResolver(budgetDoc(t, 167), f)
+		if err != nil {
+			t.Fatalf("NewResolver: %v", err)
+		}
+		if _, _, err := r.Values(&f.Rules[0], &f.Rules[0].Parts[0]); err == nil {
+			t.Fatal("a fragment the page never prints was accepted")
+		} else if !strings.Contains(err.Error(), "Nowhere On This Page") {
+			t.Errorf("error does not name the stale declaration: %v", err)
+		}
+	})
+}
+
+// TestWrappedLabelsOnALabelsFromPartAreRefused is fisc-ekj.
+//
+// A labels_from part takes its row identity positionally from another page, so
+// it routes to positionalValues -- which never reads WrappedLabels and never
+// staleness-checks it. The declaration was therefore ACCEPTED AND INERT, the
+// one shape a declaration in this repository must not have, and it was
+// reachable on the shipped rule file rather than only in principle: five
+// production parts take labels_from, p67 among them.
+func TestWrappedLabelsOnALabelsFromPartAreRefused(t *testing.T) {
+	const src = `schema_version: 1
+doc_id: labelsfrom-doc
+
+rules:
+  - id: two-part
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+    parts:
+      - page: 1
+        section: "Division One"
+        stop_at: "END"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+      - page: 2
+        labels_from: 1
+        section: "CONTINUED"
+        stop_at: "END"
+        wrapped_labels: ["Anything At All"]
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+`
+	_, err := Parse(strings.NewReader(src), "labelsfrom.yaml")
+	if err == nil {
+		t.Fatal("wrapped_labels was accepted on a labels_from part, where nothing reads it")
+	}
+	for _, want := range []string{"wrapped_labels", "labels_from", "page 1"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not mention %q: %v", want, err)
+		}
+	}
+}

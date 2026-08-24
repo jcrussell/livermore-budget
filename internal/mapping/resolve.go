@@ -547,6 +547,22 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 	used map[string]bool) error {
 	if i == 0 {
+		// A LABEL WRAPPED BEFORE THE FIRST MAPPED ROW IS DECLARABLE HERE, and
+		// until fisc-2jk it was the one place a fragment was invisible either
+		// way: declaring it failed as a stale declaration, because only the
+		// between-rows and after-last-row paths marked anything used, and NOT
+		// declaring it passed silently. A shape that can be neither stated nor
+		// omitted is not a choice the author gets to make.
+		//
+		// The permissiveness below is kept rather than tightened, and the reason
+		// is specific: this gap is also where COLUMN HEADERS live, which are
+		// words, are printed on every schedule, and are declared through
+		// column_headers rather than here. Requiring a declaration for undeclared
+		// leading text would demand one for every header on every part.
+		if trimmed := strings.TrimSpace(gap); slices.Contains(p.WrappedLabels, trimmed) {
+			used[trimmed] = true
+			return nil
+		}
 		if strings.ContainsFunc(gap, unicode.IsDigit) {
 			return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
 				Page: p.Page, Field: "section", Err: ErrNotFound,
