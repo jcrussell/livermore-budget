@@ -29,6 +29,33 @@ even when tests pass.
   see the extraction boundary below — but duplicate content does, and the
   argument is the same.)
 
+### A forecast is not a fact
+
+Nothing computed goes into `facts/facts.jsonl`. A fact is one figure the city
+printed, and three checks make that a guarantee rather than a claim — none of
+which consults `Fact.Derived`:
+
+- `fact-token-reparses` re-parses each fact's own token and fails an empty one.
+  Its doc comment settles the case in advance: *"a fact with no token has no
+  printed figure behind it, cannot be re-derived, and cannot be cited."*
+- `fact-offset-points-at-token` requires the extracted page text at the fact's
+  offset to *be* that token. **This is the arm that matters**, because it is the
+  one a synthetic token cannot get past: a made-up figure can be made to
+  re-parse, but no page prints it.
+- `fact-ids-recompute` needs a `rule_id` and a `doc_id` in the hashed tuple.
+
+So `Derived: true` on a fact means a re-reading or re-classification of a figure
+the city printed at a page and an offset — never a computed value. The field
+exists to *state* the published/derived distinction, not to exempt anything from
+the checks above, and it must not become that exemption. An exemption arm is the
+worse failure: it does not weaken the store visibly, it weakens it for a set
+whose membership is a boolean somebody sets.
+
+A projection or scenario may derive figures, and does so under its own rules —
+`derived-nodes-justified` requires a rationale and a source note on every derived
+node. The rule here is only about the store. See `fisc-nvw` for where a forecast
+is allowed to live and what would have to be true for `fisc verify` to police one.
+
 ## Go
 
 Layout and idioms follow the byob decisions; read them with

@@ -12,18 +12,26 @@ defect here regardless of how good the chart looks.
 
 ## What is covered today
 
-**Two pages of 786.** This is a proof of concept, and saying so plainly is part
-of the point.
+**Twenty-one pages of 786.** This is still a proof of concept, and saying so
+plainly is part of the point.
 
 | document | pages | extracted | mapped |
 |---|---:|---:|---:|
-| FY 2025-2027 Budget Book | 268 | all | **2** (pp. 66–67) |
+| FY 2025-2027 Budget Book | 268 | all | **21** (pp. 66–67, 76, 127–140, 167–170) |
 | 2025-2030 Capital Improvement Plan | 323 | all | 0 |
 | FY 2024-25 Annual Comprehensive Financial Report | 195 | all | 0 |
 
-Those two pages are the citywide spine — the schedule titled "CITYWIDE REVENUES,
-EXPENDITURES, AND FUND BALANCE/WORKING CAPITAL" — which yields **240 facts** and
-an all-funds picture of the adopted FY2026 and FY2027 budgets:
+Those pages yield **1,448 facts** across four schedules, each of which reconciles
+against something the city itself printed:
+
+| schedule | facts | what it is | fiscal years |
+|---|---:|---|---|
+| pp. 66–67 | 240 | the citywide spine, all funds gross | 2026, 2027 adopted |
+| pp. 127–140 | 924 | revenue by fund and line item | 2024 actual, 2025 revised, 2026 + 2027 adopted |
+| pp. 167–170 | 196 | General Fund department × object category | the same four |
+| p. 76 | 88 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
+
+The spine gives the all-funds picture the chart draws:
 
 - $299,969,007 gross revenue, $254,095,412 gross expenditure (FY2026)
 - six fund groups, whose printed `TOTAL SOURCES` and `TOTAL USES` the chart
@@ -34,8 +42,10 @@ one, because naively summing the expenditure column double-counts transfers by
 23%, and showing the error you are avoiding is more useful than quietly avoiding
 it.
 
-Everything below the fund-group level (departments, revenue line items,
-individual funds, the CIP, the ACFR) is **not yet mapped**. See `bd ready`.
+The three detail schedules are published and checked but **not yet drawn**: the
+chart is still the fund-group spine alone, and `fisc verify` declares each
+undrawn schedule with the reason it is undrawn rather than leaving it unsaid. The
+CIP and the ACFR are extracted and entirely unmapped. See `bd ready`.
 
 ## Build and look at it
 
@@ -80,7 +90,7 @@ data/extracted/<doc>/              786 pages of -layout text + -bbox geometry,
   │  mappings/*.yaml               the judgment layer: which rows, which columns,
   │                                what they mean. Written to be read.
   ▼
-facts/facts.jsonl                  240 content-addressed facts, each carrying
+facts/facts.jsonl                  1,448 content-addressed facts, each carrying
                                    doc_id / page / offset / token
   │  internal/project              one projection per (fiscal_year, basis, scope)
   ▼
