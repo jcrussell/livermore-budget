@@ -63,9 +63,11 @@ func TestFixtureVerdicts(t *testing.T) {
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
 		// constraint tier, no fact a department or a fund number.
 		"transfer-legs-pair": "vacuous over 0",
-		// pp.167-170 are mapped, but this fixture is a miniature of the SPINE
-		// and carries none of their facts, so there is no detail to reconcile.
+		// pp.167-170 and pp.127-140 are mapped, but this fixture is a miniature
+		// of the SPINE and carries none of their facts, so there is no detail to
+		// reconcile in either lane.
 		"expenditure-detail-ties-to-spine": "vacuous over 0",
+		"revenue-detail-ties-to-spine":     "vacuous over 0",
 		"aggregation-invariance":           "vacuous over 0",
 		"constraint-tier-vocabulary":       "vacuous over 0",
 		"fact-departments-resolve":         "vacuous over 0",
@@ -74,10 +76,10 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 17, Vacuous: 11, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 17, Vacuous: 12, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Seventeen passes, eleven vacuous and one skipped is not twenty-nine of
+	// Seventeen passes, twelve vacuous and one skipped is not thirty of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -93,11 +95,11 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 11 {
-		t.Fatalf("vacuous count = %d, want 10", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 12 {
+		t.Fatalf("vacuous count = %d, want 12", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
-		t.Error("a run with ten vacuous checks failed without --strict")
+		t.Error("a run with twelve vacuous checks failed without --strict")
 	}
 	if !strict.Failed() {
 		t.Error("a run with ten vacuous checks passed under --strict")
@@ -1505,4 +1507,277 @@ func TestTheDetailKeyNamesItsFundGroup(t *testing.T) {
 	if want := "FY2026 adopted general wages-and-benefits"; res.Findings[0].Subject != want {
 		t.Errorf("finding subject = %q, want %q", res.Findings[0].Subject, want)
 	}
+}
+
+// revenueFact makes one pp.127-140-shaped fact: revenue at the revenue-by-fund
+// scope, carrying a FUND number, which is what that schedule's columns are and
+// what makes this lane different from the department one.
+func revenueFact(t *testing.T, category, group string, fund int, cents int64) fact.Fact {
+	t.Helper()
+	f := testCell{mapping.KindRevenue, category, group, cents}.fact()
+	f.Scope = revenueDetailScope
+	f.Fund = fund
+	f.RowLabel = "a line item under " + category
+	return f
+}
+
+// transfersFact makes a p76-shaped fact at the scope fisc-aes decided, so the
+// exception's hand-off arms have something to hand off to.
+func transfersFact(t *testing.T, category, group string, cents int64) fact.Fact {
+	t.Helper()
+	f := testCell{mapping.KindTransferIn, category, group, cents}.fact()
+	f.Scope = transfersDetailScope
+	f.Fund = 100
+	f.RowLabel = "Transfer From Somewhere to " + group
+	return f
+}
+
+// revenueDetailTying is the fixture spine's revenue side decomposed: the same
+// three cells, at the detail scope. It ties by construction, which is what lets
+// each subtest below perturb exactly one thing.
+func revenueDetailTying(t *testing.T) []fact.Fact {
+	t.Helper()
+	return []fact.Fact{
+		revenueFact(t, "taxes/property", "general", 100, 100_000),
+		revenueFact(t, "taxes/property", "enterprise", 500, 0),
+		revenueFact(t, "charges-for-services", "enterprise", 500, 50_000),
+	}
+}
+
+// TestRevenueDetailTiesToTheSpine covers the check's verdicts over the shared
+// fixture, whose spine carries three revenue cells across two fund groups and
+// one General Fund transfer in — which is, conveniently and not by accident, the
+// exact shape the one declared exception is about.
+func TestRevenueDetailTiesToTheSpine(t *testing.T) {
+	const id = "revenue-detail-ties-to-spine"
+
+	t.Run("no detail at all is vacuous", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, factsSubject(t, testFacts())), id)
+		if res.Status != StatusVacuous {
+			t.Fatalf("status = %s (%s), want vacuous", res.Status, res.Summary)
+		}
+		if !strings.Contains(res.Summary, revenueDetailScope) {
+			t.Errorf("summary %q does not name the empty scope", res.Summary)
+		}
+	})
+
+	t.Run("a complete detail ties", func(t *testing.T) {
+		facts := append(testFacts(), revenueDetailTying(t)...)
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		// Three cells, and the transfer-in cell is exempted rather than counted:
+		// a subject count of four would mean the exemption is not being applied.
+		if res.Subjects != 3 {
+			t.Errorf("subjects = %d, want the 3 revenue cells; the General Fund transfer "+
+				"in is the declared exception and is not one of them", res.Subjects)
+		}
+	})
+
+	t.Run("a detail that does not tie fails", func(t *testing.T) {
+		facts := append(testFacts(), revenueFact(t, "taxes/property", "general", 100, 100_001))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "same money decomposed two ways") {
+			t.Errorf("findings %v do not say what the two figures are", res.Findings)
+		}
+	})
+
+	// THE FUND GROUP IS IN THE KEY, and this is the case that proves it. The
+	// fixture's spine carries taxes/property under BOTH general and enterprise.
+	// A detail that puts the General Fund's figure under enterprise sums to the
+	// same total and ties on every key a group-blind check would build.
+	t.Run("the right money under the wrong fund group fails", func(t *testing.T) {
+		facts := append(testFacts(),
+			revenueFact(t, "taxes/property", "enterprise", 500, 100_000),
+			revenueFact(t, "charges-for-services", "enterprise", 500, 50_000))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: the General Fund's property tax is "+
+				"filed under enterprise and the citywide total is unchanged",
+				res.Status, res.Summary)
+		}
+	})
+
+	t.Run("a spine key the detail dropped fails", func(t *testing.T) {
+		facts := append(testFacts(),
+			revenueFact(t, "taxes/property", "general", 100, 100_000),
+			revenueFact(t, "taxes/property", "enterprise", 500, 0))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: charges-for-services is on the spine "+
+				"and not in the detail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "no such row at all") {
+			t.Errorf("findings %v do not name the dropped rule", res.Findings)
+		}
+	})
+
+	t.Run("a detail key the spine does not have fails", func(t *testing.T) {
+		facts := append(testFacts(), revenueDetailTying(t)...)
+		facts = append(facts, revenueFact(t, "licenses-and-permits", "general", 100, 1_000))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "never extend it") {
+			t.Errorf("findings %v do not say the detail may not extend the spine", res.Findings)
+		}
+	})
+}
+
+// TestTheGeneralFundTransfersInException covers all four arms of the one
+// declared exception in the corpus.
+//
+// It gets its own test because an exception is the part of a reconciliation that
+// rots: it is written once, about a state of the world, and the world moves.
+// fisc-u2v's 2026-08-23 correction is explicit that an exemption may not simply
+// be silent — it names the scope that covers the key instead, and fails if that
+// scope carries facts and not this one. Arm 4 is the honest reading of the other
+// half of that sentence, "if no scope covers it, the exception must say in words
+// that the cell is unreconciled", and arms 1 and 3 are what stop arm 4 becoming
+// permanent.
+func TestTheGeneralFundTransfersInException(t *testing.T) {
+	const id = "revenue-detail-ties-to-spine"
+	tying := revenueDetailTying(t)
+
+	// ARM 4: nothing carries transfers-by-fund yet. The cell is unreconciled
+	// and the summary says so by name, on every run, with the bead.
+	t.Run("pending: the covering scope carries nothing yet", func(t *testing.T) {
+		facts := append(testFacts(), tying...)
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		for _, want := range []string{"NOT RECONCILED", transfersDetailScope, "fisc-5gk.3.1"} {
+			if !strings.Contains(res.Summary, want) {
+				t.Errorf("summary does not contain %q, so an unreconciled cell is "+
+					"published quietly:\n%s", want, res.Summary)
+			}
+		}
+	})
+
+	// ARM 2: p76 lands and covers the key. The exception steps aside and says so.
+	t.Run("covered: the named scope carries the key", func(t *testing.T) {
+		facts := append(testFacts(), tying...)
+		facts = append(facts, transfersFact(t, "transfers/in", "general", 10_000))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		if strings.Contains(res.Summary, "NOT RECONCILED") {
+			t.Errorf("summary still calls the cell unreconciled after %q covers it:\n%s",
+				transfersDetailScope, res.Summary)
+		}
+		if !strings.Contains(res.Summary, "reconciled by scope") {
+			t.Errorf("summary does not say which scope took the cell over:\n%s", res.Summary)
+		}
+	})
+
+	// ARM 3: p76 lands and does NOT cover the key. This is the arm an
+	// unconditional exemption would never have, and the one that keeps the
+	// declaration from outliving the work it names.
+	t.Run("failed hand-off: the named scope exists and drops the key", func(t *testing.T) {
+		facts := append(testFacts(), tying...)
+		facts = append(facts, transfersFact(t, "transfers/in", "enterprise", 10_000))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: %q was mapped and this cell was not "+
+				"in it, so nothing reconciles it now", res.Status, res.Summary,
+				transfersDetailScope)
+		}
+		if !strings.Contains(findingDetails(res), "hand-off has failed") {
+			t.Errorf("findings %v do not say the hand-off failed", res.Findings)
+		}
+	})
+
+	// ARM 2 AND ARM 3 AT ONCE, which is the case a whole-store count gets
+	// wrong. transfers-by-fund lands covering FY2026 and not FY2027. Counting
+	// "does the successor cover this cell" over the whole fact store and then
+	// exempting every key answers yes, reports both years reconciled, and never
+	// reaches arm 3 -- so a whole year of the spine's General Fund transfers in
+	// becomes a cell no check looks at, which is the exact shape of the hole
+	// this exception's condition exists to refuse.
+	t.Run("partial hand-off: the named scope covers one year and not the other", func(t *testing.T) {
+		later := transfersFact(t, "transfers/in", "general", 10_000)
+		later.FiscalYear++
+		later.ID += "-second-year"
+		facts := append(testFacts(), tying...)
+		var nextYear []fact.Fact
+		for _, f := range facts {
+			g := f
+			g.FiscalYear = f.FiscalYear + 1
+			g.ID = f.ID + "-second-year"
+			nextYear = append(nextYear, g)
+		}
+		facts = append(facts, nextYear...)
+		// The successor covers the SECOND year only; the first is still owed.
+		facts = append(facts, later)
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: %q was mapped and covers only one of "+
+				"the two years the spine publishes", res.Status, res.Summary,
+				transfersDetailScope)
+		}
+		if !strings.Contains(findingDetails(res), "hand-off has failed") {
+			t.Errorf("findings %v do not say the hand-off failed for the uncovered year",
+				res.Findings)
+		}
+	})
+
+	// ARM 1: the schedule turns out to print the row after all, so the
+	// exemption is a false claim about the DOCUMENT and would silently excuse a
+	// real figure.
+	t.Run("false claim: the schedule does publish the row", func(t *testing.T) {
+		f := testCell{mapping.KindTransferIn, "transfers/in", "general", 10_000}.fact()
+		f.Scope = revenueDetailScope
+		f.Fund = 100
+		facts := append(testFacts(), tying...)
+		facts = append(facts, f)
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: pp.127-140 publish the cell the "+
+				"exception says they do not print", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "false claim") {
+			t.Errorf("findings %v do not say the exception is a false claim", res.Findings)
+		}
+	})
+
+	// And the stale direction: an exception for a cell the spine does not
+	// publish exempts nothing and must be removed, the same shape
+	// staleDeclarations enforces on unprojectedScopes.
+	t.Run("stale: the spine publishes no such cell", func(t *testing.T) {
+		cells := make([]testCell, 0, len(fixtureCells))
+		for _, c := range fixtureCells {
+			if c.kind == mapping.KindTransferIn {
+				continue
+			}
+			cells = append(cells, c)
+		}
+		facts := append(testFacts(cells...), tying...)
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: the exception exempts nothing",
+				res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "exempts nothing") {
+			t.Errorf("findings %v do not say the declaration has stopped describing the "+
+				"corpus", res.Findings)
+		}
+	})
 }

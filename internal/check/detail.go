@@ -105,7 +105,9 @@ func (*expenditureDetailTiesToSpine) Run(_ context.Context, s *Subject) (Result,
 	}
 
 	reconcile, unmatched := reconciledPairs(detail, spine)
-	subjects, findings := compareDetail(detail, spine, reconcile, expenditureDetailScope)
+	// No exemptions: pp.167-170 print every category p66 does. The nil is the
+	// declaration, and fisc-brx is where the argument for it lives.
+	cmp := compareDetail(detail, spine, reconcile, expenditureDetailScope, nil)
 
 	// The unreconciled columns are named in the summary rather than left out of
 	// it. They are the detail's own published figures with no spine column to
@@ -113,17 +115,17 @@ func (*expenditureDetailTiesToSpine) Run(_ context.Context, s *Subject) (Result,
 	// this check covers 98 of the schedule's 196.
 	held := fmt.Sprintf("%d cells over %d (fiscal year, basis) pairs the spine publishes, "+
 		"each the sum of pp.167-170's object rows equal to the spine's own General Fund "+
-		"expenditure to the cent", subjects, len(reconcile))
+		"expenditure to the cent", cmp.subjects, len(reconcile))
 	if len(unmatched) > 0 {
 		held += fmt.Sprintf("; %d further pair(s) the detail publishes have no spine column "+
 			"and are not reconciled: %s", len(unmatched), describePairs(unmatched))
 	}
 	return conclusion{
-		subjects: subjects,
+		subjects: cmp.subjects,
 		unit:     "cells",
 		held:     held,
 		nothing: fmt.Sprintf("scope %q carries facts but the spine publishes no General Fund "+
 			"expenditure at all, so nothing could be reconciled", expenditureDetailScope),
-		findings: findings,
+		findings: cmp.findings,
 	}.result(), nil
 }

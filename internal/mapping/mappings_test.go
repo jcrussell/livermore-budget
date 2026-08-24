@@ -19,6 +19,11 @@ const publishedSpine = "../../mappings/livermore-budget-fy2026-2027.yaml"
 // publishedSpineScope is the scope pp.66-67's rules carry. Spelled here rather
 // than imported: internal/project declares it and imports this package, so the
 // dependency cannot run the other way.
+//
+// A test that means "the citywide spine" must say so with the SCOPE and never
+// with the kind. That was indistinguishable while one schedule was mapped and
+// stopped being so when fisc-5gk.1 published four transfers-only fund rules on
+// p134: a filter on KindTransferIn alone swept them into a read of pp.66-67.
 const publishedSpineScope = "all-funds-gross"
 
 // The spine's headline figures, in dollars exactly as Budget Book pp.66-67
@@ -403,9 +408,11 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 			}
 		}
 	}
-	// 10 spine parts over pp.66-67 plus 26 division parts over pp.167-170, of
-	// which three divisions declare two because they straddle a page break.
-	if want := 36; parts != want {
+	// 10 spine parts over pp.66-67; 26 division parts over pp.167-170, of which
+	// three divisions declare two because they straddle a page break; and 84
+	// revenue parts over pp.127-140, of which five declare two because either
+	// their rows or their printed total is on the far side of a page break.
+	if want := 120; parts != want {
 		t.Errorf("checked %d parts, want %d; the published file's shape changed",
 			parts, want)
 	}

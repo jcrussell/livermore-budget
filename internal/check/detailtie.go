@@ -154,16 +154,25 @@ func reconciledPairs(detail, spine map[detailKey]cellSum) (reconcile, unmatched 
 // nothing and reports green. A spine key inside the restriction with no detail
 // counterpart is a FAILURE.
 func compareDetail(detail, spine map[detailKey]cellSum, reconcile map[yearBasis]bool,
-	scope string) (subjects int, findings []Finding) {
+	scope string, exempt func(detailKey) bool) detailComparison {
+	var out detailComparison
 	for _, k := range unionKeys(detail, spine) {
 		if !reconcile[yearBasis{k.year, k.basis}] {
 			continue
 		}
+		if exempt != nil && exempt(k) {
+			out.exempt++
+			continue
+		}
 		d, sp := detail[k], spine[k]
-		subjects++
+		out.subjects++
+		if !d.present || !sp.present {
+			out.oneSided++
+		}
 		if d.cents == sp.cents {
 			continue
 		}
+		findings := out.findings
 		switch {
 		case !d.present:
 			findings = append(findings, finding(k.String(),
@@ -180,8 +189,32 @@ func compareDetail(detail, spine map[detailKey]cellSum, reconcile map[yearBasis]
 					"these are the same money decomposed two ways and must tie to the cent",
 				d.cents, sp.cents, d.cents-sp.cents))
 		}
+		out.findings = findings
 	}
-	return subjects, findings
+	return out
+}
+
+// detailComparison is what one pass over the union produced.
+//
+// oneSided is carried because it is the count a reader needs to judge the
+// held line and cannot recover from it: a key only one scope produced ties
+// when the other side is zero, which is a real agreement and not a vacancy —
+// p67 prints a dash for taxes/property under capital and pp.131-140 print no
+// such row, so both say zero for a documented reason. On the committed corpus
+// the revenue lane compares 134 cells of which 60 are one-sided, against 0 value
+// differences, so a summary that did not distinguish them would report 134
+// "cells" of which nearly half are two zeroes agreeing. fisc-u2v (3) is explicit
+// that this must NOT become a table of exceptions, and a count is the honest
+// middle: loud, and not a list.
+//
+// exempt is separate again, and separate from subjects: an exempted cell was
+// neither compared nor agreed at zero, it was handed to another check. Counting
+// it as a subject would overstate what this one covers.
+type detailComparison struct {
+	subjects int
+	oneSided int
+	exempt   int
+	findings []Finding
 }
 
 // unionKeys is every key either side produced, in a stable order so two runs

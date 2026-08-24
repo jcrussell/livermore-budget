@@ -323,6 +323,14 @@ func readSpineTransfers(t *testing.T) spineTransfers {
 	out := spineTransfers{in: map[groupYear]amount.Cents{}, out: map[groupYear]amount.Cents{}}
 	for i := range f.Rules {
 		rule := &f.Rules[i]
+		// THE SCOPE, NOT THE KIND. This read is of pp.66-67 and the doc built
+		// above holds only those two pages, so a transfer rule from any other
+		// schedule fails here with "not listed in the extraction manifest"
+		// rather than being quietly summed. It stopped being hypothetical when
+		// fisc-5gk.1 published four transfers-only fund rules on p134.
+		if rule.Scope != publishedSpineScope {
+			continue
+		}
 		var dst map[groupYear]amount.Cents
 		switch rule.Kind {
 		case KindTransferIn:

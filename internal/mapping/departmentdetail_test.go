@@ -11,6 +11,13 @@ import (
 // The department schedule's scope, and the four pages it covers.
 const departmentDetailScope = "expenditure-by-department"
 
+// departmentDetailPages is the schedule, and it is also the doc departmentDetail
+// builds. A rollup on any other page cannot be resolved against that doc, so the
+// rollup sweep below filters on it rather than on "every rollup in the file" —
+// which was the same claim while one schedule was mapped and became a different
+// one the moment fisc-5gk.1 added rollups on p130 and p140.
+var departmentDetailPages = map[int]bool{167: true, 168: true, 169: true, 170: true}
+
 // TestPublishedDepartmentDetailResolves is to pp.167-170 what
 // TestPublishedSpineResolves is to pp.66-67: every part of every rule resolves
 // against the real pages, and every printed total the document offers is
@@ -100,6 +107,9 @@ func TestPublishedDepartmentDetailResolves(t *testing.T) {
 	rollups, single := 0, 0
 	for i := range f.Rollups {
 		ro := &f.Rollups[i]
+		if !departmentDetailPages[ro.Page] {
+			continue
+		}
 		if ro.Unassertable != "" {
 			t.Errorf("rollup %s is declared unassertable; every printed total on these "+
 				"pages can be asserted", ro.ID)

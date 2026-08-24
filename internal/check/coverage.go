@@ -36,9 +36,8 @@ import (
 // drawing a declared scope the entry goes silent while remaining a false claim
 // about the corpus. staleDeclarations is the branch that refuses that, and it is
 // what retires an entry automatically instead of leaving an exemption for whoever
-// forgets. Two more entries are decided and land with their own schedules:
-// revenue-by-fund (fisc-u2v, fisc-5gk.1) and transfers-by-fund (fisc-aes,
-// fisc-5gk.3.1). Do not add either before its facts.
+// forgets. One more entry is decided and lands with its schedule:
+// transfers-by-fund (fisc-aes, fisc-5gk.3.1). Do not add it before its facts.
 var unprojectedScopes = map[string]string{
 	expenditureDetailScope: "Budget Book pp.167-170, General Fund Expenditures by Major " +
 		"Category: the department x object decomposition of p66's General Fund expenditure " +
@@ -49,6 +48,22 @@ var unprojectedScopes = map[string]string{
 		"prints a column for -- the two adopted years -- against spine facts that ARE " +
 		"graph-checked; pp.66-67 print no actual or revised column, so the FY2024 and FY2025 " +
 		"halves are published with nothing to tie to. A department tier in the graph is " +
+		"fisc-gxa.2 / fisc-oxf.",
+	revenueDetailScope: "Budget Book pp.127-140, Revenue Sources by Fund: the line-item and " +
+		"per-fund decomposition of pp.66-67's REVENUE rows, not additional money. Its 231 " +
+		"rows reproduce all six fund groups' TOTAL REVENUES exactly in both budget years " +
+		"-- general 157,873,470 / 164,358,147 and the other five to the cent besides -- so " +
+		"drawing them into the fund-group spine doubles the city's revenue, and unlike the " +
+		"department schedule nothing else would stop it: netCells refuses a fact carrying " +
+		"a department and has no such refusal for a fund. revenue-detail-ties-to-spine " +
+		"reconciles the 462 of its 924 facts the spine prints a column for -- the two " +
+		"adopted years -- against spine facts that ARE graph-checked. It is NOT the whole " +
+		"of the spine's inflow: pp.127-130 print no General Fund Transfers In row, so " +
+		"480,400 in FY2026 and 486,735 in FY2027 are on the spine with no counterpart " +
+		"here, declared as that check's one exception and owed to transfers-by-fund " +
+		"(fisc-5gk.3.1), which prints them. And pp.66-67 print no actual or revised " +
+		"column, so this schedule's FY2024 and FY2025 halves tie to its own 79 printed " +
+		"totals at build time and to nothing on the spine. A fund tier in the graph is " +
 		"fisc-gxa.2 / fisc-oxf.",
 }
 

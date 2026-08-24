@@ -246,6 +246,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"published-projection-built":       StatusPass,
 		"facts-are-projected":              StatusPass,
 		"expenditure-detail-ties-to-spine": StatusPass,
+		"revenue-detail-ties-to-spine":     StatusPass,
 		"graph-acyclic":                    StatusPass,
 		"derived-nodes-justified":          StatusPass,
 		"link-values-tie-to-facts":         StatusPass,
@@ -255,15 +256,18 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"headline-naive-expenditure":       StatusPass,
 		// Vacuous, each for a reason that is recorded rather than incidental: no
 		// link can carry a transfer_id (fisc-4rh), the graph has one tier depth
-		// (fisc-gxa.2), no node carries a constraint tier because pp.66-67 publish
-		// only fund groups, no fact carries a department because pp.167-170 are
-		// unmapped (fisc-5gk.2), and no fact names a fund because this schedule's
-		// columns are fund groups (fisc-5gk.1).
+		// (fisc-gxa.2), and no node carries a constraint tier because pp.66-67
+		// publish only fund groups.
+		//
+		// fact-funds-resolve was on this list until fisc-5gk.1 mapped pp.127-140,
+		// whose columns are per FUND rather than per fund group. It is the last
+		// of the five fisc-0ux enumerated that the two General Fund coverage
+		// lanes retire; what remains is the tier hierarchy and p76.
 		"transfer-legs-pair":         StatusVacuous,
 		"aggregation-invariance":     StatusVacuous,
 		"constraint-tier-vocabulary": StatusVacuous,
 		"fact-departments-resolve":   StatusPass,
-		"fact-funds-resolve":         StatusVacuous,
+		"fact-funds-resolve":         StatusPass,
 	}
 	got := make(map[string]Status, len(rep.Results))
 	for _, res := range rep.Results {

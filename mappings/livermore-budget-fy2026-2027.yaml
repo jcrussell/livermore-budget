@@ -1137,6 +1137,1848 @@ rules:
     rows:
       - {label: "Services & Supplies", category: services-and-supplies, department: fire-administration}
 
+  # ==========================================================================
+  # REVENUE SOURCES BY FUND, Budget Book pp.127-140 (fisc-5gk.1, scope
+  # revenue-by-fund per fisc-u2v). 79 rules, 231 data rows, 924 facts.
+  # ==========================================================================
+
+  - id: gf-rev-property-taxes
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Property Taxes"
+    parts:
+      - page: 127
+        section: "Property Taxes"
+        section_ordinal: 1
+        stop_at: "Total Property Taxes"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Current Year - Secured", category: taxes/property}
+      - {label: "Prior Year - Secured", category: taxes/property}
+      - {label: "ERAF", category: taxes/property, sign: contra}
+      - {label: "RPTTF Reduction", category: taxes/property, sign: contra}
+      - {label: "Current Year - Unsecured", category: taxes/property}
+      - {label: "Prior Year - Unsecured", category: taxes/property}
+      - {label: "Supple - Sec Roll Current", category: taxes/property}
+      - {label: "VLF Comp Fund", category: taxes/property}
+      - {label: "Unitary Utility Tax", category: taxes/property}
+      - {label: "Aircraft Taxes", category: taxes/property}
+      - {label: "RPTTF Receipts & Other PropTax", category: taxes/property}
+      - {label: "St Homeowner Prop Tax Re", category: taxes/property}
+      - {label: "Pen & Int On Delinq Tax", category: taxes/property}
+
+  - id: gf-rev-sales-taxes
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Sales Taxes"
+    parts:
+      - page: 127
+        section: "Sales Taxes"
+        section_ordinal: 1
+        stop_at: "Total Sales Taxes"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+    rows:
+      - {label: "Sales & Use Tax", category: taxes/sales}
+      - {label: "Prop 172 - Public Sfty Augmnt", category: taxes/sales}
+
+  - id: gf-rev-other-taxes
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Other Taxes"
+    total_spans_parts: true
+    parts:
+      - page: 127
+        section: "Other Taxes"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        omitted_rows: ["In-Lieu Taxes", "Emt Service Area"]
+      - page: 128
+        section: "FY 2026-27\n"
+        stop_at: "Total Other Taxes"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        omitted_rows: ["Franchise Tax- Electric", "Franchise Tax- Gas", "Franchise Tax- Cable TV", "Franchise Tax- Garbage", "Business License Tax", "Business License Penalty", "Business License Registration", "Real Property Transfer Tax", "TOT - Hotel", "TOT - Short Term Rental", "Residential Construction Tax", "Industrial Construction Tax"]
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Franchise Tax- Electric", category: taxes/other}
+      - {label: "Franchise Tax- Gas", category: taxes/other}
+      - {label: "Franchise Tax- Cable TV", category: taxes/other}
+      - {label: "Franchise Tax- Garbage", category: taxes/other}
+      - {label: "Business License Tax", category: taxes/other}
+      - {label: "Business License Penalty", category: taxes/other}
+      - {label: "Business License Registration", category: taxes/other}
+      - {label: "Real Property Transfer Tax", category: taxes/other}
+      - {label: "TOT - Hotel", category: taxes/other}
+      - {label: "TOT - Short Term Rental", category: taxes/other}
+      - {label: "Residential Construction Tax", category: taxes/other}
+      - {label: "Industrial Construction Tax", category: taxes/other}
+      - {label: "In-Lieu Taxes", category: taxes/other}
+      - {label: "Emt Service Area", category: taxes/other}
+
+  - id: gf-rev-licenses-permits
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Licenses & Permits"
+    parts:
+      - page: 128
+        section: "Licenses & Permits"
+        section_ordinal: 1
+        stop_at: "Total Licenses & Permits"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -200
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Animal Licenses", category: licenses-and-permits}
+      - {label: "Building Permits", category: licenses-and-permits}
+      - {label: "Permit Technology Fee", category: licenses-and-permits}
+      - {label: "Plumbing Gas Permits", category: licenses-and-permits}
+      - {label: "Electrical Permits", category: licenses-and-permits}
+      - {label: "Mechanical Permits", category: licenses-and-permits}
+      - {label: "Street And Curb Permits", category: licenses-and-permits}
+      - {label: "Transportation Permit", category: licenses-and-permits}
+      - {label: "Fire Permits", category: licenses-and-permits}
+      - {label: "Hazmat Permits", category: licenses-and-permits}
+      - {label: "Use And Variance Permits", category: licenses-and-permits}
+      - {label: "Police Permits", category: licenses-and-permits}
+      - {label: "Tobacco License- Registration", category: licenses-and-permits}
+      - {label: "Tobacco License- Fee", category: licenses-and-permits}
+      - {label: "Short Term Rental Permit", category: licenses-and-permits}
+
+  - id: gf-rev-fines-forfeitures
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Fines & Forfeitures"
+    parts:
+      - page: 128
+        section: "Fines & Forfeitures"
+        section_ordinal: 1
+        stop_at: "Total Fines & Forfeitures"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+    rows:
+      - {label: "Vehicle Code Fines", category: fines-and-forfeitures}
+      - {label: "Citations", category: fines-and-forfeitures}
+
+  - id: gf-rev-intergovernmental
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Intergovernmental"
+    parts:
+      - page: 128
+        section: "Intergovernmental"
+        section_ordinal: 1
+        stop_at: "Total Intergovernmental"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+    rows:
+      - {label: "Grant- Federal", category: intergovernmental}
+      - {label: "Grant- State", category: intergovernmental}
+      - {label: "St Highway Prop Rental", category: intergovernmental}
+      - {label: "State Motor Veh in Lieu (MVIL)", category: intergovernmental}
+      - {label: "Reimb-Mandated Costs (St)", category: intergovernmental}
+      - {label: "Interdepartmental Revenue", category: intergovernmental}
+
+  - id: gf-rev-charges-for-services
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Charges for Services"
+    parts:
+      - page: 129
+        section: "Charges for Services"
+        section_ordinal: 1
+        stop_at: "Total Charges for Services"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+    rows:
+      - {label: "Police Vehicle Fees", category: charges-for-services}
+      - {label: "Special Police Services", category: charges-for-services}
+      - {label: "Sale Of Police Reports", category: charges-for-services}
+      - {label: "Police Emerg Response", category: charges-for-services}
+      - {label: "Tow Franchise Fees & Fines", category: charges-for-services}
+      - {label: "Fire Plan Check & Inspct Fee", category: charges-for-services}
+      - {label: "Fire VA Contract Service", category: charges-for-services}
+      - {label: "Weed Abatement", category: charges-for-services}
+      - {label: "Library Fees", category: charges-for-services}
+      - {label: "Property Damage Recovery", category: charges-for-services}
+      - {label: "Building Records Reports", category: charges-for-services}
+      - {label: "Plan Check Fees", category: charges-for-services}
+      - {label: "Sale of Reports & Publications", category: charges-for-services}
+      - {label: "Engineering & Filing Fee", category: charges-for-services}
+      - {label: "Engineering Inspection Fees", category: charges-for-services}
+      - {label: "Administrative Cost Recovery", category: charges-for-services}
+      - {label: "Assessment Dist Admin Fee", category: charges-for-services}
+      - {label: "Admin Fee-RDA Dissolution", category: charges-for-services}
+      - {label: "Outdoor Dining Maintenance", category: charges-for-services}
+      - {label: "Animal Shelter Fees & Charges", category: charges-for-services}
+
+  - id: gf-rev-use-of-money-and-property
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Use of Money And Property"
+    parts:
+      - page: 129
+        section: "Use of Money And Property"
+        section_ordinal: 1
+        stop_at: "Total Use of Money And Property"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Interest Income", category: use-of-money-and-property}
+      - {label: "Interest Earned Trustee", category: use-of-money-and-property}
+      - {label: "Rental Of Property", category: use-of-money-and-property}
+      - {label: "Multi Service Center Rentals", category: use-of-money-and-property}
+      - {label: "Cell Tower Rent", category: use-of-money-and-property}
+      - {label: "Misc Rental Income", category: use-of-money-and-property}
+
+  - id: gf-rev-contributions-outsourced
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Contributions Outsourced"
+    total_spans_parts: true
+    parts:
+      - page: 129
+        section: "Contributions Outsourced"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+      - page: 130
+        section: "FY 2026-27\n"
+        stop_at: "Total Contributions Outsourced"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        omitted_rows: ["Contribution Outside Services"]
+    rows:
+      - {label: "Contribution Outside Services", category: contributions-outsourced}
+
+  - id: gf-rev-miscellaneous-revenue
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Miscellaneous Revenue"
+    parts:
+      - page: 130
+        section: "Miscellaneous Revenue"
+        section_ordinal: 1
+        stop_at: "Total Miscellaneous Revenue"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Sale of Surplus Property", category: miscellaneous-revenue}
+      - {label: "Cardroom Revenue", category: miscellaneous-revenue}
+      - {label: "Hosted Training", category: miscellaneous-revenue}
+      - {label: "Miscellaneous Revenue", category: miscellaneous-revenue}
+      - {label: "SB 1383 Fees", category: miscellaneous-revenue}
+      - {label: "Bond Monitoring Fee", category: miscellaneous-revenue}
+      - {label: "EDD Art Admin Fee Contrib", category: miscellaneous-revenue}
+      - {label: "Electric Vehicle Chg Fee", category: miscellaneous-revenue}
+      - {label: "LVWHD Collection Fee", category: miscellaneous-revenue}
+      - {label: "Urban Forestry Revenues", category: miscellaneous-revenue}
+      - {label: "POST Reimbursement", category: miscellaneous-revenue}
+      - {label: "Library - Merchandise", category: miscellaneous-revenue}
+      - {label: "Cash Over/Short", category: miscellaneous-revenue}
+
+  - id: fund-rev-airport
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Airport"
+    parts:
+      - page: 131
+        section: "Airport"
+        section_ordinal: 1
+        stop_at: "Total Airport"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 600, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-stormwater
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Stormwater"
+    parts:
+      - page: 131
+        section: "Stormwater"
+        section_ordinal: 1
+        stop_at: "Total Stormwater"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 610, fiscal_year: 2027}
+    rows:
+      - {label: "Fines & Forfeitures", category: fines-and-forfeitures}
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-storm-drain
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Storm Drain"
+    parts:
+      - page: 131
+        section: "Storm Drain"
+        section_ordinal: 1
+        stop_at: "Total Storm Drain"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 612, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-wastewater
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Wastewater"
+    parts:
+      - page: 131
+        section: "Wastewater"
+        section_ordinal: 1
+        stop_at: "Total Wastewater"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 620, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-wastewater-replacement
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Wastewater Replacement"
+    parts:
+      - page: 131
+        section: "Wastewater Replacement"
+        section_ordinal: 1
+        stop_at: "Total Wastewater Replacement"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 622, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-wastewater-connection-fees
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Wastewater Connection Fees"
+    parts:
+      - page: 132
+        section: "Wastewater Connection Fees"
+        section_ordinal: 1
+        stop_at: "Total Wastewater Connection Fees"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 623, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-water
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Water"
+    parts:
+      - page: 132
+        section: "Water"
+        section_ordinal: 1
+        stop_at: "Total Water"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 640, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-water-replacement
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Water Replacement"
+    parts:
+      - page: 132
+        section: "Water Replacement"
+        section_ordinal: 1
+        stop_at: "Total Water Replacement"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 642, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-water-connection-fees
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Water Connection Fees"
+    parts:
+      - page: 132
+        section: "Water Connection Fees"
+        section_ordinal: 1
+        stop_at: "Total Water Connection Fees"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2024, basis: actual}
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2025, basis: revised}
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2026}
+          - {fund_group: enterprise, fund: 643, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-traffic-impact-fee-tif
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Traffic Impact Fee (TIF)"
+    parts:
+      - page: 132
+        section: "Traffic Impact Fee (TIF)"
+        section_ordinal: 1
+        stop_at: "Total Traffic Impact Fee (TIF)"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 510, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 510, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 510, fiscal_year: 2026}
+          - {fund_group: capital, fund: 510, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-tvtc-20-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total TVTC 20% Fee"
+    parts:
+      - page: 132
+        section: "TVTC 20% Fee"
+        section_ordinal: 1
+        stop_at: "Total TVTC 20% Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 511, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 511, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 511, fiscal_year: 2026}
+          - {fund_group: capital, fund: 511, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-park-fee-ab-1600
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Park Fee - AB 1600"
+    parts:
+      - page: 133
+        section: "Park Fee - AB 1600"
+        section_ordinal: 1
+        stop_at: "Total Park Fee - AB 1600"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 512, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 512, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 512, fiscal_year: 2026}
+          - {fund_group: capital, fund: 512, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-solid-waste-recyc-impact-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Solid Waste & Recyc Impact Fee"
+    parts:
+      - page: 133
+        section: "Solid Waste & Recyc Impact Fee"
+        section_ordinal: 1
+        stop_at: "Total Solid Waste & Recyc Impact Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 513, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 513, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 513, fiscal_year: 2026}
+          - {fund_group: capital, fund: 513, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+
+  - id: fund-rev-2022-cop-construction-fund
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total 2022 COP Construction Fund"
+    parts:
+      - page: 133
+        section: "2022 COP Construction Fund"
+        section_ordinal: 1
+        stop_at: "Total 2022 COP Construction Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 540, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 540, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 540, fiscal_year: 2026}
+          - {fund_group: capital, fund: 540, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-county-measure-d
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total County Measure D"
+    parts:
+      - page: 133
+        section: "County Measure D"
+        section_ordinal: 1
+        stop_at: "Total County Measure D"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 550, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 550, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 550, fiscal_year: 2026}
+          - {fund_group: capital, fund: 550, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-county-meas-bb-bike-pedestrian
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total County Meas BB-Bike/Pedestrian"
+    parts:
+      - page: 133
+        section: "County Meas BB-Bike/Pedestrian"
+        section_ordinal: 1
+        stop_at: "Total County Meas BB-Bike/Pedestrian"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 551, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 551, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 551, fiscal_year: 2026}
+          - {fund_group: capital, fund: 551, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-county-meas-bb-local-st-rd
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total County Meas BB-Local St & Rd"
+    parts:
+      - page: 133
+        section: "County Meas BB-Local St & Rd"
+        section_ordinal: 1
+        stop_at: "Total County Meas BB-Local St & Rd"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 552, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 552, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 552, fiscal_year: 2026}
+          - {fund_group: capital, fund: 552, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-county-measure-f-veh-reg-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total County Measure F Veh Reg Fee"
+    parts:
+      - page: 133
+        section: "County Measure F Veh Reg Fee"
+        section_ordinal: 1
+        stop_at: "Total County Measure F Veh Reg Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 553, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 553, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 553, fiscal_year: 2026}
+          - {fund_group: capital, fund: 553, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-state-gas-tax
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total State - Gas Tax"
+    total_spans_parts: true
+    parts:
+      - page: 133
+        section: "State - Gas Tax"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 560, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 560, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 560, fiscal_year: 2026}
+          - {fund_group: capital, fund: 560, fiscal_year: 2027}
+        omitted_rows: ["Charges for Services", "Use of Money & Prop"]
+      - page: 134
+        section: "FY 2026-27\n"
+        stop_at: "Total State - Gas Tax"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 560, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 560, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 560, fiscal_year: 2026}
+          - {fund_group: capital, fund: 560, fiscal_year: 2027}
+        omitted_rows: ["Intergovernmental"]
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-state-sb1
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total State - SB1"
+    parts:
+      - page: 134
+        section: "State - SB1"
+        section_ordinal: 1
+        stop_at: "Total State - SB1"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 561, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 561, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 561, fiscal_year: 2026}
+          - {fund_group: capital, fund: 561, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-developers-deposit
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Developers Deposit"
+    parts:
+      - page: 134
+        section: "Developers Deposit"
+        section_ordinal: 1
+        stop_at: "Total Developers Deposit"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 580, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 580, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 580, fiscal_year: 2026}
+          - {fund_group: capital, fund: 580, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-transferable-development-cred
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Transferable Development Cred"
+    parts:
+      - page: 134
+        section: "Transferable Development Cred"
+        section_ordinal: 1
+        stop_at: "Total Transferable Development Cred"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: capital, fund: 582, fiscal_year: 2024, basis: actual}
+          - {fund_group: capital, fund: 582, fiscal_year: 2025, basis: revised}
+          - {fund_group: capital, fund: 582, fiscal_year: 2026}
+          - {fund_group: capital, fund: 582, fiscal_year: 2027}
+    rows:
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-2020-cops-series-a
+    kind: transfer_in
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total 2020 COPS Series A"
+    note: >-
+      Transfers only: the fund's printed Total covers one Transfers In row and no
+      revenue, so the kind is the rule's rather than a per-row override.
+    parts:
+      - page: 134
+        section: "2020 COPS Series A"
+        section_ordinal: 1
+        stop_at: "Total 2020 COPS Series A"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2024, basis: actual}
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2025, basis: revised}
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2026}
+          - {fund_group: debt-service, fund: 400, fiscal_year: 2027}
+    rows:
+      - {label: "Transfers In", category: transfers/in}
+
+  - id: fund-rev-2020-cops-series-b
+    kind: transfer_in
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total 2020 COPS Series B"
+    note: >-
+      Transfers only: the fund's printed Total covers one Transfers In row and no
+      revenue, so the kind is the rule's rather than a per-row override.
+    parts:
+      - page: 134
+        section: "2020 COPS Series B"
+        section_ordinal: 1
+        stop_at: "Total 2020 COPS Series B"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2024, basis: actual}
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2025, basis: revised}
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2026}
+          - {fund_group: debt-service, fund: 401, fiscal_year: 2027}
+    rows:
+      - {label: "Transfers In", category: transfers/in}
+
+  - id: fund-rev-2022-cops
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total 2022 COPS"
+    parts:
+      - page: 134
+        section: "2022 COPS"
+        section_ordinal: 1
+        stop_at: "Total 2022 COPS"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2024, basis: actual}
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2025, basis: revised}
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2026}
+          - {fund_group: debt-service, fund: 402, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-doolan-canyon-preserve-endow
+    kind: transfer_in
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Doolan Canyon Preserve Endow"
+    note: >-
+      Transfers only: the fund's printed Total covers one Transfers In row and no
+      revenue, so the kind is the rule's rather than a per-row override.
+    parts:
+      - page: 134
+        section: "Doolan Canyon Preserve Endow"
+        section_ordinal: 1
+        stop_at: "Total Doolan Canyon Preserve Endow"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: permanent, fund: 470, fiscal_year: 2024, basis: actual}
+          - {fund_group: permanent, fund: 470, fiscal_year: 2025, basis: revised}
+          - {fund_group: permanent, fund: 470, fiscal_year: 2026}
+          - {fund_group: permanent, fund: 470, fiscal_year: 2027}
+    rows:
+      - {label: "Transfers In", category: transfers/in}
+
+  - id: fund-rev-low-income-housing-fund
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Low Income Housing Fund"
+    parts:
+      - page: 135
+        section: "Low Income Housing Fund"
+        section_ordinal: 1
+        stop_at: "Total Low Income Housing Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, measured off the page.
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-housing-successor-agency
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Housing Successor Agency"
+    parts:
+      - page: 135
+        section: "Housing Successor Agency"
+        section_ordinal: 1
+        stop_at: "Total Housing Successor Agency"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 201, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-soef-social-op-endowment
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total SOEF (Social Op Endowment)"
+    parts:
+      - page: 135
+        section: "SOEF (Social Op Endowment)"
+        section_ordinal: 1
+        stop_at: "Total SOEF (Social Op Endowment)"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 202, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+
+  - id: fund-rev-mortgage-assistance
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Mortgage Assistance"
+    parts:
+      - page: 135
+        section: "Mortgage Assistance"
+        section_ordinal: 1
+        stop_at: "Total Mortgage Assistance"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 203, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-hhs-loan-fund
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total HHS Loan Fund"
+    parts:
+      - page: 135
+        section: "HHS Loan Fund"
+        section_ordinal: 1
+        stop_at: "Total HHS Loan Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 204, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-cal-home-reuse
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Cal Home Reuse"
+    parts:
+      - page: 135
+        section: "Cal Home Reuse"
+        section_ordinal: 1
+        stop_at: "Total Cal Home Reuse"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 205, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-california-begin-program
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total California Begin Program"
+    parts:
+      - page: 135
+        section: "California Begin Program"
+        section_ordinal: 1
+        stop_at: "Total California Begin Program"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 206, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-local-housing-trust
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Local Housing Trust"
+    parts:
+      - page: 136
+        section: "Local Housing Trust"
+        section_ordinal: 1
+        stop_at: "Total Local Housing Trust"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 207, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-horizons
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Horizons"
+    parts:
+      - page: 136
+        section: "Horizons"
+        section_ordinal: 1
+        stop_at: "Total Horizons"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 210, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-police-evidence
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Police Evidence"
+    parts:
+      - page: 136
+        section: "Police Evidence"
+        section_ordinal: 1
+        stop_at: "Total Police Evidence"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 211, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+
+  - id: fund-rev-grant-federal-grant-fund
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Grant - Federal Grant Fund"
+    parts:
+      - page: 136
+        section: "Grant - Federal Grant Fund"
+        section_ordinal: 1
+        stop_at: "Total Grant - Federal Grant Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 220, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-asset-seizure-dep-of-justice
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Asset Seizure - Dep of Justice"
+    parts:
+      - page: 136
+        section: "Asset Seizure - Dep of Justice"
+        section_ordinal: 1
+        stop_at: "Total Asset Seizure - Dep of Justice"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 221, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-asset-seizure-treasury
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Asset Seizure - Treasury"
+    parts:
+      - page: 136
+        section: "Asset Seizure - Treasury"
+        section_ordinal: 1
+        stop_at: "Total Asset Seizure - Treasury"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 222, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-grant-hud-edi-special-grant
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Grant - HUD EDI Special Grant"
+    parts:
+      - page: 136
+        section: "Grant - HUD EDI Special Grant"
+        section_ordinal: 1
+        stop_at: "Total Grant - HUD EDI Special Grant"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 223, fiscal_year: 2027}
+    rows:
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-grant-cdbg
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Grant - CDBG"
+    parts:
+      - page: 136
+        section: "Grant - CDBG"
+        section_ordinal: 1
+        stop_at: "Total Grant - CDBG"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 224, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-grant-home-grant
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Grant - Home Grant"
+    parts:
+      - page: 137
+        section: "Grant - Home Grant"
+        section_ordinal: 1
+        stop_at: "Total Grant - Home Grant"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 225, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-fema-funding
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total FEMA Funding"
+    parts:
+      - page: 137
+        section: "FEMA Funding"
+        section_ordinal: 1
+        stop_at: "Total FEMA Funding"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 226, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-grant-state-grant-fund
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Grant - State Grant Fund"
+    parts:
+      - page: 137
+        section: "Grant - State Grant Fund"
+        section_ordinal: 1
+        stop_at: "Total Grant - State Grant Fund"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 240, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-opioid-settlement
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Opioid Settlement"
+    parts:
+      - page: 137
+        section: "Opioid Settlement"
+        section_ordinal: 1
+        stop_at: "Total Opioid Settlement"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 241, fiscal_year: 2027}
+    rows:
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-pd-cops-grant
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total PD COPS Grant"
+    parts:
+      - page: 137
+        section: "PD COPS Grant"
+        section_ordinal: 1
+        stop_at: "Total PD COPS Grant"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 242, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-grant-local-other-grants
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Grant - Local & Other Grants"
+    parts:
+      - page: 137
+        section: "Grant - Local & Other Grants"
+        section_ordinal: 1
+        stop_at: "Total Grant - Local & Other Grants"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 260, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 260, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 260, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 260, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-downtown-revitalization-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Downtown Revitalization Fee"
+    parts:
+      - page: 137
+        section: "Downtown Revitalization Fee"
+        section_ordinal: 1
+        stop_at: "Total Downtown Revitalization Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 280, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 280, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 280, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 280, fiscal_year: 2027}
+    rows:
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-host-community-impact-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Host Community Impact Fee"
+    parts:
+      - page: 137
+        section: "Host Community Impact Fee"
+        section_ordinal: 1
+        stop_at: "Total Host Community Impact Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 282, fiscal_year: 2027}
+    rows:
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-city-street-sweeping-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total City Street Sweeping Fee"
+    parts:
+      - page: 138
+        section: "FY 2026-27\n"
+        stop_at: "Total City Street Sweeping Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 283, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-public-art-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Public Art Fee"
+    parts:
+      - page: 138
+        section: "Public Art Fee"
+        section_ordinal: 1
+        stop_at: "Total Public Art Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 284, fiscal_year: 2027}
+    rows:
+      - {label: "Other Taxes", category: taxes/other}
+
+  - id: fund-rev-vehicle-impound-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Vehicle Impound Fee"
+    parts:
+      - page: 138
+        section: "Vehicle Impound Fee"
+        section_ordinal: 1
+        stop_at: "Total Vehicle Impound Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 285, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+
+  - id: fund-rev-accessibility-compliance
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Accessibility Compliance"
+    parts:
+      - page: 138
+        section: "Accessibility Compliance"
+        section_ordinal: 1
+        stop_at: "Total Accessibility Compliance"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 286, fiscal_year: 2027}
+    rows:
+      - {label: "Other Taxes", category: taxes/other}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-peg-capital-fees
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total PEG Capital Fees"
+    parts:
+      - page: 138
+        section: "PEG Capital Fees"
+        section_ordinal: 1
+        stop_at: "Total PEG Capital Fees"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 287, fiscal_year: 2027}
+    rows:
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-import-mitigation-fee
+    kind: transfer_in
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Import Mitigation Fee"
+    note: >-
+      Transfers only: the fund's printed Total covers one Transfers In row and no
+      revenue, so the kind is the rule's rather than a per-row override.
+    parts:
+      - page: 138
+        section: "Import Mitigation Fee"
+        section_ordinal: 1
+        stop_at: "Total Import Mitigation Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 288, fiscal_year: 2027}
+    rows:
+      - {label: "Transfers In", category: transfers/in}
+
+  - id: fund-rev-solid-waste-recycling-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Solid Waste & Recycling Fee"
+    parts:
+      - page: 138
+        section: "Solid Waste & Recycling Fee"
+        section_ordinal: 1
+        stop_at: "Total Solid Waste & Recycling Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 289, fiscal_year: 2027}
+    rows:
+      - {label: "Charges for Services", category: charges-for-services}
+
+  - id: fund-rev-human-services-facility-fee
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Human Services Facility Fee"
+    parts:
+      - page: 138
+        section: "Human Services Facility Fee"
+        section_ordinal: 1
+        stop_at: "Total Human Services Facility Fee"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 290, fiscal_year: 2027}
+    rows:
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-open-space-acquisition-mgmt
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Open Space Acquisition & Mgmt"
+    total_spans_parts: true
+    parts:
+      - page: 138
+        section: "Open Space Acquisition & Mgmt"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2027}
+        omitted_rows: ["Miscellaneous Rev"]
+      - page: 139
+        section: "FY 2026-27\n"
+        stop_at: "Total Open Space Acquisition & Mgmt"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 300, fiscal_year: 2027}
+        omitted_rows: ["Intergovernmental", "Use of Money & Prop", "ContributionsOutSrce"]
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-downtown-lmd
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Downtown LMD"
+    parts:
+      - page: 139
+        section: "Downtown LMD"
+        section_ordinal: 1
+        stop_at: "Total Downtown LMD"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 310, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", category: taxes/property}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-other-lmd
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Other LMD"
+    parts:
+      - page: 139
+        section: "Other LMD"
+        section_ordinal: 1
+        stop_at: "Total Other LMD"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 311, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", category: taxes/property}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-el-charro-cfd-2009-1-maint
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total El Charro CFD 2009-1 Maint"
+    parts:
+      - page: 139
+        section: "El Charro CFD 2009-1 Maint"
+        section_ordinal: 1
+        stop_at: "Total El Charro CFD 2009-1 Maint"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 320, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", category: taxes/property}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-other-maintenance-cfds
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Other Maintenance CFDs"
+    parts:
+      - page: 139
+        section: "Other Maintenance CFDs"
+        section_ordinal: 1
+        stop_at: "Total Other Maintenance CFDs"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 321, fiscal_year: 2027}
+    rows:
+      - {label: "Property Taxes", category: taxes/property}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+
+  - id: fund-rev-library-donations
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Library Donations"
+    parts:
+      - page: 139
+        section: "Library Donations"
+        section_ordinal: 1
+        stop_at: "Total Library Donations"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 330, fiscal_year: 2027}
+    rows:
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+
+  - id: fund-rev-police-donations
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Police Donations"
+    parts:
+      - page: 139
+        section: "Police Donations"
+        section_ordinal: 1
+        stop_at: "Total Police Donations"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2024, basis: actual}
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2025, basis: revised}
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2026}
+          - {fund_group: special-revenue, fund: 331, fiscal_year: 2027}
+    rows:
+      - {label: "ContributionsOutSrce", category: contributions-outsourced}
+      - {label: "Oth Financing Source", category: other-financing-sources}
+
+  - id: fund-rev-general-liability
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total General Liability"
+    total_spans_parts: true
+    parts:
+      - page: 139
+        section: "General Liability"
+        section_ordinal: 1
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2027}
+        omitted_rows: ["Miscellaneous Rev", "Transfers In"]
+      - page: 140
+        section: "FY 2026-27\n"
+        stop_at: "Total General Liability"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 700, fiscal_year: 2027}
+        omitted_rows: ["Intergovernmental"]
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-workers-comp-insurance
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Workers Comp Insurance"
+    parts:
+      - page: 140
+        section: "Workers Comp Insurance"
+        section_ordinal: 1
+        stop_at: "Total Workers Comp Insurance"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 710, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
+  - id: fund-rev-information-technology
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Information Technology"
+    parts:
+      - page: 140
+        section: "Information Technology"
+        section_ordinal: 1
+        stop_at: "Total Information Technology"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 720, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+
+  - id: fund-rev-fleet-equipment-services
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Fleet & Equipment Services"
+    parts:
+      - page: 140
+        section: "Fleet & Equipment Services"
+        section_ordinal: 1
+        stop_at: "Total Fleet & Equipment Services"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 730, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Miscellaneous Rev", category: miscellaneous-revenue}
+
+  - id: fund-rev-facilities-rehab-pgm
+    kind: revenue
+    basis: adopted
+    scope: revenue-by-fund
+    units: dollars
+    total_row: "Total Facilities Rehab Pgm"
+    parts:
+      - page: 140
+        section: "Facilities Rehab Pgm"
+        section_ordinal: 1
+        stop_at: "Total Facilities Rehab Pgm"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2024, basis: actual}
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2025, basis: revised}
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2026}
+          - {fund_group: internal-service, fund: 740, fiscal_year: 2027}
+    rows:
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Charges for Services", category: charges-for-services}
+      - {label: "Use of Money & Prop", category: use-of-money-and-property}
+      - {label: "Transfers In", category: transfers/in, kind: transfer_in}
+
 rollups:
   # --------------------------------------------------------------------------
   - id: dept-city-council
@@ -1265,3 +3107,22 @@ rollups:
       - div-maintenance
       - div-environmental-services
       - div-fire-administration
+
+  # --------------------------------------------------------------------------
+  - id: gf-total-revenues
+    page: 130
+    total_row: "Total General Fund"
+    covers: [gf-rev-property-taxes, gf-rev-sales-taxes, gf-rev-other-taxes,
+             gf-rev-licenses-permits, gf-rev-fines-forfeitures,
+             gf-rev-intergovernmental, gf-rev-charges-for-services,
+             gf-rev-use-of-money-and-property, gf-rev-contributions-outsourced,
+             gf-rev-miscellaneous-revenue]
+
+  - id: other-funds-total-sources
+    page: 140
+    total_row: "Total Sources"
+    unassertable: >-
+      p140 prints this as the closing line of pp.131-140 and no rule structure
+      here can assert it. It exceeds the 69 printed fund totals it closes by
+      58,773,547 / 58,836,449 / 56,492,834 / 57,373,508 -- a different amount in
+      every column, so neither rounding nor one omitted fund.
