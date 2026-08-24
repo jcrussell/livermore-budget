@@ -165,6 +165,15 @@ func TestARollupSumsPrintedTotalsAndNotLeaves(t *testing.T) {
 // TestARollupFailsWhenARuleIsMissingFromCovers proves the check is failable in
 // the way it exists to be: a division that belongs to the department but is not
 // claimed by it.
+//
+// IT ALSO PINS THE SIGN, which is fisc-7a6 and which this test did not do
+// before. Asserting only that the two figures appear passes whichever direction
+// the difference is printed in, and CheckRollup printed the negation of the
+// quantity it had computed -- inherited, along with the comment justifying the
+// direction, from compareTotals, which had the same inversion. A test that
+// names both totals and shrugs at the number between them is how that survived
+// a review; see TestTheUndeclaredFailureStatesTheDeltaToPasteIn for the same
+// defect at the site where the number is meant to be pasted into a declaration.
 func TestARollupFailsWhenARuleIsMissingFromCovers(t *testing.T) {
 	f, r := adminResolver(t,
 		"    covers: [div-administrative-services, div-finance]")
@@ -177,6 +186,15 @@ func TestARollupFailsWhenARuleIsMissingFromCovers(t *testing.T) {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("error = %v, want it to name %s", err, want)
 		}
+	}
+	// STATED MINUS SUMMED: the document states 6,311,564 and the two covered
+	// rules state 4,321,103, so the rollup is short by Human Resources' own
+	// printed total and the shortfall reads POSITIVE.
+	if got, want := err.Error(), "off by $1,990,461.00"; !strings.Contains(got, want) {
+		t.Errorf("error does not say %q, the missing division's own total: %v", want, err)
+	}
+	if strings.Contains(err.Error(), "off by -$1,990,461.00") {
+		t.Errorf("the shortfall is reported with the sign inverted: %v", err)
 	}
 }
 
@@ -487,5 +505,200 @@ func TestAWhitespaceUnassertableIsRefused(t *testing.T) {
 		t.Fatal("accepted a whitespace-only unassertable")
 	} else if !strings.Contains(err.Error(), "is whitespace; omit it or give the reason") {
 		t.Errorf("error = %v", err)
+	}
+}
+
+// TestARollupWhoseRulesStateDifferentColumnsFailsClosed is fisc-7fe, and the
+// fixture is built so that the BUG PRODUCES A CLEAN TIE.
+//
+// Both covered rules state ONE column, so the width guard is satisfied. But
+// div-one's total is stated over FY2026 and div-two's over FY2027, and the
+// printed DEPARTMENT TOTAL of $400 is exactly 100 + 300. With only a length
+// test, this rollup adds one year to another and reports success -- the
+// plausible wrong value this project exists to refuse, arrived at by a check
+// whose whole job was to prevent one.
+//
+// WHY THE PARSER CANNOT SEE IT. validateRollups compares each covered rule's
+// Parts[0].Columns and they agree here: div-two's FIRST part is its labels_from
+// continuation on page 2, declared over FY2026, while the part that BEARS its
+// printed total is page 3, declared over FY2027. Which part bears the total
+// needs the pages, which is the reason CheckRollup takes its columns from the
+// bearer -- and then, until this test, compared only how many there were.
+func TestARollupWhoseRulesStateDifferentColumnsFailsClosed(t *testing.T) {
+	pages := map[int]string{
+		1: "Division One\nWages 100\nTotal $100\nDEPARTMENT TOTAL $400\n",
+		2: "CONTINUED\n50\nEND\n",
+		3: "Division Two\nWages 300\nTotal $300\n",
+	}
+	const src = `schema_version: 1
+doc_id: columns-doc
+
+rules:
+  - id: div-one
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+    parts:
+      - page: 1
+        section: "Division One"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+
+  - id: div-two
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+    parts:
+      - page: 2
+        labels_from: 3
+        section: "CONTINUED"
+        stop_at: "END"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+      - page: 3
+        section: "Division Two"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2027}
+
+rollups:
+  - id: dept-total
+    page: 1
+    total_row: "DEPARTMENT TOTAL"
+    covers: [div-one, div-two]
+`
+	f, err := Parse(strings.NewReader(src), "columns.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	r, err := NewResolver(inlineDoc(t, f.DocID, pages), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	_, err = r.CheckRollup(&f.Rollups[0])
+	if err == nil {
+		t.Fatal("a rollup summing an FY2026 total into an FY2027 one reported a clean tie")
+	}
+	// Naming both rules and both columns, because "the columns differ" leaves
+	// the author to work out which of the two declarations is the wrong one.
+	for _, want := range []string{"div-one", "div-two", "FY2026", "FY2027", "column 1"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not mention %q: %v", want, err)
+		}
+	}
+}
+
+// TestARollupAcrossTwoBasesFailsClosed is the half of fisc-7fe that comparing
+// Column values alone would have missed, and it was found reviewing the fix.
+//
+// Column.Basis is an OVERRIDE, empty on almost every column in this corpus.
+// fact.FromValues falls back to the rule's basis, so these two rules publish
+// facts on different bases while their column blocks are byte-identical and
+// every Column compares equal. Summing a revised total into an adopted one is
+// the same defect as summing FY2026 into FY2027 -- one printed figure added to
+// another that means something else -- reached through the other declaration.
+//
+// The fixture ties at $400 under the bug, so the wrong implementation reports
+// success rather than a different failure.
+func TestARollupAcrossTwoBasesFailsClosed(t *testing.T) {
+	pages := map[int]string{
+		1: "Division One\nWages 100\nTotal $100\nDEPARTMENT TOTAL $400\n",
+		2: "Division Two\nWages 300\nTotal $300\n",
+	}
+	const src = `schema_version: 1
+doc_id: bases-doc
+
+rules:
+  - id: div-one
+    kind: expenditure
+    basis: adopted
+    scope: all-funds-gross
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+    parts:
+      - page: 1
+        section: "Division One"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+
+  - id: div-two
+    kind: expenditure
+    basis: revised
+    scope: all-funds-gross
+    units: dollars
+    total_row: "Total"
+    rows:
+      - {label: "Wages", category: wages-and-benefits}
+    parts:
+      - page: 2
+        section: "Division Two"
+        stop_at: "Total"
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+
+rollups:
+  - id: dept-total
+    page: 1
+    total_row: "DEPARTMENT TOTAL"
+    covers: [div-one, div-two]
+`
+	f, err := Parse(strings.NewReader(src), "bases.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	r, err := NewResolver(inlineDoc(t, f.DocID, pages), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	_, err = r.CheckRollup(&f.Rollups[0])
+	if err == nil {
+		t.Fatal("a rollup summing a revised total into an adopted one reported a clean tie")
+	}
+	for _, want := range []string{"adopted", "revised"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not name the %s basis: %v", want, err)
+		}
+	}
+}
+
+// TestARollupCoveringNothingErrorsRatherThanPanicking is fisc-t9h.
+//
+// The covers list is emptied AFTER parsing, which is not a contrivance: it is
+// what a second caller looks like. The parser refuses a rollup declaring
+// neither covers nor unassertable and pkg/cmd/build skips CheckRollup for an
+// unassertable one, so both of today's guards live outside this function --
+// and CheckRollup is exported. A verify-side structural sweep over
+// Subject.Resolvers reaches it by doing nothing wrong.
+//
+// A panic is not a closed failure, whatever it stops. Same class as the
+// Parts[0] panic fisc-3bl fixed here, one caller further away.
+func TestARollupCoveringNothingErrorsRatherThanPanicking(t *testing.T) {
+	f, r := adminResolver(t, adminCovers)
+	ro := &f.Rollups[0]
+	ro.Covers = nil
+
+	defer func() {
+		if p := recover(); p != nil {
+			t.Fatalf("CheckRollup panicked on a rollup covering nothing: %v", p)
+		}
+	}()
+	_, err := r.CheckRollup(ro)
+	if err == nil {
+		t.Fatal("a rollup covering nothing was accepted")
+	}
+	if !strings.Contains(err.Error(), ro.ID) {
+		t.Errorf("error does not name the rollup %q: %v", ro.ID, err)
 	}
 }

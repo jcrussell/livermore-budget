@@ -127,6 +127,54 @@ func TestP127NeedsItsDeltaDeclared(t *testing.T) {
 	})
 }
 
+// TestTheUndeclaredFailureStatesTheDeltaToPasteIn is fisc-7a6, and p127 is the
+// fixture that shows why the sign is not cosmetic.
+//
+// compareTotals computes `diff := stated - mapped` under a comment saying the
+// direction is chosen so a failure can be pasted into a stated_total_deltas
+// declaration -- and then printed `mapped - stated`, the negation of what it
+// had just computed. Its own next branch printed `diff`, so ONE FUNCTION
+// REPORTED THE SAME QUANTITY IN TWO DIRECTIONS three lines apart.
+//
+// The consequence is not a cosmetic slip, it is a loop. p127 column 1 maps
+// 58,179,467 against a printed 58,179,468. An author reading the old message
+// declared delta_cents: -100, and got back "declared delta -$1.00 but the
+// difference is $1.00" -- the second branch, correctly signed, contradicting
+// the first. The number in the failure was the one number that could not be
+// pasted in.
+//
+// So this test pins the two branches AGAINST EACH OTHER rather than against a
+// literal. A future edit that re-inverts either one has to make them disagree
+// to pass, and that is the defect itself.
+func TestTheUndeclaredFailureStatesTheDeltaToPasteIn(t *testing.T) {
+	r, ru := p127Resolver(t, "")
+	_, err := r.CheckTotals(ru, &ru.Parts[0])
+	if err == nil {
+		t.Fatal("CheckTotals succeeded; an undeclared discrepancy must fail")
+	}
+	got := diagnosis(t, err)
+	if !strings.Contains(got, "off by $1.00") {
+		t.Errorf("the undeclared failure does not offer the delta to declare:\n%s", got)
+	}
+	// The negation must be absent, not merely outranked by a substring match:
+	// "off by $1.00" is not a substring of "off by -$1.00", but asserting its
+	// absence is what states the claim.
+	if strings.Contains(got, "off by -$1.00") {
+		t.Errorf("the undeclared failure reports the delta with the sign inverted:\n%s", got)
+	}
+
+	// Now paste it in. The declaration the message just offered must be the one
+	// that ties -- which is the whole content of "a failure message can be
+	// pasted into a declaration", and what the inverted sign made false.
+	r, ru = p127Resolver(t, declaration)
+	if _, err := r.CheckTotals(ru, &ru.Parts[0]); err != nil {
+		t.Fatalf("the delta the failure named does not tie: %v", err)
+	}
+	if !strings.Contains(declaration, "delta_cents: 100") {
+		t.Fatal("this test assumes the fixture declares +100; it no longer does")
+	}
+}
+
 // TestDeclaredDeltaAcceptsThatFigureAndNoOther is the other half of fisc-2sd's
 // acceptance criteria. A declaration is a claim about one exact figure, so
 // every neighbouring figure must still fail -- otherwise it is a tolerance

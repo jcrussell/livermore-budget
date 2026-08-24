@@ -938,6 +938,21 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A rollup covering nothing indexes rules[0] below and would panic there.
+	// Two things keep that unreachable today and NEITHER IS THIS FUNCTION'S:
+	// the parser refuses a rollup declaring neither covers nor unassertable,
+	// and pkg/cmd/build skips CheckRollup entirely for an unassertable one.
+	// CheckRollup is exported, so a second caller -- the verify-side structural
+	// sweep reading Subject.Resolvers is the obvious one -- reintroduces the
+	// panic by doing nothing wrong. Same class as the Parts[0] panic fisc-3bl
+	// already fixed here, one caller further away.
+	if len(rules) == 0 {
+		return nil, cmdutil.WithHint(
+			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				Field: "covers", Err: ErrNotFound, Msg: "names no rule to sum"},
+			"a rollup either lists the rules its printed total covers or "+
+				"declares unassertable with the reason it cannot be checked")
+	}
 
 	// The columns come from the part that PRINTS each rule's total, not from
 	// its first part. A rule may declare its columns per part, so a stated
@@ -945,8 +960,31 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 	// from Parts[0] and indexing with it read off the end of the sum. The
 	// parser's own guard compares Parts[0] for the same reason and cannot
 	// close this, because which part bears the total needs the pages.
+	//
+	// THE COMPARISON IS THE COLUMNS THEMSELVES AND NOT THEIR COUNT. An earlier
+	// version tested only len(stated) != len(sums), which let two rules whose
+	// bearer parts declare the same NUMBER of differently-labelled columns be
+	// summed against each other: rule A's FY2026 general added to rule B's
+	// FY2027 general, reported as a clean tie. The width test is what stops the
+	// sum reading off its own end; it is not what makes the sum MEAN anything.
+	//
+	// Element by element over the whole Column, so fund and skip are compared
+	// too. Fund matters as soon as a single-fund schedule is covered, and a
+	// bearer carrying skip on a DIFFERENT column silently changes which columns
+	// the tie loop below examines, because that loop reads Skip off the first
+	// bearer only.
+	//
+	// THE BASIS COMPARED IS THE EFFECTIVE ONE, not Column.Basis. That field is
+	// an OVERRIDE: fact.FromValues falls back to the rule's basis when it is
+	// empty, so two rules declaring `basis: adopted` and `basis: revised` with
+	// byte-identical column blocks produce facts on different bases while every
+	// Column compares equal. Summing an adopted total into a revised one is the
+	// same defect as summing FY2026 into FY2027, reached through the other
+	// declaration, and a comparison that missed it would close half a hole while
+	// claiming the whole one.
 	var cols []Column
 	var sums []amount.Cents
+	var first *Rule
 	bearers := make([]*Part, 0, len(rules))
 	for _, rule := range rules {
 		stated, bearer, ruleErr := r.ruleStatedTotals(rule)
@@ -955,16 +993,28 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 		}
 		bearers = append(bearers, bearer)
 		if cols == nil {
-			cols, sums = bearer.Columns, make([]amount.Cents, len(stated))
+			cols, sums, first = bearer.Columns, make([]amount.Cents, len(stated)), rule
 		}
 		if len(stated) != len(sums) {
 			return nil, cmdutil.WithHint(
 				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
 					Msg: fmt.Sprintf("rule %q states %d columns and rule %q states %d",
-						rules[0].ID, len(sums), rule.ID, len(stated))},
+						first.ID, len(sums), rule.ID, len(stated))},
 				"a rollup adds these totals column by column, so every covered "+
 					"rule must state the same number of them")
+		}
+		if i := firstDifferingColumn(effectiveColumns(first, bearers[0]), effectiveColumns(rule, bearer)); i >= 0 {
+			return nil, cmdutil.WithHint(
+				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+					Field: "covers", Err: ErrNotFound,
+					Msg: fmt.Sprintf("rule %q states column %d on p%d as %s and rule %q states it on p%d as %s",
+						first.ID, i+1, bearers[0].Page, columnIdentity(effectiveColumns(first, bearers[0])[i]),
+						rule.ID, bearer.Page, columnIdentity(effectiveColumns(rule, bearer)[i]))},
+				"a rollup adds these totals column by column, so column N of "+
+					"every covered rule's total must be the same column; the "+
+					"parser compares each rule's FIRST part and cannot see this, "+
+					"because which part bears the total needs the pages")
 		}
 		for i, c := range stated {
 			sums[i] += c
@@ -990,7 +1040,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 		// in, so a failure reads like every other totals failure here.
 		if diff := stated[i] - sums[i]; diff != 0 {
 			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): the %d covered rules state %s, the document states %s, off by %s",
-				i+1, col.FundGroup, col.FiscalYear, len(rules), sums[i], stated[i], sums[i]-stated[i]))
+				i+1, col.FundGroup, col.FiscalYear, len(rules), sums[i], stated[i], diff))
 		}
 	}
 	if len(bad) == 0 {
@@ -1228,7 +1278,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 		switch {
 		case !isDeclared:
 			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, off by %s",
-				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], sums[c]-stated[c]))
+				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], diff))
 		case diff == 0:
 			// The declaration has outlived the discrepancy. Failing is the
 			// point: a stale claim about the city's arithmetic that nothing
@@ -1338,3 +1388,68 @@ func dropCurrencyMarks(toks []token) ([]token, error) {
 // alone, and it recognises only the mark itself rather than any token the
 // amount grammar happens to reject.
 func isCurrencyMark(s string) bool { return s == "$" }
+
+// firstDifferingColumn is the index where two column runs disagree, or -1.
+//
+// It reports the INDEX rather than a bool so the error can name the column that
+// differs. Comparing whole Column values is deliberate: every field of it
+// changes what a figure in that position MEANS, so there is no subset worth
+// exempting.
+func firstDifferingColumn(a, b []Column) int {
+	// Length first. Iterating only `a` would report agreement whenever `a` is a
+	// PREFIX of a longer `b` -- unreachable from CheckRollup, whose width guard
+	// runs before this, but the helper reads as general and the next caller
+	// would inherit the same one-caller-away hole fisc-t9h is about.
+	if len(a) != len(b) {
+		return min(len(a), len(b))
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return i
+		}
+	}
+	return -1
+}
+
+// effectiveColumns is a rule's bearer-part columns with the basis each figure
+// is actually published on filled in.
+//
+// Column.Basis is an override and is usually empty; the basis in force is the
+// rule's. Comparing the declarations rather than the effective values is what
+// let two rules on different bases read as the same columns.
+func effectiveColumns(rule *Rule, p *Part) []Column {
+	out := make([]Column, len(p.Columns))
+	for i, c := range p.Columns {
+		if c.Basis == "" {
+			c.Basis = rule.Basis
+		}
+		out[i] = c
+	}
+	return out
+}
+
+// columnIdentity renders a column as the thing it IDENTIFIES, which is not what
+// geometry.go's describeColumn renders.
+//
+// The two answer different questions and neither generalises. describeColumn
+// answers "which column is this token in", a positional question where basis and
+// fund are noise and a skipped column has no identity worth printing. This
+// answers "are these two the same column", where every field is discriminating
+// -- including Skip, since a skipped column and a read one in the same position
+// are precisely not the same column.
+//
+// Fund and basis appear only when set, because a schedule with neither would
+// otherwise report "fund 0" on every column and bury the fields that do differ.
+func columnIdentity(c Column) string {
+	out := fmt.Sprintf("%s FY%d", c.FundGroup, c.FiscalYear)
+	if c.Basis != "" {
+		out += " " + string(c.Basis)
+	}
+	if c.Fund != 0 {
+		out += fmt.Sprintf(" fund %d", c.Fund)
+	}
+	if c.Skip {
+		out += " (skipped)"
+	}
+	return out
+}
