@@ -3,11 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
-	"slices"
-	"sort"
 
-	"github.com/jcrussell/livermore-budget/internal/amount"
-	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
@@ -19,7 +15,7 @@ const expenditureDetailScope = "expenditure-by-department"
 
 // The restriction. Both halves are load-bearing and neither is cosmetic.
 //
-// WITHOUT THE KIND HALF the union below meets the spine's revenue, transfer and
+// WITHOUT THE KIND HALF the union meets the spine's revenue, transfer and
 // fund-balance keys — 120, 24 and 48 facts on the committed corpus — against a
 // schedule that prints none of them, and fails at a quarter of a billion dollars
 // before reaching an expenditure.
@@ -27,11 +23,16 @@ const expenditureDetailScope = "expenditure-by-department"
 // WITHOUT THE FUND-GROUP HALF it meets the other five fund groups' expenditure,
 // about $109M in FY2026, because pp.167-170 are a GENERAL FUND schedule.
 // fisc-u2v's revenue-by-fund needs only the kind half, because pp.127-140 cover
-// all six fund groups; copying that restriction here would be wrong.
-const (
-	expenditureDetailKind      = mapping.KindExpenditure
-	expenditureDetailFundGroup = "general"
-)
+// all six fund groups; copying this restriction there would be wrong.
+//
+// Note which field does what: FundGroup FILTERS, and detailKey carries the fund
+// group regardless. Here every key comes out "general" by construction, which is
+// why the distinction is invisible in this check's findings and load-bearing in
+// the next one's.
+var expenditureDetailRestriction = detailRestriction{
+	Kinds:     []mapping.Kind{mapping.KindExpenditure},
+	FundGroup: "general",
+}
 
 // expenditureDetailTiesToSpine asserts Budget Book pp.167-170 reconcile against
 // the citywide spine rather than adding to it.
@@ -56,21 +57,20 @@ const (
 // print "-" in the same categories in the same years. Both sides agree at zero
 // for a documented reason, which is a tie and not a vacancy.
 //
-// THE UNION, NOT THE DETAIL'S KEYS. Iterating only the keys the DETAIL produces
-// would make a dropped rule invisible: delete the two General Services rules and
-// the Patrol/Support/Special-Operations capital outlay rows and both
-// `capital-outlay` and `debt-services` vanish from the detail side entirely, so
-// a detail-keyed loop compares nothing. Both are zero in the budget years, which
-// is worse rather than better — the hole would stay invisible until the city
-// next budgets capital outlay. A spine key inside the restriction with no detail
-// counterpart is a FAILURE.
+// THE UNION, NOT THE DETAIL'S KEYS — see compareDetail. Deleting the two General
+// Services rules and the Patrol/Support/Special-Operations capital outlay rows
+// makes both `capital-outlay` and `debt-services` vanish from the detail side
+// entirely, so a detail-keyed loop would compare nothing. Both are zero in the
+// budget years, which is worse rather than better: the hole would stay invisible
+// until the city next budgets capital outlay.
 //
 // ZERO DECLARED EXCEPTIONS, and that is a property of this schedule rather than
 // a general rule. fisc-u2v's revenue lane needs one, for the General Fund
 // Transfers In row pp.127-130 do not print; if one is ever needed here it must
 // name the scope that covers the key instead and fail if that scope carries no
-// fact there (fisc-aes and fisc-brx, decided jointly). The corpus-wide exception
-// budget across the three detail scopes is zero.
+// fact there, or say in words that the cell is unreconciled (fisc-aes and
+// fisc-brx, decided jointly). The corpus-wide exception budget across the three
+// detail scopes is one, and it is not this schedule's.
 type expenditureDetailTiesToSpine struct{}
 
 var _ Check = (*expenditureDetailTiesToSpine)(nil)
@@ -83,28 +83,17 @@ func (*expenditureDetailTiesToSpine) Description() string {
 		"what the citywide spine publishes for General Fund expenditure"
 }
 
-// cellSum is one side of the comparison: a sum and whether the scope said
-// anything at all about the key.
-//
-// Present is carried separately from a zero sum because they are different
-// claims. "The detail prints this category and it is zero" ties against a spine
-// zero; "the detail has no such key" is the dropped-rule case, and collapsing
-// the two would make the union pointless.
-type cellSum struct {
-	cents   amount.Cents
-	present bool
-}
-
-type detailKey struct {
-	year     int
-	basis    mapping.Basis
-	category string
-}
-
 func (*expenditureDetailTiesToSpine) Run(_ context.Context, s *Subject) (Result, error) {
-	detail := detailSums(s.Facts, expenditureDetailScope)
-	spine := detailSums(s.Facts, spineScope)
+	detail := detailSums(s.Facts, expenditureDetailScope, expenditureDetailRestriction)
+	spine := detailSums(s.Facts, spineScope, expenditureDetailRestriction)
 
+	// VACUOUS WHEN THE DETAIL SCOPE IS EMPTY, and this arm is why the check can
+	// be landed at all rather than a convenience. internal/check's shared
+	// fixture carries a spine expenditure cell with no detail counterpart, so
+	// under a literal "a spine key with no detail is a failure" every test
+	// calling runChecks would go red over a corpus with nothing wrong in it.
+	// No detail at all is a schedule nobody has mapped yet; partial detail is
+	// measured against the whole spine.
 	if len(detail) == 0 {
 		return Result{
 			Status: StatusVacuous,
@@ -115,63 +104,8 @@ func (*expenditureDetailTiesToSpine) Run(_ context.Context, s *Subject) (Result,
 		}, nil
 	}
 
-	// THE SPINE DECIDES WHICH (fiscal year, basis) PAIRS MUST BE RECONCILED,
-	// and the detail does not get a say. This is fisc-u2v's DEFECT 2 one axis
-	// over, and it is not what that bead's wording says: "each pair present in
-	// BOTH scopes" reads naturally as an intersection, and an intersection lets
-	// the detail opt out of a column by dropping it. Measured — spine carrying
-	// FY2026 and FY2027, detail carrying only FY2026 — an intersection passes
-	// with one cell checked and $149,014,579 of General Fund expenditure
-	// silently unreconciled.
-	//
-	// The asymmetry is real and runs one way only. pp.66-67 print no actual or
-	// revised column, so the detail's FY2024 and FY2025 figures have nothing to
-	// tie to and are published unreconciled; that is a gap in the DOCUMENT. A
-	// spine column with no detail behind it is a gap in the MAPPING, which is
-	// this check's business.
-	//
-	// Both sets are computed rather than named: a hard-coded pair list would
-	// stop reconciling a column the day one is mapped, which is the same defect
-	// class as pinning the unprojectedScopes entry count.
-	reconcile := map[yearBasis]bool{}
-	for k := range spine {
-		reconcile[yearBasis{k.year, k.basis}] = true
-	}
-	unmatched := map[yearBasis]bool{}
-	for k := range detail {
-		if yb := (yearBasis{k.year, k.basis}); !reconcile[yb] {
-			unmatched[yb] = true
-		}
-	}
-
-	var findings []Finding
-	subjects := 0
-	for _, k := range unionKeys(detail, spine) {
-		if !reconcile[yearBasis{k.year, k.basis}] {
-			continue
-		}
-		d, sp := detail[k], spine[k]
-		subjects++
-		if d.cents == sp.cents {
-			continue
-		}
-		switch {
-		case !d.present:
-			findings = append(findings, finding(k.String(),
-				"the spine publishes %s here and the detail has no such row at all; a "+
-					"category the schedule stopped printing is a rule that was dropped, "+
-					"not a cell that is empty", sp.cents))
-		case !sp.present:
-			findings = append(findings, finding(k.String(),
-				"the detail publishes %s here and the spine has no such cell; %q must "+
-					"decompose the spine, never extend it", d.cents, expenditureDetailScope))
-		default:
-			findings = append(findings, finding(k.String(),
-				"the detail sums to %s and the spine publishes %s, a difference of %s; "+
-					"these are the same money decomposed two ways and must tie to the cent",
-				d.cents, sp.cents, d.cents-sp.cents))
-		}
-	}
+	reconcile, unmatched := reconciledPairs(detail, spine)
+	subjects, findings := compareDetail(detail, spine, reconcile, expenditureDetailScope)
 
 	// The unreconciled columns are named in the summary rather than left out of
 	// it. They are the detail's own published figures with no spine column to
@@ -192,66 +126,4 @@ func (*expenditureDetailTiesToSpine) Run(_ context.Context, s *Subject) (Result,
 			"expenditure at all, so nothing could be reconciled", expenditureDetailScope),
 		findings: findings,
 	}.result(), nil
-}
-
-type yearBasis struct {
-	year  int
-	basis mapping.Basis
-}
-
-// describePairs renders a set of slices in a stable order.
-func describePairs(pairs map[yearBasis]bool) string {
-	out := make([]string, 0, len(pairs))
-	for yb := range pairs {
-		out = append(out, fmt.Sprintf("FY%d %s", yb.year, yb.basis))
-	}
-	sort.Strings(out)
-	return joinComma(out)
-}
-
-// String names a cell the way a finding should: the slice, then the category.
-func (k detailKey) String() string {
-	return fmt.Sprintf("FY%d %s %s", k.year, k.basis, k.category)
-}
-
-// detailSums adds up one scope's facts inside the restriction.
-func detailSums(facts []fact.Fact, scope string) map[detailKey]cellSum {
-	out := map[detailKey]cellSum{}
-	for _, f := range facts {
-		if f.Scope != scope ||
-			f.Kind != expenditureDetailKind ||
-			f.FundGroup != expenditureDetailFundGroup {
-			continue
-		}
-		k := detailKey{f.FiscalYear, f.Basis, f.Category}
-		c := out[k]
-		c.cents += amount.Cents(f.AmountCents)
-		c.present = true
-		out[k] = c
-	}
-	return out
-}
-
-// unionKeys is every key either side produced, in a stable order so two runs
-// report the same findings in the same sequence.
-func unionKeys(a, b map[detailKey]cellSum) []detailKey {
-	keys := make([]detailKey, 0, len(a)+len(b))
-	for k := range a {
-		keys = append(keys, k)
-	}
-	for k := range b {
-		if _, dup := a[k]; !dup {
-			keys = append(keys, k)
-		}
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		if keys[i].year != keys[j].year {
-			return keys[i].year < keys[j].year
-		}
-		if keys[i].basis != keys[j].basis {
-			return keys[i].basis < keys[j].basis
-		}
-		return keys[i].category < keys[j].category
-	})
-	return slices.Clip(keys)
 }

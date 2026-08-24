@@ -1441,3 +1441,68 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		}
 	})
 }
+
+// TestTheRestrictionFiltersAndTheKeyCarriesTheFundGroup pins the seam the
+// detail-tie machinery was factored around, because getting it backwards is
+// silent in one direction and catastrophic in the other.
+//
+// detailRestriction.FundGroup FILTERS which facts a check looks at.
+// detailKey ALWAYS carries the fund group, whether the check pins one or not.
+// Collapsing the two is the tempting simplification and it breaks both checks
+// that exist:
+//
+//   - Make the pin a key component INSTEAD of a filter, and this check meets the
+//     other five fund groups' spine expenditure — about $109M in FY2026 — with a
+//     detail that is General Fund only, and fails over a correct corpus.
+//   - Drop the fund group from the KEY because "the pin already handles it", and
+//     fisc-5gk.1's revenue check, which pins nothing because pp.127-140 span
+//     every group, compares six groups' facts under one key. That one is worse:
+//     it ties on a sum that happens to match and reports green.
+//
+// The first direction is what this test measures, because it is the one the
+// committed corpus can express today.
+func TestTheRestrictionFiltersAndTheKeyCarriesTheFundGroup(t *testing.T) {
+	// A spine expenditure cell OUTSIDE the restriction's fund group, with no
+	// detail counterpart anywhere — which is the truth about the corpus, since
+	// pp.167-170 are a General Fund schedule.
+	cells := append([]testCell{}, fixtureCells...)
+	cells = append(cells, testCell{mapping.KindExpenditure, "services-and-supplies", "enterprise", 33_000})
+
+	facts := append(testFacts(cells...), detailFact(t, "wages-and-benefits", 70_000))
+	fact.Sort(facts)
+
+	res := resultFor(t, runChecks(t, factsSubject(t, facts)), "expenditure-detail-ties-to-spine")
+	if res.Status != StatusPass {
+		t.Fatalf("status = %s (%s), want pass: enterprise expenditure is outside this "+
+			"schedule's restriction and must not be reconciled against a General Fund "+
+			"detail", res.Status, res.Summary)
+	}
+	// One cell, not two: the enterprise key was never built, so it cannot be
+	// counted as examined either. A subject count that grew here would mean the
+	// filter had become a key.
+	if res.Subjects != 1 {
+		t.Errorf("subjects = %d, want the 1 General Fund expenditure cell; the enterprise "+
+			"cell must be filtered out rather than compared and skipped", res.Subjects)
+	}
+	if strings.Contains(findingDetails(res), "enterprise") {
+		t.Errorf("findings name the enterprise cell, so the fund-group pin is keying rather "+
+			"than filtering:\n%s", findingDetails(res))
+	}
+}
+
+// TestTheDetailKeyNamesItsFundGroup asserts the finding subject carries the
+// group, which is what makes a revenue finding readable at all: pp.127-140
+// publish `taxes/property` under five different fund groups, and a subject
+// naming only the category would identify five cells at once.
+func TestTheDetailKeyNamesItsFundGroup(t *testing.T) {
+	facts := append(testFacts(), detailFact(t, "wages-and-benefits", 70_001))
+	fact.Sort(facts)
+
+	res := resultFor(t, runChecks(t, factsSubject(t, facts)), "expenditure-detail-ties-to-spine")
+	if res.Status != StatusFail || len(res.Findings) != 1 {
+		t.Fatalf("status = %s over %d findings, want one failure", res.Status, len(res.Findings))
+	}
+	if want := "FY2026 adopted general wages-and-benefits"; res.Findings[0].Subject != want {
+		t.Errorf("finding subject = %q, want %q", res.Findings[0].Subject, want)
+	}
+}
