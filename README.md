@@ -55,7 +55,7 @@ trail.
 
 ```bash
 ./bin/fisc build      # mappings/ + data/extracted/ -> facts/facts.jsonl
-./bin/fisc verify     # 26 checks over the fact store and the graph
+./bin/fisc verify     # every claim the fact store and the graph rest on
 ./bin/fisc verify --full   # also re-hashes the source PDFs (needs git lfs pull)
 ./bin/fisc export     # facts/facts.jsonl -> dist/
 ```

@@ -1,6 +1,7 @@
 package check
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -203,6 +204,76 @@ func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
 	for _, d := range rep.Declared {
 		if !d.Ran() {
 			t.Errorf("%s is declared vacuous but did not run over the real corpus", d.CheckID)
+		}
+	}
+}
+
+// TestADeclarationSurvivesACheckThatReachedNoVerdict is the arm that a cancelled
+// run walked into.
+//
+// Stale is a claim that the work landed, and only PASS and FAIL are verdicts. A
+// check that ERRORED or was SKIPPED did not find its subject -- it did not look
+// -- so the run establishes nothing about the declaration in either direction.
+//
+// ERROR IS THE REACHABLE ONE AND IT WAS LIVE. run1 turns ctx.Err() into
+// errored(...), so under the old rule -- anything but vacuous is stale -- a
+// Ctrl-C on `fisc verify` reported all three declarations stale and exited 3
+// saying "<bead> landed, so remove the declaration", about work that had not
+// landed. SKIPPED is not reachable today (sourcePDFsMatchBothRecords is the only
+// Full() check in the tree and nobody would declare it vacuous) and is asserted
+// anyway, because ci.yml's --strict step passes no --full and the next --full
+// check inherits the hole.
+//
+// A genuine error still fails the run. That is Counts.Error's job in Failed(),
+// and it says the checker could not tell rather than claiming a bead landed.
+func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
+	declared := ""
+	for id := range declaredVacuous {
+		if declared == "" || id < declared {
+			declared = id
+		}
+	}
+
+	t.Run("errored", func(t *testing.T) {
+		broke := &fake{id: declared, err: errors.New("the manifest is unreadable")}
+		rep := run(t, nil, ReportOptions{Strict: true}, broke)
+
+		if got := rep.StaleDeclarations(); len(got) != 0 {
+			t.Errorf("StaleDeclarations() = %v for a check that errored; an error is "+
+				"not a verdict and says nothing about whether %s landed",
+				got, declaredVacuous[declared].bead)
+		}
+		// It still fails -- through the arm that describes what happened.
+		if rep.Counts.Error != 1 {
+			t.Errorf("Counts.Error = %d, want 1", rep.Counts.Error)
+		}
+		if !rep.Failed() {
+			t.Error("Failed() = false for a run with an errored check")
+		}
+	})
+
+	t.Run("skipped", func(t *testing.T) {
+		gated := &fake{id: declared, full: true,
+			res: Result{Status: StatusVacuous, Summary: "nothing to look at"}}
+		rep := run(t, nil, ReportOptions{Strict: true}, gated)
+
+		if got := rep.StaleDeclarations(); len(got) != 0 {
+			t.Errorf("StaleDeclarations() = %v for a check that needed --full and did "+
+				"not run", got)
+		}
+		if rep.Failed() {
+			t.Error("Failed() = true for a run whose only check was skipped; a skipped " +
+				"check never fails, and a declaration over one cannot go stale")
+		}
+	})
+
+	// And the verdicts that ARE verdicts still go stale, so the guard above is
+	// a whitelist rather than a hole.
+	for _, c := range []*fake{passed(declared), failed(declared)} {
+		rep := run(t, nil, ReportOptions{}, c)
+		if len(rep.StaleDeclarations()) != 1 {
+			t.Errorf("%s: StaleDeclarations() = %v, want the declaration to be stale",
+				c.res.Status, rep.StaleDeclarations())
 		}
 	}
 }

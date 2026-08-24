@@ -823,3 +823,44 @@ func TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope(t *testing.
 		t.Errorf("error %q does not say the counterpart has no column path", err)
 	}
 }
+
+// TestACounterpartWithNoRowPathIsRefused is the far leg's other half, and it is
+// the one that was missing.
+//
+// The near leg is guarded on BOTH paths twenty lines above the fan-out; the far
+// leg was guarded only on its column. cpRow takes its category from the
+// counterpart and its department from the row it fans out of, so both can be
+// empty at once -- and the far leg then publishes row_path "" AND AN ID HASHED
+// OVER IT, an unaddressable fact rather than an error.
+//
+// LATENT, NOT LIVE, which is why this test has to build the value by hand:
+// mapping's checkCounterpart refuses an empty counterpart category, so nothing
+// reachable through the parser can produce one. The hole is open to any direct
+// FromValues caller, and the parser is not the only thing that will ever be one.
+func TestACounterpartWithNoRowPathIsRefused(t *testing.T) {
+	f := &mapping.File{DocID: "doc"}
+	rule := &mapping.Rule{ID: "r", Kind: mapping.KindTransferIn,
+		Basis: mapping.BasisAdopted, Scope: "transfers-by-fund"}
+
+	_, err := FromValues(f, rule, []mapping.Value{{
+		Row: mapping.Row{Label: "Transfer From X", LabelTail: "to Y", Category: "transfers/in",
+			Fund: 100,
+			// A counterpart naming its fund but no category: the column path
+			// resolves, so the existing guard passes it straight through.
+			Counterpart: &mapping.Counterpart{Kind: mapping.KindTransferOut,
+				Fund: 200, FundGroup: "special-revenue"}},
+		Column: mapping.Column{FundGroup: "general", FiscalYear: 2026},
+		Cents:  100, Page: 76, Offset: 1, Token: "1",
+	}})
+	if err == nil {
+		t.Fatal("no error; the far leg published row_path \"\" and an id hashed over it")
+	}
+	if !strings.Contains(err.Error(), "counterpart has no addressable row path") {
+		t.Errorf("error %q does not say the counterpart has no row path", err)
+	}
+	// The near leg's wording, on the far leg. An error that named the missing
+	// piece on one side and not the other is how this went unnoticed.
+	if !strings.Contains(err.Error(), "no category and the row no department") {
+		t.Errorf("error %q does not name what would have to be declared", err)
+	}
+}

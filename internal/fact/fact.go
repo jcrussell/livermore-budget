@@ -294,24 +294,41 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		cpCol := cp.Column(v.Column)
 		cpRow := v.Row
 		cpRow.Category, cpRow.Kind = cp.Category, cp.Kind
-		// THE SCOPE FALLBACK MUST NOT APPLY HERE. ColumnPath returns the
-		// rule's scope for a column with no fund dimension, which is what a
-		// single-fund schedule relies on. A counterpart taking it would
-		// publish a real-looking fact under "transfers-by-fund" rather than
-		// under a fund, where no fund-group check ever compares it against the
-		// spine -- and the payer, which is the only thing the far leg exists
-		// to name, would be absent from the fact that names it.
-		if cpCol.FundGroup == "" && cpCol.Fund == 0 {
+		// THE FAR LEG IS GUARDED ON BOTH PATHS, exactly as the near leg is
+		// twenty lines above. cpRow takes its category from the counterpart and
+		// its department from the row it fans out of, so both can be empty at
+		// once -- and the far leg would then publish row_path "" and an id
+		// hashed over it, an unaddressable fact rather than an error.
+		//
+		// AND THE SCOPE FALLBACK MUST NOT APPLY TO THE COLUMN. ColumnPath
+		// returns the rule's scope for a column with no fund dimension, which
+		// is what a single-fund schedule relies on. A counterpart taking it
+		// would publish a real-looking fact under "transfers-by-fund" rather
+		// than under a fund, where no fund-group check ever compares it against
+		// the spine -- and the payer, which is the only thing the far leg
+		// exists to name, would be absent from the fact that names it.
+		cpRowPath := RowPath(cpRow)
+		cpMissing, cpHint := "", ""
+		switch {
+		case cpRowPath == "":
+			cpMissing = "row path (the counterpart has no category and the row no department)"
+			cpHint = "a fact's id is built from its row and column paths; without " +
+				"both it cannot be addressed, cited, or diffed"
+		case cpCol.FundGroup == "" && cpCol.Fund == 0:
+			cpMissing = "column path (the counterpart declares neither fund nor fund group)"
+			cpHint = "a counterpart declares the fund at its own end of the movement; " +
+				"without one its fact falls back to the rule's scope, where it " +
+				"names no payer and no check can reach it"
+		}
+		if cpMissing != "" {
 			return nil, cmdutil.WithHint(
-				fmt.Errorf("%s: rule %q p%d: row %q counterpart has no addressable "+
-					"column path", f.Path, rule.ID, v.Page, v.Row.PrintedLabel()),
-				"a counterpart declares the fund at its own end of the movement; "+
-					"without one its fact falls back to the rule's scope, where it "+
-					"names no payer and no check can reach it")
+				fmt.Errorf("%s: rule %q p%d: row %q counterpart has no addressable %s",
+					f.Path, rule.ID, v.Page, v.Row.PrintedLabel(), cpMissing),
+				cpHint)
 		}
 		cpPath := ColumnPath(cpCol, rule.Scope)
 		out = append(out, Fact{
-			ID: MakeID(f.DocID, rule.ID, RowPath(cpRow), cpRow.PrintedLabel(),
+			ID: MakeID(f.DocID, rule.ID, cpRowPath, cpRow.PrintedLabel(),
 				cpPath, v.Column.FiscalYear, basis),
 			DocID: f.DocID,
 			// THE SAME PROVENANCE, DELIBERATELY. Both legs cite one printed
@@ -325,7 +342,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			Basis:       basis,
 			Scope:       rule.Scope,
 			FiscalYear:  v.Column.FiscalYear,
-			RowPath:     RowPath(cpRow),
+			RowPath:     cpRowPath,
 			RowLabel:    cpRow.PrintedLabel(),
 			Category:    cp.Category,
 			Department:  cpRow.Department,

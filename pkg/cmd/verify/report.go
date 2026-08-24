@@ -115,6 +115,16 @@ func printDeclarations(w io.Writer, rep *check.Report) {
 			fmt.Fprintf(w, "%-*s %s: %s\n", statusWidth, "STALE", d.CheckID, d.StaleReason())
 			continue
 		}
+		// A check that errored or was skipped reached no verdict, so this run
+		// established neither that the declaration still holds nor that it has
+		// gone stale. Printing the reason as though it had would assert
+		// something about a corpus nothing looked at.
+		if d.Status != check.StatusVacuous {
+			fmt.Fprintf(w, "%-*s %s (%s): reported %s, so this run says nothing "+
+				"about the declaration either way\n",
+				statusWidth, "declared", d.CheckID, d.Bead, d.Status)
+			continue
+		}
 		fmt.Fprintf(w, "%-*s %s (%s): %s\n", statusWidth, "declared", d.CheckID, d.Bead, d.Reason)
 	}
 	for _, id := range rep.Undeclared {

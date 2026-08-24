@@ -17,8 +17,12 @@
 // reserved for the case where reading the report is not an option.
 //
 // A run that has nothing to check is NOT a pass, and this command says so on its
-// own output while still exiting 0; `--strict` is what turns those into a failure,
-// and see internal/check for why that is not the default.
+// own output while still exiting 0. `--strict` turns an UNDECLARED vacancy into a
+// failure; a vacancy named in internal/check's declaredVacuous, with the bead that
+// retires it, is reported and tolerated. The converse is not gated on the flag: a
+// declaration whose check has stopped being vacuous fails EVERY run, because it is
+// a false statement in this repository's own source. See internal/check for why
+// --strict is not the default.
 package verify
 
 import (
@@ -101,19 +105,29 @@ subject and every one held. VACUOUS means it ran and had nothing to look at —
 "every transfer_id has two equal legs" is true of a graph in which no link
 carries one, and reporting that as a pass would tell you the legs had been
 checked. A vacuous check is never counted as a pass and never silently becomes
-one; it exits 0 today because most of the budget is still unmapped, and fails
-under --strict.
+one.
+
+A vacancy is either DECLARED or it fails --strict. Most of the budget is still
+unmapped, so a plain run exits 0 on any number of them; --strict exits 3 on a
+vacuous check that no entry in internal/check's declaredVacuous names. Each
+declaration carries the reason and the bead whose landing deletes it, and every
+one is printed on every run whether or not anything is wrong with it.
+
+The converse is not gated on the flag. A declaration whose check has started
+reporting PASS or FAIL has stopped being true, and that exits 3 with or without
+--strict -- it is a false statement in this repository's source rather than a
+shortfall in coverage.
 
 FAIL means a claim did not hold and exits 3. ERROR means the checker could not
-reach a verdict, which is a different problem from a corpus that is wrong.
-SKIPPED means the check needed --full and did not run.`,
+reach a verdict, which is a different problem from a corpus that is wrong, and
+also exits 3. SKIPPED means the check needed --full and did not run.`,
 		Example: `  # Check everything that needs no source document
   fisc verify
 
   # Machine-readable, for CI
   fisc verify --json
 
-  # Fail if any check had nothing to check
+  # Fail if any check had nothing to check and no declaration says why
   fisc verify --strict`,
 		GroupID: "data", // root.GroupData; a literal, because root imports this package.
 		// A stray argument is a mistyped flag. Selecting individual checks is
@@ -134,7 +148,8 @@ SKIPPED means the check needed --full and did not run.`,
 		"Also hash the source PDFs under data/pdf/ against what the registry and the "+
 			"manifests record (needs `git lfs pull`)")
 	cmd.Flags().BoolVar(&opts.Strict, "strict", false,
-		"Fail if any check had nothing to check")
+		"Fail if any check had nothing to check and no declaration names the work "+
+			"that would give it a subject")
 
 	return cmd
 }

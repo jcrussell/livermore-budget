@@ -550,3 +550,45 @@ func sortedKeys[V any](m map[string]V) []string {
 	slices.Sort(out)
 	return out
 }
+
+// TestTheHelpDescribesTheExitCodeContractItActuallyHas is a test on prose,
+// which is unusual and is justified by what this particular prose is.
+//
+// The exit code IS this command's contract -- ci.yml's --strict step is what a
+// contributor's commit meets -- and the help is where that contract is stated
+// in words. When 40943db added declarations, three sites went on promising the
+// old rule: the package doc, the Long text and the flag's own description all
+// said --strict fails on ANY vacuous check, while the committed corpus reported
+// three vacuous and exited 0. A reader predicting CI from the help would have
+// been wrong, and nothing went red.
+//
+// So this asserts the two halves that are easy to state and easy to get wrong,
+// and deliberately does not assert the wording around them.
+func TestTheHelpDescribesTheExitCodeContractItActuallyHas(t *testing.T) {
+	ios, _, _, _ := iostreams.Test()
+	cmd := NewCmdVerify(&cmdutil.Factory{
+		IOStreams: ios,
+		RepoRoot:  func() (string, error) { return t.TempDir(), nil },
+	}, nil)
+	text := cmd.Long + "\n" + cmd.Example + "\n" +
+		cmd.Flags().Lookup("strict").Usage
+
+	// (1) --strict fails on an UNDECLARED vacancy, not on any vacancy. The word
+	// is what separates the two rules.
+	if !strings.Contains(text, "declaredVacuous") && !strings.Contains(text, "declaration") {
+		t.Errorf("the help never mentions a declaration, so it still reads as though "+
+			"--strict failed on any vacancy:\n%s", text)
+	}
+	if strings.Contains(cmd.Long, "and fails\nunder --strict") {
+		t.Error("the Long text still promises that a vacuous check fails --strict; the " +
+			"committed corpus reports three vacuous and exits 0 under it")
+	}
+
+	// (2) And the converse, which a reader cannot guess: a declaration that has
+	// stopped being true fails WITHOUT --strict.
+	if !strings.Contains(cmd.Long, "with or without") {
+		t.Errorf("the Long text does not say that a stale declaration fails whether "+
+			"or not --strict was passed, which is check.Report.Failed's second "+
+			"arm and the one no reader would assume:\n%s", cmd.Long)
+	}
+}
