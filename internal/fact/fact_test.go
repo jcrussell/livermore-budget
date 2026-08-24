@@ -720,3 +720,106 @@ func TestARowKindOverridesTheRulesKind(t *testing.T) {
 		t.Errorf("rule_id differs across the override: %q vs %q", got[0].RuleID, got[1].RuleID)
 	}
 }
+
+// TestACounterpartPublishesTheFarLegFromTheSameFigure is the fan-out: one
+// printed figure becoming the two facts a transfer needs.
+//
+// Budget Book p76 prints "Transfer From Low Income Hsng  to General Fund
+// 257,012". That number is 257,012 leaving fund 200 and 257,012 arriving at
+// fund 100, and fact.Fact carries one fund field, so one fact cannot hold the
+// pair (fisc-4rh). What this pins is that the pair is expressible AND that the
+// two legs are told apart on the components that carry the meaning of the
+// difference, rather than on a discriminator added to avoid a hash clash.
+func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
+	f := &mapping.File{DocID: "doc"}
+	rule := &mapping.Rule{ID: "p76-transfers-in-general", Kind: mapping.KindTransferIn,
+		Basis: mapping.BasisAdopted, Scope: "transfers-by-fund", Units: "dollars"}
+
+	got, err := FromValues(f, rule, []mapping.Value{{
+		Row: mapping.Row{
+			Label: "Transfer From Low Income Hsng", LabelTail: "to General Fund",
+			Category: "transfers/in", Fund: 100,
+			Counterpart: &mapping.Counterpart{
+				Category: "transfers/out", Kind: mapping.KindTransferOut,
+				Fund: 200, FundGroup: "special-revenue",
+			},
+		},
+		Column: mapping.Column{FundGroup: "general", FiscalYear: 2026},
+		Cents:  25701200, Page: 76, Offset: 4211, Token: "257,012",
+	}})
+	if err != nil {
+		t.Fatalf("FromValues: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d facts from one figure, want 2 (the near leg and its counterpart)", len(got))
+	}
+	near, far := got[0], got[1]
+
+	// ONE FIGURE IS THE PROVENANCE FOR BOTH DIRECTIONS. This is not duplicated
+	// evidence: fact-offset-points-at-token has to hold for each leg, and both
+	// legs point at the token the city actually printed.
+	if near.Page != far.Page || near.Offset != far.Offset || near.Token != far.Token {
+		t.Errorf("the legs cite different provenance: p%d@%d %q vs p%d@%d %q; one "+
+			"printed figure is the evidence for both",
+			near.Page, near.Offset, near.Token, far.Page, far.Offset, far.Token)
+	}
+	if near.AmountCents != far.AmountCents {
+		t.Errorf("legs differ in amount: %d vs %d", near.AmountCents, far.AmountCents)
+	}
+	if far.RowLabel != near.RowLabel {
+		t.Errorf("far leg row_label = %q, want the same printed line %q", far.RowLabel, near.RowLabel)
+	}
+
+	// AND THEY DIFFER TWICE OVER, without any change to MakeID. kind is not in
+	// the id tuple, so kind alone could not have separated them; row_path and
+	// column_path both do, and each says WHY the legs are different.
+	if near.RowPath != "transfers/in" || far.RowPath != "transfers/out" {
+		t.Errorf("row paths = %q / %q, want transfers/in and transfers/out",
+			near.RowPath, far.RowPath)
+	}
+	if near.ColumnPath != "general/fund/100" || far.ColumnPath != "special-revenue/fund/200" {
+		t.Errorf("column paths = %q / %q, want the receiving and the paying fund",
+			near.ColumnPath, far.ColumnPath)
+	}
+	if near.ID == far.ID {
+		t.Fatalf("both legs published as %s; one figure would be one fact and the "+
+			"payer would be unpublishable", near.ID)
+	}
+	if far.Kind != mapping.KindTransferOut || far.FundGroup != "special-revenue" || far.Fund != 200 {
+		t.Errorf("far leg = %s %s fund %d, want transfer_out special-revenue 200",
+			far.Kind, far.FundGroup, far.Fund)
+	}
+	// The near leg takes its fund from the ROW where the row declares one, and
+	// its group from the column, which is the per-field override p76 needs:
+	// the section is the receiving group, the row is the receiving fund.
+	if near.FundGroup != "general" || near.Fund != 100 {
+		t.Errorf("near leg = %s fund %d, want general 100", near.FundGroup, near.Fund)
+	}
+	if far.Derived || near.Derived {
+		t.Error("a leg is marked derived; both are read off a printed figure")
+	}
+}
+
+// TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope guards the
+// one way the far leg can go missing quietly. ColumnPath falls back to the
+// rule's scope for a column with no fund dimension, so a counterpart declaring
+// neither would publish under "transfers-by-fund" -- a real-looking fact, in a
+// place no fund-group check would ever compare it against the spine.
+func TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope(t *testing.T) {
+	f := &mapping.File{DocID: "doc"}
+	rule := &mapping.Rule{ID: "r", Kind: mapping.KindTransferIn,
+		Basis: mapping.BasisAdopted, Scope: "transfers-by-fund"}
+
+	_, err := FromValues(f, rule, []mapping.Value{{
+		Row: mapping.Row{Label: "Transfer From X", LabelTail: "to Y", Category: "transfers/in",
+			Counterpart: &mapping.Counterpart{Category: "transfers/out", Kind: mapping.KindTransferOut}},
+		Column: mapping.Column{FiscalYear: 2026},
+		Cents:  100, Page: 76, Offset: 1, Token: "1",
+	}})
+	if err == nil {
+		t.Fatal("no error; a counterpart with no fund was filed under the rule's scope")
+	}
+	if !strings.Contains(err.Error(), "counterpart has no addressable column path") {
+		t.Errorf("error %q does not say the counterpart has no column path", err)
+	}
+}

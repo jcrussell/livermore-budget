@@ -415,6 +415,9 @@ func validateRule(r *Rule, errf errFunc) error {
 				"add a category, or skip: true if the row is a subtotal that "+
 					"would double-count")
 		}
+		if err := checkCounterpart(r, row, errf); err != nil {
+			return err
+		}
 	}
 	// The guard is against the row's LABEL, and deliberately not against
 	// rowIndex: a two-anchor row's identity carries a \x1f, so a total_row --
@@ -927,4 +930,76 @@ func unitsValid(u amount.Units) (int64, int, bool) {
 		return 0, 0, true
 	}
 	return 0, 0, false
+}
+
+// checkCounterpart refuses a far leg that could not be told apart from its own
+// near leg, or that would be filed nowhere.
+//
+// The stakes are higher here than for an ordinary row, because a counterpart is
+// invisible to every check the DOCUMENT provides. CheckTotals sums resolved
+// values and the fan-out happens after them (fact.FromValues), so a counterpart
+// declared wrongly still ties to the page's own printed total. These four arms
+// are the parse-time half of what replaces that.
+func checkCounterpart(r *Rule, row Row, errf errFunc) error {
+	cp := row.Counterpart
+	if cp == nil {
+		return nil
+	}
+	if row.Skip {
+		return cmdutil.WithHint(
+			errf(r.ID, "rows", "row %q is skip: true and declares a counterpart", row.Label),
+			"a skipped row produces no facts, so its counterpart would be the "+
+				"only fact from a line the rule says to ignore")
+	}
+	if cp.Category == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, "rows", "row %q: counterpart has no category", row.Label),
+			"the far leg classifies on its own account -- a transfer OUT of the "+
+				"paying fund, where the near leg is a transfer IN to the receiving "+
+				"one -- and nothing is inherited from the row")
+	}
+	if !cp.Kind.valid() {
+		return errf(r.ID, "rows", "row %q: counterpart kind %q is not one of the five",
+			row.Label, cp.Kind)
+	}
+	if cp.FundGroup == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, "rows", "row %q: counterpart has no fund_group", row.Label),
+			"without one the leg's column_path falls back to the rule's scope, "+
+				"where it is indistinguishable from any other scope-filed fact")
+	}
+	// A department is an axis Counterpart has no field for, so the far leg
+	// would silently take the near leg's -- publishing, say, Police's transfer
+	// OUT of the fund that paid Police. Refused rather than dropped: dropping
+	// it would make the far leg's row_path quietly narrower than the near
+	// leg's, and a schedule crossing departments with transfers needs a
+	// decision, not a default.
+	if row.Department != "" {
+		return cmdutil.WithHint(
+			errf(r.ID, "rows", "row %q carries department %q and declares a counterpart",
+				row.Label, row.Department),
+			"the far leg has no department of its own to declare, and inheriting "+
+				"this one would attribute the paying fund's outflow to the "+
+				"receiving department")
+	}
+	// The two legs must differ where a fact's identity is built from: its
+	// category (the row path) and its fund (the column path). Equal on both,
+	// the ids collide.
+	//
+	// THIS ARM SEES ONLY THE ROW'S OWN FUND, not the column's, because a row
+	// is validated before any part is. So it catches the case where a row
+	// declares its fund and its counterpart repeats it -- which is the one an
+	// author writing a two-legged row actually makes -- and fact.CheckUniqueIDs
+	// remains the backstop for a counterpart that duplicates a fund the COLUMN
+	// declared. That is a build-time failure rather than a parse-time one, and
+	// the difference is which file the message names.
+	near := row.EffectiveColumn(Column{})
+	if cp.Category == row.Category && cp.Fund == near.Fund && cp.FundGroup == near.FundGroup {
+		return cmdutil.WithHint(
+			errf(r.ID, "rows", "row %q: counterpart is the same category and the "+
+				"same fund as the row itself", row.Label),
+			"the two legs of one figure are told apart by their category and "+
+				"their fund; identical on both, they are one fact published twice")
+	}
+	return nil
 }

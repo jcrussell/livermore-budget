@@ -423,6 +423,30 @@ type Column struct {
 	Skip bool `yaml:"skip"`
 }
 
+// Counterpart is the far end of a figure that moves money between two funds.
+//
+// Every field is the counterpart leg's own: the category it classifies as, the
+// kind it is, and the fund it belongs to. Nothing is inherited from the row,
+// because a counterpart that defaulted to its row's classification would be a
+// second fact saying the same thing about the same fund, which is a
+// double-count wearing a different id.
+type Counterpart struct {
+	Category  string `yaml:"category"`
+	Kind      Kind   `yaml:"kind"`
+	Fund      int    `yaml:"fund"`
+	FundGroup string `yaml:"fund_group"`
+}
+
+// Column returns the column the counterpart leg's fact is filed under: the
+// printed column, with the fund dimension replaced by the counterpart's own.
+// The fiscal year and basis are the printed column's, because both legs are
+// the same figure in the same year on the same basis.
+func (c Counterpart) Column(printed Column) Column {
+	printed.FundGroup = c.FundGroup
+	printed.Fund = c.Fund
+	return printed
+}
+
 // Row is one labelled line and the classification it maps to.
 type Row struct {
 	Label string `yaml:"label"`
@@ -450,6 +474,43 @@ type Row struct {
 	Category   string `yaml:"category"`
 	Department string `yaml:"department"`
 	Sign       Sign   `yaml:"sign"`
+
+	// Fund and FundGroup override the column's fund dimension for this row,
+	// exactly as Kind overrides the rule's kind: the thing that knows says so.
+	//
+	// The fund is normally a property of the COLUMN, because a schedule's
+	// columns are its (fund, year) pairs and its rows are the categories.
+	// Budget Book p76 inverts that. Its columns are years and its five
+	// sections are the fund groups RECEIVING money, so a row's own end fits
+	// the column fine -- but the fund PAYING varies row by row inside a
+	// section. Measured: three of the five sections are mixed, Enterprise
+	// running general, enterprise x5 (fisc-aes). Without a per-row fund the
+	// only way to express that is one rule per contiguous run of same-group
+	// rows, which makes rule boundaries depend on the city's row ORDER, so
+	// inserting a row re-partitions the rules.
+	Fund      int    `yaml:"fund"`
+	FundGroup string `yaml:"fund_group"`
+
+	// Counterpart is the other end of a figure that moves money between two
+	// funds, and it is what lets ONE printed figure be evidence for TWO facts.
+	//
+	// p76 prints "Transfer From Low Income Hsng  to General Fund  257,012".
+	// That single figure is 257,012 leaving fund 200 and 257,012 arriving at
+	// fund 100. fact.Fact carries one fund field, so one fact cannot hold the
+	// pair (fisc-4rh); two facts can, and they cite the SAME doc_id, page,
+	// offset and token, because one printed figure is the provenance for both
+	// directions of one movement. That is not duplicated evidence.
+	//
+	// The two ids differ without any change to fact.MakeID: the legs carry
+	// different categories, so their row_paths differ, and different funds, so
+	// their column_paths differ. Both differences carry the MEANING of the
+	// difference rather than being a discriminator added to avoid a clash.
+	//
+	// It also disposes of p76's three continuation rows -- "to Wastewater
+	// Replacement", "to 2022 COPS", "to Downtown LMD", whose "Transfer From"
+	// carries over from the row above. A rule DECLARES the payer here rather
+	// than a reader inferring it from a neighbouring line.
+	Counterpart *Counterpart `yaml:"counterpart"`
 
 	// Kind overrides the rule's kind for this row, exactly as Column.Basis
 	// overrides Rule.Basis: the thing that knows says so.
@@ -508,6 +569,23 @@ func (r Row) EffectiveKind(rule *Rule) Kind {
 		return r.Kind
 	}
 	return rule.Kind
+}
+
+// EffectiveColumn is the column a row's own fact is filed under: the printed
+// column, with the row's fund overrides applied where it declares them.
+//
+// The override is per FIELD and not all-or-nothing. A schedule may pin the
+// group on the column and vary only the fund number per row, or the reverse,
+// and a row that declares neither is the ordinary case that every schedule
+// but p76 is.
+func (r Row) EffectiveColumn(printed Column) Column {
+	if r.FundGroup != "" {
+		printed.FundGroup = r.FundGroup
+	}
+	if r.Fund != 0 {
+		printed.Fund = r.Fund
+	}
+	return printed
 }
 
 // PrintedLabel is what the document printed for this row, as the fact's

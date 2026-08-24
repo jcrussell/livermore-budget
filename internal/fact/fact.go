@@ -213,6 +213,17 @@ func ColumnPath(c mapping.Column, scope string) string {
 
 // FromValues builds the facts for one part's resolved figures.
 //
+// USUALLY ONE FACT PER FIGURE, AND TWO WHERE A ROW DECLARES A COUNTERPART.
+// This is the only fan-out in the pipeline: mapping.Resolver yields one Value
+// per printed token and everything upstream of here counts figures, not facts.
+// That placement is load-bearing rather than convenient. CheckTotals sums
+// Values against the total the page prints, and pkg/cmd/build calls Values
+// before it calls this, so no printed total, stated_total_delta or rollup can
+// see the second leg -- a counterpart cannot make a schedule stop tying to its
+// own document. The cost is the other side of the same coin: those checks
+// cannot catch a counterpart declared wrongly either, which is why a schedule
+// using them owes a reconciliation against something outside its own page.
+//
 // Declared omissions are not among them. A row the page does not print is
 // absent, not zero, and inventing a zero fact for it would put a provenance
 // pointer on a line the document has no line for. The column total tying is
@@ -232,8 +243,9 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			sign = mapping.SignPositive
 		}
 
+		col := v.Row.EffectiveColumn(v.Column)
 		rowPath := RowPath(v.Row)
-		columnPath := ColumnPath(v.Column, rule.Scope)
+		columnPath := ColumnPath(col, rule.Scope)
 		missing := ""
 		switch {
 		case rowPath == "":
@@ -267,8 +279,59 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			Category:    v.Row.Category,
 			Department:  v.Row.Department,
 			ColumnPath:  columnPath,
-			FundGroup:   v.Column.FundGroup,
-			Fund:        v.Column.Fund,
+			FundGroup:   col.FundGroup,
+			Fund:        col.Fund,
+			Sign:        sign,
+			Units:       rule.Units,
+			AmountCents: int64(v.Cents),
+			Derived:     false,
+		})
+
+		if v.Row.Counterpart == nil {
+			continue
+		}
+		cp := *v.Row.Counterpart
+		cpCol := cp.Column(v.Column)
+		cpRow := v.Row
+		cpRow.Category, cpRow.Kind = cp.Category, cp.Kind
+		// THE SCOPE FALLBACK MUST NOT APPLY HERE. ColumnPath returns the
+		// rule's scope for a column with no fund dimension, which is what a
+		// single-fund schedule relies on. A counterpart taking it would
+		// publish a real-looking fact under "transfers-by-fund" rather than
+		// under a fund, where no fund-group check ever compares it against the
+		// spine -- and the payer, which is the only thing the far leg exists
+		// to name, would be absent from the fact that names it.
+		if cpCol.FundGroup == "" && cpCol.Fund == 0 {
+			return nil, cmdutil.WithHint(
+				fmt.Errorf("%s: rule %q p%d: row %q counterpart has no addressable "+
+					"column path", f.Path, rule.ID, v.Page, v.Row.PrintedLabel()),
+				"a counterpart declares the fund at its own end of the movement; "+
+					"without one its fact falls back to the rule's scope, where it "+
+					"names no payer and no check can reach it")
+		}
+		cpPath := ColumnPath(cpCol, rule.Scope)
+		out = append(out, Fact{
+			ID: MakeID(f.DocID, rule.ID, RowPath(cpRow), cpRow.PrintedLabel(),
+				cpPath, v.Column.FiscalYear, basis),
+			DocID: f.DocID,
+			// THE SAME PROVENANCE, DELIBERATELY. Both legs cite one printed
+			// figure, because that figure IS the evidence for both directions
+			// of one movement. fact-offset-points-at-token holds for both.
+			Page:        v.Page,
+			Offset:      v.Offset,
+			Token:       v.Token,
+			RuleID:      rule.ID,
+			Kind:        cp.Kind,
+			Basis:       basis,
+			Scope:       rule.Scope,
+			FiscalYear:  v.Column.FiscalYear,
+			RowPath:     RowPath(cpRow),
+			RowLabel:    cpRow.PrintedLabel(),
+			Category:    cp.Category,
+			Department:  cpRow.Department,
+			ColumnPath:  cpPath,
+			FundGroup:   cpCol.FundGroup,
+			Fund:        cpCol.Fund,
 			Sign:        sign,
 			Units:       rule.Units,
 			AmountCents: int64(v.Cents),
