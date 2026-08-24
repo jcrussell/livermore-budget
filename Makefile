@@ -70,8 +70,34 @@ lint-if-available: ## Run lint, warning rather than failing if golangci-lint is 
 	}; \
 	$(MAKE) --no-print-directory lint
 
+# js runs site/app.js under node and checks the claims it makes about itself.
+#
+# The chart's legibility figures -- 195 ribbon crossings, $457,434,169 of
+# overlapping ribbon, 14 stale-stacked pairs -- can only be produced by laying
+# the graph out, so before this target they were measured once by hand, out of
+# tree, and quoted in comments forever after (fisc-gxa.7). tools/jscheck loads
+# the SHIPPED app.js and the vendored d3 into a node vm and re-measures them.
+#
+# NODE IS OFF THE DEPLOY PATH, the way tools/extract.py is off the build path:
+# `make site`, `make build` and `fisc export` never run this, and a contributor
+# without node can still build, test and serve the site. There is no
+# package.json, no node_modules and no npm.
+.PHONY: js
+js: ## Check site/app.js's layout claims under node (needs node; nothing else does)
+	node tools/jscheck/run.mjs
+
+# js-if-available is to `js` what lint-if-available is to `lint`, and for the
+# same reason: node must not become mandatory to commit.
+.PHONY: js-if-available
+js-if-available: ## Run js, warning rather than failing if node is absent
+	@command -v node >/dev/null 2>&1 || { \
+		echo "warning: node not on PATH, skipping the app.js checks; CI will still run them" >&2; \
+		exit 0; \
+	}; \
+	$(MAKE) --no-print-directory js
+
 .PHONY: pre-commit
-pre-commit: fmt vet test lint-if-available ## Format, vet, test, and lint (symlink to .git/hooks/pre-commit)
+pre-commit: fmt vet test lint-if-available js-if-available ## Format, vet, test, lint, and check app.js
 
 # Extraction is deliberately NOT part of the Go binary. It is a rare,
 # human-initiated step whose output is committed; fisc reads only that output

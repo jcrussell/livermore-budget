@@ -137,6 +137,23 @@ jobs:
       # the network, so this job needs nothing the checkout did not bring.
       - run: make test
 
+  js:
+    name: app.js layout claims
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      # The only job in this workflow that needs node, and it needs nothing
+      # else: no npm install, no package.json, no lockfile. tools/jscheck loads
+      # the committed site/app.js and the vendored d3 into a vm and re-measures
+      # the figures that file quotes about itself. Node stays off the deploy
+      # path -- pages-build runs `fisc export` and never touches this.
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
+        with:
+          node-version: '22'
+      - run: make js
+
   vet:
     name: go vet
     runs-on: ubuntu-latest
@@ -288,7 +305,7 @@ jobs:
   # stops being republishable for reasons that have nothing to do with the site.
   pages-build:
     name: package the site
-    needs: [lint, format, build, test, vet, tidy, facts, verify]
+    needs: [lint, format, build, test, vet, tidy, facts, verify, js]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:

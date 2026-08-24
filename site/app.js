@@ -269,14 +269,20 @@ function nodeColor(node) {
  * .nodeSort() at all is what pins the fund column to the palette's order, and
  * d3's own pass would reorder it.
  *
- * Sorting on this instead of on size is worth most of what the chart's legibility
- * was losing: 394 ribbon crossings and $1,372M of overlapping ribbon become 195
- * and $457M, measured by laying this graph out under node. An exact search --
- * one-sided crossing minimisation is solvable for columns this small -- reaches
- * 177 crossings, but spends $491M of overlap doing it, so the two are points on
- * a frontier rather than a right and a wrong answer. A rule that reads the data
- * is worth more here than 18 crossings: it needs no re-derivation when a
- * category is added or the fiscal year rolls over.
+ * Sorting on this is worth most of what the chart's legibility was losing. Laid
+ * out under node with the vendored d3 and restacked, FY2026 comes to 195 ribbon
+ * crossings and $457,434,169 of overlapping ribbon, against 285 and
+ * $966,956,035 under a sort by size, 297 under the input order, and 246 under
+ * d3's own pass. tools/jscheck re-measures every one of those figures on every
+ * run and pins it, so editing this comment without re-measuring fails.
+ *
+ * An exact search -- one-sided crossing minimisation is solvable for columns
+ * this small -- reaches 177 crossings, but spends $491M of overlap doing it, so
+ * the two are points on a frontier rather than a right and a wrong answer. A
+ * rule that reads the data is worth more here than 18 crossings: it needs no
+ * re-derivation when a category is added or the fiscal year rolls over. That
+ * search does not live in the tree, so unlike the figures above it is the one
+ * number here nothing re-checks.
  *
  * Ties are real and wanted. Three revenue categories touch only the General
  * Fund, so all three score exactly its index and fall to the caller's tie-break
@@ -406,9 +412,9 @@ let keyActivation = { id: "", at: -Infinity };
  * and the last move is never followed by another sort, so a node can be left
  * handing its ribbons out in an order its neighbours no longer sit in. The
  * result is a pair of ribbons that cross immediately at the node face, for no
- * reason in the data -- 14 of them on FY2026, and 108 under the order this
- * file used to sort by. Redoing the sort against the final positions is the
- * whole fix.
+ * reason in the data -- 14 of them on FY2026, which tools/jscheck counts before
+ * this function runs and again after, expecting 14 and then none. Redoing the
+ * sort against the final positions is the whole fix.
  *
  * Widths are not touched, only the order they are stacked in, so each node's
  * ribbons still fill exactly its own height.
@@ -507,9 +513,9 @@ function render() {
     .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => { showTip(e, d); pin(d); })
     .on("blur", hideTip)
     // Activating a node isolates its flows, the same toggle the legend does
-    // for a fund group. Layout gets this chart down to 195 ribbon crossings
-    // from 394 and no further -- the rest are structural in a graph this
-    // dense -- so the way through them is to take one flow out at a time.
+    // for a fund group. Layout gets this chart down to 195 ribbon crossings and
+    // no further -- the rest are structural in a graph this dense -- so the way
+    // through them is to take one flow out at a time.
     //
     // Both paths are here because neither covers everyone. An SVG
     // g[role=button] does not synthesise a click from Enter the way a real

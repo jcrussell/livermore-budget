@@ -96,6 +96,35 @@ Layout and idioms follow the byob decisions; read them with
   — a typo'd command exited 0 and printed help — passed every unit test and
   was caught by running `./bin/fisc biuld`.
 
+## The node boundary
+
+`site/app.js` is served to readers exactly as it is committed — no bundler, no
+npm, no module system — and that is a property to keep. But the figures it quotes
+about itself (195 ribbon crossings, $457,434,169 of overlapping ribbon, 14
+stale-stacked pairs) can only be produced by laying the graph out, so for a while
+nothing in the tree could confirm any of them.
+
+`make js` runs `tools/jscheck`, which loads **the shipped `app.js`** and the
+vendored d3 into a node `vm` and re-measures them. It reaches into the file
+rather than copying functions out of it, because a copy would check the copy and
+let the original drift.
+
+Node stays **off the deploy path**, the way `tools/extract.py` stays off the
+build path: `make build`, `make site` and `fisc export` never run it, there is no
+`package.json` and no `node_modules`, and `pre-commit` warns and continues when
+node is absent — CI runs it as its own job. A contributor with only Go can still
+build, test and land a change.
+
+One consequence worth knowing before quoting a number in a comment: **a claim
+whose baseline no longer exists in the tree cannot be checked.** `app.js` used to
+say its crossings fell "from 394", a figure produced by a sort order that has
+since been replaced. Measured against every ordering still reachable — 285 under
+a sort by size, 297 under the input order, 246 under d3's own pass — none is 394,
+and the number could not be reproduced from anything in the tree. Those
+before-figures were corrected to what does reproduce, and every one of them is
+now pinned rather than bounded, so a comment edited without re-measuring fails
+`make js`. Quote what the current code does.
+
 ## The extraction boundary
 
 Extraction is **not** a Go responsibility and must not become one.
