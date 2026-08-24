@@ -170,9 +170,13 @@ func fixtureCopies() []fixtureCopy {
 // fixturePages is every page committed under testdata/, by document. Each is
 // there for a named failure mode; see testdata/README.md.
 var fixturePages = map[string][]int{
-	budgetFixtures.id: {66, 67, 76, 127, 167, 168, 169, 170},
-	cipFixtures.id:    {29, 40},
-	acfrFixtures.id:   {177},
+	budgetFixtures.id: {
+		66, 67, 76,
+		127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
+		167, 168, 169, 170,
+	},
+	cipFixtures.id:  {29, 40},
+	acfrFixtures.id: {177},
 }
 
 // TestFixturesAreVerbatimCopies is what makes every other test in this package
