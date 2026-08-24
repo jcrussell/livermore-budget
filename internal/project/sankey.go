@@ -1,8 +1,6 @@
 package project
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -214,12 +212,6 @@ type Metadata struct {
 	Caveats []string `json:"caveats"`
 }
 
-// Source is one document the facts came from, with the pages actually read.
-type Source struct {
-	DocID string `json:"doc_id"`
-	Pages []int  `json:"pages"`
-}
-
 // Headline is the set of figures a reader quotes without reading the chart.
 //
 // Both a gross and an external number are published for revenue and for
@@ -243,22 +235,6 @@ type Headline struct {
 	// zero, and the caveats say why. A figure can go stale-red the day the
 	// transfer schedule is mapped; a prose caveat cannot.
 	TransferResidualCents int64 `json:"transfer_residual_cents"`
-}
-
-// Counts is how much of the corpus this document accounts for.
-type Counts struct {
-	// Facts is how many facts matched the options, which is NOT how many links
-	// were drawn: stocks get no link, and neither do zero-valued cells. The
-	// gap between Facts and Links is the part of the schedule the chart cannot
-	// show, and stating both is what makes it visible.
-	Facts int `json:"facts"`
-	// FactsCited is how many of those facts a link actually carries. Facts
-	// minus FactsCited is exactly the zero-valued cells plus the stock rows,
-	// which makes the gap a quantity a check can assert rather than a
-	// discrepancy a reader has to explain to themselves.
-	FactsCited int `json:"facts_cited"`
-	Nodes      int `json:"nodes"`
-	Links      int `json:"links"`
 }
 
 // Node is one box in the diagram.
@@ -313,25 +289,12 @@ var _ Projection = (*Sankey)(nil)
 func (*Sankey) Name() string { return "sankey" }
 
 // Build renders the graph as canonical JSON.
-//
-// The encoder is configured rather than defaulted. HTML escaping is off, so
-// "Fines & Forfeitures" stays readable instead of becoming "&"; the
-// indent is two spaces, so a reviewer diffs the file line by line; and
-// json.Encoder appends exactly one newline, giving the file LF endings and a
-// trailing newline like every other text file in the repo.
 func (s *Sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
 	g, err := s.Graph(facts, o)
 	if err != nil {
 		return nil, err
 	}
-	var b bytes.Buffer
-	enc := json.NewEncoder(&b)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	if err = enc.Encode(g); err != nil {
-		return nil, fmt.Errorf("encode %s projection: %w", s.Name(), err)
-	}
-	return b.Bytes(), nil
+	return encode(g, s.Name())
 }
 
 // cellKey addresses one printed cell of the schedule: a row's classification
