@@ -169,6 +169,7 @@ func All() []Check {
 
 		&factsSorted{},
 		&factIDsUnique{},
+		&factIDsRecompute{},
 		&factTokenReparses{},
 		&factOffsetPointsAtToken{},
 		&factVocabulary{},

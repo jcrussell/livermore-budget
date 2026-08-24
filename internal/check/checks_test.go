@@ -45,6 +45,7 @@ func TestFixtureVerdicts(t *testing.T) {
 
 		"facts-sorted":                "pass over 10",
 		"fact-ids-unique":             "pass over 10",
+		"fact-ids-recompute":          "pass over 10",
 		"fact-token-reparses":         "pass over 10",
 		"fact-offset-points-at-token": "pass over 10",
 		"fact-vocabulary":             "pass over 20", // 10 categories + 10 fund groups
@@ -73,10 +74,10 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 16, Vacuous: 11, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 17, Vacuous: 11, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Sixteen passes, eleven vacuous and one skipped is not twenty-eight of
+	// Seventeen passes, eleven vacuous and one skipped is not twenty-nine of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -169,6 +170,43 @@ func TestCollidingIDsFail(t *testing.T) {
 	}
 	if !strings.Contains(res.Findings[0].Detail, facts[0].ID) {
 		t.Errorf("finding %q does not name the colliding id %s", res.Findings[0].Detail, facts[0].ID)
+	}
+}
+
+// TestARelabelledFactNoLongerAddressesItself is fisc-c2j's failability, and the
+// mutation is chosen to be the one the OTHER fact-store checks miss.
+//
+// Editing row_label leaves the store sorted, leaves every id unique, and leaves
+// every amount re-derivable from its own token — facts-sorted, fact-ids-unique
+// and fact-token-reparses all pass, because none of them relates the id to the
+// fields it was hashed over. The line now carries an address that names a row
+// the record does not contain, which on a file whose whole purpose is to be
+// addressable is the silent failure fisc-28h's decision was made to prevent.
+func TestARelabelledFactNoLongerAddressesItself(t *testing.T) {
+	facts := testFacts()
+	stale := facts[0].ID
+	facts[0].RowLabel = "Property Taxes (restated)"
+	rep := runChecks(t, testSubject(t, facts...))
+
+	res := resultFor(t, rep, "fact-ids-recompute")
+	if res.Status != StatusFail {
+		t.Fatalf("status = %s, want fail", res.Status)
+	}
+	// The finding names the STALE id as its subject and the id the published
+	// fields now hash to as the remedy, so a reader can tell which of the two
+	// is wrong without recomputing anything by hand.
+	want := fact.MakeID(facts[0].DocID, facts[0].RuleID, facts[0].RowPath,
+		facts[0].RowLabel, facts[0].ColumnPath, facts[0].FiscalYear, facts[0].Basis)
+	if got := res.Findings[0]; got.Subject != stale || !strings.Contains(got.Detail, want) {
+		t.Errorf("finding = %+v, want subject %s naming %s", got, stale, want)
+	}
+	// And the neighbours stay green, which is what makes this check worth
+	// having rather than a restatement of one of them.
+	for _, id := range []string{"facts-sorted", "fact-ids-unique", "fact-token-reparses"} {
+		if res := resultFor(t, rep, id); res.Status != StatusPass {
+			t.Errorf("%s = %s over a relabelled fact, want pass: this check is not "+
+				"redundant with it", id, res.Status)
+		}
 	}
 }
 

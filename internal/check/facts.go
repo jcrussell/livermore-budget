@@ -70,6 +70,78 @@ func (*factIDsUnique) Run(_ context.Context, s *Subject) (Result, error) {
 	}.result(), nil
 }
 
+// factIDsRecompute asserts every published id is the id its own published
+// fields produce.
+//
+// THIS IS THE INVARIANT fisc-28h RESTS ON. That decision hashed row_label's
+// PUBLISHED form, mapping.Row.PrintedLabel(), rather than the resolver's
+// internal Identity(), and the deciding argument was exactly this: a reader
+// holding one line of the audit trail must be able to re-derive its id from
+// that line. Identity() carries a \x1f of its own inside a tuple joined on
+// \x1f and cannot be recovered from row_label — "A B" could be one anchor or
+// two — so under it the id would have addressed something the record does not
+// carry.
+//
+// WHAT IT CATCHES, AND WHAT IT DOES NOT, because the difference is easy to
+// overstate. It catches drift between the store and the tuple: a hand-edited
+// line, a fact assembled with one field and hashed over another, an id carried
+// over from a row that was since re-worded. It does NOT catch MakeID itself
+// being re-pointed at a different tuple — both sides would move together and
+// recompute cleanly after a rebuild. That case is guarded structurally instead:
+// Run below can only pass fields the RECORD publishes, so re-pointing MakeID at
+// something unpublished, Row.Identity() being the live temptation, stops
+// compiling here and forces the decision into the open rather than letting it
+// land silently.
+//
+// Until this check the property was asserted only over synthetic rows in
+// internal/fact's own tests, never over the committed store.
+//
+// IT IS NOT fact-ids-unique ONE MORE TIME. Uniqueness says no two facts claim
+// one cell; this says each fact's id names the cell it actually carries. Both
+// hold today and neither implies the other: renaming every row_label in lockstep
+// keeps the ids unique and makes all of them wrong.
+type factIDsRecompute struct{}
+
+var _ Check = (*factIDsRecompute)(nil)
+
+func (*factIDsRecompute) ID() string { return "fact-ids-recompute" }
+func (*factIDsRecompute) Tier() int  { return 1 }
+func (*factIDsRecompute) Full() bool { return false }
+func (*factIDsRecompute) Description() string {
+	return "every fact's id is what fact.MakeID produces from that fact's own published fields, " +
+		"so one line of the audit trail re-derives its own address"
+}
+
+// Run recomputes over the seven fields the record publishes, and no others.
+//
+// Reading them off the FACT rather than off the mapping is the whole point. A
+// version that re-resolved the rule would be asking whether the builder is
+// self-consistent, which it is by construction; this asks whether the published
+// line is, which is what an auditor holding facts.jsonl and nothing else can
+// check.
+func (*factIDsRecompute) Run(_ context.Context, s *Subject) (Result, error) {
+	var findings []Finding
+	for _, f := range s.Facts {
+		want := fact.MakeID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath, f.FiscalYear, f.Basis)
+		if f.ID == want {
+			continue
+		}
+		findings = append(findings, finding(f.ID,
+			"%s p%d %q: the published fields (rule %q, row_path %q, column_path %q, FY%d %s) "+
+				"hash to %s; an id that does not recompute addresses nothing",
+			f.DocID, f.Page, f.RowLabel, f.RuleID, f.RowPath, f.ColumnPath,
+			f.FiscalYear, f.Basis, want))
+	}
+	return conclusion{
+		subjects: len(s.Facts),
+		unit:     "facts",
+		held: fmt.Sprintf("%d facts, each id recomputed from the seven fields the record publishes",
+			len(s.Facts)),
+		nothing:  "the fact store is empty",
+		findings: findings,
+	}.result(), nil
+}
+
 // factTokenReparses asserts every published amount is what its own source text
 // says.
 //
