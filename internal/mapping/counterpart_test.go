@@ -42,6 +42,14 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 		{"no kind", func(r *Row) { r.Counterpart.Kind = "" }, "counterpart kind"},
 		{"bad kind", func(r *Row) { r.Counterpart.Kind = "transfer" }, "counterpart kind"},
 		{"no fund group", func(r *Row) { r.Counterpart.FundGroup = "" }, "counterpart has no fund_group"},
+		// A GROUP ALONE IS NOT ENOUGH, and nothing downstream would say so:
+		// fact.FromValues' guard fires only when both are absent, and
+		// row-funds-match-their-anchors has no number to compare its printed
+		// anchor against, so the leg would publish fund 0 with every check
+		// green. The near leg is deliberately different -- p76's LAVWMA row
+		// receives into a joint powers authority that is no City fund.
+		{"a group but no fund", func(r *Row) { r.Counterpart.Fund = 0 },
+			"counterpart declares fund_group"},
 		{"skipped row", func(r *Row) { r.Skip = true }, "declares a counterpart"},
 		{"row with a department", func(r *Row) { r.Department = "police" }, "carries department"},
 		{"same category and fund", func(r *Row) {

@@ -81,15 +81,17 @@ var unprojectedScopes = map[string]string{
 		"(fisc-u8o); it is covered by no arithmetic here. The two historical columns are " +
 		"not published: they miss p76's own printed grand total by 6,858,051 and by exactly " +
 		"5,000,000, and the spine prints no actual or revised column to tie them to. " +
-		"WHAT IS STILL UNGUARDED, because the check above cannot see it: the payer at " +
-		"each row's far end is hand-typed, the page cannot check it (a counterpart is " +
-		"resolved downstream of every comparison against the city's own arithmetic), " +
-		"and rule-funds-match-their-headings reads column funds only, so it does not " +
-		"reach these rows at all. Five of p76's payer labels match an operating fund " +
-		"AND its CIP twin, and every twin is type: capital, so a leg under the wrong " +
-		"twin moves inside the collapsed non-major cell and ties anyway. That is " +
-		"fisc-bhe. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; leg-level links " +
-		"carrying a transfer_id are fisc-9gh.",
+		"THE PAYER AT EACH ROW'S FAR END IS NOT COVERED BY THE ARITHMETIC AT ALL, and " +
+		"is checked separately: it is hand-typed 44 times, the page cannot check it (a " +
+		"counterpart is resolved downstream of every comparison against the city's own " +
+		"totals), and five of p76's payer labels match an operating fund AND its CIP " +
+		"twin -- every twin type: capital, so a leg under the wrong twin moves inside " +
+		"the collapsed non-major cell and ties anyway. row-funds-match-their-anchors " +
+		"resolves 40 printed row anchors against data/funds.yaml instead. Three " +
+		"declared payers it cannot reach: p76 prints three continuation rows whose " +
+		"\"Transfer From\" carries over from the row above, so they have no printed " +
+		"anchor on their own line. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; " +
+		"leg-level links carrying a transfer_id are fisc-9gh.",
 }
 
 // projectionsBuild asserts every slice of the fact store that a projection was

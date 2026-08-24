@@ -248,6 +248,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"expenditure-detail-ties-to-spine": StatusPass,
 		"revenue-detail-ties-to-spine":     StatusPass,
 		"transfers-detail-ties-to-spine":   StatusPass,
+		"row-funds-match-their-anchors":    StatusPass,
 		"graph-acyclic":                    StatusPass,
 		"derived-nodes-justified":          StatusPass,
 		"link-values-tie-to-facts":         StatusPass,

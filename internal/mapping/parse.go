@@ -1012,6 +1012,27 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			"without one the leg's column_path falls back to the rule's scope, "+
 				"where it is indistinguishable from any other scope-filed fact")
 	}
+	// AND A GROUP IS NOT ENOUGH. A counterpart exists to name the fund at the
+	// far end of a movement; with a group alone it names only which sixth of
+	// the city, which is what the near leg's own column already says. Nothing
+	// downstream catches it: fact.FromValues' guard fires only when BOTH the
+	// group and the fund are absent, and row-funds-match-their-anchors has no
+	// number to compare its printed anchor against, so the leg publishes
+	// fund 0 and every check stays green.
+	//
+	// The near leg is deliberately different -- Budget Book p76's LAVWMA row
+	// receives into a joint powers authority that is no City fund at all, and a
+	// group-only column path is the honest reading of it. If a PAYER ever turns
+	// out to be similarly unnameable, that needs a decision rather than this
+	// arm being relaxed: the far leg's whole purpose is the payer.
+	if cp.Fund == 0 {
+		return cmdutil.WithHint(
+			errf(r.ID, "rows", "row %q: counterpart declares fund_group %q and no fund",
+				row.Label, cp.FundGroup),
+			"a counterpart names the fund at the far end of the movement; a group "+
+				"on its own names no payer, and no check downstream can tell it "+
+				"from one that was never declared")
+	}
 	// A department is an axis Counterpart has no field for, so the far leg
 	// would silently take the near leg's -- publishing, say, Police's transfer
 	// OUT of the fund that paid Police. Refused rather than dropped: dropping

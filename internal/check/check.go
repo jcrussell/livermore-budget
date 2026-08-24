@@ -177,6 +177,7 @@ func All() []Check {
 		&factDepartmentsResolve{},
 		&factFundsResolve{},
 		&ruleFundsMatchTheirHeadings{},
+		&rowFundsMatchTheirAnchors{},
 
 		&projectionsBuild{},
 		&publishedProjectionBuilt{},
