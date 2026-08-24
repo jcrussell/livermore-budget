@@ -69,6 +69,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		// reconcile in either lane.
 		"expenditure-detail-ties-to-spine": "vacuous over 0",
 		"revenue-detail-ties-to-spine":     "vacuous over 0",
+		"transfers-detail-ties-to-spine":   "vacuous over 0",
 		"aggregation-invariance":           "vacuous over 0",
 		"constraint-tier-vocabulary":       "vacuous over 0",
 		"fact-departments-resolve":         "vacuous over 0",
@@ -80,10 +81,10 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 17, Vacuous: 13, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 17, Vacuous: 14, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Seventeen passes, thirteen vacuous and one skipped is not thirty-one of
+	// Seventeen passes, fourteen vacuous and one skipped is not thirty-two of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -99,14 +100,14 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 13 {
-		t.Fatalf("vacuous count = %d, want 13", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 14 {
+		t.Fatalf("vacuous count = %d, want 14", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
-		t.Error("a run with thirteen vacuous checks failed without --strict")
+		t.Error("a run with fourteen vacuous checks failed without --strict")
 	}
 	if !strict.Failed() {
-		t.Error("a run with ten vacuous checks passed under --strict")
+		t.Error("a run with fourteen vacuous checks passed under --strict")
 	}
 	// The statuses must be identical: --strict changes what a vacuous result
 	// means for the exit code, not what any check concluded.

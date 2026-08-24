@@ -36,8 +36,7 @@ import (
 // drawing a declared scope the entry goes silent while remaining a false claim
 // about the corpus. staleDeclarations is the branch that refuses that, and it is
 // what retires an entry automatically instead of leaving an exemption for whoever
-// forgets. One more entry is decided and lands with its schedule:
-// transfers-by-fund (fisc-aes, fisc-5gk.3.1). Do not add it before its facts.
+// forgets.
 var unprojectedScopes = map[string]string{
 	expenditureDetailScope: "Budget Book pp.167-170, General Fund Expenditures by Major " +
 		"Category: the department x object decomposition of p66's General Fund expenditure " +
@@ -65,6 +64,32 @@ var unprojectedScopes = map[string]string{
 		"column, so this schedule's FY2024 and FY2025 halves tie to its own 79 printed " +
 		"totals at build time and to nothing on the spine. A fund tier in the graph is " +
 		"fisc-gxa.2 / fisc-oxf.",
+	transfersDetailScope: "Budget Book p76, Summary of Transfers: the per-fund decomposition " +
+		"of pp.66-67's TRANSFER IN and TRANSFER OUT rows, not additional money. Its 22 " +
+		"printed rows sum, per receiving fund group, to those pages' TRANSFER IN cells " +
+		"exactly in both budget years -- general 480,400 / 486,735, enterprise 13,247,000 / " +
+		"13,330,000, debt-service 6,984,597 / 6,969,898, special-revenue 814,000 / 838,000 " +
+		"-- so drawing them into the fund-group spine doubles the city's transfers. Each " +
+		"row publishes TWO facts from one printed figure, the receiving leg and the paying " +
+		"one, so 88 in all. WHAT RECONCILES THEM IS NOT UNIFORM AND THE DIFFERENCE MATTERS: " +
+		"the IN side ties to the spine exactly, cell for cell, with no constant and no " +
+		"exception. The OUT side does not and cannot -- pp.66-67's TRANSFER OUT includes " +
+		"transfers to the CIP, which p76 does not list -- so it ties only after adding a " +
+		"figure read off pp.72-75, which are neither mapped nor fixtures and are therefore " +
+		"hand-typed into the check. And the permanent in-leg is a published zero reconciled " +
+		"against an absent spine column, because pp.66-67 print no Permanent group at all " +
+		"(fisc-u8o); it is covered by no arithmetic here. The two historical columns are " +
+		"not published: they miss p76's own printed grand total by 6,858,051 and by exactly " +
+		"5,000,000, and the spine prints no actual or revised column to tie them to. " +
+		"WHAT IS STILL UNGUARDED, because the check above cannot see it: the payer at " +
+		"each row's far end is hand-typed, the page cannot check it (a counterpart is " +
+		"resolved downstream of every comparison against the city's own arithmetic), " +
+		"and rule-funds-match-their-headings reads column funds only, so it does not " +
+		"reach these rows at all. Five of p76's payer labels match an operating fund " +
+		"AND its CIP twin, and every twin is type: capital, so a leg under the wrong " +
+		"twin moves inside the collapsed non-major cell and ties anyway. That is " +
+		"fisc-bhe. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; leg-level links " +
+		"carrying a transfer_id are fisc-9gh.",
 }
 
 // projectionsBuild asserts every slice of the fact store that a projection was

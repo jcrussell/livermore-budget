@@ -247,6 +247,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"facts-are-projected":              StatusPass,
 		"expenditure-detail-ties-to-spine": StatusPass,
 		"revenue-detail-ties-to-spine":     StatusPass,
+		"transfers-detail-ties-to-spine":   StatusPass,
 		"graph-acyclic":                    StatusPass,
 		"derived-nodes-justified":          StatusPass,
 		"link-values-tie-to-facts":         StatusPass,

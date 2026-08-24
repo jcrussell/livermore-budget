@@ -242,12 +242,18 @@ non-major sources as special-revenue sources alone. Both years divide cleanly
 (FY2027: Capital 35,830,251 + Special Revenue 100,000 = 35,930,251,
 `p0075.txt:56`).
 
-Nothing pins those four rows today.
-`TestP76AccountsForTheInSideAndNoneOfTheResidual` asserts only that Capital and
-Internal Service together do not exceed the whole residual, which is how the
-wrong figures survived. The arithmetic that catches it is `fisc-4ac`: declared
-to-CIP constants that must sum to `headline.transfer_residual_cents` in both
-projected years.
+Those four rows are pinned twice over now, and neither pin existed when the
+wrong figures were written. `TestP76SourcesDecomposeTheResidualByFundType`
+(19bb265) resolves every payer through `registry.FundByLabel` and asserts
+`spine_TRANSFER_OUT == p76_paid + to_CIP` for all six groups in both budget
+years; `transfers-detail-ties-to-spine` then makes the same claim over the
+published facts, with the to-CIP figures declared in `internal/check` as
+`toCIP`. What both replaced is
+`TestP76AccountsForTheInSideAndNoneOfTheResidual`, which asserts only that
+Capital and Internal Service together do not exceed the whole residual -- a
+bound loose enough that the wrong figures satisfied it. Still open is `fisc-4ac`:
+tying the declared constants to `headline.transfer_residual_cents` in both
+projected years, which is the one direction neither test covers.
 
 `fisc-1wr.4` asks for a residual node. This contract states the residual as
 `headline.transfer_residual_cents` instead, and has `verify` assert it equals

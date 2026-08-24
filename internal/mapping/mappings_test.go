@@ -409,10 +409,13 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 		}
 	}
 	// 10 spine parts over pp.66-67; 26 division parts over pp.167-170, of which
-	// three divisions declare two because they straddle a page break; and 84
+	// three divisions declare two because they straddle a page break; 84
 	// revenue parts over pp.127-140, of which five declare two because either
-	// their rows or their printed total is on the far side of a page break.
-	if want := 120; parts != want {
+	// their rows or their printed total is on the far side of a page break; and
+	// 5 transfer parts on p76, one per printed section -- the first parts in
+	// this file to declare a column the page prints no header over, which they
+	// spell as a trailing null (fisc-wfi).
+	if want := 125; parts != want {
 		t.Errorf("checked %d parts, want %d; the published file's shape changed",
 			parts, want)
 	}

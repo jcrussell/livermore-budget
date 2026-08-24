@@ -2982,6 +2982,246 @@ rules:
       - {label: "Use of Money & Prop", category: use-of-money-and-property}
       - {label: "Transfers In", category: transfers/in, kind: transfer_in}
 
+  # ==========================================================================
+  # BUDGET BOOK p76, "SUMMARY OF TRANSFERS" -- scope: transfers-by-fund.
+  #
+  # THIS PAGE AND THE SPINE ARE THE SAME MONEY, which is why it carries its own
+  # scope rather than joining all-funds-gross. Every destination fund group's
+  # section total here equals pp.66-67's TRANSFER IN cell EXACTLY, and General
+  # Fund's out-flows equal TRANSFER OUT exactly. A rule written at the spine's
+  # scope would double the city's transfers with every check still green --
+  # fisc-u2v's mechanism one lane over, and the reason fisc-aes decided this.
+  #
+  # ONE PRINTED FIGURE, TWO FACTS. The page names both ends of every movement,
+  # and fact.Fact carries one fund field, so each row declares its DESTINATION
+  # as the row's own fund and its PAYER as a counterpart. Both legs cite the
+  # same doc_id/page/offset/token, because that figure is the evidence for both
+  # directions (fisc-4rh). 22 rows x 2 budget years x 2 legs = 88 facts.
+  #
+  # THE FUND DIMENSION IS PER ROW HERE, WHICH IS THE OPPOSITE OF EVERY OTHER
+  # SCHEDULE IN THIS FILE. A column is a YEAR; the section is the receiving
+  # GROUP, so fund_group sits on the column and fund on the row. Three of the
+  # five sections are mixed on the paying side.
+  #
+  # ONLY THE TWO BUDGET COLUMNS ARE PUBLISHED. The page's FY2023-24 and
+  # FY2024-25 columns miss its own printed grand total by 6,858,051 and by
+  # exactly 5,000,000 -- millions, nothing like the <=$5 rounding class that
+  # stated_total_deltas is for -- and pp.66-67 print no actual or revised
+  # column, so nothing on the spine could reconcile them either. They are read
+  # and skipped. internal/mapping/transfers_p76_test.go pins both deltas, so a
+  # change in them is still caught.
+  #
+  # NO total_row. p76 prints ONE grand total for the whole schedule, beneath its
+  # last section, with no printed label to anchor on (p0076.txt:64 is a bare
+  # "$29,947,677  $27,679,706  $21,525,997  $21,624,633"). A rollup is refused
+  # twice over -- a covered rule must print its own total, and covered rules
+  # must declare the same columns, which these do not because each names its own
+  # fund_group -- and an `unassertable` rollup still requires a total_row it
+  # would have to invent. So the cross-rule sum stays in Go, where
+  # transfers_p76_test.go reads it off THESE rules (fisc-9m7). Consequence,
+  # stated so it is not discovered afterwards: fisc build's parts_unchecked
+  # goes 6 -> 11.
+  # ==========================================================================
+  - id: p76-transfers-in-general
+    kind: transfer_in
+    basis: adopted
+    scope: transfers-by-fund
+    units: dollars
+    note: >-
+      Nine transfers into the General Fund. The section anchor carries its
+      trailing newline because "General Fund" also ends every one of these nine
+      row labels: without it the anchor matches a data row rather than the
+      section header. FY2026 sums to 480,400 and FY2027 to 486,735, which is
+      p0066.txt:24's General Fund TRANSFER IN cell to the cent -- and the cell
+      revenue-detail-ties-to-spine hands to this scope.
+    parts:
+      - page: 76
+        section: "General Fund\n"
+        section_ordinal: 1
+        stop_at: "Enterprise Funds"
+        # Four year headers on one printed line (p0076.txt:9) and nothing over
+        # the footnote-marker column, which is what the trailing null says
+        # (fisc-wfi).
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
+        columns:
+          - {skip: true}
+          - {skip: true}
+          - {fund_group: general, fiscal_year: 2026}
+          - {fund_group: general, fiscal_year: 2027}
+          # The footnote marker. Not a column, but it sits between this row's
+          # last figure and the next row's label, where checkGap refuses
+          # anything that is not whitespace. Load-bearing twice over:
+          # amount.Parse reads "(10)" as NEGATIVE TEN DOLLARS, and nothing
+          # downstream sees that only because the column is skipped.
+          - {skip: true}
+    rows:
+      - {label: "Transfer From Low Income Hsng", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 200, fund_group: special-revenue}}
+      - {label: "Transfer From Home Grant", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 225, fund_group: special-revenue}}
+      - {label: "Transfer From State Grant", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 240, fund_group: special-revenue}}
+      - {label: "Transfer From Downtown Revital", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 280, fund_group: special-revenue}}
+      - {label: "Transfer From CASP Fee", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 286, fund_group: special-revenue}}
+      - {label: "Transfer From Downtown LMD", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 310, fund_group: special-revenue}}
+      - {label: "Transfer From Other LMDs", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 311, fund_group: special-revenue}}
+      # THE OPERATING FUND, NOT ITS CIP TWIN, for both of these. "Traffic Imp
+      # Fee" matches 510 and 823, "State Gas Tax" 560 and 834. data/funds.yaml's
+      # header settles it arithmetically: the capital funds' Transfers Out
+      # (211,150 / 217,485) is exactly Traffic Imp Fee + State Gas Tax +
+      # Measure D each year, and both of these are type: capital.
+      - {label: "Transfer From Traffic Imp Fee", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 510, fund_group: capital}}
+      - {label: "Transfer From State Gas Tax", label_tail: "to General Fund", category: "transfers/in", fund: 100,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 560, fund_group: capital}}
+
+  # --------------------------------------------------------------------------
+  - id: p76-transfers-in-enterprise
+    kind: transfer_in
+    basis: adopted
+    scope: transfers-by-fund
+    units: dollars
+    note: >-
+      Six transfers into Enterprise funds, three of them paid by other
+      Enterprise funds. FY2026 sums to 13,247,000 and FY2027 to 13,330,000,
+      which is p0066.txt's Enterprise TRANSFER IN cell exactly. "Connection" is
+      the wrapped tail of "to LAVWMA / Wastewater Connection" and prints on its
+      own line BETWEEN that row's figures and the next row's label; declaring it
+      is what lets one printed section be one rule (fisc-0cs).
+    parts:
+      - page: 76
+        section: "Enterprise Funds"
+        stop_at: "Debt Service Funds"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
+        wrapped_labels: ["Connection"]
+        columns:
+          - {skip: true}
+          - {skip: true}
+          - {fund_group: enterprise, fiscal_year: 2026}
+          - {fund_group: enterprise, fiscal_year: 2027}
+          - {skip: true}
+    rows:
+      - {label: "Transfer From General Fund", label_tail: "to Stormwater", category: "transfers/in", fund: 610,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 100, fund_group: general}}
+      - {label: "Transfer From Wastewater", label_tail: "to Stormwater", category: "transfers/in", fund: 610,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 620, fund_group: enterprise}}
+      # A CONTINUATION ROW: the page prints no source on its own line, the
+      # "Transfer From Wastewater" above carries over. The counterpart is what
+      # lets the rule DECLARE that payer rather than a reader inferring it --
+      # and it is why the three continuation rows have no printed anchor of
+      # their own for a row-label fund check to test against (fisc-30j).
+      - {label: "to Wastewater Replacement", category: "transfers/in", fund: 622,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 620, fund_group: enterprise}}
+      # NO fund ON THIS ROW. "LAVWMA / Wastewater Connection" names a joint
+      # powers authority, not a City fund; data/funds.yaml has no entry and no
+      # alias for it, and internal/registry/fundlabel_test.go asserts by name
+      # that it resolves to nothing -- deliberately, because the alternative is
+      # silently picking Wastewater Connection Fees (623). The column's
+      # fund_group stands alone, which ColumnPath emits and which is
+      # addressable. Both budget figures are "-", published zeros (fisc-30j).
+      - {label: "Transfer From Wastewater", label_tail: "to LAVWMA / Wastewater", category: "transfers/in",
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 620, fund_group: enterprise}}
+      - {label: "Transfer From Water", label_tail: "to Water Replacement", category: "transfers/in", fund: 642,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 640, fund_group: enterprise}}
+      - {label: "Transfer From Water Replace", label_tail: "to Water", category: "transfers/in", fund: 640,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 642, fund_group: enterprise}}
+
+  # --------------------------------------------------------------------------
+  - id: p76-transfers-in-debt-service
+    kind: transfer_in
+    basis: adopted
+    scope: transfers-by-fund
+    units: dollars
+    note: >-
+      Three transfers into Debt Service funds. FY2026 sums to 6,984,597 and
+      FY2027 to 6,969,898, which is p0067.txt's Debt Service TRANSFER IN cell
+      exactly.
+    parts:
+      - page: 76
+        section: "Debt Service Funds"
+        stop_at: "Permanent Funds"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
+        columns:
+          - {skip: true}
+          - {skip: true}
+          - {fund_group: debt-service, fiscal_year: 2026}
+          - {fund_group: debt-service, fiscal_year: 2027}
+          - {skip: true}
+    rows:
+      - {label: "Transfer From General Fund", label_tail: "to 2020 COPS Series B", category: "transfers/in", fund: 401,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 100, fund_group: general}}
+      # A continuation row: "Transfer From General Fund" carries over.
+      - {label: "to 2022 COPS", category: "transfers/in", fund: 402,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 100, fund_group: general}}
+      # "Host Comm Impact" is 282 and not its CIP twin 820.
+      - {label: "Transfer From Host Comm Impact", label_tail: "to 2020 COPS Series A", category: "transfers/in", fund: 400,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 282, fund_group: special-revenue}}
+
+  # --------------------------------------------------------------------------
+  - id: p76-transfers-in-permanent
+    kind: transfer_in
+    basis: adopted
+    scope: transfers-by-fund
+    units: dollars
+    note: >-
+      One transfer into a Permanent fund, and both budget figures are "-" --
+      published zeros, not absent. pp.66-67 print NO Permanent column at all
+      (fisc-u8o), so this is the one key transfers-detail-ties-to-spine has
+      with no spine counterpart. It is published because the page publishes it:
+      "absent is not zero" cuts both ways, and a zero the city printed is a
+      figure. The payer, "Open Space", is 300 and not Doolan Canyon Open Space
+      (471), which is the receiving side's near-twin.
+    parts:
+      - page: 76
+        section: "Permanent Funds"
+        stop_at: "Special Revenue Funds"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
+        columns:
+          - {skip: true}
+          - {skip: true}
+          - {fund_group: permanent, fiscal_year: 2026}
+          - {fund_group: permanent, fiscal_year: 2027}
+          - {skip: true}
+    rows:
+      - {label: "Transfer From Open Space", label_tail: "to Doolan Canyon Preserve Endow", category: "transfers/in", fund: 470,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 300, fund_group: special-revenue}}
+
+  # --------------------------------------------------------------------------
+  - id: p76-transfers-in-special-revenue
+    kind: transfer_in
+    basis: adopted
+    scope: transfers-by-fund
+    units: dollars
+    note: >-
+      Three transfers into Special Revenue funds. FY2026 sums to 814,000 and
+      FY2027 to 838,000, which is p0067.txt's Special Revenue TRANSFER IN cell
+      exactly. The block stops at the page's grand-total line, which is the only
+      "$" on the page below this section.
+    parts:
+      - page: 76
+        section: "Special Revenue Funds"
+        stop_at: "$"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
+        columns:
+          - {skip: true}
+          - {skip: true}
+          - {fund_group: special-revenue, fiscal_year: 2026}
+          - {fund_group: special-revenue, fiscal_year: 2027}
+          - {skip: true}
+    rows:
+      - {label: "Transfer From General Fund", label_tail: "to Horizons", category: "transfers/in", fund: 210,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 100, fund_group: general}}
+      # A continuation row: "Transfer From General Fund" carries over.
+      - {label: "to Downtown LMD", category: "transfers/in", fund: 310,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 100, fund_group: general}}
+      # "Measure D" is 550 and not its CIP twin 828.
+      - {label: "Transfer From Measure D", label_tail: "to Import Mitigation Fee", category: "transfers/in", fund: 288,
+         counterpart: {category: "transfers/out", kind: transfer_out, fund: 550, fund_group: capital}}
+
 rollups:
   # --------------------------------------------------------------------------
   - id: dept-city-council

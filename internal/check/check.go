@@ -183,6 +183,7 @@ func All() []Check {
 		&factsAreProjected{},
 		&expenditureDetailTiesToSpine{},
 		&revenueDetailTiesToSpine{},
+		&transfersDetailTiesToSpine{},
 
 		&graphAcyclic{},
 		&derivedNodesJustified{},

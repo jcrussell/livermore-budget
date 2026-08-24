@@ -10,6 +10,11 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
+// p76PublishedScope is the scope the published p76 rules carry, decided by
+// fisc-aes: p76 and pp.66-67 are the same money, so a rule at the spine's scope
+// would double the city's transfers with every check still green.
+const p76PublishedScope = "transfers-by-fund"
+
 // realDataDir is data/, holding funds.yaml and the other two registries.
 // internal/registry's own tests read the same tree, for the same reason: an
 // alias is a claim about a printed page, and checking it against the real file
@@ -588,5 +593,88 @@ func TestP76ReadsUnderTheColumnGuardWithAHeaderlessColumn(t *testing.T) {
 	if err := mid.Validate(); err == nil {
 		t.Error("a null between two headers was accepted; it sits in a gap with known " +
 			"bounds that the grid would have checked")
+	}
+}
+
+// TestPublishedP76SumsToItsPrintedGrandTotal is fisc-9m7's answer, and the
+// reason it is a Go test rather than a rollup is a property of the page.
+//
+// p76 prints ONE total for the whole schedule, beneath its last section, and
+// prints no label over it: p0076.txt:64 is a bare "$29,947,677  $27,679,706
+// $21,525,997  $21,624,633". So no rule can carry it as total_row -- there is
+// no anchor -- and a Rollup is refused twice over besides: a covered rule must
+// print its own total, and covered rules must declare the same columns, which
+// these five do not because each names its own receiving fund_group. An
+// `unassertable` rollup would still have to name a total_row it would be
+// inventing.
+//
+// WHAT MAKES THIS DIFFERENT FROM THE FIXTURE'S VERSION is which rules it reads.
+// TestP76ColumnsAgainstItsPrintedTotal runs over testdata/transfers-p76.yaml
+// and checks a file nothing publishes; this runs over mappings/, so the page's
+// own arithmetic is a check on the rules that produce facts. Both are wanted:
+// the fixture covers all four printed columns and pins the two historical
+// deltas, which the published rules skip and could not otherwise state.
+//
+// The delta here is ZERO in both columns, so this is an equality and not a
+// tolerance -- there is no rounding on this page's budget years to absorb.
+func TestPublishedP76SumsToItsPrintedGrandTotal(t *testing.T) {
+	f, err := Load(publishedSpine)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	r, err := NewResolver(budgetDoc(t, p76Page), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+
+	byYear := map[int]amount.Cents{}
+	rules, rows := 0, 0
+	for i := range f.Rules {
+		rule := &f.Rules[i]
+		if rule.Scope != p76PublishedScope {
+			continue
+		}
+		rules++
+		// One part each, and the doc above holds only p76, so a rule of this
+		// scope on any other page would fail here rather than be summed.
+		vals, _, err := r.Values(rule, &rule.Parts[0])
+		if err != nil {
+			t.Fatalf("rule %s: %v", rule.ID, err)
+		}
+		rows += len(rule.ActiveRows(&rule.Parts[0]))
+		for _, v := range vals {
+			byYear[v.Column.FiscalYear] += v.Cents
+		}
+	}
+
+	// The shape first, so a sum that ties because half the page went missing
+	// is not read as agreement.
+	if rules != 5 {
+		t.Errorf("read %d published p76 rules, want 5 -- one per printed section", rules)
+	}
+	if rows != 22 {
+		t.Errorf("read %d rows, want the 22 transfers the page prints", rows)
+	}
+
+	for _, tc := range []struct {
+		year   int
+		stated amount.Cents
+	}{
+		{2026, p76StatedFY2026},
+		{2027, p76StatedFY2027},
+	} {
+		if got := byYear[tc.year]; got != tc.stated {
+			t.Errorf("FY%d: the five published rules sum to %s, and the page prints %s "+
+				"as its grand total (a difference of %s); this is the only arithmetic "+
+				"p76 offers against itself",
+				tc.year, got, tc.stated, tc.stated-got)
+		}
+	}
+	// And nothing else was published: the two historical columns are skipped,
+	// because they miss this same printed total by millions and pp.66-67 print
+	// no column to tie them to either.
+	if len(byYear) != 2 {
+		t.Errorf("the published rules produced %d fiscal years, want just the two "+
+			"budget columns: %v", len(byYear), byYear)
 	}
 }
