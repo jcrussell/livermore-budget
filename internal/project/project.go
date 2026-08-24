@@ -64,6 +64,14 @@ const (
 	PublishedFiscalYear = 2026
 	PublishedBasis      = mapping.BasisAdopted
 	PublishedScope      = "all-funds-gross"
+	// PublishedProjection is the stem of the document the page is built from.
+	//
+	// It is here with the slice rather than only in internal/export because it
+	// is the fourth part of the same declaration: since each projection is built
+	// over the slices IT declares, naming a year, a basis and a schedule no
+	// longer names a document. internal/export keeps its own copy for the page
+	// it renders, and the two agreeing is what a test asserts.
+	PublishedProjection = "sankey"
 )
 
 // Options are the slice of the corpus a projection is built from.
@@ -125,6 +133,31 @@ type Projection interface {
 	Name() string
 	// Build renders the projection as canonical, deterministic JSON.
 	Build(facts []fact.Fact, o Options) ([]byte, error)
+}
+
+// Sliced is a projection that says which slices of the fact store it is of.
+//
+// It exists because the alternative was `fisc verify` deciding for it, and that
+// decision does not generalise. internal/check used to derive one slice per
+// (fiscal year, basis) present within the SPINE scope and build every registered
+// projection over every one of them — correct while the Sankey was the only
+// projection, and wrong for the first one that is of a different schedule, which
+// would be handed a slice containing none of its facts.
+//
+// The projection is the right place to answer it: it is the thing that knows
+// which schedule it draws and whether one document per year is meaningful for
+// it. A Sankey of two budgets is not a chart of anything, so Sankey returns one
+// slice per year; a four-year trend line is a chart of exactly one thing, so a
+// trends projection returns a single slice spanning all four.
+//
+// A projection that does not implement this is still built — over the slices the
+// caller chose — so this is an opt-in refinement rather than a new obligation.
+type Sliced interface {
+	// Slices returns the options this projection wants to be built under, in a
+	// stable order, given the whole fact store. An empty result means the store
+	// carries nothing this projection is of, which is a statement about the
+	// corpus and not an error.
+	Slices(facts []fact.Fact, version string) []Options
 }
 
 // Registry returns the projections a build emits, in a stable order, each

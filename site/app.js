@@ -412,9 +412,12 @@ let keyActivation = { id: "", at: -Infinity };
  * and the last move is never followed by another sort, so a node can be left
  * handing its ribbons out in an order its neighbours no longer sit in. The
  * result is a pair of ribbons that cross immediately at the node face, for no
- * reason in the data -- 14 of them on FY2026, which tools/jscheck counts before
- * this function runs and again after, expecting 14 and then none. Redoing the
- * sort against the final positions is the whole fix.
+ * reason in the data -- 14 of them on FY2026. tools/jscheck counts them before
+ * this function runs, and counts the 14 CROSSINGS they cost, which falls from
+ * 209 to 195. It deliberately does not re-count the pairs afterwards: this
+ * function sorts by the same key that count is derived from, so zero after is a
+ * tautology and would assert nothing. Redoing the sort against the final
+ * positions is the whole fix.
  *
  * Widths are not touched, only the order they are stacked in, so each node's
  * ribbons still fill exactly its own height.

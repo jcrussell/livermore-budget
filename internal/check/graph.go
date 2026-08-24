@@ -48,7 +48,7 @@ func (*graphAcyclic) Description() string {
 func (*graphAcyclic) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	links, nodes := 0, 0
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		links += len(p.Graph.Links)
 		nodes += len(p.Graph.Nodes)
 		if cycle := findCycle(p.Graph.Links); len(cycle) > 0 {
@@ -60,7 +60,7 @@ func (*graphAcyclic) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: links,
 		unit:     "links",
 		held: fmt.Sprintf("%d links over %d nodes in %d projections, no cycle",
-			links, nodes, len(s.Projections)),
+			links, nodes, len(s.Graphs())),
 		nothing:  "no projection carries a link, so there is no path to walk",
 		findings: findings,
 	}.result(), nil
@@ -139,7 +139,7 @@ func (*derivedNodesJustified) Run(_ context.Context, s *Subject) (Result, error)
 	var findings []Finding
 	subjects := 0
 
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		for _, n := range p.Graph.Nodes {
 			isInferred := slices.Contains(inferred, n.ID)
 			if !n.Derived && !isInferred {
@@ -213,7 +213,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 
 	var findings []Finding
 	links := 0
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		selected := factIndex(factsFor(s.Facts, p.Options))
 		for _, l := range p.Graph.Links {
 			links++
@@ -305,7 +305,7 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	var summaries []string
 
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		selected := factsFor(s.Facts, p.Options)
 		stock, zero := 0, 0
 		for _, c := range netCells(selected) {
@@ -348,7 +348,7 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	}
 
 	return conclusion{
-		subjects: len(s.Projections),
+		subjects: len(s.Graphs()),
 		unit:     "projections",
 		held:     strings.Join(summaries, "; "),
 		nothing:  "no projection was built, so there are no counts to reconcile",
@@ -408,7 +408,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects := 0
 
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		var grossRevenue, grossExpenditure, externalRevenue, externalExpenditure, transfersOut int64
 		for _, f := range factsFor(s.Facts, p.Options) {
 			external := f.FundGroup != fundGroupInternalService
@@ -459,7 +459,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: subjects,
 		unit:     "facts",
 		held: fmt.Sprintf("%d revenue, expenditure and transfer-out facts across %d projections, "+
-			"each of the five figures the sum of them", subjects, len(s.Projections)),
+			"each of the five figures the sum of them", subjects, len(s.Graphs())),
 		nothing:  "no fact is a revenue, an expenditure or a transfer out, so there is no headline to check",
 		findings: findings,
 	}.result(), nil
@@ -492,7 +492,7 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 	var findings []Finding
 	subjects := 0
 
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		var in, out int64
 		for _, f := range factsFor(s.Facts, p.Options) {
 			switch f.Kind {
@@ -526,7 +526,7 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 		subjects: subjects,
 		unit:     "transfer facts",
 		held: fmt.Sprintf("%d transfer facts across %d projections, each headline the sum of them",
-			subjects, len(s.Projections)),
+			subjects, len(s.Graphs())),
 		nothing:  "no fact is a transfer, so there is no residual to state",
 		findings: findings,
 	}.result(), nil
@@ -577,7 +577,7 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 	var summaries []string
 	subjects := 0
 
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		h := p.Graph.Metadata.Headline
 		if h.InternalTransferOutCents == 0 &&
 			h.AllFundsGrossExpenditureCents == h.ExternalExpenditureCents {
@@ -638,7 +638,7 @@ func (*transferLegsPair) Description() string {
 func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	legs := map[string][]project.Link{}
 	var ids []string
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		for _, l := range p.Graph.Links {
 			if l.TransferID == "" {
 				continue
@@ -710,7 +710,7 @@ func (*aggregationInvariance) Description() string {
 
 func (*aggregationInvariance) Run(_ context.Context, s *Subject) (Result, error) {
 	parented := 0
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		for _, n := range p.Graph.Nodes {
 			if n.Parent != "" {
 				parented++
@@ -771,7 +771,7 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 
 	var findings []Finding
 	subjects := 0
-	for _, p := range s.Projections {
+	for _, p := range s.Graphs() {
 		for _, n := range p.Graph.Nodes {
 			if n.ConstraintTier == "" {
 				continue

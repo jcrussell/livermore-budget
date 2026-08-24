@@ -53,6 +53,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-kind-matches-category":  "pass over 10",
 		"projections-build":           "pass over 1",
 		"published-projection-built":  "pass over 1",
+		"documents-are-checked":       "pass over 1",
 		"facts-are-projected":         "pass over 10",
 		"graph-acyclic":               "pass over 7",
 		"derived-nodes-justified":     "pass over 2",
@@ -83,10 +84,10 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 17, Vacuous: 15, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 18, Vacuous: 15, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Seventeen passes, fifteen vacuous and one skipped is not thirty-three of
+	// Eighteen passes, fifteen vacuous and one skipped is not thirty-four of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")

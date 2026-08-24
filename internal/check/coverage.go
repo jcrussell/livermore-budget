@@ -187,13 +187,20 @@ func (*publishedProjectionBuilt) Description() string {
 // not. There is no state of the corpus in which this check has nothing to look at,
 // which is why it is not routed through conclusion.
 func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, error) {
-	want := fmt.Sprintf("FY%d %s %s",
+	want := fmt.Sprintf("%s FY%d %s %s", project.PublishedProjection,
 		project.PublishedFiscalYear, project.PublishedBasis, project.PublishedScope)
 
 	built := make([]string, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		o := p.Options
-		if o.FiscalYear == project.PublishedFiscalYear &&
+		// The PROJECTION's name is compared as well as the slice, and that is
+		// not belt-and-braces. Since each projection is built over the slices it
+		// declares (project.Sliced), "some projection was built at the published
+		// triple" no longer implies the published DOCUMENT was: a second
+		// projection whose slices happen to include that triple would satisfy
+		// this check while the site's chart was of nothing.
+		if p.Name == project.PublishedProjection &&
+			o.FiscalYear == project.PublishedFiscalYear &&
 			o.Basis == project.PublishedBasis &&
 			o.Scope == project.PublishedScope {
 			return conclusion{

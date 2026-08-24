@@ -91,13 +91,22 @@ type Vocabulary interface {
 
 var _ Vocabulary = (*registry.Registry)(nil)
 
-// graphBuilder is the projection a structural check can read: one that hands
-// back the graph rather than its bytes.
+// graphBuilder is a projection whose document is a GRAPH, and which hands back
+// the graph rather than its bytes.
 //
 // internal/project's Sankey.Graph is exported for exactly this, so verify can
 // check the structure without parsing back the JSON it is trying to validate.
-// A projection that does not offer it cannot be checked here, and [Load] says
-// so rather than skipping it.
+//
+// NOT EVERY PROJECTION IS ONE. This interface used to be a requirement: a
+// projection that did not satisfy it made [Load] return an error, so registering
+// the first non-graph projection would have made `fisc verify` exit non-zero
+// HAVING PRINTED NO REPORT — every finding in the run lost, which is the failure
+// [ProjectionFailure] exists to have stopped happening. A trends document is a
+// set of series and has no nodes and no links; it is not defective for that.
+//
+// So the graph checks now ask for [Subject.Graphs] and the rest read
+// Projection.Options. What is still refused is a projection that exposes NO
+// checkable structure at all — see buildProjections.
 type graphBuilder interface {
 	Name() string
 	Graph(facts []fact.Fact, o project.Options) (*project.Graph, error)
@@ -112,7 +121,11 @@ type graphBuilder interface {
 type Projection struct {
 	Name    string
 	Options project.Options
-	Graph   *project.Graph
+	// Graph is the built graph, or nil for a projection whose document is not
+	// one. Read it through [Subject.Graphs] rather than dereferencing it: a
+	// check that means "every graph" and writes "every projection" is one
+	// non-graph projection away from a nil panic inside a report.
+	Graph *project.Graph
 }
 
 // String names the projection the way a report should: the file stem plus the
@@ -131,9 +144,10 @@ func (p Projection) String() string {
 // lost, and the reason buried in a wrapped error — which is strictly worse than
 // a red check saying the same thing.
 //
-// What stays a hard error is a projection that cannot be checked AT ALL (one
-// that does not expose its graph) and a fact store with no slice in the
-// published scope. Neither is a verdict about the corpus: the first is a
+// What stays a hard error is a fact store with no slice in the published scope.
+// A projection that exposes no graph is NOT one: it used to be, and that was the
+// defect — see buildProjections and documentsAreChecked, which report it with a
+// report around it rather than by killing the run. Neither is a verdict about the corpus: the first is a
 // programming error and the second is the state in which every graph check goes
 // vacuous at once and the run exits 0.
 type ProjectionFailure struct {
@@ -210,6 +224,37 @@ type Subject struct {
 	// it — a failure here silences every graph check at once, so it must not be
 	// reachable only through a missing entry in Projections.
 	ProjectionFailures []ProjectionFailure
+	// Registered is the name of every projection the registry returned, whether
+	// or not it produced anything.
+	//
+	// It is carried separately because Projections cannot answer for a
+	// projection that produced NO slices: that one appears in neither list, so
+	// a check reading only those two would not know it exists — while `fisc
+	// export` would still publish its document. Comparing the two is what makes
+	// "every published document is checked" a claim about the REGISTRY rather
+	// than about whatever happened to build.
+	Registered []string
+}
+
+// Graphs is every projection that produced a graph, which is what the
+// structural checks are about.
+//
+// It exists so that a check meaning "every graph" cannot be written as "every
+// projection" and be one non-graph projection away from dereferencing nil
+// inside a report. Ranging over this instead is the whole discipline.
+//
+// A projection with no graph is NOT skipped coverage: it is a document of a
+// different shape, checked by whatever check is about that shape. What would be
+// a gap is a projection no check reads at all, and that is what
+// projectionsBuild and facts-are-projected are for.
+func (s *Subject) Graphs() []Projection {
+	out := make([]Projection, 0, len(s.Projections))
+	for _, p := range s.Projections {
+		if p.Graph != nil {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 // LoadOptions says what to load and from where.
@@ -296,8 +341,12 @@ func Load(o LoadOptions) (*Subject, error) {
 			return nil, err
 		}
 	}
+	registry := project.Registry(reg)
+	for _, p := range registry {
+		s.Registered = append(s.Registered, p.Name())
+	}
 	if s.Projections, s.ProjectionFailures, err = buildProjections(
-		project.Registry(reg), s.Facts, o.Version); err != nil {
+		registry, s.Facts, o.Version); err != nil {
 		return nil, err
 	}
 	return s, nil
@@ -562,16 +611,39 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				"slice %q that `fisc export` publishes", spineScope)
 	}
 
-	out := make([]Projection, 0, len(ps)*len(slices))
+	out := make([]Projection, 0, len(ps))
 	var failed []ProjectionFailure
 	for _, p := range ps {
-		g, ok := p.(graphBuilder)
-		if !ok {
-			return nil, nil, fmt.Errorf("projection %q does not expose its graph, so verify "+
-				"cannot check its structure without parsing back the JSON it is validating",
-				p.Name())
+		// Each projection is built over the slices IT says it is of, not over
+		// the cartesian product of every projection and every slice. The
+		// product was correct while the Sankey was the only projection and is
+		// wrong for the first one of a different schedule, which would be
+		// handed a slice containing none of its facts and would refuse to
+		// build -- a red check reporting a scheduling mistake as a corpus
+		// defect.
+		want := slices
+		if sl, ok := p.(project.Sliced); ok {
+			want = sl.Slices(facts, version)
 		}
-		for _, o := range slices {
+
+		// A projection that is not a graph is RECORDED WITH A NIL GRAPH, not
+		// refused. Refusing was the old behaviour and it was the wrong failure
+		// mode: it returned an error out of Load, so `fisc verify` exited
+		// non-zero having printed no report at all, losing every finding in the
+		// run to a projection that was merely of a different shape. A trends
+		// document is a set of series with no nodes and no links, and it is not
+		// defective for that.
+		//
+		// What must not happen instead is a document nothing checks shipping
+		// quietly. That is documentsAreChecked's job, and it is a red check
+		// with a report around it rather than a dead run.
+		g, isGraph := p.(graphBuilder)
+
+		for _, o := range want {
+			if !isGraph {
+				out = append(out, Projection{Name: p.Name(), Options: o})
+				continue
+			}
 			graph, err := g.Graph(facts, o)
 			if err != nil {
 				// Recorded, not returned: see ProjectionFailure. The loop goes

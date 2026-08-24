@@ -223,18 +223,29 @@ export function checks() {
               `nodeRank ${after.tangle.crossings}`,
     },
     {
+      // Matched as WHOLE QUOTED PHRASES, not as bare substrings. A bare
+      // `source.includes("14")` matches `const NODE_WIDTH = 14;` and a bare
+      // `includes("195")` is satisfied by any one of the several places 195
+      // appears, so both let the sentence they were meant to pin drift to a
+      // wrong number while staying green. Each phrase below is the figure
+      // together with enough of its own sentence to be unique.
       name: "app.js quotes the figures it actually produces",
       ok: (() => {
-        const quoted = [
-          String(CLAIMED.crossings),
-          CLAIMED.overlapDollars.toLocaleString("en-US"),
-          String(CLAIMED.stalePairs),
-          ...measured.map((m) => String(m.want.crossings)),
+        const phrases = [
+          `comes to ${CLAIMED.crossings} ribbon`,
+          `$${CLAIMED.overlapDollars.toLocaleString("en-US")} of overlapping ribbon`,
+          `down to ${CLAIMED.crossings} ribbon crossings`,
+          `${CLAIMED.stalePairs} of them on FY2026`,
+          `${ALTERNATIVES["size descending"].crossings} and`,
+          `${ALTERNATIVES["input order"].crossings} under the input order`,
+          `${ALTERNATIVES["d3's own pass"].crossings} under`,
+          `$${ALTERNATIVES["size descending"].dollars.toLocaleString("en-US")} under a sort by size`,
         ];
-        return quoted.every((q) => app.source.includes(q));
+        const missing = phrases.filter((q) => !app.source.includes(q));
+        return missing.length === 0;
       })(),
-      detail: "every figure pinned here appears in site/app.js's own comments, so " +
-              "editing one without re-measuring fails",
+      detail: "every figure pinned here appears in site/app.js's own comments in " +
+              "its own sentence, so editing one without re-measuring fails",
     },
     {
       name: "the fund column is pinned to the palette's order",

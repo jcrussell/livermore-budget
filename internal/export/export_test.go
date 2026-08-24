@@ -608,6 +608,24 @@ func TestWriteRefusesBadInput(t *testing.T) {
 //
 // When project.SchemaVersion moves, move export.SchemaVersion and
 // SCHEMA_VERSION in site/app.js in the same change.
+// TestPrimaryProjectionIsPinnedToTheProducer keeps the packager's idea of which
+// document drives the page in step with the producer's.
+//
+// internal/export does not import internal/project, deliberately, so nothing
+// compiles the two names against each other. They stopped being decorative when
+// each projection began declaring its own slices: published-projection-built now
+// asserts that the projection NAMED here was built at the published triple, so a
+// drift between these two constants would make that check green over a document
+// the page does not render.
+func TestPrimaryProjectionIsPinnedToTheProducer(t *testing.T) {
+	if export.PrimaryProjection != project.PublishedProjection {
+		t.Errorf("export.PrimaryProjection is %q but project.PublishedProjection is %q; "+
+			"internal/export does not import internal/project, so this test is the only "+
+			"thing keeping the page's document in step with the one verify checks -- "+
+			"move both", export.PrimaryProjection, project.PublishedProjection)
+	}
+}
+
 func TestSchemaVersionIsPinnedToTheProducer(t *testing.T) {
 	if export.SchemaVersion != project.SchemaVersion {
 		t.Errorf("export.SchemaVersion is %d but project.SchemaVersion is %d; "+

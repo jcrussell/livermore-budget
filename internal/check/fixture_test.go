@@ -331,9 +331,18 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 		facts = testFacts()
 	}
 	reg := testVocabulary(t)
-	projections, failures, err := buildProjections(project.Registry(reg), facts, testVersion)
+	registry := project.Registry(reg)
+	projections, failures, err := buildProjections(registry, facts, testVersion)
 	if err != nil {
 		t.Fatalf("build the fixture projections: %v", err)
+	}
+	// Registered comes from the same registry the projections were built from,
+	// as it does in Load. A fixture that left it empty would make
+	// documents-are-checked vacuous here and non-vacuous over the real corpus,
+	// which is the shape of fixture that stops catching things.
+	var registered []string
+	for _, p := range registry {
+		registered = append(registered, p.Name())
 	}
 	// Resolvers are left empty: nothing in tier 1 resolves a mapping rule. Docs
 	// are not — fact-offset-points-at-token reads page text, which is committed
@@ -345,6 +354,7 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 		Docs:               testDocs(t, facts),
 		Projections:        projections,
 		ProjectionFailures: failures,
+		Registered:         registered,
 	}
 }
 

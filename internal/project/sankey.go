@@ -288,6 +288,56 @@ var _ Projection = (*Sankey)(nil)
 // Name is the file stem: sankey.json.
 func (*Sankey) Name() string { return "sankey" }
 
+// Slices is one graph per (fiscal year, basis) the spine schedule carries.
+//
+// The years are read off the facts rather than hard-coded, so mapping a revised
+// column or a third budget year puts that graph under verify's checks without
+// anyone remembering to add it here.
+//
+// ONE SLICE PER YEAR, NOT ONE SLICE FOR ALL OF THEM, and that is the whole
+// content of this method: every fiscal year the city publishes lives in the same
+// facts.jsonl, and a graph built over two of them doubles every figure while
+// still balancing perfectly. No internal consistency check can catch that,
+// because two years of a balanced schedule are also balanced. See [Options].
+//
+// The scope is fixed rather than derived. It selects the SCHEDULE, and the
+// schedule is what makes this projection a Sankey of the citywide spine rather
+// than of whatever else the store happens to carry: a department-by-category
+// page is a different scope and its rows would be added on top of the spine's.
+func (*Sankey) Slices(facts []fact.Fact, version string) []Options {
+	type key struct {
+		year  int
+		basis mapping.Basis
+	}
+	seen := map[key]bool{}
+	for _, f := range facts {
+		if f.Scope == PublishedScope {
+			seen[key{f.FiscalYear, f.Basis}] = true
+		}
+	}
+	keys := make([]key, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].year != keys[j].year {
+			return keys[i].year < keys[j].year
+		}
+		return keys[i].basis < keys[j].basis
+	})
+
+	out := make([]Options, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, Options{
+			FiscalYear: k.year,
+			Basis:      k.basis,
+			Scope:      PublishedScope,
+			Version:    version,
+		})
+	}
+	return out
+}
+
 // Build renders the graph as canonical JSON.
 func (s *Sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
 	g, err := s.Graph(facts, o)

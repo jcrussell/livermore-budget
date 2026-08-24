@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	yaml "go.yaml.in/yaml/v3"
 
@@ -63,6 +64,29 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 	}
 	out := map[string][]byte{}
 	for _, p := range project.Registry(reg) {
+		// A projection that says which slices it is of must agree that it is of
+		// THIS one. Without this the two commands diverge silently: `fisc
+		// verify` builds each projection over the slices it declares, so a
+		// projection whose slices do not include the published triple would be
+		// checked under its own and published under one it declared it is not
+		// of -- the exact split the comment above says this shared declaration
+		// exists to prevent, reopened the moment a projection could disagree.
+		//
+		// It fails closed and it names both sides, because the fix is never
+		// obvious from a wrong figure: either the projection wants a slice this
+		// command cannot yet publish (one document per stem, one year -- see
+		// fisc-kwq), or the published triple moved and the projection was not
+		// told.
+		if sl, ok := p.(project.Sliced); ok {
+			want := sl.Slices(facts, opts.Version)
+			if !slicesContain(want, opts) {
+				return nil, fmt.Errorf(
+					"the %s projection is of %d slice(s), none of them the published "+
+						"FY%d %s %s this command publishes: %s",
+					p.Name(), len(want), opts.FiscalYear, opts.Basis, opts.Scope,
+					describeSlices(want))
+			}
+		}
 		b, err := p.Build(facts, opts)
 		if err != nil {
 			return nil, fmt.Errorf("build the %s projection: %w", p.Name(), err)
@@ -116,3 +140,29 @@ func loadDocs(repoRoot string) ([]export.Doc, error) {
 
 // generatedBy names this binary for the page footer.
 func generatedBy() string { return "fisc " + build.Get().String() }
+
+// slicesContain reports whether want holds o, compared on the three selectors
+// that decide which facts a projection reads. Version is deliberately not
+// compared: it is stamped into metadata and is not a selector.
+func slicesContain(want []project.Options, o project.Options) bool {
+	for _, w := range want {
+		if w.FiscalYear == o.FiscalYear && w.Basis == o.Basis && w.Scope == o.Scope {
+			return true
+		}
+	}
+	return false
+}
+
+// describeSlices renders the slices a projection declared, for the refusal
+// above. A count alone would leave the operator to guess which year or schedule
+// was wanted.
+func describeSlices(o []project.Options) string {
+	if len(o) == 0 {
+		return "it declared none, so the fact store carries nothing it is of"
+	}
+	out := make([]string, 0, len(o))
+	for _, s := range o {
+		out = append(out, fmt.Sprintf("FY%d %s %s", s.FiscalYear, s.Basis, s.Scope))
+	}
+	return strings.Join(out, ", ")
+}
