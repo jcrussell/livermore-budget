@@ -142,7 +142,8 @@ func TestACleanReportExitsZero(t *testing.T) {
 // THE ID HERE MUST NOT BE A DECLARED ONE. This test used "transfer-legs-pair",
 // which check.declaredVacuous now names, so --strict passed and the test's own
 // subject vanished. What --strict fails on is an UNDECLARED vacancy; the
-// declared case is TestADeclaredVacancyPassesStrictAndAStaleOneFailsEither.
+// declared case is TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot,
+// and the stale one is check.TestAStaleDeclarationFailsWithOrWithoutStrict.
 func TestVacuousExitsZeroAndThreeUnderStrict(t *testing.T) {
 	checks := []check.Check{passing("facts-sorted"), vacuous("nothing-declares-this")}
 

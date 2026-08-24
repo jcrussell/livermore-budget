@@ -29,6 +29,17 @@ func budgetDoc(t *testing.T, pages ...int) *corpus.Doc {
 		}
 		fsys[corpus.PagePath(p)] = &fstest.MapFile{Data: body}
 		artifacts[corpus.PagePath(p)] = corpus.Artifact{Bytes: int64(len(body))}
+
+		// The second substrate, where the fixture tree has it. A part that
+		// declares column_headers is read against geometry as well as text, so
+		// a document without it cannot carry the column guard -- and p76's
+		// fixture declares them since fisc-wfi.
+		geo, err := os.ReadFile(fmt.Sprintf("../../testdata/geometry/budget-p%04d.json", p))
+		if err != nil {
+			continue
+		}
+		fsys[corpus.GeometryPath(p)] = &fstest.MapFile{Data: geo}
+		artifacts[corpus.GeometryPath(p)] = corpus.Artifact{Bytes: int64(len(geo))}
 	}
 	man, err := json.Marshal(map[string]any{
 		"schema_version": corpus.SchemaVersion,

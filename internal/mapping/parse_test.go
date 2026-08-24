@@ -383,10 +383,16 @@ func TestActiveRowsDoesNotAliasTheRule(t *testing.T) {
 // column_headers over two columns, so the validation can be exercised without
 // restating the whole schema each time.
 func headerRule(headers string) string {
+	return headerRuleCols("[{fiscal_year: 2026}, {fiscal_year: 2027}]", headers)
+}
+
+// headerRuleCols is the same, with the column list spelled out, for the rules
+// about a null entry -- which are claims about the COLUMN opposite it.
+func headerRuleCols(columns, headers string) string {
 	return "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n" +
 		"    kind: revenue\n    basis: adopted\n    units: dollars\n" +
 		"    parts:\n      - page: 1\n" +
-		"        columns: [{fiscal_year: 2026}, {fiscal_year: 2027}]\n" +
+		"        columns: " + columns + "\n" +
 		"        column_headers: " + headers + "\n" +
 		"    rows:\n      - {label: \"A\", category: a}\n"
 }
@@ -398,7 +404,7 @@ func TestParseAcceptsColumnHeaders(t *testing.T) {
 		t.Fatalf("Parse: %v", err)
 	}
 	got := f.Rules[0].Parts[0].ColumnHeaders
-	if diff := cmp.Diff([]string{"FY 2025-26", "FY 2026-27"}, got); diff != "" {
+	if diff := cmp.Diff(ColumnHeaders{{Text: "FY 2025-26"}, {Text: "FY 2026-27"}}, got); diff != "" {
 		t.Errorf("column_headers (-want +got):\n%s", diff)
 	}
 }
@@ -412,6 +418,36 @@ func TestParseAcceptsRepeatedColumnHeaders(t *testing.T) {
 	if _, err := Parse(strings.NewReader(
 		headerRule(`["FY 2025-26", "FY 2025-26"]`)), "headers.yaml"); err != nil {
 		t.Errorf("Parse rejected repeated headers: %v", err)
+	}
+}
+
+// TestParseAcceptsANullOverASkippedLastColumn is the channel fisc-wfi opened,
+// and the assertion is that the entry COUNT survives it.
+//
+// Budget Book p76 prints four year headers and a footnote marker right of them
+// on every row. The marker column has to be declared -- labelledValues
+// truncates a row to len(Columns), so at four the read stops short and checkGap
+// refuses "(10)" as unexplained text between rows -- and the page prints no
+// header to name it with. Without this, the one-entry-per-column rule and the
+// no-empty-entry rule between them make the page unpublishable.
+func TestParseAcceptsANullOverASkippedLastColumn(t *testing.T) {
+	f, err := Parse(strings.NewReader(headerRuleCols(
+		"[{fiscal_year: 2026}, {fiscal_year: 2027}, {skip: true}]",
+		`["FY 2025-26", "FY 2026-27", ~]`)), "headers.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	got := f.Rules[0].Parts[0].ColumnHeaders
+	want := ColumnHeaders{{Text: "FY 2025-26"}, {Text: "FY 2026-27"}, {Unheaded: true}}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("column_headers (-want +got):\n%s", diff)
+	}
+	// The count is still the column count, which is the whole point: a short
+	// list would build a grid one band too narrow and file every figure right
+	// of the gap one place left, silently.
+	if len(got) != len(f.Rules[0].Parts[0].Columns) {
+		t.Errorf("%d headers for %d columns; the entry count has stopped being the "+
+			"column-count check", len(got), len(f.Rules[0].Parts[0].Columns))
 	}
 }
 
@@ -458,6 +494,39 @@ func TestParseRejectsBadColumnHeaders(t *testing.T) {
 			name: "a header that is a zero dash",
 			yaml: headerRule(`["FY 2025-26", "-"]`),
 			want: "entry 2 is a currency amount",
+		},
+		{
+			// null says the page prints no header, which leaves the column no
+			// band. A column the rule READS then has nowhere to be placed.
+			name: "a null over a column the rule reads",
+			yaml: headerRule(`["FY 2025-26", ~]`),
+			want: "entry 2 is null but column 2 is not skipped",
+		},
+		{
+			// Between two headers the gap has known bounds and the grid would
+			// have checked it, so a null there declines a check that was
+			// available.
+			name: "a null that is not the last entry",
+			yaml: headerRuleCols(
+				"[{fiscal_year: 2026}, {skip: true}, {fiscal_year: 2027}]",
+				`["FY 2025-26", ~, "FY 2026-27"]`),
+			want: "entry 2 is null but is not the last of 3",
+		},
+		{
+			// The grid IS the headers, so a list naming none asks for a guard
+			// that cannot be built. Left unrefused it panicked: geom.NewGrid
+			// was handed an empty span list.
+			name: "every entry is null",
+			yaml: headerRuleCols("[{skip: true}, {skip: true}]", `[~, ~]`),
+			want: "every entry is null",
+		},
+		{
+			// "" is a typo, not a claim, and stays refused -- which is why
+			// Unheaded is a field rather than an empty Text.
+			name: "an empty string is not a null",
+			yaml: headerRuleCols(
+				"[{fiscal_year: 2026}, {skip: true}]", `["FY 2025-26", ""]`),
+			want: "entry 2 is empty",
 		},
 	}
 	for _, tt := range tests {

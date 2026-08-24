@@ -328,7 +328,10 @@ type Part struct {
 	// own values perfectly and everything else by luck. A schedule whose
 	// headers are bare years therefore has to name more of the header --
 	// "FY 2026" rather than "2026". ("2024-25" is fine; it is not an amount.)
-	ColumnHeaders []string `yaml:"column_headers"`
+	//
+	// AN ENTRY MAY BE null, AND ONLY FOR THE LAST COLUMN WHEN IT IS SKIPPED.
+	// See ColumnHeader.
+	ColumnHeaders ColumnHeaders `yaml:"column_headers"`
 
 	// WrappedLabels are the printed fragments this part's page wraps onto a
 	// line of their own, each written out verbatim.
@@ -379,6 +382,92 @@ type Part struct {
 	// stopped needing is a stale claim about the city's arithmetic and should
 	// surface rather than rot. Absent a declaration, exact equality still holds.
 	StatedTotalDeltas []StatedTotalDelta `yaml:"stated_total_deltas"`
+}
+
+// ColumnHeader is one entry in a part's ColumnHeaders: the header a page prints
+// over a column, or the explicit statement that it prints none.
+//
+// THE null ENTRY EXISTS BECAUSE A PAGE CAN PRINT A COLUMN WITH NO HEADER OVER
+// IT, and the entry count is a check the guard cannot afford to give up.
+// Budget Book p76 prints four year headers and, right of them, a footnote
+// marker on every one of its 22 rows -- "(1)" through "(10)", which
+// amount.Parse reads as parenthesised NEGATIVES. The marker column has to be
+// declared, because labelledValues truncates a row to len(Columns) and at four
+// the read stops before the marker, leaving checkGap to refuse "(10)" as
+// unexplained text between rows. So the column is real and skipped, and there
+// is no header anywhere on the page to name it with (fisc-wfi).
+//
+// The alternatives were both worse. Dropping the one-entry-per-column rule
+// gives up exactly what the rule buys -- a short list builds a grid one band
+// too narrow and files every figure right of the gap one place left, silently,
+// with the value count still matching. Declaring the markers as
+// Part.WrappedLabels would satisfy the guard by saying something untrue about
+// the page: a footnote reference is not a wrapped fragment of the label above
+// it, and all ten distinct markers would have to be listed.
+//
+// null IS RESTRICTED TO THE LAST COLUMN, and the restriction is what makes the
+// weakened guard honest rather than merely convenient. A headerless column has
+// no band, so no placement claim can be made about its token at all; past the
+// last header there is simply nothing, whereas a headerless column BETWEEN two
+// headers sits in a gap whose bounds are known and which the grid would happily
+// have checked. Restricting it to the end means the guard never silently
+// declines a check it could have made.
+//
+// What still guards the unbanded token: it must be printed on the same line as
+// the row's other figures (columnGuard.checkRow), the row must yield exactly
+// len(Columns) tokens, and checkGap still refuses anything unexplained between
+// rows. What is given up is the band check on that one token, and only there.
+type ColumnHeader struct {
+	// Text is the header as the page prints it, empty when Unheaded.
+	Text string
+	// Unheaded says the page prints no header over this column. It is a
+	// separate field rather than an empty Text so that a YAML entry of "" --
+	// which is a typo, not a claim -- stays refused.
+	Unheaded bool
+}
+
+// ColumnHeaders is a part's header list.
+//
+// It is a named slice with its own unmarshaler because yaml.v3 DROPS a null
+// element from a sequence rather than decoding it: the element unmarshaler is
+// never reached, and `["FY 2025-26", ~]` arrives as a one-entry list. Since the
+// entry count is the column-count check, a silently shortened list is the exact
+// failure this whole guard exists to prevent -- it would have been reported as
+// "has 1 entries but the part has 2 columns", blaming the author for the
+// decoder.
+type ColumnHeaders []ColumnHeader
+
+// UnmarshalYAML reads the sequence element by element, so a null keeps its
+// place.
+func (h *ColumnHeaders) UnmarshalYAML(n *yaml.Node) error {
+	if n.Kind != yaml.SequenceNode {
+		return fmt.Errorf("line %d: column_headers is a list of the headers the page "+
+			"prints over this part's columns, left to right", n.Line)
+	}
+	out := make(ColumnHeaders, 0, len(n.Content))
+	for _, e := range n.Content {
+		var c ColumnHeader
+		if e.Tag == "!!null" {
+			c.Unheaded = true
+		} else if e.Kind != yaml.ScalarNode {
+			return fmt.Errorf("line %d: a column_headers entry is the header the page "+
+				"prints over that column, or null where it prints none", e.Line)
+		} else if err := e.Decode(&c.Text); err != nil {
+			return err
+		}
+		out = append(out, c)
+	}
+	*h = out
+	return nil
+}
+
+// String renders an entry for an error message, so a null reads as a claim
+// rather than as an empty pair of quotes.
+func (c ColumnHeader) String() string {
+	if c.Unheaded {
+		return "null (the page prints no header here)"
+	}
+	return fmt.Sprintf("%q", c.Text)
 }
 
 // StatedTotalDelta is one column's declared discrepancy between the document's

@@ -802,21 +802,63 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 				"any marked skip: true; the list is what says where each column "+
 				"sits on the page")
 	}
+	// At least one column must be headed. A list that is null all the way
+	// through names no header to find the page's grid with, and the grid is
+	// what the guard IS -- geom.NewGrid would be handed an empty span list and
+	// describeUnmatched an empty header list. Refusing it here says the real
+	// thing: a part whose every column is headerless has not opted into the
+	// guard, it has asked for one that cannot exist.
+	if !slices.ContainsFunc(p.ColumnHeaders, func(h ColumnHeader) bool { return !h.Unheaded }) {
+		return cmdutil.WithHint(
+			errf(r.ID, field("column_headers"), "every entry is null"),
+			"the grid is built from the headers the page prints, so at least one "+
+				"column must name one; a part that can name none declares no "+
+				"column_headers at all")
+	}
 	for i, h := range p.ColumnHeaders {
-		if strings.TrimSpace(h) == "" {
+		if h.Unheaded {
+			// A null says the page prints no header over this column, so the
+			// column must be one the rule reads nothing from -- otherwise the
+			// declaration is asking for a figure to be filed under a band that
+			// does not exist.
+			if !p.Columns[i].Skip {
+				return cmdutil.WithHint(
+					errf(r.ID, field("column_headers"), "entry %d is null but column %d "+
+						"is not skipped", i+1, i+1),
+					"null says the page prints no header over this column, which "+
+						"leaves it no band; a column the rule actually reads must "+
+						"name its printed header so its figures can be placed")
+			}
+			// AND ONLY AT THE END. Past the last header there is nothing to
+			// check a token against; between two headers there is a gap with
+			// known bounds, which the grid would have checked. Allowing a null
+			// there would silently decline a check that was available.
+			if i != len(p.ColumnHeaders)-1 {
+				return cmdutil.WithHint(
+					errf(r.ID, field("column_headers"), "entry %d is null but is not "+
+						"the last of %d", i+1, len(p.ColumnHeaders)),
+					"a headerless column is only unplaceable past the last printed "+
+						"header; between two headers it sits in a gap the grid can "+
+						"check, so name the header on either side and declare the "+
+						"skipped column there")
+			}
+			continue
+		}
+		if strings.TrimSpace(h.Text) == "" {
 			return cmdutil.WithHint(
 				errf(r.ID, field("column_headers"), "entry %d is empty", i+1),
 				"a header is matched by joining the words printed on the header "+
-					"line, so no page can produce an empty one")
+					"line, so no page can produce an empty one; write null, not "+
+					"\"\", for a column the page heads with nothing")
 		}
 		// Deliberately NOT the circularity argument the section/stop_at refusal
 		// makes: a header is not a total. A header that is a figure would match
 		// a DATA row, and a grid built from a data row files that row perfectly
 		// and every other row by luck.
-		if _, err := amount.Parse(h, r.Units); err == nil {
+		if _, err := amount.Parse(h.Text, r.Units); err == nil {
 			return cmdutil.WithHint(
 				errf(r.ID, field("column_headers"), "entry %d is a currency amount: %q",
-					i+1, h),
+					i+1, h.Text),
 				"name more of the printed header -- \"FY 2026\" rather than "+
 					"\"2026\" -- because a header that is a figure matches a data "+
 					"row as readily as the header line")
@@ -853,7 +895,7 @@ func checkColumnGrids(files []*File) error {
 	type declaration struct {
 		path    string
 		rule    string
-		headers []string
+		headers ColumnHeaders
 	}
 	type key struct {
 		docID string
@@ -880,8 +922,9 @@ func checkColumnGrids(files []*File) error {
 					return cmdutil.WithHint(
 						&ParseError{Path: f.Path, RuleID: r.ID,
 							Field: fmt.Sprintf("parts[page %d].column_headers", p.Page),
-							Msg: fmt.Sprintf("is %q, but rule %q in %s declares %q for the same page",
-								p.ColumnHeaders, prev.rule, prev.path, prev.headers)},
+							Msg: fmt.Sprintf("is %s, but rule %q in %s declares %s for the same page",
+								describeHeaders(p.ColumnHeaders), prev.rule, prev.path,
+								describeHeaders(prev.headers))},
 						"a page has one column grid; two parts describing it "+
 							"differently would read the same figures into different "+
 							"columns and each would still tie against its own total")
@@ -908,7 +951,8 @@ func checkColumnGrids(files []*File) error {
 					&ParseError{Path: f.Path, RuleID: r.ID,
 						Field: fmt.Sprintf("parts[page %d]", p.Page),
 						Msg: fmt.Sprintf("declares no column_headers, but rule %q in %s "+
-							"declares %q for the same page", prev.rule, prev.path, prev.headers)},
+							"declares %s for the same page", prev.rule, prev.path,
+							describeHeaders(prev.headers))},
 					"every part reading a page opts into the column guard or none "+
 						"does; one part left out is a part whose figures are placed "+
 						"by position alone, with nothing saying so")
@@ -1002,4 +1046,15 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 				"their fund; identical on both, they are one fact published twice")
 	}
 	return nil
+}
+
+// describeHeaders renders a header list for an error message. Written out
+// rather than left to %q because a ColumnHeader is a struct, and a null entry
+// has to read as the claim it is rather than as an empty string.
+func describeHeaders(hs ColumnHeaders) string {
+	parts := make([]string, len(hs))
+	for i, h := range hs {
+		parts[i] = h.String()
+	}
+	return "[" + strings.Join(parts, " ") + "]"
 }

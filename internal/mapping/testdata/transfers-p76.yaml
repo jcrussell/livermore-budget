@@ -52,6 +52,12 @@ rules:
         section: "General Fund\n"
         section_ordinal: 1
         stop_at: "Enterprise Funds"
+        # The page prints four year headers on one line (p0076.txt:9) and
+        # nothing over the footnote-marker column, which is what the trailing
+        # null says. Declaring these opts this part into the column guard --
+        # the reason the fixture carries them is that the published rule will,
+        # and the guard has never run on this page before (fisc-wfi).
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
         columns:
           - {fund_group: general, fiscal_year: 2024, basis: actual}
           - {fund_group: general, fiscal_year: 2025, basis: revised}
@@ -93,6 +99,12 @@ rules:
       - page: 76
         section: "Enterprise Funds"
         stop_at: "Connection"
+        # The page prints four year headers on one line (p0076.txt:9) and
+        # nothing over the footnote-marker column, which is what the trailing
+        # null says. Declaring these opts this part into the column guard --
+        # the reason the fixture carries them is that the published rule will,
+        # and the guard has never run on this page before (fisc-wfi).
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
         columns:
           - {fund_group: enterprise, fiscal_year: 2024, basis: actual}
           - {fund_group: enterprise, fiscal_year: 2025, basis: revised}
@@ -129,6 +141,12 @@ rules:
       - page: 76
         section: "Connection"
         stop_at: "Debt Service Funds"
+        # The page prints four year headers on one line (p0076.txt:9) and
+        # nothing over the footnote-marker column, which is what the trailing
+        # null says. Declaring these opts this part into the column guard --
+        # the reason the fixture carries them is that the published rule will,
+        # and the guard has never run on this page before (fisc-wfi).
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
         columns:
           - {fund_group: enterprise, fiscal_year: 2024, basis: actual}
           - {fund_group: enterprise, fiscal_year: 2025, basis: revised}
@@ -160,6 +178,12 @@ rules:
       - page: 76
         section: "Debt Service Funds"
         stop_at: "Permanent Funds"
+        # The page prints four year headers on one line (p0076.txt:9) and
+        # nothing over the footnote-marker column, which is what the trailing
+        # null says. Declaring these opts this part into the column guard --
+        # the reason the fixture carries them is that the published rule will,
+        # and the guard has never run on this page before (fisc-wfi).
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
         columns:
           - {fund_group: debt-service, fiscal_year: 2024, basis: actual}
           - {fund_group: debt-service, fiscal_year: 2025, basis: revised}
@@ -196,6 +220,12 @@ rules:
       - page: 76
         section: "Permanent Funds"
         stop_at: "Special Revenue Funds"
+        # The page prints four year headers on one line (p0076.txt:9) and
+        # nothing over the footnote-marker column, which is what the trailing
+        # null says. Declaring these opts this part into the column guard --
+        # the reason the fixture carries them is that the published rule will,
+        # and the guard has never run on this page before (fisc-wfi).
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
         columns:
           - {fund_group: permanent, fiscal_year: 2024, basis: actual}
           - {fund_group: permanent, fiscal_year: 2025, basis: revised}
@@ -229,6 +259,12 @@ rules:
       - page: 76
         section: "Special Revenue Funds"
         stop_at: "$"
+        # The page prints four year headers on one line (p0076.txt:9) and
+        # nothing over the footnote-marker column, which is what the trailing
+        # null says. Declaring these opts this part into the column guard --
+        # the reason the fixture carries them is that the published rule will,
+        # and the guard has never run on this page before (fisc-wfi).
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27", ~]
         columns:
           - {fund_group: special-revenue, fiscal_year: 2024, basis: actual}
           - {fund_group: special-revenue, fiscal_year: 2025, basis: revised}

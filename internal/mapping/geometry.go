@@ -164,6 +164,13 @@ func (r *Resolver) pairing(n int) (*pairing, error) {
 type columnGuard struct {
 	grid *geom.Grid
 	pair *pairing
+	// band maps a column's index to its index in grid, and -1 for a column the
+	// page prints no header over -- which therefore has no band and can carry
+	// no placement claim. Only the last column may be unbanded (see
+	// ColumnHeader), so this is in practice the identity with at most a
+	// trailing -1; it is a map rather than a count so that a mistake in the
+	// parse rule cannot silently shift every band by one.
+	band []int
 }
 
 // guard builds the column guard for a part, or returns nil if the part did not
@@ -191,10 +198,24 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 	// below the header line, and p67's own section anchor is the end of that
 	// line. The grid is a property of the page; the rule only says which page
 	// and which columns.
+	// A headerless column is matched against nothing, because the page prints
+	// nothing to match. The band map below is what keeps the remaining headers
+	// aligned with the columns they belong to.
+	headed := make([]string, 0, len(p.ColumnHeaders))
+	band := make([]int, len(p.ColumnHeaders))
+	for i, h := range p.ColumnHeaders {
+		if h.Unheaded {
+			band[i] = -1
+			continue
+		}
+		band[i] = len(headed)
+		headed = append(headed, h.Text)
+	}
+
 	var matched []headerMatch
 	var best headerMatch
 	for i, line := range pr.lines {
-		m := matchHeaders(line, p.ColumnHeaders)
+		m := matchHeaders(line, headed)
 		m.line = i
 		if m.ok {
 			matched = append(matched, m)
@@ -205,13 +226,13 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 
 	switch {
 	case len(matched) == 0:
-		return fail(ErrNotFound, describeUnmatched(p.ColumnHeaders, best),
+		return fail(ErrNotFound, describeUnmatched(headed, best),
 			"column_headers names the printed header of every column, left to "+
 				"right; check the page text under data/extracted/")
 	case len(matched) > 1:
 		return fail(ErrAmbiguous,
 			fmt.Sprintf("the %d headers match %d lines of the page: %s",
-				len(p.ColumnHeaders), len(matched), describeLines(pr, matched)),
+				len(headed), len(matched), describeLines(pr, matched)),
 			"there is no ordinal for this key: name more of the printed header "+
 				"so the sequence occurs once, and file a bead if a page really "+
 				"does print its column headers twice")
@@ -240,7 +261,7 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 			"the column headers this part names are not laid out left to right "+
 				"on the page as the rule lists them")
 	}
-	return &columnGuard{grid: grid, pair: pr}, nil
+	return &columnGuard{grid: grid, pair: pr, band: band}, nil
 }
 
 // headerMatch is the result of looking for a part's column headers on one line.
@@ -389,14 +410,40 @@ func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks [
 				"the row prints fewer figures than the rule declares columns, so "+
 					"the read has run on to the next printed line")
 		}
-		if got := g.grid.Index(pl.word.Right()); got != c {
-			return fail(where, placementMessage(p, c, got, tk.text, pl.word),
+		// A column the page prints no header over has no band, so there is no
+		// placement claim to make about its token -- only the same-line check
+		// above, the row's token count, and checkGap's refusal of anything
+		// unexplained between rows. What is given up is bounded by
+		// ColumnHeader's rule that only the LAST column may be unbanded: past
+		// the last header there is nothing to check against anyway.
+		want := g.band[c]
+		if want < 0 {
+			continue
+		}
+		if got := g.grid.Index(pl.word.Right()); got != want {
+			return fail(where, placementMessage(p, c, g.column(got), tk.text, pl.word),
 				"the page prints this figure under a different column than the "+
 					"rule declares; check the column order in columns and "+
 					"column_headers against the page")
 		}
 	}
 	return nil
+}
+
+// column is the reverse of band: which COLUMN a grid band belongs to, so a
+// misplacement is reported against the column an author declared rather than
+// against a band index they never wrote. -1 for the row-label area, which
+// grid.Index also reports as -1 and which belongs to no column.
+func (g *columnGuard) column(bandIdx int) int {
+	if bandIdx < 0 {
+		return -1
+	}
+	for c, b := range g.band {
+		if b == bandIdx {
+			return c
+		}
+	}
+	return -1
 }
 
 // placementMessage describes a misplacement as a sentence about the DOCUMENT,
