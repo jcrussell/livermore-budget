@@ -25,13 +25,13 @@ const expenditureDetailScope = "expenditure-by-department"
 // fisc-u2v's revenue-by-fund needs only the kind half, because pp.127-140 cover
 // all six fund groups; copying this restriction there would be wrong.
 //
-// Note which field does what: FundGroup FILTERS, and detailKey carries the fund
+// Note which field does what: FundGroups FILTERS, and detailKey carries the fund
 // group regardless. Here every key comes out "general" by construction, which is
 // why the distinction is invisible in this check's findings and load-bearing in
 // the next one's.
 var expenditureDetailRestriction = detailRestriction{
-	Kinds:     []mapping.Kind{mapping.KindExpenditure},
-	FundGroup: "general",
+	Kinds:      []mapping.Kind{mapping.KindExpenditure},
+	FundGroups: []string{"general"},
 }
 
 // expenditureDetailTiesToSpine asserts Budget Book pp.167-170 reconcile against

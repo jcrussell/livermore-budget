@@ -24,16 +24,16 @@ import (
 // detailRestriction is the slice of the fact store one detail check compares.
 //
 // IT IS A FILTER AND NOT A KEY, and the distinction is the whole reason this
-// type exists rather than a pair of loose constants. FundGroup pins which facts
-// are looked at; it never decides which cells are compared, because detailKey
-// always carries the fund group. Collapse the two and a check whose schedule
-// spans every group — pp.127-140 does — would compare six groups' facts under
-// one key and tie on a sum that happens to match.
+// type exists rather than a pair of loose constants. FundGroups pins which
+// facts are looked at; it never decides which cells are compared, because
+// detailKey always carries the fund group. Collapse the two and a check whose
+// schedule spans every group — pp.127-140 does — would compare six groups'
+// facts under one key and tie on a sum that happens to match.
 //
 // Neither field is cosmetic on either side of the pair that exists today.
 // Without Kinds, a revenue schedule's keys meet the spine's expenditure and
 // fund-balance cells and the check fails at a quarter of a billion dollars
-// before reaching anything it is about. Without FundGroup, a General Fund
+// before reaching anything it is about. Without FundGroups, a General Fund
 // schedule meets the other five groups — about $109M of FY2026 expenditure.
 // Which of the two a schedule needs is a property of the schedule, so it is
 // declared beside the check that reads it.
@@ -42,15 +42,22 @@ type detailRestriction struct {
 	// admitting every kind compares a detail schedule against the whole spine.
 	Kinds []mapping.Kind
 
-	// FundGroup pins the check to one fund group, for a schedule that covers
-	// one. Empty means the schedule spans them all, which is a claim about the
-	// pages and not a default.
-	FundGroup string
+	// FundGroups pins the check to the fund groups its schedule covers. Empty
+	// means the schedule spans them all, which is a claim about the pages and
+	// not a default.
+	//
+	// A SET RATHER THAN ONE STRING because a schedule's coverage need not be
+	// one group or all six. p76's transfer legs split three ways: the IN side
+	// spans every group, while the OUT side is compared in two clauses — the
+	// four groups pp.72-75 print a to-CIP figure for, and the two they print
+	// only an aggregate for (fisc-j2l, fisc-aes). Each clause is its own
+	// restriction over the same scope.
+	FundGroups []string
 }
 
 // admits says whether a fact is one this check compares.
 func (r detailRestriction) admits(f *fact.Fact) bool {
-	if r.FundGroup != "" && f.FundGroup != r.FundGroup {
+	if len(r.FundGroups) > 0 && !slices.Contains(r.FundGroups, f.FundGroup) {
 		return false
 	}
 	return slices.Contains(r.Kinds, f.Kind)
