@@ -185,42 +185,77 @@ Transfers out ($59,612,734) exceed transfers in ($21,525,997) by $38,086,737.
 Two separate facts sit behind that sentence and an earlier draft of this section
 ran them together.
 
-`transfer_id` is `""` on every link **because the p76 transfer schedule is not
-yet mapped** (`fisc-5gk.3`), so `fisc-1wr.1`'s "every transfer_id has two equal
-legs" check is **vacuous** — it must report as such, not as a pass. Mapping p76
-fixes this.
+`transfer_id` is `""` on every link, and **mapping p76 does not fix that on its
+own**. `fact.Fact` carries no field that could hold a pairing and
+`internal/project/sankey.go` writes the empty string unconditionally, so
+`fisc-1wr.1`'s "every transfer_id has two equal legs" check is **vacuous** — it
+must report as such, not as a pass. Retiring it needs a projection that selects
+p76's scope *and* a `Link.TransferID` derived from the two legs' shared
+`(doc_id, page, offset)`. That is `fisc-9gh`, not `fisc-5gk.3`, and an earlier
+draft of this paragraph said otherwise.
 
-The residual is **not** waiting on that mapping, and mapping p76 will not close
-it. p76's own grand total *is* the transfers-in side, to the cent: each of its
-destination sections equals the matching `TRANSFER IN:` cell on pp.66-67, and
-the General Fund's out-flows equal `TRANSFER OUT:`. The city itemises every
-transfer received and none of the difference, which sits where its own schedule
-never goes:
+The residual is not waiting on that mapping either, and mapping p76 will not
+close it. p76's own grand total *is* the transfers-in side, to the cent: each of
+its destination sections equals the matching `TRANSFER IN:` cell on pp.66-67,
+and the General Fund's out-flows equal `TRANSFER OUT:`.
 
-| unexplained transfers out, FY2026 | |
-|---|---|
-| Capital Funds | 28,584,740 |
-| Enterprise Funds | 9,353,147 |
-| Special Revenue Funds | 108,850 |
-| Internal Service Funds | 40,000 |
-| **total** | **38,086,737** |
+**The difference is a column the city prints.** pp.72-75 are the same
+sources-and-uses schedule carrying a `Transfers Out to CIP` heading, which
+pp.66-67 fold into `TRANSFER OUT:` and omit from `TRANSFER IN:` entirely:
+
+```
+p0073.txt:58   Transfers Out $21,525,997   Transfers Out to CIP $38,086,737
+p0075.txt:58   Transfers Out $21,624,633   Transfers Out to CIP $50,762,251
+```
+
+$21,525,997 is p76's grand total to the cent, and $38,086,737 is
+`headline.transfer_residual_cents` to the cent. The residual is therefore not a
+discrepancy at all — it is transfers to capital projects, itemised under a
+heading, on a schedule this project has not yet mapped.
+
+| transfers out to CIP, FY2026 | | source |
+|---|---|---|
+| Capital Funds | 28,373,590 | derived |
+| Enterprise Funds | 9,353,147 | derived |
+| Special Revenue Funds | 320,000 | derived |
+| Internal Service Funds | 40,000 | `p0073.txt:53` |
+| **total** | **38,086,737** | `p0073.txt:58` |
 
 Read those rows as *`TRANSFER OUT:` for the group, minus the transfers p76 shows
 that group **paying*** — attributed by the payer named in each row label, not by
-`out − in` per group. The two differ: Capital and Internal Service pay nothing
-p76 lists and receive nothing, so their whole `TRANSFER OUT:` is unexplained,
-while the General Fund's $10,037,797 is itemised in full and contributes zero.
-Only the first and last rows are pinned by a test today
-(`TestP76AccountsForTheInSideAndNoneOfTheResidual`), because attributing the
-other two needs a payer-to-fund-group lookup the fact model cannot yet carry
-(`fisc-4rh`).
+`out − in` per group. The General Fund's $10,037,797 is itemised in full and
+contributes zero. Capital pays $211,150 of its $28,584,740, so nearly all of it
+is to-CIP: Traffic Impact Fee (510), County Measure D (550) and State − Gas Tax
+(560) are `type: capital` in `data/funds.yaml`, and p76 lists all three as
+payers. An earlier version of this table said Capital pays nothing p76 lists and
+put its whole `TRANSFER OUT:` in the residual, with the $211,150 landing on
+Special Revenue instead. That was wrong in both rows.
+
+**Only the total and the Internal Service row above are printed figures.**
+pp.72-75 give to-CIP per major fund and then a single aggregate line for all
+non-major funds — $28,693,590 in FY2026 (`p0073.txt:56`) — so the split between
+Capital and Special Revenue is derived by difference from p67 rather than read.
+That is the reason to state the pair rather than the split, and it is *not*
+because the split is impossible: an earlier draft claimed FY2026-27 would need a
+negative to-CIP of −$117,485, which came from reading p76's $1,018,035 of
+non-major sources as special-revenue sources alone. Both years divide cleanly
+(FY2027: Capital 35,830,251 + Special Revenue 100,000 = 35,930,251,
+`p0075.txt:56`).
+
+Nothing pins those four rows today.
+`TestP76AccountsForTheInSideAndNoneOfTheResidual` asserts only that Capital and
+Internal Service together do not exceed the whole residual, which is how the
+wrong figures survived. The arithmetic that catches it is `fisc-4ac`: declared
+to-CIP constants that must sum to `headline.transfer_residual_cents` in both
+projected years.
 
 `fisc-1wr.4` asks for a residual node. This contract states the residual as
 `headline.transfer_residual_cents` instead, and has `verify` assert it equals
 out minus in. A synthetic link into `transfers/in` or out of `transfers/out`
 would unbalance that node, and splitting the $59.6M into matched and unmatched
-portions would publish a division the city never printed. What goes stale-red
-the day p76 lands is `transfer_id` and the vacuous check, not this figure.
+portions would publish a division the city never printed. What goes stale the
+day p76 lands is the prose above about the schedule being unmapped, not this
+figure.
 
 ## What the fund groups must satisfy
 

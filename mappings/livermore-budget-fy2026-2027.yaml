@@ -311,10 +311,13 @@ rules:
       "TOTAL SOURCES" is the city's own control total and is claimed by no rule,
       because mapping a subtotal alongside its components double counts. FY2026
       total across the six fund groups is $21,525,997, against $59,612,734 out.
-      The two do not balance, and the p76 transfer schedule does not explain
-      why: p76 itemises transfers RECEIVED, its grand total is this row to the
-      cent, and the $38,086,737 difference is transfers PAID that the city
-      itemises nowhere (fisc-5gk.3).
+      The two do not balance, and mapping p76 would not close the gap: p76
+      itemises transfers RECEIVED and its grand total is this row to the cent,
+      so the $38,086,737 difference lies outside it (fisc-5gk.3). The city does
+      itemise that difference, under a heading, on a schedule not mapped here:
+      pp.72-75 print a "Transfers Out to CIP" column beside this one, and
+      p0073.txt:58 gives $21,525,997 and $38,086,737 on one line (fisc-4ac).
+      An earlier version of this note said the city itemises it nowhere.
     parts:
       - page: 66
         section: "REVENUES:"

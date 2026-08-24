@@ -1,11 +1,19 @@
 package mapping
 
 import (
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/registry"
 )
+
+// realDataDir is data/, holding funds.yaml and the other two registries.
+// internal/registry's own tests read the same tree, for the same reason: an
+// alias is a claim about a printed page, and checking it against the real file
+// is what keeps it one.
+const realDataDir = "../../data"
 
 // Budget Book p76, "SUMMARY OF TRANSFERS", reconciled against the citywide
 // spine on pp.66-67. Both sides come out of the resolver: nothing below types
@@ -244,10 +252,15 @@ func TestP76AccountsForTheInSideAndNoneOfTheResidual(t *testing.T) {
 				"so this test no longer describes the document", tc.year, out, in)
 		}
 
-		// The whole of Capital Funds and Internal Service Funds transfers out is
-		// unexplained: p76 prints no section for either, because neither
-		// RECEIVES a transfer. That alone is most of the residual, and no amount
-		// of reading p76 more carefully will find it.
+		// Capital Funds and Internal Service Funds RECEIVE nothing -- p76
+		// prints no section for either -- so most of what they send is
+		// unexplained by this page. Not all of it: p76 lists three
+		// capital-sourced payers (Traffic Impact Fee, County Measure D, State
+		// - Gas Tax), 211,150 in FY2026. This bound is therefore loose on
+		// purpose, and TestP76SourcesDecomposeTheResidualByFundType below is
+		// the exact statement. An earlier version of this comment said the
+		// WHOLE of both groups was unexplained; docs/sankey-contract.md
+		// carried the same error into a shipped table.
 		unexplained := spine.out[groupYear{"capital", tc.year}] +
 			spine.out[groupYear{"internal-service", tc.year}]
 		if unexplained == 0 {
@@ -356,4 +369,114 @@ func readSpineTransfers(t *testing.T) spineTransfers {
 			"comparison against it below is vacuous")
 	}
 	return out
+}
+
+// TestP76SourcesDecomposeTheResidualByFundType is the arithmetic that was
+// missing, and its absence is why a wrong table shipped.
+//
+// TestP76AccountsForTheInSideAndNoneOfTheResidual asserts only that capital
+// plus internal-service transfers out do not EXCEED the residual. That bound is
+// satisfied by a wide range of wrong decompositions, and one of them was
+// published: docs/sankey-contract.md carried "Capital 28,584,740 / Enterprise
+// 9,353,147 / Special Revenue 108,850 / ISF 40,000" and the sentence "Capital
+// and Internal Service pay nothing p76 lists". p76 lists 211,150 of
+// capital-sourced payments in FY2026 -- Traffic Impact Fee (510), County
+// Measure D (550) and State - Gas Tax (560) are type: capital in
+// data/funds.yaml -- and that money was attributed to Special Revenue instead.
+// Both rows were wrong and every published figure still added up to
+// 38,086,737, because the error moved money between two rows of the same total.
+//
+// WHAT MAKES THIS EXPRESSIBLE NOW. Attributing a payment to a fund GROUP needs
+// payer-name -> fund -> type, and fisc-8dz landed the alias channel that does
+// the first hop: p76 prints "Low Income Hsng" and FundByLabel resolves it to
+// fund 200 exactly, refusing rather than guessing between the operating fund
+// and its CIP twin. Before that this test could not have been written, which
+// is the honest reason it did not exist rather than an oversight.
+//
+// THE IDENTITY. For every fund group, the spine's TRANSFER OUT is what p76
+// shows that group paying plus what the city routes to CIP:
+//
+//	spine_TRANSFER_OUT[group] == p76_paid[group] + to_CIP[group]
+//
+// and the to-CIP terms sum to headline.transfer_residual_cents. The right-hand
+// side per group is DERIVED here (pp.72-75 print to-CIP per major fund and one
+// aggregate for all non-major funds), so what this test pins is the derivation,
+// against figures the city does print: p0073.txt:58 and p0075.txt:58.
+func TestP76SourcesDecomposeTheResidualByFundType(t *testing.T) {
+	p76 := readP76(t)
+	spine := readSpineTransfers(t)
+
+	reg, err := registry.Load(os.DirFS(realDataDir))
+	if err != nil {
+		t.Fatalf("registry.Load(%s): %v", realDataDir, err)
+	}
+
+	// Every payer p76 names, bucketed by the fund type data/funds.yaml gives
+	// it. An unresolvable payer is fatal, not skipped: a silently dropped
+	// payer moves its money out of paid and into to-CIP, which is precisely
+	// the defect this test exists to catch.
+	paid := map[groupYear]amount.Cents{}
+	for sy, cents := range p76.bySourceYear {
+		fund, err := reg.FundByLabel(sy.source)
+		if err != nil {
+			t.Fatalf("p76 payer %q does not resolve to a fund: %v", sy.source, err)
+		}
+		paid[groupYear{fund.Type, sy.year}] += cents
+	}
+
+	// The city's own Transfers Out to CIP column, per group, by difference.
+	// Derived, so it is named as such and checked against what IS printed.
+	want := map[groupYear]amount.Cents{
+		{"general", 2026}: 0, {"general", 2027}: 0,
+		{"enterprise", 2026}: 935314700, {"enterprise", 2027}: 1422000000,
+		{"internal-service", 2026}: 4000000, {"internal-service", 2027}: 61200000,
+		{"debt-service", 2026}: 0, {"debt-service", 2027}: 0,
+		{"capital", 2026}: 2837359000, {"capital", 2027}: 3583025100,
+		{"special-revenue", 2026}: 32000000, {"special-revenue", 2027}: 10000000,
+	}
+
+	// p0073.txt:58 and p0075.txt:58, the "Transfers Out to CIP" grand total.
+	// These the city prints; everything above is the split it does not.
+	residual := map[int]amount.Cents{2026: 3808673700, 2027: 5076225100}
+
+	for _, year := range []int{2026, 2027} {
+		var total amount.Cents
+		for _, group := range []string{"general", "enterprise", "internal-service",
+			"debt-service", "capital", "special-revenue"} {
+			key := groupYear{group, year}
+			toCIP := spine.out[key] - paid[key]
+			if toCIP != want[key] {
+				t.Errorf("FY%d %s: spine transfers out %s less p76 payments %s "+
+					"= %s, want to-CIP %s", year, group, spine.out[key],
+					paid[key], toCIP, want[key])
+			}
+			if toCIP < 0 {
+				t.Errorf("FY%d %s: p76 shows this group paying %s against a spine "+
+					"TRANSFER OUT of %s, so a negative to-CIP of %s would be "+
+					"required and the attribution is wrong", year, group,
+					paid[key], spine.out[key], toCIP)
+			}
+			total += toCIP
+		}
+		if total != residual[year] {
+			t.Errorf("FY%d: the to-CIP terms sum to %s, want the printed %s",
+				year, total, residual[year])
+		}
+	}
+
+	// And the claim the whole page exists to make: what p76 DOES itemise is
+	// the in side, entire. Stated here beside the out side so the asymmetry
+	// is on one screen.
+	for _, year := range []int{2026, 2027} {
+		var paidTotal amount.Cents
+		for _, group := range []string{"general", "enterprise", "internal-service",
+			"debt-service", "capital", "special-revenue"} {
+			paidTotal += paid[groupYear{group, year}]
+		}
+		if got := spine.totalIn(year); got != paidTotal {
+			t.Errorf("FY%d: p76 payments total %s against a spine transfers in of %s; "+
+				"the page itemises every transfer received, so these must be equal",
+				year, paidTotal, got)
+		}
+	}
 }
