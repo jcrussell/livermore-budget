@@ -138,8 +138,13 @@ func TestACleanReportExitsZero(t *testing.T) {
 // had nothing to look at. It exits 0, because a gate that cannot go green until
 // mapping finishes is a gate that gets commented out — and it says on its own output
 // that those checks were not passes.
+//
+// THE ID HERE MUST NOT BE A DECLARED ONE. This test used "transfer-legs-pair",
+// which check.declaredVacuous now names, so --strict passed and the test's own
+// subject vanished. What --strict fails on is an UNDECLARED vacancy; the
+// declared case is TestADeclaredVacancyPassesStrictAndAStaleOneFailsEither.
 func TestVacuousExitsZeroAndThreeUnderStrict(t *testing.T) {
-	checks := []check.Check{passing("facts-sorted"), vacuous("transfer-legs-pair")}
+	checks := []check.Check{passing("facts-sorted"), vacuous("nothing-declares-this")}
 
 	code, _, errOut := runVerify(t, checks)
 	if code != 0 {
@@ -151,12 +156,16 @@ func TestVacuousExitsZeroAndThreeUnderStrict(t *testing.T) {
 	if want := "1 passed, 0 failed, 1 vacuous (nothing to check), 0 skipped, 0 errored"; !strings.Contains(errOut, want) {
 		t.Errorf("the report does not contain the tally %q:\n%s", want, errOut)
 	}
-	if !strings.Contains(errOut, "had nothing to check; that is not a pass") {
-		t.Errorf("the report does not distinguish a vacuous check from a pass:\n%s", errOut)
+	if !strings.Contains(errOut, "UNDECL    nothing-declares-this") {
+		t.Errorf("the report does not distinguish a vacuous check from a pass, nor say "+
+			"that no declaration covers it:\n%s", errOut)
+	}
+	if !strings.Contains(errOut, "1 of them undeclared") {
+		t.Errorf("the tally claims the vacancies are accounted for when one is not:\n%s", errOut)
 	}
 	// The claim is printed for a non-pass, because "VACUOUS" alone does not tell a
 	// reader what did not happen.
-	if !strings.Contains(errOut, "claims: the transfer-legs-pair claim") {
+	if !strings.Contains(errOut, "claims: the nothing-declares-this claim") {
 		t.Errorf("the report does not state the claim of a vacuous check:\n%s", errOut)
 	}
 
@@ -292,8 +301,8 @@ func TestJSONRoundTripsWithEveryKeyPresent(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &top); err != nil {
 		t.Fatalf("decode the report: %v\n%s", err, out)
 	}
-	if diff := cmp.Diff([]string{"counts", "full", "generated_by", "results", "strict"},
-		sortedKeys(top)); diff != "" {
+	if diff := cmp.Diff([]string{"counts", "declared_vacuous", "full", "generated_by",
+		"results", "strict", "undeclared_vacuous"}, sortedKeys(top)); diff != "" {
 		t.Errorf("top-level keys (-want +got):\n%s", diff)
 	}
 

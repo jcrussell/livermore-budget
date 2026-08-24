@@ -256,14 +256,18 @@ jobs:
       # "the rules still produce this file" and "this file's claims hold" -- and a
       # single job would report only whichever failed first.
       #
-      # Deliberately NOT --strict. Three tier 1 checks have nothing to check until
-      # the node tier hierarchy (fisc-gxa.2) and a link-level transfer pairing
-      # (fisc-4rh) exist, so --strict here would be red on every run from the day
-      # it landed, and a permanently red gate gets commented out (fisc-1wr.4). The
-      # log prints the vacuous count on every run instead, and `verify` still
-      # exits 3 the moment a check actually fails.
+      # --strict, which fails on a VACUOUS check that no entry in
+      # internal/check's declaredVacuous accounts for. It used to be omitted,
+      # with a prose comment here naming the beads that would retire the three
+      # vacuous checks. That comment was the wrong place for the claim: nothing
+      # checked it, and every one of those checks is blocked behind work far
+      # down the backlog, so the flag would have been red on every run from the
+      # day it landed and a permanently red gate gets commented out
+      # (fisc-1wr.4). The reasons are now in the source, printed verbatim on
+      # every run beside the bead that deletes each one, and a vacuous check
+      # nobody has declared fails HERE on the day it appears (fisc-z0p).
       - name: Check the corpus
-        run: ./bin/fisc verify
+        run: ./bin/fisc verify --strict
 
   # ---------------------------------------------------------------- publish --
   #

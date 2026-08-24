@@ -69,15 +69,58 @@ func printText(w io.Writer, rep *check.Report) {
 		fmt.Fprintf(w, "%d %s --full and did not run\n", c.Skipped,
 			plural(c.Skipped, "check needs", "checks need"))
 	}
+	printDeclarations(w, rep)
+
+	stale := rep.StaleDeclarations()
 	switch {
 	case c.Fail > 0 || c.Error > 0:
 		fmt.Fprintln(w, "verify failed")
-	case rep.Strict && c.Vacuous > 0:
-		fmt.Fprintf(w, "verify failed: --strict, and %d %s had nothing to check\n",
-			c.Vacuous, plural(c.Vacuous, "check", "checks"))
+	case len(stale) > 0:
+		fmt.Fprintf(w, "verify failed: %d vacuity %s no longer describes this run\n",
+			len(stale), plural(len(stale), "declaration", "declarations"))
+	case rep.Strict && len(rep.Undeclared) > 0:
+		fmt.Fprintf(w, "verify failed: --strict, and %d vacuous %s undeclared\n",
+			len(rep.Undeclared), plural(len(rep.Undeclared), "check is", "checks are"))
+	case c.Vacuous > 0 && len(rep.Undeclared) > 0:
+		// NOT a green summary. --strict was not asked for, so the run passes,
+		// but saying only "N had nothing to check" here would read as the
+		// declared-and-accounted-for case below.
+		fmt.Fprintf(w, "%d %s had nothing to check, %d of them undeclared; --strict "+
+			"fails on those\n", c.Vacuous, plural(c.Vacuous, "check", "checks"),
+			len(rep.Undeclared))
 	case c.Vacuous > 0:
-		fmt.Fprintf(w, "%d %s had nothing to check; that is not a pass, and --strict fails on it\n",
+		fmt.Fprintf(w, "%d %s had nothing to check; every one is declared with the bead "+
+			"that retires it, so --strict passes\n",
 			c.Vacuous, plural(c.Vacuous, "check", "checks"))
+	}
+}
+
+// printDeclarations prints the exemption surface on every run, whether or not
+// anything is wrong with it.
+//
+// It is unconditional for the reason facts-are-projected prints its unprojected
+// scopes unconditionally: a declaration that is only visible when it breaks is
+// one nobody re-reads, and re-reading is the whole mechanism. Each line names
+// the bead whose landing deletes the entry, so the list doubles as the shortest
+// statement of what this gate is still waiting for.
+func printDeclarations(w io.Writer, rep *check.Report) {
+	for _, d := range rep.Declared {
+		// A declaration for a check this run did not include says nothing about
+		// the run. Whether the id names a real check is a claim about
+		// check.All(), asserted in that package's tests.
+		if !d.Ran() {
+			continue
+		}
+		if d.Stale() {
+			fmt.Fprintf(w, "%-*s %s: %s\n", statusWidth, "STALE", d.CheckID, d.StaleReason())
+			continue
+		}
+		fmt.Fprintf(w, "%-*s %s (%s): %s\n", statusWidth, "declared", d.CheckID, d.Bead, d.Reason)
+	}
+	for _, id := range rep.Undeclared {
+		fmt.Fprintf(w, "%-*s %s: vacuous and named by no entry in declaredVacuous; "+
+			"add one with its reason and the bead that retires it, or find the check "+
+			"a subject\n", statusWidth, "UNDECL", id)
 	}
 }
 

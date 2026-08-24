@@ -36,6 +36,14 @@ type Report struct {
 	// were skipped. A check that produced no entry would be indistinguishable
 	// from a check that does not exist.
 	Results []Result `json:"results"`
+	// Declared is every entry in declaredVacuous with what its check reported
+	// here, in check-id order. Published rather than merely consulted, so a
+	// reader of the report can see the whole exemption surface without reading
+	// the source, the way facts-are-projected prints the unprojected scopes.
+	Declared []Declaration `json:"declared_vacuous"`
+	// Undeclared are the vacuous checks no declaration covers. They are what
+	// --strict fails on; see [Report.Failed].
+	Undeclared []string `json:"undeclared_vacuous"`
 }
 
 // Counts is how many checks reached each status. They are five separate
@@ -83,6 +91,7 @@ func Run(ctx context.Context, s *Subject, checks []Check, o ReportOptions) *Repo
 	for _, c := range checks {
 		rep.add(c, run1(ctx, c, s))
 	}
+	rep.resolveDeclarations()
 	return rep
 }
 
@@ -153,11 +162,21 @@ func (r *Report) add(c Check, res Result) {
 // the checker could not tell, and neither is a green run. They are not told apart
 // here because both mean the same thing to a caller — read the report, which says
 // per check which happened. A skipped check never fails; it is the documented
-// consequence of not passing --full. A vacuous check fails only under --strict;
-// see ReportOptions.Strict for why that is not the default.
+// consequence of not passing --full.
+//
+// A VACUOUS CHECK FAILS UNDER --strict UNLESS IT IS DECLARED, and a declaration
+// that has stopped being true fails EITHER WAY. The asymmetry is the point. An
+// undeclared vacancy is a coverage shortfall, which is what --strict is for and
+// what a default run deliberately tolerates (see ReportOptions.Strict). A stale
+// declaration is a false statement in this package's own source, which no run
+// should pass — it is the same standard staleDeclarations applies to
+// unprojectedScopes.
 func (r *Report) Failed() bool {
 	if r.Counts.Fail > 0 || r.Counts.Error > 0 {
 		return true
 	}
-	return r.Strict && r.Counts.Vacuous > 0
+	if len(r.StaleDeclarations()) > 0 {
+		return true
+	}
+	return r.Strict && len(r.Undeclared) > 0
 }

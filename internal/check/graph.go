@@ -606,12 +606,23 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 
 // transferLegsPair asserts every transfer_id has two equal legs.
 //
-// It is vacuous today and expected to stay so for a while: no link carries a
-// transfer_id, because fact.Fact has no field that could express the pairing, so
-// internal/project has no input for it (fisc-4rh). Mapping p76 does not fix that
-// on its own. Reporting this as a pass would tell a reader the legs had been
-// checked against each other when nothing has ever looked at them, which is the
-// reason StatusVacuous exists.
+// It is vacuous today and expected to stay so for a while, and it is declared as
+// such in vacuity.go so that --strict can be the CI gate meanwhile.
+//
+// No link carries a transfer_id. A rule can now express the pairing -- a row
+// declares a Counterpart and one printed figure becomes two facts citing it --
+// but this check reads LINKS, and internal/project keys cells on
+// (kind, category, fund_group) and never reads a fact's fund, so p76's 22
+// printed legs net into 9 fund-group cells before a pairing could be attached
+// to anything. Retiring it needs leg-level links, which is the node tier
+// hierarchy, plus a Link.TransferID derived from the two legs' shared
+// (doc_id, page, offset). That is fisc-9gh; mapping p76 does not do it, and
+// fisc-4rh -- which settled the fact shape and is cited below for that -- was
+// read as though it would.
+//
+// Reporting this as a pass would tell a reader the legs had been checked against
+// each other when nothing has ever looked at them, which is the reason
+// StatusVacuous exists.
 type transferLegsPair struct{}
 
 var _ Check = (*transferLegsPair)(nil)
@@ -621,7 +632,7 @@ func (*transferLegsPair) Tier() int  { return 1 }
 func (*transferLegsPair) Full() bool { return false }
 func (*transferLegsPair) Description() string {
 	return "every transfer_id names exactly two links of equal value — vacuous until a link can " +
-		"carry one (fisc-4rh)"
+		"carry one (fisc-9gh)"
 }
 
 func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
@@ -658,7 +669,7 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: len(ids),
 		unit:     "transfer ids",
 		held:     fmt.Sprintf("%d transfer ids, each with two equal legs", len(ids)),
-		nothing:  "no link carries a transfer_id, so no pairing has been checked (fisc-4rh)",
+		nothing:  "no link carries a transfer_id, so no pairing has been checked (fisc-9gh)",
 		findings: findings,
 	}.result(), nil
 }
