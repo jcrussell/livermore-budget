@@ -333,3 +333,64 @@ func TestDroppingARevenueRuleFails(t *testing.T) {
 		}
 	})
 }
+
+// TestDroppingAFundZeroInBothBudgetYearsIsInvisibleToTheTie is the measurement
+// behind rule-funds-match-their-headings' second clause, stated as a test so
+// that clause cannot be simplified away.
+//
+// NINE of the schedule's 69 funds print zero in BOTH budget years. The
+// reconciliation against the spine covers only those two years, because pp.66-67
+// print no actual or revised column — so dropping one of the nine changes
+// nothing it looks at, and up to $4.7M of FY2023-24 revenue leaves the corpus
+// with every check green.
+//
+// This test asserts the BLIND SPOT, not a defect: the tie is correct, and it is
+// correct that it cannot see this. What would be wrong is believing it could.
+func TestDroppingAFundZeroInBothBudgetYearsIsInvisibleToTheTie(t *testing.T) {
+	src, err := os.ReadFile(publishedSpine)
+	if err != nil {
+		t.Fatalf("read published file: %v", err)
+	}
+	// Transferable Development Cred: $4,723,774 in FY2023-24 and $7,055,955 in
+	// FY2024-25, and a printed dash in both budget years.
+	cut := removeRule(t, string(src), "fund-rev-transferable-development-cred")
+	f, err := Parse(strings.NewReader(cut), publishedSpine)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	r, err := NewResolver(budgetDoc(t, revenueDetailPages...), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	full, fullR := revenueDetail(t)
+	before := readRevenueDetail(t, full, fullR)
+	after := readRevenueDetail(t, f, r)
+
+	// The two reconciled years are untouched...
+	for _, year := range []int{2026, 2027} {
+		for k, v := range before {
+			if k.year != year {
+				continue
+			}
+			if after[k] != v {
+				t.Errorf("FY%d %s %s moved from %s to %s; this fund was supposed to be "+
+					"zero in both budget years", year, k.group, k.category, v, after[k])
+			}
+		}
+	}
+	// ...and FY2023-24 lost real money, which nothing above sees.
+	var lost amount.Cents
+	for k, v := range before {
+		if k.year == 2024 {
+			lost += v - after[k]
+		}
+	}
+	if lost == 0 {
+		t.Fatal("removing the rule cost nothing in FY2023-24 either, so this fund no " +
+			"longer evidences the blind spot and the second clause of " +
+			"rule-funds-match-their-headings needs a different example")
+	}
+	if want := amount.Cents(472_377_400); lost != want {
+		t.Errorf("FY2023-24 lost %s, want %s (the fund's own printed total)", lost, want)
+	}
+}

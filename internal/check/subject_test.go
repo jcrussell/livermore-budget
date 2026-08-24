@@ -263,11 +263,12 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		// whose columns are per FUND rather than per fund group. It is the last
 		// of the five fisc-0ux enumerated that the two General Fund coverage
 		// lanes retire; what remains is the tier hierarchy and p76.
-		"transfer-legs-pair":         StatusVacuous,
-		"aggregation-invariance":     StatusVacuous,
-		"constraint-tier-vocabulary": StatusVacuous,
-		"fact-departments-resolve":   StatusPass,
-		"fact-funds-resolve":         StatusPass,
+		"transfer-legs-pair":              StatusVacuous,
+		"aggregation-invariance":          StatusVacuous,
+		"constraint-tier-vocabulary":      StatusVacuous,
+		"fact-departments-resolve":        StatusPass,
+		"fact-funds-resolve":              StatusPass,
+		"rule-funds-match-their-headings": StatusPass,
 	}
 	got := make(map[string]Status, len(rep.Results))
 	for _, res := range rep.Results {

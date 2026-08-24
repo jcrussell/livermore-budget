@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -38,6 +39,9 @@ func (noVocabulary) Category(string) (registry.Category, bool) {
 func (noVocabulary) FundGroup(string) bool          { return false }
 func (noVocabulary) Fund(int) (registry.Fund, bool) { return registry.Fund{}, false }
 func (noVocabulary) Funds() []registry.Fund         { return nil }
+func (noVocabulary) FundByLabel(label string) (registry.Fund, error) {
+	return registry.Fund{}, fmt.Errorf("no fund is named %q in an empty corpus", label)
+}
 func (noVocabulary) Division(string) (registry.Division, bool) {
 	return registry.Division{}, false
 }

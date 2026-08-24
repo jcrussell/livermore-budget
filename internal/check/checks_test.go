@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -72,14 +73,17 @@ func TestFixtureVerdicts(t *testing.T) {
 		"constraint-tier-vocabulary":       "vacuous over 0",
 		"fact-departments-resolve":         "vacuous over 0",
 		"fact-funds-resolve":               "vacuous over 0",
+		// No rule file in the fixture subject declares a fund, so there is no
+		// hand-typed number to check against a printed name.
+		"rule-funds-match-their-headings": "vacuous over 0",
 	}
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 17, Vacuous: 12, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 17, Vacuous: 13, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Seventeen passes, twelve vacuous and one skipped is not thirty of
+	// Seventeen passes, thirteen vacuous and one skipped is not thirty-one of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -95,11 +99,11 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 12 {
-		t.Fatalf("vacuous count = %d, want 12", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 13 {
+		t.Fatalf("vacuous count = %d, want 13", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
-		t.Error("a run with twelve vacuous checks failed without --strict")
+		t.Error("a run with thirteen vacuous checks failed without --strict")
 	}
 	if !strict.Failed() {
 		t.Error("a run with ten vacuous checks passed under --strict")
@@ -1778,6 +1782,169 @@ func TestTheGeneralFundTransfersInException(t *testing.T) {
 		if !strings.Contains(findingDetails(res), "exempts nothing") {
 			t.Errorf("findings %v do not say the declaration has stopped describing the "+
 				"corpus", res.Findings)
+		}
+	})
+}
+
+// fundRuleSubject builds a subject carrying rule files and a one-page document,
+// which is what rule-funds-match-their-headings reads. The page is written here
+// rather than copied, because these tests are about the RULES and want to state
+// the printed line they are checked against on the same screen.
+func fundRuleSubject(t *testing.T, page string, rules []mapping.Rule,
+	rollups []mapping.Rollup) *Subject {
+	t.Helper()
+	s := factsSubject(t, testFacts())
+	s.Files = []*mapping.File{{
+		SchemaVersion: 1, DocID: testDoc, Rules: rules, Rollups: rollups,
+		Path: "testdata/fixture.yaml",
+	}}
+	s.Docs = map[string]*corpus.Doc{testDoc: inlinePageDoc(t, testDoc, 1, page)}
+	return s
+}
+
+// fundRule is one pp.131-140-shaped rule: a fund per rule, four columns all
+// naming it, and a printed `Total <fund>` of its own.
+func fundRule(id string, fund int, group, totalRow string) mapping.Rule {
+	return mapping.Rule{
+		ID: id, Kind: mapping.KindRevenue, Basis: mapping.BasisAdopted,
+		Scope: revenueDetailScope, Units: "dollars", TotalRow: totalRow,
+		Parts: []mapping.Part{{Page: 1, Columns: []mapping.Column{
+			{FundGroup: group, Fund: fund, FiscalYear: 2026},
+		}}},
+	}
+}
+
+// TestRuleFundsMatchTheirHeadings covers the check fisc-u54 asks for, over the
+// hazard it was filed about: a fund mis-assigned WITHIN its own fund type, which
+// changes no column sum and which every other check passes.
+func TestRuleFundsMatchTheirHeadings(t *testing.T) {
+	const id = "rule-funds-match-their-headings"
+	// data/funds.yaml's fixture: 100 General Fund (general), 500 Water Utility
+	// Fund (enterprise), 700 Information Technology Fund (internal-service).
+	const page = "" +
+		"      Total Water Utility Fund              1,000\n" +
+		"      Total Information Technology Fund     2,000\n"
+
+	t.Run("a rule whose printed total names its fund passes", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
+			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
+			fundRule("it", 700, "internal-service", "Total Information Technology Fund"),
+		}, nil)), id)
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		if res.Subjects != 2 {
+			t.Errorf("subjects = %d, want 2 fund-bearing rules", res.Subjects)
+		}
+	})
+
+	// THE BEAD'S OWN CASE. Both funds exist, both are the right TYPE for the
+	// fund group the columns declare, and the column sums are identical either
+	// way — so fact-funds-resolve, revenue-detail-ties-to-spine and CheckTotals
+	// all pass. Only the printed name disagrees.
+	t.Run("a fund swapped for another of the same type fails", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
+			// Reads the Water block and files it under Information Technology.
+			fundRule("water", 700, "internal-service", "Total Water Utility Fund"),
+			fundRule("it", 700, "internal-service", "Total Information Technology Fund"),
+		}, nil)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "mis-assigned inside its own type") {
+			t.Errorf("findings %v do not name the hazard", res.Findings)
+		}
+	})
+
+	t.Run("a printed name no fund claims fails", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, fundRuleSubject(t,
+			"      Total Wastewater Utility            1,000\n", []mapping.Rule{
+				fundRule("ww", 500, "enterprise", "Total Wastewater Utility"),
+			}, nil)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "anchored to nothing on the page") {
+			t.Errorf("findings %v do not say the number is unanchored", res.Findings)
+		}
+	})
+
+	// CLAUSE 2, AND THE REASON IT EXISTS. Nine of the schedule's 69 funds print
+	// zero in BOTH budget years, so dropping one leaves every reconciled sum
+	// unchanged and revenue-detail-ties-to-spine green. Clause 1 cannot see it:
+	// it only inspects rules that exist.
+	t.Run("a printed fund total no rule claims fails", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
+			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
+		}, nil)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: the page prints an Information "+
+				"Technology total and no rule reads it", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "no rule or rollup declares that total") {
+			t.Errorf("findings %v do not name the unmapped section", res.Findings)
+		}
+	})
+
+	// pp.127-130's shape: ONE fund decomposed by CATEGORY across several rules
+	// whose printed totals are category names. The fund is named exactly once,
+	// by the rollup that covers them, and that is what anchors the number.
+	t.Run("a fund named only by a rollup that covers the rules passes", func(t *testing.T) {
+		gf := func(id, totalRow string) mapping.Rule {
+			return fundRule(id, 100, "general", totalRow)
+		}
+		res := resultFor(t, runChecks(t, fundRuleSubject(t,
+			"      Total Property Taxes                 1,000\n"+
+				"      Total Sales Taxes                    2,000\n"+
+				"      Total General Fund                   3,000\n",
+			[]mapping.Rule{gf("prop", "Total Property Taxes"), gf("sales", "Total Sales Taxes")},
+			[]mapping.Rollup{{ID: "gf", Page: 1, TotalRow: "Total General Fund",
+				Covers: []string{"prop", "sales"}}})), id)
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass: `Total General Fund` names fund 100 "+
+				"and covers both rules", res.Status, res.Summary)
+		}
+	})
+
+	// The same shape with the rollup covering only ONE of them. The uncovered
+	// rule's number is anchored to nothing printed, which is the state
+	// pp.127-130 would be in if a category rule fell out of the rollup's covers.
+	t.Run("a rule the naming rollup does not cover fails", func(t *testing.T) {
+		gf := func(id, totalRow string) mapping.Rule {
+			return fundRule(id, 100, "general", totalRow)
+		}
+		res := resultFor(t, runChecks(t, fundRuleSubject(t,
+			"      Total Property Taxes                 1,000\n"+
+				"      Total Sales Taxes                    2,000\n"+
+				"      Total General Fund                   3,000\n",
+			[]mapping.Rule{gf("prop", "Total Property Taxes"), gf("sales", "Total Sales Taxes")},
+			[]mapping.Rollup{{ID: "gf", Page: 1, TotalRow: "Total General Fund",
+				Covers: []string{"prop"}}})), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: nothing printed names fund 100 for "+
+				"the sales rule", res.Status, res.Summary)
+		}
+	})
+
+	t.Run("a rule whose columns declare two funds fails", func(t *testing.T) {
+		ru := fundRule("mixed", 500, "enterprise", "Total Water Utility Fund")
+		ru.Parts[0].Columns = append(ru.Parts[0].Columns,
+			mapping.Column{FundGroup: "enterprise", Fund: 600, FiscalYear: 2027})
+		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{ru}, nil)), id)
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if !strings.Contains(findingDetails(res), "more than one fund") {
+			t.Errorf("findings %v do not name the mixed columns", res.Findings)
+		}
+	})
+
+	// The spine: no rule names a fund, so there is nothing to check and the
+	// honest report is vacuous rather than a pass over zero.
+	t.Run("no rule declares a fund is vacuous", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, testSubject(t)), id)
+		if res.Status != StatusVacuous {
+			t.Fatalf("status = %s (%s), want vacuous", res.Status, res.Summary)
 		}
 	})
 }

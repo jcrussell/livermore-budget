@@ -79,6 +79,14 @@ type Vocabulary interface {
 	// constraint tiers the file actually uses, rather than carrying a second
 	// copy of that closed vocabulary.
 	Funds() []registry.Fund
+	// FundByLabel resolves a fund by a name the city PRINTS, exactly — a name
+	// or a declared alias, never a prefix and never case-folded, with ambiguity
+	// refused when data/funds.yaml loads.
+	//
+	// It is the only way to get from a printed heading to a number, which is
+	// what rule-funds-match-their-headings needs: `fund:` is written by hand on
+	// every column and nothing else derives it from the section the rule reads.
+	FundByLabel(label string) (registry.Fund, error)
 }
 
 var _ Vocabulary = (*registry.Registry)(nil)

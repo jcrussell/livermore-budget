@@ -176,6 +176,7 @@ func All() []Check {
 		&factKindMatchesCategory{},
 		&factDepartmentsResolve{},
 		&factFundsResolve{},
+		&ruleFundsMatchTheirHeadings{},
 
 		&projectionsBuild{},
 		&publishedProjectionBuilt{},

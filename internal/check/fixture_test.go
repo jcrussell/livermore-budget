@@ -205,6 +205,32 @@ func testFacts(cells ...testCell) []fact.Fact {
 // subject is built, and the input-mutation tests in subject_test.go do it properly
 // — through Load, over a copy of the real corpus, where the pages are fixed and it
 // is the fact store that moves.
+// inlinePageDoc builds a one-page document whose text is written in the test.
+//
+// testDocs derives its pages FROM the facts, which is right for the provenance
+// checks and wrong for a check about what the page prints: those tests want the
+// printed line and the rule that reads it on the same screen.
+func inlinePageDoc(t *testing.T, docID string, page int, text string) *corpus.Doc {
+	t.Helper()
+	fsys := fstest.MapFS{}
+	name := corpus.PagePath(page)
+	fsys[name] = &fstest.MapFile{Data: []byte(text)}
+	man, err := json.Marshal(map[string]any{
+		"schema_version": corpus.SchemaVersion,
+		"doc_id":         docID,
+		"artifacts":      map[string]corpus.Artifact{name: {Bytes: int64(len(text))}},
+	})
+	if err != nil {
+		t.Fatalf("marshal manifest: %v", err)
+	}
+	fsys["manifest.json"] = &fstest.MapFile{Data: man}
+	d, err := corpus.Open(fsys)
+	if err != nil {
+		t.Fatalf("corpus.Open: %v", err)
+	}
+	return d
+}
+
 func testDocs(t *testing.T, facts []fact.Fact) map[string]*corpus.Doc {
 	t.Helper()
 	type key struct {
