@@ -52,8 +52,26 @@ vet: ## Run go vet
 tidy: ## Tidy go.mod/go.sum
 	go mod tidy
 
+# lint-if-available is what the commit hook runs, and it is NOT `lint`.
+#
+# golangci-lint is not required to build or test this project, and adding it to
+# pre-commit would make an external binary mandatory to commit at all -- a
+# contributor with Go and nothing else could no longer land a change. So absence
+# WARNS and continues, while a lint that actually runs still fails the commit.
+#
+# The degradation is for ABSENCE ONLY. `lint` itself must keep hard-failing,
+# because CI's required lint job is that target and a version of it that shrugged
+# would defeat the gate this bead exists to strengthen.
+.PHONY: lint-if-available
+lint-if-available: ## Run lint, warning rather than failing if golangci-lint is absent
+	@command -v golangci-lint >/dev/null 2>&1 || { \
+		echo "warning: golangci-lint not on PATH, skipping lint; CI will still lint this commit" >&2; \
+		exit 0; \
+	}; \
+	$(MAKE) --no-print-directory lint
+
 .PHONY: pre-commit
-pre-commit: fmt vet test ## Format, vet, and test (symlink to .git/hooks/pre-commit)
+pre-commit: fmt vet test lint-if-available ## Format, vet, test, and lint (symlink to .git/hooks/pre-commit)
 
 # Extraction is deliberately NOT part of the Go binary. It is a rare,
 # human-initiated step whose output is committed; fisc reads only that output

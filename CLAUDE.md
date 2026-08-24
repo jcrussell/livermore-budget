@@ -85,10 +85,16 @@ Go only — neither the PDFs nor Python are needed to build, test, or verify.
 ```bash
 make build        # bin/fisc
 make test         # always -race
-make pre-commit   # fmt, vet, test — symlink it to .git/hooks/pre-commit
+make pre-commit   # fmt, vet, test, lint — symlink it to .git/hooks/pre-commit
 make site         # static site into dist/ (gitignored)
 make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
 ```
+
+`make pre-commit` lints, but warns and continues when `golangci-lint` is not on
+PATH — the linter is not needed to build or test this project, so its absence
+must not stop a commit. `make lint` on its own still fails, because that target
+is CI's required check. Lint was red on `main` across three commits before this
+was wired up, which is the gap it closes.
 
 `./bin/fisc verify` is the gate. `--full` adds the PDF hash check and needs the
 LFS files. Run `./bin/fisc build --output bin/facts-rebuilt.jsonl` and `cmp`

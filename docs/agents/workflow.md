@@ -76,3 +76,9 @@ arithmetic. That is the level of proof a claim about these documents needs.
   that will not be obvious from the diff.
 - Regenerated artifacts belong in the same commit as the change that caused
   them.
+- `make pre-commit` runs fmt, vet, test **and lint**, and the symlink into
+  `.git/hooks/pre-commit` is what makes it the contract. It warns rather than
+  fails when `golangci-lint` is not on PATH, so a contributor with only Go can
+  still commit; `make lint` alone still fails, because that is CI's required
+  check. Before lint was in this target, CI was the first place a violation
+  showed and `main` carried a red lint across three commits.
