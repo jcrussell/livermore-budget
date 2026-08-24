@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -153,7 +154,9 @@ func (f fixtureCopy) extraction() string {
 // rows. It replaces a hard-coded list of page numbers against one document and
 // one substrate, which could express neither a second document nor the geometry
 // artifacts the column guard needs (fisc-28u). Adding a fixture means adding a
-// row here and nothing else.
+// row to fixturePages and nothing else — and TestEveryCommittedFixtureIsListed
+// is what makes that a rule rather than a habit, because three fixtures once
+// went in without one (fisc-9i1).
 func fixtureCopies() []fixtureCopy {
 	var out []fixtureCopy
 	for _, doc := range []fixtureDoc{budgetFixtures, cipFixtures, acfrFixtures} {
@@ -167,7 +170,7 @@ func fixtureCopies() []fixtureCopy {
 // fixturePages is every page committed under testdata/, by document. Each is
 // there for a named failure mode; see testdata/README.md.
 var fixturePages = map[string][]int{
-	budgetFixtures.id: {66, 67, 76, 127, 167},
+	budgetFixtures.id: {66, 67, 76, 127, 167, 168, 169, 170},
 	cipFixtures.id:    {29, 40},
 	acfrFixtures.id:   {177},
 }
@@ -199,6 +202,57 @@ func TestFixturesAreVerbatimCopies(t *testing.T) {
 					f.fixture, f.extraction())
 			}
 		})
+	}
+}
+
+// TestEveryCommittedFixtureIsListed asserts fixturePages covers testdata/, and
+// it exists because the convention it replaces failed silently.
+//
+// TestFixturesAreVerbatimCopies iterates the LIST, not the directory, so a
+// fixture committed and not listed is read by tests and checked against the
+// extraction by nothing. That is not hypothetical: a430cec added budget pp.168,
+// 169 and 170 — six files — and did not add the rows, so the p168 two-level
+// rounding chain the whole Rollup design rests on and p170's tie to the citywide
+// spine were being proved against files nothing said were real. None had drifted
+// when this was found (fisc-9i1), which is the reason to close it now rather
+// than after one does.
+//
+// fixtureCopies' own doc comment says "Adding a fixture means adding a row here
+// and nothing else". That sentence was the gap: it describes a convention, and a
+// convention is not a check. Thirteen more pairs land with fisc-5gk.1, which is
+// twenty-six more chances to forget.
+func TestEveryCommittedFixtureIsListed(t *testing.T) {
+	listed := map[string]bool{}
+	for _, f := range fixtureCopies() {
+		listed[filepath.Clean(f.fixture)] = true
+	}
+	if len(listed) == 0 {
+		t.Fatal("no fixtures listed, so this test asserts nothing")
+	}
+
+	for _, dir := range []string{"../../testdata/pages", "../../testdata/geometry"} {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatalf("read %s: %v", dir, err)
+		}
+		found := 0
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			found++
+			path := filepath.Join(dir, e.Name())
+			if !listed[filepath.Clean(path)] {
+				t.Errorf("%s is committed but no fixtureCopy names it, so nothing asserts "+
+					"it is a verbatim copy of the extraction; add its page to fixturePages",
+					path)
+			}
+		}
+		// A directory that reads as empty would make the loop above vacuous
+		// and this test a decoration.
+		if found == 0 {
+			t.Errorf("%s holds no fixtures, so this test checked nothing", dir)
+		}
 	}
 }
 
