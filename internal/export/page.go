@@ -14,8 +14,16 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// templateName is the page template inside the site asset tree.
-const templateName = "index.html.tmpl"
+// The page templates inside the site asset tree, one per view.
+//
+// They are named here rather than in the caller because a template is an ASSET
+// of this package's embedded tree, and a caller naming one would be reaching
+// into a directory it does not own. What the caller chooses is which view uses
+// which, by name.
+const (
+	SankeyTemplate = "index.html.tmpl"
+	TrendsTemplate = "revenue.html.tmpl"
+)
 
 // SchemaVersion is the projection schema this packager understands.
 //
@@ -83,22 +91,44 @@ type projectionDoc struct {
 	Metadata      json.RawMessage `json:"metadata"`
 }
 
-// projectionMetadata is the decoded metadata block. The page renders these
-// figures server-side so the headline survives without JavaScript.
+// sourceMeta is one cited document in any projection's metadata.
+type sourceMeta struct {
+	DocID string `json:"doc_id"`
+	Pages []int  `json:"pages"`
+}
+
+// documentSources is as much of ANY document as the citation union needs.
+//
+// It is deliberately shape-blind: metadata.sources is the one block every
+// projection carries whatever its body is, so the set of pages a site must ship
+// can be collected across views without this package knowing whether a given
+// document holds nodes and links or series and points. That is what makes
+// fisc-fjy's fix general rather than a second special case beside the year loop.
+type documentSources struct {
+	Metadata struct {
+		Sources []sourceMeta `json:"sources"`
+	} `json:"metadata"`
+}
+
+// projectionMetadata is the decoded metadata block of a SANKEY document. The
+// page renders these figures server-side so the headline survives without
+// JavaScript.
+//
+// IT IS THE SPINE'S AND NOT EVERY DOCUMENT'S, which is what the split in
+// decodeSankey is about: fiscal_year_label, basis and headline are singular or
+// spine-specific, and a trends document carries none of them and is not
+// defective for that (internal/project/document.go says so in writing).
 type projectionMetadata struct {
-	GeneratedBy     string `json:"generated_by"`
-	FiscalYear      int    `json:"fiscal_year"`
-	FiscalYearLabel string `json:"fiscal_year_label"`
-	Basis           string `json:"basis"`
-	Scope           string `json:"scope"`
-	Currency        string `json:"currency"`
-	Units           string `json:"units"`
-	Sources         []struct {
-		DocID string `json:"doc_id"`
-		Pages []int  `json:"pages"`
-	} `json:"sources"`
-	Headline headline `json:"headline"`
-	Counts   struct {
+	GeneratedBy     string       `json:"generated_by"`
+	FiscalYear      int          `json:"fiscal_year"`
+	FiscalYearLabel string       `json:"fiscal_year_label"`
+	Basis           string       `json:"basis"`
+	Scope           string       `json:"scope"`
+	Currency        string       `json:"currency"`
+	Units           string       `json:"units"`
+	Sources         []sourceMeta `json:"sources"`
+	Headline        headline     `json:"headline"`
+	Counts          struct {
 		Facts int `json:"facts"`
 		Nodes int `json:"nodes"`
 		Links int `json:"links"`
@@ -197,30 +227,84 @@ type countsRef struct {
 	Links int `json:"links"`
 }
 
-// pageData is the template's input.
+// pageData is the Sankey template's input: the shared chrome plus everything
+// only a spine page has.
 type pageData struct {
-	Title           string
+	chrome
 	FiscalYearLabel string
 	Basis           string
-	Scope           string
 	Hero            figure
 	Figures         []figure
 	// Years is every published year, opening year first. The template renders
 	// Years[0]'s tiles and caveats into the HTML and lists the rest as a
 	// selector; app.js swaps between them without refetching the page.
-	Years        []yearView
-	Caveats      []string
-	Sources      []sourceRef
-	Facts        int
-	Nodes        int
-	Links        int
-	ProjectionBy string
-	ExportedBy   string
-	Projections  []projectionRef
-	PrimaryPath  string
+	Years []yearView
+	Facts int
+	Nodes int
+	Links int
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
 	// their \u form, so the blob cannot close the script element it sits in.
 	ConfigJSON template.JS
+}
+
+// trendsPageData is the revenue-trends template's input.
+//
+// IT CARRIES NO ConfigJSON AND THE PAGE LOADS NO SCRIPT, which is a decision
+// rather than an omission. site/app.js reads CONFIG.projections[CONFIG.primary]
+// and draws a Sankey; handing it a document of series would blank the page
+// through understands(). The table below is rendered entirely server-side, so
+// this view works with JavaScript off — which is the property the spine page
+// already defends for its headline, applied to a whole page. A chart for these
+// series is its own change (fisc-4ua.3).
+type trendsPageData struct {
+	chrome
+	Columns []columnRef
+	Series  []seriesRef
+	Facts   int
+	Count   int
+}
+
+// columnRef is one printed column as the table heads it.
+type columnRef struct {
+	Label string
+	Basis string
+	// Group is the column's comparable_group, rendered as a data attribute so
+	// the boundary between measurements is in the markup rather than only in a
+	// caveat. New says this column starts a new group, which is where a reader
+	// should not carry a comparison across.
+	Group string
+	New   bool
+}
+
+// seriesRef is one printed row as the table renders it.
+type seriesRef struct {
+	Label    string
+	Fund     string
+	Group    string
+	Category string
+	Cells    []cellRef
+}
+
+// cellRef is one column of one row: the point published there, or the absence
+// of one.
+type cellRef struct {
+	Value string
+	// Missing says the series publishes no point in this column. The cell is
+	// still rendered, because the alternative is what this type exists to
+	// prevent — see buildCells.
+	Missing bool
+	// Negative marks a contra row — the General Fund's ERAF and RPTTF Reduction
+	// are printed in parentheses and published signed — so the stylesheet can
+	// show it as the document does rather than as a minus sign in a table.
+	Negative bool
+	// New repeats the column's group boundary onto the body cell, so the rule
+	// between two measurements runs down the table rather than stopping at the
+	// header.
+	New bool
+	// Page and Href cite the figure itself. Every point carries its own page in
+	// the document, which is what makes a single cell citable.
+	Page int
+	Href string
 }
 
 // clientDoc is a source document as the client sees it.
@@ -305,19 +389,42 @@ func tilesFor(meta projectionMetadata) (figure, []figure) {
 	}}
 }
 
-// decodeProjection reads one projection document and refuses it before anything
-// is read out of it, because every field named below belongs to a contract a
-// version this packager does not know may have renamed or redefined.
-func decodeProjection(stem string, raw []byte) (projectionDoc, projectionMetadata, error) {
+// decodeDocument reads the envelope of ANY projection document and refuses it
+// before anything is read out of it, because every field a view names belongs to
+// a contract a version this packager does not know may have renamed.
+//
+// What it checks is what every document has: a schema version this binary
+// understands and a metadata block. Anything shape-specific is the caller's,
+// below.
+func decodeDocument(stem string, raw []byte) (projectionDoc, error) {
 	var doc projectionDoc
 	if err := json.Unmarshal(raw, &doc); err != nil {
-		return doc, projectionMetadata{}, fmt.Errorf("decode %s projection: %w", stem, err)
+		return doc, fmt.Errorf("decode %s projection: %w", stem, err)
 	}
 	if err := checkSchemaVersion(stem, doc.SchemaVersion); err != nil {
-		return doc, projectionMetadata{}, err
+		return doc, err
 	}
 	if len(doc.Metadata) == 0 {
-		return doc, projectionMetadata{}, fmt.Errorf("%s projection has no metadata block", stem)
+		return doc, fmt.Errorf("%s projection has no metadata block", stem)
+	}
+	return doc, nil
+}
+
+// decodeSankey reads a document as a SPINE document, and refuses one that is not.
+//
+// THE TWO REFUSALS BELOW ARE THE SANKEY'S, NOT EVERY DOCUMENT'S. They used to
+// live in the one decode path every document went through, which was correct
+// while the Sankey was the only document and would have refused the revenue
+// trends outright: internal/project/document.go states in writing that a trends
+// document carries neither a fiscal_year_label nor a headline, and is not
+// defective for that. They stay, because a spine document missing either IS
+// defective -- a page with blanks where the headline goes is the thing this
+// packager exists not to publish -- and they moved here so that being a Sankey is
+// what invokes them.
+func decodeSankey(stem string, raw []byte) (projectionDoc, projectionMetadata, error) {
+	doc, err := decodeDocument(stem, raw)
+	if err != nil {
+		return doc, projectionMetadata{}, err
 	}
 	var meta projectionMetadata
 	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
@@ -332,51 +439,211 @@ func decodeProjection(stem string, raw []byte) (projectionDoc, projectionMetadat
 	return doc, meta, nil
 }
 
-// orderedYears is the year documents to render, opening year first.
+// citationsOf is every (document, page) one projection's metadata cites.
 //
-// It takes the caller's list rather than inferring one from the stems. Which
-// documents are fiscal years of the same projection is a statement the
-// composition root makes; guessing it from a name prefix would be this package
-// deciding what "sankey-2027" means, and would be wrong for the first document
-// named after the primary that is not a year of it.
-//
-// An empty list means one year, which is a page with no year control and not a
-// defect.
-func orderedYears(stems []string) []string {
-	if len(stems) == 0 {
-		return []string{PrimaryProjection}
+// It decodes through documentSources rather than through either shape's
+// metadata, so a view of a document this packager has never heard of still
+// contributes its pages to the set the site ships.
+func citationsOf(stem string, raw []byte) ([]citation, error) {
+	if _, err := decodeDocument(stem, raw); err != nil {
+		return nil, err
 	}
-	return stems
+	var src documentSources
+	if err := json.Unmarshal(raw, &src); err != nil {
+		return nil, fmt.Errorf("decode %s sources: %w", stem, err)
+	}
+	out := make([]citation, 0, len(src.Metadata.Sources))
+	for _, s := range src.Metadata.Sources {
+		for _, p := range s.Pages {
+			out = append(out, citation{DocID: s.DocID, Page: p})
+		}
+	}
+	return out, nil
 }
 
-func buildPage(projections map[string][]byte, yearStems []string, docs []Doc, pageTextBase func(docID string) string, exportedBy string) (pageData, []citation, error) {
-	doc, meta, err := decodeProjection(PrimaryProjection, projections[PrimaryProjection])
-	if err != nil {
-		return pageData{}, nil, err
+// sitePage is one rendered view: where it goes and what it says.
+type sitePage struct {
+	Path string
+	HTML []byte
+}
+
+// navItem is one view as every other view lists it.
+type navItem struct {
+	Label   string
+	Path    string
+	Current bool
+}
+
+// buildSite renders every view and returns the pages plus the union of the
+// citations they made.
+//
+// THE CITATION SET IS THE UNION AND THE FOOTERS ARE NOT (fisc-fjy). Write copies
+// the extracted text of the pages named here into the output, and it used to be
+// handed the PRIMARY document's citations alone -- fine while the primary was the
+// only document, and fourteen dead links the moment a view cites pp.127-140. So
+// the shipped file set is unioned across every view and every year. The footer's
+// Sources list stays each view's own, because a page claiming provenance for
+// figures it never showed is its own defect, and unioning that too would trade
+// one wrong page for another.
+func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, []citation, error) {
+	views := o.views()
+	nav := make([]navItem, 0, len(views))
+	for _, v := range views {
+		label := v.Nav
+		if label == "" {
+			label = v.Title
+		}
+		nav = append(nav, navItem{Label: label, Path: v.Path})
 	}
 
-	// Every published year, in the order the packager was handed them, opening
-	// year first. A year's document is decoded and refused on its own terms:
-	// one bad document is named, rather than the page silently opening on
-	// whichever year happened to parse.
-	//
-	// The metadata each year contributes is also where its CITATIONS come from,
-	// which is why the source loop below reads yearMetas rather than the
-	// primary's alone. Both years cite pp.66-67 today so the union is the same
-	// set, but a page that shipped page text for only the year it opened on
-	// would render dead citation links on the other -- see fisc-fjy, which is
-	// the general case of this and is not closed by the loop here.
-	stems := orderedYears(yearStems)
-	yearMetas := make([]projectionMetadata, 0, len(stems))
+	byID := make(map[string]Doc, len(o.Docs))
+	for _, d := range o.Docs {
+		byID[d.ID] = d
+	}
+
+	var cited []citation
+	seen := map[citation]bool{}
+	collect := func(stem string) error {
+		// Deduplicated: a document that cites a page twice is one file to ship,
+		// and shipping it twice is a write collision. Two VIEWS citing one page
+		// is the same statement one scale up, and is the ordinary case -- both
+		// spine years cite pp.66-67.
+		cs, err := citationsOf(stem, o.Projections[stem])
+		if err != nil {
+			return err
+		}
+		for _, c := range cs {
+			if !seen[c] {
+				seen[c] = true
+				cited = append(cited, c)
+			}
+		}
+		return nil
+	}
+
+	pages := make([]sitePage, 0, len(views))
+	for i, v := range views {
+		// Every document this view renders contributes citations: the one it
+		// opens on and every year of it.
+		if err := collect(v.Projection); err != nil {
+			return nil, nil, err
+		}
+		for _, stem := range v.YearStems {
+			if stem == v.Projection {
+				continue
+			}
+			if err := collect(stem); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		here := make([]navItem, len(nav))
+		copy(here, nav)
+		here[i].Current = true
+
+		var (
+			data any
+			err  error
+		)
+		switch v.Template {
+		case TrendsTemplate:
+			data, err = buildTrendsPage(o, v, here, byID, pageTextBase)
+		default:
+			data, err = buildSankeyPage(o, v, here, byID, pageTextBase)
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		html, err := renderPage(o.assetTree(), v.Template, data)
+		if err != nil {
+			return nil, nil, err
+		}
+		pages = append(pages, sitePage{Path: v.Path, HTML: html})
+	}
+	return pages, cited, nil
+}
+
+// chrome is what every view renders whatever its document is.
+type chrome struct {
+	Title        string
+	Lede         string
+	Nav          []navItem
+	Sources      []sourceRef
+	ProjectionBy string
+	ExportedBy   string
+	Projections  []projectionRef
+	DataPath     string
+	Scope        string
+	Caveats      []string
+}
+
+// sourcesFor builds a view's own footer citations, and the client's copy of the
+// same documents.
+func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string) string) ([]sourceRef, map[string]clientDoc) {
+	sources := make([]sourceRef, 0, len(srcs))
+	clientDocs := make(map[string]clientDoc, len(srcs))
+	for _, s := range srcs {
+		d := byID[s.DocID]
+		ref := sourceRef{DocID: s.DocID, Title: d.Title, Publisher: d.Publisher, PDFURL: d.PDFURL}
+		if ref.Title == "" {
+			// A document the registry does not describe still gets cited, by
+			// id. Dropping the citation because a title is missing would hide
+			// the provenance the page exists to show.
+			ref.Title = s.DocID
+		}
+		base := pageTextBase(s.DocID)
+		for _, p := range s.Pages {
+			ref.Pages = append(ref.Pages, pageRef{
+				Number:  p,
+				PDFURL:  pdfPageURL(d.PDFURL, p),
+				TextURL: base + pageTextFile(p),
+			})
+		}
+		sources = append(sources, ref)
+		clientDocs[s.DocID] = clientDoc{
+			Title:        ref.Title,
+			Publisher:    ref.Publisher,
+			PDFURL:       d.PDFURL,
+			PageTextBase: base,
+		}
+	}
+	return sources, clientDocs
+}
+
+// projectionRefs is every data file the site publishes, which is the whole set
+// on every page: they are downloadable provenance, not this view's figures.
+func projectionRefs(projections map[string][]byte) []projectionRef {
+	refs := make([]projectionRef, 0, len(projections))
+	for _, name := range sortedKeys(projections) {
+		refs = append(refs, projectionRef{Name: name, Path: path.Join(DataDir, name+".json")})
+	}
+	return refs
+}
+
+func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
+	pageTextBase func(string) string,
+) (pageData, error) {
+	doc, meta, err := decodeSankey(v.Projection, o.Projections[v.Projection])
+	if err != nil {
+		return pageData{}, err
+	}
+
+	// Every published year, in the order the caller handed them, opening year
+	// first. A year's document is decoded and refused on its own terms: one bad
+	// document is named, rather than the page silently opening on whichever year
+	// happened to parse.
+	stems := v.YearStems
+	if len(stems) == 0 {
+		stems = []string{v.Projection}
+	}
 	years := make([]yearView, 0, len(stems))
 	for _, stem := range stems {
 		m := meta
-		if stem != PrimaryProjection {
-			if _, m, err = decodeProjection(stem, projections[stem]); err != nil {
-				return pageData{}, nil, err
+		if stem != v.Projection {
+			if _, m, err = decodeSankey(stem, o.Projections[stem]); err != nil {
+				return pageData{}, err
 			}
 		}
-		yearMetas = append(yearMetas, m)
 		hero, figures := tilesFor(m)
 		years = append(years, yearView{
 			Year:    m.FiscalYear,
@@ -393,78 +660,17 @@ func buildPage(projections map[string][]byte, yearStems []string, docs []Doc, pa
 		})
 	}
 	hero, figures := tilesFor(meta)
+	sources, clientDocs := sourcesFor(meta.Sources, byID, pageTextBase)
 
-	byID := make(map[string]Doc, len(docs))
-	for _, d := range docs {
-		byID[d.ID] = d
+	refs := projectionRefs(o.Projections)
+	files := make(map[string]string, len(refs))
+	for _, r := range refs {
+		files[r.Name] = r.Path
 	}
-	sources := make([]sourceRef, 0, len(meta.Sources))
-	clientDocs := make(map[string]clientDoc, len(meta.Sources))
-	var cited []citation
-	citedSeen := make(map[citation]bool)
-	// The FOOTER lists the opening year's sources, because a page claiming
-	// provenance for figures it is not showing is its own defect. The SHIPPED
-	// page text is the union across every year, because a citation link that
-	// resolves for one year and 404s for another is worse than either.
-	for _, m := range yearMetas[1:] {
-		for _, src := range m.Sources {
-			for _, pg := range src.Pages {
-				if key := (citation{DocID: src.DocID, Page: pg}); !citedSeen[key] {
-					citedSeen[key] = true
-					cited = append(cited, key)
-				}
-			}
-		}
-	}
-	for _, s := range meta.Sources {
-		d := byID[s.DocID]
-		ref := sourceRef{
-			DocID:     s.DocID,
-			Title:     d.Title,
-			Publisher: d.Publisher,
-			PDFURL:    d.PDFURL,
-		}
-		if ref.Title == "" {
-			// A document the registry does not describe still gets cited, by
-			// id. Dropping the citation because a title is missing would hide
-			// the provenance the page exists to show.
-			ref.Title = s.DocID
-		}
-		base := pageTextBase(s.DocID)
-		for _, p := range s.Pages {
-			ref.Pages = append(ref.Pages, pageRef{
-				Number:  p,
-				PDFURL:  pdfPageURL(d.PDFURL, p),
-				TextURL: base + pageTextFile(p),
-			})
-			// Deduplicated: a document that cites a page twice is one file to
-			// ship, and shipping it twice is a write collision.
-			if key := (citation{DocID: s.DocID, Page: p}); !citedSeen[key] {
-				citedSeen[key] = true
-				cited = append(cited, key)
-			}
-		}
-		sources = append(sources, ref)
-		clientDocs[s.DocID] = clientDoc{
-			Title:        ref.Title,
-			Publisher:    ref.Publisher,
-			PDFURL:       d.PDFURL,
-			PageTextBase: base,
-		}
-	}
-
-	files := make(map[string]string, len(projections))
-	refs := make([]projectionRef, 0, len(projections))
-	for _, name := range sortedKeys(projections) {
-		p := path.Join(DataDir, name+".json")
-		files[name] = p
-		refs = append(refs, projectionRef{Name: name, Path: p})
-	}
-
 	cfg := clientConfig{
 		SchemaVersion: doc.SchemaVersion,
-		ExportedBy:    exportedBy,
-		Primary:       PrimaryProjection,
+		ExportedBy:    o.GeneratedBy,
+		Primary:       v.Projection,
 		Projections:   files,
 		Metadata:      doc.Metadata,
 		Years:         years,
@@ -472,44 +678,51 @@ func buildPage(projections map[string][]byte, yearStems []string, docs []Doc, pa
 	}
 	blob, err := json.Marshal(cfg)
 	if err != nil {
-		return pageData{}, nil, fmt.Errorf("encode page config: %w", err)
+		return pageData{}, fmt.Errorf("encode page config: %w", err)
 	}
 
-	page := pageData{
-		Title:           "City of Livermore budget flows — " + meta.FiscalYearLabel,
+	title := v.Title
+	if title == "" {
+		title = "City of Livermore budget flows — " + meta.FiscalYearLabel
+	}
+	return pageData{
+		chrome: chrome{
+			Title:        title,
+			Lede:         v.Lede,
+			Nav:          nav,
+			Sources:      sources,
+			ProjectionBy: meta.GeneratedBy,
+			ExportedBy:   o.GeneratedBy,
+			Projections:  refs,
+			DataPath:     files[v.Projection],
+			Scope:        meta.Scope,
+			Caveats:      meta.Caveats,
+		},
 		FiscalYearLabel: meta.FiscalYearLabel,
 		Basis:           meta.Basis,
-		Scope:           meta.Scope,
 		Hero:            hero,
 		Figures:         figures,
 		Years:           years,
-		Caveats:         meta.Caveats,
-		Sources:         sources,
 		Facts:           meta.Counts.Facts,
 		Nodes:           meta.Counts.Nodes,
 		Links:           meta.Counts.Links,
-		ProjectionBy:    meta.GeneratedBy,
-		ExportedBy:      exportedBy,
-		Projections:     refs,
-		PrimaryPath:     files[PrimaryProjection],
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a
 		// string, would corrupt the JSON.
 		ConfigJSON: template.JS(blob),
-	}
-	return page, cited, nil
+	}, nil
 }
 
-// renderPage executes the page template against the assembled data.
-func renderPage(assets fs.FS, data pageData) ([]byte, error) {
-	tmpl, err := template.New(templateName).ParseFS(assets, templateName)
+// renderPage executes one view's template against its assembled data.
+func renderPage(assets fs.FS, name string, data any) ([]byte, error) {
+	tmpl, err := template.New(name).ParseFS(assets, name)
 	if err != nil {
-		return nil, fmt.Errorf("parse page template: %w", err)
+		return nil, fmt.Errorf("parse page template %q: %w", name, err)
 	}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		return nil, fmt.Errorf("render page: %w", err)
+		return nil, fmt.Errorf("render %q: %w", name, err)
 	}
 	return buf.Bytes(), nil
 }
@@ -542,4 +755,197 @@ func pageTextFile(page int) string { return fmt.Sprintf("p%04d.txt", page) }
 func dollars(cents int64) string {
 	s := amount.Cents(cents).String()
 	return strings.TrimSuffix(s, ".00")
+}
+
+// trendsMetadata is as much of a revenue-trends document as the page renders.
+//
+// It is a separate struct from projectionMetadata rather than a superset of it,
+// because the two documents genuinely differ: this one has columns and no
+// fiscal year, and no headline at all. Sharing one struct would mean a page
+// reading a field its document never publishes and getting a zero.
+type trendsMetadata struct {
+	GeneratedBy string            `json:"generated_by"`
+	Scope       string            `json:"scope"`
+	Sources     []sourceMeta      `json:"sources"`
+	Columns     []trendColumnMeta `json:"columns"`
+	Counts      struct {
+		Facts  int `json:"facts"`
+		Series int `json:"series"`
+		Points int `json:"points"`
+	} `json:"counts"`
+	Caveats []string `json:"caveats"`
+}
+
+// trendColumnMeta is one column as the document declares it.
+type trendColumnMeta struct {
+	FiscalYear      int    `json:"fiscal_year"`
+	FiscalYearLabel string `json:"fiscal_year_label"`
+	Basis           string `json:"basis"`
+	ComparableGroup string `json:"comparable_group"`
+}
+
+// trendPoint is one published point as this page reads it.
+type trendPoint struct {
+	FiscalYear  int    `json:"fiscal_year"`
+	Basis       string `json:"basis"`
+	AmountCents int64  `json:"amount_cents"`
+	DocID       string `json:"doc_id"`
+	Page        int    `json:"page"`
+}
+
+// trendsBody is the series this page tabulates.
+type trendsBody struct {
+	Series []struct {
+		Label         string       `json:"label"`
+		Fund          int          `json:"fund"`
+		FundName      string       `json:"fund_name"`
+		FundGroup     string       `json:"fund_group"`
+		CategoryLabel string       `json:"category_label"`
+		Points        []trendPoint `json:"points"`
+	} `json:"series"`
+}
+
+// buildTrendsPage renders the revenue-trends view.
+//
+// EVERY FIGURE IS READ OUT OF THE DOCUMENT AND NONE IS COMPUTED HERE. The
+// packager's standing rule (see the package doc) is that it does not recompute
+// what a projection published, and a table is the case where that is most
+// tempting to break: a total column, a growth percentage, a per-fund subtotal
+// would each be one line. None of them is published, and the contract says why —
+// growth from an actual to an adopted figure is not a quantity this project can
+// compute, and a total this document does not carry is a total the city did not
+// print on the page these series came from.
+func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
+	pageTextBase func(string) string,
+) (trendsPageData, error) {
+	raw := o.Projections[v.Projection]
+	doc, err := decodeDocument(v.Projection, raw)
+	if err != nil {
+		return trendsPageData{}, err
+	}
+	var meta trendsMetadata
+	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
+		return trendsPageData{}, fmt.Errorf("decode %s metadata: %w", v.Projection, err)
+	}
+	if len(meta.Columns) == 0 {
+		return trendsPageData{}, fmt.Errorf("%s metadata publishes no columns", v.Projection)
+	}
+	var body trendsBody
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return trendsPageData{}, fmt.Errorf("decode %s series: %w", v.Projection, err)
+	}
+
+	columns := make([]columnRef, 0, len(meta.Columns))
+	for i, c := range meta.Columns {
+		columns = append(columns, columnRef{
+			Label: c.FiscalYearLabel,
+			Basis: c.Basis,
+			Group: c.ComparableGroup,
+			// The FIRST column of a group does not start a boundary a reader
+			// could carry a comparison across; every later one does.
+			New: i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
+		})
+	}
+
+	series := make([]seriesRef, 0, len(body.Series))
+	for _, s := range body.Series {
+		fund := s.FundName
+		if fund == "" {
+			// A fund the registry does not name renders as its number, which is
+			// what the document's own fallback intends: the number is on the
+			// page and is never nothing.
+			fund = fmt.Sprintf("Fund %d", s.Fund)
+		}
+		cells := buildCells(s.Points, columns, meta.Columns, pageTextBase)
+		series = append(series, seriesRef{
+			Label:    s.Label,
+			Fund:     fund,
+			Group:    s.FundGroup,
+			Category: s.CategoryLabel,
+			Cells:    cells,
+		})
+	}
+
+	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase)
+	refs := projectionRefs(o.Projections)
+	title := v.Title
+	if title == "" {
+		title = "City of Livermore revenue by fund"
+	}
+	return trendsPageData{
+		chrome: chrome{
+			Title:        title,
+			Lede:         v.Lede,
+			Nav:          nav,
+			Sources:      sources,
+			ProjectionBy: meta.GeneratedBy,
+			ExportedBy:   o.GeneratedBy,
+			Projections:  refs,
+			DataPath:     path.Join(DataDir, v.Projection+".json"),
+			Scope:        meta.Scope,
+			Caveats:      meta.Caveats,
+		},
+		Columns: columns,
+		Series:  series,
+		Facts:   meta.Counts.Facts,
+		Count:   meta.Counts.Series,
+	}, nil
+}
+
+// buildCells lays one series' points out against the document's COLUMNS.
+//
+// POSITIONAL WAS WRONG AND THE FAILURE IS THE ONE THIS PROJECT EXISTS TO
+// PREVENT. An earlier version emitted one cell per point, in the order the
+// document listed them, against headers built from metadata.columns. Those two
+// lists agree only while every series is complete -- and a series short a column
+// is a state the project explicitly supports: internal/check declares it through
+// incompleteSeries, and `fisc export` runs no checks, so a document with a gap
+// can be packaged. Under the positional version every figure after the gap slid
+// one column left, printing FY2026's money under FY2025 with a citation link to
+// FY2026's page. A plausible wrong value, published, with provenance that
+// disagrees with it.
+//
+// So the cells are keyed on (fiscal_year, basis) -- the column identity the
+// document itself publishes -- and a column with no point gets a rendered gap
+// rather than a shifted neighbour. A gap a reader can see is the honest form of
+// something the document does not say.
+//
+// A point in NO published column cannot occur through internal/project, which
+// filters facts on the same column set; if one ever arrives it is dropped here
+// and counted nowhere, which is why the caller compares counts.points against
+// what it rendered.
+func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta,
+	pageTextBase func(string) string,
+) []cellRef {
+	type key struct {
+		year  int
+		basis string
+	}
+	byColumn := make(map[key]trendPoint, len(points))
+	for _, p := range points {
+		byColumn[key{p.FiscalYear, p.Basis}] = p
+	}
+
+	out := make([]cellRef, 0, len(columns))
+	for i, c := range meta {
+		cell := cellRef{New: columns[i].New}
+		p, ok := byColumn[key{c.FiscalYear, c.Basis}]
+		if !ok {
+			// The em dash is the city's own mark for a cell it did not print,
+			// and this is not that: this is a row the schedule does not carry in
+			// this column at all. The title says which, because the two are
+			// indistinguishable on the page otherwise and a published zero is a
+			// fact while an absence is not (docs/agents/conventions.md).
+			cell.Missing = true
+			cell.Value = "—"
+			out = append(out, cell)
+			continue
+		}
+		cell.Value = dollars(p.AmountCents)
+		cell.Negative = p.AmountCents < 0
+		cell.Page = p.Page
+		cell.Href = pageTextBase(p.DocID) + pageTextFile(p.Page)
+		out = append(out, cell)
+	}
+	return out
 }

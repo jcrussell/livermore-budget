@@ -42,11 +42,22 @@ import (
 	"github.com/jcrussell/livermore-budget/site"
 )
 
-// PrimaryProjection is the projection whose metadata drives the page. The
-// page is a Sankey page: its title, headline figures and caveats come from
-// that document, and exporting without it is an error rather than a page with
-// blanks where the numbers go.
+// PrimaryProjection is the spine document, and the default view's projection.
+//
+// IT IS NO LONGER "the projection whose metadata drives the page", which is what
+// it meant while there was one page. Each view now decodes its own document and
+// composes its own chrome. What survives is narrower than it looks and is worth
+// stating exactly, because an earlier draft of this comment claimed more than
+// the code does: this stem must be among the projections built (ErrNoPrimary),
+// and it is the projection of the view a caller gets when it names none. It is
+// NOT required to be the view at IndexPath -- validate asks only that exactly
+// one view is there -- because which document a site opens on is the composition
+// root's decision and there is no reason this package should own it.
 const PrimaryProjection = "sankey"
+
+// IndexPath is the view the site opens on. It is the fixed entry point of the
+// output layout, so it is a constant rather than something a caller may move.
+const IndexPath = "index.html"
 
 // DataDir is the output subdirectory holding projection JSON. It is part of
 // the published contract — docs/sankey-contract.md promises
@@ -92,6 +103,51 @@ const DefaultSourceBrowseURL = "https://github.com/jcrussell/livermore-budget/bl
 // page template is not in this list: it is rendered, and vendor/ is walked.
 var verbatimAssets = []string{"app.js", "style.css", ".nojekyll"}
 
+// View is one HTML page of the site: one document, rendered by one template.
+//
+// N FLAT PAGES RATHER THAN HASH ROUTING, and the reason is a property this
+// package already defends: the page renders its figures server-side so the
+// headline survives without JavaScript (see buildSankeyPage). Under hash routing
+// views 2..N have no server-rendered content at all. Two further reasons.
+// Citations are PER VIEW, so one page would need a footer listing the union of
+// every view's sources -- a page claiming provenance for figures it never showed.
+// And the client refuses the whole page on a schema mismatch, which under one
+// page blanks the site rather than one view.
+//
+// FLAT rather than nested because every asset path in the output is relative
+// (style.css, data/x.json, vendor/), and a page one directory deep would need
+// ../ on every one of them or a <base> element.
+type View struct {
+	// Path is the output path, always .html and always at the root. Exactly one
+	// view must be at [IndexPath].
+	Path string
+	// Nav is the words this view is listed under in every view's nav. Every
+	// page carries the whole nav, which is what makes the set of views visible
+	// from any one of them.
+	Nav string
+	// Template is the name of the template in the asset tree.
+	Template string
+	// Projection is the filename stem of the document this view renders. It
+	// must be a key of [Options.Projections].
+	Projection string
+	// Title is the <title> and the page heading. Lede is the sentence under it.
+	//
+	// BOTH ARE THE CALLER'S WORDS, not composed here. A packager that wrote
+	// prose about a document would be making a claim about figures it is
+	// forbidden to recompute; what it may do is render what it was handed.
+	Title string
+	Lede  string
+	// YearStems are the documents that are the same projection for different
+	// fiscal years, in the order a reader should meet them, opening year first.
+	// Empty means this view has one document and renders no year control.
+	//
+	// IT IS PER VIEW, not per site. Years are a property of the SPINE, which
+	// publishes one document per fiscal year; the revenue trends publish one
+	// document spanning four columns and have no year to switch between. A
+	// single site-wide list could not say that.
+	YearStems []string
+}
+
 // Doc describes one source document the page cites. The caller supplies these
 // from data/sources.yaml, which is the only place a URL is asserted; this
 // package must not invent one.
@@ -114,20 +170,16 @@ type Options struct {
 	// is written verbatim to data/<stem>.json. Must contain PrimaryProjection.
 	Projections map[string][]byte
 
-	// YearStems are the documents that are the same projection for different
-	// fiscal years, in the order a reader should meet them, opening year first.
-	// Empty means one year, and the page renders no year control.
+	// Views are the site's pages, in nav order, the view the site opens on
+	// first. Empty means the single Sankey page, which is what every caller
+	// wanted before there were two documents.
 	//
-	// It is STATED BY THE CALLER rather than inferred from the stems. The
-	// obvious shortcut — treat every "sankey-*" stem as a year of "sankey" — is
-	// a guess about what a name means, and it is wrong for the first projection
-	// named after the primary that is not a year of it. Which documents are
-	// years of which is the composition root's knowledge; this package lays out
-	// what it is handed and does not import internal/project to find out.
-	//
-	// Every entry must be a key of Projections, and the first must be
-	// PrimaryProjection. Write refuses otherwise.
-	YearStems []string
+	// The list is STATED BY THE CALLER, as YearStems was and for the same
+	// reason: which documents are views of what, and which are years of which,
+	// is the composition root's knowledge. This package lays out what it is
+	// handed and does not import internal/project to find out. `func views()`
+	// lives in pkg/cmd/export.
+	Views []View
 
 	// Docs are the source documents the page cites, keyed by doc id in the
 	// projection's metadata.sources.
@@ -197,49 +249,127 @@ func (o *Options) validate() error {
 			return fmt.Errorf("projection name %q is not a usable filename stem", name)
 		}
 	}
-	// A year stem naming a document that was not built would render a control
-	// the reader can move to a 404, so it is refused here rather than discovered
-	// in the browser. The first entry must be the opening year, because that is
-	// the document the page's server-rendered figures came from.
-	if len(o.YearStems) > 0 {
-		if o.YearStems[0] != PrimaryProjection {
-			return fmt.Errorf("the first year stem is %q, but the page opens on %q",
-				o.YearStems[0], PrimaryProjection)
-		}
-		seen := make(map[string]bool, len(o.YearStems))
-		for _, stem := range o.YearStems {
-			if _, ok := o.Projections[stem]; !ok {
-				return fmt.Errorf("year stem %q names no projection that was built", stem)
-			}
-			if seen[stem] {
-				return fmt.Errorf("year stem %q is listed twice", stem)
-			}
-			seen[stem] = true
+	for i := range o.Views {
+		if err := o.views()[i].validate(o.Projections); err != nil {
+			return err
 		}
 	}
+	seenPath := map[string]bool{}
+	index := 0
+	for _, v := range o.views() {
+		if seenPath[v.Path] {
+			return fmt.Errorf("two views claim the output path %q", v.Path)
+		}
+		seenPath[v.Path] = true
+		if v.Path == IndexPath {
+			index++
+		}
+	}
+	// Exactly one, not at least one: a site with no index.html has no entry
+	// point and a caller listing it twice has already been refused above, so
+	// what is left to say is that the front door is a single view.
+	if index != 1 {
+		return fmt.Errorf("%d views are at %s; the site opens on exactly one", index, IndexPath)
+	}
 	for rel := range o.Files {
-		if err := assetPath(rel); err != nil {
+		if err := assetPath(rel, o.reservedPaths()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// reservedPaths are the output paths Write owns. An asset landing on one of
-// them would not be an extra file but a replaced one: the site would still
-// export, and the page would be broken in the browser only.
-var reservedPaths = func() map[string]bool {
-	m := map[string]bool{"index.html": true, MarkerName: true}
+// fixedPaths are the output paths Write owns whatever the caller asked for. An
+// asset landing on one of them would not be an extra file but a replaced one:
+// the site would still export, and the page would be broken in the browser only.
+//
+// IT NO LONGER CONTAINS index.html, and that is the point of the split. The
+// pages are now a property of Options -- one per View -- so which paths are
+// reserved is too, and a package-level set could only ever know about the one
+// page that used to exist. An asset at revenue.html would have shadowed a view
+// silently.
+var fixedPaths = func() map[string]bool {
+	m := map[string]bool{MarkerName: true}
 	for _, name := range verbatimAssets {
 		m[name] = true
 	}
 	return m
 }()
 
+// reservedPaths is fixedPaths plus this Options' own views.
+func (o *Options) reservedPaths() map[string]bool {
+	m := make(map[string]bool, len(fixedPaths)+len(o.Views)+1)
+	maps.Copy(m, fixedPaths)
+	for _, v := range o.views() {
+		m[v.Path] = true
+	}
+	return m
+}
+
+// views is Views, or the single Sankey page a caller that named none meant.
+//
+// The default is here rather than in every reader so that "no views" and "the
+// one view this site had before views existed" are the same thing to everything
+// downstream. It also keeps the existing callers -- and the existing output --
+// working unchanged.
+func (o *Options) views() []View {
+	if len(o.Views) > 0 {
+		return o.Views
+	}
+	return []View{{
+		Path:       IndexPath,
+		Nav:        "Budget flows",
+		Template:   SankeyTemplate,
+		Projection: PrimaryProjection,
+	}}
+}
+
+// validate refuses a view that could not be rendered, or that would land on a
+// path the site owns.
+func (v View) validate(built map[string][]byte) error {
+	switch {
+	case v.Path == "":
+		return errors.New("a view has no output path")
+	case !strings.HasSuffix(v.Path, ".html"):
+		return fmt.Errorf("view path %q is not an .html file", v.Path)
+	case path.Base(v.Path) != v.Path:
+		// Flat, per the View doc comment: every asset path in the output is
+		// relative, so a page in a subdirectory would need ../ on all of them.
+		return fmt.Errorf("view path %q is not at the site root", v.Path)
+	case fixedPaths[v.Path], strings.HasPrefix(v.Path, DataDir+"/"):
+		return fmt.Errorf("view path %q is part of the fixed site layout", v.Path)
+	case v.Projection == "":
+		return fmt.Errorf("view %q names no projection", v.Path)
+	case v.Template == "":
+		return fmt.Errorf("view %q names no template", v.Path)
+	}
+	if _, ok := built[v.Projection]; !ok {
+		// Named rather than "a projection is missing": the fix differs by which
+		// side is wrong, and an operator holding both names can tell.
+		return fmt.Errorf("view %q renders projection %q, which was not built", v.Path, v.Projection)
+	}
+	for i, stem := range v.YearStems {
+		if _, ok := built[stem]; !ok {
+			return fmt.Errorf("view %q lists year stem %q, which names no projection that was built",
+				v.Path, stem)
+		}
+		if i == 0 && stem != v.Projection {
+			return fmt.Errorf("view %q opens on %q but its first year stem is %q",
+				v.Path, v.Projection, stem)
+		}
+		for _, other := range v.YearStems[:i] {
+			if other == stem {
+				return fmt.Errorf("view %q lists year stem %q twice", v.Path, stem)
+			}
+		}
+	}
+	return nil
+}
+
 // assetPath screens one [Options.Files] key. The output tree is a web root
 // somebody will unpack, serve, or rsync, so a path that escapes it is a defect
 // worth refusing at the door rather than a file written outside Dir.
-func assetPath(rel string) error {
+func assetPath(rel string, reserved map[string]bool) error {
 	switch {
 	case rel == "":
 		return errors.New("asset path is empty")
@@ -247,7 +377,7 @@ func assetPath(rel string) error {
 		return fmt.Errorf("asset path %q is not slash-separated", rel)
 	case path.IsAbs(rel), rel == ".", rel == "..", strings.HasPrefix(rel, "../"), path.Clean(rel) != rel:
 		return fmt.Errorf("asset path %q is not a clean relative path", rel)
-	case reservedPaths[rel], strings.HasPrefix(rel, DataDir+"/"), strings.HasPrefix(rel, "vendor/"):
+	case reserved[rel], strings.HasPrefix(rel, DataDir+"/"), strings.HasPrefix(rel, "vendor/"):
 		return fmt.Errorf("asset path %q is part of the fixed site layout", rel)
 	}
 	return nil
@@ -263,12 +393,8 @@ func Write(o Options) ([]string, error) {
 	if err := o.validate(); err != nil {
 		return nil, err
 	}
-	assets := o.Assets
-	if assets == nil {
-		assets = site.FS()
-	}
 	// Where a page-text citation points is decided once, here, and handed to
-	// buildPage as the base it composes: an explicit remote wins, otherwise the
+	// buildSite as the base it composes: an explicit remote wins, otherwise the
 	// site cites what it ships, and only a caller that offers neither falls
 	// back to the constant.
 	ship := o.SourceBrowseURL == "" && o.PageText != nil
@@ -281,21 +407,17 @@ func Write(o Options) ([]string, error) {
 		base = LocalPageTextBase
 	}
 
-	page, cited, err := buildPage(o.Projections, o.YearStems, o.Docs, base, o.GeneratedBy)
+	pages, cited, err := buildSite(&o, base)
 	if err != nil {
 		return nil, err
 	}
 
 	files := o.Files
 	if ship {
-		files, err = withPageText(files, o.PageText, cited)
+		files, err = withPageText(files, o.PageText, cited, o.reservedPaths())
 		if err != nil {
 			return nil, err
 		}
-	}
-	html, err := renderPage(assets, page)
-	if err != nil {
-		return nil, err
 	}
 
 	// #nosec G301 -- the output is a web root; a directory a server running as
@@ -336,7 +458,7 @@ func Write(o Options) ([]string, error) {
 		return nil, err
 	}
 	for _, name := range verbatimAssets {
-		b, rerr := fs.ReadFile(assets, name)
+		b, rerr := fs.ReadFile(o.assetTree(), name)
 		if rerr != nil {
 			return nil, fmt.Errorf("read embedded asset %q: %w", name, rerr)
 		}
@@ -344,7 +466,7 @@ func Write(o Options) ([]string, error) {
 			return nil, werr
 		}
 	}
-	if err := copyTree(assets, "vendor", write); err != nil {
+	if err := copyTree(o.assetTree(), "vendor", write); err != nil {
 		return nil, err
 	}
 	for _, name := range sortedKeys(o.Projections) {
@@ -357,10 +479,25 @@ func Write(o Options) ([]string, error) {
 			return nil, err
 		}
 	}
-	// index.html is written last: it is the completed-site sentinel, so it
-	// must not exist until the site around it does.
-	if err := write("index.html", html); err != nil {
-		return nil, err
+	// The pages are written last, and index.html last of all: it is the
+	// completed-site sentinel, so it must not exist until the site around it
+	// does -- including the other views it links to, or the entry point would
+	// appear while its own nav pointed at 404s.
+	for _, p := range pages {
+		if p.Path == IndexPath {
+			continue
+		}
+		if err := write(p.Path, p.HTML); err != nil {
+			return nil, err
+		}
+	}
+	for _, p := range pages {
+		if p.Path != IndexPath {
+			continue
+		}
+		if err := write(p.Path, p.HTML); err != nil {
+			return nil, err
+		}
 	}
 
 	sort.Strings(written)
@@ -404,7 +541,7 @@ func sortedKeys[V any](m map[string]V) []string {
 // A cited page the tree does not hold is an error. The alternative is a page
 // that renders a citation nobody can follow, which is the failure this whole
 // change exists to remove.
-func withPageText(files map[string][]byte, tree fs.FS, cited []citation) (map[string][]byte, error) {
+func withPageText(files map[string][]byte, tree fs.FS, cited []citation, reserved map[string]bool) (map[string][]byte, error) {
 	out := make(map[string][]byte, len(files)+len(cited))
 	maps.Copy(out, files)
 	for _, c := range cited {
@@ -414,7 +551,7 @@ func withPageText(files map[string][]byte, tree fs.FS, cited []citation) (map[st
 			return nil, fmt.Errorf("read the extracted text of %s page %d: %w", c.DocID, c.Page, err)
 		}
 		rel := LocalPageTextBase(c.DocID) + pageTextFile(c.Page)
-		if err := assetPath(rel); err != nil {
+		if err := assetPath(rel, reserved); err != nil {
 			return nil, err
 		}
 		// Assigning over a caller's asset would resolve the collision in
@@ -441,3 +578,12 @@ func LocalPageTextBase(docID string) string {
 // internal/corpus to compose two path elements would give the packager a
 // dependency on the extraction reader it otherwise has no use for.
 func pageTextPath(page int) string { return "pages/" + pageTextFile(page) }
+
+// assetTree is the site source tree the templates and verbatim assets come
+// from: the caller's, or the embedded one.
+func (o *Options) assetTree() fs.FS {
+	if o.Assets != nil {
+		return o.Assets
+	}
+	return site.FS()
+}

@@ -796,3 +796,129 @@ noscript p {
     margin: 0;
   }
 }
+
+/* ---- The site nav, and the revenue table --------------------------------
+   Both are new with the second view. The nav is on every page because the set
+   of views has to be visible from any one of them; the table is the revenue
+   view's whole body, and it ships no JavaScript, so everything below has to
+   work from the markup alone. */
+
+.site-nav {
+  margin: 0 0 14px;
+}
+.site-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+}
+.site-nav li {
+  margin: 0;
+}
+.site-nav a,
+.site-nav [aria-current="page"] {
+  display: block;
+  padding: 8px 14px;
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+}
+.site-nav a:hover {
+  color: var(--ink-1);
+  background: var(--wash);
+}
+/* The current page is marked by weight AND by the rule beneath it, not by
+   colour alone: colour is the one channel a reader may not have. */
+.site-nav [aria-current="page"] {
+  color: var(--ink-1);
+  font-weight: 600;
+  border-bottom-color: var(--ink-1);
+}
+
+.series-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.series-table caption {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.series-table th,
+.series-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--grid);
+  text-align: left;
+  vertical-align: baseline;
+}
+.series-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+  z-index: 1;
+}
+.series-table tbody th {
+  font-weight: 400;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.series-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+/* The boundary between comparable groups. FY2023-24 is money that moved and
+   FY2025-26 is an intention; a reader running an eye across the row should
+   meet something where the measurement changes, and the rule is that
+   something. It is a border rather than a colour for the same reason as
+   above. */
+.series-table .group-start {
+  border-left: 2px solid var(--rule);
+}
+.series-table td.group-start {
+  border-left: 2px solid var(--rule);
+}
+/* A column this row is not printed in. It is NOT a zero -- a printed dash is a
+   published zero and this is the absence of a line -- so it is muted rather
+   than styled like a figure, and it carries a title saying which. */
+.series-table .missing {
+  color: var(--muted);
+}
+.series-table .basis {
+  display: block;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: lowercase;
+}
+/* A contra row — the General Fund's ERAF and RPTTF Reduction — is printed in
+   parentheses by the city and published signed by the document. Rendering it
+   as the city does keeps the page and the page it cites saying one thing. */
+.series-table .contra a {
+  color: var(--critical);
+}
+.series-table td a {
+  color: inherit;
+  text-decoration-color: var(--border);
+  text-underline-offset: 2px;
+}
+.series-table td a:hover {
+  text-decoration-color: currentColor;
+}
+.series-table tbody tr:hover {
+  background: var(--wash);
+}
+
+@media (max-width: 720px) {
+  .series-table .basis {
+    display: none;
+  }
+}

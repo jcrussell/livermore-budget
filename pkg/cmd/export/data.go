@@ -252,3 +252,42 @@ func yearStems(name string, projections map[string][]byte) []string {
 	}
 	return out
 }
+
+// views is the site's pages, in nav order, the page it opens on first.
+//
+// IT LIVES IN THE COMMAND, not in internal/export, and that is what keeps that
+// package's stated property true: it "consumes projections as filename stem ->
+// JSON bytes and knows nothing about how they were built" and never imports
+// internal/project. Naming a view means naming a projection and knowing what it
+// is of, which is knowledge only the composition root has.
+//
+// A view whose document was not built is DROPPED rather than refused, and only
+// here. The reason is the asymmetry between the two failures: `fisc verify`
+// already fails when a published document is missing (published-projection-built,
+// and fisc-w7d for the rest), so a missing document is caught by the gate; while
+// refusing to export at all would mean a corpus that lost one schedule could not
+// publish the others. What must never happen is a NAV ENTRY pointing at a page
+// that was not written, and dropping the view is exactly what prevents that.
+func views(projections map[string][]byte) []export.View {
+	out := []export.View{{
+		Path:       export.IndexPath,
+		Nav:        "Budget flows",
+		Template:   export.SankeyTemplate,
+		Projection: export.PrimaryProjection,
+		YearStems:  yearStems(export.PrimaryProjection, projections),
+	}}
+	if _, ok := projections[project.TrendsProjection]; ok {
+		out = append(out, export.View{
+			Path:       "revenue.html",
+			Nav:        "Revenue by fund",
+			Template:   export.TrendsTemplate,
+			Projection: project.TrendsProjection,
+			Title:      "Where Livermore's revenue comes from, fund by fund",
+			Lede: "Every revenue line the city prints for each of its funds, across four " +
+				"budget columns. The columns are not one measurement: FY 2023-24 is money " +
+				"that moved, FY 2024-25 is a mid-year re-forecast, and the two later years " +
+				"are intentions adopted together.",
+		})
+	}
+	return out
+}

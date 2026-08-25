@@ -182,11 +182,13 @@ func exportRun(o *Options) error {
 	written, err := export.Write(export.Options{
 		Dir:         o.OutputDir,
 		Projections: projections,
-		// Which documents are fiscal years of the same projection is stated
-		// here, in the composition root, and not inferred by the packager from
-		// its stems -- internal/export does not import internal/project and
-		// must not start guessing what a name means.
-		YearStems:   yearStems(export.PrimaryProjection, projections),
+		// WHICH VIEWS THE SITE HAS IS STATED HERE, in the composition root, and
+		// not inferred by the packager from its stems. internal/export does not
+		// import internal/project and must not start guessing what a name
+		// means -- which document is a year of which, and which are separate
+		// views, are both facts about the projections and neither is legible
+		// from a filename.
+		Views:       views(projections),
 		Docs:        docs,
 		GeneratedBy: generatedBy(),
 		// The extraction tree, so the site ships the text of the pages it

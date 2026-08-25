@@ -1141,6 +1141,20 @@ function paintYearWords(year) {
   const title = maybeEl("chart-title");
   if (title) title.textContent = "Sankey diagram of the " + year.label + " " + year.basis + " budget";
 
+  // The footer's "drawn from" link names a file that IS year-specific --
+  // data/sankey.json and data/sankey-2027.json are different documents -- so it
+  // has to follow the switch. Left alone it cited the opening year's file for a
+  // chart drawn from another one, which is a provenance link that disagrees with
+  // the figures beside it: the exact defect the citations exist to prevent,
+  // reached through the toggle rather than through the packager.
+  for (const el of document.querySelectorAll("[data-year-path]")) {
+    const a = el.querySelector("a");
+    if (a) {
+      a.setAttribute("href", year.path);
+      a.textContent = year.path;
+    }
+  }
+
   document.title = "City of Livermore budget flows — " + year.label;
 }
 

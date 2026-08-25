@@ -66,7 +66,9 @@ function domStub(ids = TEMPLATE_IDS) {
       innerHTML: "",
       style: { setProperty() {} },
       classList: { add() {}, remove() {}, toggle() {} },
-      setAttribute() {},
+      attributes: {},
+      setAttribute(name, value) { self.attributes[name] = String(value); },
+      getAttribute(name) { return name in self.attributes ? self.attributes[name] : null; },
       removeAttribute() {},
       addEventListener(type, fn) { (self.listeners[type] ||= []).push(fn); },
       listeners: {},
@@ -76,8 +78,14 @@ function domStub(ids = TEMPLATE_IDS) {
       replaceChildren(...c) { self.children = c; },
       insertBefore(c) { self.children.unshift(c); return c; },
       remove() {},
-      querySelector: () => null,
-      querySelectorAll: () => [],
+      querySelector: (sel) => (self.selectable && self.selectable[sel]) || null,
+      querySelectorAll: (sel) => (self.selectable && self.selectable[sel]) || [],
+      // selectable is how a check plants what a selector should find. The stub
+      // does not parse CSS -- it answers by exact selector string -- because a
+      // selector engine here would be a second implementation of a thing the
+      // browser already has, and what these checks are about is whether app.js
+      // WRITES to what it finds.
+      selectable: null,
     };
     return self;
   };
@@ -96,10 +104,23 @@ function domStub(ids = TEMPLATE_IDS) {
     },
     createElement: (tag) => { const n = node(); n.tagName = tag; return n; },
     createElementNS: (_ns, tag) => { const n = node(); n.tagName = tag; return n; },
-    querySelector: () => null,
-    querySelectorAll: () => [],
+    querySelector: (sel) => selectable[sel] ? selectable[sel][0] : null,
+    // The stub used to return [] unconditionally, which made every loop over a
+    // selector a no-op and every check of one vacuously green. A check that
+    // cannot fail is worse than no check: paintYearWords' footer-path loop
+    // landed under exactly that and `make js` passed without running it once.
+    querySelectorAll: (sel) => selectable[sel] || [],
     addEventListener() {},
   };
+  // What a selector finds, by exact selector string. Populated by a check with
+  // plant(); empty means the page rendered no such element, which is a state
+  // worth modelling rather than one to fabricate around.
+  const selectable = {};
+  document.plant = (sel, ...nodes) => {
+    selectable[sel] = nodes;
+    return nodes;
+  };
+  document.node = node;
   const storage = new Map();
   return {
     byId,

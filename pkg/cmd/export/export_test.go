@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
@@ -601,5 +602,62 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 	}
 	if len(doc.Metadata.Columns) != 4 {
 		t.Errorf("got %d columns, want the four pp.127-140 print", len(doc.Metadata.Columns))
+	}
+}
+
+// TestViewsNamesEveryDocumentTheSitePublishes is the composition root's half of
+// the multi-view shell: internal/export lays out what it is handed and never
+// guesses what a stem means, so this is the only place that knows the revenue
+// trends are a view rather than a year of the Sankey.
+func TestViewsNamesEveryDocumentTheSitePublishes(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildProjections(root)
+	if err != nil {
+		t.Fatalf("buildProjections: %v", err)
+	}
+	got := views(built)
+
+	if len(got) != 2 {
+		t.Fatalf("got %d views over %v, want the spine and the revenue trends", len(got), keys(built))
+	}
+	if got[0].Path != export.IndexPath || got[0].Projection != export.PrimaryProjection {
+		t.Errorf("the site opens on %+v, want the spine at %s", got[0], export.IndexPath)
+	}
+	// The YEARS belong to the spine view and to no other. A site-wide year list
+	// could not say that: the revenue trends are one document over four columns
+	// and have no year to switch between.
+	if len(got[0].YearStems) != len(project.PublishedFiscalYears()) {
+		t.Errorf("the spine view lists %d year stems, want %d",
+			len(got[0].YearStems), len(project.PublishedFiscalYears()))
+	}
+	if len(got[1].YearStems) != 0 {
+		t.Errorf("the revenue view lists year stems %v; it is one document over four columns",
+			got[1].YearStems)
+	}
+	if got[1].Projection != project.TrendsProjection {
+		t.Errorf("the second view renders %q, want %q", got[1].Projection, project.TrendsProjection)
+	}
+	// Titles and ledes are the caller's words. A packager composing prose about
+	// a document would be making a claim about figures it may not recompute.
+	if got[1].Title == "" || got[1].Lede == "" {
+		t.Error("the revenue view ships no title or lede, so the page would head itself")
+	}
+}
+
+// TestAViewWhoseDocumentWasNotBuiltIsDropped: a nav entry pointing at a page
+// that was not written is a 404 a reader can click, and it is the one failure
+// this function must never produce. Dropping the view is what prevents it;
+// `fisc verify` is what says the document is missing.
+func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
+	only := map[string][]byte{export.PrimaryProjection: {}}
+	got := views(only)
+	if len(got) != 1 {
+		t.Fatalf("got %d views with only the spine built, want 1: %+v", len(got), got)
+	}
+	if got[0].Path != export.IndexPath {
+		t.Errorf("the surviving view is %q, want the one the site opens on", got[0].Path)
 	}
 }

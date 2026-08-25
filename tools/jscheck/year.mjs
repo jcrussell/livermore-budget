@@ -110,6 +110,26 @@ export function checks() {
       detail: "wireYears returns quietly when the template rendered no toggle",
     },
     {
+      // The footer's "drawn from" link names a file that IS year-specific:
+      // data/sankey.json and data/sankey-2027.json are different documents. Left
+      // unpainted it cited the opening year's file for a chart drawn from
+      // another one -- a provenance link disagreeing with the figures beside it,
+      // which is the defect the citations exist to prevent, reached through the
+      // toggle rather than through the packager.
+      name: "the footer's data-file citation follows the year",
+      ok: (() => {
+        const app2 = loadApp();
+        const anchor = app2.dom.document.node();
+        const wrapper = app2.dom.document.node();
+        wrapper.selectable = { a: anchor };
+        app2.dom.document.plant("[data-year-path]", wrapper);
+        app2.paintYearWords(fixtureYear());
+        return anchor.getAttribute("href") === "data/sankey-2027.json" &&
+               anchor.textContent === "data/sankey-2027.json";
+      })(),
+      detail: "the href and the text both name the year's own document",
+    },
+    {
       // The specific bug fisc-kwq names: FY2026's residual left on screen beside
       // FY2027's chart. Painting a second year must replace, not append.
       name: "painting a second year replaces the first year's words",

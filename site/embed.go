@@ -28,7 +28,7 @@ import (
 // prefix — a silently missing sentinel would only show up as a 404 on the
 // published site.
 //
-//go:embed index.html.tmpl app.js style.css
+//go:embed index.html.tmpl revenue.html.tmpl app.js style.css
 //go:embed all:vendor
 //go:embed .nojekyll
 var Assets embed.FS
