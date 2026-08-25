@@ -127,8 +127,11 @@ City of Livermore.
 
 Issues live in [beads](https://github.com/gastownhall/beads), not in this file —
 run `bd ready` for available work and `bd prime` for the workflow. Agent-facing
-guidance is in [`docs/agents/`](docs/agents/); the `sankey.json` contract is
-[`docs/sankey-contract.md`](docs/sankey-contract.md).
+guidance is in [`docs/agents/`](docs/agents/). Each published document has a
+frozen contract of its own: [`docs/sankey-contract.md`](docs/sankey-contract.md)
+for the citywide spine and
+[`docs/revenue-trends-contract.md`](docs/revenue-trends-contract.md) for the
+per-fund revenue series.
 
 Two things a newcomer should know. A git remote is configured but **nothing has
 been pushed to it**, so CI has never run and the site has never deployed —
