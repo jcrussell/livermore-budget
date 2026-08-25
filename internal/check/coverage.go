@@ -159,14 +159,20 @@ func keyOf(o project.Options) sliceKey {
 	return sliceKey{o.FiscalYear, o.Basis, o.Scope}
 }
 
-// publishedProjectionBuilt asserts the slice the site publishes was one of the
+// publishedProjectionBuilt asserts EVERY slice the site publishes was one of the
 // slices built.
 //
 // Every graph check reads Subject.Projections, so a projection that was not built
-// is not a failure anywhere: it is silence. `fisc export` publishes exactly
-// (project.PublishedFiscalYear, PublishedBasis, PublishedScope), and if the fact
-// store no longer carries facts for that triple, export publishes a chart of
-// nothing while verify reports on whatever other slices happen to exist.
+// is not a failure anywhere: it is silence. If the fact store no longer carries
+// facts for a published slice, export publishes a chart of nothing while verify
+// reports on whatever other slices happen to exist.
+//
+// IT ITERATES THE PUBLISHED YEARS RATHER THAN PINNING ONE, and that is what the
+// FY2027 export needed from it. Pinned to a single triple this check could not
+// see a second published document at all: it would have gone on passing, over
+// FY2026, while FY2027 shipped to readers unexamined. A check that covers less
+// than the site publishes is worse than one that covers nothing, because it
+// reports a number that looks like coverage.
 //
 // This is the check that closes the divergence a shared constant cannot: the
 // spelling being identical everywhere says nothing about whether the facts are
@@ -183,47 +189,77 @@ func (*publishedProjectionBuilt) Description() string {
 		"these checks were run over"
 }
 
-// Run always has exactly one subject: the published triple either was built or was
-// not. There is no state of the corpus in which this check has nothing to look at,
-// which is why it is not routed through conclusion.
+// Run has one subject per published year.
+//
+// It used to have exactly one and to say so — "there is no state of the corpus
+// in which this check has nothing to look at, which is why it is not routed
+// through conclusion". Both halves stopped being true when the published set
+// became a list: a repository publishing no year has nothing here to look at,
+// and that state is what the nothing: string below is for.
 func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, error) {
-	want := fmt.Sprintf("%s FY%d %s %s", project.PublishedProjection,
-		project.PublishedFiscalYear, project.PublishedBasis, project.PublishedScope)
+	years := s.PublishedYears
 
-	built := make([]string, 0, len(s.Projections))
+	// Indexed once rather than scanned per year: the two loops below would
+	// otherwise be quadratic in the published set, and more importantly the
+	// membership test is the same one twice and should be spelled once.
+	type slice struct {
+		name  string
+		year  int
+		basis mapping.Basis
+		scope string
+	}
+	built := map[slice]bool{}
+	names := make([]string, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		o := p.Options
+		built[slice{p.Name, o.FiscalYear, o.Basis, o.Scope}] = true
+		names = append(names, p.String())
+	}
+
+	var findings []Finding
+	for _, year := range years {
 		// The PROJECTION's name is compared as well as the slice, and that is
 		// not belt-and-braces. Since each projection is built over the slices it
 		// declares (project.Sliced), "some projection was built at the published
 		// triple" no longer implies the published DOCUMENT was: a second
 		// projection whose slices happen to include that triple would satisfy
 		// this check while the site's chart was of nothing.
-		if p.Name == project.PublishedProjection &&
-			o.FiscalYear == project.PublishedFiscalYear &&
-			o.Basis == project.PublishedBasis &&
-			o.Scope == project.PublishedScope {
-			return conclusion{
-				subjects: 1,
-				unit:     "published slice",
-				held:     fmt.Sprintf("the published slice %s was built and checked", want),
-			}.result(), nil
+		want := slice{project.PublishedProjection, year, project.PublishedBasis, project.PublishedScope}
+		if built[want] {
+			continue
 		}
-		built = append(built, p.String())
+		detail := "no projection was built at all"
+		if len(names) > 0 {
+			detail = fmt.Sprintf("the projections built were: %s", joinComma(names))
+		}
+		findings = append(findings, finding(
+			fmt.Sprintf("%s FY%d %s %s", want.name, want.year, want.basis, want.scope),
+			"`fisc export` publishes this slice and nothing checked it — %s. Every check "+
+				"below this one reads the projections, so a slice that was not built is "+
+				"not failed, it is unexamined", detail))
 	}
 
-	detail := "no projection was built at all"
-	if len(built) > 0 {
-		detail = fmt.Sprintf("the projections built were: %s", joinComma(built))
-	}
 	return conclusion{
-		subjects: 1,
-		unit:     "published slice",
-		findings: []Finding{finding(want,
-			"`fisc export` publishes this slice and nothing checked it — %s. Every check below "+
-				"this one reads the projections, so a slice that was not built is not failed, "+
-				"it is unexamined", detail)},
+		// One subject per published year, so the summary counts what the site
+		// serves rather than what happened to build.
+		subjects: len(years),
+		unit:     "published slices",
+		held: fmt.Sprintf("every %s slice the site publishes was built and checked: %s",
+			project.PublishedProjection, joinComma(describeYears(years))),
+		nothing:  "the site publishes no slice, so there is nothing to have built",
+		findings: findings,
 	}.result(), nil
+}
+
+// describeYears names the published years the way the report should: the
+// fiscal year with its basis and scope, so a reader can match one against the
+// projections listed elsewhere in the run.
+func describeYears(years []int) []string {
+	out := make([]string, 0, len(years))
+	for _, y := range years {
+		out = append(out, fmt.Sprintf("FY%d %s %s", y, project.PublishedBasis, project.PublishedScope))
+	}
+	return out
 }
 
 // factsAreProjected asserts no fact quietly falls outside every projection.

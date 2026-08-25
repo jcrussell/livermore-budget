@@ -355,6 +355,9 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 		Projections:        projections,
 		ProjectionFailures: failures,
 		Registered:         registered,
+		// One year, because the fixture is a miniature of one year. Load fills
+		// this from project.PublishedFiscalYears over the real corpus.
+		PublishedYears: []int{testYear},
 	}
 }
 

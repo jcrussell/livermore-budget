@@ -157,3 +157,60 @@ func TestAProjectionThatProducesNothingIsReported(t *testing.T) {
 		t.Errorf("findings = %+v, want one naming the silent projection", res.Findings)
 	}
 }
+
+// TestAPublishedYearNothingBuiltIsReported is the FY2027 case.
+//
+// published-projection-built used to pin ONE (year, basis, scope) triple, so a
+// second published year could ship to readers with no check having looked at it
+// — and the check would go on passing, over the first year, reporting a number
+// that looked like coverage. It iterates the published set now.
+func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
+	s := &Subject{
+		PublishedYears: []int{2026, 2027},
+		Projections: []Projection{{
+			Name:  project.PublishedProjection,
+			Graph: &project.Graph{},
+			Options: project.Options{
+				FiscalYear: 2026,
+				Basis:      project.PublishedBasis,
+				Scope:      project.PublishedScope,
+			},
+		}},
+	}
+	res, err := (&publishedProjectionBuilt{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusFail {
+		t.Fatalf("published-projection-built = %s with FY2027 published and unbuilt, want fail",
+			res.Status)
+	}
+	if len(res.Findings) != 1 || !strings.Contains(res.Findings[0].Subject, "FY2027") {
+		t.Errorf("findings = %+v, want one naming FY2027", res.Findings)
+	}
+}
+
+// TestAPublishedYearBuiltByAnotherProjectionIsNotEnough guards the narrowing
+// that came with per-projection slices: matching the triple is no longer the
+// same as having built the document the page renders.
+func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
+	s := &Subject{
+		PublishedYears: []int{2026},
+		Projections: []Projection{{
+			Name: "something-else",
+			Options: project.Options{
+				FiscalYear: 2026,
+				Basis:      project.PublishedBasis,
+				Scope:      project.PublishedScope,
+			},
+		}},
+	}
+	res, err := (&publishedProjectionBuilt{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusFail {
+		t.Errorf("published-projection-built = %s when only another projection covered the "+
+			"published slice, want fail", res.Status)
+	}
+}

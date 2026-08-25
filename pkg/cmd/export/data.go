@@ -54,44 +54,55 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 	}
 
 	// The slice is internal/project's declaration, not this command's: `fisc
-	// verify` checks the same triple, and two copies would let it pass a graph
+	// verify` checks the same slices, and two copies would let it pass a graph
 	// this command does not publish.
-	opts := project.Options{
-		FiscalYear: project.PublishedFiscalYear,
-		Basis:      project.PublishedBasis,
-		Scope:      project.PublishedScope,
-		Version:    build.Get().String(),
-	}
+	//
+	// ONE DOCUMENT PER PUBLISHED YEAR. Both budget years have been projected and
+	// checked since the two-year book was mapped -- internal/check derives one
+	// projection per (fiscal year, basis) the spine carries -- and what FY2027
+	// never was, is exported (fisc-kwq). The years come from the same list
+	// published-projection-built reads, so a year added here cannot ship
+	// unchecked and a year checked there cannot go unpublished.
+	version := build.Get().String()
 	out := map[string][]byte{}
-	for _, p := range project.Registry(reg) {
-		// A projection that says which slices it is of must agree that it is of
-		// THIS one. Without this the two commands diverge silently: `fisc
-		// verify` builds each projection over the slices it declares, so a
-		// projection whose slices do not include the published triple would be
-		// checked under its own and published under one it declared it is not
-		// of -- the exact split the comment above says this shared declaration
-		// exists to prevent, reopened the moment a projection could disagree.
-		//
-		// It fails closed and it names both sides, because the fix is never
-		// obvious from a wrong figure: either the projection wants a slice this
-		// command cannot yet publish (one document per stem, one year -- see
-		// fisc-kwq), or the published triple moved and the projection was not
-		// told.
-		if sl, ok := p.(project.Sliced); ok {
-			want := sl.Slices(facts, opts.Version)
-			if !slicesContain(want, opts) {
-				return nil, fmt.Errorf(
-					"the %s projection is of %d slice(s), none of them the published "+
-						"FY%d %s %s this command publishes: %s",
-					p.Name(), len(want), opts.FiscalYear, opts.Basis, opts.Scope,
-					describeSlices(want))
+	for _, year := range project.PublishedFiscalYears() {
+		opts := project.Options{
+			FiscalYear: year,
+			Basis:      project.PublishedBasis,
+			Scope:      project.PublishedScope,
+			Version:    version,
+		}
+		for _, p := range project.Registry(reg) {
+			// A projection that says which slices it is of must agree that it is
+			// of THIS one. Without this the two commands diverge silently: `fisc
+			// verify` builds each projection over the slices it declares, so a
+			// projection whose slices do not include a published one would be
+			// checked under its own and published under one it declared it is
+			// not of -- the exact split the comment above says this shared
+			// declaration exists to prevent, reopened the moment a projection
+			// could disagree.
+			//
+			// It fails closed and names both sides, because the fix is never
+			// obvious from a wrong figure: either the projection wants a slice
+			// this command cannot publish, or the published set moved and the
+			// projection was not told.
+			if sl, ok := p.(project.Sliced); ok {
+				want := sl.Slices(facts, version)
+				if !slicesContain(want, opts) {
+					return nil, fmt.Errorf(
+						"the %s projection is of %d slice(s), none of them the published "+
+							"FY%d %s %s this command publishes: %s",
+						p.Name(), len(want), opts.FiscalYear, opts.Basis, opts.Scope,
+						describeSlices(want))
+				}
 			}
+			b, err := p.Build(facts, opts)
+			if err != nil {
+				return nil, fmt.Errorf("build the %s projection for FY%d: %w",
+					p.Name(), year, err)
+			}
+			out[project.PublishedStem(p.Name(), year)] = b
 		}
-		b, err := p.Build(facts, opts)
-		if err != nil {
-			return nil, fmt.Errorf("build the %s projection: %w", p.Name(), err)
-		}
-		out[p.Name()] = b
 	}
 	if _, ok := out[export.PrimaryProjection]; !ok {
 		return nil, fmt.Errorf("no projection named %q was registered", export.PrimaryProjection)
@@ -165,4 +176,29 @@ func describeSlices(o []project.Options) string {
 		out = append(out, fmt.Sprintf("FY%d %s %s", s.FiscalYear, s.Basis, s.Scope))
 	}
 	return strings.Join(out, ", ")
+}
+
+// yearStems is the document stems for one projection, one per published fiscal
+// year, in the order a reader should meet them.
+//
+// It lists only stems a document was actually built for. The published list is
+// what the site MEANS to publish; built is what it HAS, and the year control
+// must name the second or it offers the reader a 404. The two agree whenever
+// buildProjections wrote them -- it loops the same list -- and disagree when the
+// caller supplied its own Builder, which the Options.Build seam exists to allow.
+//
+// A published year that produced no document is not silently dropped from the
+// world by this: `fisc verify` fails published-projection-built for it, which is
+// the check that exists to notice a year the site publishes and nothing looked
+// at.
+func yearStems(name string, projections map[string][]byte) []string {
+	years := project.PublishedFiscalYears()
+	out := make([]string, 0, len(years))
+	for _, y := range years {
+		stem := project.PublishedStem(name, y)
+		if _, ok := projections[stem]; ok {
+			out = append(out, stem)
+		}
+	}
+	return out
 }

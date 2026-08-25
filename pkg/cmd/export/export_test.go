@@ -434,7 +434,10 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	if diff := cmp.Diff([]string{"sankey"}, keys(got)); diff != "" {
+	// One document per published year. The opening year keeps the bare stem, so
+	// data/sankey.json stays the path the contract promises; later years are
+	// suffixed (project.PublishedStem).
+	if diff := cmp.Diff([]string{"sankey", "sankey-2027"}, keys(got)); diff != "" {
 		t.Errorf("projection names (-want +got):\n%s", diff)
 	}
 

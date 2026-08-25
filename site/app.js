@@ -71,11 +71,35 @@
  */
 
 /**
+ * @typedef {Object} FiscFigure
+ * @property {string} label
+ * @property {string} value
+ * @property {string} note
+ * @property {string} kind
+ */
+
+/**
+ * One published fiscal year, with every word that belongs to it. The packager
+ * builds these in Go for all of them; the client only chooses.
+ * @typedef {Object} FiscYear
+ * @property {number} year
+ * @property {string} label
+ * @property {string} stem
+ * @property {string} path
+ * @property {string} basis
+ * @property {FiscFigure} hero
+ * @property {FiscFigure[]} figures
+ * @property {string[]} caveats
+ * @property {{facts:number, nodes:number, links:number}} counts
+ */
+
+/**
  * @typedef {Object} FiscConfig
  * @property {number} schema_version
  * @property {string} exported_by
  * @property {string} primary
  * @property {Record<string, string>} projections
+ * @property {FiscYear[]} years
  * @property {FiscMetadata} metadata
  * @property {Record<string, FiscDoc>} docs
  */
@@ -218,6 +242,23 @@ function el(id) {
   const found = document.getElementById(id);
   if (!found) throw new Error("missing element #" + id);
   return found;
+}
+
+/**
+ * The element with this id, or null if the template did not render one.
+ *
+ * el() THROWS on a missing id, deliberately: most of this file addresses
+ * elements the template always renders, and a silent null there would surface
+ * as a blank region rather than as the broken template it is. But some elements
+ * are conditional -- the year toggle exists only when more than one year is
+ * published -- and for those `if (!el(id))` is not a guard at all, it is an
+ * exception one line earlier. Reaching for el() there took the whole chart down
+ * on a single-year build.
+ * @param {string} id
+ * @returns {HTMLElement | null}
+ */
+function maybeEl(id) {
+  return document.getElementById(id);
 }
 
 /**
@@ -956,6 +997,22 @@ function fail(message) {
 }
 
 /**
+ * Removes the refusal banner, if one is showing.
+ *
+ * fail() was terminal when it was written -- the page gave up and the banner
+ * stayed for the visit -- so nothing ever needed to take one down. A year switch
+ * can recover from a failed one, and a stale role="alert" sitting above a chart
+ * that did draw is the page asserting something untrue about what the reader is
+ * looking at.
+ */
+function clearRefusal() {
+  const content = document.querySelector("main");
+  if (!content) return;
+  const existing = content.querySelector(".refusal");
+  if (existing) existing.remove();
+}
+
+/**
  * Reports whether a document is one this client understands, refusing visibly
  * when it is not.
  *
@@ -982,40 +1039,148 @@ function understands(got, what) {
   return false;
 }
 
+/**
+ * Fetches and draws one published year.
+ *
+ * Everything the page says in WORDS comes from CONFIG.years, which the packager
+ * built in Go for every year. This function composes no figure and no caveat of
+ * its own: doing so would put the prose in two languages and let a tile disagree
+ * with the chart beneath it about the same schedule.
+ *
+ * @param {FiscYear} year
+ * @returns {Promise<boolean>} whether the year was drawn
+ */
+let switching = 0;
+
+async function showYear(year) {
+  // A switch token, because two switches can be in flight at once: a reader who
+  // clicks twice gets two fetches, and without this the SLOWER one wins and the
+  // page draws a year the control does not show. Compared after every await.
+  const token = ++switching;
+
+  let response;
+  try {
+    response = await fetch(year.path);
+  } catch (e) {
+    // The overwhelmingly likely cause is file:// — Chrome blocks fetch from a
+    // file: origin, so the page loads and the chart never arrives. Say the
+    // fix rather than the error.
+    fail("Could not load " + year.path + ". If you opened this file directly, the browser " +
+      "blocks the request: serve the directory over HTTP instead, e.g. " +
+      "python3 -m http.server -d dist 8000");
+    return false;
+  }
+  if (token !== switching) return false;
+  if (!response.ok) {
+    fail("Could not load " + year.path + ": HTTP " + response.status);
+    return false;
+  }
+  const doc = /** @type {FiscProjection} */ (await response.json());
+  if (token !== switching) return false;
+  // The fetched file is what actually gets drawn, and it is a separate
+  // document from the config: the packager stamps the config from the
+  // projection it was handed, so agreeing with the config is not evidence the
+  // file on the wire agrees too.
+  if (!understands(doc.schema_version, year.path)) return false;
+
+  projection = doc;
+  // A refusal from an earlier attempt is about a year no longer on screen, and
+  // fail() only ever added banners because it used to be the end of the story.
+  // Now that a switch can recover, a stale role="alert" left above a correct
+  // chart is a false statement the page keeps making.
+  clearRefusal();
+  // A pin and an isolation belong to the year they were made in: a fund group
+  // selected in FY2026 may not carry the same flows in FY2027, and a provenance
+  // panel left on screen would cite fact ids from a document no longer drawn.
+  pinned = null;
+  isolated = "";
+  resetDetail();
+  hideTip();
+
+  paintYearWords(year);
+  buildLegend();
+  buildDerivedList();
+  buildTable();
+  render();
+  return true;
+}
+
+/**
+ * Replaces the words that belong to a year: the tiles, the caveats, the lede
+ * and the flow count.
+ *
+ * The page already carries the opening year's, rendered server-side so the
+ * headline survives with JavaScript off. This swaps them for another year's,
+ * and every string it writes was built by the packager.
+ * @param {FiscYear} year
+ */
+function paintYearWords(year) {
+  const figures = maybeEl("figures");
+  if (figures) {
+    figures.replaceChildren(...[year.hero].concat(year.figures).map((f) => {
+      const tile = h("div", "tile" + (f.kind ? " " + f.kind : ""));
+      tile.appendChild(h("div", "label", f.label));
+      tile.appendChild(h("div", "value", f.value));
+      tile.appendChild(h("div", "note", f.note));
+      return tile;
+    }));
+  }
+
+  const caveats = maybeEl("caveats");
+  if (caveats) caveats.replaceChildren(...year.caveats.map((c) => h("li", "", c)));
+
+  const lede = maybeEl("lede-year");
+  if (lede) lede.textContent = year.label + " " + year.basis;
+
+  const counts = maybeEl("counts-line");
+  if (counts) {
+    counts.textContent = year.counts.links + " flows between " + year.counts.nodes +
+      " nodes, from " + year.counts.facts + " facts";
+  }
+
+  const title = maybeEl("chart-title");
+  if (title) title.textContent = "Sankey diagram of the " + year.label + " " + year.basis + " budget";
+
+  document.title = "City of Livermore budget flows — " + year.label;
+}
+
+/**
+ * Wires the year radio group.
+ *
+ * The control is rendered server-side and already shows the right year, so this
+ * only adds the behaviour. A year that fails to load leaves the radio where the
+ * reader put it and shows the refusal: moving it back would claim the page is
+ * showing a year it is not.
+ * @param {FiscYear[]} years
+ */
+function wireYears(years) {
+  const group = maybeEl("year-toggle");
+  if (!group || years.length < 2) return;
+  // The template ships it disabled, because without this file the control
+  // cannot do anything. Enabling it here is the enhancement.
+  group.removeAttribute("disabled");
+  group.addEventListener("change", (e) => {
+    const target = /** @type {HTMLInputElement} */ (e.target);
+    const year = years.find((y) => y.stem === target.value);
+    if (!year) return;
+    void showYear(year);
+  });
+}
+
 async function main() {
   wireTheme();
   // Before the fetch, not after: FISC_CONFIG carries the projection's own
   // metadata block, and the headline the page has already rendered from it
   // server-side is read under the same contract as the graph.
   if (!understands(CONFIG.schema_version, "this page's data")) return;
-  const path = CONFIG.projections[CONFIG.primary];
-  let response;
-  try {
-    response = await fetch(path);
-  } catch (e) {
-    // The overwhelmingly likely cause is file:// — Chrome blocks fetch from a
-    // file: origin, so the page loads and the chart never arrives. Say the
-    // fix rather than the error.
-    fail("Could not load " + path + ". If you opened this file directly, the browser blocks " +
-      "the request: serve the directory over HTTP instead, e.g. python3 -m http.server -d dist 8000");
-    return;
-  }
-  if (!response.ok) {
-    fail("Could not load " + path + ": HTTP " + response.status);
-    return;
-  }
-  const doc = /** @type {FiscProjection} */ (await response.json());
-  // The fetched file is what actually gets drawn, and it is a separate
-  // document from the config: the packager stamps the config from the
-  // projection it was handed, so agreeing with the config is not evidence the
-  // file on the wire agrees too.
-  if (!understands(doc.schema_version, path)) return;
-  projection = doc;
 
-  buildLegend();
-  buildDerivedList();
-  buildTable();
-  render();
+  const years = CONFIG.years || [];
+  if (!years.length) {
+    fail("This page was packaged without any published year, so there is nothing to draw.");
+    return;
+  }
+  wireYears(years);
+  if (!await showYear(years[0])) return;
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {

@@ -224,6 +224,15 @@ type Subject struct {
 	// it — a failure here silences every graph check at once, so it must not be
 	// reachable only through a missing entry in Projections.
 	ProjectionFailures []ProjectionFailure
+	// PublishedYears is every fiscal year the site publishes a document for.
+	//
+	// [Load] fills it from project.PublishedFiscalYears, which is the single
+	// declaration `fisc export` also reads, so the two commands cannot disagree
+	// about what the site serves. It is a FIELD rather than a direct call so
+	// that a fixture can be a smaller repository than this one — a miniature of
+	// a single year is not a repository that has lost a published year, and
+	// reading the package constant directly would make it look like one.
+	PublishedYears []int
 	// Registered is the name of every projection the registry returned, whether
 	// or not it produced anything.
 	//
@@ -341,6 +350,7 @@ func Load(o LoadOptions) (*Subject, error) {
 			return nil, err
 		}
 	}
+	s.PublishedYears = project.PublishedFiscalYears()
 	registry := project.Registry(reg)
 	for _, p := range registry {
 		s.Registered = append(s.Registered, p.Name())

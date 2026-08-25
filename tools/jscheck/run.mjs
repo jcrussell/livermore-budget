@@ -4,10 +4,11 @@
 // Node and the standard library only: no npm, no package.json, no node_modules,
 // and nothing here is served to a reader.
 
-import { checks } from "./layout.mjs";
+import { checks as layoutChecks } from "./layout.mjs";
+import { checks as yearChecks } from "./year.mjs";
 
 let failed = 0;
-for (const c of checks()) {
+for (const c of [...layoutChecks(), ...yearChecks()]) {
   const status = c.ok ? "PASS" : "FAIL";
   if (!c.ok) failed++;
   console.log(`${status}  ${c.name}`);

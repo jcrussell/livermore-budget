@@ -114,6 +114,21 @@ type Options struct {
 	// is written verbatim to data/<stem>.json. Must contain PrimaryProjection.
 	Projections map[string][]byte
 
+	// YearStems are the documents that are the same projection for different
+	// fiscal years, in the order a reader should meet them, opening year first.
+	// Empty means one year, and the page renders no year control.
+	//
+	// It is STATED BY THE CALLER rather than inferred from the stems. The
+	// obvious shortcut — treat every "sankey-*" stem as a year of "sankey" — is
+	// a guess about what a name means, and it is wrong for the first projection
+	// named after the primary that is not a year of it. Which documents are
+	// years of which is the composition root's knowledge; this package lays out
+	// what it is handed and does not import internal/project to find out.
+	//
+	// Every entry must be a key of Projections, and the first must be
+	// PrimaryProjection. Write refuses otherwise.
+	YearStems []string
+
 	// Docs are the source documents the page cites, keyed by doc id in the
 	// projection's metadata.sources.
 	Docs []Doc
@@ -182,6 +197,26 @@ func (o *Options) validate() error {
 			return fmt.Errorf("projection name %q is not a usable filename stem", name)
 		}
 	}
+	// A year stem naming a document that was not built would render a control
+	// the reader can move to a 404, so it is refused here rather than discovered
+	// in the browser. The first entry must be the opening year, because that is
+	// the document the page's server-rendered figures came from.
+	if len(o.YearStems) > 0 {
+		if o.YearStems[0] != PrimaryProjection {
+			return fmt.Errorf("the first year stem is %q, but the page opens on %q",
+				o.YearStems[0], PrimaryProjection)
+		}
+		seen := make(map[string]bool, len(o.YearStems))
+		for _, stem := range o.YearStems {
+			if _, ok := o.Projections[stem]; !ok {
+				return fmt.Errorf("year stem %q names no projection that was built", stem)
+			}
+			if seen[stem] {
+				return fmt.Errorf("year stem %q is listed twice", stem)
+			}
+			seen[stem] = true
+		}
+	}
 	for rel := range o.Files {
 		if err := assetPath(rel); err != nil {
 			return err
@@ -246,7 +281,7 @@ func Write(o Options) ([]string, error) {
 		base = LocalPageTextBase
 	}
 
-	page, cited, err := buildPage(o.Projections, o.Docs, base, o.GeneratedBy)
+	page, cited, err := buildPage(o.Projections, o.YearStems, o.Docs, base, o.GeneratedBy)
 	if err != nil {
 		return nil, err
 	}

@@ -24,17 +24,40 @@
   <div>
     <h1>Where Livermore's money comes from, and where it goes</h1>
     <p class="lede">
-      The {{.FiscalYearLabel}} {{.Basis}} budget, all funds, gross — read out of the city's
+      The <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span> budget, all funds, gross — read out of the city's
       published schedule and traced back to it. Figures the city printed are drawn solid;
       the two things we inferred are drawn dashed and labelled.
     </p>
   </div>
-  <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
+  <div class="head-controls">
+    {{- if gt (len .Years) 1}}
+    <!-- A radio group, not a <select>: two options that swap the whole page are
+         a choice between peers, and a radio group says which one you are
+         looking at without being opened.
+
+         IT SHIPS DISABLED and app.js enables it. Switching year is entirely a
+         client behaviour — it refetches a document and repaints — so with
+         JavaScript off the control could be moved and nothing would follow it:
+         the reader would select FY2026-27 and go on reading FY2025-26's
+         figures, with the styling agreeing with them. A control that lies is
+         worse than one that is absent, and the year on show is still stated in
+         the lede either way. -->
+    <fieldset class="year-toggle" id="year-toggle" disabled>
+      <legend>Budget year</legend>
+      {{- range $i, $y := .Years}}
+      <input type="radio" name="fisc-year" id="year-{{$y.Year}}" value="{{$y.Stem}}"
+             {{if eq $i 0}}checked{{end}}>
+      <label for="year-{{$y.Year}}">{{$y.Label}}</label>
+      {{- end}}
+    </fieldset>
+    {{- end}}
+    <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
+  </div>
 </header>
 
 <main>
 
-<section class="figures" aria-label="Headline figures">
+<section class="figures" id="figures" aria-label="Headline figures">
   <div class="tile hero">
     <div class="label">{{.Hero.Label}}</div>
     <div class="value">{{.Hero.Value}}</div>
@@ -108,7 +131,7 @@
   These are the reasons this chart will not reconcile row-for-row against the printed
   schedule. They ship with the data, not in a footnote.
 </p>
-<ul class="caveats">
+<ul class="caveats" id="caveats">
   {{- range .Caveats}}
   <li>{{.}}</li>
   {{- end}}
@@ -116,8 +139,8 @@
 
 <h2>Every flow, as a table</h2>
 <p class="lede">
-  The chart's twin. Same numbers, no colour, no hovering — {{.Links}} flows between
-  {{.Nodes}} nodes, from {{.Facts}} facts.
+  The chart's twin. Same numbers, no colour, no hovering — <span id="counts-line">{{.Links}} flows between
+  {{.Nodes}} nodes, from {{.Facts}} facts</span>.
 </p>
 <details id="table-view" open>
   <summary>Show the table</summary>

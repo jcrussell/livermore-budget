@@ -61,6 +61,9 @@ const SchemaVersion = 1
 // The version is deliberately not here: it is a property of the binary, not of
 // the slice.
 const (
+	// PublishedFiscalYear is the year the site OPENS on. It is not the only
+	// year published — see [PublishedFiscalYears] — and the distinction is the
+	// difference between a default and a limit.
 	PublishedFiscalYear = 2026
 	PublishedBasis      = mapping.BasisAdopted
 	PublishedScope      = "all-funds-gross"
@@ -73,6 +76,38 @@ const (
 	// it renders, and the two agreeing is what a test asserts.
 	PublishedProjection = "sankey"
 )
+
+// PublishedFiscalYears is every year the site publishes a document for, in the
+// order a reader should meet them.
+//
+// It is a FUNCTION returning a fresh slice rather than a package variable,
+// because a variable would let any caller reorder or extend the published set
+// by accident, and the whole point of this declaration is that `fisc export`
+// and `fisc verify` cannot disagree about what it contains.
+//
+// BOTH YEARS WERE ALWAYS PROJECTED AND CHECKED. internal/check derives one
+// projection per (fiscal year, basis) the spine carries, so FY2027 has been
+// building and passing every graph check since the two-year budget book was
+// mapped. What it never was, is exported: this list is what closes that gap,
+// and until it existed the site published one of the two documents that already
+// passed (fisc-kwq).
+func PublishedFiscalYears() []int {
+	return []int{2026, 2027}
+}
+
+// PublishedStem is the file stem of the document for one published year.
+//
+// The opening year keeps the bare name, so data/sankey.json stays the path the
+// contract promises and every existing link to it keeps working; later years are
+// suffixed. This is a PATH decision and it lives beside the year list rather
+// than in the packager because `fisc verify` has to name the same documents the
+// site serves in order to say one of them was not built.
+func PublishedStem(name string, year int) string {
+	if year == PublishedFiscalYear {
+		return name
+	}
+	return fmt.Sprintf("%s-%d", name, year)
+}
 
 // Options are the slice of the corpus a projection is built from.
 //
