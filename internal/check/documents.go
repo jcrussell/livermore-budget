@@ -28,12 +28,24 @@ var uncheckedDocuments = map[string]string{}
 
 // documentsAreChecked asserts every built projection is one some check reads.
 //
-// The test it applies is deliberately crude -- does this projection carry a
-// graph -- because a precise one is not available: nothing in Go lets this ask
-// "which checks read this projection". What makes the crude test sound is that
-// the graph checks are ALL the structural checks there are, so a projection
-// without a graph is read by none of them, and the day that stops being true is
-// the day a second document shape gets its own checks and its own arm here.
+// THE TEST IS "DOES THIS PROJECTION CARRY A DOCUMENT SOME CHECK READS", and it
+// is applied by asking which SHAPE the projection built, because a precise test
+// is not available: nothing in Go lets this ask "which checks read this
+// projection".
+//
+// It used to ask only "does this carry a graph", and that was sound while the
+// graph checks were all the structural checks there were -- its own doc comment
+// said "the day that stops being true is the day a second document shape gets
+// its own checks and its own arm here". That day arrived with the revenue
+// trends (fisc-5ep). What makes the widened test still sound is that each arm
+// below names the checks that read the shape, so adding a shape without adding
+// checks does not silently widen the exemption -- it fails here.
+//
+// The arm is NOT an uncheckedDocuments entry, and the difference matters. That
+// map is for a shape nothing checks YET, and its own doc comment calls an entry
+// "a promise that someone is coming back". A shape that IS checked needs the
+// opposite: a statement that it is covered, which expires by failing when the
+// coverage goes away rather than when someone remembers.
 type documentsAreChecked struct{}
 
 var _ Check = (*documentsAreChecked)(nil)
@@ -49,11 +61,13 @@ func (*documentsAreChecked) Description() string {
 func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	declared := map[string]int{}
+	shapes := map[string]int{}
 	checked := 0
 
 	for _, p := range s.Projections {
-		if p.Graph != nil {
+		if shape := documentShape(p); shape != "" {
 			checked++
+			shapes[shape]++
 			continue
 		}
 		if _, ok := uncheckedDocuments[p.Name]; ok {
@@ -61,32 +75,32 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 			continue
 		}
 		findings = append(findings, finding(p.String(),
-			"this projection produces no graph, so no structural check reads it, and no "+
-				"entry in uncheckedDocuments declares that. `fisc export` would publish a "+
-				"document that verify has not looked at"))
+			"this projection produced no document of any shape the structural checks read, "+
+				"and no entry in uncheckedDocuments declares that. `fisc export` would "+
+				"publish a document that verify has not looked at"))
 	}
 
-	// A registered projection that produced NOTHING is the case neither list
-	// above can see. It is in Projections with no entry and in
-	// ProjectionFailures with no entry, because it did not fail -- it declared
-	// no slices. `fisc export` still publishes its document, so silence here
-	// would be the whole defect this check exists for, wearing the one face the
-	// obvious implementation misses.
-	produced := map[string]bool{}
-	for _, p := range s.Projections {
-		produced[p.Name] = true
-	}
-	for _, f := range s.ProjectionFailures {
-		produced[f.Name] = true
-	}
-	for _, name := range s.Registered {
-		if !produced[name] {
-			findings = append(findings, finding(name,
-				"this projection is registered and produced no document at all: it declared "+
-					"no slice of the fact store it is of, so nothing built and nothing "+
-					"failed. `fisc export` would still publish it"))
-		}
-	}
+	// A REGISTERED PROJECTION THAT PRODUCED NOTHING WAS REPORTED HERE AND IS NOT
+	// ANY MORE, because the premise it rested on has gone. The finding read
+	// "nothing built and nothing failed -- `fisc export` would still publish
+	// it", and that was true of the export command's old build loop: it ran the
+	// cartesian product of the published years and the registry and called
+	// Build on every projection whatever slices it declared. It now loops the
+	// slices each projection says it is of (fisc-neh), so a projection
+	// declaring none writes no file, and there is no document to be wrong.
+	//
+	// Keeping the arm would have made every projection of a schedule a FIXTURE
+	// does not carry into a defect -- internal/check/fixture_test.go is
+	// spine-only, so the trends projection declares nothing there and 70-odd
+	// test call sites would report a corpus finding about a test's own scope.
+	// project.Sliced's doc comment already settles what that state means: "an
+	// empty result means the store carries nothing this projection is of, which
+	// is a statement about the corpus and not an error".
+	//
+	// WHAT IT LEAVES UNCOVERED IS REAL AND IS FILED. A document the site
+	// PUBLISHES that silently stops being built is still a defect, and only the
+	// spine is guarded against it today, by publishedProjectionBuilt. See
+	// fisc-w7d.
 
 	// The other direction, and it is the one that expires an exemption rather
 	// than leaving it for whoever forgets: an entry naming a shape nothing
@@ -108,22 +122,61 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
-	held := fmt.Sprintf("%d %s, each read by the structural checks",
-		checked, plural(checked, "projection", "projections"))
+	// The summary names the SHAPES as well as the count. A number alone would
+	// read the same whether both document shapes were covered or one of them had
+	// quietly stopped being built, which is the state publishedProjectionBuilt
+	// exists for on the other axis.
+	held := fmt.Sprintf("%d %s, each read by the structural checks: %s",
+		checked, plural(checked, "projection", "projections"), describeShapes(shapes))
 	if len(declared) > 0 {
-		held = fmt.Sprintf("%d %s structurally checked, plus %s declared unchecked",
-			checked, plural(checked, "projection", "projections"), describeUnchecked(declared))
+		held = fmt.Sprintf("%d %s structurally checked (%s), plus %s declared unchecked",
+			checked, plural(checked, "projection", "projections"),
+			describeShapes(shapes), describeUnchecked(declared))
 	}
 	return conclusion{
-		// Counted over the REGISTRY, not over what built: a projection that
-		// produced nothing is exactly what this check is looking for, and
-		// counting only what built would leave it out of its own denominator.
-		subjects: len(s.Registered),
+		// Counted over what was BUILT. It used to be counted over the registry,
+		// because this check also reported a registered projection that produced
+		// nothing and that projection had to be in its own denominator. That arm
+		// is gone (see above), and with it the reason: a projection declaring no
+		// slices is now examined by nobody because there is nothing to examine,
+		// and counting it here would report "pass over 1" for a run that looked
+		// at no document at all -- a pass over zero subjects wearing a disguise,
+		// which is the one thing this package exists to prevent.
+		subjects: len(s.Projections),
 		unit:     "projections",
 		held:     held,
-		nothing:  "no projection is registered",
+		nothing:  "no projection built a document, so no document shape has been examined",
 		findings: findings,
 	}.result(), nil
+}
+
+// documentShape names the shape a projection built, and the checks that read
+// it, or "" for a projection that built no document any check reads.
+//
+// EVERY ARM NAMES ITS CHECKS, and that is what keeps this honest rather than a
+// list of shapes someone remembers to extend. A shape added here without checks
+// behind it is a claim a reader can falsify by grepping for the names.
+func documentShape(p Projection) string {
+	switch {
+	case p.Graph != nil:
+		// graph.go: acyclic, link values tie to facts, headline ties to facts,
+		// counts reconcile, aggregation invariance, and the rest.
+		return "graph"
+	case p.Trends != nil:
+		// trend-points-tie-to-facts and trend-series-are-complete.
+		return "series"
+	default:
+		return ""
+	}
+}
+
+// describeShapes renders the document shapes built, sorted, with their counts.
+func describeShapes(byShape map[string]int) string {
+	out := make([]string, 0, len(byShape))
+	for _, shape := range sortedStrings(byShape) {
+		out = append(out, fmt.Sprintf("%d %s", byShape[shape], shape))
+	}
+	return joinComma(out)
 }
 
 // describeUnchecked renders the declared-unchecked projections with their

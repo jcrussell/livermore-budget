@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -434,10 +436,15 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	// One document per published year. The opening year keeps the bare stem, so
-	// data/sankey.json stays the path the contract promises; later years are
-	// suffixed (project.PublishedStem).
-	if diff := cmp.Diff([]string{"sankey", "sankey-2027"}, keys(got)); diff != "" {
+	// The stems are asserted in full, and the two rules that produce them are
+	// visible in the list. A SINGLE-COLUMN document is a year of something and
+	// goes through project.PublishedStem, so the spine's opening year keeps the
+	// bare stem the contract promises and the next is suffixed. A document of
+	// SEVERAL columns is a year of nothing and takes its projection's name
+	// verbatim -- revenue-trends spans four columns, and putting it through
+	// PublishedStem would write it twice, once per published year, as two
+	// byte-identical files one of which claims a year it does not cover.
+	if diff := cmp.Diff([]string{"revenue-trends", "sankey", "sankey-2027"}, keys(got)); diff != "" {
 		t.Errorf("projection names (-want +got):\n%s", diff)
 	}
 
@@ -485,10 +492,114 @@ func TestLoadDocsReadsTheSourceRegistry(t *testing.T) {
 	}
 }
 
+// keys is the stems in a map, SORTED.
+//
+// The sort is not cosmetic. Go randomises map iteration, so without it this
+// helper returns a different order on different runs and any cmp.Diff against a
+// literal list is flaky -- it passed only because two elements come back in the
+// written order often enough to look stable. A third stem made it visible.
 func keys(m map[string][]byte) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {
 		out = append(out, k)
 	}
+	sort.Strings(out)
 	return out
+}
+
+// TestStemForAsksHowManyDocumentsNotHowManyColumns pins both directions of the
+// naming rule, and the second case is one an earlier version of stemFor got
+// wrong.
+//
+// The question is whether the projection publishes one document PER YEAR, which
+// is answered by the number of SLICES it declared. Asking the column count
+// instead looks equivalent -- today every multi-slice projection is
+// single-column and the single-slice one is multi-column -- and is not: a store
+// carrying one revenue-by-fund column makes the trends document single-column
+// too, and the column test would then ship it as revenue-trends-2024.json while
+// data/revenue-trends.json, the path the contract promises, did not exist.
+func TestStemForAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
+	year := func(y int) project.Options {
+		return project.Options{
+			Columns: []project.Column{{FiscalYear: y, Basis: project.PublishedBasis}},
+		}
+	}
+	cases := []struct {
+		name   string
+		o      project.Options
+		slices int
+		want   string
+	}{
+		{"one of several years keeps the bare stem when it opens",
+			year(project.PublishedFiscalYear), 2, "sankey"},
+		{"one of several years is suffixed when it does not", year(2027), 2, "sankey-2027"},
+		{"the only document takes the name verbatim, whatever its columns",
+			project.Options{Columns: []project.Column{
+				{FiscalYear: 2024, Basis: "actual"},
+				{FiscalYear: 2025, Basis: "revised"},
+			}}, 1, "sankey"},
+		// The regression: ONE slice of ONE column is still one document, so it
+		// keeps the bare stem even though the year is not the opening one.
+		{"one document of one column is not a year of anything", year(2024), 1, "sankey"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := stemFor("sankey", c.o, c.slices); got != c.want {
+				t.Errorf("stemFor = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// TestBuildProjectionsDoesNotRefuseASecondSchedule is fisc-neh, pinned.
+//
+// The build loop used to be the cartesian product of the published fiscal years
+// and the registry, and it hard-errored through slicesContain when a Sliced
+// projection did not declare the published SPINE slice. A trends projection
+// declares one slice of a different schedule, so `fisc export` failed on its
+// first invocation, before writing a file. fisc-744 fixed the same shape in
+// internal/check and left this copy behind.
+func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	got, err := buildProjections(root)
+	if err != nil {
+		t.Fatalf("buildProjections: %v", err)
+	}
+	raw, ok := got[project.TrendsProjection]
+	if !ok {
+		t.Fatalf("no %q document was built; stems were %v",
+			project.TrendsProjection, keys(got))
+	}
+	// It is not a year of anything, so neither suffixed stem may exist.
+	for _, y := range project.PublishedFiscalYears() {
+		stem := project.PublishedStem(project.TrendsProjection, y)
+		if stem == project.TrendsProjection {
+			continue
+		}
+		if _, ok := got[stem]; ok {
+			t.Errorf("a second copy of the trends document was written at %q", stem)
+		}
+	}
+	var doc struct {
+		Projection string `json:"projection"`
+		Metadata   struct {
+			Scope   string `json:"scope"`
+			Columns []struct {
+				FiscalYear int `json:"fiscal_year"`
+			} `json:"columns"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("decode the trends document: %v", err)
+	}
+	if doc.Metadata.Scope != project.TrendsScope {
+		t.Errorf("scope = %q, want the trends schedule's own %q",
+			doc.Metadata.Scope, project.TrendsScope)
+	}
+	if len(doc.Metadata.Columns) != 4 {
+		t.Errorf("got %d columns, want the four pp.127-140 print", len(doc.Metadata.Columns))
+	}
 }

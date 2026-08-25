@@ -28,7 +28,9 @@ func (*seriesOnly) Build(_ []fact.Fact, _ project.Options) ([]byte, error) {
 
 func (*seriesOnly) Slices(_ []fact.Fact, version string) []project.Options {
 	return []project.Options{{
-		FiscalYear: 2026, Basis: "adopted", Scope: "revenue-by-fund", Version: version,
+		Columns: []project.Column{{FiscalYear: 2026, Basis: "adopted"}},
+		Scope:   "revenue-by-fund",
+		Version: version,
 	}}
 }
 
@@ -90,7 +92,8 @@ func TestAnUncheckedDocumentIsReported(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("documents-are-checked = %s over an unchecked document, want fail", res.Status)
 	}
-	if len(res.Findings) != 1 || !strings.Contains(res.Findings[0].Detail, "no structural check reads it") {
+	if len(res.Findings) != 1 ||
+		!strings.Contains(res.Findings[0].Detail, "no document of any shape the structural checks read") {
 		t.Errorf("findings = %+v, want one naming the unread projection", res.Findings)
 	}
 }
@@ -125,14 +128,31 @@ func (*silent) Build(_ []fact.Fact, _ project.Options) ([]byte, error) {
 }
 func (*silent) Slices(_ []fact.Fact, _ string) []project.Options { return nil }
 
-// TestAProjectionThatProducesNothingIsReported is the case the obvious
-// implementation misses.
+// TestAProjectionThatProducesNothingIsNotADefect records a reversal, and the
+// measurement behind it.
 //
-// A registered projection returning zero slices lands in neither list on the
-// Subject, so a check reading only those two cannot see it — while `fisc export`
-// publishes its document regardless. Silence here would be the whole defect this
-// check exists for.
-func TestAProjectionThatProducesNothingIsReported(t *testing.T) {
+// This used to assert the opposite. documentsAreChecked carried an arm reporting
+// a registered projection that declared no slices, on the stated grounds that
+// "`fisc export` publishes its document regardless" -- true of the export
+// command's old build loop, which ran the cartesian product of the published
+// years and the registry and called Build whatever the projection said it was
+// of. fisc-neh inverted that loop: the command now iterates the slices each
+// projection declares, so a projection declaring none writes no file and there
+// is no document to be wrong about.
+//
+// Keeping the arm would have turned every projection of a schedule a FIXTURE
+// does not carry into a corpus defect: internal/check/fixture_test.go is a
+// miniature of the spine, the trends projection is of nothing there, and ~70
+// runChecks call sites would have gone red reporting on a test's own scope.
+// project.Sliced's doc comment already settles what the state means -- "an empty
+// result means the store carries nothing this projection is of, which is a
+// statement about the corpus and not an error".
+//
+// WHAT THE ARM DID COVER, AND WHERE IT WENT: a document the site PUBLISHES that
+// silently stops being built. Only the spine is guarded against that today, by
+// publishedProjectionBuilt, which compares against one projection name. That is
+// filed as fisc-w7d rather than left implied by a test that no longer exists.
+func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 	built, failed, err := buildProjections(
 		[]project.Projection{&silent{}}, spineFacts(), "test")
 	if err != nil {
@@ -143,18 +163,20 @@ func TestAProjectionThatProducesNothingIsReported(t *testing.T) {
 			len(built), len(failed))
 	}
 
-	s := &Subject{Registered: []string{"silent"}}
+	s := &Subject{}
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if res.Status != StatusFail {
-		t.Fatalf("documents-are-checked = %s over a projection that built nothing, want fail",
+	// Vacuous rather than pass: nothing was built, so nothing was examined, and
+	// a pass over zero subjects is the one thing this package exists to prevent.
+	if res.Status != StatusVacuous {
+		t.Fatalf("documents-are-checked = %s over a projection that built nothing, want vacuous",
 			res.Status)
 	}
-	if len(res.Findings) != 1 ||
-		!strings.Contains(res.Findings[0].Detail, "produced no document at all") {
-		t.Errorf("findings = %+v, want one naming the silent projection", res.Findings)
+	if len(res.Findings) != 0 {
+		t.Errorf("findings = %+v, want none: declaring no slices is a statement about the "+
+			"corpus, not a defect", res.Findings)
 	}
 }
 
@@ -171,9 +193,8 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 			Name:  project.PublishedProjection,
 			Graph: &project.Graph{},
 			Options: project.Options{
-				FiscalYear: 2026,
-				Basis:      project.PublishedBasis,
-				Scope:      project.PublishedScope,
+				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
+				Scope:   project.PublishedScope,
 			},
 		}},
 	}
@@ -199,9 +220,8 @@ func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 		Projections: []Projection{{
 			Name: "something-else",
 			Options: project.Options{
-				FiscalYear: 2026,
-				Basis:      project.PublishedBasis,
-				Scope:      project.PublishedScope,
+				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
+				Scope:   project.PublishedScope,
 			},
 		}},
 	}

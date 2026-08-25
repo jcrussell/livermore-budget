@@ -180,7 +180,14 @@
   </ul>
   <p class="subtle">
     Scope {{.Scope}}, basis {{.Basis}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
-    Data files:
+    <!-- The two sentences are separate because the claims are. The scope and
+         basis above are THIS PAGE'S, read out of the document it is drawn from;
+         the list below is every document the site ships, and since the site
+         gained a second schedule they are no longer the same set. Running them
+         together would say the revenue trends are all-funds-gross adopted
+         FY2025-26, which is four wrong things about one file. -->
+    This chart is drawn from <a href="{{.PrimaryPath}}">{{.PrimaryPath}}</a>.
+    Every data file the site publishes, each fetchable on its own:
     {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
   </p>
 </footer>

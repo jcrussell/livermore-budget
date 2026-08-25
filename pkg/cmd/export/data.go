@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	yaml "go.yaml.in/yaml/v3"
@@ -53,55 +54,63 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 		return nil, fmt.Errorf("load the data registries: %w", err)
 	}
 
-	// The slice is internal/project's declaration, not this command's: `fisc
+	// The slices are internal/project's declaration, not this command's: `fisc
 	// verify` checks the same slices, and two copies would let it pass a graph
 	// this command does not publish.
 	//
-	// ONE DOCUMENT PER PUBLISHED YEAR. Both budget years have been projected and
-	// checked since the two-year book was mapped -- internal/check derives one
-	// projection per (fiscal year, basis) the spine carries -- and what FY2027
-	// never was, is exported (fisc-kwq). The years come from the same list
-	// published-projection-built reads, so a year added here cannot ship
-	// unchecked and a year checked there cannot go unpublished.
+	// THE LOOP IS OVER PROJECTIONS, NOT OVER YEARS. It used to be the cartesian
+	// product of PublishedFiscalYears() and Registry(), which was right while
+	// every projection was one year of the citywide spine and hard-errors on the
+	// first projection that is not: a trends document is of one slice spanning
+	// four columns of a different schedule, and the old slicesContain refusal
+	// rejected it before a single file was written (fisc-neh). fisc-744 fixed
+	// this same shape in internal/check and left this copy behind, which is why
+	// the failure was still waiting here.
 	version := build.Get().String()
 	out := map[string][]byte{}
-	for _, year := range project.PublishedFiscalYears() {
-		opts := project.Options{
-			FiscalYear: year,
-			Basis:      project.PublishedBasis,
-			Scope:      project.PublishedScope,
-			Version:    version,
-		}
-		for _, p := range project.Registry(reg) {
-			// A projection that says which slices it is of must agree that it is
-			// of THIS one. Without this the two commands diverge silently: `fisc
-			// verify` builds each projection over the slices it declares, so a
-			// projection whose slices do not include a published one would be
-			// checked under its own and published under one it declared it is
-			// not of -- the exact split the comment above says this shared
-			// declaration exists to prevent, reopened the moment a projection
-			// could disagree.
-			//
-			// It fails closed and names both sides, because the fix is never
-			// obvious from a wrong figure: either the projection wants a slice
-			// this command cannot publish, or the published set moved and the
-			// projection was not told.
-			if sl, ok := p.(project.Sliced); ok {
-				want := sl.Slices(facts, version)
-				if !slicesContain(want, opts) {
-					return nil, fmt.Errorf(
-						"the %s projection is of %d slice(s), none of them the published "+
-							"FY%d %s %s this command publishes: %s",
-						p.Name(), len(want), opts.FiscalYear, opts.Basis, opts.Scope,
-						describeSlices(want))
-				}
+	builtAt := map[string]project.Options{}
+	for _, p := range project.Registry(reg) {
+		declared := slicesOf(p, facts, version)
+		for _, o := range declared {
+			stem := stemFor(p.Name(), o, len(declared))
+			// Two documents landing on one stem would write one file and drop
+			// the other in silence, and a reader would have no way to tell which
+			// of the two they were looking at.
+			if prev, ok := builtAt[stem]; ok {
+				return nil, fmt.Errorf(
+					"the %s projection wants two documents at the stem %q: %s and %s",
+					p.Name(), stem, project.Describe(prev.Columns), project.Describe(o.Columns))
 			}
-			b, err := p.Build(facts, opts)
+			builtAt[stem] = o
+			b, err := p.Build(facts, o)
 			if err != nil {
-				return nil, fmt.Errorf("build the %s projection for FY%d: %w",
-					p.Name(), year, err)
+				return nil, fmt.Errorf("build the %s projection for %s: %w",
+					p.Name(), project.Describe(o.Columns), err)
 			}
-			out[project.PublishedStem(p.Name(), year)] = b
+			out[stem] = b
+		}
+	}
+
+	// THE PUBLISHED SET IS STILL ASSERTED, and it is the half of the old
+	// cartesian product worth keeping. `fisc export` and `fisc verify` share one
+	// declaration of which slices the site publishes; what this catches is the
+	// two of them diverging -- a projection whose declared slices no longer
+	// include a published one would otherwise be checked under its own slices
+	// and published under one it says it is not of.
+	//
+	// It fails closed and names both sides, because the fix is never obvious
+	// from a missing file: either the projection wants slices this command
+	// cannot publish, or the published set moved and the projection was not
+	// told. What it no longer does is demand that EVERY projection be of the
+	// published spine slice, which is the part that refused a second schedule.
+	for _, year := range project.PublishedFiscalYears() {
+		stem := project.PublishedStem(project.PublishedProjection, year)
+		if _, ok := out[stem]; !ok {
+			return nil, fmt.Errorf(
+				"the site publishes %s FY%d %s %s and no projection built it; the documents "+
+					"built were: %s",
+				project.PublishedProjection, year, project.PublishedBasis,
+				project.PublishedScope, joinComma(builtStems(out)))
 		}
 	}
 	if _, ok := out[export.PrimaryProjection]; !ok {
@@ -109,6 +118,73 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 	}
 	return out, nil
 }
+
+// slicesOf is the slices one projection is built over.
+//
+// A projection that says which slices it is of is asked; one that does not is
+// built over the published spine slices, one per published fiscal year, which is
+// what every projection got before project.Sliced existed.
+func slicesOf(p project.Projection, facts []fact.Fact, version string) []project.Options {
+	if sl, ok := p.(project.Sliced); ok {
+		return sl.Slices(facts, version)
+	}
+	years := project.PublishedFiscalYears()
+	out := make([]project.Options, 0, len(years))
+	for _, year := range years {
+		out = append(out, project.Options{
+			Columns: []project.Column{{FiscalYear: year, Basis: project.PublishedBasis}},
+			Scope:   project.PublishedScope,
+			Version: version,
+		})
+	}
+	return out
+}
+
+// stemFor is the file stem one of a projection's documents is written under.
+//
+// THE QUESTION IS WHETHER THE PROJECTION PUBLISHES ONE DOCUMENT PER YEAR, and it
+// is answered by how many slices the projection declared, not by how many
+// columns any one of them carries. A projection declaring SEVERAL slices is
+// publishing several documents that must be told apart, and the way this site
+// tells them apart is the fiscal year: the spine keeps data/sankey.json for the
+// opening year and data/sankey-2027.json for the next (project.PublishedStem). A
+// projection declaring ONE slice publishes ONE document and needs no
+// distinguishing suffix, so it takes its name verbatim.
+//
+// AN EARLIER VERSION ASKED THE COLUMN COUNT and was wrong in a way no test then
+// covered: a store carrying exactly one revenue-by-fund column -- one year
+// mapped, or four columns dropping to one -- would have made the trends document
+// single-column, sent it through PublishedStem, and shipped it as
+// revenue-trends-2024.json while data/revenue-trends.json, the path
+// docs/revenue-trends-contract.md promises, silently did not exist. The column
+// count is a property of a document; the stem is a property of a SET of them.
+//
+// The error in the other direction is the one the contract names: a multi-column
+// document put through PublishedStem is written once per published year, as two
+// byte-identical files one of which claims a year it does not cover. Both
+// directions are pinned by TestStemForDistinguishesAYearFromAWhole.
+func stemFor(name string, o project.Options, slices int) string {
+	if slices == 1 {
+		return name
+	}
+	return project.PublishedStem(name, o.Columns[0].FiscalYear)
+}
+
+// builtStems is the stems written, sorted, for a refusal that has to say what
+// it did build.
+func builtStems(out map[string][]byte) []string {
+	stems := make([]string, 0, len(out))
+	for stem := range out {
+		stems = append(stems, stem)
+	}
+	sort.Strings(stems)
+	return stems
+}
+
+// joinComma renders a list the way a message should. It is spelled here rather
+// than reached for from internal/check, which has its own: a command and a check
+// package sharing a formatting helper would couple them for nothing.
+func joinComma(s []string) string { return strings.Join(s, ", ") }
 
 // sourceRegistry is as much of data/sources.yaml as the site needs. The file
 // is the only place a URL is asserted, so the page must read its citation
@@ -151,32 +227,6 @@ func loadDocs(repoRoot string) ([]export.Doc, error) {
 
 // generatedBy names this binary for the page footer.
 func generatedBy() string { return "fisc " + build.Get().String() }
-
-// slicesContain reports whether want holds o, compared on the three selectors
-// that decide which facts a projection reads. Version is deliberately not
-// compared: it is stamped into metadata and is not a selector.
-func slicesContain(want []project.Options, o project.Options) bool {
-	for _, w := range want {
-		if w.FiscalYear == o.FiscalYear && w.Basis == o.Basis && w.Scope == o.Scope {
-			return true
-		}
-	}
-	return false
-}
-
-// describeSlices renders the slices a projection declared, for the refusal
-// above. A count alone would leave the operator to guess which year or schedule
-// was wanted.
-func describeSlices(o []project.Options) string {
-	if len(o) == 0 {
-		return "it declared none, so the fact store carries nothing it is of"
-	}
-	out := make([]string, 0, len(o))
-	for _, s := range o {
-		out = append(out, fmt.Sprintf("FY%d %s %s", s.FiscalYear, s.Basis, s.Scope))
-	}
-	return strings.Join(out, ", ")
-}
 
 // yearStems is the document stems for one projection, one per published fiscal
 // year, in the order a reader should meet them.

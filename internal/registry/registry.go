@@ -377,6 +377,26 @@ func (r *Registry) Fund(number int) (Fund, bool) {
 	return f.clone(), true
 }
 
+// FundName is the city's own name for a fund number, and whether the registry
+// knows the number at all.
+//
+// It exists beside Fund, which returns the whole entry, because it is the half
+// of it that internal/project's Labels interface declares. That interface is
+// kept to the methods actually used (byob-interfaces.2) AND to types that do
+// not drag this package with them: Fund returns a registry.Fund, so a consumer
+// declaring it would import internal/registry, which is the coupling the
+// narrow interface exists to avoid.
+//
+// A miss is not an error, for the same reason Label's is not: an unknown fund
+// renders as its number rather than failing a build.
+func (r *Registry) FundName(number int) (string, bool) {
+	f, ok := r.funds[number]
+	if !ok {
+		return "", false
+	}
+	return f.Name, true
+}
+
 // FundByLabel returns the fund the city prints as label — its name in
 // funds.yaml, or one of the aliases declared there — matched EXACTLY.
 //

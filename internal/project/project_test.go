@@ -8,7 +8,15 @@ import (
 )
 
 func TestOptionsValidate(t *testing.T) {
-	ok := Options{FiscalYear: 2026, Basis: mapping.BasisAdopted, Scope: "all-funds-gross", Version: "dev"}
+	ok := Options{
+		Columns: []Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+		Scope:   "all-funds-gross",
+		Version: "dev",
+	}
+	col := func(o Options, year int, basis mapping.Basis) Options {
+		o.Columns = []Column{{FiscalYear: year, Basis: basis}}
+		return o
+	}
 
 	cases := []struct {
 		name string
@@ -16,10 +24,28 @@ func TestOptionsValidate(t *testing.T) {
 		want string // substring of the expected error; "" means valid
 	}{
 		{"valid", ok, ""},
-		{"no fiscal year", Options{Basis: ok.Basis, Scope: ok.Scope, Version: ok.Version}, "fiscal year is required"},
-		{"negative fiscal year", func() Options { o := ok; o.FiscalYear = -1; return o }(), "fiscal year is required"},
-		{"no basis", func() Options { o := ok; o.Basis = ""; return o }(), `basis "" is not one of`},
-		{"unknown basis", func() Options { o := ok; o.Basis = "guessed"; return o }(), `basis "guessed" is not one of`},
+		{"no columns", Options{Scope: ok.Scope, Version: ok.Version}, "at least one column is required"},
+		{"no fiscal year", col(ok, 0, mapping.BasisAdopted), "fiscal year is required"},
+		{"negative fiscal year", col(ok, -1, mapping.BasisAdopted), "fiscal year is required"},
+		{"no basis", col(ok, 2026, ""), `basis "" is not one of`},
+		{"unknown basis", col(ok, 2026, "guessed"), `basis "guessed" is not one of`},
+		// A repeated column is refused because anything summing the document
+		// would count it twice -- the same doubling Options exists to prevent,
+		// reached from inside one document instead of across two.
+		{"duplicate column", func() Options {
+			o := ok
+			o.Columns = []Column{{2026, mapping.BasisAdopted}, {2026, mapping.BasisAdopted}}
+			return o
+		}(), "column FY2026 adopted is listed twice"},
+		// Several DISTINCT columns are valid at this level. Options is the type
+		// a trends document shares with a Sankey; refusing more than one here
+		// would make the multi-column document unrepresentable, and it is
+		// Sankey.Graph that refuses to be of two.
+		{"several columns", func() Options {
+			o := ok
+			o.Columns = []Column{{2026, mapping.BasisAdopted}, {2027, mapping.BasisAdopted}}
+			return o
+		}(), ""},
 		{"no scope", func() Options { o := ok; o.Scope = ""; return o }(), "scope is required"},
 		{"no version", func() Options { o := ok; o.Version = ""; return o }(), "version is required"},
 	}
@@ -51,7 +77,11 @@ func TestOptionsValidateAcceptsEveryBasis(t *testing.T) {
 		mapping.BasisAdopted, mapping.BasisRevised, mapping.BasisActual,
 		mapping.BasisAudited, mapping.BasisProjected,
 	} {
-		o := Options{FiscalYear: 2026, Basis: b, Scope: "all-funds-gross", Version: "dev"}
+		o := Options{
+			Columns: []Column{{FiscalYear: 2026, Basis: b}},
+			Scope:   "all-funds-gross",
+			Version: "dev",
+		}
 		if err := o.Validate(); err != nil {
 			t.Errorf("basis %q: got %v, want no error", b, err)
 		}
@@ -60,11 +90,17 @@ func TestOptionsValidateAcceptsEveryBasis(t *testing.T) {
 
 func TestRegistry(t *testing.T) {
 	got := Registry(nil)
-	if len(got) != 1 {
-		t.Fatalf("got %d projections, want 1", len(got))
+	// The names are asserted rather than the count alone, and in order: the
+	// first is the document the site opens on, and a registry that quietly
+	// reordered would move which document `fisc export` writes to data/sankey.json.
+	want := []string{PublishedProjection, TrendsProjection}
+	if len(got) != len(want) {
+		t.Fatalf("got %d projections, want %d", len(got), len(want))
 	}
-	if got[0].Name() != "sankey" {
-		t.Errorf("got %q, want %q", got[0].Name(), "sankey")
+	for i, name := range want {
+		if got[i].Name() != name {
+			t.Errorf("projection %d is %q, want %q", i, got[i].Name(), name)
+		}
 	}
 	// Two calls must not hand back the same instance: a caller that sets a
 	// label registry on one must not be configuring everybody else's.

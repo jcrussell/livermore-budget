@@ -50,7 +50,7 @@ which year it covers.
     ],
     "sources": [{"doc_id": "livermore-budget-fy2026-2027",
                  "pages": [127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140]}],
-    "counts": {"facts": 924, "facts_cited": 924, "series": 231, "points": 924},
+    "counts": {"facts": 924, "series": 231, "points": 924},
     "caveats": ["..."]
   },
   "series": [{
@@ -226,19 +226,25 @@ exactly and to the spine not at all.
 ## counts
 
 ```
-facts        924   every fact matching the scope and one of the four columns
-facts_cited  924   how many a published point carries
-series       231
-points       924
+facts    924   every fact matching the scope and one of the four columns
+series   231
+points   924
 ```
 
-`facts` and `facts_cited` are equal **today**, and the pair is published anyway
-rather than collapsed to one number. On the Sankey the gap between them is
-load-bearing — zero-valued cells and stock rows earn no link — and the same two
-keys meaning the same two things across documents is worth more than eliding a
-key that currently says nothing. If they ever diverge here it is because a fact
-in the slice reached no series, which is precisely what
-`trend-points-tie-to-facts` fails on.
+**There is no `facts_cited` here.** The Sankey publishes one because there it is
+genuinely smaller than `facts` — a zero-valued cell earns no link and a stock row
+earns none either — so the gap is a quantity a check can assert. In this document
+every fact in the slice becomes a point: no netting, nothing dropped for being
+zero, no stocks. A `facts_cited` would be a third name for a number already
+published twice, which is *never name a key for a concept the code does not
+compute* failing from the other direction.
+
+`facts` and `points` are equal today and both ship, because they are computed
+independently — `facts` off the selection, `points` off the series actually
+built. A document that dropped a series publishes `points` below `facts`. The
+same divergence is caught directly, and with the row named, by
+`trend-points-tie-to-facts`; this is the form of it a reader can see in the file
+without running anything.
 
 **No point is dropped for being zero.** The Sankey omits zero-valued *links*
 because d3-sankey draws zero-height paths that churn node order; a trend point
@@ -327,7 +333,11 @@ has no nodes and no links. Three checks cover it instead.
   own argument: one check is about values, one about shape, and a combined check
   would report "N of M" over two different units. Green the day it lands, which
   is the point — it exists for the day the city drops a printed row from one
-  column or adds a line mid-book that only the later years carry.
+  column or adds a line mid-book that only the later years carry. What it does
+  **not** catch is a whole column vanishing from the corpus: every series loses
+  it together, the projection's declared columns shrink with them, and every
+  series is complete over what remains. Nothing here compares the corpus against
+  what it used to hold. Filed as `fisc-7dt`.
 - **`documents-are-checked`** (`fisc-5ep`) — the check that refuses a document no
   check reads. It tests `p.Graph != nil` today and must grow an arm for a
   non-graph shape that *is* covered, or this document is red for being covered

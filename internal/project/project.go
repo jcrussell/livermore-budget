@@ -39,6 +39,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
@@ -117,12 +118,23 @@ func PublishedStem(name string, year int) string {
 // failure mode that no internal consistency check can catch, because two years
 // of a balanced schedule are also balanced.
 type Options struct {
-	// FiscalYear is the year to project. There is no "all years" value: a
-	// Sankey of two budgets is not a chart of anything.
-	FiscalYear int
-	// Basis keeps a budgeted figure from being mixed with an audited one,
-	// which is the most common way a civic budget chart misleads.
-	Basis mapping.Basis
+	// Columns is the (fiscal year, basis) pairs to project, in the order a
+	// reader should meet them. It is never empty.
+	//
+	// IT IS A LIST AND NOT A PAIR because a document need not be of one year.
+	// A Sankey of two budgets is not a chart of anything, so [Sankey] refuses
+	// any Options with more than one column; a four-year trend of one printed
+	// row is a chart of exactly one thing, and cannot be expressed at all if
+	// the year is singular. [Sliced]'s doc comment promised that document
+	// before this field could hold it (fisc-ai0).
+	//
+	// THE ABSENT-MEANS-EVERY-YEAR DESIGN IS DELIBERATELY NOT AVAILABLE. A zero
+	// FiscalYear meaning "all of them" would be smaller, and it would put the
+	// failure mode this whole type exists to prevent back inside it: every
+	// fiscal year the city publishes lives in the same facts.jsonl, and a
+	// projection that quietly selected two of them doubles every figure while
+	// still balancing perfectly. Absent is not zero (docs/agents/conventions.md).
+	Columns []Column
 	// Scope selects the schedule a fact came from. It is also the guard that
 	// keeps a second schedule's facts out of a projection built for the
 	// citywide spine: a department-by-category page is a different scope, and
@@ -133,6 +145,34 @@ type Options struct {
 	Version string
 }
 
+// Column is one printed column of a schedule: a fiscal year read on one basis.
+//
+// BOTH COMPONENTS ARE THE KEY, and neither is redundant. Measured on the
+// committed store: FY2026 and FY2027 are BOTH adopted, so the basis alone does
+// not identify a column; and within any one schedule the year-to-basis map is
+// 1:1 (2024/actual, 2025/revised, 2026/adopted, 2027/adopted), so the year alone
+// carries the basis only by accident of what is mapped today. A schedule
+// printing an actual and a revised figure for the same year would break the
+// second half, which is why the pair is stored rather than derived.
+type Column struct {
+	FiscalYear int
+	Basis      mapping.Basis
+}
+
+// String renders a column the way a report should name one.
+func (c Column) String() string { return fmt.Sprintf("FY%d %s", c.FiscalYear, c.Basis) }
+
+// Describe renders a set of columns for a message. It is here rather than at
+// each call site because three packages format the same list and a reader
+// comparing two findings should not have to notice that they differ.
+func Describe(cols []Column) string {
+	out := make([]string, 0, len(cols))
+	for _, c := range cols {
+		out = append(out, c.String())
+	}
+	return strings.Join(out, ", ")
+}
+
 // Validate reports options that cannot produce a meaningful document.
 //
 // It is strict about the three selectors and about the version because each
@@ -140,14 +180,27 @@ type Options struct {
 // basis and scope it covers, and which binary wrote it, is auditable, and one
 // that leaves any of them blank is a chart with no caption.
 func (o Options) Validate() error {
-	if o.FiscalYear <= 0 {
-		return fmt.Errorf("fiscal year is required (got %d)", o.FiscalYear)
+	if len(o.Columns) == 0 {
+		return errors.New("at least one column is required")
 	}
-	switch o.Basis {
-	case mapping.BasisAdopted, mapping.BasisRevised, mapping.BasisActual,
-		mapping.BasisAudited, mapping.BasisProjected:
-	default:
-		return fmt.Errorf("basis %q is not one of adopted, revised, actual, audited, projected", o.Basis)
+	seen := make(map[Column]bool, len(o.Columns))
+	for _, c := range o.Columns {
+		if c.FiscalYear <= 0 {
+			return fmt.Errorf("fiscal year is required (got %d)", c.FiscalYear)
+		}
+		switch c.Basis {
+		case mapping.BasisAdopted, mapping.BasisRevised, mapping.BasisActual,
+			mapping.BasisAudited, mapping.BasisProjected:
+		default:
+			return fmt.Errorf("basis %q is not one of adopted, revised, actual, audited, projected", c.Basis)
+		}
+		// A repeated column would be counted twice by anything summing the
+		// document, which is the same doubling the field's doc comment is
+		// about, reached by a different route.
+		if seen[c] {
+			return fmt.Errorf("column %s is listed twice", c)
+		}
+		seen[c] = true
 	}
 	if o.Scope == "" {
 		return errors.New("scope is required")
@@ -206,5 +259,5 @@ type Sliced interface {
 // and every node is labelled "Use Of Money And Property" instead of the words
 // the city printed.
 func Registry(l Labels) []Projection {
-	return []Projection{&Sankey{Labels: l}}
+	return []Projection{&Sankey{Labels: l}, &Trends{Labels: l}}
 }

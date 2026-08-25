@@ -79,3 +79,42 @@ func encode(v any, name string) ([]byte, error) {
 	}
 	return b.Bytes(), nil
 }
+
+// Envelope is what every document of this project carries, and it is the
+// leading block of a non-spine document's metadata.
+//
+// THE SANKEY DOES NOT EMBED IT, and the reason is bytes rather than taste.
+// encoding/json emits fields in declaration order, and Metadata's order is
+// generated_by, fiscal_year, fiscal_year_label, basis, scope, currency, units,
+// sources, headline, counts, caveats -- the shared fields are INTERLEAVED with
+// the spine's own. Embedding this type there would move scope, currency and
+// units up beside generated_by and change testdata/sankey.golden.json, which is
+// the frozen contract. So the two structs share field names without sharing a
+// declaration, which is fisc-2u4's option (a), and
+// TestSharedMetadataTagsHaveNotDrifted is what couples them instead.
+//
+// It is a type rather than four repeated fields because the next document after
+// the trends should not have to re-derive which four are common.
+type Envelope struct {
+	// GeneratedBy is build.Get().String(), so a reader can tell which binary
+	// wrote the file.
+	GeneratedBy string `json:"generated_by"`
+	// Scope is the schedule the facts came from. Every document is of exactly
+	// one, which is what keeps two schedules' figures out of one total.
+	Scope string `json:"scope"`
+	// Currency and Units are stated rather than assumed. Money is an integer
+	// count of cents everywhere in this project, and a document that does not
+	// say so is one a reader has to guess about.
+	Currency string `json:"currency"`
+	Units    string `json:"units"`
+}
+
+// envelope fills the block from the options a document was built under.
+func envelope(o Options) Envelope {
+	return Envelope{
+		GeneratedBy: o.Version,
+		Scope:       o.Scope,
+		Currency:    "USD",
+		Units:       "cents",
+	}
+}

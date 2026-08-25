@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -107,6 +108,18 @@ type Labels interface {
 	// node falls back to a slug-derived label so a newly mapped category
 	// renders as something readable instead of failing the build.
 	Label(slug string) (string, bool)
+	// FundName returns the city's own name for a fund number.
+	//
+	// It is here because a document keyed on FUNDS needs it and the Sankey does
+	// not: the spine's finest fund axis is the fund GROUP, whose names come from
+	// the pp.66-67 column headers and are built in. What needs it is the revenue
+	// trends (docs/revenue-trends-contract.md), where a printed row label is not
+	// unique across funds -- "Property Taxes" is printed by four of them and
+	// "Use of Money & Prop" by thirty-eight -- so a series labelled by its row
+	// alone is ambiguous on sight.
+	//
+	// A miss is not an error, as with Label: the number is shown instead.
+	FundName(number int) (string, bool)
 }
 
 // derived carries the two fields fisc verify requires on anything we inferred.
@@ -326,13 +339,16 @@ func (*Sankey) Slices(facts []fact.Fact, version string) []Options {
 		return keys[i].basis < keys[j].basis
 	})
 
+	// ONE OPTIONS PER COLUMN, each carrying a single column. That is this
+	// projection's answer to "what is a document of", and it is the opposite
+	// of the trends projection's: a Sankey of two budgets is not a chart of
+	// anything, so two columns are two documents, not one with two columns.
 	out := make([]Options, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, Options{
-			FiscalYear: k.year,
-			Basis:      k.basis,
-			Scope:      PublishedScope,
-			Version:    version,
+			Columns: []Column{{FiscalYear: k.year, Basis: k.basis}},
+			Scope:   PublishedScope,
+			Version: version,
 		})
 	}
 	return out
@@ -371,6 +387,19 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	if err := o.Validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)
 	}
+	// A Sankey is of ONE column, and the refusal is here rather than in
+	// Validate because it is this projection's rule and not the type's: a
+	// trends document over the same Options is of four. Two years of a
+	// balanced schedule are also balanced, so nothing downstream would notice
+	// -- every figure would simply be twice what the city printed.
+	if len(o.Columns) != 1 {
+		return nil, cmdutil.WithHint(
+			fmt.Errorf("sankey: a graph is of one column, got %d (%s)",
+				len(o.Columns), Describe(o.Columns)),
+			"build one document per column; a Sankey of two budgets sums them and "+
+				"still balances, which is why nothing below would catch it")
+	}
+	col := o.Columns[0]
 
 	selected := selectFacts(facts, o)
 
@@ -494,9 +523,9 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 		Projection:    s.Name(),
 		Metadata: Metadata{
 			GeneratedBy:     o.Version,
-			FiscalYear:      o.FiscalYear,
-			FiscalYearLabel: fiscalYearLabel(o.FiscalYear),
-			Basis:           string(o.Basis),
+			FiscalYear:      col.FiscalYear,
+			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
+			Basis:           string(col.Basis),
 			Scope:           o.Scope,
 			Currency:        "USD",
 			Units:           "cents",
@@ -515,18 +544,27 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	}, nil
 }
 
-// selectFacts keeps the facts this projection is of.
+// selectFacts keeps the facts this projection is of: the scope, and any one of
+// the columns.
 //
-// All three selectors are applied. Filtering on fiscal year alone would let a
-// revised column in beside an adopted one, and filtering on year and basis
-// alone would let a department schedule's rows land on top of the citywide
-// spine's — both of which produce a graph that balances and is wrong.
+// Both selectors are applied. Filtering on the columns alone would let a
+// department schedule's rows land on top of the citywide spine's, and filtering
+// on the scope alone would fold every year the store carries into one document
+// — both of which produce a graph that balances and is wrong.
+//
+// The column test is membership rather than equality because a document may be
+// of several columns. What it is not is a wildcard: an Options with no columns
+// selects NOTHING here, and [Options.Validate] refuses one before it can.
 func selectFacts(facts []fact.Fact, o Options) []fact.Fact {
 	out := make([]fact.Fact, 0, len(facts))
 	for _, f := range facts {
-		if f.FiscalYear == o.FiscalYear && f.Basis == o.Basis && f.Scope == o.Scope {
-			out = append(out, f)
+		if f.Scope != o.Scope {
+			continue
 		}
+		if !slices.Contains(o.Columns, Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {
+			continue
+		}
+		out = append(out, f)
 	}
 	return out
 }

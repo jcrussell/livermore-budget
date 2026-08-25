@@ -28,10 +28,9 @@ const (
 // testOptions are the options the golden file was derived under.
 func testOptions() Options {
 	return Options{
-		FiscalYear: testYear,
-		Basis:      testBasis,
-		Scope:      testScope,
-		Version:    "testdata/sankey.golden.json (hand-derived, Wave 0)",
+		Columns: []Column{{FiscalYear: testYear, Basis: testBasis}},
+		Scope:   testScope,
+		Version: "testdata/sankey.golden.json (hand-derived, Wave 0)",
 	}
 }
 
@@ -203,11 +202,32 @@ func facts(t *testing.T, specs ...cellSpec) []fact.Fact {
 
 // stubLabels stands in for internal/registry, keyed the way registry.Label is
 // keyed: by data/taxonomy.yaml category slug.
+//
+// Fund names live in a second map because the two vocabularies must not share a
+// key space -- the Labels doc comment says why, and a fund number and a category
+// slug could not collide anyway, which is exactly the property worth keeping
+// visible rather than relying on.
 type stubLabels map[string]string
 
 func (s stubLabels) Label(slug string) (string, bool) {
 	l, ok := s[slug]
 	return l, ok
+}
+
+// FundName satisfies Labels. The spine names no fund, so every stub returns a
+// miss unless a test supplies stubFunds instead.
+func (stubLabels) FundName(int) (string, bool) { return "", false }
+
+// stubFunds is stubLabels with fund names attached, for the documents that key
+// on funds rather than on categories.
+type stubFunds struct {
+	stubLabels
+	funds map[int]string
+}
+
+func (s stubFunds) FundName(number int) (string, bool) {
+	n, ok := s.funds[number]
+	return n, ok
 }
 
 // goldenLabels is every category label data/taxonomy.yaml carries for the

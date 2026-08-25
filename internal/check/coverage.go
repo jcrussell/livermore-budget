@@ -3,6 +3,7 @@ package check
 import (
 	"context"
 	"fmt"
+	"sort"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -37,6 +38,18 @@ import (
 // about the corpus. staleDeclarations is the branch that refuses that, and it is
 // what retires an entry automatically instead of leaving an exemption for whoever
 // forgets.
+//
+// IT HAS RETIRED ONE ENTRY ALREADY, WHICH IS THE MECHANISM WORKING RATHER THAN A
+// LOSS. revenue-by-fund (Budget Book pp.127-140) was declared here with a
+// paragraph explaining that drawing its 924 facts into the fund-group spine would
+// double the city's revenue. That is still true of the SPINE, and it is no longer
+// a reason nothing draws them: the revenue-trends document draws all 924, at their
+// own scope, as 231 four-point series. staleDeclarations went red demanding the
+// entry be deleted and the entry was deleted. What did NOT change is the
+// coverage: revenue-detail-ties-to-spine reads the fact store directly through
+// detailSums and never consulted this map, so it still reconciles the same 134
+// cells against the spine. Retiring a declaration here costs nothing, which is
+// what makes the automatic retirement safe.
 var unprojectedScopes = map[string]string{
 	expenditureDetailScope: "Budget Book pp.167-170, General Fund Expenditures by Major " +
 		"Category: the department x object decomposition of p66's General Fund expenditure " +
@@ -47,22 +60,6 @@ var unprojectedScopes = map[string]string{
 		"prints a column for -- the two adopted years -- against spine facts that ARE " +
 		"graph-checked; pp.66-67 print no actual or revised column, so the FY2024 and FY2025 " +
 		"halves are published with nothing to tie to. A department tier in the graph is " +
-		"fisc-gxa.2 / fisc-oxf.",
-	revenueDetailScope: "Budget Book pp.127-140, Revenue Sources by Fund: the line-item and " +
-		"per-fund decomposition of pp.66-67's REVENUE rows, not additional money. Its 231 " +
-		"rows reproduce all six fund groups' TOTAL REVENUES exactly in both budget years " +
-		"-- general 157,873,470 / 164,358,147 and the other five to the cent besides -- so " +
-		"drawing them into the fund-group spine doubles the city's revenue, and unlike the " +
-		"department schedule nothing else would stop it: netCells refuses a fact carrying " +
-		"a department and has no such refusal for a fund. revenue-detail-ties-to-spine " +
-		"reconciles the 462 of its 924 facts the spine prints a column for -- the two " +
-		"adopted years -- against spine facts that ARE graph-checked. It is NOT the whole " +
-		"of the spine's inflow: pp.127-130 print no General Fund Transfers In row, so " +
-		"480,400 in FY2026 and 486,735 in FY2027 are on the spine with no counterpart " +
-		"here, declared as that check's one exception and owed to transfers-by-fund " +
-		"(fisc-5gk.3.1), which prints them. And pp.66-67 print no actual or revised " +
-		"column, so this schedule's FY2024 and FY2025 halves tie to its own 79 printed " +
-		"totals at build time and to nothing on the spine. A fund tier in the graph is " +
 		"fisc-gxa.2 / fisc-oxf.",
 	transfersDetailScope: "Budget Book p76, Summary of Transfers: the per-fund decomposition " +
 		"of pp.66-67's TRANSFER IN and TRANSFER OUT rows, not additional money. Its 22 " +
@@ -155,8 +152,19 @@ type sliceKey struct {
 	scope string
 }
 
-func keyOf(o project.Options) sliceKey {
-	return sliceKey{o.FiscalYear, o.Basis, o.Scope}
+// keysOf is every slice one Options covers, which is one per column.
+//
+// IT RETURNS A LIST BECAUSE ONE DOCUMENT NEED NOT BE ONE SLICE. While every
+// projection was of a single (year, basis) this was a one-to-one map and was
+// spelled as one; a trends document is of four columns of one schedule, so an
+// Options that maps to a single key can no longer be assumed. Anything keying a
+// map on a projection has to iterate this rather than call it once.
+func keysOf(o project.Options) []sliceKey {
+	out := make([]sliceKey, 0, len(o.Columns))
+	for _, c := range o.Columns {
+		out = append(out, sliceKey{c.FiscalYear, c.Basis, o.Scope})
+	}
+	return out
 }
 
 // publishedProjectionBuilt asserts EVERY slice the site publishes was one of the
@@ -211,8 +219,14 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	built := map[slice]bool{}
 	names := make([]string, 0, len(s.Projections))
 	for _, p := range s.Projections {
-		o := p.Options
-		built[slice{p.Name, o.FiscalYear, o.Basis, o.Scope}] = true
+		// One entry PER COLUMN. A document spanning several columns was built
+		// for every one of them, so a published slice it covers must count as
+		// built -- and a document of one column still contributes exactly one
+		// entry, which is why this loop replaces the single assignment rather
+		// than sitting beside it.
+		for _, c := range p.Options.Columns {
+			built[slice{p.Name, c.FiscalYear, c.Basis, p.Options.Scope}] = true
+		}
 		names = append(names, p.String())
 	}
 
@@ -299,11 +313,25 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 	// costing two rounds, which is the thing a report exists not to do.
 	refused := map[sliceKey]int{}
 	for _, f := range s.ProjectionFailures {
-		refused[keyOf(f.Options)] = 0
+		for _, k := range keysOf(f.Options) {
+			refused[k] = 0
+		}
+	}
+
+	// Which slices a projection IS OF, which is what a declaration of "no
+	// projection draws this" is a claim about. It is read off the options rather
+	// than off the facts that came back: a projection of a slice the store
+	// happens to carry nothing for still draws that slice, and the declaration
+	// is still false.
+	drawn := map[sliceKey]bool{}
+	for _, p := range s.Projections {
+		for _, k := range keysOf(p.Options) {
+			drawn[k] = true
+		}
 	}
 
 	var findings []Finding
-	declared := map[string]int{}
+	declared := map[string]map[sliceKey]int{}
 	for _, f := range s.Facts {
 		if projected[f.ID] {
 			continue
@@ -314,7 +342,10 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 			continue
 		}
 		if _, ok := unprojectedScopes[f.Scope]; ok {
-			declared[f.Scope]++
+			if declared[f.Scope] == nil {
+				declared[f.Scope] = map[sliceKey]int{}
+			}
+			declared[f.Scope][k]++
 			continue
 		}
 		findings = append(findings, finding(f.ID,
@@ -323,7 +354,14 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 			f.DocID, f.Page, f.RowLabel, f.FiscalYear, f.Basis, f.Scope))
 	}
 	for _, f := range s.ProjectionFailures {
-		if n := refused[keyOf(f.Options)]; n > 0 {
+		// Summed over the failure's own columns, not read from one key: a
+		// document of four columns that refused to build stranded the facts of
+		// all four, and reporting one column's worth would understate it.
+		n := 0
+		for _, k := range keysOf(f.Options) {
+			n += refused[k]
+		}
+		if n > 0 {
 			findings = append(findings, finding(f.String(),
 				"%d facts in this slice are unprojected because the projection refused to "+
 					"build; see projections-build. Whether their scopes are declared cannot "+
@@ -331,7 +369,7 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 	}
 
-	findings = append(findings, staleDeclarations(s, declared)...)
+	findings = append(findings, staleDeclarations(s, declared, drawn)...)
 
 	held := fmt.Sprintf("%d facts, all of them in one of %d projections",
 		len(s.Facts), len(s.Projections))
@@ -350,51 +388,90 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 
 // describeDeclared renders the deliberately unprojected facts, by scope, with the
 // declared reason: a count alone would let a growing exclusion pass unread.
-func describeDeclared(byScope map[string]int) string {
+func describeDeclared(byScope map[string]map[sliceKey]int) string {
 	out := make([]string, 0, len(byScope))
 	for _, scope := range sortedStrings(byScope) {
 		out = append(out, fmt.Sprintf("%d in scope %q (%s)",
-			byScope[scope], scope, unprojectedScopes[scope]))
+			countOf(byScope[scope]), scope, unprojectedScopes[scope]))
 	}
 	return joinComma(out)
 }
 
-// staleDeclarations reports every unprojectedScopes entry that exempted nothing.
+// countOf is how many facts a scope's per-slice tally covers.
+func countOf(bySlice map[sliceKey]int) int {
+	n := 0
+	for _, c := range bySlice {
+		n += c
+	}
+	return n
+}
+
+// describeSliceKeys names a set of slices the way a finding should, sorted so
+// two runs report in the same order.
+func describeSliceKeys(keys []sliceKey) string {
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].year != keys[j].year {
+			return keys[i].year < keys[j].year
+		}
+		return keys[i].basis < keys[j].basis
+	})
+	out := make([]string, 0, len(keys))
+	for _, k := range keys {
+		out = append(out, fmt.Sprintf("FY%d %s", k.year, k.basis))
+	}
+	return joinComma(out)
+}
+
+// staleDeclarations reports every unprojectedScopes entry that has stopped being
+// true, in any of the three ways it can.
 //
-// The entry is a claim about the corpus — "these facts exist and no projection
-// draws them" — and it can stop being true in two ways that need different
-// fixes, so it says which:
+// The entry is a claim about a SCOPE -- "these facts exist and no projection
+// draws them" -- and each way it can fail needs a different fix, so the finding
+// says which:
 //
-//   - the scope carries facts and something now PROJECTS them. The exemption is
-//     doing nothing and must be deleted; leaving it means the next reader
-//     believes a schedule is out of the chart when it is in it. This is the arm
-//     fisc-u2v (4) asks for, and it is what retires an entry automatically
-//     instead of leaving a 196-fact exemption for whoever forgets.
+//   - THE WHOLE SCOPE IS NOW DRAWN. The exemption is doing nothing and must be
+//     deleted; leaving it means the next reader believes a schedule is out of
+//     the chart when it is in it. This is the arm fisc-u2v (4) asked for, and it
+//     has now fired in anger: the revenue-trends document draws all 924
+//     revenue-by-fund facts and this branch is what made the entry go, in the
+//     same commit, rather than surviving as a false paragraph verify printed on
+//     every run.
 //
-//     IT CANNOT FIRE THROUGH check.Load TODAY, and saying so is the difference
-//     between a guard and a promise: buildProjections builds slices in
-//     spineScope only, so no declared scope can become projected until it learns
-//     to build another (fisc-gxa.2). The arm is written now because that change
-//     is where the entry silently stops being true, and a branch added at the
-//     same time as the thing it guards is a branch nobody has to remember.
+//   - PART OF THE SCOPE IS DRAWN AND PART IS NOT (fisc-rmw). The entry is not
+//     false as a whole, so the arm above stays quiet -- and that silence was the
+//     bug. `declared` counts only facts that fell outside EVERY projection, so a
+//     projection drawing half a scope leaves the other half counted, the total
+//     arm skips, and verify goes on printing the entry's reason VERBATIM beside
+//     a smaller number. A reader sees the count fall and the declaration hold,
+//     which reads as coverage improving under a stable exemption -- the opposite
+//     of what happened. Measured before the fix: a revenue-trends over the two
+//     ADOPTED years only would have left declared["revenue-by-fund"] = 462 and
+//     said nothing.
 //
-//   - no rule writes the scope and no fact carries it. Either the rules were
+//   - NO RULE WRITES THE SCOPE AND NO FACT CARRIES IT. Either the rules were
 //     removed and the entry outlived them, or this string and the one in
-//     mappings/ have drifted apart — which is the mistyped-scope incident this
-//     map exists for, wearing its other face: the facts would be unprojected AND
+//     mappings/ have drifted apart -- the mistyped-scope incident this map
+//     exists for, wearing its other face: the facts would be unprojected AND
 //     undeclared, and this entry is not the declaration anyone thinks it is.
 //
-// THE SECOND ARM ASKS THE RULE FILES, not the fact store, and that is the
+// THE UNIT OF THE PARTIAL ARM IS THE SLICE, not the fact count, and that is the
+// whole of fisc-rmw's argument. describeDeclared prints "%d in scope %q", so a
+// partly-drawn scope prints a smaller number beside an unchanged reason; what a
+// reader needs instead is WHICH (fiscal year, basis) slices moved. sliceKey is
+// the unit factsAreProjected already keys on, so the two halves of this check
+// agree about what a slice is rather than each deciding.
+//
+// THE THIRD ARM ASKS THE RULE FILES, not the fact store, and that is the
 // difference between "this schedule is not mapped here" and "this declaration is
-// wrong". A Subject with no rule files — a hand-built fixture, a miniature of
-// one schedule — is not a repository in which a declaration for another schedule
+// wrong". A Subject with no rule files -- a hand-built fixture, a miniature of
+// one schedule -- is not a repository in which a declaration for another schedule
 // has gone stale, and reporting one would make every fixture carry every
 // schedule to stay green.
 //
 // Same direction as fisc-2sd's third failure mode, where a declared per-part
 // delta that now ties exactly must fail rather than pass quietly. A declaration
 // nobody can see expiring is a declaration that outlives its reason.
-func staleDeclarations(s *Subject, declared map[string]int) []Finding {
+func staleDeclarations(s *Subject, declared map[string]map[sliceKey]int, drawn map[sliceKey]bool) []Finding {
 	written := map[string]bool{}
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -404,23 +481,68 @@ func staleDeclarations(s *Subject, declared map[string]int) []Finding {
 
 	var out []Finding
 	for _, scope := range sortedStrings(unprojectedScopes) {
-		if declared[scope] > 0 {
+		// The slices of this scope some projection is of, and the slices whose
+		// facts still fall outside every one. A scope is stale for the first set
+		// and live for the second.
+		var drawnSlices []sliceKey
+		for k := range drawn {
+			if k.scope == scope {
+				drawnSlices = append(drawnSlices, k)
+			}
+		}
+		var liveSlices []sliceKey
+		for k := range declared[scope] {
+			liveSlices = append(liveSlices, k)
+		}
+
+		// A scope with a REFUSED slice is in an unknown state, not a clean one.
+		// factsAreProjected routes those facts to the refusal rather than to
+		// `declared`, so liveSlices can be empty while the scope genuinely still
+		// exempts everything the refused slice carried -- and this loop would
+		// then demand the declaration be deleted on the strength of a projection
+		// that did not build. Whether the entry is stale cannot be established
+		// until the refusal is, which is what factsAreProjected already tells the
+		// reader about the facts themselves.
+		refusedHere := false
+		for _, f := range s.ProjectionFailures {
+			for _, k := range keysOf(f.Options) {
+				if k.scope == scope {
+					refusedHere = true
+				}
+			}
+		}
+		if refusedHere {
 			continue
 		}
+
 		carried := 0
 		for _, f := range s.Facts {
 			if f.Scope == scope {
 				carried++
 			}
 		}
-		if carried > 0 {
+
+		switch {
+		case len(drawnSlices) > 0 && len(liveSlices) == 0:
 			out = append(out, finding(scope,
 				"unprojectedScopes declares this scope unprojected, but all %d of its facts "+
-					"are in some projection's slice; the declaration is exempting nothing "+
-					"and must be removed", carried))
-			continue
-		}
-		if len(s.Files) > 0 && !written[scope] {
+					"are in some projection's slice (%s); the declaration is exempting "+
+					"nothing and must be removed",
+				carried, describeSliceKeys(drawnSlices)))
+		case len(drawnSlices) > 0 && len(liveSlices) > 0:
+			// Both counts are printed because the two numbers are the finding:
+			// the entry is a claim about a scope and it is now true of only part
+			// of one, so a reader has to be told the shape of the split rather
+			// than handed a total that moved.
+			out = append(out, finding(scope,
+				"unprojectedScopes declares this scope unprojected, and a projection now "+
+					"draws %s while %d of its facts are still unprojected in %s. The entry "+
+					"is no longer true of the whole scope: either draw it exhaustively so "+
+					"this declaration retires, or rewrite the reason to say which slices it "+
+					"still covers",
+				describeSliceKeys(drawnSlices), countOf(declared[scope]),
+				describeSliceKeys(liveSlices)))
+		case carried == 0 && len(s.Files) > 0 && !written[scope]:
 			out = append(out, finding(scope,
 				"unprojectedScopes declares this scope unprojected, and no rule in %s writes "+
 					"it and no fact carries it; the rules that wrote it are gone, or this "+

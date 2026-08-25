@@ -875,3 +875,62 @@ func TestACounterpartWithNoRowPathIsRefused(t *testing.T) {
 		t.Errorf("error %q does not name what would have to be declared", err)
 	}
 }
+
+// TestMakeSeriesIDIsTheFactIDWithoutTheColumn is the relationship the revenue
+// trends contract publishes, checked rather than asserted in prose: a series id
+// is MakeID's tuple minus the fiscal year and the basis.
+//
+// The consequence a reader depends on is the second half: two facts of the SAME
+// printed row in different columns share a series id, and two facts of different
+// rows never do.
+func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
+	const (
+		doc  = "livermore-budget-fy2026-2027"
+		rule = "gf-rev-other-taxes"
+		path = "taxes/other"
+		col  = "general/fund/100"
+	)
+	row := "Industrial Construction Tax"
+
+	base := MakeSeriesID(doc, rule, path, row, col)
+	// Every column of one row agrees.
+	for _, c := range []struct {
+		year  int
+		basis mapping.Basis
+	}{
+		{2024, mapping.BasisActual},
+		{2025, mapping.BasisRevised},
+		{2026, mapping.BasisAdopted},
+		{2027, mapping.BasisAdopted},
+	} {
+		f := Fact{DocID: doc, RuleID: rule, RowPath: path, RowLabel: row, ColumnPath: col,
+			FiscalYear: c.year, Basis: c.basis}
+		if got := f.SeriesID(); got != base {
+			t.Errorf("FY%d %s recomputes to %s, want %s", c.year, c.basis, got, base)
+		}
+		// And the FACT id differs per column, which is what makes the two
+		// identities do different jobs.
+		if id := MakeID(doc, rule, path, row, col, c.year, c.basis); id == base {
+			t.Errorf("fact id and series id collide at %s", id)
+		}
+	}
+
+	// A different row of the same fund, and the same row in a different fund,
+	// are different series. The second is the case the document exists for:
+	// "Property Taxes" is printed by four funds.
+	if MakeSeriesID(doc, rule, path, "Other Row", col) == base {
+		t.Error("two different printed rows share a series id")
+	}
+	if MakeSeriesID(doc, rule, path, row, "special-revenue/fund/310") == base {
+		t.Error("one row label in two funds shares a series id")
+	}
+
+	// The prefixes must differ, so an id is recognizable on sight without a
+	// lookup -- IDPrefix's own doc comment is the rule this extends.
+	if strings.HasPrefix(base, IDPrefix) {
+		t.Errorf("series id %q carries the fact prefix", base)
+	}
+	if !strings.HasPrefix(base, SeriesIDPrefix) {
+		t.Errorf("series id %q does not carry %q", base, SeriesIDPrefix)
+	}
+}

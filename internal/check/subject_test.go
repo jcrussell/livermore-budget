@@ -249,6 +249,8 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"expenditure-detail-ties-to-spine": StatusPass,
 		"revenue-detail-ties-to-spine":     StatusPass,
 		"transfers-detail-ties-to-spine":   StatusPass,
+		"trend-points-tie-to-facts":        StatusPass,
+		"trend-series-are-complete":        StatusPass,
 		"row-funds-match-their-anchors":    StatusPass,
 		"graph-acyclic":                    StatusPass,
 		"derived-nodes-justified":          StatusPass,
@@ -390,16 +392,23 @@ func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
 
 	got := map[int]int{}
 	for _, p := range s.Projections {
+		// The SPINE projection is what this test is about. A projection of
+		// another schedule is not a defect and is not evidence either: it is of
+		// its own scope, over its own columns, and published-projection-built is
+		// what asserts anything about it.
 		if p.Options.Scope != spineScope {
-			t.Errorf("%s is not of scope %q", p, spineScope)
+			continue
 		}
 		if p.Graph == nil {
 			t.Fatalf("%s carries no graph", p)
 		}
-		if p.Graph.Metadata.FiscalYear != p.Options.FiscalYear {
+		if len(p.Options.Columns) != 1 {
+			t.Fatalf("%s was built over %d columns, want one per document", p, len(p.Options.Columns))
+		}
+		if p.Graph.Metadata.FiscalYear != p.Options.Columns[0].FiscalYear {
 			t.Errorf("%s published fiscal year %d", p, p.Graph.Metadata.FiscalYear)
 		}
-		got[p.Options.FiscalYear]++
+		got[p.Options.Columns[0].FiscalYear]++
 	}
 	for year := range years {
 		if got[year] == 0 {

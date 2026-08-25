@@ -53,15 +53,18 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-kind-matches-category":  "pass over 10",
 		"projections-build":           "pass over 1",
 		"published-projection-built":  "pass over 1",
-		"documents-are-checked":       "pass over 1",
-		"facts-are-projected":         "pass over 10",
-		"graph-acyclic":               "pass over 7",
-		"derived-nodes-justified":     "pass over 2",
-		"link-values-tie-to-facts":    "pass over 7",
-		"counts-reconcile":            "pass over 1",
-		"headline-ties-to-facts":      "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
-		"headline-transfer-residual":  "pass over 2",
-		"headline-naive-expenditure":  "pass over 1",
+		// Two projections are registered, but the fixture is a miniature of the
+		// SPINE and the trends projection is of nothing here, so one document is
+		// built and one document is examined.
+		"documents-are-checked":      "pass over 1",
+		"facts-are-projected":        "pass over 10",
+		"graph-acyclic":              "pass over 7",
+		"derived-nodes-justified":    "pass over 2",
+		"link-values-tie-to-facts":   "pass over 7",
+		"counts-reconcile":           "pass over 1",
+		"headline-ties-to-facts":     "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
+		"headline-transfer-residual": "pass over 2",
+		"headline-naive-expenditure": "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
 		// constraint tier, no fact a department or a fund number.
 		"transfer-legs-pair": "vacuous over 0",
@@ -71,10 +74,15 @@ func TestFixtureVerdicts(t *testing.T) {
 		"expenditure-detail-ties-to-spine": "vacuous over 0",
 		"revenue-detail-ties-to-spine":     "vacuous over 0",
 		"transfers-detail-ties-to-spine":   "vacuous over 0",
-		"aggregation-invariance":           "vacuous over 0",
-		"constraint-tier-vocabulary":       "vacuous over 0",
-		"fact-departments-resolve":         "vacuous over 0",
-		"fact-funds-resolve":               "vacuous over 0",
+		// Same reason one step further on: no revenue-by-fund fact means the
+		// trends projection declares no slice, builds no document, and there is
+		// neither a point nor a series to examine.
+		"trend-points-tie-to-facts":  "vacuous over 0",
+		"trend-series-are-complete":  "vacuous over 0",
+		"aggregation-invariance":     "vacuous over 0",
+		"constraint-tier-vocabulary": "vacuous over 0",
+		"fact-departments-resolve":   "vacuous over 0",
+		"fact-funds-resolve":         "vacuous over 0",
 		// No rule file in the fixture subject declares a fund, so there is no
 		// hand-typed number to check against a printed name.
 		"rule-funds-match-their-headings": "vacuous over 0",
@@ -84,10 +92,10 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 18, Vacuous: 15, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 18, Vacuous: 17, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Eighteen passes, fifteen vacuous and one skipped is not thirty-four of
+	// Eighteen passes, seventeen vacuous and one skipped is not thirty-six of
 	// anything, and a run with nothing wrong in it still exits 0.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
@@ -103,14 +111,14 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 15 {
-		t.Fatalf("vacuous count = %d, want 15", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 17 {
+		t.Fatalf("vacuous count = %d, want 17", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
-		t.Error("a run with fifteen vacuous checks failed without --strict")
+		t.Error("a run with seventeen vacuous checks failed without --strict")
 	}
 	if !strict.Failed() {
-		t.Error("a run with fifteen vacuous checks passed under --strict")
+		t.Error("a run with seventeen vacuous checks passed under --strict")
 	}
 	// The statuses must be identical: --strict changes what a vacuous result
 	// means for the exit code, not what any check concluded.
@@ -1401,9 +1409,10 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		s.Projections = []Projection{{
 			Name: "sankey",
 			Options: project.Options{
-				FiscalYear: facts[0].FiscalYear,
-				Basis:      facts[0].Basis,
-				Scope:      expenditureDetailScope,
+				Columns: []project.Column{{
+					FiscalYear: facts[0].FiscalYear, Basis: facts[0].Basis,
+				}},
+				Scope: expenditureDetailScope,
 			},
 		}}
 		// The check is run directly rather than through the whole set: this
@@ -1438,6 +1447,63 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		}
 		if !strings.Contains(findingDetails(res), "drifted apart") {
 			t.Errorf("findings %v do not name the drift\n%s", res.Findings, findingDetails(res))
+		}
+	})
+
+	// THE PARTIAL ARM (fisc-rmw), and it is the one that was silent. The two
+	// arms above are the total cases: everything drawn, or nothing drawn and
+	// nothing written. Between them sits the state that actually arrives when a
+	// projection lands -- HALF a declared scope drawn -- and before this arm the
+	// entry stayed green through it, because `declared` counts only facts that
+	// fell outside EVERY projection, so the total arm's guard skipped and verify
+	// went on printing the entry's reason verbatim beside a smaller number.
+	//
+	// A reader would see the count fall and the declaration hold, which reads as
+	// coverage improving under a stable exemption. It is the opposite.
+	t.Run("half the scope is drawn and half is not", func(t *testing.T) {
+		// Two columns of one declared scope, and a projection of ONE of them --
+		// the shape a revenue-trends over the two adopted years alone would have
+		// had, leaving 462 of 924 facts declared and saying nothing.
+		facts := testFacts()
+		for i := range facts {
+			facts[i].Scope = expenditureDetailScope
+		}
+		other := make([]fact.Fact, 0, len(facts))
+		for _, f := range facts {
+			f.FiscalYear = 2027
+			f.ID = fact.MakeID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath,
+				f.FiscalYear, f.Basis)
+			other = append(other, f)
+		}
+		facts = append(facts, other...)
+		fact.Sort(facts)
+
+		s := factsSubject(t, facts)
+		s.Projections = []Projection{{
+			Name: "half",
+			Options: project.Options{
+				Columns: []project.Column{{FiscalYear: 2027, Basis: facts[0].Basis}},
+				Scope:   expenditureDetailScope,
+			},
+		}}
+		res, err := (&factsAreProjected{}).Run(context.Background(), s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail: the declaration is true of one column "+
+				"and false of the other", res.Status, res.Summary)
+		}
+		details := findingDetails(res)
+		// The finding must name BOTH sides. A finding saying only that something
+		// is wrong would leave the reader to work out which half moved, and the
+		// fix differs: draw the rest, or rewrite the reason.
+		if !strings.Contains(details, "FY2027") || !strings.Contains(details, "FY2026") {
+			t.Errorf("findings do not name which slices are drawn and which are still "+
+				"declared:\n%s", details)
+		}
+		if !strings.Contains(details, "no longer true of the whole scope") {
+			t.Errorf("findings do not say the entry is partly false:\n%s", details)
 		}
 	})
 

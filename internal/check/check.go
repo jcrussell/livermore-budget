@@ -186,6 +186,8 @@ func All() []Check {
 		&expenditureDetailTiesToSpine{},
 		&revenueDetailTiesToSpine{},
 		&transfersDetailTiesToSpine{},
+		&trendPointsTieToFacts{},
+		&trendSeriesAreComplete{},
 
 		&graphAcyclic{},
 		&derivedNodesJustified{},

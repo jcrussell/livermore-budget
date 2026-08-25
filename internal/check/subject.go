@@ -112,6 +112,22 @@ type graphBuilder interface {
 	Graph(facts []fact.Fact, o project.Options) (*project.Graph, error)
 }
 
+// trendsBuilder is a projection whose document is a set of SERIES, and which
+// hands back the document rather than its bytes.
+//
+// It is graphBuilder for the second document shape, declared for the same
+// reason and satisfied by internal/project's Trends.Document: verify checks the
+// structure without parsing back the JSON it is trying to validate.
+//
+// A projection satisfying NEITHER interface still builds and still reports --
+// that is the whole of what fisc-744 changed -- but documentsAreChecked fails
+// it, because a document no structural check reads is a document that can be
+// wrong on the published site while verify prints all-green.
+type trendsBuilder interface {
+	Name() string
+	Document(facts []fact.Fact, o project.Options) (*project.TrendsDocument, error)
+}
+
 // Projection is one built graph, with the options it was built under.
 //
 // The options are carried because they are the difference between a graph that
@@ -126,12 +142,20 @@ type Projection struct {
 	// check that means "every graph" and writes "every projection" is one
 	// non-graph projection away from a nil panic inside a report.
 	Graph *project.Graph
+	// Trends is the built trends document, or nil for a projection that is not
+	// one. Read it through [Subject.TrendDocuments], for Graph's reason.
+	//
+	// EXACTLY ONE OF Graph AND Trends IS NON-NIL on a healthy projection, and
+	// [documentsAreChecked] is what asserts it: a projection carrying neither is
+	// a document no structural check reads, which is the state that lets a wrong
+	// document ship under an all-green verify.
+	Trends *project.TrendsDocument
 }
 
 // String names the projection the way a report should: the file stem plus the
 // slice of the corpus it covers.
 func (p Projection) String() string {
-	return fmt.Sprintf("%s FY%d %s %s", p.Name, p.Options.FiscalYear, p.Options.Basis, p.Options.Scope)
+	return fmt.Sprintf("%s %s %s", p.Name, project.Describe(p.Options.Columns), p.Options.Scope)
 }
 
 // ProjectionFailure is one slice a projection refused to build, with the
@@ -159,7 +183,7 @@ type ProjectionFailure struct {
 // String names the failed slice the way Projection.String names a built one, so
 // a report can list the two together.
 func (f ProjectionFailure) String() string {
-	return fmt.Sprintf("%s FY%d %s %s", f.Name, f.Options.FiscalYear, f.Options.Basis, f.Options.Scope)
+	return fmt.Sprintf("%s %s %s", f.Name, project.Describe(f.Options.Columns), f.Options.Scope)
 }
 
 // Subject is everything the checks read, loaded once.
@@ -233,16 +257,6 @@ type Subject struct {
 	// a single year is not a repository that has lost a published year, and
 	// reading the package constant directly would make it look like one.
 	PublishedYears []int
-	// Registered is the name of every projection the registry returned, whether
-	// or not it produced anything.
-	//
-	// It is carried separately because Projections cannot answer for a
-	// projection that produced NO slices: that one appears in neither list, so
-	// a check reading only those two would not know it exists — while `fisc
-	// export` would still publish its document. Comparing the two is what makes
-	// "every published document is checked" a claim about the REGISTRY rather
-	// than about whatever happened to build.
-	Registered []string
 }
 
 // Graphs is every projection that produced a graph, which is what the
@@ -260,6 +274,20 @@ func (s *Subject) Graphs() []Projection {
 	out := make([]Projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		if p.Graph != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// TrendDocuments is every projection whose document is a set of series, with the
+// options it was built under. It is Graphs for the other shape, and it exists
+// for the same reason: a check that means "every trends document" must not have
+// to write "every projection" and remember the nil.
+func (s *Subject) TrendDocuments() []Projection {
+	out := make([]Projection, 0, len(s.Projections))
+	for _, p := range s.Projections {
+		if p.Trends != nil {
 			out = append(out, p)
 		}
 	}
@@ -352,9 +380,6 @@ func Load(o LoadOptions) (*Subject, error) {
 	}
 	s.PublishedYears = project.PublishedFiscalYears()
 	registry := project.Registry(reg)
-	for _, p := range registry {
-		s.Registered = append(s.Registered, p.Name())
-	}
 	if s.Projections, s.ProjectionFailures, err = buildProjections(
 		registry, s.Facts, o.Version); err != nil {
 		return nil, err
@@ -648,13 +673,17 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		// quietly. That is documentsAreChecked's job, and it is a red check
 		// with a report around it rather than a dead run.
 		g, isGraph := p.(graphBuilder)
+		t, isTrends := p.(trendsBuilder)
 
 		for _, o := range want {
-			if !isGraph {
-				out = append(out, Projection{Name: p.Name(), Options: o})
-				continue
+			built := Projection{Name: p.Name(), Options: o}
+			var err error
+			switch {
+			case isGraph:
+				built.Graph, err = g.Graph(facts, o)
+			case isTrends:
+				built.Trends, err = t.Document(facts, o)
 			}
-			graph, err := g.Graph(facts, o)
 			if err != nil {
 				// Recorded, not returned: see ProjectionFailure. The loop goes
 				// on so that one bad slice does not hide a second one, and so
@@ -662,7 +691,11 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				failed = append(failed, ProjectionFailure{Name: p.Name(), Options: o, Err: err})
 				continue
 			}
-			out = append(out, Projection{Name: p.Name(), Options: o, Graph: graph})
+			// A projection satisfying neither interface is appended with both
+			// document fields nil, which is not an error here and IS a finding
+			// in documentsAreChecked. Refusing it at this level was the old
+			// behaviour and it killed the whole run.
+			out = append(out, built)
 		}
 	}
 	return out, failed, nil
@@ -695,10 +728,9 @@ func factSlices(facts []fact.Fact, version string) []project.Options {
 	out := make([]project.Options, 0, len(keys))
 	for _, k := range keys {
 		out = append(out, project.Options{
-			FiscalYear: k.year,
-			Basis:      k.basis,
-			Scope:      spineScope,
-			Version:    version,
+			Columns: []project.Column{{FiscalYear: k.year, Basis: k.basis}},
+			Scope:   spineScope,
+			Version: version,
 		})
 	}
 	return out
