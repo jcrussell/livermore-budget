@@ -739,3 +739,92 @@ func TestASeriesCountThatDisagreesWithTheSeriesIsRefused(t *testing.T) {
 		t.Errorf("Write error = %q, want it to name both counts", err)
 	}
 }
+
+// TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn is fisc-yi4.
+//
+// The footer's sources and clientConfig.Docs were built from ONE document's
+// metadata -- the year the view opens on -- while CONFIG.years lists every
+// published year and app.js will switch to any of them. citations() drops a
+// fact whose doc_id is not in that map with `if (!doc) continue`, no fallback
+// and no diagnostic, so a year citing a document the opening year does not
+// would render its chart normally and show a provenance panel with fewer rows
+// than the chart has facts. Nothing anywhere would say so.
+//
+// The second year here cites the ACFR, which the opening year does not. Before
+// the union, FISC_CONFIG's docs map held only the budget book.
+func TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn(t *testing.T) {
+	const acfr = "livermore-acfr-fy2025"
+
+	var second map[string]any
+	if err := json.Unmarshal(goldenSankey(t), &second); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta := second["metadata"].(map[string]any)
+	meta["fiscal_year"] = 2027
+	meta["fiscal_year_label"] = "FY 2026-27"
+	// A source the opening year does not carry, alongside one it does -- so the
+	// test distinguishes a union from a replacement.
+	meta["sources"] = []map[string]any{
+		{"doc_id": budgetDocID, "pages": []int{66}},
+		{"doc_id": acfr, "pages": []int{177}},
+	}
+	raw, marshalErr := json.Marshal(second)
+	if marshalErr != nil {
+		t.Fatalf("encode: %v", marshalErr)
+	}
+
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey": goldenSankey(t), "sankey-2027": raw,
+		},
+		Views: []export.View{{
+			Path: export.IndexPath, Template: export.SankeyTemplate,
+			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+		}},
+		Docs: append(budgetDocs(), export.Doc{
+			ID: acfr, Title: "FY 2024-25 Annual Comprehensive Financial Report",
+			Publisher: "City of Livermore, California",
+		}),
+		GeneratedBy: "fisc test",
+		PageText:    pageTextFS(),
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	markup, err := os.ReadFile(filepath.Join(dir, export.IndexPath))
+	if err != nil {
+		t.Fatalf("read index: %v", err)
+	}
+	page := string(markup)
+
+	// THE CLIENT'S MAP IS THE ONE THAT MATTERS: a doc_id missing from it is a
+	// citation app.js drops in silence.
+	// between() keeps its opening marker, so strip it to leave the JSON alone.
+	cfg := strings.TrimPrefix(
+		between(t, page, "window.FISC_CONFIG = ", ";</script>"), "window.FISC_CONFIG = ")
+	var config struct {
+		Docs map[string]struct {
+			PageTextBase string `json:"page_text_base"`
+		} `json:"docs"`
+	}
+	if err := json.Unmarshal([]byte(cfg), &config); err != nil {
+		t.Fatalf("decode FISC_CONFIG: %v", err)
+	}
+	for _, id := range []string{budgetDocID, acfr} {
+		if config.Docs[id].PageTextBase == "" {
+			t.Errorf("FISC_CONFIG.docs has no entry for %q; every fact citing it "+
+				"would lose its citation with no error (docs: %v)", id, config.Docs)
+		}
+	}
+
+	// And the footer advertises both, rather than the opening year's alone.
+	if !strings.Contains(page, "Annual Comprehensive Financial Report") {
+		t.Error("the footer does not cite the second year's document")
+	}
+	// The second year's page text must ship, or the citation resolves to a 404.
+	if _, err := os.Stat(filepath.Join(dir, shippedPageText(acfr, 177))); err != nil {
+		t.Errorf("the second year's cited page text did not ship: %v", err)
+	}
+}

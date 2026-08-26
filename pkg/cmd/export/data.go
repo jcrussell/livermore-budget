@@ -68,20 +68,30 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 	// the failure was still waiting here.
 	version := build.Get().String()
 	out := map[string][]byte{}
-	builtAt := map[string]project.Options{}
+	builtAt := map[string]builtDoc{}
 	for _, p := range project.Registry(reg) {
 		declared := slicesOf(p, facts, version)
 		for _, o := range declared {
-			stem := stemFor(p.Name(), o, len(declared))
+			stem, err := stemFor(p.Name(), o, len(declared))
+			if err != nil {
+				return nil, err
+			}
 			// Two documents landing on one stem would write one file and drop
 			// the other in silence, and a reader would have no way to tell which
 			// of the two they were looking at.
 			if prev, ok := builtAt[stem]; ok {
+				// NAMING BOTH PROJECTIONS, because builtAt spans the whole
+				// registry loop and the two documents need not come from one
+				// projection. While this said "the %s projection wants two
+				// documents" it named only the CURRENT one, so a collision
+				// between, say, the spine and a future one-slice projection read
+				// as a fault in whichever happened to be second.
 				return nil, fmt.Errorf(
-					"the %s projection wants two documents at the stem %q: %s and %s",
-					p.Name(), stem, project.Describe(prev.Columns), project.Describe(o.Columns))
+					"the %s and %s projections both want the stem %q: %s and %s",
+					prev.name, p.Name(), stem,
+					project.Describe(prev.opts.Columns), project.Describe(o.Columns))
 			}
-			builtAt[stem] = o
+			builtAt[stem] = builtDoc{name: p.Name(), opts: o}
 			b, err := p.Build(facts, o)
 			if err != nil {
 				return nil, fmt.Errorf("build the %s projection for %s: %w",
@@ -125,18 +135,18 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 // compares each series against the columns the DOCUMENT declares, so it agrees
 // with itself. project.MissingColumns is the comparison, shared with
 // internal/check rather than spelled twice.
-func assertPublishedBuilt(builtAt map[string]project.Options) error {
+func assertPublishedBuilt(builtAt map[string]builtDoc) error {
 	for _, d := range project.PublishedDocuments() {
-		o, ok := builtAt[d.Stem]
+		b, ok := builtAt[d.Stem]
 		if !ok {
 			return fmt.Errorf(
 				"the site publishes %s and no projection built it; the documents "+
 					"built were: %s", d, joinComma(builtStems(builtAt)))
 		}
-		if missing := project.MissingColumns(d, o); len(missing) > 0 {
+		if missing := project.MissingColumns(d, b.opts); len(missing) > 0 {
 			return fmt.Errorf(
 				"the site publishes %s and the document built at that stem covers %s, "+
-					"missing %s", d, project.Describe(o.Columns), project.Describe(missing))
+					"missing %s", d, project.Describe(b.opts.Columns), project.Describe(missing))
 		}
 	}
 	return nil
@@ -144,7 +154,7 @@ func assertPublishedBuilt(builtAt map[string]project.Options) error {
 
 // builtStems is the stems built, in order, for a refusal that has to say what
 // it did build.
-func builtStems(builtAt map[string]project.Options) []string {
+func builtStems(builtAt map[string]builtDoc) []string {
 	out := make([]string, 0, len(builtAt))
 	for stem := range builtAt {
 		out = append(out, stem)
@@ -174,6 +184,13 @@ func slicesOf(p project.Projection, facts []fact.Fact, version string) []project
 	return out
 }
 
+// builtDoc is a document that has claimed a stem, and which projection claimed
+// it. The name is carried so a collision can name BOTH sides.
+type builtDoc struct {
+	name string
+	opts project.Options
+}
+
 // stemFor is the file stem one of a projection's documents is written under.
 //
 // THE QUESTION IS WHETHER THE PROJECTION PUBLISHES ONE DOCUMENT PER YEAR, and it
@@ -197,11 +214,22 @@ func slicesOf(p project.Projection, facts []fact.Fact, version string) []project
 // document put through PublishedStem is written once per published year, as two
 // byte-identical files one of which claims a year it does not cover. Both
 // directions are pinned by TestStemForAsksHowManyDocumentsNotHowManyColumns.
-func stemFor(name string, o project.Options, slices int) string {
+// It returns an error rather than indexing Columns[0] blind. A zero-column
+// Options is not reachable through project.Slices today, but a projection is an
+// interface any future type can satisfy, and the failure mode of the bare index
+// is a PANIC in a command whose job is to write files -- which is the one shape
+// worse than a refusal here, because a panic mid-write leaves a half-exported
+// directory with no message a reader could act on.
+func stemFor(name string, o project.Options, slices int) (string, error) {
 	if slices == 1 {
-		return name
+		return name, nil
 	}
-	return project.PublishedStem(name, o.Columns[0].FiscalYear)
+	if len(o.Columns) == 0 {
+		return "", fmt.Errorf(
+			"the %s projection declared %d documents and one of them has no columns, "+
+				"so there is no fiscal year to tell it apart by", name, slices)
+	}
+	return project.PublishedStem(name, o.Columns[0].FiscalYear), nil
 }
 
 // joinComma renders a list the way a message should. It is spelled here rather

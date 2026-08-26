@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"io/fs"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
@@ -721,6 +722,61 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 	return sources, clientDocs
 }
 
+// unionSources merges the sources of every year a view publishes into one list,
+// deduplicated and ordered.
+//
+// WHY A UNION AND NOT THE OPENING YEAR'S. The footer and clientConfig.Docs were
+// built from ONE document's metadata -- the year the view opens on -- while
+// CONFIG.years lists every published year and site/app.js will switch to any of
+// them. app.js composes a citation per cited fact as
+// CONFIG.docs[doc_id].page_text_base, and citations() SKIPS a fact whose doc_id
+// is not in that map:
+//
+//	if (!doc) continue;
+//
+// So a year whose document cites a doc_id the opening year does not -- an
+// ACFR-backed column, a schedule mapped out of a different book -- would have
+// its citations silently DROPPED. Not a 404 and not a banner: the provenance
+// panel simply shows fewer rows than the chart has facts, and nothing says so.
+// That is the one failure mode this project exists to prevent, arriving through
+// the only channel that produces no error. The footer's source list had the same
+// shape one level less severely, advertising the opening year's pages under a
+// chart drawn from another year's.
+//
+// THIS IS THE FIX fisc-fjy ALREADY MADE ONE LEVEL UP, which is the argument for
+// it being right: that made the SHIPPED page-text set the union over every VIEW,
+// shape-blind through metadata.sources. This is the same union over every YEAR
+// of one view. The asymmetry that must survive is that it is a union WITHIN a
+// view and never across views -- TestEachViewsFooterCitesItsOwnSources asserts a
+// view's footer does not advertise another view's pages, and it still holds.
+//
+// Latent until the day two published years of one view cite different documents,
+// which is why it is worth a test rather than a comment.
+func unionSources(srcs []sourceMeta) []sourceMeta {
+	pages := map[string]map[int]bool{}
+	for _, s := range srcs {
+		if pages[s.DocID] == nil {
+			pages[s.DocID] = map[int]bool{}
+		}
+		for _, p := range s.Pages {
+			pages[s.DocID][p] = true
+		}
+	}
+	out := make([]sourceMeta, 0, len(pages))
+	for _, id := range sortedKeys(pages) {
+		ps := make([]int, 0, len(pages[id]))
+		for p := range pages[id] {
+			ps = append(ps, p)
+		}
+		// Sorted rather than first-seen: the footer's page list is published
+		// output, so its order has to be a property of the pages and not of
+		// which year happened to open the view.
+		slices.Sort(ps)
+		out = append(out, sourceMeta{DocID: id, Pages: ps})
+	}
+	return out
+}
+
 // projectionRefs is every data file the site publishes, which is the whole set
 // on every page: they are downloadable provenance, not this view's figures.
 func projectionRefs(projections map[string][]byte) []projectionRef {
@@ -748,6 +804,10 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		stems = []string{v.Projection}
 	}
 	years := make([]yearView, 0, len(stems))
+	// THE FOOTER AND THE CLIENT'S DOC MAP ARE THE UNION OVER EVERY YEAR, not the
+	// opening year's. See unionSources for what breaks otherwise; the union is
+	// accumulated here because this loop already decodes every year.
+	var cited []sourceMeta
 	for _, stem := range stems {
 		m := meta
 		if stem != v.Projection {
@@ -755,6 +815,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				return pageData{}, err
 			}
 		}
+		cited = append(cited, m.Sources...)
 		hero, figures := tilesFor(m)
 		years = append(years, yearView{
 			Year:    m.FiscalYear,
@@ -771,7 +832,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		})
 	}
 	hero, figures := tilesFor(meta)
-	sources, clientDocs := sourcesFor(meta.Sources, byID, pageTextBase)
+	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase)
 
 	refs := projectionRefs(o.Projections)
 	files := make(map[string]string, len(refs))

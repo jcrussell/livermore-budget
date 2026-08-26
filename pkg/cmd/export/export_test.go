@@ -547,7 +547,11 @@ func TestStemForAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := stemFor("sankey", c.o, c.slices); got != c.want {
+			got, err := stemFor("sankey", c.o, c.slices)
+			if err != nil {
+				t.Fatalf("stemFor: %v", err)
+			}
+			if got != c.want {
 				t.Errorf("stemFor = %q, want %q", got, c.want)
 			}
 		})
@@ -677,9 +681,12 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 	// The real published set, built exactly as declared, is the control: if this
 	// does not pass, neither arm below is evidence of anything.
-	full := map[string]project.Options{}
+	full := map[string]builtDoc{}
 	for _, d := range project.PublishedDocuments() {
-		full[d.Stem] = project.Options{Columns: d.Columns, Scope: d.Scope}
+		full[d.Stem] = builtDoc{
+			name: d.Projection,
+			opts: project.Options{Columns: d.Columns, Scope: d.Scope},
+		}
 	}
 	if err := assertPublishedBuilt(full); err != nil {
 		t.Fatalf("the declared published set is refused as built: %v", err)
@@ -687,47 +694,49 @@ func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 
 	for _, tc := range []struct {
 		name  string
-		drop  func(map[string]project.Options)
+		drop  func(map[string]builtDoc)
 		wants []string
 	}{
 		{
 			name: "a whole document missing",
-			drop: func(m map[string]project.Options) { delete(m, project.TrendsProjection) },
+			drop: func(m map[string]builtDoc) { delete(m, project.TrendsProjection) },
 			wants: []string{project.TrendsProjection, "no projection built it",
 				project.PublishedProjection},
 		},
 		{
 			name: "a document short one published column",
-			drop: func(m map[string]project.Options) {
-				o := m[project.TrendsProjection]
-				o.Columns = o.Columns[1:]
-				m[project.TrendsProjection] = o
+			drop: func(m map[string]builtDoc) {
+				b := m[project.TrendsProjection]
+				b.opts.Columns = b.opts.Columns[1:]
+				m[project.TrendsProjection] = b
 			},
 			wants: []string{project.TrendsProjection, "missing",
 				project.Describe(project.TrendsColumns()[:1])},
 		},
 		{
 			name: "a document built over another schedule entirely",
-			drop: func(m map[string]project.Options) {
-				o := m[project.TrendsProjection]
-				o.Scope = project.PublishedScope
-				m[project.TrendsProjection] = o
+			drop: func(m map[string]builtDoc) {
+				b := m[project.TrendsProjection]
+				b.opts.Scope = project.PublishedScope
+				m[project.TrendsProjection] = b
 			},
 			wants: []string{project.TrendsProjection, "missing"},
 		},
 		{
 			// The spine is not special-cased, and this is what says so.
 			name: "a published spine year missing",
-			drop: func(m map[string]project.Options) {
+			drop: func(m map[string]builtDoc) {
 				delete(m, project.PublishedStem(project.PublishedProjection, 2027))
 			},
 			wants: []string{"sankey-2027", "no projection built it"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			built := map[string]project.Options{}
-			for stem, o := range full {
-				built[stem] = project.Options{Columns: slices.Clone(o.Columns), Scope: o.Scope}
+			built := map[string]builtDoc{}
+			for stem, b := range full {
+				built[stem] = builtDoc{name: b.name, opts: project.Options{
+					Columns: slices.Clone(b.opts.Columns), Scope: b.opts.Scope,
+				}}
 			}
 			tc.drop(built)
 
@@ -829,5 +838,34 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 			t.Errorf("the corpus builds a document at %q that project.PublishedDocuments does "+
 				"not name, so `fisc verify` asserts nothing about it", stem)
 		}
+	}
+}
+
+// TestStemForRefusesADocumentWithNoColumns covers the index that used to be
+// taken blind.
+//
+// A zero-column Options is not reachable through project.Slices today, but a
+// projection is an interface any future type can satisfy, and the failure mode
+// of `o.Columns[0]` is a PANIC inside the command whose job is writing files --
+// which is worse than any refusal, because it leaves a half-exported directory
+// and no message a reader could act on. It is refused with the reason instead.
+func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
+	// slices > 1, or the one-document branch returns before the index.
+	_, err := stemFor("sankey", project.Options{}, 2)
+	if err == nil {
+		t.Fatal("stemFor accepted an Options with no columns, want a refusal")
+	}
+	for _, want := range []string{"sankey", "no columns"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("stemFor error = %q, want it to name %q", err, want)
+		}
+	}
+
+	// And one column still works, so the guard has not swallowed the real case.
+	got, err := stemFor("sankey", project.Options{
+		Columns: []project.Column{{FiscalYear: 2027, Basis: "adopted"}},
+	}, 2)
+	if err != nil || got != "sankey-2027" {
+		t.Errorf("stemFor = %q, %v; want \"sankey-2027\", nil", got, err)
 	}
 }
