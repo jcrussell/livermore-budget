@@ -488,17 +488,27 @@ function restackLinks(graph) {
   }
 }
 
-function render() {
-  if (!projection) return;
-  const svg = D3.select("#chart");
-  const width = CHART_WIDTH;
-  const height = CHART_HEIGHT;
-
-  // No width or height attributes: the viewBox plus width:100% in the
-  // stylesheet is what makes the drawing scale with its container.
-  svg.attr("viewBox", "0 0 " + width + " " + height);
-  svg.selectAll("g").remove();
-
+/**
+ * Lays a document out, touching nothing on the page.
+ *
+ * IT IS SEPARATE FROM render() SO THAT A DOCUMENT WHICH WILL NOT DRAW CANNOT
+ * LEAVE THE PAGE SHOWING TWO FISCAL YEARS AT ONCE. Everything in the draw that
+ * can throw is here: d3-sankey rejects a link naming a node the document does
+ * not carry, and restackLinks walks what it returns. While this ran inside
+ * render() -- after paintYearWords, buildLegend and buildTable had already
+ * repainted -- a throw left the new year's tiles, caveats, lede and <title>
+ * over the OLD year's chart, with a citation link pointing at the year that was
+ * not drawn (fisc-bsg).
+ *
+ * So showYear lays out FIRST, while the page is still wholly the previous year,
+ * and only then repaints. A throw here propagates out of showYear to the change
+ * handler's .catch, which paints a banner over a page that is still internally
+ * consistent. Re-ordering the repaint alone would not have done it: a throw
+ * after buildLegend leaves the page split the other way.
+ *
+ * @param {FiscProjection} doc
+ */
+function layOut(doc) {
   const sankey = D3.sankey()
     .nodeId(/** @param {LaidNode} d */ (d) => d.id)
     .nodeWidth(NODE_WIDTH)
@@ -509,16 +519,36 @@ function render() {
     // the library. nodeRank puts the crossing count back.
     .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
       nodeRank(a) - nodeRank(b) || b.value - a.value)
-    .extent([[LABEL_GUTTER, 12], [width - LABEL_GUTTER, height - 12]]);
+    .extent([[LABEL_GUTTER, 12], [CHART_WIDTH - LABEL_GUTTER, CHART_HEIGHT - 12]]);
 
   // d3-sankey mutates its input, so it gets a copy and the fetched document
   // stays the thing the table and the detail panel read from.
   /** @type {{nodes:LaidNode[], links:LaidLink[]}} */
   const graph = sankey({
-    nodes: projection.nodes.map((n) => Object.assign({}, n)),
-    links: projection.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
+    nodes: doc.nodes.map((n) => Object.assign({}, n)),
+    links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
   });
   restackLinks(graph);
+  return graph;
+}
+
+/**
+ * Draws a laid-out graph. Pass the result of layOut(); omitted, it lays the
+ * current projection out itself, which is the non-atomic path and is only for
+ * a caller that has nothing else on the page to keep consistent.
+ * @param {{nodes:LaidNode[], links:LaidLink[]}} [laid]
+ */
+function render(laid) {
+  if (!projection) return;
+  const graph = laid || layOut(projection);
+  const svg = D3.select("#chart");
+  const width = CHART_WIDTH;
+  const height = CHART_HEIGHT;
+
+  // No width or height attributes: the viewBox plus width:100% in the
+  // stylesheet is what makes the drawing scale with its container.
+  svg.attr("viewBox", "0 0 " + width + " " + height);
+  svg.selectAll("g").remove();
 
   const gLinks = svg.append("g").attr("class", "links");
   const gNodes = svg.append("g").attr("class", "nodes");
@@ -1040,6 +1070,59 @@ function understands(got, what) {
 }
 
 /**
+ * Reports whether a sankey document carries the shape its schema_version
+ * promises, refusing visibly if it does not.
+ *
+ * IT IS DELIBERATELY NOT PART OF understands(). That function takes a version
+ * NUMBER and every word of its refusal is about version skew -- "the data is
+ * newer than this page", "reload to pick up the current one". A document at the
+ * right version that is simply truncated would get a message that is false, and
+ * the reader would go clear a cache that was never the problem. Two different
+ * failures, two different sentences.
+ *
+ * WHAT IT BUYS IS THE SENTENCE, AND NOT THE ATOMICITY -- measured, because the
+ * two are easy to conflate. Laying out before repainting (see layOut) is what
+ * keeps the page whole: `nodes.map` throws inside layOut, so with this gate
+ * deleted the page STILL refuses without a split repaint. What changes is what
+ * the reader is told. Without it the banner reads "The chart failed to draw:
+ * TypeError: Cannot read properties of null (reading 'map')" -- an internal
+ * error message shown to a reader for what is really a truncated file, and
+ * nothing they could act on. tools/jscheck asserts the wording for that reason
+ * rather than out of fussiness: a check on "a banner appeared" passes with this
+ * function removed.
+ *
+ * IT IS SCOPED TO THE SANKEY DOCUMENT AND NAMED FOR IT. revenue.html ships no
+ * app.js, so there is no second shape to generalise over yet; a gate written
+ * for one document and applied to another would be the more expensive mistake.
+ *
+ * WHAT IT DOES NOT DO is validate the graph. A document whose links name nodes
+ * it does not carry passes here and throws in layOut -- correctly, because that
+ * is a rejection the last-resort .catch exists for, and because a client that
+ * re-validated the whole document would be a second implementation of
+ * `fisc verify`.
+ * @param {any} doc
+ * @param {string} what
+ */
+function drawableSankey(doc, what) {
+  const missing = [];
+  if (!doc || typeof doc !== "object") missing.push("the document itself");
+  else {
+    if (!Array.isArray(doc.nodes)) missing.push("nodes");
+    if (!Array.isArray(doc.links)) missing.push("links");
+    if (!doc.metadata || typeof doc.metadata !== "object") missing.push("metadata");
+  }
+  if (!missing.length) return true;
+  fail(
+    "This page will not draw " + what + ": it declares schema_version " +
+    SCHEMA_VERSION + ", which promises " + missing.join(", ") + ", and the file " +
+    "does not carry " + (missing.length === 1 ? "it" : "them") + ". The file is " +
+    "truncated or is not the document this page expected. The chart you are " +
+    "looking at is the year it was already showing."
+  );
+  return false;
+}
+
+/**
  * What one showYear attempt came to.
  *
  * THREE OUTCOMES AND NOT A BOOLEAN, because "did not draw" was two different
@@ -1117,6 +1200,15 @@ async function showYear(year) {
   // projection it was handed, so agreeing with the config is not evidence the
   // file on the wire agrees too.
   if (!understands(doc.schema_version, year.path)) return FAILED;
+  if (!drawableSankey(doc, year.path)) return FAILED;
+
+  // LAY OUT BEFORE MUTATING ANYTHING. Every throw left in the draw is in here
+  // -- a link naming a node the document does not carry is the realistic one --
+  // and while this ran at the END of the repaint, such a throw left the page
+  // showing the new year's words over the old year's chart (fisc-bsg). Doing it
+  // first means a failure propagates to the change handler's .catch with the
+  // page still wholly the year it was already on.
+  const laid = layOut(doc);
 
   projection = doc;
   // A refusal from an earlier attempt is about a year no longer on screen, and
@@ -1136,7 +1228,7 @@ async function showYear(year) {
   buildLegend();
   buildDerivedList();
   buildTable();
-  render();
+  render(laid);
   return DREW;
 }
 

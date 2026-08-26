@@ -188,24 +188,24 @@ export async function checks() {
 
   // ------------------------------------------------- defect 3, the other half
   //
-  // The .catch on the change handler is the LAST RESORT and it needs a reachable
-  // case, or it is an unfalsifiable claim sitting in the file.
+  // A document that parses, passes the schema gate and is then structurally
+  // wrong. This used to walk into buildLegend and throw MID-REPAINT: the .catch
+  // painted a banner, and left the new year's tiles, caveats, lede and <title>
+  // over the OLD year's chart, with a citation link naming the year that was
+  // not drawn (fisc-bsg). A page whose words and whose figures are about
+  // different fiscal years is a worse outcome than a page that refuses.
   //
-  // Pulling response.json() inside showYear's try removed the case that
-  // motivated it, so the only rejections left are synchronous throws from the
-  // DRAWING that follows -- a document that parses, passes the schema gate, and
-  // is then structurally wrong. That is a real state: the schema version says
-  // what keys to expect and nothing validates that they are there.
-  //
-  // main() has had this .catch all along; the change handler had none, so the
-  // same document reached through the toggle produced silence.
+  // So it is now refused BEFORE anything repaints, by drawableSankey, and this
+  // check asserts both halves: a banner appears AND the page is still wholly
+  // the year it was already showing. Asserting the banner alone is what let the
+  // split state ship -- `make js` was green over it.
   {
     const { app, main } = page({
       config,
       fetch: plannedFetch({
         "data/sankey.json": { doc },
-        // Right version, no graph. understands() lets it through and the paint
-        // walks into it.
+        // Right version, no graph. understands() lets it through, because the
+        // version really is one this page renders.
         "data/sankey-2027.json": { doc: { schema_version: 1, metadata: {}, nodes: null, links: null } },
       }),
     });
@@ -214,13 +214,72 @@ export async function checks() {
     await settle();
 
     const banners = refusals(main);
+    const lede = app.dom.byId.get("lede-year");
+    const stillFirst = lede && lede.textContent === "FY 2025-26 adopted" &&
+      app.dom.document.title.includes("FY 2025-26");
+    // THE MESSAGE IS THE ASSERTION, and that is not fussiness about wording.
+    // Measured: laying out before repainting ALREADY leaves this page whole,
+    // because layOut is where `nodes.map` throws -- so "a banner appeared and
+    // the page is on one year" passes with the gate deleted. What the gate buys
+    // is the SENTENCE: a reader gets "the file is truncated" instead of
+    // "TypeError: Cannot read properties of null (reading 'map')", which is an
+    // internal error shown to a reader for what is really a bad file. Assert
+    // the thing the gate actually changes, or the check does not cover it.
+    const text = banners.length ? banners[0].textContent : "";
+    const explains = text.includes("truncated") && !text.includes("TypeError");
     out.push({
-      name: "a year document that parses but will not draw is reported, not swallowed",
-      ok: banners.length === 1,
+      name: "a year document with no graph is refused, in words a reader can act on",
+      ok: banners.length === 1 && Boolean(stillFirst) && explains,
       detail: `${banners.length} refusal banner(s) after a well-formed document with no graph` +
+        (banners.length ? `: "${text}"` : "") +
+        `; the page still reads "${lede ? lede.textContent : "(no lede)"}", and the banner names a ` +
+        `truncated FILE rather than reporting a TypeError at the reader`,
+    });
+  }
+
+  // ------------------------------------------- the last resort, kept reachable
+  //
+  // THE .catch ON THE CHANGE HANDLER NEEDS A REACHABLE CASE OR IT IS AN
+  // UNFALSIFIABLE CLAIM SITTING IN THE FILE, and the gate above took its only
+  // one away. This supplies another, and a more honest one: a document whose
+  // shape is entirely correct and whose CONTENT is not -- a link naming a node
+  // the document does not carry, which is what a truncated or mis-joined file
+  // actually looks like. d3-sankey throws "missing: <id>" on it.
+  //
+  // The gate deliberately does not catch this. Re-validating the graph in the
+  // client would be a second implementation of `fisc verify`, and there will
+  // always be a throw nobody anticipated -- which is the whole point of having
+  // a last resort. What matters is that reaching it still leaves the page
+  // consistent, and laying out BEFORE repainting is what buys that.
+  {
+    const { app, main } = page({
+      config,
+      fetch: plannedFetch({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": {
+          doc: {
+            schema_version: 1,
+            metadata: { fiscal_year: 2027 },
+            nodes: [{ id: "a", label: "A", value_cents: 1 }],
+            links: [{ source: "a", target: "not-a-node", value_cents: 1, fact_ids: [], kind: "revenue" }],
+          },
+        },
+      }),
+    });
+    await settle();
+    clickYear(app, "sankey-2027");
+    await settle();
+
+    const banners = refusals(main);
+    const lede = app.dom.byId.get("lede-year");
+    const stillFirst = lede && lede.textContent === "FY 2025-26 adopted";
+    out.push({
+      name: "a document that lays out badly reaches the last-resort catch, and repaints nothing",
+      ok: banners.length === 1 && Boolean(stillFirst),
+      detail: `${banners.length} banner(s) for a link naming a node the document does not carry` +
         (banners.length ? `: "${banners[0].textContent}"` : "") +
-        `; without a .catch on the change handler this is an unhandled rejection and a ` +
-        `page left half-repainted`,
+        `; the page still reads "${lede ? lede.textContent : "(no lede)"}", because layOut() runs ` +
+        `before the first repaint rather than after the last`,
     });
   }
 
