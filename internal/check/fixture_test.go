@@ -196,15 +196,6 @@ func testFacts(cells ...testCell) []fact.Fact {
 	return out
 }
 
-// testDocs builds an extraction whose page text carries each fact's token at that
-// fact's offset, by writing the tokens into a padded buffer.
-//
-// It is derived from the facts on purpose: the fixture then satisfies
-// fact-offset-points-at-token by construction, and these tests are about the other
-// checks. A test that wants the offset check to FAIL mutates a fact AFTER the
-// subject is built, and the input-mutation tests in subject_test.go do it properly
-// — through Load, over a copy of the real corpus, where the pages are fixed and it
-// is the fact store that moves.
 // inlinePageDoc builds a one-page document whose text is written in the test.
 //
 // testDocs derives its pages FROM the facts, which is right for the provenance
@@ -231,6 +222,15 @@ func inlinePageDoc(t *testing.T, docID string, page int, text string) *corpus.Do
 	return d
 }
 
+// testDocs builds an extraction whose page text carries each fact's token at that
+// fact's offset, by writing the tokens into a padded buffer.
+//
+// It is derived from the facts on purpose: the fixture then satisfies
+// fact-offset-points-at-token by construction, and these tests are about the other
+// checks. A test that wants the offset check to FAIL mutates a fact AFTER the
+// subject is built, and the input-mutation tests in subject_test.go do it properly
+// — through Load, over a copy of the real corpus, where the pages are fixed and it
+// is the fact store that moves.
 func testDocs(t *testing.T, facts []fact.Fact) map[string]*corpus.Doc {
 	t.Helper()
 	type key struct {

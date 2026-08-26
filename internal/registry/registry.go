@@ -94,22 +94,11 @@ var constraintTiers = []string{
 	"unknown",
 }
 
-// Alias is a spelling the CITY prints for a category or a fund, on the pages
-// named. Every alias is published text, verbatim including its abbreviations
-// and its typos, so a mapping rule can match printed labels without
-// normalizing them: normalization is what would let "Measure D" collapse onto
-// two different funds.
-//
-// Pages are required for a fund alias and say where the string was read, so
-// the claim "the city prints this" is checkable rather than asserted.
-//
-// Note carries the evidence where the term alone does not establish which
-// entry it names — a rename such as fund 211's "Police Evidence", or an
-// abbreviation that more than one fund could plausibly claim. The term is
-// published; the binding of that term to an entry is ours.
 // Alias is one string the city prints for a thing this registry names
-// differently. Term is the printed spelling, verbatim, and Pages says where to
-// go and look — an alias nobody can check is a rename we have made up.
+// differently. Term is the printed spelling, verbatim -- abbreviations and
+// typos included, because normalizing is what would let "Measure D" collapse
+// onto two different funds -- and Pages says where to go and look. An alias
+// nobody can check is a rename we have made up.
 //
 // Derived draws the fourth provenance invariant through this channel: binding a
 // printed string to an entry is sometimes a mechanical reading and sometimes an
