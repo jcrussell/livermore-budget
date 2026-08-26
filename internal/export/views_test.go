@@ -297,8 +297,26 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			Template: export.SankeyTemplate, Projection: "sankey"}}, "not an .html file"},
 		{"a path in a subdirectory", []export.View{ok, {Path: "views/revenue.html",
 			Template: export.SankeyTemplate, Projection: "sankey"}}, "not at the site root"},
+		// THE SHADOWING MESSAGE, not "not an .html file". This case is named for
+		// the fixed-layout guard and used to assert the suffix check, which is to
+		// say it pinned the guard's UNREACHABILITY: every fixedPaths key is
+		// caught by the suffix check first, so the arm could never fire. The
+		// distinction is what the reader does next -- "not an .html file" invites
+		// renaming app.js to app.html, which shadows nothing and is still wrong.
 		{"a path that shadows an asset", []export.View{ok, {Path: "app.js",
-			Template: export.SankeyTemplate, Projection: "sankey"}}, "not an .html file"},
+			Template: export.SankeyTemplate, Projection: "sankey"}},
+			"part of the fixed site layout"},
+		// And a genuine non-html path still gets the suffix message, so moving
+		// the arm has not swallowed the case it used to answer.
+		{"a path that shadows nothing and is not html", []export.View{ok,
+			{Path: "notes.txt", Template: export.SankeyTemplate, Projection: "sankey"}},
+			"not an .html file"},
+		// A lede on a template that renders none was set, exported and dropped in
+		// silence -- the field is a trap for the next caller unless it fails.
+		{"a lede the template cannot render", []export.View{ok,
+			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
+				Lede: "a sentence that would go nowhere"}},
+			"has no {{.Lede}}"},
 		{"a projection that was not built", []export.View{ok, {Path: "revenue.html",
 			Template: export.SankeyTemplate, Projection: "nope"}}, "which was not built"},
 		{"no template", []export.View{ok, {Path: "revenue.html", Projection: "sankey"}},

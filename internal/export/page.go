@@ -402,7 +402,21 @@ type cellRef struct {
 	Missing bool
 	// Negative marks a contra row — the General Fund's ERAF and RPTTF Reduction
 	// are printed in parentheses and published signed — so the stylesheet can
-	// show it as the document does rather than as a minus sign in a table.
+	// colour the cell and fill the mark's bar downward.
+	//
+	// THE CELL STILL RENDERS A MINUS SIGN, DELIBERATELY, and this comment used
+	// to say the opposite: that the flag existed "so the stylesheet can show it
+	// as the document does rather than as a minus sign in a table". Rendering
+	// (14,086,438) as the city prints it was considered and refused, because
+	// screen readers do not announce parentheses at default punctuation
+	// settings — the cell would be read aloud as a POSITIVE figure, and the
+	// minus sign is the only part of it that carries direction to a reader who
+	// is not looking at the colour. Nine cells ship. Accounting convention is a
+	// visual convention, and this page has one reader it cannot see.
+	//
+	// So what the flag drives is .contra: the cell's colour, and .mark-bar.contra
+	// in the mark beside it, where direction really is geometric and the bar
+	// hanging below the baseline says it without punctuation.
 	Negative bool
 	// New repeats the column's group boundary onto the body cell, so the rule
 	// between two measurements runs down the table rather than stopping at the

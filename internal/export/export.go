@@ -130,11 +130,25 @@ type View struct {
 	// Projection is the filename stem of the document this view renders. It
 	// must be a key of [Options.Projections].
 	Projection string
-	// Title is the <title> and the page heading. Lede is the sentence under it.
+	// Title is the <title>, and on a template that renders one, the page
+	// heading. Lede is the sentence under it.
 	//
 	// BOTH ARE THE CALLER'S WORDS, not composed here. A packager that wrote
 	// prose about a document would be making a claim about figures it is
 	// forbidden to recompute; what it may do is render what it was handed.
+	//
+	// ONLY THE TRENDS TEMPLATE RENDERS A LEDE, and that is a property of the
+	// documents rather than an oversight. The spine's lede wraps a live
+	// <span id="lede-year"> that app.js rewrites on every year switch, so it
+	// cannot be a string handed over once at package time; its <h1> is a
+	// standing question rather than a description of one year, which is why it
+	// differs from the <title> that carries the year. The trends page has one
+	// document, no year control and no such span, so both are simply rendered.
+	//
+	// A Lede on a template that renders none is REFUSED rather than dropped --
+	// see validate. It was silently ignored, which is a trap for the next
+	// caller: the field is set, the export succeeds, and the sentence is
+	// nowhere on the page.
 	Title string
 	Lede  string
 	// YearStems are the documents that are the same projection for different
@@ -330,18 +344,33 @@ func (v View) validate(built map[string][]byte) error {
 	switch {
 	case v.Path == "":
 		return errors.New("a view has no output path")
+	// THIS ARM RUNS BEFORE THE SUFFIX CHECK, and the order is the whole point.
+	// Behind it, every fixedPaths key -- .fisc-export, app.js, style.css,
+	// .nojekyll -- was caught first by "is not an .html file", and any
+	// data/x.html by the flat-root check, so the branch could never fire on any
+	// input. views_test.go's case named "a path that shadows an asset" asserted
+	// "not an .html file", which is to say it pinned the arm's unreachability
+	// rather than the shadowing it is named for.
+	//
+	// The distinction matters to whoever hits it: "app.js is not an .html file"
+	// invites you to rename it to app.html, which shadows nothing and is still
+	// wrong. "app.js is part of the fixed site layout" says why.
+	case fixedPaths[v.Path], strings.HasPrefix(v.Path, DataDir+"/"):
+		return fmt.Errorf("view path %q is part of the fixed site layout", v.Path)
 	case !strings.HasSuffix(v.Path, ".html"):
 		return fmt.Errorf("view path %q is not an .html file", v.Path)
 	case path.Base(v.Path) != v.Path:
 		// Flat, per the View doc comment: every asset path in the output is
 		// relative, so a page in a subdirectory would need ../ on all of them.
 		return fmt.Errorf("view path %q is not at the site root", v.Path)
-	case fixedPaths[v.Path], strings.HasPrefix(v.Path, DataDir+"/"):
-		return fmt.Errorf("view path %q is part of the fixed site layout", v.Path)
 	case v.Projection == "":
 		return fmt.Errorf("view %q names no projection", v.Path)
 	case v.Template == "":
 		return fmt.Errorf("view %q names no template", v.Path)
+	case v.Lede != "" && v.Template != TrendsTemplate:
+		return fmt.Errorf(
+			"view %q sets a lede and renders template %q, which has no {{.Lede}}; "+
+				"the sentence would be dropped in silence", v.Path, v.Template)
 	}
 	if _, ok := built[v.Projection]; !ok {
 		// Named rather than "a projection is missing": the fix differs by which

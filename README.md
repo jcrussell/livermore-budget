@@ -42,10 +42,16 @@ one, because naively summing the expenditure column double-counts transfers by
 23%, and showing the error you are avoiding is more useful than quietly avoiding
 it.
 
-The three detail schedules are published and checked but **not yet drawn**: the
-chart is still the fund-group spine alone, and `fisc verify` declares each
-undrawn schedule with the reason it is undrawn rather than leaving it unsaid. The
-CIP and the ACFR are extracted and entirely unmapped. See `bd ready`.
+The site publishes **two pages**. `index.html` is the fund-group spine as a
+Sankey, with a toggle between the two adopted years. `revenue.html` draws all
+**924** of pp.127-140 — 231 printed rows across four columns, every figure a link
+to the extracted text of the page it was read from, and a per-row mark whose
+scale is that row's own.
+
+The other two detail schedules are published and checked but **not yet drawn**:
+pp.167-170 (196 facts) and p.76 (88). `fisc verify` declares each undrawn
+schedule with the reason it is undrawn rather than leaving it unsaid. The CIP and
+the ACFR are extracted and entirely unmapped. See `bd ready`.
 
 ## Build and look at it
 
@@ -92,7 +98,8 @@ data/extracted/<doc>/              786 pages of -layout text + -bbox geometry,
   ▼
 facts/facts.jsonl                  1,448 content-addressed facts, each carrying
                                    doc_id / page / offset / token
-  │  internal/project              one projection per (fiscal_year, basis, scope)
+  │  internal/project              projections over (columns, scope): one column
+  │                                 per Sankey year, four for the revenue trends
   ▼
 dist/                              static site: d3-sankey, no bundler, no build step
 ```
@@ -133,13 +140,14 @@ for the citywide spine and
 [`docs/revenue-trends-contract.md`](docs/revenue-trends-contract.md) for the
 per-fund revenue series.
 
-Two things a newcomer should know. A git remote is configured but **nothing has
-been pushed to it**, so CI has never run and the site has never deployed —
-`dist/` is a local artifact. The site publishes from the `pages-build` and
+One thing a newcomer should know. The site publishes from the `pages-build` and
 `pages-deploy` jobs at the foot of
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — in that file rather
 than a workflow of their own so they can `needs:` the checks, on a push to
 `main` that has already gone green, once Pages is enabled for the repository
-(Settings → Pages → Source → *GitHub Actions*). And the extracted page text is
-cited by a GitHub URL that does not resolve until that first push lands; that
-is `fisc-ze7`.
+(Settings → Pages → Source → *GitHub Actions*). `dist/` is gitignored and is
+built locally by `make site`.
+
+An agent working here never pushes: the repository owner runs `git push` and
+`git pull`, so unpushed local commits are the expected end of a session rather
+than unfinished work. See [`docs/agents/workflow.md`](docs/agents/workflow.md).

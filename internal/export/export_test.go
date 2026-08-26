@@ -597,17 +597,6 @@ func TestWriteRefusesBadInput(t *testing.T) {
 	}
 }
 
-// The packager's schema constant is a deliberate second copy of the producer's:
-// internal/export consumes projections as bytes and does not import
-// internal/project, so nothing but an assertion holds the two together. This
-// test is that assertion, and the reason the duplication is safe rather than
-// merely tolerated. Without it the constants drift the first time
-// project.SchemaVersion moves, and buildPage then accepts exactly the document
-// its gate exists to refuse — silently, because a schema bump changes what the
-// graph means and not what its keys are called.
-//
-// When project.SchemaVersion moves, move export.SchemaVersion and
-// SCHEMA_VERSION in site/app.js in the same change.
 // TestPrimaryProjectionIsPinnedToTheProducer keeps the packager's idea of which
 // document drives the page in step with the producer's.
 //
@@ -626,6 +615,17 @@ func TestPrimaryProjectionIsPinnedToTheProducer(t *testing.T) {
 	}
 }
 
+// The packager's schema constant is a deliberate second copy of the producer's:
+// internal/export consumes projections as bytes and does not import
+// internal/project, so nothing but an assertion holds the two together. This
+// test is that assertion, and the reason the duplication is safe rather than
+// merely tolerated. Without it the constants drift the first time
+// project.SchemaVersion moves, and buildSankeyPage then accepts exactly the
+// document its gate exists to refuse — silently, because a schema bump changes
+// what the graph means and not what its keys are called.
+//
+// When project.SchemaVersion moves, move export.SchemaVersion and
+// SCHEMA_VERSION in site/app.js in the same change.
 func TestSchemaVersionIsPinnedToTheProducer(t *testing.T) {
 	if export.SchemaVersion != project.SchemaVersion {
 		t.Errorf("export.SchemaVersion is %d but project.SchemaVersion is %d; "+

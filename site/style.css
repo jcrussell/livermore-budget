@@ -908,8 +908,12 @@ noscript p {
   text-transform: lowercase;
 }
 /* A contra row — the General Fund's ERAF and RPTTF Reduction — is printed in
-   parentheses by the city and published signed by the document. Rendering it
-   as the city does keeps the page and the page it cites saying one thing. */
+   parentheses by the city and published signed by the document. The CELL keeps
+   its minus sign rather than borrowing the city's parentheses, because screen
+   readers do not announce parentheses at default settings and would read the
+   figure aloud as positive; the colour here is a second signal and never the
+   only one. The mark beside it carries the direction geometrically, with the
+   bar hanging below the baseline. */
 .series-table .contra a {
   color: var(--critical);
 }
@@ -1006,8 +1010,8 @@ noscript p {
   fill: var(--critical);
 }
 /* THE BASELINE IS LOAD-BEARING, so it is a real line and not a hairline hint.
-   The caption defines a published zero as "a bar sitting flat on the line", and
-   in a contra row it is the only thing separating up from down. It was
+   The caption defines a published zero as "a dot on the line", and in a contra
+   row the baseline is the only thing separating up from down. It was
    var(--border) -- 1.24:1 light, 1.34:1 dark, fainter than the table's own
    rules and well under 3:1 -- and the MEASURED table above did not list it,
    which is how a load-bearing element ends up unmeasured in a block that claims
