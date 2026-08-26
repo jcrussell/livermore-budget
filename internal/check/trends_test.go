@@ -203,12 +203,29 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 	dropped := series.Points[1]
 	series.Points = series.Points[:1]
 
-	// The values check must stay QUIET, or this test proves nothing about the
-	// division of labour between the two.
+	// THE TWO CHECKS OVERLAP HERE, AND THAT IS WRITTEN DOWN RATHER THAN WISHED
+	// AWAY. This block used to say the values check "must stay QUIET, or this
+	// test proves nothing about the division of labour between the two", and it
+	// was wrong three times over (fisc-ewt): the premise was false, the
+	// condition was inverted against its own comment, and the body was t.Logf so
+	// it could not fail in either direction.
+	//
+	// What actually happens, reproduced rather than reasoned about: dropping a
+	// point reddens BOTH checks. trend-points-tie-to-facts fails through its
+	// REVERSE arm, because the dropped point's fact is still in
+	// factsFor(p.Options) and no point publishes it; trend-series-are-complete
+	// fails because the series is short a column. That is redundancy, not a
+	// division of labour, and it is very likely the right answer -- two
+	// independent statements about one corruption is what makes a check set
+	// hard to fool. It simply was not what the file claimed.
 	points := runTrendPoints(t, s)
-	if points.Status != StatusFail ||
-		!strings.Contains(findingDetails(points), "no point publishes it") {
-		t.Logf("trend-points-tie-to-facts: %s", points.Summary)
+	if points.Status != StatusFail {
+		t.Errorf("trend-points-tie-to-facts = %s on a dropped point, want fail: %s",
+			points.Status, points.Summary)
+	}
+	if !strings.Contains(findingDetails(points), "no point publishes it") {
+		t.Errorf("trend-points-tie-to-facts did not report the unpublished fact: %s",
+			findingDetails(points))
 	}
 
 	res, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
@@ -283,4 +300,82 @@ func runTrendPoints(t *testing.T, s *Subject) Result {
 		t.Fatalf("Run: %v", err)
 	}
 	return res
+}
+
+// TestAPointInAnUndeclaredColumnIsCaught is fisc-4j5's check-side half, and the
+// mutation is deliberately a GENUINE point: every field matches a real fact,
+// the series id recomputes, the amount and all four provenance fields agree.
+// Only its COLUMN is one the document does not publish.
+//
+// That is the shape nothing could see. comparePoint compares a point against
+// its own fact, which agrees; and the reverse sweep walks factsFor(p.Options),
+// which filters on the declared columns, so the fact behind the extra point is
+// never looked at. Both arms stayed green while a figure was being published
+// that no page could draw -- internal/export drops it, having no column to put
+// it in.
+//
+// The test asserts the OTHER two conclusions as well, because a new arm that
+// reddens everything is not a check, it is a broken one.
+func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
+	facts := trendsTestFacts(t)
+
+	// A one-column document, so FY2027's facts are outside it entirely.
+	o := project.Options{
+		Columns: trendsTestColumns[:1], Scope: trendsTestScope, Version: testVersion,
+	}
+	doc, err := (&project.Trends{}).Document(facts, o)
+	if err != nil {
+		t.Fatalf("build the trends document: %v", err)
+	}
+	s := &Subject{
+		Facts:       facts,
+		Projections: []Projection{{Name: "revenue-trends", Options: o, Trends: doc}},
+	}
+
+	// Before the mutation the one-column document is clean, which is what makes
+	// the assertions below about the mutation rather than about the fixture.
+	if got := runTrendPoints(t, s).Status; got != StatusPass {
+		t.Fatalf("the unmutated one-column document reported %s, want pass", got)
+	}
+
+	// Now publish FY2027 as well, from the real FY2027 fact.
+	series := &s.Projections[0].Trends.Series[0]
+	var extra project.Point
+	found := false
+	for _, f := range facts {
+		if f.FiscalYear == 2027 && f.SeriesID() == series.SeriesID {
+			extra = project.Point{
+				FiscalYear: f.FiscalYear, Basis: string(f.Basis), AmountCents: f.AmountCents,
+				FactID: f.ID, DocID: f.DocID, Page: f.Page, Offset: f.Offset,
+				Token: f.Token, Derived: f.Derived,
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatal("no FY2027 fact for this series; the fixture no longer supports this test")
+	}
+	series.Points = append(series.Points, extra)
+
+	res := runTrendPoints(t, s)
+	if res.Status != StatusFail {
+		t.Fatalf("a point in an undeclared column reported %s: %s", res.Status, res.Summary)
+	}
+	for _, want := range []string{"FY2027 adopted", "not one of the 1 columns"} {
+		if !strings.Contains(findingDetails(res), want) {
+			t.Errorf("findings do not name %q: %s", want, findingDetails(res))
+		}
+	}
+
+	// AND THE OTHER TWO STAY GREEN, which is the measurement the bead asked for:
+	// this corruption is caught HERE and by nothing else.
+	complete, err := (&trendSeriesAreComplete{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if complete.Status != StatusPass {
+		t.Errorf("trend-series-are-complete = %s on an EXTRA point, want pass: %s",
+			complete.Status, complete.Summary)
+	}
 }

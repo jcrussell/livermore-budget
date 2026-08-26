@@ -959,6 +959,7 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	series := make([]seriesRef, 0, len(body.Series))
+	rendered := 0
 	for _, s := range body.Series {
 		fund := s.FundName
 		if fund == "" {
@@ -967,7 +968,11 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			// page and is never nothing.
 			fund = fmt.Sprintf("Fund %d", s.Fund)
 		}
-		cells := buildCells(s.Points, columns, meta.Columns, pageTextBase)
+		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase)
+		if err != nil {
+			return trendsPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
+		}
+		rendered += placed
 		series = append(series, seriesRef{
 			Label:    s.Label,
 			Fund:     fund,
@@ -976,6 +981,31 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Cells:    cells,
 			Mark:     buildMark(cells, columns),
 		})
+	}
+
+	// THE RECONCILIATION buildCells' COMMENT HAS ALWAYS PROMISED, performed at
+	// last. counts.points and counts.series were decoded and read nowhere, so a
+	// document could lose a figure between the projection and the page and still
+	// print a lede saying how many figures it had drawn -- a published page whose
+	// own prose contradicts what it shows, which is the class this project exists
+	// to refuse (fisc-4j5).
+	//
+	// THE RULE IS NARROW AND IT IS WORTH STATING, because `fisc export` runs no
+	// checks by design and this is the one thing it now insists on: a document
+	// whose counts disagree with its own series is refused. A series legitimately
+	// SHORT A COLUMN is not -- that is a state internal/check declares through
+	// incompleteSeries, and it reconciles here because a short series carries
+	// fewer points and says so in its own counts.
+	if rendered != meta.Counts.Points {
+		return trendsPageData{}, fmt.Errorf(
+			"%s declares counts.points %d and its series carry %d; the document has "+
+				"lost a figure between the projection that built it and this page",
+			v.Projection, meta.Counts.Points, rendered)
+	}
+	if len(body.Series) != meta.Counts.Series {
+		return trendsPageData{}, fmt.Errorf(
+			"%s declares counts.series %d and carries %d",
+			v.Projection, meta.Counts.Series, len(body.Series))
 	}
 
 	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase)
@@ -1154,22 +1184,37 @@ func abs64(n int64) int64 {
 // something the document does not say.
 //
 // A point in NO published column cannot occur through internal/project, which
-// filters facts on the same column set; if one ever arrives it is dropped here
-// and counted nowhere, which is why the caller compares counts.points against
-// what it rendered.
+// filters facts on the same column set. If one ever arrives it is dropped here,
+// so this reports how many points it actually PLACED and the caller reconciles
+// that against the document's own counts.points. That reconciliation used to be
+// promised by this comment and performed by nobody: counts.points was decoded
+// and read nowhere, so a 1-column document carrying a 2-point series exported
+// successfully, rendered one cell, lost the other figure silently, and printed
+// a lede saying "2 figures in all" (fisc-4j5).
 func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta,
 	pageTextBase func(string) string,
-) []cellRef {
+) ([]cellRef, int, error) {
 	type key struct {
 		year  int
 		basis string
 	}
 	byColumn := make(map[key]trendPoint, len(points))
 	for _, p := range points {
-		byColumn[key{p.FiscalYear, p.Basis}] = p
+		k := key{p.FiscalYear, p.Basis}
+		// TWO POINTS IN ONE COLUMN IS THE SAME DEFECT FROM THE OTHER SIDE. A
+		// plain assignment keeps the last and loses the first as quietly as a
+		// dropped column does, and the two need not even agree -- so the count
+		// below would still reconcile while a figure had vanished.
+		if prev, dup := byColumn[k]; dup {
+			return nil, 0, fmt.Errorf(
+				"two points publish FY%d %s: %s and %s; one of them would be dropped",
+				p.FiscalYear, p.Basis, dollars(prev.AmountCents), dollars(p.AmountCents))
+		}
+		byColumn[k] = p
 	}
 
 	out := make([]cellRef, 0, len(columns))
+	placed := 0
 	for i, c := range meta {
 		cell := cellRef{New: columns[i].New}
 		p, ok := byColumn[key{c.FiscalYear, c.Basis}]
@@ -1190,6 +1235,7 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 		cell.Page = p.Page
 		cell.Href = pageTextBase(p.DocID) + pageTextFile(p.Page)
 		out = append(out, cell)
+		placed++
 	}
-	return out
+	return out, placed, nil
 }

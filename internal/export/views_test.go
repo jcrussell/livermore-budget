@@ -477,6 +477,13 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	// column it belongs in, and that is what the layout must honour.
 	kept := points[1].(map[string]any)
 	series["points"] = []any{kept}
+	// AND SAY SO IN THE DOCUMENT'S OWN COUNTS, which is not bookkeeping. A
+	// series short a column is a state this project supports; a document whose
+	// counts.points disagrees with the points it carries is a different thing
+	// and Write now refuses it (fisc-4j5). Leaving the count at 2 would make
+	// this test assert the refusal instead of the layout it is named for.
+	meta := doc["metadata"].(map[string]any)
+	meta["counts"].(map[string]any)["points"] = 1
 	short, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
@@ -605,5 +612,130 @@ func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 	// takes for a shared one is a comparison the document does not support.
 	if !strings.Contains(got, "not comparable with each other") {
 		t.Error("the page draws per-row marks and does not say they are per-row")
+	}
+}
+
+// writeTrends packages one trends document and returns whatever Write said.
+//
+// It exists so the refusal tests below differ only in the document they hand
+// over, which is the whole of what each is about.
+func writeTrends(t *testing.T, raw []byte, pages ...int) error {
+	t.Helper()
+	_, err := export.Write(export.Options{
+		Dir: t.TempDir(),
+		Projections: map[string][]byte{
+			"sankey": goldenSankey(t), "revenue-trends": raw,
+		},
+		Views: []export.View{
+			{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "revenue.html", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		PageText:    twoViewPageText(pages...),
+	})
+	return err
+}
+
+// TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused is fisc-4j5's
+// exact case, built directly rather than reasoned about.
+//
+// buildCells drops a point whose (fiscal_year, basis) is in no published column,
+// and its comment justified that by saying "the caller compares counts.points
+// against what it rendered". THE CALLER DID NOT: counts.points was decoded and
+// read nowhere. So a one-column document carrying a two-point series exported
+// successfully, rendered ONE cell, lost the other figure with no error, and the
+// page's own lede still said how many figures were in it.
+//
+// That is a published page whose prose contradicts what it draws -- a plausible
+// wrong value with provenance disagreeing with it, which is the class this
+// project exists to refuse.
+//
+// NOT REACHABLE THROUGH internal/project TODAY, because Trends.Document filters
+// points on the same columns the metadata is built from. This is a packager that
+// did not fail closed, so it is built here by hand, which is the only way to
+// reach it at all.
+func TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused(t *testing.T) {
+	// Two columns and two points, then the SECOND column removed -- leaving a
+	// point that belongs to no column the page will draw.
+	var doc map[string]any
+	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta := doc["metadata"].(map[string]any)
+	cols := meta["columns"].([]any)
+	meta["columns"] = cols[:1]
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	err = writeTrends(t, raw, 127, 128)
+	if err == nil {
+		t.Fatal("Write accepted a document whose second point lands in no column, want a refusal")
+	}
+	// BOTH NUMBERS, because a refusal that says only "these disagree" leaves the
+	// reader to go and count.
+	for _, want := range []string{"counts.points 2", "carry 1"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("Write error = %q, want it to name %q", err, want)
+		}
+	}
+}
+
+// TestTwoPointsInOneColumnAreRefused is the same figure-loss from the other
+// side: a plain map assignment kept the last point and dropped the first as
+// quietly as an undrawn column did, and the two need not even agree. The counts
+// still reconcile in that case, so this needs its own refusal rather than
+// riding on the one above.
+func TestTwoPointsInOneColumnAreRefused(t *testing.T) {
+	var doc map[string]any
+	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	series := doc["series"].([]any)[0].(map[string]any)
+	points := series["points"].([]any)
+	// Re-file the second point in the FIRST point's column, keeping the counts
+	// honest at two so this cannot pass through the counts arm instead.
+	second := points[1].(map[string]any)
+	first := points[0].(map[string]any)
+	second["fiscal_year"] = first["fiscal_year"]
+	second["basis"] = first["basis"]
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	err = writeTrends(t, raw, 127, 128)
+	if err == nil {
+		t.Fatal("Write accepted two points in one column, want a refusal")
+	}
+	if !strings.Contains(err.Error(), "two points publish") {
+		t.Errorf("Write error = %q, want it to name the collision", err)
+	}
+}
+
+// TestASeriesCountThatDisagreesWithTheSeriesIsRefused covers the other half of
+// the reconciliation. counts.series feeds the page's own "231 rows" line, so a
+// document that carries a different number of series prints a figure about
+// itself that is wrong.
+func TestASeriesCountThatDisagreesWithTheSeriesIsRefused(t *testing.T) {
+	var doc map[string]any
+	if err := json.Unmarshal(trendsDoc(127), &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta := doc["metadata"].(map[string]any)
+	meta["counts"].(map[string]any)["series"] = 2
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	err = writeTrends(t, raw, 127)
+	if err == nil {
+		t.Fatal("Write accepted counts.series 2 over one series, want a refusal")
+	}
+	if !strings.Contains(err.Error(), "counts.series 2 and carries 1") {
+		t.Errorf("Write error = %q, want it to name both counts", err)
 	}
 }

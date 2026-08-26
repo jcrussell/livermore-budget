@@ -23,6 +23,18 @@ import (
 // it is exactly what a resolver change that silently stopped emitting a row would
 // look like. counts.facts would fall and nothing else would say anything.
 //
+// AND A THIRD THING, which neither direction reaches: that each point's COLUMN
+// is one the document declares. Both arms above compare a point against the
+// FACTS, and a point can agree with a real fact in every published field while
+// sitting in a column the document does not publish -- comparePoint compares it
+// only to its own fact, and the reverse sweep filters the facts on those same
+// columns, so the fact behind it is never looked at. internal/export then drops
+// such a point when it lays the table out, because there is no column to put it
+// in, and the figure leaves the published page with nothing saying so
+// (fisc-4j5). internal/export refuses that document too; this arm is what names
+// which point, and it is reached first because `fisc verify` runs before
+// `fisc export`.
+//
 // Nothing in graph.go covers this. Those checks read Subject.Graphs() and this
 // document has no nodes and no links, so without this check and
 // trend-series-are-complete the document ships unexamined — which is the state
@@ -35,8 +47,8 @@ func (*trendPointsTieToFacts) ID() string { return "trend-points-tie-to-facts" }
 func (*trendPointsTieToFacts) Tier() int  { return 1 }
 func (*trendPointsTieToFacts) Full() bool { return false }
 func (*trendPointsTieToFacts) Description() string {
-	return "every point a trends document publishes equals the fact it cites, and every fact " +
-		"in the document's slice is published by exactly one point"
+	return "every point a trends document publishes equals the fact it cites, sits in a column " +
+		"the document declares, and every fact in the document's slice is published by exactly one point"
 }
 
 func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error) {
@@ -49,10 +61,37 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 	points := 0
 	for _, p := range s.TrendDocuments() {
 		published := make(map[string]bool)
+		declared := make(map[project.Column]bool, len(p.Options.Columns))
+		for _, c := range p.Options.Columns {
+			declared[c] = true
+		}
 		for _, series := range p.Trends.Series {
 			for _, pt := range series.Points {
 				points++
 				findings = append(findings, comparePoint(p, series, pt, byID, published)...)
+				// A POINT IN A COLUMN THE DOCUMENT DOES NOT DECLARE is invisible
+				// to every other arm here, and measured rather than assumed:
+				// comparePoint compares a point only against ITS OWN FACT, so a
+				// point whose every field matches a real fact passes it; and the
+				// reverse sweep below walks factsFor(p.Options), which filters on
+				// these same columns, so the fact behind such a point is never
+				// even looked at. Append a genuine FY2027 point to a one-column
+				// document and both arms stay green over it.
+				//
+				// It matters because internal/export DROPS such a point when it
+				// lays the table out -- there is no column to put it in -- so the
+				// figure leaves the published page without anything saying so
+				// (fisc-4j5). The packager now refuses that document too; this is
+				// the half that names WHICH point, and which is reached first
+				// because `fisc verify` runs before `fisc export`.
+				if col := (project.Column{FiscalYear: pt.FiscalYear, Basis: mapping.Basis(pt.Basis)}); !declared[col] {
+					findings = append(findings, finding(
+						fmt.Sprintf("%s %s FY%d %s", p.Name, series.SeriesID, pt.FiscalYear, pt.Basis),
+						"this point publishes FY%d %s, which is not one of the %d columns %q "+
+							"declares; no page can draw a column the document does not publish, "+
+							"so the figure would be dropped",
+						pt.FiscalYear, pt.Basis, len(p.Options.Columns), p.Name))
+				}
 			}
 		}
 		// The other direction: what the slice carries that the document does
