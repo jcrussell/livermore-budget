@@ -167,24 +167,38 @@ func keysOf(o project.Options) []sliceKey {
 	return out
 }
 
-// publishedProjectionBuilt asserts EVERY slice the site publishes was one of the
-// slices built.
+// publishedProjectionBuilt asserts EVERY document the site publishes was built,
+// over every column it publishes it over.
 //
 // Every graph check reads Subject.Projections, so a projection that was not built
 // is not a failure anywhere: it is silence. If the fact store no longer carries
 // facts for a published slice, export publishes a chart of nothing while verify
 // reports on whatever other slices happen to exist.
 //
-// IT ITERATES THE PUBLISHED YEARS RATHER THAN PINNING ONE, and that is what the
-// FY2027 export needed from it. Pinned to a single triple this check could not
-// see a second published document at all: it would have gone on passing, over
-// FY2026, while FY2027 shipped to readers unexamined. A check that covers less
-// than the site publishes is worse than one that covers nothing, because it
-// reports a number that looks like coverage.
+// IT ITERATES THE PUBLISHED DOCUMENTS RATHER THAN PINNING ONE. It began pinned to
+// a single triple, which could not see FY2027; it then iterated the published
+// YEARS, which could not see a second DOCUMENT. revenue-trends is that document:
+// its own scope, four columns, no year at all, published since 2026-08-25 and
+// guarded by nothing until this check learned to read
+// project.PublishedDocuments. A check that covers less than the site publishes is
+// worse than one that covers nothing, because it reports a number that looks like
+// coverage.
 //
-// This is the check that closes the divergence a shared constant cannot: the
-// spelling being identical everywhere says nothing about whether the facts are
-// there.
+// WHAT THE OLD SHAPE LET THROUGH, and why the columns are checked one at a time.
+// Trends.Slices returns nil when the store carries no revenue-by-fund fact -- a
+// scope typo in a mapping rule does it -- and then: projections-build counts what
+// was ASKED FOR and sees nothing missing; documents-are-checked passes over what
+// remains; trend-points-tie-to-facts and trend-series-are-complete both go
+// VACUOUS, which fails only under --strict and is silenced outright by adding a
+// declaration; and facts-are-projected reddens with 924 findings ABOUT FACTS
+// rather than one about a missing document. Per-column is the same argument one
+// level down: a document that lost FY2023-24 builds fine, every series is
+// complete over the three columns that remain, and trend-series-are-complete
+// passes green over 231 subjects while counts.facts falls from 924 to 693
+// (fisc-7dt).
+//
+// This is the check that closes the divergence a shared declaration cannot: the
+// two commands reading one list says nothing about whether the facts are there.
 type publishedProjectionBuilt struct{}
 
 var _ Check = (*publishedProjectionBuilt)(nil)
@@ -193,85 +207,98 @@ func (*publishedProjectionBuilt) ID() string { return "published-projection-buil
 func (*publishedProjectionBuilt) Tier() int  { return 1 }
 func (*publishedProjectionBuilt) Full() bool { return false }
 func (*publishedProjectionBuilt) Description() string {
-	return "the fiscal year, basis and scope `fisc export` publishes is among the projections " +
-		"these checks were run over"
+	return "every document `fisc export` publishes was built, over every column it " +
+		"publishes it over, and is among the projections these checks were run over"
 }
 
-// Run has one subject per published year.
+// Run has one subject per published document.
 //
 // It used to have exactly one and to say so — "there is no state of the corpus
 // in which this check has nothing to look at, which is why it is not routed
 // through conclusion". Both halves stopped being true when the published set
-// became a list: a repository publishing no year has nothing here to look at,
+// became a list: a repository publishing nothing has nothing here to look at,
 // and that state is what the nothing: string below is for.
 func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, error) {
-	years := s.PublishedYears
-
-	// Indexed once rather than scanned per year: the two loops below would
-	// otherwise be quadratic in the published set, and more importantly the
-	// membership test is the same one twice and should be spelled once.
-	type slice struct {
-		name  string
-		year  int
-		basis mapping.Basis
-		scope string
-	}
-	built := map[slice]bool{}
+	// Every column built, grouped by the projection that built it. A published
+	// document is satisfied by the UNION of what that projection built, not by
+	// any single slice of it: the spine publishes one document per year and
+	// builds one Options per year, while the trends publish one document over
+	// four columns built as one Options, and this check must not care which
+	// shape it is looking at.
+	//
+	// It is keyed on the projection NAME, and that is not belt-and-braces.
+	// Since each projection is built over the slices it declares
+	// (project.Sliced), "some projection was built at the published triple"
+	// does not imply the published DOCUMENT was: a second projection whose
+	// slices happen to include that triple would satisfy this check while the
+	// site's chart was of nothing.
+	// Keyed on (name, scope) and not on the name alone, so that a projection
+	// which one day builds two schedules cannot have the columns of one satisfy
+	// a published document of the other. Nothing does that today; the key costs
+	// nothing and the alternative is a silent wrong answer rather than a
+	// refusal.
+	type source struct{ name, scope string }
+	built := map[source]project.Options{}
 	names := make([]string, 0, len(s.Projections))
 	for _, p := range s.Projections {
-		// One entry PER COLUMN. A document spanning several columns was built
-		// for every one of them, so a published slice it covers must count as
-		// built -- and a document of one column still contributes exactly one
-		// entry, which is why this loop replaces the single assignment rather
-		// than sitting beside it.
-		for _, c := range p.Options.Columns {
-			built[slice{p.Name, c.FiscalYear, c.Basis, p.Options.Scope}] = true
-		}
+		k := source{p.Name, p.Options.Scope}
+		o := built[k]
+		o.Scope = p.Options.Scope
+		o.Columns = append(o.Columns, p.Options.Columns...)
+		built[k] = o
 		names = append(names, p.String())
 	}
 
 	var findings []Finding
-	for _, year := range years {
-		// The PROJECTION's name is compared as well as the slice, and that is
-		// not belt-and-braces. Since each projection is built over the slices it
-		// declares (project.Sliced), "some projection was built at the published
-		// triple" no longer implies the published DOCUMENT was: a second
-		// projection whose slices happen to include that triple would satisfy
-		// this check while the site's chart was of nothing.
-		want := slice{project.PublishedProjection, year, project.PublishedBasis, project.PublishedScope}
-		if built[want] {
+	for _, d := range s.Published {
+		// project.MissingColumns rather than a comparison written here: `fisc
+		// export` asks the same question of the documents it wrote, and two
+		// spellings of "does this cover what we said" is the divergence the
+		// shared declaration exists to remove. It compares the scope too, so a
+		// projection of the right name built over a different SCHEDULE does not
+		// satisfy a published document by accident.
+		absent := project.MissingColumns(d, built[source{d.Projection, d.Scope}])
+		if len(absent) == 0 {
 			continue
 		}
 		detail := "no projection was built at all"
 		if len(names) > 0 {
 			detail = fmt.Sprintf("the projections built were: %s", joinComma(names))
 		}
-		findings = append(findings, finding(
-			fmt.Sprintf("%s FY%d %s %s", want.name, want.year, want.basis, want.scope),
-			"`fisc export` publishes this slice and nothing checked it — %s. Every check "+
-				"below this one reads the projections, so a slice that was not built is "+
-				"not failed, it is unexamined", detail))
+		// The finding names the DOCUMENT, then which of its columns is missing,
+		// because those are two different repairs. A whole document absent is a
+		// projection that built nothing -- a scope typo, a registry entry
+		// dropped. A column absent from a document that built is the corpus
+		// having lost a printed column, and the fix is in the mapping.
+		what := "and nothing checked it"
+		if len(absent) < len(d.Columns) {
+			what = fmt.Sprintf("and it was built without %s", project.Describe(absent))
+		}
+		findings = append(findings, finding(d.String(),
+			"`fisc export` publishes this document %s — %s. Every check below this one "+
+				"reads the projections, so a document that was not built is not failed, "+
+				"it is unexamined", what, detail))
 	}
 
 	return conclusion{
-		// One subject per published year, so the summary counts what the site
-		// serves rather than what happened to build.
-		subjects: len(years),
-		unit:     "published slices",
-		held: fmt.Sprintf("every %s slice the site publishes was built and checked: %s",
-			project.PublishedProjection, joinComma(describeYears(years))),
-		nothing:  "the site publishes no slice, so there is nothing to have built",
+		// One subject per published document, so the summary counts what the
+		// site serves rather than what happened to build.
+		subjects: len(s.Published),
+		unit:     "published documents",
+		held: fmt.Sprintf("every document the site publishes was built over every column "+
+			"it publishes: %s", joinComma(describeDocuments(s.Published))),
+		nothing:  "the site publishes no document, so there is nothing to have built",
 		findings: findings,
 	}.result(), nil
 }
 
-// describeYears names the published years the way the report should: the
-// fiscal year with its basis and scope, so a reader can match one against the
-// projections listed elsewhere in the run.
-func describeYears(years []int) []string {
-	out := make([]string, 0, len(years))
-	for _, y := range years {
-		out = append(out, fmt.Sprintf("FY%d %s %s", y, project.PublishedBasis, project.PublishedScope))
+// describeDocuments names the published documents the way the report should: the
+// stem a reader can fetch, then the columns and the scope behind it, so one can
+// be matched against the projections listed elsewhere in the run.
+func describeDocuments(docs []project.PublishedDocument) []string {
+	out := make([]string, 0, len(docs))
+	for _, d := range docs {
+		out = append(out, d.String())
 	}
 	return out
 }

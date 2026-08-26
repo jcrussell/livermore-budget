@@ -684,3 +684,130 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 		t.Errorf("counts-reconcile = %s, want pass over the remaining year", got)
 	}
 }
+
+// TestARetargetedScopeUnbuildsThePublishedTrendsDocument is fisc-w7d's own
+// trigger, run against the real corpus.
+//
+// THE MUTATION IS A RETARGET AND NOT A DELETION, and the difference is what
+// makes this evidence. Deleting the revenue-by-fund facts leaves
+// facts-are-projected nothing to report, so "the run reddens about a document
+// rather than about 924 facts" would be satisfied by there being no facts —
+// true of the fixed and the unfixed check alike. Renaming the scope is what the
+// bead describes ("a scope typo in a mapping rule does it"): the facts survive,
+// no projection is of them, Trends.Slices returns nil, and the old check went on
+// passing over the spine while the trends document silently stopped existing.
+//
+// The run is legitimately red TWICE here — 924 facts land in no projection and
+// no declaration excuses them, which is facts-are-projected doing its job — so
+// this asserts on published-projection-built's own result rather than on
+// rep.Failed(). Non-strict, because under --strict the two trend checks and
+// revenue-detail-ties-to-spine go newly undeclared-vacuous and add three more
+// reasons to the same run.
+func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	moved := 0
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		for i := range facts {
+			if facts[i].Scope == project.TrendsScope {
+				facts[i].Scope = project.TrendsScope + "s"
+				moved++
+			}
+		}
+		return facts
+	})
+	if moved == 0 {
+		t.Fatalf("no fact carries scope %q, so this test asserts nothing", project.TrendsScope)
+	}
+
+	rep := loadAndRun(t, root)
+	res := resultFor(t, rep, "published-projection-built")
+	if res.Status != StatusFail {
+		t.Fatalf("published-projection-built = %s (%s), want fail: %d facts of the published "+
+			"trends document were retargeted and no document was built from them",
+			res.Status, res.Summary, moved)
+	}
+	if len(res.Findings) != 1 {
+		t.Fatalf("findings = %v, want exactly one: the spine is untouched", res.Findings)
+	}
+	if !strings.Contains(res.Findings[0].Subject, project.TrendsProjection) {
+		t.Errorf("finding subject %q does not name the document that stopped being built",
+			res.Findings[0].Subject)
+	}
+
+	// The spine is still checked. That is what makes this a report about ONE
+	// missing document rather than a run that fell over.
+	if got := resultFor(t, rep, "counts-reconcile").Status; got != StatusPass {
+		t.Errorf("counts-reconcile = %s, want pass over the untouched spine", got)
+	}
+	// And the two trend checks go VACUOUS rather than failing, which is the
+	// silence this check exists to convert into a finding. If either of them
+	// ever fails here instead, this check has stopped being the only thing
+	// standing between a vanished document and a green run.
+	for _, id := range []string{"trend-points-tie-to-facts", "trend-series-are-complete"} {
+		if got := resultFor(t, rep, id).Status; got != StatusVacuous {
+			t.Errorf("%s = %s, want vacuous: it reads documents and there is no document", id, got)
+		}
+	}
+}
+
+// TestAPublishedDocumentShortAColumnIsReported is the per-column arm, and it is
+// the hole fisc-7dt describes from the publishing side.
+//
+// trend-series-are-complete compares each series against the columns its
+// document was BUILT over, and Trends.Slices derives those from the facts that
+// survive — so a corpus losing one printed column entirely produces a
+// three-column document over which all 231 series are complete, and that check
+// passes green while counts.facts falls from 924 to 693. Nothing compared either
+// number against anything.
+//
+// project.TrendsColumns is the declared floor that closes it: it states what the
+// SITE PUBLISHES, which is not a claim about what the corpus used to hold, and a
+// corpus that no longer covers it goes red here naming the column.
+func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
+	dropped := project.TrendsColumns()[0]
+	root := repoWithoutPDFs(t)
+	gone := 0
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		out := facts[:0]
+		for _, f := range facts {
+			if f.Scope == project.TrendsScope && f.FiscalYear == dropped.FiscalYear &&
+				f.Basis == dropped.Basis {
+				gone++
+				continue
+			}
+			out = append(out, f)
+		}
+		return out
+	})
+	if gone == 0 {
+		t.Fatalf("no fact carries %s in scope %q", project.Describe([]project.Column{dropped}),
+			project.TrendsScope)
+	}
+
+	rep := loadAndRun(t, root)
+	res := resultFor(t, rep, "published-projection-built")
+	if res.Status != StatusFail {
+		t.Fatalf("published-projection-built = %s (%s), want fail: %d facts of one published "+
+			"column are gone and the document was built without it", res.Status, res.Summary, gone)
+	}
+	if len(res.Findings) != 1 {
+		t.Fatalf("findings = %v, want exactly one", res.Findings)
+	}
+	// "built without", not "nothing checked it": a document short a column and a
+	// document that does not exist are two different repairs, and a finding that
+	// cannot tell them apart sends a reader to the wrong one.
+	detail := res.Findings[0].Detail
+	if !strings.Contains(detail, "built without") ||
+		!strings.Contains(detail, project.Describe([]project.Column{dropped})) {
+		t.Errorf("finding %q does not say the document was built without %s",
+			detail, project.Describe([]project.Column{dropped}))
+	}
+
+	// The check this one exists to backstop still passes, which is the whole
+	// point: every remaining series IS complete over the columns that remain.
+	if got := resultFor(t, rep, "trend-series-are-complete").Status; got != StatusPass {
+		t.Errorf("trend-series-are-complete = %s, want pass: it compares each series against "+
+			"the columns the document was built over, and it cannot see a whole column go",
+			got)
+	}
+}

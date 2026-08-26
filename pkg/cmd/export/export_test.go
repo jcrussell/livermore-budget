@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
@@ -659,5 +661,173 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	}
 	if got[0].Path != export.IndexPath {
 		t.Errorf("the surviving view is %q, want the one the site opens on", got[0].Path)
+	}
+}
+
+// TestExportRefusesAPublishedDocumentThatWasNotBuilt is the export half of
+// fisc-w7d, and it is the half a reader meets first: `fisc verify` says a
+// document is missing, but `fisc export` is what would otherwise ship a site
+// without it.
+//
+// Both arms matter and they are different repairs. A stem absent is a projection
+// that built nothing at all. A stem present but short a column is the worse one:
+// the file lands at the path the contract promises, every downstream check
+// compares each series against the columns THAT DOCUMENT declares, so the site
+// agrees with itself about a chart that is missing a year.
+func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
+	// The real published set, built exactly as declared, is the control: if this
+	// does not pass, neither arm below is evidence of anything.
+	full := map[string]project.Options{}
+	for _, d := range project.PublishedDocuments() {
+		full[d.Stem] = project.Options{Columns: d.Columns, Scope: d.Scope}
+	}
+	if err := assertPublishedBuilt(full); err != nil {
+		t.Fatalf("the declared published set is refused as built: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		drop  func(map[string]project.Options)
+		wants []string
+	}{
+		{
+			name: "a whole document missing",
+			drop: func(m map[string]project.Options) { delete(m, project.TrendsProjection) },
+			wants: []string{project.TrendsProjection, "no projection built it",
+				project.PublishedProjection},
+		},
+		{
+			name: "a document short one published column",
+			drop: func(m map[string]project.Options) {
+				o := m[project.TrendsProjection]
+				o.Columns = o.Columns[1:]
+				m[project.TrendsProjection] = o
+			},
+			wants: []string{project.TrendsProjection, "missing",
+				project.Describe(project.TrendsColumns()[:1])},
+		},
+		{
+			name: "a document built over another schedule entirely",
+			drop: func(m map[string]project.Options) {
+				o := m[project.TrendsProjection]
+				o.Scope = project.PublishedScope
+				m[project.TrendsProjection] = o
+			},
+			wants: []string{project.TrendsProjection, "missing"},
+		},
+		{
+			// The spine is not special-cased, and this is what says so.
+			name: "a published spine year missing",
+			drop: func(m map[string]project.Options) {
+				delete(m, project.PublishedStem(project.PublishedProjection, 2027))
+			},
+			wants: []string{"sankey-2027", "no projection built it"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			built := map[string]project.Options{}
+			for stem, o := range full {
+				built[stem] = project.Options{Columns: slices.Clone(o.Columns), Scope: o.Scope}
+			}
+			tc.drop(built)
+
+			err := assertPublishedBuilt(built)
+			if err == nil {
+				t.Fatal("no error; the site would ship without a document it publishes")
+			}
+			for _, want := range tc.wants {
+				if !strings.Contains(err.Error(), want) {
+					t.Errorf("error %q does not contain %q", err, want)
+				}
+			}
+		})
+	}
+}
+
+// TestPublishedDocumentsAreWhatTheCorpusBuilds pins project.PublishedDocuments
+// against the documents the committed corpus actually writes, read back out of
+// the shipped BYTES rather than out of the Options they were built from.
+//
+// WHY THIS TEST HAS TO EXIST. project.TrendsColumns states four columns instead
+// of deriving them, and that is deliberate: a published set derived from the
+// facts agrees with the corpus by construction and goes quiet in exactly the
+// state it exists to catch. The cost of stating them is that they can go stale,
+// and nothing else would notice — TestRegistry compares projection NAMES, and
+// published-projection-built only asks whether the corpus covers the
+// declaration, so a fifth mapped column would build, ship, and sit outside the
+// published set in silence.
+//
+// This is the other direction: the corpus may not cover MORE than the site says
+// it publishes. When it legitimately does — a fifth column mapped, a third
+// document — this test is what fails, and the repair is to widen the
+// declaration in the commit that widened the corpus.
+func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildProjections(root)
+	if err != nil {
+		t.Fatalf("buildProjections: %v", err)
+	}
+
+	for _, d := range project.PublishedDocuments() {
+		raw, ok := built[d.Stem]
+		if !ok {
+			t.Errorf("the site publishes %s and the corpus built no document at that stem; "+
+				"stems were %v", d, keys(built))
+			continue
+		}
+		var doc struct {
+			Metadata struct {
+				// The spine publishes ONE column and names it singularly;
+				// the trends publish four and carry a list. A document of one
+				// shape decoded through the other leaves its field zero, which
+				// is why both are read and exactly one is expected to be set.
+				FiscalYear int    `json:"fiscal_year"`
+				Basis      string `json:"basis"`
+				Scope      string `json:"scope"`
+				Columns    []struct {
+					FiscalYear int    `json:"fiscal_year"`
+					Basis      string `json:"basis"`
+				} `json:"columns"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			t.Errorf("decode %s: %v", d.Stem, err)
+			continue
+		}
+		if doc.Metadata.Scope != d.Scope {
+			t.Errorf("%s ships scope %q, declared %q", d.Stem, doc.Metadata.Scope, d.Scope)
+		}
+		shipped := make([]project.Column, 0, len(doc.Metadata.Columns))
+		for _, c := range doc.Metadata.Columns {
+			shipped = append(shipped, project.Column{
+				FiscalYear: c.FiscalYear, Basis: mapping.Basis(c.Basis)})
+		}
+		if len(shipped) == 0 && doc.Metadata.FiscalYear != 0 {
+			shipped = append(shipped, project.Column{
+				FiscalYear: doc.Metadata.FiscalYear, Basis: mapping.Basis(doc.Metadata.Basis)})
+		}
+		if diff := cmp.Diff(d.Columns, shipped); diff != "" {
+			t.Errorf("%s: the declared columns and the shipped ones differ (-declared +shipped)"+
+				":\n%s\nIf the corpus legitimately grew, widen project.PublishedDocuments in "+
+				"the same commit; the declaration is what the site PROMISES and it may not "+
+				"trail what it serves", d.Stem, diff)
+		}
+	}
+
+	// And nothing published is left over: a document the corpus builds at a stem
+	// no declaration names is shipped and unguarded, which is the whole of
+	// fisc-w7d from the other end.
+	declared := map[string]bool{}
+	for _, d := range project.PublishedDocuments() {
+		declared[d.Stem] = true
+	}
+	for stem := range built {
+		if !declared[stem] {
+			t.Errorf("the corpus builds a document at %q that project.PublishedDocuments does "+
+				"not name, so `fisc verify` asserts nothing about it", stem)
+		}
 	}
 }

@@ -188,7 +188,7 @@ func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 // that looked like coverage. It iterates the published set now.
 func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 	s := &Subject{
-		PublishedYears: []int{2026, 2027},
+		Published: spineDocuments(2026, 2027),
 		Projections: []Projection{{
 			Name:  project.PublishedProjection,
 			Graph: &project.Graph{},
@@ -216,7 +216,7 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 // same as having built the document the page renders.
 func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 	s := &Subject{
-		PublishedYears: []int{2026},
+		Published: spineDocuments(2026),
 		Projections: []Projection{{
 			Name: "something-else",
 			Options: project.Options{

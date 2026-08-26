@@ -248,15 +248,22 @@ type Subject struct {
 	// it — a failure here silences every graph check at once, so it must not be
 	// reachable only through a missing entry in Projections.
 	ProjectionFailures []ProjectionFailure
-	// PublishedYears is every fiscal year the site publishes a document for.
+	// Published is every document the site publishes, and the slice of the
+	// fact store each must be built over.
 	//
-	// [Load] fills it from project.PublishedFiscalYears, which is the single
+	// [Load] fills it from project.PublishedDocuments, which is the single
 	// declaration `fisc export` also reads, so the two commands cannot disagree
 	// about what the site serves. It is a FIELD rather than a direct call so
 	// that a fixture can be a smaller repository than this one — a miniature of
-	// a single year is not a repository that has lost a published year, and
-	// reading the package constant directly would make it look like one.
-	PublishedYears []int
+	// a single year is not a repository that has lost a published document, and
+	// reading the package declaration directly would make it look like one.
+	//
+	// IT WAS A YEAR LIST UNTIL 2026-08-26, and the widening is not cosmetic. A
+	// list of years can only describe a site whose every document is a year of
+	// one schedule; revenue-trends is one document of a different scope over
+	// four columns and no year, so under the old field it was published and
+	// unguarded. See project.PublishedDocument.
+	Published []project.PublishedDocument
 }
 
 // Graphs is every projection that produced a graph, which is what the
@@ -378,7 +385,7 @@ func Load(o LoadOptions) (*Subject, error) {
 			return nil, err
 		}
 	}
-	s.PublishedYears = project.PublishedFiscalYears()
+	s.Published = project.PublishedDocuments()
 	registry := project.Registry(reg)
 	if s.Projections, s.ProjectionFailures, err = buildProjections(
 		registry, s.Facts, o.Version); err != nil {

@@ -103,20 +103,54 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 	// cannot publish, or the published set moved and the projection was not
 	// told. What it no longer does is demand that EVERY projection be of the
 	// published spine slice, which is the part that refused a second schedule.
-	for _, year := range project.PublishedFiscalYears() {
-		stem := project.PublishedStem(project.PublishedProjection, year)
-		if _, ok := out[stem]; !ok {
-			return nil, fmt.Errorf(
-				"the site publishes %s FY%d %s %s and no projection built it; the documents "+
-					"built were: %s",
-				project.PublishedProjection, year, project.PublishedBasis,
-				project.PublishedScope, joinComma(builtStems(out)))
-		}
+	if err := assertPublishedBuilt(builtAt); err != nil {
+		return nil, err
 	}
 	if _, ok := out[export.PrimaryProjection]; !ok {
 		return nil, fmt.Errorf("no projection named %q was registered", export.PrimaryProjection)
 	}
 	return out, nil
+}
+
+// assertPublishedBuilt is the export side of published-projection-built.
+//
+// It is a function of the stems built rather than inline in the loop above so a
+// test can hand it a published set that was not built, which is the state the
+// real repository is never in and the only one worth asserting about.
+//
+// THE STEM EXISTING IS NOT THE WHOLE ASSERTION. A document built over fewer
+// columns than the site publishes it over lands at the right path and is the
+// wrong file: revenue-trends.json carrying three of its four printed columns is
+// a chart a reader cannot tell from a complete one, and every check downstream
+// compares each series against the columns the DOCUMENT declares, so it agrees
+// with itself. project.MissingColumns is the comparison, shared with
+// internal/check rather than spelled twice.
+func assertPublishedBuilt(builtAt map[string]project.Options) error {
+	for _, d := range project.PublishedDocuments() {
+		o, ok := builtAt[d.Stem]
+		if !ok {
+			return fmt.Errorf(
+				"the site publishes %s and no projection built it; the documents "+
+					"built were: %s", d, joinComma(builtStems(builtAt)))
+		}
+		if missing := project.MissingColumns(d, o); len(missing) > 0 {
+			return fmt.Errorf(
+				"the site publishes %s and the document built at that stem covers %s, "+
+					"missing %s", d, project.Describe(o.Columns), project.Describe(missing))
+		}
+	}
+	return nil
+}
+
+// builtStems is the stems built, in order, for a refusal that has to say what
+// it did build.
+func builtStems(builtAt map[string]project.Options) []string {
+	out := make([]string, 0, len(builtAt))
+	for stem := range builtAt {
+		out = append(out, stem)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // slicesOf is the slices one projection is built over.
@@ -168,17 +202,6 @@ func stemFor(name string, o project.Options, slices int) string {
 		return name
 	}
 	return project.PublishedStem(name, o.Columns[0].FiscalYear)
-}
-
-// builtStems is the stems written, sorted, for a refusal that has to say what
-// it did build.
-func builtStems(out map[string][]byte) []string {
-	stems := make([]string, 0, len(out))
-	for stem := range out {
-		stems = append(stems, stem)
-	}
-	sort.Strings(stems)
-	return stems
 }
 
 // joinComma renders a list the way a message should. It is spelled here rather

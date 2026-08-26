@@ -96,6 +96,115 @@ func PublishedFiscalYears() []int {
 	return []int{2026, 2027}
 }
 
+// PublishedDocument is one file the site publishes, and the slice of the fact
+// store it must be built over.
+//
+// THE PUBLISHED SET IS A LIST OF DOCUMENTS, NOT ONE DOCUMENT AND A YEAR LIST.
+// Until 2026-08-25 those were the same thing: every published file was a year of
+// the spine, so naming a projection, a basis and a scope and then iterating
+// [PublishedFiscalYears] named all of them. revenue-trends ended that. It is one
+// document, at its own scope, spanning four columns and no year at all, and a
+// year list cannot express it. Everything downstream that asked "is the
+// published slice among the built ones" had to become "is every published
+// DOCUMENT among them".
+//
+// EACH ENTRY CARRIES ITS STEM, and that is not redundancy with the projection
+// name. A stem is not derivable from a declaration: the packager's stemFor asks
+// how many slices a projection declared AT RUNTIME -- one slice takes the name
+// verbatim, several are suffixed by year through [PublishedStem] -- so a
+// declaration that omitted the stem would force `fisc export` to re-derive that
+// rule against a static list, which is the second copy this whole declaration
+// exists to prevent. docs/revenue-trends-contract.md is explicit that the trends
+// document must NOT go through PublishedStem: it would write two byte-identical
+// files, one of which is a lie about which year it covers.
+//
+// EACH ENTRY STATES ITS COLUMNS RATHER THAN DERIVING THEM, and that is the
+// property that makes the check able to fail. [Trends.Slices] reads its columns
+// off the fact store, exhaustively and on purpose. A published set that did the
+// same would agree with the corpus by construction: it would go quiet in exactly
+// the state it exists to catch, because a corpus that lost a column would be
+// declared to publish one column fewer. Stating them is what turns "the corpus
+// changed" into "the corpus no longer contains what the site promised".
+type PublishedDocument struct {
+	// Projection is the [Projection.Name] of the projection that must build it.
+	Projection string
+	// Stem is the file stem it is published under, without the .json.
+	Stem string
+	// Scope is the schedule it is of, matching [Options.Scope].
+	Scope string
+	// Columns is every (fiscal year, basis) pair the document must cover. A
+	// document missing one of these was built, but not over what the site
+	// promised, and that is a finding rather than silence.
+	Columns []Column
+}
+
+// String names the document the way a report should: the stem a reader can
+// fetch, then the slice behind it.
+func (d PublishedDocument) String() string {
+	return fmt.Sprintf("%s (%s %s)", d.Stem, Describe(d.Columns), d.Scope)
+}
+
+// PublishedDocuments is every file the site publishes, in the order a reader
+// should meet them.
+//
+// A FUNCTION RETURNING A FRESH SLICE, for [PublishedFiscalYears]'s reason: a
+// package variable would let any caller reorder or extend the published set by
+// accident, and the point of this declaration is that `fisc export` and `fisc
+// verify` cannot disagree about what it contains. The spine's entries are
+// derived from that list so the two cannot drift; the trends entry is stated,
+// because nothing else states it.
+//
+// Nothing here is checked against the corpus at declaration time, deliberately.
+// A published set that consulted the facts could not report that the facts stop
+// covering it, which is the only thing it is for.
+func PublishedDocuments() []PublishedDocument {
+	years := PublishedFiscalYears()
+	out := make([]PublishedDocument, 0, len(years)+1)
+	for _, year := range years {
+		out = append(out, PublishedDocument{
+			Projection: PublishedProjection,
+			Stem:       PublishedStem(PublishedProjection, year),
+			Scope:      PublishedScope,
+			Columns:    []Column{{FiscalYear: year, Basis: PublishedBasis}},
+		})
+	}
+	return append(out, PublishedDocument{
+		Projection: TrendsProjection,
+		Stem:       TrendsProjection,
+		Scope:      TrendsScope,
+		Columns:    TrendsColumns(),
+	})
+}
+
+// MissingColumns is the columns a published document promises that the Options
+// it was actually built under do not cover.
+//
+// It lives here rather than in either caller because BOTH have to make the
+// comparison and neither may make it differently: `fisc verify` asks it of the
+// fact store's projections and `fisc export` asks it of the documents it just
+// wrote. Two spellings of "does this document cover what we said" is the class
+// of divergence PublishedDocuments exists to remove.
+//
+// The scope is compared too. A document built at the right stem over the right
+// years but a different SCHEDULE is a different document wearing the path, and
+// the column list alone cannot see that.
+func MissingColumns(d PublishedDocument, o Options) []Column {
+	if o.Scope != d.Scope {
+		return d.Columns
+	}
+	have := make(map[Column]bool, len(o.Columns))
+	for _, c := range o.Columns {
+		have[c] = true
+	}
+	var missing []Column
+	for _, c := range d.Columns {
+		if !have[c] {
+			missing = append(missing, c)
+		}
+	}
+	return missing
+}
+
 // PublishedStem is the file stem of the document for one published year.
 //
 // The opening year keeps the bare name, so data/sankey.json stays the path the

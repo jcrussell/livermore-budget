@@ -346,10 +346,33 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 		Docs:               testDocs(t, facts),
 		Projections:        projections,
 		ProjectionFailures: failures,
-		// One year, because the fixture is a miniature of one year. Load fills
-		// this from project.PublishedFiscalYears over the real corpus.
-		PublishedYears: []int{testYear},
+		// One spine document, because the fixture is a miniature of one year of
+		// the spine and publishes nothing else. Load fills this from
+		// project.PublishedDocuments over the real corpus, where it is three:
+		// two years of the spine and the revenue trends.
+		Published: spineDocuments(testYear),
 	}
+}
+
+// spineDocuments is the published set of a repository that publishes only the
+// spine, one document per year.
+//
+// It exists so a fixture can be a SMALLER repository than this one rather than a
+// broken one. project.PublishedDocuments names revenue-trends, and a fixture
+// carrying no revenue-by-fund fact is not a repository that has lost a published
+// document — it is a miniature that never published it, and
+// published-projection-built must not report on the difference.
+func spineDocuments(years ...int) []project.PublishedDocument {
+	out := make([]project.PublishedDocument, 0, len(years))
+	for _, y := range years {
+		out = append(out, project.PublishedDocument{
+			Projection: project.PublishedProjection,
+			Stem:       project.PublishedStem(project.PublishedProjection, y),
+			Scope:      project.PublishedScope,
+			Columns:    []project.Column{{FiscalYear: y, Basis: project.PublishedBasis}},
+		})
+	}
+	return out
 }
 
 // runChecks runs every check over s and returns the report.

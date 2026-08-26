@@ -22,6 +22,42 @@ const TrendsScope = "revenue-by-fund"
 // refer to this document by.
 const TrendsProjection = "revenue-trends"
 
+// TrendsColumns is the four columns pp.127-140 print, which is what the site
+// publishes this document over.
+//
+// IT IS STATED AND NOT DERIVED, and the difference is the whole reason it
+// exists. [Trends.Slices] reads its columns off the fact store, exhaustively --
+// so the document and the corpus agree by construction, and a corpus that lost
+// FY2023-24 entirely would build a three-column document that every check passes
+// over. trend-series-are-complete compares each series against the columns its
+// document was BUILT over, so all 231 series would be complete over three and
+// the check goes green while counts.facts falls from 924 to 693 (fisc-7dt).
+//
+// This list is the declared floor that closes that hole from the publishing
+// side: it says what the SITE PROMISES, which a corpus cannot contradict without
+// something going red. It is not a claim about what the corpus used to hold --
+// the class of constant this project refuses, because no page states it -- and
+// it is the same species of declaration as [PublishedFiscalYears], which is also
+// stated, also author-chosen, and also load-bearing for exactly this reason.
+//
+// The bases are the ones the schedule prints and are NOT one measurement: an
+// actual, a mid-year re-forecast, and two years of one adopted two-year budget.
+// docs/revenue-trends-contract.md carries the table. FY2024 here is the Budget
+// Book's own restatement, never [mapping.BasisAudited], which is a different
+// basis and is fisc-4ua.4's business.
+//
+// A fifth mapped column is a change to what the site publishes, so it belongs
+// here, in a commit that says so. TestPublishedDocumentsAreWhatTheCorpusBuilds
+// is what refuses to let one arrive silently.
+func TrendsColumns() []Column {
+	return []Column{
+		{FiscalYear: 2024, Basis: mapping.BasisActual},
+		{FiscalYear: 2025, Basis: mapping.BasisRevised},
+		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
+		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	}
+}
+
 // Trends is the four printed columns of pp.127-140 as one series per printed
 // row.
 //
