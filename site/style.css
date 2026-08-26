@@ -356,10 +356,42 @@ button[aria-pressed="true"] {
   background: none;
 }
 
+/* THE RING CARRIES THE SELECTION, because the fill cannot: `label:hover` above
+   and this rule both resolve to var(--wash), so hovering an UNCHECKED pill gave
+   it the checked background exactly. Composited against --surface-1 the two are
+   #f2f2f1 in light and #282827 in dark -- 1.000:1, the same colour -- leaving a
+   1px ring and one step of text colour to say which year is on screen. On a
+   two-option toggle that reads as two selected years under the pointer.
+
+   MEASURED, against WCAG 1.4.11's 3:1 for a non-text state indicator -- which is
+   the right threshold for a ring and a different one from 1.4.3's 4.5:1 for the
+   label text beside it:
+
+                                vs the fill   vs the track
+     ring --rule    (before)  light  1.60:1        1.75:1
+                              dark   1.26:1        1.48:1
+     ring --ink-2   (now)     light  7.11:1        7.73:1
+                              dark   8.26:1        9.72:1
+
+   So the ring was BELOW the threshold in both themes before this, which is why
+   it could not do the work the fill had stopped doing. --ink-2 is an existing
+   token -- the colour the unchecked labels' text already takes -- so no palette
+   entry has to be hand-duplicated into the three blocks at the top of this file.
+
+   A WEAKER HOVER WAS THE OTHER FIX AND IS WORSE. Halving --wash's alpha buys
+   1.045:1 light / 1.092:1 dark against the checked pill while HALVING the hover
+   affordance's own visibility (1.091 -> 1.044): one indistinguishable pair
+   traded for an invisible one.
+
+   NOTHING IN THE TREE CHECKS THESE SIX NUMBERS, or that this rule still differs
+   from the hover rule. No Go test and no jscheck module renders CSS; the export
+   test that pins the disabled-hover fix matches SELECTORS, which survives any
+   change to a declaration. Re-derive by hand before touching a colour here.
+   Same hazard as the table further down this file, and the same bead: fisc-6at. */
 .year-toggle input:checked + label {
   color: var(--ink-1);
   background: var(--wash);
-  box-shadow: inset 0 0 0 1px var(--rule);
+  box-shadow: inset 0 0 0 1px var(--ink-2);
 }
 
 /* The outline follows the hidden input onto its label, or keyboard focus would
@@ -968,6 +1000,11 @@ noscript p {
      contra     --critical     4.68:1   5.39:1
      baseline   --muted        3.50:1   4.85:1
      group rule --muted        3.50:1   4.85:1
+
+   NOTHING READS THESE SIX NUMBERS (fisc-6at). No Go test and no jscheck module
+   parses this file, so changing --ink-2, --ink-1, --critical or --muted in any
+   of the three palette blocks falsifies the table above in silence. Re-derive by
+   hand; do not treat it as a gate.
 
    Worst case 3.50:1, the baseline in light. THE BASELINE AND THE RULES ARE IN
    THAT TABLE because they were not, and that omission was the finding: they
