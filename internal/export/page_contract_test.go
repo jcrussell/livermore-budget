@@ -26,7 +26,7 @@ func TestYearViewKeysAreTheOnesTheClientReads(t *testing.T) {
 	if err = json.Unmarshal(blob, &got); err != nil {
 		t.Fatalf("decode yearView: %v", err)
 	}
-	want := []string{"basis", "caveats", "counts", "figures", "hero", "label", "path", "stem", "year"}
+	want := []string{"basis", "caveats", "counts", "figures", "hero", "label", "path", "stem", "title", "year"}
 	if diff := cmp.Diff(want, keysOf(got)); diff != "" {
 		t.Errorf("year keys (-want +got):\n%s\nsite/app.js reads these off CONFIG.years", diff)
 	}

@@ -20,6 +20,7 @@ function fixtureYear(overrides) {
     stem: "sankey-2027",
     path: "data/sankey-2027.json",
     basis: "adopted",
+    title: "City of Livermore budget flows \u2014 FY 2026-27",
     hero: { label: "What the city actually spends", value: "$252,854,896", note: "note", kind: "hero" },
     figures: [
       { label: "Naive column total", value: "$325,241,780", note: "n", kind: "error" },
@@ -50,6 +51,7 @@ function painted(app, year) {
     caveats: el("caveats") ? [...el("caveats").children] : [],
     lede: el("lede-year") ? el("lede-year").textContent : "",
     counts: el("counts-line") ? el("counts-line").textContent : "",
+    basis: el("page-basis") ? el("page-basis").textContent : "",
     title: app.dom.document.title,
   };
 }
@@ -130,11 +132,45 @@ export async function checks() {
       detail: `${got.caveats.length} caveats, matching the ${year.caveats.length} supplied`,
     },
     {
+      // THE TITLE IS COMPARED WHOLE. It was `got.title.includes(year.label)`,
+      // which passes for any string merely CONTAINING "FY 2026-27".
+      //
+      // MEASURED: whole-string equality does not on its own catch app.js
+      // re-composing the literal, because fixtureYear's title is by construction
+      // the same string sankeyTitle composes -- reverting app.js to
+      // "City of Livermore budget flows \u2014 " + year.label leaves this check
+      // GREEN. The check below is the one that goes red, because a caller's
+      // title is the one string no composition can reproduce. Both are kept:
+      // this one pins that the client writes what it was handed, that one pins
+      // that it was handed something. Neither covers fisc-rn0 alone.
       name: "the lede, the flow count and the document title follow the year",
       ok: got.lede === year.label + " " + year.basis &&
           got.counts === `${year.counts.links} flows between ${year.counts.nodes} nodes, from ${year.counts.facts} facts` &&
-          got.title.includes(year.label),
+          got.title === year.title,
       detail: `lede "${got.lede}", counts "${got.counts}", title "${got.title}"`,
+    },
+    {
+      // The footer's "Scope X, basis Y" sentence is a claim about the document
+      // on screen. Left unpainted, switching to a year on another basis leaves
+      // the lede saying "FY 2026-27 proposed" and the footer three screens down
+      // saying "basis adopted" -- one page stating two things about one
+      // document. Latent while both published years are adopted, so the fixture
+      // supplies a basis neither of them uses.
+      name: "the footer's basis follows the year",
+      ok: painted(app, fixtureYear({ basis: "proposed" })).basis === "proposed",
+      detail: `#page-basis reads "${painted(app, fixtureYear({ basis: "proposed" })).basis}" ` +
+        `after painting a year published on a proposed basis`,
+    },
+    {
+      // A title the CALLER configured is the caller's words and must survive
+      // the switch; only the composed fallback carries a year. app.js used to
+      // overwrite it during the opening showYear, before the reader had touched
+      // anything, so a View that named its own page never kept the name.
+      name: "a caller's own title is not overwritten by the year switch",
+      ok: painted(app, fixtureYear({ title: "A title the caller chose" })).title ===
+        "A title the caller chose",
+      detail: `document.title is ` +
+        `"${painted(app, fixtureYear({ title: "A title the caller chose" })).title}"`,
     },
     {
       // THE BUG THIS CHECK WAS ADDED FOR, and the reason the stub now carries a

@@ -38,6 +38,12 @@
   <div>
     <h1>Where Livermore's money comes from, and where it goes</h1>
     <p class="lede">
+      <!-- "all funds, gross" is a HAND-WRITTEN RENDERING of one scope slug,
+           all-funds-gross, and the coupling is not visible from here. The
+           footer's "Scope {{.Scope}}" prints the slug; this prints English.
+           Nothing repaints either, so a view built on another scope would ship
+           a lede contradicting its own footer. TestTheLedesProseNamesThePages
+           Scope pins the pair. Found by /code-review of fisc-iyt. -->
       The <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span> budget, all funds, gross — read out of the city's
       published schedule and traced back to it. Figures the city printed are drawn solid;
       the two things we inferred are drawn dashed and labelled.
@@ -179,7 +185,11 @@
 </main>
 
 <footer>
-  <h3>Sources</h3>
+  <!-- "every year this page can show", not "this chart's": the list below is
+       unioned across the view's year stems (fisc-yi4), so with two years
+       published it names pages the year on screen may not cite. Saying which
+       set it is beats leaving a reader to assume it is the narrower one. -->
+  <h3>Sources for every year this page can show</h3>
   <ul>
     {{- range .Sources}}
     <li>
@@ -193,13 +203,22 @@
     {{- end}}
   </ul>
   <p class="subtle">
-    Scope {{.Scope}}, basis {{.Basis}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+    Scope {{.Scope}}, basis <span id="page-basis">{{.Basis}}</span>. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
     <!-- The two sentences are separate because the claims are. The scope and
          basis above are THIS PAGE'S, read out of the document it is drawn from;
          the list below is every document the site ships, and since the site
          gained a second schedule they are no longer the same set. Running them
          together would say the revenue trends are all-funds-gross adopted
-         FY2025-26, which is four wrong things about one file. -->
+         FY2025-26, which is four wrong things about one file.
+
+         THE BASIS IS WRAPPED AND THE SCOPE IS NOT, and the asymmetry is the
+         point rather than an oversight. Basis is per-year -- yearView carries
+         it, and paintYearWords rewrites this span on every switch, or the
+         sentence would go on describing the year the reader left. Scope cannot
+         vary across this view's years (Sankey.Slices fixes it), buildSankeyPage
+         refuses a stem that disagrees, and the lede above says "all funds,
+         gross" in prose that is not repainted either -- so a span here would
+         repaint one of two copies of one claim. -->
     <span data-year-path>This chart is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.</span>
     Every data file the site publishes, each fetchable on its own:
     {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.

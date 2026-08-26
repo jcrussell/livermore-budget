@@ -210,11 +210,17 @@ type projectionRef struct {
 // year's tiles into the HTML exactly as before, and these are what the toggle
 // reaches for afterwards.
 type yearView struct {
-	Year    int       `json:"year"`
-	Label   string    `json:"label"`
-	Stem    string    `json:"stem"`
-	Path    string    `json:"path"`
-	Basis   string    `json:"basis"`
+	Year  int    `json:"year"`
+	Label string `json:"label"`
+	Stem  string `json:"stem"`
+	Path  string `json:"path"`
+	Basis string `json:"basis"`
+	// Title is this year's <title>, built here rather than composed in the
+	// client. app.js used to assemble it from a literal copied out of
+	// sankeyTitle below, which is the one string paintYearWords wrote that the
+	// packager had not built -- and it overwrote a caller's own Title without a
+	// word. See sankeyTitle for why the caller's words survive the switch.
+	Title   string    `json:"title"`
 	Hero    figure    `json:"hero"`
 	Figures []figure  `json:"figures"`
 	Caveats []string  `json:"caveats"`
@@ -611,6 +617,16 @@ type navItem struct {
 // Sources list stays each view's own, because a page claiming provenance for
 // figures it never showed is its own defect, and unioning that too would trade
 // one wrong page for another.
+//
+// THAT PRINCIPLE NOW HAS ONE STATED EXCEPTION, added by fisc-yi4 in 19a580f: a
+// view's footer IS unioned across its own YEARS. Both directions are wrong and
+// they are not equally wrong. Under-citing was SILENT -- app.js drops a citation
+// whose doc_id is missing from CONFIG.docs, so a fact's provenance row simply
+// vanished, with no error and no banner. Over-citing is VISIBLE: under an FY2027
+// chart the footer lists a page only FY2026 cites, and a reader can see it and
+// follow it. Between a defect a reader cannot detect and one they can, this
+// takes the one they can -- and then says so on the page rather than leaving
+// them to infer the set, which is why the heading names the years.
 func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, []citation, error) {
 	views := o.views()
 	nav := make([]navItem, 0, len(views))
@@ -736,6 +752,34 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 	return sources, clientDocs
 }
 
+// sankeyTitle is one year's <title> on the spine page.
+//
+// IT EXISTS SO THE LITERAL DOES NOT. site/app.js used to compose
+// "City of Livermore budget flows — " + year.label itself, which was a copy of
+// the fallback below in a second language -- and paintYearWords' own doc comment
+// says every string it writes was built by the packager. That was the one line
+// that did not.
+//
+// THE CALLER'S WORDS SURVIVE THE SWITCH. A View that sets a Title gets it on
+// every year, unsuffixed: the packager composing prose over the top of a
+// caller's would be the trap [View.Title] warns about, and a caller who names a
+// page has said what they want it called. Only the fallback carries a year,
+// because a title composed here has nothing else to tell one year from another.
+//
+// Refusing a Title on this template instead was considered and rejected. The
+// [View.Lede] refusal reads as the precedent and is not: it fires because
+// index.html.tmpl renders no {{.Lede}}, so the sentence would vanish in
+// silence. This template renders {{.Title}} at line 6. Nothing is dropped, so
+// there is nothing to refuse -- and refusing would make this package the
+// mandatory author of the site's front page, strand buildSite's v.Nav fallback
+// for this view, and leave the branch below dead by construction.
+func sankeyTitle(callerTitle, yearLabel string) string {
+	if callerTitle != "" {
+		return callerTitle
+	}
+	return "City of Livermore budget flows — " + yearLabel
+}
+
 // unionSources merges the sources of every year a view publishes into one list,
 // deduplicated and ordered.
 //
@@ -829,6 +873,38 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				return pageData{}, err
 			}
 		}
+		// THE FOOTER SENTENCE HAS THREE VALUES AND ONLY ONE OF THEM IS
+		// REPAINTED. "Scope X, basis Y. Projection: Z." is rendered from the
+		// OPENING year's metadata; basis is genuinely per-year and travels in
+		// yearView, and the other two fail closed here instead.
+		//
+		// Scope, because repainting it would fix one of TWO copies of one claim:
+		// the lede three screens up says "all funds, gross" in template prose
+		// that no switch touches. And it cannot vary anyway -- Sankey.Slices
+		// fixes it, its doc comment saying "The scope is fixed rather than
+		// derived. It selects the SCHEDULE." Building a repaint for a state
+		// nothing can emit means pinning it with a test that can never go red,
+		// which is the defect this whole branch has been removing.
+		//
+		// GeneratedBy, because it is a claim about the TOOL that built the
+		// document, not about the year. A page attributing its FY2026 figures to
+		// one builder and drawing FY2027's from another is not a wording problem
+		// a repaint fixes; the two documents disagree about their own
+		// provenance, and this project's answer to ambiguity is to refuse it.
+		// Found by /code-review of this change: the basis fix left its two
+		// sentence-mates unguarded, which is how the original defect got in.
+		if m.Scope != meta.Scope {
+			return pageData{}, fmt.Errorf(
+				"view %q opens on %q with scope %q but its year stem %q has scope %q; "+
+					"one page cannot state two scopes, and its lede's wording is not per-year",
+				v.Path, v.Projection, meta.Scope, stem, m.Scope)
+		}
+		if m.GeneratedBy != meta.GeneratedBy {
+			return pageData{}, fmt.Errorf(
+				"view %q opens on %q built by %q but its year stem %q was built by %q; "+
+					"the footer credits one projection for figures drawn from both",
+				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
+		}
 		cited = append(cited, m.Sources...)
 		hero, figures := tilesFor(m)
 		years = append(years, yearView{
@@ -837,6 +913,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Stem:    stem,
 			Path:    path.Join(DataDir, stem+".json"),
 			Basis:   m.Basis,
+			Title:   sankeyTitle(v.Title, m.FiscalYearLabel),
 			Hero:    hero,
 			Figures: figures,
 			Caveats: m.Caveats,
@@ -867,10 +944,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return pageData{}, fmt.Errorf("encode page config: %w", err)
 	}
 
-	title := v.Title
-	if title == "" {
-		title = "City of Livermore budget flows — " + meta.FiscalYearLabel
-	}
+	title := sankeyTitle(v.Title, meta.FiscalYearLabel)
 	return pageData{
 		chrome: chrome{
 			Title:        title,

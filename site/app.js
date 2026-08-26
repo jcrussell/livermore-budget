@@ -87,6 +87,7 @@
  * @property {string} stem
  * @property {string} path
  * @property {string} basis
+ * @property {string} title
  * @property {FiscFigure} hero
  * @property {FiscFigure[]} figures
  * @property {string[]} caveats
@@ -1258,8 +1259,15 @@ async function showYear(year) {
 }
 
 /**
- * Replaces the words that belong to a year: the tiles, the caveats, the lede
- * and the flow count.
+ * Replaces every word on the page that belongs to a year: the tiles, the
+ * caveats, the lede, the flow count, the chart's accessible title, the footer's
+ * basis and its data-file citation, and the document title.
+ *
+ * THE LIST IS EXHAUSTIVE ON PURPOSE. It read "the tiles, the caveats, the lede
+ * and the flow count" while the function wrote four more, and a doc comment
+ * that undercounts its own writes is how the next per-year string gets added to
+ * the template and forgotten here -- which is the fisc-kwq / fisc-yi4 / fisc-iyt
+ * defect three times over. If you add a write, add it above.
  *
  * The page already carries the opening year's, rendered server-side so the
  * headline survives with JavaScript off. This swaps them for another year's,
@@ -1293,6 +1301,16 @@ function paintYearWords(year) {
   const title = maybeEl("chart-title");
   if (title) title.textContent = "Sankey diagram of the " + year.label + " " + year.basis + " budget";
 
+  // The footer's "Scope X, basis Y" sentence is a claim about the document ON
+  // SCREEN -- the comment beside it in the template says so in as many words --
+  // and the basis half is per-year. Left unpainted, a reader who switches to a
+  // year published on another basis gets a lede reading "FY 2026-27 proposed"
+  // and a footer three screens down still reading "basis adopted": one page
+  // stating two different things about one document. The scope half is NOT
+  // repainted and must not be; see the template comment for why.
+  const basis = maybeEl("page-basis");
+  if (basis) basis.textContent = year.basis;
+
   // The footer's "drawn from" link names a file that IS year-specific --
   // data/sankey.json and data/sankey-2027.json are different documents -- so it
   // has to follow the switch. Left alone it cited the opening year's file for a
@@ -1307,7 +1325,12 @@ function paintYearWords(year) {
     }
   }
 
-  document.title = "City of Livermore budget flows — " + year.label;
+  // BUILT IN GO, like every other string here. This composed the title from a
+  // literal copied out of buildSankeyPage's fallback -- the one write in this
+  // function the packager had not made -- and it did it unconditionally, so a
+  // View that configured its own Title had it replaced during the opening
+  // showYear, before the reader touched anything.
+  document.title = year.title;
 }
 
 /**

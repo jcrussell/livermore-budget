@@ -47,8 +47,8 @@ export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", ".."
  */
 const TEMPLATE_IDS = new Set([
   "caveats", "chart", "chart-desc", "chart-title", "counts-line", "derived-list",
-  "detail", "figures", "flow-table", "lede-year", "legend", "table-view",
-  "theme-toggle", "tooltip", "year-toggle",
+  "detail", "figures", "flow-table", "lede-year", "legend", "page-basis",
+  "table-view", "theme-toggle", "tooltip", "year-toggle",
 ]);
 
 /**
@@ -475,6 +475,11 @@ export async function settle(turns = 50) {
 export function twoYearConfig() {
   const year = (y, label, stem) => ({
     year: y, label, stem, path: `data/${stem}.json`, basis: "adopted",
+    // Spelled the way buildSankeyPage's sankeyTitle composes it, because that
+    // is what this fixture is a model OF. app.js reads year.title straight into
+    // document.title; a config missing the key sets the title to "undefined",
+    // which is how the lifecycle checks caught this fixture drifting.
+    title: `City of Livermore budget flows \u2014 ${label}`,
     hero: { label: "h", value: "v", note: "n", kind: "hero" },
     figures: [{ label: "l", value: "v", note: "n", kind: "" }],
     caveats: ["c"],

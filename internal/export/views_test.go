@@ -846,3 +846,226 @@ func TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn(t *testing.T) {
 		t.Errorf("the second year's cited page text did not ship: %v", err)
 	}
 }
+
+// twoYearSankey writes a two-year spine view whose second year is the golden
+// document with `edit` applied to its metadata, and returns the rendered
+// index.html.
+//
+// EVERY DEFECT BELOW IS LATENT IN THE COMMITTED CORPUS -- both published years
+// are adopted, carry one scope and cite the same two pages -- so a test that
+// only exported the real store would assert nothing. The state has to be built.
+func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any)) (string, error) {
+	t.Helper()
+	var second map[string]any
+	if err := json.Unmarshal(goldenSankey(t), &second); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta := second["metadata"].(map[string]any)
+	meta["fiscal_year"] = 2027
+	meta["fiscal_year_label"] = "FY 2026-27"
+	edit(meta)
+	raw, err := json.Marshal(second)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	view.Path = export.IndexPath
+	view.Template = export.SankeyTemplate
+	view.Projection = "sankey"
+	view.YearStems = []string{"sankey", "sankey-2027"}
+
+	dir := t.TempDir()
+	if _, err = export.Write(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "sankey-2027": raw},
+		Views:       []export.View{view},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		PageText:    pageTextFS(),
+	}); err != nil {
+		return "", err
+	}
+	markup, err := os.ReadFile(filepath.Join(dir, export.IndexPath))
+	if err != nil {
+		t.Fatalf("read index: %v", err)
+	}
+	return string(markup), nil
+}
+
+// yearsIn decodes CONFIG.years out of a rendered page.
+func yearsIn(t *testing.T, page string) []struct {
+	Label string `json:"label"`
+	Basis string `json:"basis"`
+	Title string `json:"title"`
+} {
+	t.Helper()
+	cfg := strings.TrimPrefix(
+		between(t, page, "window.FISC_CONFIG = ", ";</script>"), "window.FISC_CONFIG = ")
+	var config struct {
+		Years []struct {
+			Label string `json:"label"`
+			Basis string `json:"basis"`
+			Title string `json:"title"`
+		} `json:"years"`
+	}
+	if err := json.Unmarshal([]byte(cfg), &config); err != nil {
+		t.Fatalf("decode FISC_CONFIG: %v", err)
+	}
+	return config.Years
+}
+
+// TestEachYearCarriesItsOwnBasisAndTitle is the packager half of fisc-iyt and
+// fisc-rn0: the words a year switch paints have to differ per year, or
+// repainting them changes nothing.
+//
+// THE FOOTER'S BASIS IS ASSERTED IN THE MARKUP TOO, and that is not redundant
+// with the jscheck check that paints it. tools/jscheck's DOM stub fabricates
+// any id in TEMPLATE_IDS, so a check that "paintYearWords writes #page-basis"
+// passes whether or not index.html.tmpl renders the span. If the span is
+// dropped, maybeEl returns null, the guard swallows it, and the footer silently
+// stops following the year -- the original defect, reached through the harness
+// that was supposed to catch it. Only a Go assertion on the shipped markup
+// closes that.
+func TestEachYearCarriesItsOwnBasisAndTitle(t *testing.T) {
+	page, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
+		meta["basis"] = "proposed"
+	})
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	if !strings.Contains(page, `<span id="page-basis">`) {
+		t.Error("the footer's basis is not wrapped in #page-basis, so paintYearWords " +
+			"has nothing to repaint and the sentence keeps the opening year's basis")
+	}
+
+	years := yearsIn(t, page)
+	if len(years) != 2 {
+		t.Fatalf("CONFIG.years has %d entries, want 2", len(years))
+	}
+	if years[0].Basis != "adopted" || years[1].Basis != "proposed" {
+		t.Errorf("bases are %q and %q, want adopted and proposed", years[0].Basis, years[1].Basis)
+	}
+	if years[0].Title == years[1].Title {
+		t.Errorf("both years carry the title %q; the client writes this straight into "+
+			"document.title, so one string for two years is a page that will not "+
+			"say which year it is showing", years[0].Title)
+	}
+	for i, y := range years {
+		if !strings.Contains(y.Title, y.Label) {
+			t.Errorf("year %d's title %q does not name %q", i, y.Title, y.Label)
+		}
+	}
+}
+
+// TestACallersOwnTitleSurvivesEveryYear pins the half of fisc-rn0 that the
+// jscheck check cannot see: it is about what the PACKAGER hands over.
+//
+// The caller's title is carried verbatim onto every year rather than having a
+// year appended, and refusing a Title on this template was rejected -- see
+// sankeyTitle for both arguments. What must not happen is the packager
+// composing over the top of a caller's words, which is the trap View.Title's
+// own doc comment warns about.
+func TestACallersOwnTitleSurvivesEveryYear(t *testing.T) {
+	// No apostrophe: html/template escapes one to &#39; in the <title>, which is
+	// correct and would make this assertion about escaping rather than about the
+	// caller's words surviving.
+	const chosen = "Where the money goes, drawn"
+	page, err := twoYearSankey(t, export.View{Title: chosen}, func(map[string]any) {})
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if !strings.Contains(page, "<title>"+chosen+"</title>") {
+		t.Errorf("the server-rendered <title> is not the caller's %q", chosen)
+	}
+	for i, y := range yearsIn(t, page) {
+		if y.Title != chosen {
+			t.Errorf("year %d carries the title %q; the caller asked for %q, and the "+
+				"client writes year.title into document.title on every switch",
+				i, y.Title, chosen)
+		}
+	}
+}
+
+// TestAYearStemOnAnotherScopeIsRefused is the fail-closed half of fisc-iyt.
+//
+// The footer states one scope and the lede states the same claim again in prose
+// ("all funds, gross") that is not repainted, so a view whose years disagreed
+// about scope would have to repaint one of two copies. It cannot happen today --
+// Sankey.Slices fixes the scope -- and the answer to a state nothing can emit is
+// to refuse it, not to build a repaint and a test that can never go red.
+func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
+	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
+		meta["scope"] = "revenue-by-fund"
+	})
+	if err == nil {
+		t.Fatal("a year stem on another scope was exported; the page would state " +
+			"one scope in its footer and another in its lede")
+	}
+	for _, want := range []string{"sankey-2027", "revenue-by-fund", "all-funds-gross"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not name %q: %v", want, err)
+		}
+	}
+}
+
+// TestAYearStemBuiltByAnotherProjectionIsRefused covers the footer sentence's
+// third value.
+//
+// "Scope X, basis Y. Projection: Z." is one sentence and all three come from
+// the opening year. Basis is repainted; scope and Z fail closed. Z is
+// meta.GeneratedBy, a claim about the tool that built the document -- a page
+// crediting one builder for figures drawn from two is not a wording problem a
+// repaint fixes, because the documents disagree about their own provenance.
+//
+// Added because /code-review of the basis fix found its two sentence-mates
+// unguarded: fixing one value of three and leaving the others is how the
+// original defect got in.
+func TestAYearStemBuiltByAnotherProjectionIsRefused(t *testing.T) {
+	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
+		meta["generated_by"] = "fisc some-other-build"
+	})
+	if err == nil {
+		t.Fatal("a year stem built by another projection was exported; the footer " +
+			"credits one builder for figures drawn from two documents")
+	}
+	for _, want := range []string{"sankey-2027", "fisc some-other-build"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("the refusal does not name %q: %v", want, err)
+		}
+	}
+}
+
+// TestTheLedesProseNamesThePagesScope couples two statements of one claim that
+// nothing else couples.
+//
+// index.html.tmpl's lede says the budget is "all funds, gross" in English; the
+// footer prints "Scope {{.Scope}}", the slug, three screens down. Neither is
+// repainted and the scope guard in buildSankeyPage only makes a view's YEARS
+// agree with each other -- so a view built entirely on some other scope ships a
+// lede contradicting its own footer, with every guard green. Found by
+// /code-review of the fisc-iyt landing.
+//
+// A PIN RATHER THAN A GUARD, deliberately. Refusing a scope in internal/export
+// would mean this package holding an opinion about which scopes exist, which is
+// internal/project's to hold; and rendering {{.Scope}} into the lede would put
+// "all-funds-gross" in a sentence a reader reads aloud. What is wrong today is
+// that the coupling is invisible, so the fix is to make it fail when it breaks.
+func TestTheLedesProseNamesThePagesScope(t *testing.T) {
+	page, err := twoYearSankey(t, export.View{}, func(map[string]any) {})
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	const (
+		slug  = "all-funds-gross"
+		prose = "all funds, gross"
+	)
+	if !strings.Contains(page, "Scope "+slug) {
+		t.Fatalf("the footer no longer prints scope %q; if the published scope changed, "+
+			"the lede's prose at index.html.tmpl:41 has to change with it", slug)
+	}
+	if !strings.Contains(page, prose) {
+		t.Errorf("the lede no longer says %q while the footer says scope %q; "+
+			"one page, one claim, two spellings that have drifted", prose, slug)
+	}
+}
