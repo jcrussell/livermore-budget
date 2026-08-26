@@ -197,7 +197,17 @@ function domStub(ids = TEMPLATE_IDS) {
       getItem: (k) => (storage.has(k) ? storage.get(k) : null),
       setItem: (k, v) => storage.set(k, String(v)),
     },
-    getComputedStyle: () => ({ getPropertyValue: () => "#000000" }),
+    // getComputedStyle ANSWERS FROM THE SHIPPED STYLESHEET, and that is not
+    // polish. While it returned "#000000" for every name it was asked, it
+    // returned a truthy colour for properties that DO NOT EXIST -- so renaming
+    // every entry of FUND_COLOR_VAR to a name appearing nowhere in style.css,
+    // which in a browser paints every ribbon and every legend swatch with no
+    // colour at all, left the whole suite green. A stub that answers a question
+    // it was never asked is the fisc-dn9 shape: it does not fail, it stops
+    // testing.
+    getComputedStyle: () => ({
+      getPropertyValue: (name) => (customProperties.has(name) ? "#000000" : ""),
+    }),
     // matchMedia answers, and reports NOT-dark. app.js reads .matches for the
     // opening palette and attaches a change listener to follow the OS mid-visit;
     // both are behaviour worth checking, and neither was reachable while this
@@ -270,6 +280,21 @@ const NAMES = [
  * moment either can be installed.
  * @param {Set<string>|{ids?: Set<string>, config?: object, fetch?: Function}} [opts]
  */
+/**
+ * Every CSS custom property site/style.css defines, so the stub can tell a name
+ * the stylesheet carries from one it does not.
+ *
+ * A regex over the shipped file rather than a maintained list, for the reason
+ * selectorsIn scans app.js: a list beside the file is the thing that goes stale.
+ * It over-collects slightly -- a `--name:` inside a comment would count -- which
+ * is the safe direction, since the failure this guards is a name that exists
+ * NOWHERE.
+ */
+const customProperties = new Set(
+  [...readFileSync(join(repoRoot, "site", "style.css"), "utf8")
+    .matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]),
+);
+
 export function loadApp(opts = {}) {
   // A bare Set is the old signature and still means "the ids the page
   // rendered". Kept because that is what most checks want and an options
@@ -398,9 +423,21 @@ export const KNOWN_SELECTORS = {
  */
 export function selectorsIn(source) {
   const found = new Set();
-  const re = /querySelector(?:All)?\(\s*"([^"]*)"/g;
+  // ALL THREE QUOTING FORMS, because this check's whole purpose is that a
+  // selector added to the page which nothing answers fails `make js` by name --
+  // and a regex matching only double quotes cannot see one written with single
+  // quotes or as a template literal. Measured: rewriting a call as
+  // el('legend').querySelectorAll('button.fund') left the new, unanswerable
+  // selector entirely invisible. Nothing in this repo lints JS quote style, so
+  // the scan cannot assume one.
+  const re = /querySelector(?:All)?\(\s*(["'`])((?:[^\\]|\\.)*?)\1/g;
   let m;
-  while ((m = re.exec(source)) !== null) found.add(m[1]);
+  while ((m = re.exec(source)) !== null) found.add(m[2]);
+  // A selector built by concatenation or interpolation is not a literal and
+  // cannot be scanned. Report it as one unanswerable entry rather than passing
+  // over it in silence.
+  const dynamic = /querySelector(?:All)?\(\s*(?!["'`])/g;
+  if (dynamic.test(source)) found.add("(a computed selector this scan cannot read)");
   return found;
 }
 

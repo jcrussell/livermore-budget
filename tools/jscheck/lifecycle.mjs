@@ -34,7 +34,20 @@ function page(opts) {
   const app = loadApp(opts);
   const main = app.dom.document.node();
   app.dom.document.plant("main", main);
-  return { app, main };
+  // AND A <tbody>, WITHOUT WHICH buildTable RETURNS AT ITS FIRST LINE. Every
+  // check in this file drives a full draw, and buildTable is the LAST and
+  // largest step of one -- so while el("flow-table").querySelector("tbody")
+  // answered null here, the step carrying the most work executed in none of the
+  // checks that assert the page is left consistent.
+  //
+  // That gap hid a live defect for exactly one commit: buildTable reaches
+  // citations(projection.metadata.sources), which throws on a document whose
+  // metadata carries no sources -- AFTER paintYearWords, buildLegend and
+  // buildDerivedList have repainted. The fisc-bsg split, one function past the
+  // fix for it, with `make js` green over the whole thing.
+  const body = app.dom.document.node();
+  app.dom.document.getElementById("flow-table").selectable = { tbody: body };
+  return { app, main, body };
 }
 
 /** Fires the year control's change handler for one stem, as a click would. */
@@ -280,6 +293,81 @@ export async function checks() {
         (banners.length ? `: "${banners[0].textContent}"` : "") +
         `; the page still reads "${lede ? lede.textContent : "(no lede)"}", because layOut() runs ` +
         `before the first repaint rather than after the last`,
+    });
+  }
+
+  // --------------------------------------------- a 200 whose body is not a doc
+  //
+  // `null` is valid JSON, so response.json() resolves it and showYear proceeds.
+  // While the "is this a document at all" test lived INSIDE drawableSankey it
+  // could never run, because understands(doc.schema_version, ...) dereferenced
+  // doc one line earlier -- so the reader got "TypeError: Cannot read properties
+  // of null (reading 'schema_version')" for what is almost always an error page
+  // served with a success status.
+  {
+    const { app, main } = page({
+      config,
+      fetch: plannedFetch({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": { doc: null },
+      }),
+    });
+    await settle();
+    clickYear(app, "sankey-2027");
+    await settle();
+
+    const banners = refusals(main);
+    const text = banners.length ? banners[0].textContent : "";
+    out.push({
+      name: "a 200 whose body is not a document is refused in words, not with a TypeError",
+      ok: banners.length === 1 && text.includes("not a document at all") &&
+        !text.includes("TypeError"),
+      detail: `${banners.length} banner(s)` + (banners.length ? `: "${text}"` : "") +
+        `; the guard runs BEFORE understands(), which would otherwise dereference the null first`,
+    });
+  }
+
+  // ------------------------------- the draw's LAST step, which nothing watched
+  //
+  // A document with a graph but no metadata.sources. It passes drawableSankey,
+  // it lays out, and then buildTable -- the last and largest step of the
+  // repaint -- calls citations(projection.metadata.sources) and throws on
+  // `for (const source of undefined)`.
+  //
+  // FOUND BY /code-review ONE COMMIT AFTER fisc-bsg WAS CLOSED, and it is the
+  // same defect: paintYearWords, buildLegend and buildDerivedList have already
+  // run, so the page is left reading FY 2026-27 over FY2025-26's chart. The fix
+  // claimed "everything in the draw that can throw is in layOut" and this was
+  // the counter-example.
+  //
+  // It hid because page() planted no <tbody>, so buildTable returned at its
+  // first line in every check here. A gate is only worth what the checks behind
+  // it can reach.
+  {
+    const { app, main, body } = page({
+      config,
+      fetch: plannedFetch({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": {
+          doc: { schema_version: 1, metadata: {}, nodes: doc.nodes, links: doc.links },
+        },
+      }),
+    });
+    await settle();
+    const rowsFirst = body.children.length;
+    clickYear(app, "sankey-2027");
+    await settle();
+
+    const banners = refusals(main);
+    const lede = app.dom.byId.get("lede-year");
+    const stillFirst = lede && lede.textContent === "FY 2025-26 adopted";
+    out.push({
+      name: "a document whose metadata carries no sources is refused before the page repaints",
+      ok: banners.length === 1 && Boolean(stillFirst) && body.children.length === rowsFirst,
+      detail: `${banners.length} banner(s)` + (banners.length ? `: "${banners[0].textContent}"` : "") +
+        `; the page reads "${lede ? lede.textContent : "(no lede)"}" and the flow table holds ` +
+        `${body.children.length} rows against ${rowsFirst} before the click -- buildTable is the ` +
+        `LAST step of the repaint, so a throw there is the fisc-bsg split reached one function later`,
     });
   }
 

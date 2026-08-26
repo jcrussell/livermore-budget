@@ -74,10 +74,22 @@ async function drewWithTable(plan) {
   return { app, body, fetch };
 }
 
-/** Fires the year control's change handler for one stem, as a click would. */
+/**
+ * Fires the year control's change handler for one stem, as a click would.
+ *
+ * THE GUARDS ARE THE POINT. Without them a page whose toggle has no handler
+ * makes this a no-op, and a check comparing before-and-after degenerates to
+ * `n === n` -- green over a page that cannot switch year at all. Measured:
+ * dropping wireYears' addEventListener left the flow-table check below PASSING.
+ * lifecycle.mjs's copy of this helper has always thrown here; this one was
+ * written without them.
+ */
 function clickYear(app, stem) {
   const group = app.dom.byId.get("year-toggle");
-  for (const fn of (group.listeners.change || [])) fn({ target: { value: stem } });
+  if (!group) throw new Error("the page rendered no year-toggle to click");
+  const handlers = group.listeners.change || [];
+  if (!handlers.length) throw new Error("the year control has no change handler");
+  for (const fn of handlers) fn({ target: { value: stem } });
 }
 
 export async function checks() {
@@ -171,9 +183,20 @@ export async function checks() {
       // FY2027's chart. Painting a second year must replace, not append.
       name: "painting a second year replaces the first year's words",
       ok: (() => {
-        const first = painted(app, fixtureYear({ year: 2026, label: "FY 2025-26" }));
+        const first = painted(app, fixtureYear({
+          year: 2026, label: "FY 2025-26", caveats: ["only", "two"],
+        }));
         const second = painted(app, year);
+        // THE CAVEATS ARE ASSERTED, not merely collected. painted() has always
+        // returned them and this check compared only tiles, lede and title, so
+        // changing caveats.replaceChildren to append -- FY2026's caveats left on
+        // screen beside FY2027's chart, the exact fisc-kwq defect this check is
+        // named for -- left every check in the file green. The detail string
+        // below claimed otherwise. Measured, then fixed.
         return second.tiles.length === first.tiles.length &&
+               first.caveats.length === 2 &&
+               second.caveats.length === year.caveats.length &&
+               second.caveats.map((c) => c.textContent).join("|") === year.caveats.join("|") &&
                second.lede === year.label + " " + year.basis &&
                second.title.includes(year.label);
       })(),

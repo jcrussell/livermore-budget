@@ -1070,6 +1070,27 @@ function understands(got, what) {
 }
 
 /**
+ * Reports whether a fetched body is a document at all.
+ * @param {any} doc
+ * @param {string} what
+ */
+function isDocument(doc, what) {
+  if (doc && typeof doc === "object") return true;
+  // SEPARATE FROM drawableSankey AND RUN BEFORE understands(), because
+  // understands takes doc.schema_version and would dereference a null first --
+  // which is a real answer from a server: HTTP 200 with the body `null` parses
+  // fine. While this check lived inside drawableSankey it could never run, and
+  // the reader got "TypeError: Cannot read properties of null" instead of a
+  // sentence.
+  fail(
+    "This page will not draw " + what + ": the file is not a document at all. " +
+    "It is most likely an error page served with a success status. Nothing on " +
+    "the page was changed."
+  );
+  return false;
+}
+
+/**
  * Reports whether a sankey document carries the shape its schema_version
  * promises, refusing visibly if it does not.
  *
@@ -1078,46 +1099,49 @@ function understands(got, what) {
  * newer than this page", "reload to pick up the current one". A document at the
  * right version that is simply truncated would get a message that is false, and
  * the reader would go clear a cache that was never the problem. Two different
- * failures, two different sentences.
+ * failures, two different sentences. It runs AFTER understands for the same
+ * reason: a schema_version 2 document may legitimately have none of these keys,
+ * and telling its reader the file is truncated would be the wrong diagnosis.
  *
  * WHAT IT BUYS IS THE SENTENCE, AND NOT THE ATOMICITY -- measured, because the
  * two are easy to conflate. Laying out before repainting (see layOut) is what
- * keeps the page whole: `nodes.map` throws inside layOut, so with this gate
- * deleted the page STILL refuses without a split repaint. What changes is what
- * the reader is told. Without it the banner reads "The chart failed to draw:
- * TypeError: Cannot read properties of null (reading 'map')" -- an internal
- * error message shown to a reader for what is really a truncated file, and
- * nothing they could act on. tools/jscheck asserts the wording for that reason
- * rather than out of fussiness: a check on "a banner appeared" passes with this
- * function removed.
+ * keeps the page whole for nodes and links: `nodes.map` throws inside layOut, so
+ * with those two arms deleted the page STILL refuses without a split repaint.
+ * What changes is what the reader is told, and tools/jscheck asserts the wording
+ * for that reason.
  *
- * IT IS SCOPED TO THE SANKEY DOCUMENT AND NAMED FOR IT. revenue.html ships no
- * app.js, so there is no second shape to generalise over yet; a gate written
- * for one document and applied to another would be the more expensive mistake.
+ * metadata.sources IS THE EXCEPTION AND IS WHY THIS LIST IS NOT A GUESS. That
+ * one is NOT covered by layOut: buildTable reaches
+ * citations(projection.metadata.sources) and throws on a missing one -- and
+ * buildTable is the LAST step of the repaint, so the throw lands after
+ * paintYearWords, buildLegend and buildDerivedList have run, leaving the page
+ * reading one year over another year's chart. That is fisc-bsg exactly, reached
+ * one function past its fix, and it survived a commit because tools/jscheck
+ * planted no <tbody> and so buildTable returned at its first line in every
+ * lifecycle check.
  *
- * WHAT IT DOES NOT DO is validate the graph. A document whose links name nodes
- * it does not carry passes here and throws in layOut -- correctly, because that
- * is a rejection the last-resort .catch exists for, and because a client that
+ * THE RULE THIS LIST FOLLOWS, then: every key the draw DEREFERENCES before it
+ * could report a failure. Not every key the contract names -- a client that
  * re-validated the whole document would be a second implementation of
- * `fisc verify`.
+ * `fisc verify` -- and not fewer, or the gate is decorative. A document whose
+ * links name nodes it does not carry still passes here and throws in layOut,
+ * correctly, because that is what the last-resort .catch is for.
  * @param {any} doc
  * @param {string} what
  */
 function drawableSankey(doc, what) {
   const missing = [];
-  if (!doc || typeof doc !== "object") missing.push("the document itself");
-  else {
-    if (!Array.isArray(doc.nodes)) missing.push("nodes");
-    if (!Array.isArray(doc.links)) missing.push("links");
-    if (!doc.metadata || typeof doc.metadata !== "object") missing.push("metadata");
-  }
+  if (!Array.isArray(doc.nodes)) missing.push("nodes");
+  if (!Array.isArray(doc.links)) missing.push("links");
+  if (!doc.metadata || typeof doc.metadata !== "object") missing.push("metadata");
+  else if (!Array.isArray(doc.metadata.sources)) missing.push("metadata.sources");
   if (!missing.length) return true;
   fail(
     "This page will not draw " + what + ": it declares schema_version " +
     SCHEMA_VERSION + ", which promises " + missing.join(", ") + ", and the file " +
     "does not carry " + (missing.length === 1 ? "it" : "them") + ". The file is " +
-    "truncated or is not the document this page expected. The chart you are " +
-    "looking at is the year it was already showing."
+    "truncated or is not the document this page expected. Nothing on the page " +
+    "was changed."
   );
   return false;
 }
@@ -1199,6 +1223,7 @@ async function showYear(year) {
   // document from the config: the packager stamps the config from the
   // projection it was handed, so agreeing with the config is not evidence the
   // file on the wire agrees too.
+  if (!isDocument(doc, year.path)) return FAILED;
   if (!understands(doc.schema_version, year.path)) return FAILED;
   if (!drawableSankey(doc, year.path)) return FAILED;
 
