@@ -547,3 +547,63 @@ func between(t *testing.T, s, open, close string) string {
 	}
 	return rest[:j]
 }
+
+// TestTheMarkReachesTheRenderedPage is the end-to-end half of the mark: the
+// geometry tests in mark_test.go assert what buildMark computes, and this
+// asserts that it survives the template and lands in the file a reader gets.
+//
+// IT ALSO PINS THE PROPERTY THAT LETS THE MARK EXIST AT ALL. The mark carries no
+// citation, and that is only defensible because every figure it draws is already
+// in the same row as linked text. So this checks the two together: the row has
+// its marks AND it still has its links. If a future change ever drew a figure in
+// the mark that is not in the row, this is where it should stop.
+func TestTheMarkReachesTheRenderedPage(t *testing.T) {
+	dir := t.TempDir()
+	pages := []int{127, 128}
+	if _, err := export.Write(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(pages...)},
+		Views: []export.View{
+			{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "revenue.html", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+		},
+		Docs:        budgetDocs(),
+		PageText:    twoViewPageText(pages...),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page, err := os.ReadFile(filepath.Join(dir, "revenue.html"))
+	if err != nil {
+		t.Fatalf("read revenue.html: %v", err)
+	}
+	got := string(page)
+
+	// One mark for the fixture's one series, and one bar per printed column.
+	if n := strings.Count(got, `<td class="mark">`); n != 1 {
+		t.Errorf("the page renders %d marks over one series, want 1", n)
+	}
+	if n := strings.Count(got, `class="mark-bar`); n != len(pages) {
+		t.Errorf("the page renders %d bars over %d printed columns, want one each",
+			n, len(pages))
+	}
+	// The bars say which column and which figure they are, so a mark is
+	// identifiable without labels it has no room for.
+	if !strings.Contains(got, "<title>FY 2025-26 adopted: $1</title>") {
+		t.Error("no bar carries the column and figure it draws")
+	}
+	// AND THE FIGURES ARE STILL CITED. This is the load-bearing half: a mark
+	// with no provenance pointer is only honest while the figure it draws has
+	// one somewhere in the same row.
+	for _, p := range pages {
+		want := fmt.Sprintf("p%04d.txt", p)
+		if !strings.Contains(got, want) {
+			t.Errorf("the row draws a bar for p%d and cites no %s", p, want)
+		}
+	}
+	// The scale limit is stated on the page. A per-row scale that a reader
+	// takes for a shared one is a comparison the document does not support.
+	if !strings.Contains(got, "not comparable with each other") {
+		t.Error("the page draws per-row marks and does not say they are per-row")
+	}
+}

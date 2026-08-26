@@ -430,3 +430,31 @@ export function plannedFetch(plan) {
 export function refusals(main) {
   return main.children.filter((c) => c.className === "refusal");
 }
+
+/**
+ * Resolves one check to {name, ok, detail}, turning a throw into a failure.
+ *
+ * IT LIVES HERE RATHER THAN IN run.mjs SO A CHECK CAN ASSERT ON IT. The runner
+ * being synchronous is the defect that made every async check in this directory
+ * unfalsifiable (fisc-dn9), and it cannot be detected from a check's own `ok`:
+ * under a synchronous runner `Boolean(promise)` is TRUE for every promise, so no
+ * promise-valued ok can ever report false, whatever it resolves to. The only
+ * falsifiable form is a check that calls this and inspects what comes back —
+ * which is why seam.mjs does exactly that, and why an obvious-looking
+ * `ok: Promise.resolve(true)` tripwire was no tripwire at all.
+ *
+ * A check that THROWS is a failed check and not a crashed run: an async check
+ * drives real app.js code and can reject for the same reasons the page can, and
+ * a rejection taking the process down would report nothing about the others.
+ */
+export async function settleCheck(c) {
+  try {
+    return { name: c.name, ok: Boolean(await c.ok), detail: await c.detail };
+  } catch (e) {
+    return {
+      name: c.name,
+      ok: false,
+      detail: `the check itself threw: ${e && e.stack ? e.stack : String(e)}`,
+    };
+  }
+}

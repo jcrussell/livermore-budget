@@ -16,7 +16,9 @@
 // So each check below asserts that a seam CAN SEE something, in the smallest
 // way that would go red if the seam regressed to answering nothing.
 
-import { loadApp, settle, twoYearConfig, plannedFetch, refusals, goldenGraph } from "./harness.mjs";
+import {
+  loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
+} from "./harness.mjs";
 
 export async function checks() {
   const out = [];
@@ -26,12 +28,29 @@ export async function checks() {
   // under the pre-2026-08-26 synchronous runner a Promise assigned to `ok` was
   // truthy and reported PASS whatever it resolved to. If that ever regresses,
   // every async check goes quietly green and this is the one that notices.
-  out.push({
-    name: "an async check reports what it resolves to, not that it is a promise",
-    ok: Promise.resolve(true),
-    detail: "run.mjs awaits each check's ok; a promise resolving false must FAIL, " +
-      "and a truthy-object pass is what the synchronous runner did",
-  });
+  // IT ASSERTS ON settleCheck AND NOT ON ITS OWN `ok`, and the first attempt at
+  // this check shows why. `ok: Promise.resolve(true)` looks like a tripwire and
+  // is none: Boolean(await p) and Boolean(p) are BOTH true for any promise, so
+  // it passed under exactly the synchronous runner it claimed to detect.
+  // Neither does resolving false help -- un-awaited that is still a truthy
+  // object. NO promise-valued ok can ever report false under a synchronous
+  // runner, so the only falsifiable form is to call the runner's own resolver
+  // and look at what comes back.
+  {
+    const falsey = await settleCheck({ name: "probe", ok: Promise.resolve(false), detail: "d" });
+    const thrower = await settleCheck({
+      name: "probe", detail: "d",
+      get ok() { throw new Error("a check that throws"); },
+    });
+    out.push({
+      name: "the runner resolves a check's promise and survives one that throws",
+      ok: falsey.ok === false && thrower.ok === false &&
+        thrower.detail.includes("the check itself threw"),
+      detail: `a promise resolving false is reported as ${falsey.ok}, and a check that ` +
+        `throws is reported as ${thrower.ok} rather than taking the run down; without ` +
+        `the await every async check in this directory reports PASS whatever it finds`,
+    });
+  }
 
   // The fetch seam, and specifically that it is installed BEFORE app.js runs.
   // app.js ends in main() at file scope, so a fetch assigned after loadApp

@@ -866,7 +866,15 @@ noscript p {
   font-size: 12px;
   z-index: 1;
 }
+/* The bare `th` rule earlier in this file makes every th sticky with an opaque
+   background, which is right for a column header and wrong for a row one. Left
+   unreset, the Fund cell painted its own --surface-1 over the row-hover tint --
+   a hole in the highlight on all 231 rows, and hover is the mark's full-contrast
+   state -- and inside .table-scroll each fund name stuck at top: 0 and slid out
+   of alignment with its own row while the reader scrolled. */
 .series-table tbody th {
+  position: static;
+  background: none;
   font-weight: 400;
   color: var(--ink-2);
   white-space: nowrap;
@@ -912,6 +920,123 @@ noscript p {
 }
 .series-table td a:hover {
   text-decoration-color: currentColor;
+}
+
+/* THE SHAPE COLUMN.
+   ------------------------------------------------------------------------
+   The mark draws the row's own four figures at the row's own scale. It is a
+   RENDERING of numbers that are already on the page as linked text, not a
+   figure of its own, which is what lets it carry no citation: the citation is
+   the cell beside it.
+
+   HUE ENCODES NOTHING HERE, deliberately. The obvious move is to colour by
+   fund group, and the palette above holds six hues chosen by enumerating all
+   720 orderings against a CVD validator -- while the revenue-by-fund scope
+   carries SEVEN groups (permanent has four facts and no spine column,
+   fisc-u8o). A seventh hue would invalidate a measured result to decorate a
+   mark whose categorical axis is already the row it sits in. So the bars take
+   the text colour, the contra ones take the same --critical the figures beside
+   them take, and the palette is untouched.
+
+   MEASURED, not assumed, against WCAG 1.4.11's 3:1 for a graphical object --
+   which is the right threshold here and a different one from the 4.5:1 these
+   same values already meet as text:
+
+                                light    dark
+     bar        --ink-2        7.73:1   9.72:1
+     bar hover  --ink-1       19.17:1  17.42:1
+     zero dot   --ink-2        7.73:1   9.72:1
+     contra     --critical     4.68:1   5.39:1
+     baseline   --muted        3.50:1   4.85:1
+     group rule --muted        3.50:1   4.85:1
+
+   Worst case 3.50:1, the baseline in light. THE BASELINE AND THE RULES ARE IN
+   THAT TABLE because they were not, and that omission was the finding: they
+   were var(--border) at 1.24:1 light and 1.34:1 dark under a comment claiming
+   the whole mark had been measured. A load-bearing element -- the caption
+   defines a zero as a dot ON the line, and in a contra row the line is the only
+   thing separating up from down -- is exactly the one that must be in the
+   table.
+
+   Contra against resting is only
+   1.65:1 light / 1.80:1 dark, and that is fine rather than overlooked: the two
+   never have to be told apart by hue, because they sit on opposite sides of the
+   baseline. POSITION carries the sign and colour only reinforces it, which is
+   also why the mark survives being printed in greyscale. Bars are separated by
+   a 3-unit gap rather than by colour, so no bar-against-bar ratio applies. */
+.series-table th.mark-head,
+.series-table td.mark {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 14px;
+}
+.series-table td.mark {
+  /* Middle, not baseline: the mark is a box and the row's text is a line, and
+     aligning a box on a text baseline hangs it below the row it belongs to. */
+  vertical-align: middle;
+  line-height: 0;
+}
+.series-table td.mark svg {
+  /* The viewBox carries the geometry and this carries the size, so the mark
+     follows the table's type without any number in the Go changing.
+
+     2.2em AND NOT 1.6em, which is a measurement rather than a preference. The
+     box is markHeight = 30 viewBox units tall; at 1.6em over this table's 13px
+     type that is 20.8px, so one unit was 0.69 CSS PX -- every distinction the
+     geometry makes was sub-pixel and survived only as antialiasing. 2.2em is
+     28.6px, just under one px per unit, which is the floor for the smallest
+     thing drawn here (markMinBar, two units) to be a mark a reader can see. */
+  height: 2.2em;
+  width: auto;
+  overflow: visible;
+}
+.mark-bar {
+  fill: var(--ink-2);
+}
+/* A published zero -- a dash the city printed, which is a figure -- is a DOT on
+   the line, not a short bar. Three states, three shapes: nothing at all for a
+   column this row does not appear in, a dot for a printed zero, a rectangle for
+   money. Distinguishing them by HEIGHT failed at this scale -- one viewBox unit
+   is about a pixel -- and a difference in kind cannot be eroded by rounding or
+   lost in greyscale. */
+.mark-zero {
+  fill: var(--ink-2);
+}
+.mark-bar.contra {
+  fill: var(--critical);
+}
+/* THE BASELINE IS LOAD-BEARING, so it is a real line and not a hairline hint.
+   The caption defines a published zero as "a bar sitting flat on the line", and
+   in a contra row it is the only thing separating up from down. It was
+   var(--border) -- 1.24:1 light, 1.34:1 dark, fainter than the table's own
+   rules and well under 3:1 -- and the MEASURED table above did not list it,
+   which is how a load-bearing element ends up unmeasured in a block that claims
+   a worst case. --muted is the lightest value in the palette that clears 3:1 on
+   both surfaces: 3.50:1 light, 4.85:1 dark. */
+.mark-base {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+/* The boundary between comparable groups, at the same columns the headers rule.
+   Dashed, so it reads as a caution rather than as another bar, and beneath the
+   bars in paint order so it never cuts one in half. */
+.mark-rule {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+/* A row under the pointer gets its mark at full strength. The resting state is
+   deliberately quiet: 231 of these run down the page and a column of
+   full-contrast bars reads as the page's subject, which it is not -- the
+   figures are. */
+.series-table tbody tr:hover .mark-bar {
+  fill: var(--ink-1);
+}
+.series-table tbody tr:hover .mark-bar.contra {
+  fill: var(--critical);
+}
+.series-table tbody tr:hover .mark-zero {
+  fill: var(--ink-1);
 }
 .series-table tbody tr:hover {
   background: var(--wash);

@@ -17,23 +17,11 @@
 // and a rejection that took the process down would report nothing about the
 // other checks and read as a broken harness rather than a broken page.
 
+import { settleCheck } from "./harness.mjs";
 import { checks as layoutChecks } from "./layout.mjs";
 import { checks as yearChecks } from "./year.mjs";
 import { checks as seamChecks } from "./seam.mjs";
 import { checks as lifecycleChecks } from "./lifecycle.mjs";
-
-/** Resolves one check to {name, ok, detail}, turning a throw into a failure. */
-async function settleCheck(c) {
-  try {
-    return { name: c.name, ok: Boolean(await c.ok), detail: await c.detail };
-  } catch (e) {
-    return {
-      name: c.name,
-      ok: false,
-      detail: `the check itself threw: ${e && e.stack ? e.stack : String(e)}`,
-    };
-  }
-}
 
 let failed = 0;
 // Sequentially, not Promise.all: each module loads app.js into its own vm

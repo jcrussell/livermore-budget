@@ -224,5 +224,45 @@ export async function checks() {
     });
   }
 
+  // ------------------------------------------------- the outcome protocol
+  //
+  // showYear's three states are the fisc-8cg fix, and until this check they
+  // were returned by every exit and READ BY NOBODY: wireYears voids the value
+  // and main() discards it. A protocol nothing observes is a comment, and
+  // collapsing it back to the boolean it replaced -- the regression its doc
+  // comment exists to prevent -- would have been caught by nothing.
+  //
+  // The three are driven directly rather than through main(), because SUPERSEDED
+  // needs two attempts in flight at once and that is not a state a page reaches
+  // by itself on demand.
+  {
+    const { app } = page({
+      config,
+      fetch: plannedFetch({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": { reject: new TypeError("Failed to fetch") },
+      }),
+    });
+    await settle();
+
+    const drew = await app.showYear(config.years[0]);
+    const failed = await app.showYear(config.years[1]);
+    // Two attempts started back to back: the first is overtaken by the second
+    // before its fetch resolves, which is the state the token guard exists for.
+    const first = app.showYear(config.years[0]);
+    const second = app.showYear(config.years[0]);
+    const [a, b] = [await first, await second];
+
+    const distinct = new Set([drew, failed, a]).size === 3;
+    out.push({
+      name: "showYear tells drawn, superseded and failed apart",
+      ok: distinct && drew === b,
+      detail: `a good year is "${drew}", a refused one is "${failed}", an overtaken one is ` +
+        `"${a}" and the attempt that overtook it is "${b}" — three distinct outcomes, ` +
+        `where one boolean for "did not draw" is what made a superseded opening fetch ` +
+        `read as a page that had given up`,
+    });
+  }
+
   return out;
 }
