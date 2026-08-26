@@ -339,9 +339,10 @@ has no nodes and no links. Three checks cover it instead.
   series is complete over what remains. Nothing here compares the corpus against
   what it used to hold. Filed as `fisc-7dt`.
 - **`documents-are-checked`** (`fisc-5ep`) — the check that refuses a document no
-  check reads. It tests `p.Graph != nil` today and must grow an arm for a
-  non-graph shape that *is* covered, or this document is red for being covered
-  by the two checks above.
+  check reads. It grew the arm this document needed: `documentShape` names
+  `series` for a projection carrying a `TrendsDocument` and cites the two checks
+  above as what reads it. Each arm names its checks, so adding a shape without
+  adding checks fails there rather than widening the exemption silently.
 
 `revenue-detail-ties-to-spine` continues to reconcile this schedule against the
 spine, unchanged. It reads the fact store directly through `detailSums` and has

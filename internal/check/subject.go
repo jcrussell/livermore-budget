@@ -168,12 +168,16 @@ func (p Projection) String() string {
 // lost, and the reason buried in a wrapped error — which is strictly worse than
 // a red check saying the same thing.
 //
-// What stays a hard error is a fact store with no slice in the published scope.
-// A projection that exposes no graph is NOT one: it used to be, and that was the
-// defect — see buildProjections and documentsAreChecked, which report it with a
-// report around it rather than by killing the run. Neither is a verdict about the corpus: the first is a
-// programming error and the second is the state in which every graph check goes
-// vacuous at once and the run exits 0.
+// EXACTLY ONE THING STAYS A HARD ERROR: a fact store with no slice in the
+// published scope. It is not a verdict about the corpus and there is no
+// projection there that failed — there is nothing to project, so recording it
+// would leave every graph check vacuous at once and the run exiting 0, which is
+// the state this whole mechanism exists to avoid.
+//
+// A projection that exposes no graph is NOT that error, though it used to be,
+// and that was the defect: see buildProjections, which records it with a nil
+// document, and documentsAreChecked, which reports it with a report around it
+// rather than by killing the run.
 type ProjectionFailure struct {
 	Name    string
 	Options project.Options

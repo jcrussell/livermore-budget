@@ -121,10 +121,18 @@ func (*projectionsBuild) Description() string {
 		"refusing and taking the whole report down with it"
 }
 
-// Run counts one subject per slice a projection was asked for — the built ones
+// Run counts one subject per SLICE a projection was asked for — the built ones
 // and the failed ones together — because the claim is about all of them and a
 // count of only the failures would read as "1 of 1" on a corpus where nine
 // slices built and one did not.
+//
+// THE UNIT IS SLICES AND SO IS THE COUNT, which took a fix (fisc-rwo). It
+// counted PROJECTIONS under that unit, and one projection stopped being one
+// slice when the first multi-column document landed: keysOf was added to this
+// file for exactly that reason -- its own doc comment says "anything keying a
+// map on a projection has to iterate this rather than call it once" -- and this
+// Run did not. Measured on the committed corpus, it reported "3 projection
+// slices built" over six: the two sankey columns plus revenue-trends' four.
 func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 	findings := make([]Finding, 0, len(s.ProjectionFailures))
 	for _, f := range s.ProjectionFailures {
@@ -133,11 +141,19 @@ func (*projectionsBuild) Run(_ context.Context, s *Subject) (Result, error) {
 				"silent about this slice — they are not failing it, they cannot see it",
 			f.Err))
 	}
+	slicesBuilt := 0
+	for _, p := range s.Projections {
+		slicesBuilt += len(keysOf(p.Options))
+	}
+	slicesRefused := 0
+	for _, f := range s.ProjectionFailures {
+		slicesRefused += len(keysOf(f.Options))
+	}
 	return conclusion{
-		subjects: len(s.Projections) + len(s.ProjectionFailures),
+		subjects: slicesBuilt + slicesRefused,
 		unit:     "projection slices",
-		held: fmt.Sprintf("%d projection slices built, none refused",
-			len(s.Projections)),
+		held: fmt.Sprintf("%d %s built, none refused",
+			slicesBuilt, plural(slicesBuilt, "projection slice", "projection slices")),
 		nothing:  "no projection was asked for at all",
 		findings: findings,
 	}.result(), nil
@@ -380,20 +396,40 @@ func (*factsAreProjected) Run(_ context.Context, s *Subject) (Result, error) {
 				"unprojectedScopes declares unprojected",
 			f.DocID, f.Page, f.RowLabel, f.FiscalYear, f.Basis, f.Scope))
 	}
+	// ONE FINDING PER REFUSED SLICE, NOT ONE PER FAILURE, and the difference is
+	// the number a reader triages on.
+	//
+	// It used to sum refused[k] over each failure's OWN columns, independently.
+	// That is right for one document of four columns -- all four are stranded,
+	// and reporting one column's worth would understate it -- and wrong the
+	// moment two projections refuse the SAME slice: `refused` is keyed on
+	// (year, basis, scope), so both claimed the full count and a reader adding
+	// the findings up got twice the facts that exist.
+	//
+	// The slice is what the facts are stranded IN, so it is what the finding is
+	// about. Every failure that refused it is still named, so no refusal goes
+	// unreported here; projections-build reports them a second time as refusals
+	// in their own right.
+	refusers := map[sliceKey][]string{}
+	var stranded []sliceKey
 	for _, f := range s.ProjectionFailures {
-		// Summed over the failure's own columns, not read from one key: a
-		// document of four columns that refused to build stranded the facts of
-		// all four, and reporting one column's worth would understate it.
-		n := 0
 		for _, k := range keysOf(f.Options) {
-			n += refused[k]
+			if len(refusers[k]) == 0 {
+				stranded = append(stranded, k)
+			}
+			refusers[k] = append(refusers[k], f.String())
 		}
-		if n > 0 {
-			findings = append(findings, finding(f.String(),
-				"%d facts in this slice are unprojected because the projection refused to "+
-					"build; see projections-build. Whether their scopes are declared cannot "+
-					"be established until it does", n))
+	}
+	for _, k := range stranded {
+		if refused[k] == 0 {
+			continue
 		}
+		findings = append(findings, finding(fmt.Sprintf("FY%d %s %s", k.year, k.basis, k.scope),
+			"%d facts in this slice are unprojected because %s refused to build: %s. See "+
+				"projections-build. Whether their scopes are declared cannot be "+
+				"established until it does",
+			refused[k], plural(len(refusers[k]), "a projection", "projections"),
+			joinComma(refusers[k])))
 	}
 
 	findings = append(findings, staleDeclarations(s, declared, drawn)...)
@@ -549,7 +585,24 @@ func staleDeclarations(s *Subject, declared map[string]map[sliceKey]int, drawn m
 			}
 		}
 
+		// THE NO-FACTS ARM IS TESTED FIRST, and the order is the fix rather
+		// than an aesthetic (fisc-rwo). Arm 2 below tests only drawnSlices and
+		// liveSlices, never `carried`, so a scope no rule writes at all reported
+		// "all 0 of its facts are in some projection's slice" whenever any
+		// projection merely DECLARED that scope -- and the mistyped-scope
+		// diagnosis this arm exists for was unreachable. `carried == 0` is the
+		// stronger and more specific claim, so it is asked first.
+		//
+		// Reordering rather than gating arm 2 on `carried > 0`: gating would
+		// leave carried == 0, written[scope], drawnSlices > 0 matching no arm at
+		// all, and a declaration exempting nothing would go unreported. Silence
+		// is the failure this whole check is about.
 		switch {
+		case carried == 0 && len(s.Files) > 0 && !written[scope]:
+			out = append(out, finding(scope,
+				"unprojectedScopes declares this scope unprojected, and no rule in %s writes "+
+					"it and no fact carries it; the rules that wrote it are gone, or this "+
+					"string and the one they write have drifted apart", mappingsDir))
 		case len(drawnSlices) > 0 && len(liveSlices) == 0:
 			out = append(out, finding(scope,
 				"unprojectedScopes declares this scope unprojected, but all %d of its facts "+
@@ -569,11 +622,6 @@ func staleDeclarations(s *Subject, declared map[string]map[sliceKey]int, drawn m
 					"still covers",
 				describeSliceKeys(drawnSlices), countOf(declared[scope]),
 				describeSliceKeys(liveSlices)))
-		case carried == 0 && len(s.Files) > 0 && !written[scope]:
-			out = append(out, finding(scope,
-				"unprojectedScopes declares this scope unprojected, and no rule in %s writes "+
-					"it and no fact carries it; the rules that wrote it are gone, or this "+
-					"string and the one they write have drifted apart", mappingsDir))
 		}
 	}
 	return out

@@ -234,3 +234,146 @@ func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 			"published slice, want fail", res.Status)
 	}
 }
+
+// TestUncheckedDocumentsIsEmpty guards the state the map should stay in, in the
+// shape incompleteSeries already has. An entry is a promise that someone is
+// coming back; the committed corpus needs none, and a future entry should be a
+// deliberate act rather than something that accumulated.
+func TestUncheckedDocumentsIsEmpty(t *testing.T) {
+	if len(uncheckedDocuments) != 0 {
+		t.Errorf("uncheckedDocuments carries %d entries: %v",
+			len(uncheckedDocuments), uncheckedDocuments)
+	}
+}
+
+// withUncheckedDocuments swaps the declaration map for one test and restores it,
+// so a table of cases cannot leak into the next.
+func withUncheckedDocuments(t *testing.T, m map[string]string) {
+	t.Helper()
+	prev := uncheckedDocuments
+	uncheckedDocuments = m
+	t.Cleanup(func() { uncheckedDocuments = prev })
+}
+
+// TestADeclaredDocumentIsNotCountedAsExamined is the defect the missing test
+// let stand (fisc-rwo).
+//
+// The count was len(s.Projections), which counts the projections the declaration
+// EXEMPTS. So a run in which every projection is declared unchecked reported a
+// PASS -- over a denominator it had not looked at, which is the state this
+// check's own doc comment calls the one thing this package exists to prevent.
+// The `nothing:` branch was unreachable while any declaration was live.
+func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
+	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (fisc-000)"})
+	s := &Subject{Projections: []Projection{{Name: "blob"}}}
+
+	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusVacuous {
+		t.Fatalf("documents-are-checked = %s with every projection declared unchecked, "+
+			"want vacuous: nothing was examined", res.Status)
+	}
+	// Vacuous says WHAT is absent, or the verdict is a shrug. The old pass
+	// summary here read "0 projections structurally checked ()" -- a count of
+	// nothing beside an empty shape list -- which the corrected denominator
+	// makes unreachable rather than merely better worded.
+	if !strings.Contains(res.Summary, "no projection built a document") {
+		t.Errorf("summary %q does not say what is absent", res.Summary)
+	}
+}
+
+// TestAnUnreadProjectionIsInItsOwnDenominator is the other side of narrowing
+// the count, and narrowing it too far is a defect of the same class.
+//
+// A projection that built no shape any check reads WAS examined -- this check
+// looked at it and reported it. Counting only the ones that reached a shape
+// would report "2 findings over 0 projections": a numerator with no denominator
+// under it, which is as unreadable as the pass over zero the narrowing fixed.
+func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
+	s := &Subject{Projections: []Projection{{Name: "blob"}, {Name: "blob-two"}}}
+
+	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusFail {
+		t.Fatalf("documents-are-checked = %s over two unread projections, want fail",
+			res.Status)
+	}
+	if !strings.Contains(res.Summary, "over 2 projections") {
+		t.Errorf("summary %q does not count the two projections it examined", res.Summary)
+	}
+}
+
+// TestADeclaredDocumentDoesNotHideAnExaminedOne is the other side of the count:
+// narrowing the denominator to what was examined must not make the declaration
+// invisible, because a growing exemption read as a shrinking one is how a
+// document stays unchecked forever.
+func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
+	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (fisc-000)"})
+	s := &Subject{Projections: []Projection{
+		{Name: "sankey", Graph: &project.Graph{}},
+		{Name: "blob"},
+	}}
+
+	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusPass {
+		t.Fatalf("documents-are-checked = %s, want pass: one projection was examined",
+			res.Status)
+	}
+	if !strings.Contains(res.Summary, "1 projection structurally checked") {
+		t.Errorf("summary %q does not count the one projection it examined", res.Summary)
+	}
+	if !strings.Contains(res.Summary, `1 of "blob"`) {
+		t.Errorf("summary %q does not name the declared projection", res.Summary)
+	}
+}
+
+// TestAStaleUncheckedDocumentDeclarationIsCaught pins the expiry branch, and the
+// second subtest pins the wording fisc-rwo is about: the finding used to say
+// "now carries a graph" whatever the projection carried, in the check that was
+// widened precisely so a document need not be a graph. A reader would go looking
+// for a graph that does not exist.
+func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
+	t.Run("no projection of that name", func(t *testing.T) {
+		withUncheckedDocuments(t, map[string]string{"gone": "removed or typo'd"})
+		s := &Subject{Projections: []Projection{{Name: "sankey", Graph: &project.Graph{}}}}
+
+		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if res.Status != StatusFail ||
+			!strings.Contains(findingDetails(res), "no projection of that name was built") {
+			t.Errorf("a declaration naming nothing reported %s: %s",
+				res.Status, findingDetails(res))
+		}
+	})
+
+	t.Run("the projection now carries a series", func(t *testing.T) {
+		withUncheckedDocuments(t, map[string]string{"revenue-trends": "no checks yet"})
+		s := &Subject{Projections: []Projection{
+			{Name: "revenue-trends", Trends: &project.TrendsDocument{}},
+		}}
+
+		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if res.Status != StatusFail {
+			t.Fatalf("a declaration over a checked projection reported %s", res.Status)
+		}
+		got := findingDetails(res)
+		if !strings.Contains(got, "series") {
+			t.Errorf("the finding does not name the shape the projection carries: %s", got)
+		}
+		if strings.Contains(got, "graph") {
+			t.Errorf("the finding says graph about a projection that carries a series: %s", got)
+		}
+	})
+}

@@ -63,6 +63,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	declared := map[string]int{}
 	shapes := map[string]int{}
 	checked := 0
+	unread := 0
 
 	for _, p := range s.Projections {
 		if shape := documentShape(p); shape != "" {
@@ -74,6 +75,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 			declared[p.Name]++
 			continue
 		}
+		unread++
 		findings = append(findings, finding(p.String(),
 			"this projection produced no document of any shape the structural checks read, "+
 				"and no entry in uncheckedDocuments declares that. `fisc export` would "+
@@ -105,27 +107,51 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 	// The other direction, and it is the one that expires an exemption rather
 	// than leaving it for whoever forgets: an entry naming a shape nothing
 	// builds is either a projection that was removed or a name that has drifted.
-	built := map[string]bool{}
+	//
+	// THE FINDING NAMES THE SHAPE THE PROJECTION ACTUALLY CARRIES, and it used
+	// not to: it said "now carries a graph" whatever was built, in the check
+	// that was widened precisely so a document need not be a graph. A reader
+	// handed that about a trends document goes looking for a graph that does not
+	// exist. The shapes are collected per NAME rather than as a single bool,
+	// because two projections can share a name and build different documents.
+	built := map[string]map[string]bool{}
 	for _, p := range s.Projections {
-		built[p.Name] = true
+		shape := documentShape(p)
+		if shape == "" {
+			continue
+		}
+		if built[p.Name] == nil {
+			built[p.Name] = map[string]bool{}
+		}
+		built[p.Name][shape] = true
 	}
 	for _, name := range sortedStrings(uncheckedDocuments) {
-		if declared[name] == 0 {
-			what := "no projection of that name was built"
-			if built[name] {
-				what = "every projection of that name now carries a graph, so a structural " +
-					"check reads it and the declaration is exempting nothing"
-			}
-			findings = append(findings, finding(name,
-				"uncheckedDocuments declares this projection unchecked, but %s; the "+
-					"declaration must be removed", what))
+		if declared[name] > 0 {
+			continue
 		}
+		what := "no projection of that name was built"
+		if shapes := built[name]; len(shapes) > 0 {
+			what = fmt.Sprintf("every projection of that name now carries a %s, so a "+
+				"structural check reads it and the declaration is exempting nothing",
+				joinComma(sortedStrings(shapes)))
+		}
+		findings = append(findings, finding(name,
+			"uncheckedDocuments declares this projection unchecked, but %s; the "+
+				"declaration must be removed", what))
 	}
 
 	// The summary names the SHAPES as well as the count. A number alone would
 	// read the same whether both document shapes were covered or one of them had
 	// quietly stopped being built, which is the state publishedProjectionBuilt
 	// exists for on the other axis.
+	// `held` is rendered on the PASS path only, and a pass means every built
+	// projection was either read or declared. So `checked > 0` whenever
+	// len(declared) > 0 here -- a run with declarations and nothing read has a
+	// zero denominator and takes the `nothing:` branch instead -- and the shape
+	// list below cannot come out empty. That was not true while the count was
+	// len(s.Projections): a fully-declared run passed, and printed "0
+	// projections structurally checked ()". The count is the fix; there is
+	// nothing left for a guard here to catch.
 	held := fmt.Sprintf("%d %s, each read by the structural checks: %s",
 		checked, plural(checked, "projection", "projections"), describeShapes(shapes))
 	if len(declared) > 0 {
@@ -134,15 +160,30 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 			describeShapes(shapes), describeUnchecked(declared))
 	}
 	return conclusion{
-		// Counted over what was BUILT. It used to be counted over the registry,
-		// because this check also reported a registered projection that produced
-		// nothing and that projection had to be in its own denominator. That arm
-		// is gone (see above), and with it the reason: a projection declaring no
-		// slices is now examined by nobody because there is nothing to examine,
-		// and counting it here would report "pass over 1" for a run that looked
-		// at no document at all -- a pass over zero subjects wearing a disguise,
-		// which is the one thing this package exists to prevent.
-		subjects: len(s.Projections),
+		// COUNTED OVER WHAT WAS EXAMINED, which is narrower than what was built
+		// and narrower still than the registry.
+		//
+		// It counted the registry once, because this check also reported a
+		// registered projection that produced nothing and that projection had to
+		// be in its own denominator. That arm is gone (see above). It then
+		// counted len(s.Projections) -- everything BUILT -- and that was the
+		// defect fisc-rwo names: a projection declared in uncheckedDocuments is
+		// built and is NOT examined, so a run in which every projection was
+		// declared reported a PASS while the `nothing:` branch below sat
+		// unreachable. A pass over a denominator the check did not look at is
+		// the one thing this package exists to prevent, and this check was
+		// producing one.
+		//
+		// EXAMINED, NOT READ. `checked` is the projections that reached a shape
+		// some structural check reads; `unread` is the ones that reached none
+		// and were reported for it. Both were looked at, so both are in the
+		// denominator -- counting only `checked` would report "2 findings over 0
+		// projections", a numerator with no denominator under it.
+		//
+		// Only the DECLARED ones are excluded, because a declaration is the
+		// statement that nothing examined them. They are named in the summary
+		// instead, where a reader can watch the exemption grow.
+		subjects: checked + unread,
 		unit:     "projections",
 		held:     held,
 		nothing:  "no projection built a document, so no document shape has been examined",

@@ -2,6 +2,7 @@ package check
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -1175,6 +1176,77 @@ func TestProjectionsBuildIsNeverVacuousWithARefusalRecorded(t *testing.T) {
 	}
 }
 
+// TWO PROJECTIONS REFUSING ONE SLICE STRAND ITS FACTS ONCE, NOT TWICE.
+//
+// facts-are-projected used to sum refused[k] over each failure's own columns,
+// independently, while `refused` is keyed on (fiscal year, basis, scope). So
+// two projections refusing the SAME slice each claimed the full count and a
+// reader adding the findings up got twice the facts that exist -- and the count
+// is what a reader triages on (fisc-rwo). The slice is what the facts are
+// stranded in, so it is what the finding is now about, and both refusals are
+// named in it.
+func TestTwoProjectionsRefusingOneSliceStrandItsFactsOnce(t *testing.T) {
+	facts := testFacts()
+	facts[0].Department = "patrol" // refuses the spine slice
+	s := testSubject(t, facts...)
+	if len(s.ProjectionFailures) != 1 {
+		t.Fatalf("recorded %d failures, want the 1 this test doubles", len(s.ProjectionFailures))
+	}
+	// A second projection refusing the very same slice, which is what a corpus
+	// with two graph documents over one year looks like the day both refuse.
+	second := s.ProjectionFailures[0]
+	second.Name = "sankey-also"
+	s.ProjectionFailures = append(s.ProjectionFailures, second)
+
+	res, err := (&factsAreProjected{}).Run(context.Background(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got := len(res.Findings); got != 1 {
+		t.Fatalf("findings = %d, want 1: one slice was refused, however many "+
+			"projections refused it\n%s", got, findingDetails(res))
+	}
+	details := findingDetails(res)
+	if !strings.Contains(details, fmt.Sprintf("%d facts", len(facts))) {
+		t.Errorf("the finding does not count the slice's facts once:\n%s", details)
+	}
+	// Both refusals are named, or the second one is reported by nothing here.
+	if !strings.Contains(details, "sankey-also") {
+		t.Errorf("the finding does not name the second projection that refused:\n%s", details)
+	}
+}
+
+// projections-build COUNTS SLICES, which is the unit it has always named.
+//
+// It counted PROJECTIONS under the unit "projection slices", and one projection
+// stopped being one slice when the first multi-column document landed. Measured
+// on the committed corpus before the fix: "3 projection slices built" over six.
+// A denominator that is not the thing the unit says is a denominator a reader
+// cannot use.
+func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
+	s := &Subject{Projections: []Projection{{
+		Name:  "trends",
+		Graph: &project.Graph{},
+		Options: project.Options{
+			Columns: []project.Column{
+				{FiscalYear: 2024, Basis: "actual"},
+				{FiscalYear: 2025, Basis: "revised"},
+				{FiscalYear: 2026, Basis: project.PublishedBasis},
+				{FiscalYear: 2027, Basis: project.PublishedBasis},
+			},
+			Scope: spineScope,
+		},
+	}}}
+	res, err := (&projectionsBuild{}).Run(context.Background(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !strings.Contains(res.Summary, "4 projection slices built") {
+		t.Errorf("summary %q does not count the four slices the one projection covers",
+			res.Summary)
+	}
+}
+
 // A refused projection must not hide an undeclared scope somewhere else in the
 // store.
 //
@@ -1447,6 +1519,47 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		}
 		if !strings.Contains(findingDetails(res), "drifted apart") {
 			t.Errorf("findings %v do not name the drift\n%s", res.Findings, findingDetails(res))
+		}
+	})
+
+	// THE MISTYPED SCOPE, MASKED BY THE ARM ABOVE IT (fisc-rwo).
+	//
+	// The "exempting nothing" arm tested only that some projection DRAWS the
+	// scope and that no fact of it is still unprojected. It never consulted the
+	// fact count, so a scope no rule writes -- which carries no facts at all --
+	// satisfied both clauses the instant any projection declared it, and the
+	// check reported "all 0 of its facts are in some projection's slice" about a
+	// scope with no facts and no rules. The mistyped-scope diagnosis the map
+	// exists for was unreachable, and the two need different fixes: delete the
+	// entry, or find out why the rules stopped writing the string.
+	t.Run("a scope no rule writes is not a scope that is fully drawn", func(t *testing.T) {
+		s := testSubject(t)
+		s.Files = []*mapping.File{{
+			DocID: testDoc,
+			Rules: []mapping.Rule{{ID: "spine-revenues", Scope: spineScope}},
+		}}
+		// A projection OF the declared scope, over a store that carries no fact
+		// in it. Drawn, and empty.
+		s.Projections = append(s.Projections, Projection{
+			Name: "detail",
+			Options: project.Options{
+				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
+				Scope:   expenditureDetailScope,
+			},
+		})
+		res, err := (&factsAreProjected{}).Run(context.Background(), s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		details := findingDetails(res)
+		if !strings.Contains(details, "drifted apart") {
+			t.Errorf("findings do not diagnose the scope as one no rule writes:\n%s", details)
+		}
+		if strings.Contains(details, "all 0 of its facts") {
+			t.Errorf("findings report a scope with no facts as fully drawn:\n%s", details)
 		}
 	})
 
