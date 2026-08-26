@@ -1866,8 +1866,38 @@ func TestTheGeneralFundTransfersInException(t *testing.T) {
 			t.Errorf("summary still calls the cell unreconciled after %q covers it:\n%s",
 				transfersDetailScope, res.Summary)
 		}
-		if !strings.Contains(res.Summary, "reconciled by scope") {
+		if !strings.Contains(res.Summary, "handed off to scope") {
 			t.Errorf("summary does not say which scope took the cell over:\n%s", res.Summary)
+		}
+		// AND IT MUST NOT CLAIM THE RECONCILIATION (fisc-8ka). The arm tests
+		// that the covering scope publishes the KEY -- covers[k] counts facts,
+		// never cents -- so a scope carrying one cent under it would satisfy
+		// this arm too. transfers-detail-ties-to-spine is what compares the
+		// amount; a check that asserted its conclusion would be putting the
+		// claim and the evidence for it in different places.
+		if strings.Contains(res.Summary, "reconciled by scope") {
+			t.Errorf("summary claims a reconciliation this check did not perform:\n%s",
+				res.Summary)
+		}
+	})
+
+	// The same arm, with the covering scope publishing a DIFFERENT amount. The
+	// report line must read the same, because the arm never looked at the
+	// amount in either case -- that is precisely what its wording now admits.
+	t.Run("covered by a scope carrying the wrong value", func(t *testing.T) {
+		facts := append(testFacts(), tying...)
+		facts = append(facts, transfersFact(t, "transfers/in", "general", 1))
+		fact.Sort(facts)
+		res := resultFor(t, runChecks(t, factsSubject(t, facts)), id)
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		if !strings.Contains(res.Summary, "handed off to scope") {
+			t.Errorf("summary does not name the scope the cell went to:\n%s", res.Summary)
+		}
+		if strings.Contains(res.Summary, "reconciled by scope") {
+			t.Errorf("a scope publishing one cent under the key is reported as having "+
+				"reconciled it:\n%s", res.Summary)
 		}
 	})
 
@@ -2066,6 +2096,60 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 		if !strings.Contains(findingDetails(res), "no rule or rollup declares that total") {
 			t.Errorf("findings %v do not name the unmapped section", res.Findings)
+		}
+	})
+
+	// A MAPPED SECTION MUST NOT BE REPORTED AS UNCLAIMED (fisc-948).
+	//
+	// Claiming a printed total says SOME rule reads that heading. It used to
+	// happen after two guards, so a rule that maps a fund section without
+	// declaring one fund -- fund_group-only columns, which is what p76 does --
+	// never claimed its own total, and clause 2 reported the section it maps as
+	// one no rule declares.
+	t.Run("a rule with no fund of its own still claims its printed total", func(t *testing.T) {
+		noFund := fundRule("it", 700, "internal-service", "Total Information Technology Fund")
+		noFund.Parts[0].Columns[0].Fund = 0 // the group is declared, the fund is not
+
+		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
+			fundRule("water", 500, "enterprise", "Total Water Utility Fund"),
+			noFund,
+		}, nil)), id)
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass: both printed totals are mapped",
+				res.Status, res.Summary)
+		}
+		if strings.Contains(findingDetails(res), "no rule or rollup declares that total") {
+			t.Errorf("a section a rule maps is reported as unclaimed:\n%s",
+				findingDetails(res))
+		}
+	})
+
+	// A MISMATCH IS ONE FINDING, NOT TWO THAT CONTRADICT EACH OTHER (fisc-948).
+	//
+	// The mismatch arm did not mark the rule as reported, so the "anchored to
+	// nothing on the page" arm fired as well -- while listing the very total
+	// that anchors it. The second sentence was false and the two point a reader
+	// at different fixes.
+	t.Run("a fund mismatch produces exactly one finding", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
+			fundRule("water", 700, "internal-service", "Total Water Utility Fund"),
+			fundRule("it", 700, "internal-service", "Total Information Technology Fund"),
+		}, nil)), id)
+
+		mismatches := 0
+		for _, f := range res.Findings {
+			if f.Subject == "water" {
+				mismatches++
+			}
+		}
+		if mismatches != 1 {
+			t.Errorf("rule \"water\" has %d findings, want 1: the mismatch and the "+
+				"unanchored arm are two answers to one question\n%s",
+				mismatches, findingDetails(res))
+		}
+		if strings.Contains(findingDetails(res), "anchored to nothing on the page") {
+			t.Errorf("a rule whose anchor resolved is reported as anchored to nothing:\n%s",
+				findingDetails(res))
 		}
 	})
 

@@ -267,6 +267,19 @@ func resolveRevenueExceptions(s *Subject, detail, spine map[detailKey]cellSum,
 			covers[detailKey{f.FiscalYear, f.Basis, f.FundGroup, f.Category}]++
 		}
 
+		// THE TEST IS PRESENCE, AND THE WORDING SAYS SO (fisc-8ka).
+		//
+		// covers[k] counts FACTS, never cents, so this arm establishes that the
+		// covering scope publishes something on the key -- not that what it
+		// publishes equals the spine. It used to report "reconciled by scope X
+		// instead", which is a reconciliation this check did not perform and
+		// would have gone on claiming if X published one cent under that key.
+		//
+		// A check must not assert another check's conclusion. What DOES compare
+		// the amount is transfers-detail-ties-to-spine, clause (a): p76's
+		// receiving legs against the spine's own TRANSFER IN cell, zero
+		// tolerance. That check is the one entitled to the word "reconciled";
+		// this one says where the cell went and stops.
 		var handed, pending []detailKey
 		for _, k := range keys {
 			if covers[k] > 0 {
@@ -280,7 +293,8 @@ func resolveRevenueExceptions(s *Subject, detail, spine map[detailKey]cellSum,
 		}
 		if len(handed) > 0 {
 			notes = append(notes, fmt.Sprintf("%s is not printed by this schedule and is "+
-				"reconciled by scope %q instead in %s",
+				"handed off to scope %q in %s, which publishes the key; whether the "+
+				"amounts agree is that scope's own check to make, not this one's",
 				e.String(), e.coveredBy, describeSlices(handed)))
 		}
 		switch {

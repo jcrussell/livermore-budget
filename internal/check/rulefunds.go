@@ -106,6 +106,22 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 		}
 		for i := range f.Rules {
 			ru := &f.Rules[i]
+
+			// THE TOTAL IS CLAIMED BEFORE EITHER CONTINUE BELOW, and that
+			// ordering is the fix (fisc-948). Claiming a total is the statement
+			// that SOME rule reads that printed heading, which is true whether
+			// or not the rule declares one fund. Claiming it after the guards
+			// meant a rule mapping a fund section with fund_group-only columns
+			// -- or one whose columns declare two funds, already reported for
+			// that -- never claimed its own printed total, and clause 2's
+			// unclaimedFundTotals then reported a MAPPED section as one no rule
+			// or rollup declares: two findings from one cause, the second false.
+			//
+			// Latent on the committed corpus, which declares a fund on every
+			// column of every fund-bearing rule. It goes live the moment a
+			// schedule declares its fund per ROW, which is what p76 does.
+			set(claimed, f.DocID, ru.TotalRow)
+
 			fund, mixed := declaredFund(ru)
 			if mixed {
 				findings = append(findings, finding(ru.ID,
@@ -119,7 +135,6 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			for j := range ru.Parts {
 				setPage(pages, f.DocID, ru.Parts[j].Page)
 			}
-			set(claimed, f.DocID, ru.TotalRow)
 			subjects++
 
 			// The printed totals that govern this rule: its own, and every
@@ -136,7 +151,15 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 				}
 			}
 
-			named := false
+			// `named` and `reported` are two different facts and the check
+			// needs both. `named` is "a printed total governing this rule names
+			// the fund it declares"; `reported` is "this rule already has a
+			// finding". The mismatch arm below sets only the second, because
+			// setting `named` would make the variable lie -- and NOT setting
+			// something meant the !named arm fired too, producing a second
+			// finding that said the rule "is anchored to nothing on the page"
+			// while listing the total that anchors it (fisc-948).
+			named, reported := false, false
 			for _, a := range anchors {
 				label, ok := strings.CutPrefix(a, "Total ")
 				if !ok {
@@ -155,11 +178,12 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 							"(%s). A fund mis-assigned inside its own type changes no "+
 							"column sum and no other check sees it",
 						fund, a, entry.Number, entry.Name))
+					reported = true
 					continue
 				}
 				named = true
 			}
-			if !named {
+			if !named && !reported {
 				findings = append(findings, finding(ru.ID,
 					"this rule declares fund %d and no printed total governing it names "+
 						"that fund: %s. The number is hand-typed and anchored to nothing "+
