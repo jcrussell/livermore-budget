@@ -18,11 +18,51 @@
 
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
+  KNOWN_SELECTORS, selectorsIn,
 } from "./harness.mjs";
 
 export async function checks() {
   const out = [];
   const doc = goldenGraph();
+
+  // THE STUB'S REACH, PINNED AGAINST THE FILE IT IS POINTED AT.
+  //
+  // The stub answers one parsed shape and whatever a check plants, so what it
+  // can SEE is not visible from its code. Two of app.js's selectors were
+  // answered by nothing and the code behind them ran in no check: buildTable()
+  // returned at `if (!body) return` every time and paint()'s legend loop
+  // iterated an empty list, both silently green (fisc-wcy).
+  //
+  // This is deliberately STATIC. The obvious alternative -- have the stub throw
+  // on a selector it cannot answer -- was measured and is worse: fail() and
+  // clearRefusal() both CALL querySelector, so the throw lands inside app.js's
+  // own error path and recurses into an unhandled rejection that takes the run
+  // down. harness.mjs already settles that case: a stub incomplete in a way
+  // app.js turns into its own error path is worse than one obviously
+  // incomplete. A scan cannot be swallowed by a banner.
+  {
+    const app = loadApp();
+    const found = selectorsIn(app.source);
+    const declared = new Set(Object.keys(KNOWN_SELECTORS));
+    const undeclared = [...found].filter((sel) => !declared.has(sel)).sort();
+    const stale = [...declared].filter((sel) => !found.has(sel)).sort();
+    const byHow = {};
+    for (const sel of found) {
+      const how = (KNOWN_SELECTORS[sel] || {}).how || "undeclared";
+      (byHow[how] ||= []).push(sel);
+    }
+    const summary = Object.keys(byHow).sort()
+      .map((how) => `${byHow[how].length} ${how}`).join(", ");
+    out.push({
+      name: "every selector app.js uses is one the stub declares it can answer",
+      ok: undeclared.length === 0 && stale.length === 0,
+      detail: undeclared.length || stale.length
+        ? `undeclared in app.js: ${JSON.stringify(undeclared)}; ` +
+          `declared but no longer in app.js: ${JSON.stringify(stale)}`
+        : `${found.size} selectors, all declared (${summary}) -- and "unanswered" ` +
+          `names code that runs in no check, which is printed here rather than implied`,
+    });
+  }
 
   // The runner's own floor. Every check about app.js's fetch path is async, and
   // under the pre-2026-08-26 synchronous runner a Promise assigned to `ok` was

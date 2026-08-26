@@ -231,6 +231,13 @@ const NAMES = [
   "FUND_ORDER", "nodeRank", "restackLinks", "understands", "isFundGroup",
   "paintYearWords", "wireYears", "showYear", "maybeEl", "SCHEMA_VERSION",
   "NODE_WIDTH", "NODE_PADDING", "CHART_WIDTH", "CHART_HEIGHT", "LABEL_GUTTER",
+  // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
+  // "#legend button .key", and the swatches that selector finds do not exist
+  // until buildLegend has run -- so a check cannot plant them before the draw
+  // and cannot plant them mid-draw either. Calling paint() after the draw, with
+  // the swatches buildLegend actually created planted, is the only order in
+  // which that loop executes. render() still calls it; this adds no behaviour.
+  "paint",
 ];
 
 // main IS DELIBERATELY NOT IN NAMES. It is invoked at file scope, so by the time
@@ -329,6 +336,72 @@ export function loadApp(opts = {}) {
   // The stub itself, so a check can read back what the page was told to show.
   app.dom = stub;
   return app;
+}
+
+/**
+ * Every selector site/app.js passes to querySelector/querySelectorAll, and how
+ * this stub answers it.
+ *
+ * THIS LIST IS THE STUB'S COVERAGE, WRITTEN DOWN. The stub does not parse CSS —
+ * see the rationale on `selectable` below — so its reach is not something a
+ * reader can infer from the code: it is the union of one parsed shape and
+ * whatever the checks happen to plant. While that union was implicit, two of
+ * app.js's selectors were answered by nothing and the code behind them ran in
+ * no check, silently. `buildTable()` returned at its `if (!body) return` guard
+ * every time, and `paint()`'s legend loop iterated an empty list. Neither read
+ * as a gap; both read as green checks (fisc-wcy).
+ *
+ * seam.mjs asserts this map's keys are EXACTLY the selector literals in
+ * app.js — so a selector added to the page that nothing here answers fails
+ * `make js` by name, and a selector removed from the page leaves a stale entry
+ * that fails the same way. `unanswered` is a real and declared state: it says
+ * the code behind that selector runs in no check, which is worth printing
+ * rather than discovering later.
+ */
+export const KNOWN_SELECTORS = {
+  ".refusal": {
+    how: "parsed",
+    note: "a bare class against the element's own descendants (byClass); used by fail() and clearRefusal()",
+  },
+  "main": {
+    how: "planted",
+    note: "lifecycle.mjs and seam.mjs plant a <main> so fail()'s banner is reachable",
+  },
+  "[data-year-path]": {
+    how: "planted",
+    note: "year.mjs plants the footer's citation wrapper",
+  },
+  "a": {
+    how: "planted",
+    note: "year.mjs sets selectable.a on that wrapper",
+  },
+  "tbody": {
+    how: "planted",
+    note: "year.mjs sets selectable.tbody on #flow-table; the stub's flow-table node has no children, so no grammar could find one",
+  },
+  "#legend button .key": {
+    how: "planted",
+    note: "year.mjs plants the swatches buildLegend created, then calls paint()",
+  },
+  "button": {
+    how: "unanswered",
+    note: "applyEmphasis's legend loop; reaching it needs a bare-tag shape, which the legend node COULD satisfy because buildLegend gives it children. Declared rather than answered so the gap is printed, not implied",
+  },
+};
+
+/**
+ * The selector literals site/app.js actually passes, read out of the file.
+ *
+ * Deliberately a scan of the SHIPPED source rather than a list maintained beside
+ * it: a list would be the thing that goes stale, which is the failure this
+ * whole file exists to catch one layer down.
+ */
+export function selectorsIn(source) {
+  const found = new Set();
+  const re = /querySelector(?:All)?\(\s*"([^"]*)"/g;
+  let m;
+  while ((m = re.exec(source)) !== null) found.add(m[1]);
+  return found;
 }
 
 /** The committed worked example, which is FY2026 and is what the claims are about. */

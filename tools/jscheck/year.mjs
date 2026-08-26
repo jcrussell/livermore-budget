@@ -10,7 +10,7 @@
 // internal/export pins the Go side of that contract (TestYearViewKeysAreTheOnes
 // TheClientReads). This pins the client side, against the same shipped app.js.
 
-import { loadApp } from "./harness.mjs";
+import { loadApp, settle, twoYearConfig, plannedFetch, goldenGraph } from "./harness.mjs";
 
 /** A year as the packager emits it, with every key spelled the way Go tags it. */
 function fixtureYear(overrides) {
@@ -54,7 +54,33 @@ function painted(app, year) {
   };
 }
 
-export function checks() {
+/**
+ * A two-year page that has drawn one year, with the flow table reachable.
+ *
+ * THE tbody IS PLANTED BEFORE THE DRAW and that is the whole trick. buildTable
+ * does `el("flow-table").querySelector("tbody")` and returns at `if (!body)
+ * return` when that is null -- which it was in every check, because the stub's
+ * flow-table node has no children for any descendant walk to find. No selector
+ * grammar fixes that; the element has to be supplied. selectable is the seam
+ * that supplies it, and it is the same idiom the footer citation check below
+ * already uses.
+ */
+async function drewWithTable(plan) {
+  const fetch = plannedFetch(plan);
+  const app = loadApp({ config: twoYearConfig(), fetch });
+  const body = app.dom.document.node();
+  app.dom.document.getElementById("flow-table").selectable = { tbody: body };
+  await settle();
+  return { app, body, fetch };
+}
+
+/** Fires the year control's change handler for one stem, as a click would. */
+function clickYear(app, stem) {
+  const group = app.dom.byId.get("year-toggle");
+  for (const fn of (group.listeners.change || [])) fn({ target: { value: stem } });
+}
+
+export async function checks() {
   const app = loadApp();
   const year = fixtureYear();
   const got = painted(app, year);
@@ -153,5 +179,61 @@ export function checks() {
       })(),
       detail: "no tile, caveat or figure from the previous year survives the switch",
     },
+    // ---------------------------------------------------------------- fisc-wcy
+    //
+    // THE FLOW TABLE HAD NEVER BEEN OBSERVED BY ANY CHECK. It is the largest
+    // thing a year switch repaints, and buildTable returned at its `if (!body)
+    // return` guard in every run because the stub could not answer "tbody".
+    //
+    // WHAT THIS PINS IS CORRECT-AND-UNOBSERVED BEHAVIOUR, NOT A LIVE BUG.
+    // buildTable already calls body.replaceChildren() -- checked, at app.js:898
+    // -- so the table does not append today. That is precisely why it is worth
+    // an assertion: the fisc-kwq defect (FY2026's rows left on screen beside
+    // FY2027's chart) is one edit away in a code path nothing looks at.
+    await (async () => {
+      const doc = goldenGraph();
+      const { app: a, body } = await drewWithTable({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": { doc },
+      });
+      const afterFirst = body.children.length;
+      clickYear(a, "sankey-2027");
+      await settle();
+      const afterSecond = body.children.length;
+      return {
+        name: "a year switch replaces the flow table's rows rather than appending them",
+        ok: afterFirst === doc.links.length && afterSecond === afterFirst,
+        detail: `${afterFirst} rows for ${doc.links.length} links, still ${afterSecond} ` +
+          `after switching year -- appending would read ${afterFirst * 2}`,
+      };
+    })(),
+    // The other half of fisc-wcy. paint()'s legend loop queries
+    // "#legend button .key", and until now that returned [] under every check,
+    // so the swatch-recolouring half of theme-following executed nowhere.
+    //
+    // The swatches cannot be planted before the draw: buildLegend CREATES them.
+    // So the check draws, reads back what buildLegend actually built, plants
+    // exactly those, and calls paint() -- which is why paint is exported.
+    // render() calls paint() itself (app.js:624), so this pins behaviour that
+    // is already correct on the shipped page and was simply invisible here.
+    await (async () => {
+      const doc = goldenGraph();
+      const { app: a } = await drewWithTable({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": { doc },
+      });
+      const buttons = a.dom.byId.get("legend").children;
+      const swatches = buttons.map((b) => b.children[0]);
+      a.dom.document.plant("#legend button .key", ...swatches);
+      for (const sw of swatches) sw.style.background = "";
+      a.paint();
+      const painted = swatches.filter((sw) => sw.style.background);
+      return {
+        name: "paint() rewrites every legend swatch's background",
+        ok: swatches.length > 0 && painted.length === swatches.length,
+        detail: `${painted.length} of ${swatches.length} swatch(es) recoloured from the ` +
+          `palette; while this selector answered [] the loop ran zero times and said nothing`,
+      };
+    })(),
   ];
 }
