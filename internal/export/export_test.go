@@ -829,3 +829,52 @@ func sorted(in []string) []string {
 	}
 	return out
 }
+
+// TestTheDisabledYearToggleKeepsItsSelectionUnderTheCursor is fisc-36r, pinned
+// against the shipped stylesheet.
+//
+// `.year-toggle:disabled label:hover { background: none }` has specificity
+// (0,3,1) and outranked `.year-toggle input:checked + label` at (0,2,2). The
+// fieldset SHIPS DISABLED — the template renders it that way and app.js removes
+// the attribute as its enhancement — so with JavaScript off, or during the
+// opening fetch, hovering the currently selected year erased the fill that says
+// it is selected, leaving only the box-shadow ring that the checked rule's own
+// comment says it deliberately does not rely on alone.
+//
+// WHY THIS IS A STRING ASSERTION AND NOT A SPECIFICITY CALCULATOR. Computing
+// specificity in Go was the first plan and is the wrong shape: it is what
+// tools/jscheck refuses to do for selectors one layer up ("a selector engine
+// here would be a second implementation of a thing the browser already has"),
+// and it would model only ONE axis of the cascade — source order, !important,
+// @layer and whether both rules match the same element are the others — so
+// asserting (0,2,2) > (0,3,1) would prove the arithmetic and not the outcome.
+// Parsing a thousand lines of hand-formatted CSS with the standard library
+// alone would also redden on a reformat.
+//
+// This costs five lines and fails exactly when the bug comes back, which is the
+// property that matters for a fix that is one careless edit from returning.
+func TestTheDisabledYearToggleKeepsItsSelectionUnderTheCursor(t *testing.T) {
+	b, err := fs.ReadFile(site.FS(), "style.css")
+	if err != nil {
+		t.Fatalf("read embedded style.css: %v", err)
+	}
+	css := string(b)
+
+	// The over-reaching rule, as a RULE — the string also appears in the comment
+	// above its replacement, which is where the reasoning lives.
+	if strings.Contains(css, ".year-toggle:disabled label:hover {") {
+		t.Error("style.css suppresses the hover fill on EVERY disabled pill, including " +
+			"the checked one; with JavaScript off the selected year loses its fill " +
+			"under the cursor (fisc-36r)")
+	}
+	if !strings.Contains(css, ".year-toggle:disabled input:not(:checked) + label:hover {") {
+		t.Error("style.css no longer narrows the disabled hover suppression to the " +
+			"unchecked pills; either the fix was reverted or it was rewritten, and if " +
+			"rewritten this test needs to name whatever replaced it")
+	}
+	// The rule the narrowing exists to protect must still be there, or the test
+	// above passes over a stylesheet that marks no selection at all.
+	if !strings.Contains(css, ".year-toggle input:checked + label {") {
+		t.Error("style.css no longer gives the checked year its own treatment")
+	}
+}

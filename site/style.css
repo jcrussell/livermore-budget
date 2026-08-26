@@ -337,7 +337,22 @@ button[aria-pressed="true"] {
   cursor: default;
 }
 
-.year-toggle:disabled label:hover {
+/* NARROWED TO THE UNCHECKED PILLS, and the narrowing is the fix rather than a
+   tidy-up. As `.year-toggle:disabled label:hover` this had specificity (0,3,1)
+   and outranked `.year-toggle input:checked + label` at (0,2,2) -- so with
+   JavaScript off, or during the opening fetch before wireYears removes the
+   attribute, hovering the year you are looking at ERASED the fill that says you
+   are looking at it. The fieldset ships disabled, so that is the state a reader
+   without JavaScript sees for the whole visit.
+
+   What survived was the box-shadow ring, and the rule below says in as many
+   words that it deliberately does not rely on the ring alone.
+
+   `input:not(:checked) +` rather than !important on the checked rule: the aim
+   was only ever to cancel `.year-toggle label:hover`, and it over-reached by one
+   class. Raising the other rule would leave the same over-reach in place for
+   whatever is added next. */
+.year-toggle:disabled input:not(:checked) + label:hover {
   background: none;
 }
 
