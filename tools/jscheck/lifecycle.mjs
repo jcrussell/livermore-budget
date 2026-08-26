@@ -76,17 +76,23 @@ export async function checks() {
   // still drew, from its own showYear, so the page looked entirely healthy with
   // Escape and OS-theme-following dead for the rest of the visit.
   {
-    const { app } = page({
-      config,
-      fetch: plannedFetch({
-        "data/sankey.json": { hang: true },
-        "data/sankey-2027.json": { doc },
-      }),
+    const fetch = plannedFetch({
+      "data/sankey.json": { hang: true },
+      "data/sankey-2027.json": { doc },
     });
+    const { app } = page({ config, fetch });
     await settle();
     clickYear(app, "sankey-2027");
     await settle();
 
+    // THE CHECK IS ABOUT A CLICK DURING THE OPENING FETCH, so it has to know the
+    // opening fetch happened. Nothing here forces it: if main() stopped issuing
+    // it, nothing would hang, the clicked year would still draw, both counts
+    // would still be 1, and this would report PASS over a state it never
+    // entered. Verified by gating `await showYear(years[0])` off in main() --
+    // seam.mjs goes red, but this check went on passing, which is a claim about
+    // a race that did not occur (fisc-ty6).
+    const opened = fetch.asked.includes("data/sankey.json");
     const escape = (app.dom.documentListeners.keydown || []).length;
     const theme = (app.dom.mediaListeners.change || []).length;
     // The clicked year DID draw. Without this the check would pass over a page
@@ -94,10 +100,14 @@ export async function checks() {
     const drew = app.dom.byId.get("lede-year");
     out.push({
       name: "a click during the opening fetch leaves the page's keyboard and theme wiring intact",
-      ok: escape === 1 && theme === 1 && Boolean(drew && drew.textContent),
-      detail: `${escape} Escape handler(s) and ${theme} prefers-color-scheme listener(s) ` +
-        `after switching away from a fetch that never settled, with the clicked year drawn ` +
-        `("${drew ? drew.textContent : ""}")`,
+      ok: opened && escape === 1 && theme === 1 && Boolean(drew && drew.textContent),
+      detail: !opened
+        ? `the opening fetch was never issued (asked for ${JSON.stringify(fetch.asked)}), ` +
+          `so there was no unsettled fetch to click during and this check reached ` +
+          `none of the state it is named for`
+        : `${escape} Escape handler(s) and ${theme} prefers-color-scheme listener(s) ` +
+          `after switching away from a fetch that never settled, with the clicked year drawn ` +
+          `("${drew ? drew.textContent : ""}")`,
     });
 
     // Attached is not the same as working. Dispatching is what says the handler
@@ -110,8 +120,10 @@ export async function checks() {
     }
     out.push({
       name: "the Escape handler that survives a superseded open actually runs",
-      ok: escape === 1 && threw === "",
-      detail: escape !== 1
+      ok: opened && escape === 1 && threw === "",
+      detail: !opened
+        ? "the opening fetch was never issued, so nothing was superseded"
+        : escape !== 1
         ? `there is no Escape handler to dispatch to (${escape} attached)`
         : threw === ""
           ? "dispatching Escape clears the pin, the panel and the isolation without throwing"
@@ -131,28 +143,42 @@ export async function checks() {
   // handled in the next microtask, before anything could be clicked, and the
   // ordering is the whole defect.
   {
+    // THE DEFAULT IS A NO-OP AND THAT IS WHY `opened` IS ASSERTED BELOW.
+    // refuseOpening is only replaced inside plannedFetch's settle callback for
+    // data/sankey.json, so if that fetch is never issued the callback never
+    // runs, the call below rejects nothing, and this check reports PASS with the
+    // rejection it exists to test never having happened (fisc-ty6).
+    //
+    // MAKING THE DEFAULT THROW WAS THE OTHER FIX AND IS WORSE HERE. run.mjs
+    // turns a throw out of checks() into one "a whole check module threw before
+    // producing any check" and moves on, discarding every other check in this
+    // file -- the cost run.mjs's own comment says not to pay. An assertion
+    // reddens one check by name and leaves the rest reporting.
     let refuseOpening = () => {};
-    const { app, main } = page({
-      config,
-      fetch: plannedFetch({
-        "data/sankey.json": { settle: ({ reject }) => { refuseOpening = reject; } },
-        "data/sankey-2027.json": { doc },
-      }),
+    const fetch = plannedFetch({
+      "data/sankey.json": { settle: ({ reject }) => { refuseOpening = reject; } },
+      "data/sankey-2027.json": { doc },
     });
+    const { app, main } = page({ config, fetch });
     await settle();
     clickYear(app, "sankey-2027");
     await settle();
     refuseOpening(new TypeError("Failed to fetch"));
     await settle();
 
+    const opened = fetch.asked.includes("data/sankey.json");
     const banners = refusals(main);
     const drew = app.dom.byId.get("lede-year");
     out.push({
       name: "a superseded fetch rejection paints no banner over the year that drew",
-      ok: banners.length === 0 && Boolean(drew && drew.textContent),
-      detail: `${banners.length} refusal banner(s) after switching away from a fetch that ` +
-        `then failed` + (banners.length ? `: "${banners[0].textContent}"` : "") +
-        `, with the clicked year drawn ("${drew ? drew.textContent : ""}")`,
+      ok: opened && banners.length === 0 && Boolean(drew && drew.textContent),
+      detail: !opened
+        ? `the opening fetch was never issued (asked for ${JSON.stringify(fetch.asked)}), ` +
+          `so refuseOpening rejected nothing and no banner could have been painted ` +
+          `over anything -- this check asserted the absence of a thing it never caused`
+        : `${banners.length} refusal banner(s) after switching away from a fetch that ` +
+          `then failed` + (banners.length ? `: "${banners[0].textContent}"` : "") +
+          `, with the clicked year drawn ("${drew ? drew.textContent : ""}")`,
     });
   }
 
