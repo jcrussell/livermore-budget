@@ -196,7 +196,7 @@ func slicesOf(p project.Projection, facts []fact.Fact, version string) []project
 // The error in the other direction is the one the contract names: a multi-column
 // document put through PublishedStem is written once per published year, as two
 // byte-identical files one of which claims a year it does not cover. Both
-// directions are pinned by TestStemForDistinguishesAYearFromAWhole.
+// directions are pinned by TestStemForAsksHowManyDocumentsNotHowManyColumns.
 func stemFor(name string, o project.Options, slices int) string {
 	if slices == 1 {
 		return name

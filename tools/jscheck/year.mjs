@@ -30,13 +30,24 @@ function fixtureYear(overrides) {
   }, overrides);
 }
 
-/** Everything the recording DOM was told to show, after a paint. */
+/**
+ * Everything the recording DOM was told to show, after a paint.
+ *
+ * THE CHILD LISTS ARE COPIED, and that is the difference between a check and a
+ * decoration. The stub hands back its LIVE children array, so two calls to this
+ * function against an APPENDING paintYearWords return the same array object
+ * twice and `second.tiles.length === first.tiles.length` is `n === n` -- green
+ * against the exact defect the check below is named for (fisc-kwq: FY2026's
+ * residual left on screen beside FY2027's chart). Found by /code-review,
+ * 2026-08-26, and mutation-verified: reverting paintYearWords to append() left
+ * every check in this file passing.
+ */
 function painted(app, year) {
   app.paintYearWords(year);
   const el = (id) => app.dom.byId.get(id);
   return {
-    tiles: el("figures") ? el("figures").children : [],
-    caveats: el("caveats") ? el("caveats").children : [],
+    tiles: el("figures") ? [...el("figures").children] : [],
+    caveats: el("caveats") ? [...el("caveats").children] : [],
     lede: el("lede-year") ? el("lede-year").textContent : "",
     counts: el("counts-line") ? el("counts-line").textContent : "",
     title: app.dom.document.title,

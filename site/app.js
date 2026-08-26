@@ -1040,6 +1040,20 @@ function understands(got, what) {
 }
 
 /**
+ * What one showYear attempt came to.
+ *
+ * THREE OUTCOMES AND NOT A BOOLEAN, because "did not draw" was two different
+ * facts wearing one answer and the caller could not tell them apart. SUPERSEDED
+ * means a later switch took over and this attempt stood down, which is a normal
+ * thing that happens whenever a reader clicks twice; FAILED means the year could
+ * not be shown and the reader has been told. Reporting `false` for both is what
+ * let a superseded opening fetch read as a page that had given up (fisc-8cg).
+ */
+const DREW = "drew";
+const SUPERSEDED = "superseded";
+const FAILED = "failed";
+
+/**
  * Fetches and draws one published year.
  *
  * Everything the page says in WORDS comes from CONFIG.years, which the packager
@@ -1048,7 +1062,7 @@ function understands(got, what) {
  * with the chart beneath it about the same schedule.
  *
  * @param {FiscYear} year
- * @returns {Promise<boolean>} whether the year was drawn
+ * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
 let switching = 0;
 
@@ -1058,30 +1072,51 @@ async function showYear(year) {
   // page draws a year the control does not show. Compared after every await.
   const token = ++switching;
 
-  let response;
+  // BOTH AWAITS ARE INSIDE THE TRY. response.json() used to sit outside it, so
+  // a 200 with a truncated or malformed body rejected out of this function
+  // entirely -- into main()'s .catch on the opening path, and into nothing at
+  // all from the year control, which is a page half-repainted between two years
+  // with no banner.
+  let doc;
   try {
-    response = await fetch(year.path);
+    const response = await fetch(year.path);
+    if (token !== switching) return SUPERSEDED;
+    if (!response.ok) {
+      fail("Could not load " + year.path + ": HTTP " + response.status);
+      return FAILED;
+    }
+    doc = /** @type {FiscProjection} */ (await response.json());
   } catch (e) {
-    // The overwhelmingly likely cause is file:// — Chrome blocks fetch from a
-    // file: origin, so the page loads and the chart never arrives. Say the
-    // fix rather than the error.
-    fail("Could not load " + year.path + ". If you opened this file directly, the browser " +
-      "blocks the request: serve the directory over HTTP instead, e.g. " +
-      "python3 -m http.server -d dist 8000");
-    return false;
+    // THE TOKEN IS CHECKED BEFORE THE BANNER, as it is at every other exit.
+    // Without it, a reader who switched away while a fetch was failing got the
+    // file:// remediation banner -- role="alert" -- pasted over a year that drew
+    // correctly: the page asserting something untrue about what is on screen.
+    if (token !== switching) return SUPERSEDED;
+    // For a rejected fetch the overwhelmingly likely cause is file:// -- Chrome
+    // blocks fetch from a file: origin, so the page loads and the chart never
+    // arrives. Say the fix rather than the error. A body that will not parse is
+    // a different fault and gets its own sentence, because "serve it over HTTP"
+    // is useless advice to someone already doing that.
+    // `e.name` and not `e instanceof SyntaxError`: instanceof compares against
+    // THIS realm's constructor, and an error thrown by a response body parsed
+    // in another one is not an instance of it. In a browser the two realms are
+    // the same and both work, which is what makes the difference invisible --
+    // under tools/jscheck's vm they are not, the instanceof arm was dead, and
+    // the branch below could never have been shown to work at all.
+    fail(e && e.name === "SyntaxError"
+      ? "Could not read " + year.path + ": the file is not valid JSON, so it is " +
+        "truncated or was not the document this page expected."
+      : "Could not load " + year.path + ". If you opened this file directly, the browser " +
+        "blocks the request: serve the directory over HTTP instead, e.g. " +
+        "python3 -m http.server -d dist 8000");
+    return FAILED;
   }
-  if (token !== switching) return false;
-  if (!response.ok) {
-    fail("Could not load " + year.path + ": HTTP " + response.status);
-    return false;
-  }
-  const doc = /** @type {FiscProjection} */ (await response.json());
-  if (token !== switching) return false;
+  if (token !== switching) return SUPERSEDED;
   // The fetched file is what actually gets drawn, and it is a separate
   // document from the config: the packager stamps the config from the
   // projection it was handed, so agreeing with the config is not evidence the
   // file on the wire agrees too.
-  if (!understands(doc.schema_version, year.path)) return false;
+  if (!understands(doc.schema_version, year.path)) return FAILED;
 
   projection = doc;
   // A refusal from an earlier attempt is about a year no longer on screen, and
@@ -1102,7 +1137,7 @@ async function showYear(year) {
   buildDerivedList();
   buildTable();
   render();
-  return true;
+  return DREW;
 }
 
 /**
@@ -1177,7 +1212,12 @@ function wireYears(years) {
     const target = /** @type {HTMLInputElement} */ (e.target);
     const year = years.find((y) => y.stem === target.value);
     if (!year) return;
-    void showYear(year);
+    // A .catch, which main() has had all along and this has not. showYear no
+    // longer rejects for a bad document -- both awaits are inside its try -- so
+    // this is the last resort rather than the handler for a known case, and it
+    // must say so rather than repeat the fetch advice. Without it a rejection
+    // here is unhandled: no banner, and the page left mid-repaint.
+    void showYear(year).catch((e) => fail("The chart failed to draw: " + String(e)));
   });
 }
 
@@ -1194,8 +1234,30 @@ async function main() {
     return;
   }
   wireYears(years);
-  if (!await showYear(years[0])) return;
 
+  // EVERYTHING THE PAGE WIRES IS WIRED BEFORE THE FIRST FETCH, and that ordering
+  // is the fix rather than a tidy-up (fisc-8cg).
+  //
+  // These two used to sit AFTER `if (!await showYear(years[0])) return;`, so any
+  // outcome but success cost the reader both of them for the rest of the visit.
+  // Two routes reached that, and the second is why widening showYear's return
+  // value was not enough on its own:
+  //
+  //   - SUPERSEDED. wireYears enables the control above, before this await, so
+  //     the toggle is live for the whole of the opening fetch. A reader who
+  //     clicks during it bumps the switch token, the opening attempt stands
+  //     down, and main() returned -- while the clicked year drew from its own
+  //     showYear, leaving a page that looks entirely healthy.
+  //   - FAILED, then recovered. clearRefusal exists precisely because "a year
+  //     switch can recover from a failed one": the opening fetch is refused,
+  //     main() returns, the reader clicks the other year, it succeeds and takes
+  //     the banner down. Same healthy-looking page, same two dead affordances,
+  //     reached through the outcome a three-state return leaves alone.
+  //
+  // Neither listener depends on a chart existing. paint() re-reads the palette
+  // over whatever marks are on screen, which before the first draw is none, and
+  // the Escape handler clears state that is already clear. So there is nothing
+  // to sequence and no reason to wait.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       hideTip();
@@ -1212,6 +1274,12 @@ async function main() {
     // marks.
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paint);
   }
+
+  // Last, and its outcome is deliberately not acted on. showYear has already
+  // told the reader if it failed, and nothing is left for main() to do or to
+  // skip. Keeping the await means an opening failure still reaches main()'s
+  // .catch if it ever throws rather than returning FAILED.
+  await showYear(years[0]);
 }
 
 main().catch((e) => fail("The chart failed to draw: " + String(e)));

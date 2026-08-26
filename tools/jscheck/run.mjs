@@ -20,6 +20,7 @@
 import { checks as layoutChecks } from "./layout.mjs";
 import { checks as yearChecks } from "./year.mjs";
 import { checks as seamChecks } from "./seam.mjs";
+import { checks as lifecycleChecks } from "./lifecycle.mjs";
 
 /** Resolves one check to {name, ok, detail}, turning a throw into a failure. */
 async function settleCheck(c) {
@@ -37,7 +38,7 @@ async function settleCheck(c) {
 let failed = 0;
 // Sequentially, not Promise.all: each module loads app.js into its own vm
 // context and the output is meant to read in a fixed order.
-for (const module of [layoutChecks, yearChecks, seamChecks]) {
+for (const module of [layoutChecks, yearChecks, seamChecks, lifecycleChecks]) {
   let produced;
   try {
     produced = await module();
