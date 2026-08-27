@@ -191,6 +191,7 @@ func All() []Check {
 		&trendSeriesAreComplete{},
 
 		&graphAcyclic{},
+		&nodeTiersAreDeclared{},
 		&derivedNodesJustified{},
 		&linkValuesTieToFacts{},
 		&countsReconcile{},

@@ -66,6 +66,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		"documents-are-checked":      "pass over 1",
 		"facts-are-projected":        "pass over 10",
 		"graph-acyclic":              "pass over 7",
+		"node-tiers-are-declared":    "pass over 9",
 		"derived-nodes-justified":    "pass over 2",
 		"link-values-tie-to-facts":   "pass over 7",
 		"counts-reconcile":           "pass over 1",
@@ -99,7 +100,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 18, Vacuous: 18, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 19, Vacuous: 18, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// Eighteen passes, seventeen vacuous and one skipped is not thirty-six of
