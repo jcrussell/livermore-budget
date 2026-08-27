@@ -182,6 +182,7 @@ func All() []Check {
 		&projectionsBuild{},
 		&publishedProjectionBuilt{},
 		&documentsAreChecked{},
+		&projectionScopesAreDisjoint{},
 		&factsAreProjected{},
 		&expenditureDetailTiesToSpine{},
 		&revenueDetailTiesToSpine{},

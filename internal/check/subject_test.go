@@ -243,6 +243,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"fact-offset-points-at-token":      StatusPass,
 		"fact-vocabulary":                  StatusPass,
 		"fact-kind-matches-category":       StatusPass,
+		"projection-scopes-are-disjoint":   StatusPass,
 		"projections-build":                StatusPass,
 		"published-projection-built":       StatusPass,
 		"documents-are-checked":            StatusPass,

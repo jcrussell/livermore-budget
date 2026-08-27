@@ -52,8 +52,14 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-offset-points-at-token": "pass over 10",
 		"fact-vocabulary":             "pass over 20", // 10 categories + 10 fund groups
 		"fact-kind-matches-category":  "pass over 10",
-		"projections-build":           "pass over 1",
-		"published-projection-built":  "pass over 1",
+		// Vacuous over the FIXTURE and passing over the committed corpus, and
+		// the difference is the fixture's own shape rather than a gap: the
+		// miniature spine carries one scope, so there is no pair of scopes for
+		// a projection to restate. TestTheCommittedCorpusVacuitySplit is where
+		// this check's real verdict is pinned.
+		"projection-scopes-are-disjoint": "vacuous over 0",
+		"projections-build":              "pass over 1",
+		"published-projection-built":     "pass over 1",
 		// Two projections are registered, but the fixture is a miniature of the
 		// SPINE and the trends projection is of nothing here, so one document is
 		// built and one document is examined.
@@ -93,7 +99,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 18, Vacuous: 17, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 18, Vacuous: 18, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// Eighteen passes, seventeen vacuous and one skipped is not thirty-six of
@@ -112,11 +118,11 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 17 {
-		t.Fatalf("vacuous count = %d, want 17", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 18 {
+		t.Fatalf("vacuous count = %d, want 18", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
-		t.Error("a run with seventeen vacuous checks failed without --strict")
+		t.Error("a run with eighteen vacuous checks failed without --strict")
 	}
 	if !strict.Failed() {
 		t.Error("a run with seventeen vacuous checks passed under --strict")
