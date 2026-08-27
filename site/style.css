@@ -328,8 +328,30 @@ button[aria-pressed="true"] {
 }
 
 /* Disabled is the shipped state: app.js enables the group. Say so visually
-   rather than leaving a control that looks live and is not. */
-.year-toggle:disabled {
+   rather than leaving a control that looks live and is not.
+
+   IT DIMS EVERYTHING EXCEPT THE PILL THAT IS SELECTED, and that exception is
+   the whole point rather than a refinement. The opacity used to sit on the
+   FIELDSET itself, which composited the entire group -- and
+   the fieldset ships disabled, so that is the state a reader without
+   JavaScript sees for the WHOLE VISIT, not a flicker during boot.
+
+   What it silently invalidated is the measured table below. Those ratios are
+   for opaque elements: at 0.55 over --plane the ring falls to about 2.51:1 in
+   light, under WCAG 1.4.11's 3:1, and the selected label's text to about
+   4.17:1, under 1.4.3's 4.5:1. And the ring is not one signal among several --
+   the rule below establishes that the fill is IDENTICAL between checked and
+   unchecked (1.000:1, the same colour), so for a no-JS reader in light mode
+   that ring is the only thing left saying which year is on screen.
+
+   THE FIX IS NOT A NEW NUMBER. Re-deriving a ring token for the 0.55 case
+   would mean publishing a second hand-computed ratio beside the first, and
+   nothing in this tree parses or renders CSS to check either of them
+   (fisc-6at). Dimming everything BUT the selected pill costs no measurement at
+   all: the legend and the unchecked pills carry the "not live yet" signal, and
+   every figure in the table below stays a true statement about what ships. */
+.year-toggle:disabled legend,
+.year-toggle:disabled input:not(:checked) + label {
   opacity: 0.55;
 }
 

@@ -968,13 +968,31 @@ function prefersDark() {
     window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+/**
+ * Brings the theme button's label and aria-pressed back into agreement with the
+ * page, and it is a file-scope function rather than a closure inside wireTheme
+ * for one reason: the OS-theme listener in main() has to be able to call it.
+ *
+ * WHILE IT WAS A CLOSURE THE BUTTON INVERTED UNDER AN OS SWITCH. A reader with
+ * nothing in localStorage opens in light: prefersDark() is false, so the button
+ * reads "Dark mode" with aria-pressed="false". The OS switches to dark at
+ * sunset; the stylesheet's prefers-color-scheme rule darkens the page and
+ * paint() re-reads the palette -- but the listener was wired to paint alone, so
+ * the button still announces aria-pressed="false" on a dark page, and because
+ * prefersDark() now returns true, clicking the control labelled "Dark mode"
+ * makes the page LIGHT.
+ */
+function syncTheme() {
+  const button = maybeEl("theme-toggle");
+  if (!button) return;
+  const dark = prefersDark();
+  button.setAttribute("aria-pressed", String(dark));
+  button.textContent = dark ? "Light mode" : "Dark mode";
+}
+
 function wireTheme() {
   const button = /** @type {HTMLButtonElement} */ (el("theme-toggle"));
-  const sync = () => {
-    const dark = prefersDark();
-    button.setAttribute("aria-pressed", String(dark));
-    button.textContent = dark ? "Light mode" : "Dark mode";
-  };
+  const sync = syncTheme;
   button.addEventListener("click", () => {
     const dark = !prefersDark();
     document.documentElement.dataset.theme = dark ? "dark" : "light";
@@ -1349,12 +1367,58 @@ function paintYearWords(year) {
 /**
  * Wires the year radio group.
  *
- * The control is rendered server-side and already shows the right year, so this
- * only adds the behaviour. A year that fails to load leaves the radio where the
- * reader put it and shows the refusal: moving it back would claim the page is
- * showing a year it is not.
+ * The control is rendered server-side, so this only adds the behaviour. A year
+ * that fails to load leaves the radio where the reader put it and shows the
+ * refusal: moving it back would claim the page is showing a year it is not.
+ *
+ * IT DOES NOT ASSUME THE CONTROL SHOWS THE FIRST YEAR. This comment used to say
+ * the control "already shows the right year", and that is true only of a cold
+ * load. See checkedYear.
  * @param {FiscYear[]} years
  */
+/**
+ * The year the CONTROL is showing, which is not always the first one.
+ *
+ * index.html.tmpl hard-codes `checked` on years[0] and the radios carry no
+ * autocomplete="off", so Chrome and Firefox both RESTORE the reader's own
+ * selection across a soft reload (F5) and across a Back navigation. main() used
+ * to open on years[0] unconditionally, so: select FY 2026-27, follow a nav link,
+ * press Back -- the toggle comes back reading FY 2026-27 while the lede, the
+ * tiles, the chart, the <title>, the footer basis and the data-year-path
+ * citation are all FY 2025-26. No change event fires on a restore, so it never
+ * self-corrects.
+ *
+ * index.html.tmpl's own comment calls that state worse than no control at all,
+ * and it is right: the styling agrees with the wrong year too.
+ *
+ * OPENING ON THE RESTORED YEAR RATHER THAN FORCING THE RADIO BACK. Both close
+ * the gap. This one does what the reader expects -- their selection survived
+ * the navigation, so honour it -- where forcing years[0] would silently discard
+ * it and look like the page ignoring a click.
+ *
+ * It walks the fieldset's children and reads the checked property, rather than
+ * asking querySelector for the checked input. That needs no selector engine, so
+ * tools/jscheck can drive it -- and the stub's declared-selector check keeps
+ * app.js honest about which selectors it uses, so adding one here would have to
+ * be declared there too.
+ * @param {FiscYear[]} years
+ * @returns {FiscYear} always one of `years`; years[0] when nothing is checked
+ */
+function checkedYear(years) {
+  const group = maybeEl("year-toggle");
+  if (group) {
+    for (const input of group.children) {
+      if (!input.checked) continue;
+      const year = years.find((y) => y.stem === input.value);
+      // A checked radio naming a stem this config does not publish is a stale
+      // restore -- the page was rebuilt with different years since. Fall
+      // through to years[0] rather than draw nothing.
+      if (year) return year;
+    }
+  }
+  return years[0];
+}
+
 function wireYears(years) {
   const group = maybeEl("year-toggle");
   if (!group || years.length < 2) return;
@@ -1424,15 +1488,23 @@ async function main() {
   if (typeof window.matchMedia === "function") {
     // Following the OS mid-visit means re-reading the palette, because the
     // hues are custom properties and d3 wrote the resolved values onto the
-    // marks.
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paint);
+    // marks -- AND re-syncing the button, because prefersDark() has just
+    // changed its answer underneath it. Wiring paint alone left the control
+    // announcing the opposite of the page it sits on; see syncTheme.
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      syncTheme();
+      paint();
+    });
   }
 
   // Last, and its outcome is deliberately not acted on. showYear has already
   // told the reader if it failed, and nothing is left for main() to do or to
   // skip. Keeping the await means an opening failure still reaches main()'s
   // .catch if it ever throws rather than returning FAILED.
-  await showYear(years[0]);
+  //
+  // checkedYear, not years[0]: the browser may have restored a selection the
+  // server-rendered page knows nothing about.
+  await showYear(checkedYear(years));
 }
 
 main().catch((e) => fail("The chart failed to draw: " + String(e)));

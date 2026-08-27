@@ -94,6 +94,85 @@ function clickYear(app, stem) {
   for (const fn of handlers) fn({ target: { value: stem } });
 }
 
+/**
+ * The page opens on the year the CONTROL is showing, after a soft reload.
+ *
+ * THE BROWSER RESTORES THE RADIO AND THE SERVER-RENDERED PAGE KNOWS NOTHING
+ * ABOUT IT. index.html.tmpl hard-codes `checked` on the first year and the
+ * inputs carry no autocomplete="off", so F5 or a Back navigation brings the
+ * reader's own selection back. main() used to call showYear(years[0])
+ * unconditionally, which left the toggle reading FY 2026-27 over FY 2025-26's
+ * lede, tiles, chart, title and citation -- and no change event fires on a
+ * restore, so it never self-corrected. The template's own comment calls that
+ * state worse than having no control at all.
+ *
+ * checkedStem is the harness modelling exactly that restore.
+ * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
+ */
+async function restoredSelection() {
+  const config = twoYearConfig();
+  const doc = goldenGraph();
+  const second = config.years[1];
+
+  const fetch = plannedFetch({
+    "data/sankey.json": { doc },
+    "data/sankey-2027.json": { doc },
+  });
+  const app = loadApp({ config, checkedStem: second.stem, fetch });
+  await settle();
+
+  const lede = app.dom.byId.get("lede-year");
+  const drew = lede ? lede.textContent : "(no lede)";
+  const want = `${second.label} ${second.basis}`;
+  const asked = fetch.asked || [];
+
+  return [{
+    name: "a restored year selection is the year the page opens on",
+    ok: drew === want,
+    detail: `the control came back checked on ${second.stem} and the page drew ` +
+      `"${drew}", want "${want}" -- opening on years[0] regardless is the state ` +
+      `index.html.tmpl's own comment calls worse than no control`,
+  }, {
+    name: "and it fetched that year's document rather than the first one's",
+    ok: asked.includes(second.path),
+    detail: `main() asked for ${JSON.stringify(asked)}, which must include ` +
+      `${second.path}; a page that fetches sankey.json and labels it FY 2026-27 ` +
+      `is the same lie one layer down`,
+  }];
+}
+
+/**
+ * The theme button still describes the page after the OS switches under it.
+ *
+ * THE CONTROL INVERTED, which is worse than merely going stale. wireTheme's
+ * sync was a closure and the prefers-color-scheme listener was wired to paint
+ * alone, so a reader with no stored theme who opens in light gets a button
+ * reading "Dark mode" / aria-pressed="false"; when the OS flips to dark the
+ * page darkens and the ribbons repaint, but the button keeps that label -- and
+ * prefersDark() now answers true, so clicking the control labelled "Dark mode"
+ * makes the page LIGHT.
+ * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
+ */
+async function themeFollowsTheOS() {
+  const app = loadApp({ fetch: plannedFetch({ "data/sankey.json": { doc: goldenGraph() } }) });
+  await settle();
+  const button = app.dom.byId.get("theme-toggle");
+  const before = `${button.textContent} / aria-pressed=${button.getAttribute("aria-pressed")}`;
+
+  app.dom.setOSDark(true);
+  await settle();
+  const after = `${button.textContent} / aria-pressed=${button.getAttribute("aria-pressed")}`;
+
+  return [{
+    name: "the theme button follows an OS theme change",
+    ok: before === "Dark mode / aria-pressed=false" &&
+      after === "Light mode / aria-pressed=true",
+    detail: `the button read "${before}" on a light page and "${after}" after the OS ` +
+      `switched to dark; leaving it on "Dark mode" makes the control INVERT, because ` +
+      `prefersDark() now answers true and the click handler negates it`,
+  }];
+}
+
 export async function checks() {
   const app = loadApp();
   const year = fixtureYear();
@@ -294,5 +373,7 @@ export async function checks() {
           `palette; while this selector answered [] the loop ran zero times and said nothing`,
       };
     })(),
+    ...(await restoredSelection()),
+    ...(await themeFollowsTheOS()),
   ];
 }

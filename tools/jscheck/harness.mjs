@@ -218,11 +218,19 @@ function domStub(ids = TEMPLATE_IDS) {
   // undefined that branch never ran under any check and "the page follows the OS
   // theme" was unfalsifiable.
   const mediaListeners = {};
+  /** What the OS is currently asking for. See matchMedia below and setOSDark. */
+  let osDark = false;
   const windowListeners = {};
   return {
     byId,
     document,
     documentListeners,
+    // Switches the OS theme and notifies whoever is following it, which is what
+    // a reader's machine does at sunset.
+    setOSDark(dark) {
+      osDark = Boolean(dark);
+      for (const fn of mediaListeners.change || []) fn({ matches: osDark });
+    },
     windowListeners,
     mediaListeners,
     localStorage: {
@@ -246,8 +254,14 @@ function domStub(ids = TEMPLATE_IDS) {
     // was undefined. prefersDark() consults the saved theme first, so every
     // existing layout check is unaffected by this becoming a function -- which
     // was verified by re-running them, not assumed.
+    // matches is a GETTER over a mutable flag, so a check can switch the OS
+    // theme mid-visit -- which is the only way to reach the state where
+    // prefersDark() changes its answer under a button that has already
+    // rendered. While this was the literal `false`, "the page follows the OS
+    // theme" could be asserted only as "a listener is attached", and the
+    // listener could do the wrong thing in silence.
     matchMedia: (query) => ({
-      matches: false,
+      get matches() { return osDark; },
       media: query,
       addEventListener(type, fn) { (mediaListeners[type] ||= []).push(fn); },
       removeEventListener() {},
@@ -376,6 +390,37 @@ export function loadApp(opts = {}) {
   // code that would have used it.
   if (o.config) sandbox.FISC_CONFIG = o.config;
   if (o.fetch) sandbox.fetch = o.fetch;
+
+  // THE YEAR RADIOS THE TEMPLATE RENDERS, planted before app.js runs.
+  //
+  // index.html.tmpl emits one <input type="radio" value="{{$y.Stem}}"> per
+  // published year inside the fieldset, `checked` on the first. The stub knew
+  // the fieldset existed and nothing about its contents, so "the page opens on
+  // the year the control is showing" could not be asked at all -- and the
+  // browser's own form-state restoration, which is what makes that question
+  // matter, had nothing to act on. checkedStem overrides which one is checked,
+  // which is exactly what a soft reload or a Back navigation does.
+  //
+  // Same hand-maintenance cost and same justification as TEMPLATE_IDS and
+  // TEMPLATE_ATTRIBUTES: this mirrors the template by hand because the
+  // alternative is parsing Go templates in JavaScript.
+  const group = (o.ids || TEMPLATE_IDS).has("year-toggle")
+    ? stub.document.getElementById("year-toggle") : null;
+  if (group) {
+    const years = sandbox.FISC_CONFIG.years || [];
+    for (const y of years) {
+      const input = stub.document.createElement("input");
+      input.setAttribute("type", "radio");
+      input.id = "year-" + y.stem;
+      input.value = y.stem;
+      input.checked = o.checkedStem ? y.stem === o.checkedStem : y === years[0];
+      group.appendChild(input);
+      const label = stub.document.createElement("label");
+      label.setAttribute("for", input.id);
+      label.textContent = y.label;
+      group.appendChild(label);
+    }
+  }
 
   const src = readFileSync(join(repoRoot, "site", "app.js"), "utf8");
   const exported = `\n;globalThis.__harness = { ${NAMES.join(", ")} };\n`;

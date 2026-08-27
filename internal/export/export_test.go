@@ -853,6 +853,51 @@ func sorted(in []string) []string {
 //
 // This costs five lines and fails exactly when the bug comes back, which is the
 // property that matters for a fix that is one careless edit from returning.
+// TestTheDisabledYearToggleDoesNotDimItsOwnSelectionRing is fisc-b7k's third
+// defect, pinned in the same shape and for the same reason as its sibling below.
+//
+// `.year-toggle:disabled { opacity: 0.55 }` composited the WHOLE fieldset, and
+// the fieldset ships disabled — so that was a no-JS reader's state for the whole
+// visit, not a flicker. It silently invalidated the measured contrast table 40
+// lines further down, whose ratios (ring vs fill, 7.11:1 light / 8.26:1 dark
+// against WCAG 1.4.11's 3:1) are for OPAQUE elements: at 0.55 the ring falls to
+// roughly 2.51:1 in light, below the threshold. That ring is not one signal
+// among several — the same block establishes that the fill is identical between
+// checked and unchecked (its own 1.000:1 finding), so for a no-JS reader in
+// light mode it is the only thing left saying which year is on screen.
+//
+// The fix dims the legend and the UNCHECKED pills instead, so the selected one
+// stays opaque and every number in that table remains a true statement about
+// what ships. Deliberately NOT a recomputed ratio: nothing in this tree parses
+// or renders CSS (fisc-6at), so a second hand-computed figure would double the
+// unpinned surface rather than close it.
+func TestTheDisabledYearToggleDoesNotDimItsOwnSelectionRing(t *testing.T) {
+	b, err := fs.ReadFile(site.FS(), "style.css")
+	if err != nil {
+		t.Fatalf("read embedded style.css: %v", err)
+	}
+	css := string(b)
+
+	// As a RULE, with the brace: the selector also appears in prose above its
+	// replacement, which is where the reasoning lives.
+	if strings.Contains(css, ".year-toggle:disabled {") {
+		t.Error("style.css composites the whole disabled fieldset again; that drops the " +
+			"selection ring below WCAG 1.4.11's 3:1 for every reader without JavaScript, " +
+			"and falsifies the measured contrast table in this same file (fisc-b7k)")
+	}
+	if !strings.Contains(css, ".year-toggle:disabled input:not(:checked) + label {") {
+		t.Error("style.css no longer dims the unchecked pills, so the disabled group " +
+			"either looks live or was rewritten; if rewritten, this test must name " +
+			"whatever now carries the not-yet-live signal")
+	}
+	// Without this the test above would pass over a stylesheet that had simply
+	// deleted the disabled treatment altogether.
+	if !strings.Contains(css, ".year-toggle:disabled legend,") {
+		t.Error("style.css no longer dims the year toggle's legend, which is half of " +
+			"what says the control is not live yet")
+	}
+}
+
 func TestTheDisabledYearToggleKeepsItsSelectionUnderTheCursor(t *testing.T) {
 	b, err := fs.ReadFile(site.FS(), "style.css")
 	if err != nil {
