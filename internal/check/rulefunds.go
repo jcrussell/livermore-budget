@@ -161,7 +161,7 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// while listing the total that anchors it (fisc-948).
 			named, reported := false, false
 			for _, a := range anchors {
-				label, ok := strings.CutPrefix(a, "Total ")
+				label, ok := fundNameIn(a)
 				if !ok {
 					continue
 				}
@@ -204,6 +204,41 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			"pp.66-67 print no per-fund column",
 		findings: findings,
 	}.result(), nil
+}
+
+// fundNameIn is the fund name a printed total line carries, in either of the two
+// shapes this corpus prints, and whether it carries one at all.
+//
+// TWO SHAPES, BECAUSE THE CORPUS PRINTS TWO, and reading only the first was a
+// live gap rather than a tidiness point. pp.131-140 print `Total <fund>` and
+// pp.127-130's rollup prints `Total General Fund`, so a leading cut answered
+// every anchor that existed while the fund-bearing rules were the revenue
+// schedule's. pp.167-170 put the fund FIRST: p0170:23 is
+// `General Fund Total Expenses`, mapped as the rollup gf-total-expenses, which
+// covers all 23 division rules on those pages. That anchor names the fund, in
+// print, and governs every rule there -- and a leading cut alone rejects it, so
+// declaring `fund: 100` on those rules produced 23 findings against a heading
+// sitting right there in the mapping.
+//
+// BOTH SHAPES RESOLVE EXACTLY AND NEITHER IS A PREFIX MATCH. data/funds.yaml
+// spends twenty lines forbidding one, and the exactness is what keeps the five
+// operating/CIP twins apart -- Water 640 from Water Replacement 642. What is cut
+// here is the word `Total` and the schedule's own trailing noun, never a
+// fragment of the fund name: `General Fund Total Expenses` yields the whole of
+// `General Fund` and nothing shorter. FundByLabel then answers or it does not.
+func fundNameIn(total string) (string, bool) {
+	if label, ok := strings.CutPrefix(total, "Total "); ok {
+		return label, true
+	}
+	// `<fund> Total <noun>`: everything before the first " Total" is the
+	// candidate name. Cutting at the FIRST occurrence matters -- a fund whose
+	// own name contained "Total" would otherwise lose part of itself, and a
+	// short wrong answer that resolves to nothing is a skipped anchor rather
+	// than a wrong fund.
+	if label, _, ok := strings.Cut(total, " Total"); ok && label != "" {
+		return label, true
+	}
+	return "", false
 }
 
 // declaredFund is the fund every column of a rule declares, and whether they

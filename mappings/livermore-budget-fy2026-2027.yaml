@@ -574,10 +574,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: city-council}
       - {label: "Services & Supplies", category: services-and-supplies, department: city-council}
@@ -595,10 +595,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: city-manager}
       - {label: "Services & Supplies", category: services-and-supplies, department: city-manager}
@@ -616,10 +616,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: city-clerk}
       - {label: "Services & Supplies", category: services-and-supplies, department: city-clerk}
@@ -637,10 +637,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: city-attorney}
       - {label: "Services & Supplies", category: services-and-supplies, department: city-attorney}
@@ -658,10 +658,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: library}
       - {label: "Services & Supplies", category: services-and-supplies, department: library}
@@ -684,10 +684,10 @@ rules:
         wrapped_labels: ["Devel"]
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: innovation-and-economic-devel}
       - {label: "Services & Supplies", category: services-and-supplies, department: innovation-and-economic-devel}
@@ -709,20 +709,20 @@ rules:
         stop_at: "BUDGET FY 2025-27"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         omitted_rows: ["Services & Supplies", "Debt Services"]
       - page: 168
         section: "General Services"
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         omitted_rows: ["Wages & Benefits"]
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: general-services}
@@ -742,10 +742,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: administrative-services}
       - {label: "Services & Supplies", category: services-and-supplies, department: administrative-services}
@@ -763,10 +763,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         stated_total_deltas:
           - column: 1
             delta_cents: 100
@@ -790,10 +790,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: human-resources}
       - {label: "Services & Supplies", category: services-and-supplies, department: human-resources}
@@ -811,10 +811,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: police-administration}
       - {label: "Services & Supplies", category: services-and-supplies, department: police-administration}
@@ -832,10 +832,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: patrol}
       - {label: "Services & Supplies", category: services-and-supplies, department: patrol}
@@ -854,10 +854,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: support-services}
       - {label: "Services & Supplies", category: services-and-supplies, department: support-services}
@@ -880,20 +880,20 @@ rules:
         stop_at: "BUDGET FY 2025-27"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         omitted_rows: ["Capital Outlay"]
       - page: 169
         section: "Special Operations"
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         omitted_rows: ["Wages & Benefits", "Services & Supplies"]
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: special-operations}
@@ -918,10 +918,10 @@ rules:
         wrapped_labels: ["Development Admin"]
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: community-development-admin}
       - {label: "Services & Supplies", category: services-and-supplies, department: community-development-admin}
@@ -939,10 +939,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: building-and-safety}
       - {label: "Services & Supplies", category: services-and-supplies, department: building-and-safety}
@@ -960,10 +960,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: engineering}
       - {label: "Services & Supplies", category: services-and-supplies, department: engineering}
@@ -985,10 +985,10 @@ rules:
         wrapped_labels: ["Services"]
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: housing-and-human-services}
       - {label: "Services & Supplies", category: services-and-supplies, department: housing-and-human-services}
@@ -1006,10 +1006,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         stated_total_deltas:
           - column: 1
             delta_cents: -100
@@ -1038,10 +1038,10 @@ rules:
         wrapped_labels: ["Administration"]
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         stated_total_deltas:
           - column: 1
             delta_cents: 100
@@ -1065,10 +1065,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: maintenance}
       - {label: "Services & Supplies", category: services-and-supplies, department: maintenance}
@@ -1091,20 +1091,20 @@ rules:
         stop_at: "BUDGET FY 2025-27"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         omitted_rows: ["Services & Supplies"]
       - page: 170
         section: "Environmental Services"
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
         omitted_rows: ["Wages & Benefits"]
         stated_total_deltas:
           - column: 1
@@ -1133,10 +1133,10 @@ rules:
         stop_at: "Total"
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
-          - {fund_group: general, fiscal_year: 2024, basis: actual}
-          - {fund_group: general, fiscal_year: 2025, basis: revised}
-          - {fund_group: general, fiscal_year: 2026}
-          - {fund_group: general, fiscal_year: 2027}
+          - {fund_group: general, fund: 100, fiscal_year: 2024, basis: actual}
+          - {fund_group: general, fund: 100, fiscal_year: 2025, basis: revised}
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - {fund_group: general, fund: 100, fiscal_year: 2027}
     rows:
       - {label: "Services & Supplies", category: services-and-supplies, department: fire-administration}
 
