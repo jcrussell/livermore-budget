@@ -16,7 +16,19 @@ lives only in prose drifts from the code that implements it.
 
 `<output>/data/<projection>.json`, so `fisc export -o dist` writes
 `dist/data/sankey.json` and `fisc export -o site` writes `site/data/sankey.json`.
-One code path, one layout. The browser `fetch`es it; it is never inlined into
+One code path, one layout.
+
+**The stem is a function of the whole column list**, and `project.Stem` is the
+only place that rule is spelled — `fisc export` writes the files, `fisc verify`
+says one was not built, and `project.PublishedDocuments` declares them, so a
+second spelling is a chance for the site to serve a document under a name
+nothing else expects. A projection publishing one document takes its name
+verbatim; among several, the opening published slice keeps the bare name and the
+rest are suffixed by every column they carry, with the basis spelled out
+whenever it is not the published one. Today that is `sankey`, `sankey-2027` and
+`revenue-trends`, pinned as literal strings by
+`TestTheCommittedStemsAreUnchanged`, because these are the paths this document
+promises and the values the year radio carries. The browser `fetch`es it; it is never inlined into
 the page, because a provenance file you cannot curl on its own is not much of
 an audit trail.
 

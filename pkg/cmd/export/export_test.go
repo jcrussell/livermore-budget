@@ -510,6 +510,34 @@ func keys(m map[string][]byte) []string {
 	return out
 }
 
+// TestTheCommittedStemsAreUnchanged pins the three published paths as literal
+// strings, which is fisc-rmx's own acceptance criterion and the only thing that
+// makes the naming rule safe to change again.
+//
+// docs/sankey-contract.md promises data/sankey.json, and
+// docs/revenue-trends-contract.md promises data/revenue-trends.json. The year
+// radio's value is the stem (site/app.js resolves the clicked year by
+// years.find(y => y.stem === target.value)), and every link anyone has ever made
+// to the site is one of these paths. A rule that renamed them would break the
+// contracts and the toggle at once, silently, because every internal consumer
+// would rename with it.
+func TestTheCommittedStemsAreUnchanged(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildProjections(root)
+	if err != nil {
+		t.Fatalf("buildProjections: %v", err)
+	}
+	want := []string{"revenue-trends", "sankey", "sankey-2027"}
+	got := keys(built)
+	sort.Strings(got)
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("stems mismatch (-want +got):\n%s", diff)
+	}
+}
+
 // TestStemForAsksHowManyDocumentsNotHowManyColumns pins both directions of the
 // naming rule, and the second case is one an earlier version of stemFor got
 // wrong.
@@ -544,10 +572,33 @@ func TestStemForAsksHowManyDocumentsNotHowManyColumns(t *testing.T) {
 		// The regression: ONE slice of ONE column is still one document, so it
 		// keeps the bare stem even though the year is not the opening one.
 		{"one document of one column is not a year of anything", year(2024), 1, "sankey"},
+		// fisc-rmx. Two BASES for one fiscal year is the shape that used to
+		// compute one stem twice and take the whole export down; the basis is
+		// spelled out because a year alone cannot tell them apart. Not a
+		// hypothetical: Sankey.Slices derives its slices from (year, basis), so
+		// mapping pp.66-67's revised column produces exactly this.
+		{"a second basis for one year is not the same document",
+			project.Options{Columns: []project.Column{
+				{FiscalYear: project.PublishedFiscalYear, Basis: "revised"},
+			}}, 3, "sankey-2026-revised"},
+		{"a non-opening year keeps its year and gains its basis",
+			project.Options{Columns: []project.Column{
+				{FiscalYear: 2027, Basis: "revised"},
+			}}, 3, "sankey-2027-revised"},
+		// Every column, not the first: two documents of several columns each
+		// are told apart by all of them.
+		{"a multi-column document among several is named by its whole list",
+			project.Options{Columns: []project.Column{
+				{FiscalYear: 2024, Basis: "actual"},
+				{FiscalYear: 2025, Basis: "revised"},
+			}}, 2, "sankey-2024-actual-2025-revised"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := stemFor("sankey", c.o, c.slices)
+			// A stand-in declaration of the right LENGTH. Stem reads only
+			// how many there are, and spelling out c.slices plausible
+			// Options per case would say nothing the count does not.
+			got, err := stemFor("sankey", c.o, make([]project.Options, c.slices))
 			if err != nil {
 				t.Fatalf("stemFor: %v", err)
 			}
@@ -582,7 +633,12 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 	}
 	// It is not a year of anything, so neither suffixed stem may exist.
 	for _, y := range project.PublishedFiscalYears() {
-		stem := project.PublishedStem(project.TrendsProjection, y)
+		stem, err := project.Stem(project.TrendsProjection, project.Options{
+			Columns: []project.Column{{FiscalYear: y, Basis: project.PublishedBasis}},
+		}, make([]project.Options, 2))
+		if err != nil {
+			t.Fatalf("Stem: %v", err)
+		}
 		if stem == project.TrendsProjection {
 			continue
 		}
@@ -726,7 +782,7 @@ func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 			// The spine is not special-cased, and this is what says so.
 			name: "a published spine year missing",
 			drop: func(m map[string]builtDoc) {
-				delete(m, project.PublishedStem(project.PublishedProjection, 2027))
+				delete(m, "sankey-2027")
 			},
 			wants: []string{"sankey-2027", "no projection built it"},
 		},
@@ -850,8 +906,9 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 // which is worse than any refusal, because it leaves a half-exported directory
 // and no message a reader could act on. It is refused with the reason instead.
 func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
-	// slices > 1, or the one-document branch returns before the index.
-	_, err := stemFor("sankey", project.Options{}, 2)
+	// More than one document, or the one-document branch returns before the
+	// index.
+	_, err := stemFor("sankey", project.Options{}, make([]project.Options, 2))
 	if err == nil {
 		t.Fatal("stemFor accepted an Options with no columns, want a refusal")
 	}
@@ -864,7 +921,7 @@ func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
 	// And one column still works, so the guard has not swallowed the real case.
 	got, err := stemFor("sankey", project.Options{
 		Columns: []project.Column{{FiscalYear: 2027, Basis: "adopted"}},
-	}, 2)
+	}, make([]project.Options, 2))
 	if err != nil || got != "sankey-2027" {
 		t.Errorf("stemFor = %q, %v; want \"sankey-2027\", nil", got, err)
 	}

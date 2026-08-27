@@ -762,12 +762,18 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 // WHAT USED TO HAPPEN. publishedProjectionBuilt unioned every slice of a
 // projection before comparing, so the three slices unioned to {2026 adopted,
 // 2026 revised, 2027 adopted} and satisfied every published document. verify
-// green. `fisc export` refuses the very same corpus and refuses it ENTIRELY:
-// project.PublishedStem names a document by its opening fiscal year, so the two
-// FY2026 slices compute one stem and the duplicate-stem guard fires before any
-// file is written. A check that greens what the next command in the pipeline
-// rejects is worse than no check, because it is the one a reader trusts to have
-// looked.
+// green -- and `fisc export` refused the very same corpus, ENTIRELY, because
+// the stem was a function of the fiscal year alone and the two FY2026 slices
+// computed one. A check that greens what the next command rejects is worse than
+// no check, because it is the one a reader trusts to have looked.
+//
+// THE COLLISION HALF IS GONE, AND THE TEST SAYS SO RATHER THAN BEING DELETED
+// WITH IT. fisc-rmx made the stem a function of the whole column list, so this
+// corpus now exports cleanly as sankey and sankey-2026-revised. What survives is
+// the claim that outlives the collision: a slice nobody publishes is a file the
+// site would serve and never declared, and it is reported by name and by the
+// stem it would take. The two beads landed in that order on purpose -- b8o's
+// test is what proved rmx's fix reached this far.
 func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 	root := repoWithoutPDFs(t)
 	added := 0
@@ -800,20 +806,15 @@ func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
 		t.Fatalf("published-projection-built = %s (%s), want fail: %d facts made a third "+
 			"spine slice that no published document covers", res.Status, res.Summary, added)
 	}
-	// The finding has to name the stem and the document already at it, because
-	// "a slice nobody publishes" and "two documents at one path" are the same
-	// defect seen from two ends and only the second says what export will do.
-	var got string
-	for _, f := range res.Findings {
-		if strings.Contains(f.Detail, "duplicate-stem") {
-			got = f.Detail
-		}
+	if len(res.Findings) != 1 {
+		t.Fatalf("findings = %v, want exactly one", res.Findings)
 	}
-	if got == "" {
-		t.Fatalf("findings = %v, want one naming the duplicate-stem refusal", res.Findings)
-	}
-	for _, want := range []string{`"sankey"`, "ENTIRE export", "FY2026 revised"} {
-		if !strings.Contains(got+" "+res.Findings[0].Subject, want) {
+	// The finding names the SLICE and the STEM, because those are two different
+	// repairs: the slice says which columns nobody publishes, and the stem says
+	// which file would appear in dist/ that no reader is offered.
+	got := res.Findings[0].Subject + " " + res.Findings[0].Detail
+	for _, want := range []string{"FY2026 revised", `"sankey-2026-revised"`, "nothing published claims"} {
+		if !strings.Contains(got, want) {
 			t.Errorf("finding = %q, want it to contain %q", got, want)
 		}
 	}

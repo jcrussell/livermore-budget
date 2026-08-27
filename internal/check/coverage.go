@@ -322,35 +322,53 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	// THE OTHER DIRECTION, and it is the half fisc-b8o's acceptance criterion
 	// asks for. A slice that built and that no published document claims is a
 	// file `fisc export` writes and the site never declares -- and the way it
-	// bites is not the stray file. project.PublishedStem names a document by
-	// its opening fiscal year, so the moment the spine carries two BASES for one
-	// year, two slices compute one stem and export's duplicate-stem guard takes
-	// the WHOLE export down: no file written, including the ones that were fine.
-	// Before this, verify reported that corpus green.
+	// bites is not the stray file: it is that the site would serve a document it
+	// never declared, under a name nothing else expects.
 	//
-	// It asks project.PublishedStem rather than pkg/cmd/export's stemFor, and
-	// the distinction is the decision this bead left open. PublishedStem is the
-	// shared declaration -- its own doc comment says it lives beside the year
-	// list "because `fisc verify` has to name the same documents the site serves
-	// in order to say one of them was not built" -- so reading it is this
-	// package doing its job, where reaching into a command's naming helper would
-	// have been the coupling internal/check avoids everywhere else.
+	// It asks project.Stem rather than pkg/cmd/export's stemFor, and the
+	// distinction is the decision fisc-b8o left open. Stem is the shared
+	// declaration -- one place, read by the packager that writes the files, by
+	// project.PublishedDocuments that declares them, and by this check -- so
+	// reading it is this package doing its job, where reaching into a command's
+	// naming helper would have been the coupling internal/check avoids
+	// everywhere else.
 	at := map[string]string{}
 	for _, d := range s.Published {
 		at[d.Stem] = d.String()
 	}
+	// THE DECLARED SLICES OF EACH PROJECTION, BY NAME, built and refused
+	// together -- which is the list `fisc export` names its files from, and the
+	// reason it is assembled here rather than reusing `built` above. `built` is
+	// keyed on (name, scope) and holds only what BUILT, so a projection that
+	// declared three slices and refused one would be named against a list of
+	// two, and this check would report a stem export never writes. The one
+	// spelling of the rule is only worth having if its argument is one thing
+	// too.
+	declared := map[string][]project.Options{}
 	for _, p := range s.Projections {
-		if claimed[sliceID(p.Name, p.Options)] || len(p.Options.Columns) == 0 {
+		declared[p.Name] = append(declared[p.Name], p.Options)
+	}
+	for _, f := range s.ProjectionFailures {
+		declared[f.Name] = append(declared[f.Name], f.Options)
+	}
+	for _, p := range s.Projections {
+		if claimed[sliceID(p.Name, p.Options)] {
 			continue
 		}
-		stem := project.PublishedStem(p.Name, p.Options.Columns[0].FiscalYear)
+		stem, err := project.Stem(p.Name, p.Options, declared[p.Name])
+		if err != nil {
+			// An Options with no columns. It built, so it is not
+			// projectionsBuild's subject; it cannot be named, so it is not this
+			// sweep's either, and the graph checks read it like any other.
+			continue
+		}
 		detail := "the site declares no document at that stem, so `fisc export` would " +
 			"write a file nothing published claims"
 		if other, ok := at[stem]; ok {
 			detail = fmt.Sprintf("the site already publishes %s at that stem, so `fisc "+
 				"export` computes one stem for two documents and its duplicate-stem guard "+
 				"refuses the ENTIRE export -- no file written, including the ones that "+
-				"were fine (fisc-rmx)", other)
+				"were fine", other)
 		}
 		findings = append(findings, finding(p.String(),
 			"this slice was built and no document the site publishes covers it. It would "+

@@ -316,6 +316,14 @@ func (*Sankey) Name() string { return "sankey" }
 // column or a third budget year puts that graph under verify's checks without
 // anyone remembering to add it here.
 //
+// THAT SENTENCE WAS FALSE UNTIL fisc-rmx and is worth the note, because it is
+// the kind of claim a reader acts on. This method keys on (fiscal year, BASIS)
+// and the file stem was a function of the fiscal year ALONE, so mapping a
+// revised column beside the adopted one declared two slices, computed one stem
+// for both, and `fisc export` refused the entire run -- no file written,
+// including the ones that were fine. [Stem] reads the whole column list now, so
+// the two agree and the claim holds again.
+//
 // ONE SLICE PER YEAR, NOT ONE SLICE FOR ALL OF THEM, and that is the whole
 // content of this method: every fiscal year the city publishes lives in the same
 // facts.jsonl, and a graph built over two of them doubles every figure while

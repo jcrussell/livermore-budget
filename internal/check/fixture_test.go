@@ -363,13 +363,28 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 // document — it is a miniature that never published it, and
 // published-projection-built must not report on the difference.
 func spineDocuments(years ...int) []project.PublishedDocument {
-	out := make([]project.PublishedDocument, 0, len(years))
+	slices := make([]project.Options, 0, len(years))
 	for _, y := range years {
+		slices = append(slices, project.Options{
+			Columns: []project.Column{{FiscalYear: y, Basis: project.PublishedBasis}},
+			Scope:   project.PublishedScope,
+		})
+	}
+	out := make([]project.PublishedDocument, 0, len(years))
+	for _, o := range slices {
+		// project.Stem rather than a stem spelled here: a fixture that named its
+		// documents by its own rule would stop being a miniature of this
+		// repository the moment the rule moved, and pass while the real one did
+		// not.
+		stem, err := project.Stem(project.PublishedProjection, o, slices)
+		if err != nil {
+			panic(err)
+		}
 		out = append(out, project.PublishedDocument{
 			Projection: project.PublishedProjection,
-			Stem:       project.PublishedStem(project.PublishedProjection, y),
+			Stem:       stem,
 			Scope:      project.PublishedScope,
-			Columns:    []project.Column{{FiscalYear: y, Basis: project.PublishedBasis}},
+			Columns:    o.Columns,
 		})
 	}
 	return out

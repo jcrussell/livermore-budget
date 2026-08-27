@@ -64,10 +64,16 @@
          the lede either way. -->
     <fieldset class="year-toggle" id="year-toggle" disabled>
       <legend>Budget year</legend>
+      {{- /* The id is keyed on the STEM and not on the Year (fisc-rmx). A stem
+             is unique by construction -- buildProjections refuses two documents
+             at one -- while a year is not: two BASES for one fiscal year are two
+             documents, and keying on the year gave both radios the same id, so
+             every <label for=...> pointed at whichever parsed first and clicking
+             one year's label selected the other. */}}
       {{- range $i, $y := .Years}}
-      <input type="radio" name="fisc-year" id="year-{{$y.Year}}" value="{{$y.Stem}}"
+      <input type="radio" name="fisc-year" id="year-{{$y.Stem}}" value="{{$y.Stem}}"
              {{if eq $i 0}}checked{{end}}>
-      <label for="year-{{$y.Year}}">{{$y.Label}}</label>
+      <label for="year-{{$y.Stem}}">{{$y.Label}}</label>
       {{- end}}
     </fieldset>
     {{- end}}

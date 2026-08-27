@@ -109,6 +109,30 @@ func TestRegistry(t *testing.T) {
 	}
 }
 
+// TestTheOpeningPublishedYearOpensTheYearList pins a coherence property of this
+// package's own constants, and it is the last edge of fisc-rmx.
+//
+// Stem gives the bare name to the slice at PublishedFiscalYear, while
+// PublishedDocuments walks PublishedFiscalYears(). Nothing made the constant the
+// first entry of the list, and editing one without the other is a source change
+// no corpus can cause and no test then noticed: with the list at {2027} and the
+// constant still 2026, the declaration names a document "sankey" over FY2027
+// while every derivation gives that stem to FY2026. `fisc export` does refuse
+// it, clearly -- but at the far end of the pipeline, about a file, rather than
+// here, about the two lines that disagree.
+func TestTheOpeningPublishedYearOpensTheYearList(t *testing.T) {
+	years := PublishedFiscalYears()
+	if len(years) == 0 {
+		t.Fatal("PublishedFiscalYears is empty")
+	}
+	if years[0] != PublishedFiscalYear {
+		t.Errorf("PublishedFiscalYears()[0] = %d, want PublishedFiscalYear (%d): Stem gives "+
+			"the bare name to the opening year, so the two must be the same year or the "+
+			"site declares one stem and every derivation computes another",
+			years[0], PublishedFiscalYear)
+	}
+}
+
 func TestFiscalYearLabel(t *testing.T) {
 	cases := map[int]string{2026: "FY 2025-26", 2027: "FY 2026-27", 2000: "FY 1999-00", 2100: "FY 2099-00"}
 	for year, want := range cases {

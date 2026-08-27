@@ -72,7 +72,7 @@ func buildProjections(repoRoot string) (map[string][]byte, error) {
 	for _, p := range project.Registry(reg) {
 		declared := slicesOf(p, facts, version)
 		for _, o := range declared {
-			stem, err := stemFor(p.Name(), o, len(declared))
+			stem, err := stemFor(p.Name(), o, declared)
 			if err != nil {
 				return nil, err
 			}
@@ -191,45 +191,20 @@ type builtDoc struct {
 	opts project.Options
 }
 
-// stemFor is the file stem one of a projection's documents is written under.
+// stemFor is [project.Stem], and it is a one-line delegation on purpose.
 //
-// THE QUESTION IS WHETHER THE PROJECTION PUBLISHES ONE DOCUMENT PER YEAR, and it
-// is answered by how many slices the projection declared, not by how many
-// columns any one of them carries. A projection declaring SEVERAL slices is
-// publishing several documents that must be told apart, and the way this site
-// tells them apart is the fiscal year: the spine keeps data/sankey.json for the
-// opening year and data/sankey-2027.json for the next (project.PublishedStem). A
-// projection declaring ONE slice publishes ONE document and needs no
-// distinguishing suffix, so it takes its name verbatim.
+// THE RULE USED TO LIVE HERE, and fisc-rmx is what moved it. A stem is a PATH,
+// and three commands need to agree about paths: this one writes the files,
+// `fisc verify` says one of them was not built, and project.PublishedDocuments
+// declares what the site serves. While the rule was spelled here and
+// approximated there, it was reachable for the two to disagree -- and they did,
+// on any spine carrying two bases for one fiscal year.
 //
-// AN EARLIER VERSION ASKED THE COLUMN COUNT and was wrong in a way no test then
-// covered: a store carrying exactly one revenue-by-fund column -- one year
-// mapped, or four columns dropping to one -- would have made the trends document
-// single-column, sent it through PublishedStem, and shipped it as
-// revenue-trends-2024.json while data/revenue-trends.json, the path
-// docs/revenue-trends-contract.md promises, silently did not exist. The column
-// count is a property of a document; the stem is a property of a SET of them.
-//
-// The error in the other direction is the one the contract names: a multi-column
-// document put through PublishedStem is written once per published year, as two
-// byte-identical files one of which claims a year it does not cover. Both
-// directions are pinned by TestStemForAsksHowManyDocumentsNotHowManyColumns.
-// It returns an error rather than indexing Columns[0] blind. A zero-column
-// Options is not reachable through project.Slices today, but a projection is an
-// interface any future type can satisfy, and the failure mode of the bare index
-// is a PANIC in a command whose job is to write files -- which is the one shape
-// worse than a refusal here, because a panic mid-write leaves a half-exported
-// directory with no message a reader could act on.
-func stemFor(name string, o project.Options, slices int) (string, error) {
-	if slices == 1 {
-		return name, nil
-	}
-	if len(o.Columns) == 0 {
-		return "", fmt.Errorf(
-			"the %s projection declared %d documents and one of them has no columns, "+
-				"so there is no fiscal year to tell it apart by", name, slices)
-	}
-	return project.PublishedStem(name, o.Columns[0].FiscalYear), nil
+// The wrapper survives rather than the call sites being rewritten because the
+// error message wants this command's words, and because export_test.go's cases
+// are the ones that pin both directions of the naming rule.
+func stemFor(name string, o project.Options, declared []project.Options) (string, error) {
+	return project.Stem(name, o, declared)
 }
 
 // joinComma renders a list the way a message should. It is spelled here rather
@@ -279,8 +254,16 @@ func loadDocs(repoRoot string) ([]export.Doc, error) {
 // generatedBy names this binary for the page footer.
 func generatedBy() string { return "fisc " + build.Get().String() }
 
-// yearStems is the document stems for one projection, one per published fiscal
-// year, in the order a reader should meet them.
+// yearStems is the document stems for one projection, in the order a reader
+// should meet them.
+//
+// IT READS THE DECLARED STEMS RATHER THAN REBUILDING THEM, and that is fisc-rmx
+// note (3). It used to walk PublishedFiscalYears() and recompute the stem from
+// each year, which was a fourth spelling of the naming rule and was the one that
+// bit: a stem that stemFor produced and this function could not reconstruct FROM
+// A YEAR ALONE would be written to disk and offered to no reader, so the toggle
+// would silently lose a document rather than fail. project.PublishedDocuments
+// states each stem, so there is nothing left to reconstruct.
 //
 // It lists only stems a document was actually built for. The published list is
 // what the site MEANS to publish; built is what it HAS, and the year control
@@ -293,12 +276,14 @@ func generatedBy() string { return "fisc " + build.Get().String() }
 // the check that exists to notice a year the site publishes and nothing looked
 // at.
 func yearStems(name string, projections map[string][]byte) []string {
-	years := project.PublishedFiscalYears()
-	out := make([]string, 0, len(years))
-	for _, y := range years {
-		stem := project.PublishedStem(name, y)
-		if _, ok := projections[stem]; ok {
-			out = append(out, stem)
+	docs := project.PublishedDocuments()
+	out := make([]string, 0, len(docs))
+	for _, d := range docs {
+		if d.Projection != name {
+			continue
+		}
+		if _, ok := projections[d.Stem]; ok {
+			out = append(out, d.Stem)
 		}
 	}
 	return out

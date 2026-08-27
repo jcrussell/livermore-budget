@@ -39,6 +39,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -163,7 +164,7 @@ func PublishedDocuments() []PublishedDocument {
 	for _, year := range years {
 		out = append(out, PublishedDocument{
 			Projection: PublishedProjection,
-			Stem:       PublishedStem(PublishedProjection, year),
+			Stem:       stemOrPanic(PublishedProjection, spineOptions(year), spineSlices()),
 			Scope:      PublishedScope,
 			Columns:    []Column{{FiscalYear: year, Basis: PublishedBasis}},
 		})
@@ -205,18 +206,100 @@ func MissingColumns(d PublishedDocument, o Options) []Column {
 	return missing
 }
 
-// PublishedStem is the file stem of the document for one published year.
-//
-// The opening year keeps the bare name, so data/sankey.json stays the path the
-// contract promises and every existing link to it keeps working; later years are
-// suffixed. This is a PATH decision and it lives beside the year list rather
-// than in the packager because `fisc verify` has to name the same documents the
-// site serves in order to say one of them was not built.
-func PublishedStem(name string, year int) string {
-	if year == PublishedFiscalYear {
-		return name
+// spineOptions is one published year of the spine, as the projection would be
+// built over it. It exists so [PublishedDocuments] computes its stems through
+// [Stem] rather than restating the rule.
+func spineOptions(year int) Options {
+	return Options{
+		Columns: []Column{{FiscalYear: year, Basis: PublishedBasis}},
+		Scope:   PublishedScope,
 	}
-	return fmt.Sprintf("%s-%d", name, year)
+}
+
+// spineSlices is every document the spine publishes, as [Sankey.Slices] would
+// declare them over a corpus that covers the published years. It is what
+// [PublishedDocuments] hands [Stem], so the declaration names its files by the
+// same rule and over the same list `fisc export` will.
+func spineSlices() []Options {
+	years := PublishedFiscalYears()
+	out := make([]Options, 0, len(years))
+	for _, y := range years {
+		out = append(out, spineOptions(y))
+	}
+	return out
+}
+
+// stemOrPanic is [Stem] where the arguments are this package's own literals and
+// an error is a bug here rather than a state a corpus can reach. Stem's only
+// error is an Options with no columns, and spineOptions always has one; a
+// returned error would have to be swallowed or would have to make
+// PublishedDocuments fallible, and a published set that can fail to be stated
+// is worse than a panic on a line no input reaches.
+func stemOrPanic(name string, o Options, declared []Options) string {
+	stem, err := Stem(name, o, declared)
+	if err != nil {
+		panic(err)
+	}
+	return stem
+}
+
+// Stem is the file stem one of a projection's documents is written under, and
+// it is the ONLY place that rule is spelled. `fisc export` writes the files,
+// `fisc verify` says one was not built, and [PublishedDocuments] declares them;
+// three spellings of a path is three chances for the site to serve a document
+// under a name nothing else expects.
+//
+// declared is EVERY Options the projection declared, and o must be one of them.
+// It is the whole list rather than a count because a count is a number three
+// callers can each arrive at differently -- and did: `fisc export` counted the
+// slices a projection declared, internal/check counted the ones that BUILT and
+// only within one scope, and PublishedDocuments counted published YEARS. Three
+// spellings of the argument that the single spelling of the rule was supposed to
+// remove. Passing the list makes the disagreement a compile error's worth of
+// obvious instead of a stem nobody notices, and lets this function say so when a
+// caller hands it an Options the projection never declared.
+//
+// A projection publishing ONE document needs no distinguishing suffix and takes
+// its name verbatim -- which is what keeps data/revenue-trends.json at the path
+// docs/revenue-trends-contract.md promises even in a corpus that carries a
+// single column. The error in the other direction is the one that contract
+// names: a multi-column document suffixed per year is written twice, as two
+// byte-identical files one of which claims a year it does not cover.
+//
+// IT IS A FUNCTION OF THE WHOLE COLUMN LIST, and until fisc-rmx it was a
+// function of Columns[0].FiscalYear alone. That was reachable and it took the
+// whole export down rather than shipping something wrong: Sankey.Slices derives
+// one slice per (fiscal year, BASIS) the spine carries, so the day an FY2026
+// revised column is mapped beside the adopted one, two slices computed the stem
+// "sankey" and the duplicate-stem guard refused every file including the ones
+// that were fine. Sankey.Slices' own doc comment presents mapping a revised
+// column as needing no other change; that is true again.
+//
+// The opening published slice keeps the bare name, so data/sankey.json stays
+// the path docs/sankey-contract.md promises and every existing link to it keeps
+// working. A basis that is not the published one is spelled out, because a year
+// alone cannot tell two of them apart.
+func Stem(name string, o Options, declared []Options) (string, error) {
+	if len(declared) == 1 {
+		return name, nil
+	}
+	if len(o.Columns) == 0 {
+		return "", fmt.Errorf(
+			"the %s projection declared %d documents and one of them has no columns, "+
+				"so there is nothing to tell it apart by", name, len(declared))
+	}
+	if len(o.Columns) == 1 && o.Columns[0] == (Column{PublishedFiscalYear, PublishedBasis}) {
+		return name, nil
+	}
+	parts := make([]string, 0, len(o.Columns))
+	for _, c := range o.Columns {
+		part := strconv.Itoa(c.FiscalYear)
+		if c.Basis != PublishedBasis {
+			part += "-" + string(c.Basis)
+		}
+		parts = append(parts, part)
+	}
+	return name + "-" + strings.Join(parts, "-"), nil
 }
 
 // Options are the slice of the corpus a projection is built from.
