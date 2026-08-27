@@ -88,18 +88,43 @@ Determinism: nodes sorted by `(tier, id)`, links by `(source, target)`,
 
 ## Tiers and node ids
 
-| tier | meaning | id form | on the spine |
-|---|---|---|---|
-| 0 | revenue source | `revenue/<slug>` | 10 |
-| 1 | constraint tier | `constraint/<tier>` | — |
-| 2 | fund group | `fund-group/<type>` | 6 |
-| 3 | fund | `fund/<number>` | — |
-| 4 | department | `dept/<slug>` | — |
-| 5 | object category | `expenditure/<slug>` | 4 |
+| tier | meaning | id form |
+|---|---|---|
+| 0 | revenue source | `revenue/<slug>` |
+| 2 | fund group | `fund-group/<type>` |
+| 3 | fund | `fund/<number>` |
+| 4 | department | `dept/<slug>` |
+| 5 | object category | `expenditure/<slug>` |
 
 Plus the flow endpoints that are not part of that hierarchy: `transfers/in`
 (tier 0), `transfers/out` (tier 5), `fund-balance/reserve-increase` (tier 5),
 `fund-balance/draw` (tier 0), `fund-balance/contribution` (tier 5).
+
+**Tier 1 is not a layer, and this table used to say it was.** Earlier revisions
+gave tier 1 as a `constraint/<tier>` node between the revenue source and the fund
+group. It cannot be one, and the refutation is arithmetic rather than taste: a
+constraint tier is a property of a **fund**, and the fund groups do not partition
+along it. Counting `data/funds.yaml` by `type` x `constraint_tier`, `capital`
+holds 3 committed funds and 43 restricted-by-law; `special-revenue` holds 37
+restricted-by-law, 2 unknown and 1 committed. So `fund-group/<type>.parent =
+constraint/<tier>` has no single answer, and a layer whose parent edge is
+undefined is not a layer. The constraint tier rides as the `constraint_tier`
+**field** on a tier-3 node instead — see below.
+
+The number 1 is left unused rather than renumbering. Tiers 2-5 are published in
+`node.tier` today, and shifting them would silently change the meaning of every
+document already written.
+
+**How many nodes a tier holds is a property of the DOCUMENT, not of the
+hierarchy.** A second document at another scope draws a different set: the
+citywide spine (pp.66-67) prints six fund groups, while revenue-by-fund
+(pp.131-140) prints seven, carrying Permanent Funds that pp.66-67 give no column
+at all (fisc-u8o). There is no tier count that holds across all documents, so
+each states its own below rather than inheriting the spine's.
+
+**On the spine** (`sankey.json`): tier 0 = 10 nodes, tier 2 = 6, tier 5 = 4.
+Tiers 3 and 4 are empty, because pp.66-67 publish neither a fund nor a department
+axis.
 
 `counts.facts` is the filtered input count — every fact matching the fiscal
 year, basis and scope. `counts.facts_cited` is how many of those a link
@@ -125,10 +150,37 @@ The slug in every id is a `data/taxonomy.yaml` slug. Do not coin new ones — in
 particular `ADDITION TO RESERVES` is `fund-balance/reserve-increase`, whose
 `document_term` is that exact printed string.
 
-`constraint_tier` is `""` on every spine node, and that is correct rather than
-lazy: `funds.yaml` records a constraint tier per **fund**, and this schedule
-publishes only fund **groups**. Inventing one would be an editorial
-classification presented as published data.
+## constraint_tier
+
+`constraint_tier` is `""` on every **spine** node, and that is correct rather
+than lazy: `funds.yaml` records a constraint tier per **fund**, and pp.66-67
+publish only fund **groups**, whose columns contain funds of several tiers.
+Inventing one there would be an editorial classification presented as published
+data.
+
+**Where a node does carry one, the value is ours and the node must say so.**
+`data/funds.yaml`'s own header is explicit: `constraint_tier` and
+`restriction_note` are *"DERIVED — our reading of the 'Description of Funds'
+narrative (pp. 258-261) — and must not be presented as something the city
+printed."* A tier-3 fund node is in the opposite position from the two
+fund-balance nodes: the **node** is published (the city prints the fund and its
+revenue) while the **attribute** is inferred. So `node.derived` stays `false` —
+setting it would claim the city did not print the fund, which is the opposite
+error — and the disclosure travels on the two fields beside it instead:
+
+- `source_note` cites `data/funds.yaml` and pp.258-261;
+- `rationale` carries that fund's `restriction_note`, which is the reading itself.
+
+A node carrying a non-empty `constraint_tier` and no `source_note` is a check
+failure, not a style problem. A document whose nodes carry constraint tiers must
+also carry the disclosure sentence in `metadata.caveats`, and that sentence is a
+constant in `internal/project` so the caveat and the check cannot drift apart.
+
+**`""` and `unknown` are different claims and must not be read as one.** `""`
+means *this document does not classify this node* — the spine's answer, and the
+answer for every node that is not a fund. `unknown` means *we read pp.258-261 and
+could not tell*; `data/funds.yaml` uses it for exactly two funds. Collapsing them
+would be the absent-is-not-zero mistake in a new field.
 
 ## link.kind
 

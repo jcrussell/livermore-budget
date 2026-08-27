@@ -255,10 +255,18 @@ type Node struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
 	Tier  int    `json:"tier"`
-	// Parent and ConstraintTier are "" on every node this schedule produces.
-	// That is correct rather than lazy: data/funds.yaml records a constraint
-	// tier per fund, and pp.66-67 publish only fund groups, so filling one in
-	// would present an editorial classification as published data.
+	// Parent and ConstraintTier are "" on every node THE SPINE produces, and
+	// that is correct rather than lazy: data/funds.yaml records a constraint
+	// tier per fund, and pp.66-67 publish only fund groups, whose columns hold
+	// funds of several tiers, so filling one in would present an editorial
+	// classification as published data.
+	//
+	// THIS TYPE HAS MORE THAN ONE PRODUCER, so the sentence above is about the
+	// schedule and not about the field. A document drawing funds populates both.
+	// When it populates ConstraintTier it must also set SourceNote and
+	// Rationale, because the node is published while the tier is our reading of
+	// pp.258-261 — see docs/sankey-contract.md's constraint_tier section, which
+	// carries the argument and the "" / "unknown" distinction.
 	Parent         string `json:"parent"`
 	ConstraintTier string `json:"constraint_tier"`
 	Role           string `json:"role"`
