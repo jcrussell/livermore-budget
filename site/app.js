@@ -1111,15 +1111,24 @@ function isDocument(doc, what) {
  * What changes is what the reader is told, and tools/jscheck asserts the wording
  * for that reason.
  *
- * metadata.sources IS THE EXCEPTION AND IS WHY THIS LIST IS NOT A GUESS. That
- * one is NOT covered by layOut: buildTable reaches
- * citations(projection.metadata.sources) and throws on a missing one -- and
- * buildTable is the LAST step of the repaint, so the throw lands after
+ * THE buildTable KEYS ARE THE EXCEPTION AND ARE WHY THIS LIST IS NOT A GUESS.
+ * Three of them are NOT covered by layOut, and every one is reached from
+ * buildTable, which is the LAST step of the repaint, so a throw lands after
  * paintYearWords, buildLegend and buildDerivedList have run, leaving the page
  * reading one year over another year's chart. That is fisc-bsg exactly, reached
  * one function past its fix, and it survived a commit because tools/jscheck
  * planted no <tbody> and so buildTable returned at its first line in every
  * lifecycle check.
+ *
+ *   metadata.sources          citations(...), the for..of
+ *   metadata.sources[].pages  citations(), `for (const page of source.pages)`
+ *   links[].fact_ids          buildTable, `l.fact_ids.join(" ")`
+ *
+ * The last two were missing while this comment already stated the rule below,
+ * which is fisc-60r: a schema_version 1 document whose links lack fact_ids
+ * passed here AND passed layOut -- neither touches the key -- and threw inside
+ * buildTable. The per-element arms cost one scan each of links and sources,
+ * both of which the repaint already walks more than once.
  *
  * THE RULE THIS LIST FOLLOWS, then: every key the draw DEREFERENCES before it
  * could report a failure. Not every key the contract names -- a client that
@@ -1134,8 +1143,12 @@ function drawableSankey(doc, what) {
   const missing = [];
   if (!Array.isArray(doc.nodes)) missing.push("nodes");
   if (!Array.isArray(doc.links)) missing.push("links");
+  else if (doc.links.some((l) => !Array.isArray(l.fact_ids))) missing.push("links[].fact_ids");
   if (!doc.metadata || typeof doc.metadata !== "object") missing.push("metadata");
   else if (!Array.isArray(doc.metadata.sources)) missing.push("metadata.sources");
+  else if (doc.metadata.sources.some((s) => !Array.isArray(s.pages))) {
+    missing.push("metadata.sources[].pages");
+  }
   if (!missing.length) return true;
   fail(
     "This page will not draw " + what + ": it declares schema_version " +

@@ -52,6 +52,29 @@ const TEMPLATE_IDS = new Set([
 ]);
 
 /**
+ * Attributes the TEMPLATE ships on an element, applied when the stub first
+ * hands that element out.
+ *
+ * MODELLING THE IDS AND NOT THE ATTRIBUTES MADE A CHECK UNFALSIFIABLE. node()
+ * starts every element with `attributes: {}`, so seam.mjs's
+ * `getAttribute("disabled") === null` was true BEFORE app.js ran -- while its
+ * detail string claimed "the template's disabled attribute was removed, which
+ * is what wireYears' enhancement is". Deleting
+ * `group.removeAttribute("disabled")` from app.js left the whole suite green,
+ * and the page it would have shipped has a year toggle no reader can ever
+ * operate: index.html.tmpl renders the fieldset `disabled` on purpose, because
+ * without app.js the control cannot do anything.
+ *
+ * Same hand-maintenance cost as TEMPLATE_IDS above, and the same reason for
+ * paying it: the alternative is parsing Go templates in JavaScript. Add an
+ * entry here when the template starts shipping an attribute a check reads.
+ */
+const TEMPLATE_ATTRIBUTES = {
+  // site/index.html.tmpl: <fieldset id="year-toggle" ... disabled>
+  "year-toggle": { disabled: "" },
+};
+
+/**
  * Descendants of `root` carrying a bare class selector's class.
  *
  * Only `.name` is understood. Anything else returns nothing, which is the
@@ -145,7 +168,16 @@ function domStub(ids = TEMPLATE_IDS) {
     // every assertion below vacuously true.
     getElementById: (id) => {
       if (!ids.has(id)) return null;
-      if (!byId.has(id)) byId.set(id, node(id));
+      if (!byId.has(id)) {
+        const el = node(id);
+        // The template's own attributes, before app.js sees the element. A
+        // check that asserts app.js REMOVED one has nothing to observe
+        // otherwise -- see TEMPLATE_ATTRIBUTES.
+        for (const [name, value] of Object.entries(TEMPLATE_ATTRIBUTES[id] || {})) {
+          el.setAttribute(name, value);
+        }
+        byId.set(id, el);
+      }
       return byId.get(id);
     },
     createElement: (tag) => { const n = node(); n.tagName = tag; return n; },

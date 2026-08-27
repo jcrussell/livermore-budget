@@ -298,7 +298,15 @@ export async function checks() {
         "data/sankey-2027.json": {
           doc: {
             schema_version: 1,
-            metadata: { fiscal_year: 2027 },
+            // sources: [] IS LOAD-BEARING, not tidiness. Without it
+            // drawableSankey refuses this document at its metadata.sources arm
+            // two gates before layOut runs, so this block -- whose entire
+            // purpose is to give the change handler's .catch a reachable case
+            // -- duplicated the metadata.sources check instead, and the banner
+            // it observed said so. Deleting that .catch from app.js left the
+            // whole suite green. The document must be SHAPED right and wrong
+            // only in its CONTENT, which is what a truncated file looks like.
+            metadata: { fiscal_year: 2027, sources: [] },
             nodes: [{ id: "a", label: "A", value_cents: 1 }],
             links: [{ source: "a", target: "not-a-node", value_cents: 1, fact_ids: [], kind: "revenue" }],
           },
@@ -394,6 +402,68 @@ export async function checks() {
         `; the page reads "${lede ? lede.textContent : "(no lede)"}" and the flow table holds ` +
         `${body.children.length} rows against ${rowsFirst} before the click -- buildTable is the ` +
         `LAST step of the repaint, so a throw there is the fisc-bsg split reached one function later`,
+    });
+  }
+
+  // --------------------------- the same last step, two keys further in (fisc-60r)
+  //
+  // The block above closed metadata.sources. buildTable dereferences two MORE
+  // keys the gate did not name, and both are one element deeper than anything a
+  // top-level Array.isArray can see:
+  //
+  //   links[].fact_ids          `l.fact_ids.join(" ")`
+  //   metadata.sources[].pages  citations(), `for (const page of source.pages)`
+  //
+  // Each is the fisc-bsg split repaint reached one function later, by the same
+  // route and with the same consequence: paintYearWords, buildLegend and
+  // buildDerivedList have run, so the reader is left with one year's words over
+  // another year's chart. Both documents below are shaped correctly at the top
+  // level -- they pass every arm that existed before -- which is exactly why
+  // drawableSankey's stated rule ("every key the draw DEREFERENCES before it
+  // could report a failure") did not meet itself.
+  //
+  // WHAT IS ASSERTED IS THAT NOTHING MOVED, not merely that a banner appeared.
+  // A half-repainted page also shows a banner.
+  for (const bad of [{
+    key: "links[].fact_ids",
+    doc: {
+      schema_version: 1,
+      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }] },
+      nodes: doc.nodes,
+      links: doc.links.map((l) => ({ ...l, fact_ids: undefined })),
+    },
+  }, {
+    key: "metadata.sources[].pages",
+    doc: {
+      schema_version: 1,
+      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027" }] },
+      nodes: doc.nodes,
+      links: doc.links,
+    },
+  }]) {
+    const { app, main, body } = page({
+      config,
+      fetch: plannedFetch({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": { doc: bad.doc },
+      }),
+    });
+    await settle();
+    const rowsFirst = body.children.length;
+    clickYear(app, "sankey-2027");
+    await settle();
+
+    const banners = refusals(main);
+    const lede = app.dom.byId.get("lede-year");
+    const stillFirst = lede && lede.textContent === "FY 2025-26 adopted";
+    const named = banners.length === 1 && banners[0].textContent.includes(bad.key);
+    out.push({
+      name: `a document missing ${bad.key} is refused before the page repaints`,
+      ok: named && Boolean(stillFirst) && body.children.length === rowsFirst,
+      detail: `${banners.length} banner(s)` + (banners.length ? `: "${banners[0].textContent}"` : "") +
+        `; the page still reads "${lede ? lede.textContent : "(no lede)"}" and the flow table holds ` +
+        `${body.children.length} rows against ${rowsFirst} before the click, so nothing was ` +
+        `half-repainted -- and the banner NAMES ${bad.key} rather than reporting a generic throw`,
     });
   }
 
