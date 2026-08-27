@@ -1069,3 +1069,100 @@ func TestTheLedesProseNamesThePagesScope(t *testing.T) {
 			"one page, one claim, two spellings that have drifted", prose, slug)
 	}
 }
+
+// TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine is the fail-closed
+// half of buildSite's dispatch.
+//
+// THE ARM THAT USED TO BE THERE WAS `default: buildSankeyPage`, and its failure
+// mode is silent by construction. A template name that is not the trends one --
+// a typo, or a third template added to the asset tree without a matching arm --
+// was handed pageData and rendered as a spine. A template that reads none of the
+// fields it is given renders a page of BLANKS, not an error: nothing in the
+// pipeline compares a template against the shape of the data it received, and
+// renderPage cannot, because the whole point of html/template is that a missing
+// field is an empty string.
+//
+// The asset tree here CARRIES the third template, which is what makes the test
+// about the dispatch rather than about a missing file. Under the old default the
+// page below renders successfully and ships a title and nothing else.
+func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
+	const orphan = "drilldown.html.tmpl"
+	assets := fstest.MapFS{
+		"index.html.tmpl":   {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		"revenue.html.tmpl": {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		// Reads nothing. That is the point: it is what a page of blanks is.
+		orphan:             {Data: []byte(`<!doctype html><title>drill-down</title>`)},
+		"app.js":           {Data: []byte(`/* app */`)},
+		"style.css":        {Data: []byte(`body{}`)},
+		".nojekyll":        {Data: []byte{}},
+		"vendor/d3.min.js": {Data: []byte(`/* d3 */`)},
+	}
+	_, err := export.Write(export.Options{
+		Dir:         t.TempDir(),
+		Assets:      assets,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "drilldown.html", Nav: "Drill-down",
+				Template: orphan, Projection: "sankey"},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err == nil {
+		t.Fatal("Write = nil, want a refusal naming the template with no builder")
+	}
+	for _, want := range []string{"drilldown.html", orphan} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("got error %q, want it to name %q", err, want)
+		}
+	}
+}
+
+// TestAProjectionWithNoViewStillShipsItsCitedPages is the guarantee every other
+// document already has, extended to the one shape that did not have it.
+//
+// buildSite collected citations by walking VIEWS, so a projection written to
+// data/<stem>.json but rendered on no page contributed none -- and the pages its
+// metadata.sources names were absent from dist/extracted/. That document is not
+// hypothetical: it is what a projection looks like between the commit that
+// builds it and the commit that gives it a page, which is exactly the state the
+// drill-down ships in (fisc-f75 owns the view).
+//
+// The consequence is not a blank page. It is a published document whose
+// provenance links resolve to nothing -- 404s from the one part of this site
+// that exists to be checkable -- and no check sees it, because
+// fact-offset-points-at-token reads the committed corpus and nothing walks the
+// built tree.
+func TestAProjectionWithNoViewStillShipsItsCitedPages(t *testing.T) {
+	dir := t.TempDir()
+	_, err := export.Write(export.Options{
+		Dir: dir,
+		// Two documents, ONE view. The trends document is published and
+		// unviewed, and it is the only one citing p127.
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(127)},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey"},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		PageText:    twoViewPageText(127),
+	})
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	want := shippedPageText(budgetDocID, 127)
+	if _, err := os.Stat(filepath.Join(dir, want)); err != nil {
+		t.Errorf("the unviewed document cites p127 and %s was not written: %v", want, err)
+	}
+	// And the viewed document's own pages are still there, in case the new
+	// pass replaced the old one rather than extending it.
+	for _, p := range []int{66, 67} {
+		s := shippedPageText(budgetDocID, p)
+		if _, err := os.Stat(filepath.Join(dir, s)); err != nil {
+			t.Errorf("the spine's own page %d stopped shipping: %v", p, err)
+		}
+	}
+}

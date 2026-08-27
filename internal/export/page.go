@@ -687,11 +687,27 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 			data any
 			err  error
 		)
+		// EVERY TEMPLATE IS AN EXPLICIT ARM AND THE UNKNOWN ONE IS REFUSED.
+		// This was `default: buildSankeyPage`, which meant any template name
+		// that was not the trends one -- including a typo, and including a
+		// third template added without a matching arm here -- was handed
+		// pageData and rendered as a spine. The failure is silent by
+		// construction: a template that reads none of the fields it is given
+		// renders a page with blanks where the figures should be, and nothing
+		// in the pipeline compares a template against the shape of the data it
+		// received. Fail closed instead.
 		switch v.Template {
 		case TrendsTemplate:
 			data, err = buildTrendsPage(o, v, here, byID, pageTextBase)
-		default:
+		case SankeyTemplate:
 			data, err = buildSankeyPage(o, v, here, byID, pageTextBase)
+		default:
+			return nil, nil, cmdutil.WithHint(
+				fmt.Errorf("view %q renders template %q, which this package has no builder for",
+					v.Path, v.Template),
+				"every template needs an arm in buildSite naming the page data it is "+
+					"built from; a template with no arm used to be rendered as a spine "+
+					"and would publish a page of blanks")
 		}
 		if err != nil {
 			return nil, nil, err
@@ -701,6 +717,22 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 			return nil, nil, err
 		}
 		pages = append(pages, sitePage{Path: v.Path, HTML: html})
+	}
+
+	// EVERY PUBLISHED DOCUMENT SHIPS ITS PAGES, NOT EVERY VIEWED ONE. The loop
+	// above walks views, so a projection the site writes to data/<stem>.json
+	// but renders no page for contributes nothing -- and its citations name
+	// pages dist/extracted/ would not hold. Every other document is guaranteed
+	// the opposite: a cited page the tree does not carry is an error, and a
+	// reader following a provenance link would get a 404 from the one part of
+	// this site that exists to be checkable.
+	//
+	// Collected AFTER the view loop and in sorted stem order so the pages a
+	// viewed document cites keep the order they had; this only ever appends.
+	for _, stem := range sortedKeys(o.Projections) {
+		if err := collect(stem); err != nil {
+			return nil, nil, err
+		}
 	}
 	return pages, cited, nil
 }
