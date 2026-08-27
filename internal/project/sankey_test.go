@@ -655,6 +655,115 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 	}
 }
 
+// TestTransferCaveatNamesThePrintedColumn is the evidence for the correction
+// this caveat carries, and it asserts the two halves separately because they
+// went stale for different reasons.
+//
+// THE STALE REASON. Until ced45b4 the caveat said the legs were unpaired
+// "because the p76 transfer schedule is not yet mapped (fisc-5gk.3)". p76 was
+// mapped and published in that commit and the legs stayed unpaired, because its
+// facts are at scope transfers-by-fund and no projection selects it. The
+// sentence was true when written in 45235d3 and nobody went back, which is the
+// failure mode this test exists to make loud.
+//
+// THE PRINTED COLUMN. The residual is not a discrepancy: the city prints it
+// under a heading of its own. The figure asserted here is the one
+// internal/check/transfersdetail.go's toCIP table sums to, and the caveat is
+// built to name the column ONLY when this document's own residual meets the
+// hand-typed page figure -- so this test also covers that gate being open.
+func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
+	g := buildGraph(t, spineFacts(t, testYear), testOptions())
+	text := caveatText(g)
+
+	for _, stale := range []string{"not yet mapped", "not mapped yet", "fisc-5gk.3"} {
+		if strings.Contains(text, stale) {
+			t.Errorf("a caveat still says %q; p76 has been mapped and published since ced45b4:\n%s",
+				stale, text)
+		}
+	}
+	for _, want := range []string{
+		"Transfers Out to CIP", // the printed heading
+		"$38,086,737",          // p0073.txt:58, and this document's own residual
+		"PDF p73",              // the site labels citations "PDF p" + the PDF page index
+		"fisc-9gh",             // the bead that would actually pair the legs
+		"transfers-by-fund",    // where p76's facts are, which is why they are not here
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("no caveat says %q:\n%s", want, text)
+		}
+	}
+}
+
+// TestTransferCaveatDeclinesTheColumnItCannotVouchFor pins the gate rather than
+// the happy path: transfersOutToCIP is hand-typed off a page no fixture carries,
+// so a figure that has drifted from the graph beside it must lose the caveat its
+// stronger sentence, not publish a mismatch.
+func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
+	col := Column{FiscalYear: testYear, Basis: testBasis}
+	h := Headline{InternalTransferInCents: 100000, InternalTransferOutCents: 500000}
+
+	if got := transferCaveat(h, col); strings.Contains(got, "Transfers Out to CIP") {
+		t.Errorf("a $4,000.00 residual claimed the printed column:\n%s", got)
+	}
+
+	// And a basis pp.72-75 print no figure for gets no claim either, whatever
+	// the arithmetic does: those pages carry one budget column per year.
+	revised := Column{FiscalYear: testYear, Basis: mapping.BasisRevised}
+	real := Headline{InternalTransferInCents: 2152599700, InternalTransferOutCents: 5961273400}
+	if got := transferCaveat(real, revised); strings.Contains(got, "Transfers Out to CIP") {
+		t.Errorf("a revised column claimed a schedule that prints only an adopted one:\n%s", got)
+	}
+	if got := transferCaveat(real, col); !strings.Contains(got, "Transfers Out to CIP") {
+		t.Errorf("the adopted column did not name the printed column:\n%s", got)
+	}
+
+	// AND THE SIGN IS PART OF THE MATCH, not just the magnitude. The printed
+	// column is transfers OUT to the CIP; a document whose transfers IN exceeded
+	// its out by exactly that figure must not be handed an outflow column as the
+	// explanation for an inflow surplus.
+	inverted := Headline{
+		InternalTransferInCents:  real.InternalTransferOutCents,
+		InternalTransferOutCents: real.InternalTransferInCents,
+	}
+	if got := transferCaveat(inverted, col); strings.Contains(got, "Transfers Out to CIP") {
+		t.Errorf("transfers in exceeding out by the tabled figure claimed an OUT column:\n%s", got)
+	}
+}
+
+// TestEveryPrintedToCIPColumnIsCited pins the page number as well as the figure.
+//
+// WHY IT IS SEPARATE. transferCaveat gates the printed-column sentence on the
+// Cents field meeting the document's own residual, so a wrong AMOUNT cannot
+// ship. Nothing gates the Page field: pp.72-75 are not fixtures, so no test can
+// read the number off the sheet, and transposing 73 and 75 would publish a
+// citation pointing a reader at the other year's schedule with every check
+// green. This asserts each published column names its own page, which is the
+// most a tree without those fixtures can say.
+func TestEveryPrintedToCIPColumnIsCited(t *testing.T) {
+	want := map[Column]string{
+		{FiscalYear: 2026, Basis: mapping.BasisAdopted}: "PDF p73",
+		{FiscalYear: 2027, Basis: mapping.BasisAdopted}: "PDF p75",
+	}
+	if len(want) != len(transfersOutToCIP) {
+		t.Fatalf("transfersOutToCIP has %d entries and this test knows %d; a new "+
+			"printed column needs its page asserted here", len(transfersOutToCIP), len(want))
+	}
+	for col, page := range want {
+		cip, ok := transfersOutToCIP[col]
+		if !ok {
+			t.Errorf("no printed to-CIP column declared for %s", col)
+			continue
+		}
+		// Drive the real function rather than reading the field, so this fails
+		// if the citation stops reaching the prose as well as if it changes.
+		h := Headline{InternalTransferOutCents: int64(cip.Cents), InternalTransferInCents: 0}
+		got := transferCaveat(h, col)
+		if !strings.Contains(got, page) {
+			t.Errorf("%s cites no %s:\n%s", col, page, got)
+		}
+	}
+}
+
 // hasCaveat reports whether any caveat mentions a word.
 func hasCaveat(g *Graph, substr string) bool {
 	return strings.Contains(caveatText(g), substr)

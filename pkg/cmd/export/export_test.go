@@ -224,6 +224,61 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 }
 
+// TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped is a cross-package
+// guard, and it lives HERE because here is the only place the two copies of
+// that claim meet.
+//
+// WHAT WENT WRONG. The same claim was written twice, in two packages, about the
+// same difference: internal/project's transferCaveat, built from the facts, and
+// internal/export's "Unmatched transfers" tile note, typed into the packager.
+// Both said the p76 transfer schedule was unmapped. Both stopped being true at
+// ced45b4, when p76 was published. And neither was findable from the other,
+// because one said "not yet mapped" and the other said "not mapped yet" -- a
+// grep for either went green with the other still shipping to readers.
+//
+// So this asserts over the RENDERED PAGE rather than over either source. The
+// page is where a reader meets both, and no word-order variant survives it.
+// internal/export cannot import internal/project by design, so the composition
+// root is the lowest place a claim about both can be made at all.
+//
+// WHAT THIS TEST OBSERVES, EXACTLY, because the two halves reach the page by
+// different routes and only one of them is live here. testOptions stubs Build
+// to return the COMMITTED testdata/sankey.golden.json, so the caveat on this
+// page is fixture bytes: mutate transferCaveat and this test stays green.
+// TestSankeyReproducesGoldenFile is what fails then -- it rebuilds the document
+// from the facts and compares those same bytes -- so the caveat is pinned, one
+// package over. The tile note IS live code on this path and this test is its
+// only guard: reverting internal/export/page.go's old wording reddens exactly
+// this test and nothing else. Proved both ways by mutation, 2026-08-27.
+func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(opts.OutputDir, "index.html"))
+	if err != nil {
+		t.Fatalf("read the exported page: %v", err)
+	}
+	page := string(raw)
+
+	// Both word orders, plus the bead that never published anything -- its own
+	// close reason reads "Not published: no facts, facts.jsonl byte-identical".
+	for _, stale := range []string{"not yet mapped", "not mapped yet", "fisc-5gk.3"} {
+		if strings.Contains(page, stale) {
+			t.Errorf("the exported page says %q; Budget Book p76 has been mapped and "+
+				"published at scope transfers-by-fund since ced45b4", stale)
+		}
+	}
+	// And the correction is present rather than merely the falsehood absent: a
+	// caveat that dropped the sentence entirely would pass the loop above.
+	for _, want := range []string{"Transfers Out to CIP", "fisc-9gh"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the exported page does not say %q, so the residual is unexplained "+
+				"rather than cited", want)
+		}
+	}
+}
+
 // The acceptance test for fisc-ze7: the exported site resolves BOTH citation
 // classes with no network access to github.com.
 //

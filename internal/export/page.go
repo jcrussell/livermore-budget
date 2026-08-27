@@ -517,7 +517,23 @@ func tilesFor(meta projectionMetadata) (figure, []figure) {
 	}, {
 		Label: "Unmatched transfers",
 		Value: dollars(h.TransferResidualCents),
-		Note:  "Transfers out minus transfers in. The schedule that would pair them is not mapped yet, so no link carries a transfer id.",
+		// THIS NOTE SAYS WHAT THE NUMBER IS AND DEFERS WHY, deliberately, and
+		// it is the one tile that has to. It used to restate the mechanism --
+		// "the schedule that would pair them is not mapped yet" -- which is a
+		// claim internal/project's transferCaveat also makes, about the same
+		// difference, from the facts. Two copies of one claim in two packages
+		// drifted exactly as you would expect: both went stale when p76 was
+		// published in ced45b4, and they were not even greppable together,
+		// because this one said "not mapped yet" and the caveat said "not yet
+		// mapped". The caveat is the copy with the arithmetic behind it, so it
+		// keeps the explanation and this tile points at it.
+		//
+		// IT PROMISES NO CAVEAT, deliberately. An earlier wording said "the
+		// caveats below say what the difference is" -- but this tile is
+		// unconditional and internal/project emits the transfer caveat only when
+		// the document has transfers at all, so a document with none would point
+		// at a caveat that is not there.
+		Note: "Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.",
 	}}
 }
 

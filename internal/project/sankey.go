@@ -332,9 +332,14 @@ type Link struct {
 	ValueCents int64    `json:"value_cents"`
 	Kind       LinkKind `json:"kind"`
 	// TransferID pairs the two legs of one transfer. It is "" on every link
-	// today because the p76 transfer schedule is not mapped (fisc-5gk.3), so
-	// any check of the form "every transfer_id has two equal legs" is vacuous
-	// and must report itself as vacuous rather than as a pass.
+	// today -- NOT because the p76 transfer schedule is unmapped, which an
+	// earlier version of this comment said and which stopped being true at
+	// ced45b4. p76 is mapped and published at scope transfers-by-fund, and no
+	// projection selects that scope, so its legs are in no graph. Populating
+	// this needs a document of p76's own plus an id derived from the two legs'
+	// shared (doc_id, page, offset): fisc-9gh, not fisc-5gk.3. Until then any
+	// check of the form "every transfer_id has two equal legs" is vacuous and
+	// must report itself as vacuous rather than as a pass.
 	TransferID string `json:"transfer_id"`
 	// FactIDs cite every fact this link sums, ascending. More than one means
 	// contra rows netted into their parent category.
@@ -634,7 +639,7 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 				Nodes:      len(nodes),
 				Links:      len(links),
 			},
-			Caveats: caveats(h, links),
+			Caveats: caveats(h, col, links),
 		},
 		Nodes: sortedNodes(nodes),
 		Links: links,
@@ -900,11 +905,11 @@ const (
 // Two of them are conditional on the data because a caveat about internal
 // service charges in a document that has none would be misdirection, and the
 // transfer caveat quotes figures it can only get from the graph.
-func caveats(h Headline, links []Link) []string {
+func caveats(h Headline, col Column, links []Link) []string {
 	out := make([]string, 0, 4)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
-		out = append(out, transferCaveat(h))
+		out = append(out, transferCaveat(h, col))
 	}
 	for _, l := range links {
 		if l.Kind == KindInternalService {
@@ -916,38 +921,105 @@ func caveats(h Headline, links []Link) []string {
 	return out
 }
 
+// transfersOutToCIP is the "Transfers Out to CIP" column the city prints on its
+// sources-and-uses schedule, per spine column, read off the page.
+//
+// KEYED ON THE WHOLE COLUMN AND NOT ON THE YEAR, because pp.72-75 print ONE
+// budget column each and no actual or revised figure. A revised spine column
+// would find no entry here and fall back to the wording that claims nothing
+// printed -- which is the point: naming the column for a basis the city prints
+// no figure for would publish an identity that does not exist.
+//
+// EVERY FIGURE IS READ OFF A PAGE. p0073.txt:58 and p0075.txt:58, under the
+// header at p0073.txt:9. They are hand-typed here in the same way, and for the
+// same reason, as internal/check/transfersdetail.go's toCIP table: pp.72-75 are
+// not fixtures, so nothing in this tree parses them. What IS machine-checked is
+// that the figure below equals this document's own residual -- see
+// transferCaveat, which declines to name the column when it does not.
+var transfersOutToCIP = map[Column]struct {
+	Cents amount.Cents
+	// Page is the PDF page index, which is what the site's citations label
+	// "PDF p" and deep-link with #page=N. The printed folio on that sheet reads
+	// 69, four lower; a reader given a bare "p73" and a paper copy looks at the
+	// wrong table.
+	Page int
+}{
+	{FiscalYear: 2026, Basis: mapping.BasisAdopted}: {Cents: 3808673700, Page: 73},
+	{FiscalYear: 2027, Basis: mapping.BasisAdopted}: {Cents: 5076225100, Page: 75},
+}
+
 // transferCaveat says the transfer legs do not pair up, and by how much.
 //
-// Its two claims are kept apart on purpose. That no link carries a transfer_id
-// IS caused by p76 being unmapped, and mapping it fixes that. The residual is
-// NOT, and mapping it will not fix that: p76's own grand total is the
-// transfers-in side to the cent, so the city itemises every transfer received
-// and none of the difference. An earlier wording joined the two with a "so"
-// and told the reader the gap was this project's backlog rather than the
-// document's. See fisc-5gk.3 for the arithmetic and the residual's
-// decomposition by fund group.
-func transferCaveat(h Headline) string {
-	const unpaired = "Transfer legs are unpaired: no link carries a transfer_id, because " +
-		"the p76 transfer schedule is not yet mapped (fisc-5gk.3). "
+// ITS TWO CLAIMS ARE KEPT APART ON PURPOSE, and neither is the one this
+// function used to make. That no link carries a transfer_id is NOT caused by
+// p76 being unmapped -- p76 has been mapped and published since ced45b4, and
+// the legs are still unpaired, because its facts are at scope
+// transfers-by-fund and this document is of all-funds-gross. The residual is
+// not caused by it either, and mapping the page DEMONSTRATED that rather than
+// predicting it: p76's grand total is the transfers-in side to the cent, so the
+// city itemises every transfer received and none of the difference.
+//
+// THE RESIDUAL IS A PRINTED COLUMN, which is a stronger claim than the
+// decomposition this comment used to point at. fisc-5gk.3's per-fund-group
+// table was corrected in 19bb265 and must not be cited; what is published is
+// the citywide figure, and only that. Splitting it by fund group is derived,
+// because pp.72-75 print a to-CIP figure per major fund and one aggregate for
+// every non-major one -- this project's own published-is-not-derived rule, made
+// in full at internal/check/transfersdetail.go's collapseNonMajor.
+func transferCaveat(h Headline, col Column) string {
+	const unpaired = "Transfer legs are unpaired: no link carries a transfer_id. Budget " +
+		"Book p76's transfer schedule is mapped and published, but at scope " +
+		"transfers-by-fund, and this document is of all-funds-gross -- so none of its " +
+		"facts is in this graph. They cannot simply be added to it: transfers-by-fund " +
+		"and revenue-by-fund both publish transfer_in over the same money, which the " +
+		"projection-scopes-are-disjoint check refuses. Pairing the legs needs a document " +
+		"of p76's own and a transfer_id derived from the two legs' shared page and " +
+		"offset (fisc-9gh). "
 	in, out := h.InternalTransferInCents, h.InternalTransferOutCents
 	if out == in {
+		// NO RESIDUAL, SO NO PRINTED COLUMN TO NAME. The city prints a to-CIP
+		// figure whatever the legs do, but a caveat that pointed at it here
+		// would be explaining a difference this document does not have.
 		return unpaired + fmt.Sprintf(
 			"That transfers out and transfers in both total %s is not evidence the "+
 				"legs pair up; nothing has checked them against each other.", dollars(out))
 	}
 	verb := "exceed"
-	residual := out - in
+	// signed is out - in, kept alongside the magnitude the prose prints,
+	// because the printed column below is transfers OUT to the CIP. A document
+	// whose transfers IN exceeded its out by exactly the tabled figure would
+	// otherwise be handed an outflow column as the explanation for an inflow
+	// surplus -- the arithmetic would match and the sentence would be nonsense.
+	signed := out - in
+	residual := signed
 	if residual < 0 {
 		verb = "fall short of"
 		residual = -residual
 	}
+	const stated = " It is stated as headline.transfer_residual_cents rather than netted " +
+		"away or padded with an invented link."
+
+	// THE PRINTED CLAIM IS MADE ONLY WHEN THIS DOCUMENT'S OWN ARITHMETIC MEETS
+	// THE PAGE. A hand-typed constant that has drifted from the graph it is
+	// published beside would be exactly the kind of plausible wrong figure this
+	// project exists to refuse, and the reader has no way to see the drift. So
+	// the stronger sentence is earned per build rather than asserted once.
+	if cip, ok := transfersOutToCIP[col]; ok && amount.Cents(signed) == cip.Cents {
+		return unpaired + fmt.Sprintf(
+			"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
+				"unexplained gap: the city prints it as a column of its own, \"Transfers "+
+				"Out to CIP\", on the sources-and-uses schedule at PDF p%d -- with p76's "+
+				"grand total printed beside it as the transfers-out figure that excludes "+
+				"the CIP. Only the citywide total is published: splitting it by fund group "+
+				"is our arithmetic, because that schedule prints one aggregate for every "+
+				"non-major fund.%s",
+			dollars(out), verb, dollars(in), dollars(residual), cip.Page, stated)
+	}
 	return unpaired + fmt.Sprintf(
-		"Transfers out (%s) %s transfers in (%s), and mapping p76 would not close "+
-			"the %s difference: that schedule's own grand total is the transfers-in "+
-			"side, so the gap is the city's rather than this project's. It is stated "+
-			"as headline.transfer_residual_cents rather than netted away or padded "+
-			"with an invented link.",
-		dollars(out), verb, dollars(in), dollars(residual))
+		"Transfers out (%s) %s transfers in (%s), and mapping p76 did not close the %s "+
+			"difference: that schedule's own grand total is the transfers-in side, so the "+
+			"gap is the city's rather than this project's.%s",
+		dollars(out), verb, dollars(in), dollars(residual), stated)
 }
 
 // dollars renders cents for prose. The exact ".00" is dropped because these
