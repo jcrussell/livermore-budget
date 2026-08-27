@@ -103,8 +103,11 @@ func TestFixtureVerdicts(t *testing.T) {
 	if got := (Counts{Pass: 19, Vacuous: 18, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
-	// Eighteen passes, seventeen vacuous and one skipped is not thirty-six of
-	// anything, and a run with nothing wrong in it still exits 0.
+	// The counts are pinned as numbers above rather than spelled in words here,
+	// because a sentence naming them goes stale the first time a check is added
+	// and nothing makes it go red. What this line is for is the property the
+	// numbers cannot state: a run with nothing WRONG in it exits 0, however many
+	// of its checks had nothing to look at.
 	if rep.Failed() {
 		t.Error("Failed() = true for a report with no failure, error or --strict")
 	}
@@ -123,10 +126,10 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 		t.Fatalf("vacuous count = %d, want 18", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
-		t.Error("a run with eighteen vacuous checks failed without --strict")
+		t.Error("a run with vacuous checks failed without --strict")
 	}
 	if !strict.Failed() {
-		t.Error("a run with seventeen vacuous checks passed under --strict")
+		t.Error("a run with vacuous checks passed under --strict")
 	}
 	// The statuses must be identical: --strict changes what a vacuous result
 	// means for the exit code, not what any check concluded.

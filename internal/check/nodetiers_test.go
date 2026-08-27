@@ -93,6 +93,18 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			},
 			want: "coarser tier to a finer one",
 		},
+		{
+			// The gap /code-review found: this was a `continue` blamed on
+			// graph-acyclic and link-values-tie-to-facts, and neither reports
+			// it. findCycle only looks for cycles and a dangling end is a leaf;
+			// linkValuesTieToFacts never reads Graph.Nodes. So a typo'd
+			// endpoint passed every check in the tree.
+			name: "a link naming a node the graph does not carry",
+			damage: func(t *testing.T, g *project.Graph) {
+				g.Links[0].Target = "fund-group/genrl"
+			},
+			want: "not a node of this graph",
+		},
 	}
 
 	for _, c := range cases {
@@ -125,12 +137,16 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 // a plausible mistake, because `fund-group/general` is a real node one hyphen
 // away.
 func TestAFundNodeNamesAFundNumber(t *testing.T) {
-	for _, id := range []string{"fund/100", "fund/0"} {
+	for _, id := range []string{"fund/100", "fund/642"} {
 		if _, ok := declaredTier(id); !ok {
 			t.Errorf("declaredTier(%q) = not a declared form, want tier 3", id)
 		}
 	}
-	for _, id := range []string{"fund/general", "fund/", "fund", "revenue/", "dept"} {
+	// fund/0 is refused with the non-numbers: 0 is this codebase's NO-FUND
+	// sentinel, not a fund. fact.ColumnPath omits the segment entirely when
+	// Fund == 0 and every spine fact ships "fund":0 meaning "this schedule has
+	// no fund axis", so `fund/0` is `fund/general` wearing a number.
+	for _, id := range []string{"fund/0", "fund/general", "fund/", "fund", "revenue/", "dept"} {
 		if tier, ok := declaredTier(id); ok {
 			t.Errorf("declaredTier(%q) = %d, true; want it refused", id, tier)
 		}

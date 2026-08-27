@@ -3,7 +3,6 @@ package check
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -83,11 +82,30 @@ func (*ruleFundsMatchTheirHeadings) Description() string {
 		"and every printed fund total on those pages is claimed by a rule"
 }
 
-// printedTotal matches a printed `Total <name>` line and captures the name. The
-// figures are separated from the label by a run of two or more spaces, which is
-// the column grid `pdftotext -layout` encodes; a single space inside a fund name
-// is therefore safe.
-var printedTotal = regexp.MustCompile(`(?m)^[ \t]*Total ([^\n]*?)[ \t]{2,}`)
+// printedTotalLabel is the label half of a printed total line, and whether the
+// line prints one at all.
+//
+// THE SPLIT IS THE COLUMN GRID. A label is separated from its figures by a run
+// of two or more spaces, which is what `pdftotext -layout` encodes and what
+// makes a single space inside a fund name safe. A line with no such run, or with
+// nothing after it, is prose rather than a row.
+//
+// IT RETURNS THE WHOLE LABEL AND DOES NOT LOOK FOR THE FUND NAME. That is
+// fundNameIn's job, and keeping them apart is what let clause 2 learn the second
+// printed shape without a second regex: this answers "is this a total line",
+// fundNameIn answers "which fund does it name", and the shapes live in exactly
+// one of the two.
+func printedTotalLabel(line string) (string, bool) {
+	label, figures, ok := strings.Cut(strings.TrimLeft(line, " \t"), "  ")
+	if !ok || strings.TrimSpace(figures) == "" {
+		return "", false
+	}
+	label = strings.TrimSpace(label)
+	if label == "" || !strings.Contains(label, "Total") {
+		return "", false
+	}
+	return label, true
+}
 
 func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
@@ -292,23 +310,40 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 					"a rule reads this page and it cannot be read: %v", err))
 				continue
 			}
-			for _, m := range printedTotal.FindAllStringSubmatch(text, -1) {
-				label := strings.TrimSpace(m[1])
-				entry, err := s.Vocabulary.FundByLabel(label)
+			for _, line := range strings.Split(text, "\n") {
+				label, ok := printedTotalLabel(line)
+				if !ok {
+					continue
+				}
+				// BOTH PRINTED SHAPES, through the same helper clause 1 uses.
+				// While this clause carried its own leading-`Total ` regex it
+				// could not see `General Fund Total Expenses` at all, so on
+				// pp.167-170 -- swept for the first time when those rules
+				// declared fund 100 -- it reported coverage it was not
+				// providing.
+				name, ok := fundNameIn(label)
+				if !ok {
+					continue
+				}
+				entry, err := s.Vocabulary.FundByLabel(name)
 				if err != nil {
 					// Not a fund total. pp.127-130 print ten CATEGORY totals
 					// and this is how they are told apart -- by the registry,
 					// not by a list in this file.
 					continue
 				}
-				if claimed[docID]["Total "+label] {
+				// Claimed under the label AS PRINTED, which is what a rule's
+				// total_row holds. Rebuilding "Total "+name would only ever
+				// match the leading shape and would report a claimed trailing
+				// one as unclaimed.
+				if claimed[docID][label] {
 					continue
 				}
 				findings = append(findings, finding(fmt.Sprintf("%s p%d", docID, n),
 					"the page prints %q, which is fund %d (%s), and no rule or rollup "+
 						"declares that total. A fund section nobody mapped is invisible to "+
 						"the reconciliation whenever it is zero in the years the spine "+
-						"publishes", "Total "+label, entry.Number, entry.Name))
+						"publishes", label, entry.Number, entry.Name))
 			}
 		}
 	}

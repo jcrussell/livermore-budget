@@ -122,9 +122,15 @@ citywide spine (pp.66-67) prints six fund groups, while revenue-by-fund
 at all (fisc-u8o). There is no tier count that holds across all documents, so
 each states its own below rather than inheriting the spine's.
 
-**On the spine** (`sankey.json`): tier 0 = 10 nodes, tier 2 = 6, tier 5 = 4.
-Tiers 3 and 4 are empty, because pp.66-67 publish neither a fund nor a department
-axis.
+**On the spine** (`sankey.json`): tier 0 = 12 nodes, tier 2 = 6, tier 5 = 7,
+which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
+neither a fund nor a department axis.
+
+Those counts are per TIER and include the flow endpoints, which is why they are
+larger than the id-form counts a reader might tally from the table above: tier 0
+is 10 `revenue/` nodes plus `transfers/in` and `fund-balance/draw`, and tier 5 is
+4 `expenditure/` nodes plus `transfers/out`, `fund-balance/reserve-increase` and
+`fund-balance/contribution`.
 
 `counts.facts` is the filtered input count — every fact matching the fiscal
 year, basis and scope. `counts.facts_cited` is how many of those a link
@@ -171,10 +177,14 @@ error — and the disclosure travels on the two fields beside it instead:
 - `source_note` cites `data/funds.yaml` and pp.258-261;
 - `rationale` carries that fund's `restriction_note`, which is the reading itself.
 
-A node carrying a non-empty `constraint_tier` and no `source_note` is a check
-failure, not a style problem. A document whose nodes carry constraint tiers must
-also carry the disclosure sentence in `metadata.caveats`, and that sentence is a
-constant in `internal/project` so the caveat and the check cannot drift apart.
+**No document publishes a constraint tier yet**, so the paragraph above is an
+obligation on the first one that does rather than a description of something the
+tree contains. What that document owes, in its own commit: `source_note` and
+`rationale` on every tier-bearing node; the disclosure sentence in
+`metadata.caveats`, held as a constant in `internal/project` so the caveat and
+the check cannot drift apart; and a check that fails a node carrying a tier
+without a source note. `derived-nodes-justified` will not cover it — that check
+inspects only `derived: true` nodes, and these are deliberately not among them.
 
 **`""` and `unknown` are different claims and must not be read as one.** `""`
 means *this document does not classify this node* — the spine's answer, and the

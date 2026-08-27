@@ -103,28 +103,30 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			nodes++
 			tierOf[n.ID] = n.Tier
 
+			// ONE FINDING PER NODE, MOST SPECIFIC FIRST. The three arms
+			// overlap -- no declared form has tier 1, so a node claiming it
+			// always mismatches its form too -- and reporting both would give
+			// one defect two findings that read as two separate ones.
 			want, ok := declaredTier(n.ID)
-			if !ok {
+			switch {
+			case !ok:
 				findings = append(findings, finding(p.String(),
 					"node %q is of no id form the contract declares. Its table names "+
-						"revenue/, fund-group/, fund/, dept/ and expenditure/, plus five "+
-						"flow endpoints by name; a coined form has no tier and no place in "+
-						"the fold", n.ID))
-				continue
-			}
-			if n.Tier != want {
+						"revenue/, fund-group/, fund/<number>, dept/ and expenditure/, plus "+
+						"five flow endpoints by name; a coined form has no tier and no place "+
+						"in the fold", n.ID))
+			case n.Tier == unusedTier:
+				findings = append(findings, finding(p.String(),
+					"node %q claims tier %d, which the contract leaves UNUSED (its id form "+
+						"declares tier %d). Tier 1 was the constraint tier, and that layer "+
+						"cannot exist: a constraint tier is a property of a fund and the "+
+						"fund groups do not partition along it", n.ID, unusedTier, want))
+			case n.Tier != want:
 				findings = append(findings, finding(p.String(),
 					"node %q carries tier %d and its id form declares tier %d. The tier is "+
 						"what the client folds on and what orders the diagram's columns, so "+
 						"a node at the wrong one is drawn in the wrong place and aggregated "+
 						"into the wrong parent", n.ID, n.Tier, want))
-			}
-			if n.Tier == unusedTier {
-				findings = append(findings, finding(p.String(),
-					"node %q claims tier %d, which the contract leaves UNUSED. It was the "+
-						"constraint tier, and that layer cannot exist: a constraint tier is "+
-						"a property of a fund and the fund groups do not partition along it",
-					n.ID, unusedTier))
 			}
 		}
 
@@ -132,10 +134,29 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			links++
 			src, sok := tierOf[l.Source]
 			dst, dok := tierOf[l.Target]
-			// A link naming a node the graph does not carry is graph-acyclic's
-			// and link-values-tie-to-facts' business, not this check's. Skip
-			// rather than double-report; the counts below say what was read.
+			// A LINK NAMING A NODE THE GRAPH DOES NOT CARRY IS REPORTED HERE,
+			// because nothing else in this package reports it. An earlier
+			// version of this comment handed the case to graph-acyclic and
+			// link-values-tie-to-facts and both refuse it: findCycle only looks
+			// for cycles, and a dangling target is a leaf rather than a cycle;
+			// linkValuesTieToFacts never reads Graph.Nodes at all. So a typo'd
+			// endpoint passed every check in the tree, and the client would
+			// draw a ribbon into a box that does not exist.
+			//
+			// It belongs here rather than in a check of its own: this is the
+			// only place that has already indexed the nodes by id, and a tier
+			// comparison cannot be made without resolving both ends anyway.
 			if !sok || !dok {
+				missing := l.Target
+				if !sok {
+					missing = l.Source
+				}
+				findings = append(findings, finding(p.String(),
+					"link %q -> %q names %q, which is not a node of this graph. Nothing "+
+						"else asserts a link's endpoints resolve -- graph-acyclic looks "+
+						"only for cycles and a dangling end is a leaf -- so the client "+
+						"would draw a ribbon into a box that is not there",
+					l.Source, l.Target, missing))
 				continue
 			}
 			if src >= dst {
@@ -183,9 +204,17 @@ func declaredTier(id string) (int, bool) {
 	}
 	// A fund node's id form is `fund/<number>`, and the number is what makes it
 	// one. Checked here rather than left to the reader because `fund/general`
-	// would otherwise pass as a tier-3 node while naming no fund at all.
+	// would otherwise pass as a tier-3 node while naming no fund at all, one
+	// hyphen away from the real `fund-group/general`.
+	//
+	// ZERO IS REFUSED WITH THE NON-NUMBERS, because 0 is this codebase's
+	// no-fund sentinel rather than a fund: fact.ColumnPath omits the segment
+	// entirely when Fund == 0, and every one of the spine's facts ships
+	// "fund":0 meaning "this schedule has no fund axis". `fund/0` is therefore
+	// the same defect as `fund/general` wearing a number.
 	if prefix == "fund" {
-		if _, err := strconv.Atoi(rest); err != nil {
+		n, err := strconv.Atoi(rest)
+		if err != nil || n == 0 {
 			return 0, false
 		}
 	}
