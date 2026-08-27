@@ -29,7 +29,7 @@ const (
 func testOptions() Options {
 	return Options{
 		Columns: []Column{{FiscalYear: testYear, Basis: testBasis}},
-		Scope:   testScope,
+		Scopes:  []string{testScope},
 		Version: "testdata/sankey.golden.json (hand-derived, Wave 0)",
 	}
 }

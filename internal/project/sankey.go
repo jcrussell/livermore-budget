@@ -372,7 +372,7 @@ func (*Sankey) Slices(facts []fact.Fact, version string) []Options {
 	for _, k := range keys {
 		out = append(out, Options{
 			Columns: []Column{{FiscalYear: k.year, Basis: k.basis}},
-			Scope:   PublishedScope,
+			Scopes:  []string{PublishedScope},
 			Version: version,
 		})
 	}
@@ -418,11 +418,22 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	// asymmetry was that the one document the site publishes as its headline
 	// was the one that did not make it, while the newer and smaller document
 	// did. Unreachable through Slices, which pins PublishedScope -- but Graph
-	// is exported and Options.Scope's own doc comment says the field exists to
+	// is exported and Options.Scopes' own doc comment says the field exists to
 	// stop exactly the doubling this would produce.
-	if o.Scope != PublishedScope {
+	//
+	// TWO REFUSALS, NOT ONE, and OnlyScope makes the first of them. "How many
+	// schedules" and "which schedule" are different mistakes with different
+	// remedies: a set of two here means someone pointed a single-grain document
+	// at a drill-down's options, and a set of one that is not the spine means
+	// they pointed it at the wrong schedule. Reporting either as the other
+	// sends the reader to the wrong declaration.
+	scope, err := o.OnlyScope()
+	if err != nil {
+		return nil, fmt.Errorf("sankey: %w", err)
+	}
+	if scope != PublishedScope {
 		return nil, cmdutil.WithHint(
-			fmt.Errorf("sankey: scope is %q, want %q", o.Scope, PublishedScope),
+			fmt.Errorf("sankey: scope is %q, want %q", scope, PublishedScope),
 			"this document is of one schedule; a projection built over another "+
 				"schedule's facts would publish them under this one's contract")
 	}
@@ -565,7 +576,7 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
 			Basis:           string(col.Basis),
-			Scope:           o.Scope,
+			Scope:           scope,
 			Currency:        "USD",
 			Units:           "cents",
 			Sources:         sourcesOf(selected),
@@ -597,7 +608,7 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 func selectFacts(facts []fact.Fact, o Options) []fact.Fact {
 	out := make([]fact.Fact, 0, len(facts))
 	for _, f := range facts {
-		if f.Scope != o.Scope {
+		if !o.HasScope(f.Scope) {
 			continue
 		}
 		if !slices.Contains(o.Columns, Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {

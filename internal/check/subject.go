@@ -155,7 +155,7 @@ type Projection struct {
 // String names the projection the way a report should: the file stem plus the
 // slice of the corpus it covers.
 func (p Projection) String() string {
-	return fmt.Sprintf("%s %s %s", p.Name, project.Describe(p.Options.Columns), p.Options.Scope)
+	return fmt.Sprintf("%s %s %s", p.Name, project.Describe(p.Options.Columns), p.Options.ScopeList())
 }
 
 // ProjectionFailure is one slice a projection refused to build, with the
@@ -187,7 +187,7 @@ type ProjectionFailure struct {
 // String names the failed slice the way Projection.String names a built one, so
 // a report can list the two together.
 func (f ProjectionFailure) String() string {
-	return fmt.Sprintf("%s %s %s", f.Name, project.Describe(f.Options.Columns), f.Options.Scope)
+	return fmt.Sprintf("%s %s %s", f.Name, project.Describe(f.Options.Columns), f.Options.ScopeList())
 }
 
 // Subject is everything the checks read, loaded once.
@@ -740,7 +740,7 @@ func factSlices(facts []fact.Fact, version string) []project.Options {
 	for _, k := range keys {
 		out = append(out, project.Options{
 			Columns: []project.Column{{FiscalYear: k.year, Basis: k.basis}},
-			Scope:   spineScope,
+			Scopes:  []string{spineScope},
 			Version: version,
 		})
 	}

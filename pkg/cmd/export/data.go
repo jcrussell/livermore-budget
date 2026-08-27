@@ -177,7 +177,7 @@ func slicesOf(p project.Projection, facts []fact.Fact, version string) []project
 	for _, year := range years {
 		out = append(out, project.Options{
 			Columns: []project.Column{{FiscalYear: year, Basis: project.PublishedBasis}},
-			Scope:   project.PublishedScope,
+			Scopes:  []string{project.PublishedScope},
 			Version: version,
 		})
 	}

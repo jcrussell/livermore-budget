@@ -70,7 +70,7 @@ func trendsFixture(t *testing.T) []fact.Fact {
 }
 
 func trendsOptions() Options {
-	return Options{Columns: trendColumnsFixture, Scope: TrendsScope, Version: "test"}
+	return Options{Columns: trendColumnsFixture, Scopes: []string{TrendsScope}, Version: "test"}
 }
 
 func buildTrends(t *testing.T, facts []fact.Fact) *TrendsDocument {
@@ -263,8 +263,8 @@ func TestTrendsSlicesTakeTheWholeScope(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("got %d slices, want exactly 1 -- a trend of four columns is one document", len(got))
 	}
-	if got[0].Scope != TrendsScope {
-		t.Errorf("scope = %q, want %q", got[0].Scope, TrendsScope)
+	if got[0].ScopeList() != TrendsScope {
+		t.Errorf("scope = %q, want %q", got[0].ScopeList(), TrendsScope)
 	}
 	if !reflect.DeepEqual(got[0].Columns, trendColumnsFixture) {
 		t.Errorf("columns = %v, want all four in printed order %v", got[0].Columns, trendColumnsFixture)
@@ -284,7 +284,7 @@ func TestTrendsSlicesAreEmptyWithoutItsSchedule(t *testing.T) {
 // exists to prevent, from this document's side.
 func TestTrendsRefusesAnotherSchedulesScope(t *testing.T) {
 	o := trendsOptions()
-	o.Scope = PublishedScope
+	o.Scopes = []string{PublishedScope}
 	if _, err := (&Trends{}).Document(trendsFixture(t), o); err == nil {
 		t.Fatal("Document over the spine's scope = nil error, want a refusal")
 	}

@@ -110,11 +110,23 @@ type Envelope struct {
 }
 
 // envelope fills the block from the options a document was built under.
-func envelope(o Options) Envelope {
+//
+// IT RETURNS AN ERROR BECAUSE Scope IS SINGULAR AND [Options.Scopes] IS NOT.
+// Envelope.Scope's own doc comment says every document carrying one is of
+// exactly one schedule, and that stays true -- but the options handed here can
+// now name two, and writing Scopes[0] into a singular key would publish one
+// schedule as the whole of a document built over both. A multi-schedule
+// document needs a metadata block that says so; it does not get to borrow this
+// one and lose half the claim on the way.
+func envelope(o Options) (Envelope, error) {
+	scope, err := o.OnlyScope()
+	if err != nil {
+		return Envelope{}, err
+	}
 	return Envelope{
 		GeneratedBy: o.Version,
-		Scope:       o.Scope,
+		Scope:       scope,
 		Currency:    "USD",
 		Units:       "cents",
-	}
+	}, nil
 }

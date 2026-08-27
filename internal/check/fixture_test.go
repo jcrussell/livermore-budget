@@ -367,7 +367,7 @@ func spineDocuments(years ...int) []project.PublishedDocument {
 	for _, y := range years {
 		slices = append(slices, project.Options{
 			Columns: []project.Column{{FiscalYear: y, Basis: project.PublishedBasis}},
-			Scope:   project.PublishedScope,
+			Scopes:  []string{project.PublishedScope},
 		})
 	}
 	out := make([]project.PublishedDocument, 0, len(years))
@@ -383,7 +383,7 @@ func spineDocuments(years ...int) []project.PublishedDocument {
 		out = append(out, project.PublishedDocument{
 			Projection: project.PublishedProjection,
 			Stem:       stem,
-			Scope:      project.PublishedScope,
+			Scopes:     []string{project.PublishedScope},
 			Columns:    o.Columns,
 		})
 	}

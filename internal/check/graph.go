@@ -803,7 +803,7 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 func factsFor(facts []fact.Fact, o project.Options) []fact.Fact {
 	out := make([]fact.Fact, 0, len(facts))
 	for _, f := range facts {
-		if f.Scope != o.Scope {
+		if !o.HasScope(f.Scope) {
 			continue
 		}
 		if !slices.Contains(o.Columns, project.Column{FiscalYear: f.FiscalYear, Basis: f.Basis}) {

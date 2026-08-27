@@ -105,7 +105,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q is %s %s in scope %q, which %s is of, and no point publishes it; "+
 					"the document accounts for less of the corpus than it was built from",
-				f.DocID, f.Page, f.RowLabel, fyBasis(f), f.Scope, p.Options.Scope, p.Name))
+				f.DocID, f.Page, f.RowLabel, fyBasis(f), f.Scope, p.Options.ScopeList(), p.Name))
 		}
 	}
 

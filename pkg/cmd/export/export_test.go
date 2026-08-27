@@ -741,7 +741,7 @@ func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 	for _, d := range project.PublishedDocuments() {
 		full[d.Stem] = builtDoc{
 			name: d.Projection,
-			opts: project.Options{Columns: d.Columns, Scope: d.Scope},
+			opts: project.Options{Columns: d.Columns, Scopes: d.Scopes},
 		}
 	}
 	if err := assertPublishedBuilt(full); err != nil {
@@ -773,7 +773,7 @@ func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 			name: "a document built over another schedule entirely",
 			drop: func(m map[string]builtDoc) {
 				b := m[project.TrendsProjection]
-				b.opts.Scope = project.PublishedScope
+				b.opts.Scopes = []string{project.PublishedScope}
 				m[project.TrendsProjection] = b
 			},
 			wants: []string{project.TrendsProjection, "missing"},
@@ -791,7 +791,7 @@ func TestExportRefusesAPublishedDocumentThatWasNotBuilt(t *testing.T) {
 			built := map[string]builtDoc{}
 			for stem, b := range full {
 				built[stem] = builtDoc{name: b.name, opts: project.Options{
-					Columns: slices.Clone(b.opts.Columns), Scope: b.opts.Scope,
+					Columns: slices.Clone(b.opts.Columns), Scopes: slices.Clone(b.opts.Scopes),
 				}}
 			}
 			tc.drop(built)
@@ -862,8 +862,8 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 			t.Errorf("decode %s: %v", d.Stem, err)
 			continue
 		}
-		if doc.Metadata.Scope != d.Scope {
-			t.Errorf("%s ships scope %q, declared %q", d.Stem, doc.Metadata.Scope, d.Scope)
+		if want := strings.Join(d.Scopes, ", "); doc.Metadata.Scope != want {
+			t.Errorf("%s ships scope %q, declared %q", d.Stem, doc.Metadata.Scope, want)
 		}
 		shipped := make([]project.Column, 0, len(doc.Metadata.Columns))
 		for _, c := range doc.Metadata.Columns {

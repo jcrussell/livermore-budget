@@ -23,7 +23,7 @@ var trendsTestColumns = []project.Column{
 // exercised against the real producer rather than a hand-written document.
 func trendsSubject(t *testing.T, facts []fact.Fact) *Subject {
 	t.Helper()
-	o := project.Options{Columns: trendsTestColumns, Scope: trendsTestScope, Version: testVersion}
+	o := project.Options{Columns: trendsTestColumns, Scopes: []string{trendsTestScope}, Version: testVersion}
 	doc, err := (&project.Trends{}).Document(facts, o)
 	if err != nil {
 		t.Fatalf("build the trends document: %v", err)
@@ -321,7 +321,7 @@ func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
 
 	// A one-column document, so FY2027's facts are outside it entirely.
 	o := project.Options{
-		Columns: trendsTestColumns[:1], Scope: trendsTestScope, Version: testVersion,
+		Columns: trendsTestColumns[:1], Scopes: []string{trendsTestScope}, Version: testVersion,
 	}
 	doc, err := (&project.Trends{}).Document(facts, o)
 	if err != nil {

@@ -397,7 +397,7 @@ func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
 		// another schedule is not a defect and is not evidence either: it is of
 		// its own scope, over its own columns, and published-projection-built is
 		// what asserts anything about it.
-		if p.Options.Scope != spineScope {
+		if !p.Options.HasScope(spineScope) {
 			continue
 		}
 		if p.Graph == nil {

@@ -39,11 +39,13 @@ package project
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
 // SchemaVersion is the version stamped on every projection document. A
@@ -131,8 +133,9 @@ type PublishedDocument struct {
 	Projection string
 	// Stem is the file stem it is published under, without the .json.
 	Stem string
-	// Scope is the schedule it is of, matching [Options.Scope].
-	Scope string
+	// Scopes is the schedule set it is of, matching [Options.Scopes]. Compared
+	// as a SET -- see [MissingColumns].
+	Scopes []string
 	// Columns is every (fiscal year, basis) pair the document must cover. A
 	// document missing one of these was built, but not over what the site
 	// promised, and that is a finding rather than silence.
@@ -142,7 +145,8 @@ type PublishedDocument struct {
 // String names the document the way a report should: the stem a reader can
 // fetch, then the slice behind it.
 func (d PublishedDocument) String() string {
-	return fmt.Sprintf("%s (%s %s)", d.Stem, Describe(d.Columns), d.Scope)
+	return fmt.Sprintf("%s (%s %s)", d.Stem, Describe(d.Columns),
+		strings.Join(d.Scopes, ", "))
 }
 
 // PublishedDocuments is every file the site publishes, in the order a reader
@@ -165,14 +169,14 @@ func PublishedDocuments() []PublishedDocument {
 		out = append(out, PublishedDocument{
 			Projection: PublishedProjection,
 			Stem:       stemOrPanic(PublishedProjection, spineOptions(year), spineSlices()),
-			Scope:      PublishedScope,
+			Scopes:     []string{PublishedScope},
 			Columns:    []Column{{FiscalYear: year, Basis: PublishedBasis}},
 		})
 	}
 	return append(out, PublishedDocument{
 		Projection: TrendsProjection,
 		Stem:       TrendsProjection,
-		Scope:      TrendsScope,
+		Scopes:     []string{TrendsScope},
 		Columns:    TrendsColumns(),
 	})
 }
@@ -186,11 +190,18 @@ func PublishedDocuments() []PublishedDocument {
 // wrote. Two spellings of "does this document cover what we said" is the class
 // of divergence PublishedDocuments exists to remove.
 //
-// The scope is compared too. A document built at the right stem over the right
-// years but a different SCHEDULE is a different document wearing the path, and
-// the column list alone cannot see that.
+// The scope set is compared too. A document built at the right stem over the
+// right years but a different SCHEDULE is a different document wearing the path,
+// and the column list alone cannot see that.
+//
+// THE COMPARISON IS SET EQUALITY AND NOT SLICE EQUALITY. Two projections
+// declaring the same two schedules in different orders are of the same money,
+// and a document that had to be satisfied in declaration order would report a
+// missing document over an ordering choice. Order still matters for the
+// PUBLISHED text -- [Options.ScopeList] preserves it -- because a reader looking
+// up a declaration will look for the order it was written in.
 func MissingColumns(d PublishedDocument, o Options) []Column {
-	if o.Scope != d.Scope {
+	if !sameScopes(d.Scopes, o.Scopes) {
 		return d.Columns
 	}
 	have := make(map[Column]bool, len(o.Columns))
@@ -212,8 +223,25 @@ func MissingColumns(d PublishedDocument, o Options) []Column {
 func spineOptions(year int) Options {
 	return Options{
 		Columns: []Column{{FiscalYear: year, Basis: PublishedBasis}},
-		Scope:   PublishedScope,
+		Scopes:  []string{PublishedScope},
 	}
+}
+
+// sameScopes reports whether two scope sets name the same schedules.
+//
+// Sorted copies rather than a map, because these sets are one or two entries
+// long and a map allocation per comparison would be the expensive way to answer
+// a question about a pair of strings. The copies matter: sorting the arguments
+// in place would reorder a projection's own declaration, which is published.
+func sameScopes(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	x := slices.Clone(a)
+	y := slices.Clone(b)
+	slices.Sort(x)
+	slices.Sort(y)
+	return slices.Equal(x, y)
 }
 
 // spineSlices is every document the spine publishes, as [Sankey.Slices] would
@@ -327,11 +355,30 @@ type Options struct {
 	// projection that quietly selected two of them doubles every figure while
 	// still balancing perfectly. Absent is not zero (docs/agents/conventions.md).
 	Columns []Column
-	// Scope selects the schedule a fact came from. It is also the guard that
-	// keeps a second schedule's facts out of a projection built for the
-	// citywide spine: a department-by-category page is a different scope, and
-	// its rows would otherwise be added on top of the spine's.
-	Scope string
+	// Scopes selects the schedules a fact may have come from. It is also the
+	// guard that keeps a second schedule's facts out of a projection built for
+	// the citywide spine: a department-by-category page is a different scope,
+	// and its rows would otherwise be added on top of the spine's.
+	//
+	// IT IS A SET AND NOT A STRING because a drill-down is of more than one
+	// schedule. pp.127-140 print revenue by fund and pp.167-170 print General
+	// Fund expenditure by department, and a document following a dollar from
+	// source to spend needs both. They are safe together because they are
+	// DISJOINT BY KIND -- every key this package builds carries kind, so a
+	// revenue cell and an expenditure cell can never collide.
+	//
+	// A SET IS NOT A LICENCE TO COMBINE ANY TWO. Two scopes that restate the
+	// same money double it, silently, with every check green: measured on the
+	// committed store, revenue-by-fund and transfers-by-fund both publish
+	// transfer_in and overlap by 21,045,597 in FY2026. The rule is fisc-gkv
+	// point B -- a scope carrying an <x>-ties-to-spine check is by that fact
+	// ineligible to sit beside the spine scope -- and it is enforced by a
+	// check rather than by this type, because a set is the wrong place to hold
+	// a claim about arithmetic.
+	//
+	// MOST DOCUMENTS ARE OF EXACTLY ONE, and say so through [Options.OnlyScope]
+	// rather than by indexing this field.
+	Scopes []string
 	// Version is build.Get().String(), published as metadata.generated_by so
 	// a reader can tell which binary produced the file.
 	Version string
@@ -394,13 +441,75 @@ func (o Options) Validate() error {
 		}
 		seen[c] = true
 	}
-	if o.Scope == "" {
-		return errors.New("scope is required")
+	if len(o.Scopes) == 0 {
+		return errors.New("at least one scope is required")
+	}
+	scopes := make(map[string]bool, len(o.Scopes))
+	for _, s := range o.Scopes {
+		if s == "" {
+			return errors.New("a scope may not be empty")
+		}
+		// A repeated scope is not merely redundant: selectFacts tests
+		// membership, so the same fact would be selected once however many
+		// times its scope is listed -- but every reader of this field that
+		// COUNTS scopes (the report strings, the disjointness check) would see
+		// a document claiming more schedules than it has.
+		if scopes[s] {
+			return fmt.Errorf("scope %q is listed twice", s)
+		}
+		scopes[s] = true
 	}
 	if o.Version == "" {
 		return errors.New("version is required for metadata.generated_by")
 	}
 	return nil
+}
+
+// OnlyScope is the one schedule a single-schedule document is of, and the
+// refusal of any other shape.
+//
+// IT EXISTS SO THE REFUSAL IS WRITTEN ONCE. Sankey.Graph, Trends.Document and
+// envelope() each need "this document is of exactly one scope, and here it is",
+// and while [Options.Scopes] was a string all three spelled it as a field read
+// with no refusal at all -- correct only because the type could not hold a
+// second scope. A set can, so the three would each have had to grow the same
+// guard, and the one that did not would publish half a set as the whole of it:
+// metadata.scope naming one schedule for a document built over two is a false
+// claim that no check reads the JSON closely enough to catch.
+//
+// The caller still compares the returned scope against its OWN constant. This
+// answers "how many", not "which one" -- a projection built over the wrong
+// single schedule is a different error and each projection reports it in its
+// own words.
+func (o Options) OnlyScope() (string, error) {
+	if len(o.Scopes) != 1 {
+		return "", cmdutil.WithHint(
+			fmt.Errorf("this document is of one schedule, and these options name %d: %s",
+				len(o.Scopes), o.ScopeList()),
+			"a document spanning schedules needs its own projection type; the ones that "+
+				"publish a single metadata.scope cannot describe two")
+	}
+	return o.Scopes[0], nil
+}
+
+// HasScope reports whether a fact carrying this scope is in the slice.
+//
+// A METHOD RATHER THAN A slices.Contains AT EVERY CALL SITE because the two
+// callers that matter -- internal/project's selectFacts and internal/check's
+// factsFor -- are a deliberate second derivation of one another, and the check
+// re-selecting facts by a rule the projection does not use is the divergence
+// that makes the second derivation worthless rather than independent.
+func (o Options) HasScope(scope string) bool {
+	return slices.Contains(o.Scopes, scope)
+}
+
+// ScopeList is the scope set as one string, for a report line or an error.
+//
+// Joined with ", " and NOT sorted: the order is the order the projection
+// declared, which is the order a reader of that declaration will look for. Two
+// runs agree because the declaration is a literal, not a map walk.
+func (o Options) ScopeList() string {
+	return strings.Join(o.Scopes, ", ")
 }
 
 // Projection is one JSON document under <output>/data/.

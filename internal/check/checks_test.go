@@ -1234,7 +1234,7 @@ func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
 				{FiscalYear: 2026, Basis: project.PublishedBasis},
 				{FiscalYear: 2027, Basis: project.PublishedBasis},
 			},
-			Scope: spineScope,
+			Scopes: []string{spineScope},
 		},
 	}}}
 	res, err := (&projectionsBuild{}).Run(context.Background(), s)
@@ -1484,7 +1484,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 				Columns: []project.Column{{
 					FiscalYear: facts[0].FiscalYear, Basis: facts[0].Basis,
 				}},
-				Scope: expenditureDetailScope,
+				Scopes: []string{expenditureDetailScope},
 			},
 		}}
 		// The check is run directly rather than through the whole set: this
@@ -1544,7 +1544,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 			Name: "detail",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
-				Scope:   expenditureDetailScope,
+				Scopes:  []string{expenditureDetailScope},
 			},
 		})
 		res, err := (&factsAreProjected{}).Run(context.Background(), s)
@@ -1596,7 +1596,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 			Name: "half",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2027, Basis: facts[0].Basis}},
-				Scope:   expenditureDetailScope,
+				Scopes:  []string{expenditureDetailScope},
 			},
 		}}
 		res, err := (&factsAreProjected{}).Run(context.Background(), s)

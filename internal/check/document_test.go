@@ -29,7 +29,7 @@ func (*seriesOnly) Build(_ []fact.Fact, _ project.Options) ([]byte, error) {
 func (*seriesOnly) Slices(_ []fact.Fact, version string) []project.Options {
 	return []project.Options{{
 		Columns: []project.Column{{FiscalYear: 2026, Basis: "adopted"}},
-		Scope:   "revenue-by-fund",
+		Scopes:  []string{"revenue-by-fund"},
 		Version: version,
 	}}
 }
@@ -111,7 +111,7 @@ func TestEachProjectionIsBuiltOverItsOwnSlices(t *testing.T) {
 	if len(built) != 1 {
 		t.Fatalf("built %d projections, want the 1 slice seriesOnly asked for", len(built))
 	}
-	if got := built[0].Options.Scope; got != "revenue-by-fund" {
+	if got := built[0].Options.ScopeList(); got != "revenue-by-fund" {
 		t.Errorf("scope = %q, want the projection's own %q and not the spine's",
 			got, "revenue-by-fund")
 	}
@@ -194,7 +194,7 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 			Graph: &project.Graph{},
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
-				Scope:   project.PublishedScope,
+				Scopes:  []string{project.PublishedScope},
 			},
 		}},
 	}
@@ -221,7 +221,7 @@ func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 			Name: "something-else",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
-				Scope:   project.PublishedScope,
+				Scopes:  []string{project.PublishedScope},
 			},
 		}},
 	}

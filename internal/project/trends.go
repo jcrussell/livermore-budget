@@ -116,7 +116,7 @@ func (*Trends) Slices(facts []fact.Fact, version string) []Options {
 		}
 		return cols[i].Basis < cols[j].Basis
 	})
-	return []Options{{Columns: cols, Scope: TrendsScope, Version: version}}
+	return []Options{{Columns: cols, Scopes: []string{TrendsScope}, Version: version}}
 }
 
 // TrendsDocument is the whole published file. It is exported so a check can
@@ -250,9 +250,15 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 	if err := o.Validate(); err != nil {
 		return nil, fmt.Errorf("revenue-trends options: %w", err)
 	}
-	if o.Scope != TrendsScope {
+	// Two refusals for the reason Sankey.Graph gives: how many schedules and
+	// which schedule are different mistakes.
+	scope, err := o.OnlyScope()
+	if err != nil {
+		return nil, fmt.Errorf("revenue-trends: %w", err)
+	}
+	if scope != TrendsScope {
 		return nil, cmdutil.WithHint(
-			fmt.Errorf("revenue-trends: scope is %q, want %q", o.Scope, TrendsScope),
+			fmt.Errorf("revenue-trends: scope is %q, want %q", scope, TrendsScope),
 			"this document is of one schedule; a projection built over another "+
 				"schedule's facts would publish them under this one's contract")
 	}
@@ -320,11 +326,16 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 	}
 	sortSeries(series)
 
+	env, err := envelope(o)
+	if err != nil {
+		return nil, fmt.Errorf("revenue-trends: %w", err)
+	}
+
 	return &TrendsDocument{
 		SchemaVersion: SchemaVersion,
 		Projection:    t.Name(),
 		Metadata: TrendsMetadata{
-			Envelope: envelope(o),
+			Envelope: env,
 			Columns:  trendColumns(o.Columns),
 			Sources:  sourcesOf(selected),
 			Counts: TrendCounts{

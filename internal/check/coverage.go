@@ -3,7 +3,9 @@ package check
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -168,17 +170,29 @@ type sliceKey struct {
 	scope string
 }
 
-// keysOf is every slice one Options covers, which is one per column.
+// keysOf is every slice one Options covers: one per column PER SCOPE.
 //
 // IT RETURNS A LIST BECAUSE ONE DOCUMENT NEED NOT BE ONE SLICE. While every
 // projection was of a single (year, basis) this was a one-to-one map and was
 // spelled as one; a trends document is of four columns of one schedule, so an
 // Options that maps to a single key can no longer be assumed. Anything keying a
 // map on a projection has to iterate this rather than call it once.
+//
+// THE PRODUCT OVER SCOPES IS LOAD-BEARING AND NOT TIDINESS. A sliceKey is the
+// address a FACT has -- (year, basis, scope) -- so a document of two schedules
+// occupies two addresses per column and must say so. factsAreProjected builds
+// its `drawn` set from these keys and staleDeclarations decides from that set
+// whether an unprojectedScopes entry has stopped being true. Emitting one key
+// per column with a single scope would leave a drawn schedule looking undrawn:
+// the entry declaring it unprojected would stay quiet while the document
+// publishing it shipped, which is the precise failure "an entry that has
+// stopped being true must go RED, not quiet" is written against.
 func keysOf(o project.Options) []sliceKey {
-	out := make([]sliceKey, 0, len(o.Columns))
+	out := make([]sliceKey, 0, len(o.Columns)*len(o.Scopes))
 	for _, c := range o.Columns {
-		out = append(out, sliceKey{c.FiscalYear, c.Basis, o.Scope})
+		for _, scope := range o.Scopes {
+			out = append(out, sliceKey{c.FiscalYear, c.Basis, scope})
+		}
 	}
 	return out
 }
@@ -260,11 +274,11 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	// a published document of the other. Nothing does that today; the key costs
 	// nothing and the alternative is a silent wrong answer rather than a
 	// refusal.
-	type source struct{ name, scope string }
+	type source struct{ name, scopes string }
 	built := map[source][]project.Options{}
 	names := make([]string, 0, len(s.Projections))
 	for _, p := range s.Projections {
-		k := source{p.Name, p.Options.Scope}
+		k := source{p.Name, scopeKey(p.Options.Scopes)}
 		built[k] = append(built[k], p.Options)
 		names = append(names, p.String())
 	}
@@ -287,7 +301,7 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 		// one defect two findings that read as two, and send a reader looking
 		// for a stray document that is really the declared one gone short.
 		absent := d.Columns
-		for _, o := range built[source{d.Projection, d.Scope}] {
+		for _, o := range built[source{d.Projection, scopeKey(d.Scopes)}] {
 			missing := project.MissingColumns(d, o)
 			if len(missing) < len(absent) {
 				absent = missing
@@ -394,7 +408,20 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 // one. Name, scope and every column, so two slices of one projection that
 // differ only in basis are two ids and not one.
 func sliceID(name string, o project.Options) string {
-	return name + "\x1f" + o.Scope + "\x1f" + project.Describe(o.Columns)
+	return name + "\x1f" + scopeKey(o.Scopes) + "\x1f" + project.Describe(o.Columns)
+}
+
+// scopeKey is a scope SET as one comparable string.
+//
+// Sorted, unlike [project.Options.ScopeList], and the difference is the point:
+// ScopeList is published text and keeps the order a projection declared, while
+// this is a map key and two declarations of the same schedules must land on it
+// however they were written. A sorted copy rather than a sort in place, because
+// the slice it is handed is a projection's own declaration.
+func scopeKey(scopes []string) string {
+	sorted := slices.Clone(scopes)
+	slices.Sort(sorted)
+	return strings.Join(sorted, "\x1f")
 }
 
 func describeDocuments(docs []project.PublishedDocument) []string {

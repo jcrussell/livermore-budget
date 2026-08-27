@@ -10,7 +10,7 @@ import (
 func TestOptionsValidate(t *testing.T) {
 	ok := Options{
 		Columns: []Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
-		Scope:   "all-funds-gross",
+		Scopes:  []string{"all-funds-gross"},
 		Version: "dev",
 	}
 	col := func(o Options, year int, basis mapping.Basis) Options {
@@ -24,7 +24,7 @@ func TestOptionsValidate(t *testing.T) {
 		want string // substring of the expected error; "" means valid
 	}{
 		{"valid", ok, ""},
-		{"no columns", Options{Scope: ok.Scope, Version: ok.Version}, "at least one column is required"},
+		{"no columns", Options{Scopes: ok.Scopes, Version: ok.Version}, "at least one column is required"},
 		{"no fiscal year", col(ok, 0, mapping.BasisAdopted), "fiscal year is required"},
 		{"negative fiscal year", col(ok, -1, mapping.BasisAdopted), "fiscal year is required"},
 		{"no basis", col(ok, 2026, ""), `basis "" is not one of`},
@@ -46,7 +46,18 @@ func TestOptionsValidate(t *testing.T) {
 			o.Columns = []Column{{2026, mapping.BasisAdopted}, {2027, mapping.BasisAdopted}}
 			return o
 		}(), ""},
-		{"no scope", func() Options { o := ok; o.Scope = ""; return o }(), "scope is required"},
+		{"no scope", func() Options { o := ok; o.Scopes = nil; return o }(),
+			"at least one scope is required"},
+		{"an empty scope", func() Options { o := ok; o.Scopes = []string{""}; return o }(),
+			"a scope may not be empty"},
+		// A repeated scope selects the same facts once, so nothing doubles --
+		// but every reader that COUNTS scopes would see a document claiming
+		// more schedules than it has.
+		{"a repeated scope", func() Options {
+			o := ok
+			o.Scopes = []string{PublishedScope, PublishedScope}
+			return o
+		}(), "is listed twice"},
 		{"no version", func() Options { o := ok; o.Version = ""; return o }(), "version is required"},
 	}
 
@@ -79,7 +90,7 @@ func TestOptionsValidateAcceptsEveryBasis(t *testing.T) {
 	} {
 		o := Options{
 			Columns: []Column{{FiscalYear: 2026, Basis: b}},
-			Scope:   "all-funds-gross",
+			Scopes:  []string{"all-funds-gross"},
 			Version: "dev",
 		}
 		if err := o.Validate(); err != nil {
@@ -167,5 +178,78 @@ func TestSlugLabel(t *testing.T) {
 		if got := slugLabel(id); got != want {
 			t.Errorf("slugLabel(%q) = %q, want %q", id, got, want)
 		}
+	}
+}
+
+// TestOnlyScopeRefusesASetItCannotDescribe is the guard that replaced a field
+// read.
+//
+// WHILE Options.Scopes WAS A STRING, "this document is of one schedule" was true
+// by construction and nobody had to assert it. A set can hold two, so the three
+// places that need a single scope -- Sankey.Graph, Trends.Document and
+// envelope() -- each had to grow the same refusal, and the one that forgot would
+// publish Scopes[0] into a singular metadata.scope: one schedule named as the
+// whole of a document built over two. That is a false claim in a published file,
+// and no check reads the JSON closely enough to catch it.
+//
+// The refusal is written once, here, and the three call it.
+func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
+	one := Options{
+		Columns: []Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+		Scopes:  []string{PublishedScope},
+		Version: "test",
+	}
+	got, err := one.OnlyScope()
+	if err != nil || got != PublishedScope {
+		t.Fatalf("OnlyScope over one scope = %q, %v, want %q, nil", got, err, PublishedScope)
+	}
+
+	two := one
+	two.Scopes = []string{PublishedScope, TrendsScope}
+	if _, err := two.OnlyScope(); err == nil {
+		t.Fatal("OnlyScope over two scopes = nil error, want a refusal")
+	} else {
+		// The message has to name BOTH, or a reader cannot tell which
+		// declaration handed the wrong options over.
+		for _, want := range []string{PublishedScope, TrendsScope} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("got %q, want it to name %q", err, want)
+			}
+		}
+	}
+
+	// Validate does not refuse the set -- a two-scope Options is legal, it is
+	// only this document SHAPE that cannot describe one. Asserting that keeps
+	// the two refusals from being collapsed into one by a later reader.
+	if err := two.Validate(); err != nil {
+		t.Errorf("Validate over two scopes = %v, want nil: the set is legal", err)
+	}
+}
+
+// TestASingleGrainDocumentRefusesTwoScopes is the same guard reached through the
+// two projections that publish a singular metadata.scope.
+//
+// HOW MANY SCHEDULES AND WHICH SCHEDULE ARE DIFFERENT MISTAKES with different
+// remedies, so they are two refusals and not one: a set of two means someone
+// pointed a single-grain document at a drill-down's options; a set of one that
+// is the wrong schedule means they pointed it at the wrong page. Reporting
+// either as the other sends the reader to the wrong declaration.
+func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
+	both := []string{PublishedScope, TrendsScope}
+
+	so := testOptions()
+	so.Scopes = both
+	if _, err := (&Sankey{}).Graph(spineFacts(t, testYear), so); err == nil {
+		t.Error("Sankey.Graph over two scopes = nil error, want a refusal")
+	} else if !strings.Contains(err.Error(), "one schedule") {
+		t.Errorf("Sankey.Graph = %q, want it to say the document is of one schedule", err)
+	}
+
+	to := trendsOptions()
+	to.Scopes = both
+	if _, err := (&Trends{}).Document(trendsFixture(t), to); err == nil {
+		t.Error("Trends.Document over two scopes = nil error, want a refusal")
+	} else if !strings.Contains(err.Error(), "one schedule") {
+		t.Errorf("Trends.Document = %q, want it to say the document is of one schedule", err)
 	}
 }

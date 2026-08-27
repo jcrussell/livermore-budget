@@ -576,7 +576,7 @@ func TestGraphRejectsBadOptions(t *testing.T) {
 // Options.Scope exists to prevent.
 func TestGraphRefusesAForeignSchedule(t *testing.T) {
 	o := testOptions()
-	o.Scope = TrendsScope
+	o.Scopes = []string{TrendsScope}
 
 	_, err := (&Sankey{}).Graph(spineFacts(t, testYear), o)
 	if err == nil {
