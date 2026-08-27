@@ -434,6 +434,58 @@ func (r *Registry) ConstraintTier(fund int) string {
 	return r.funds[fund].ConstraintTier
 }
 
+// FundType is the fund type funds.yaml records for a number, and whether the
+// registry knows the number at all.
+//
+// IT IS THE PARENT EDGE OF THE TIER HIERARCHY, and that is why it exists beside
+// Fund rather than being read off it. A fund node's parent is
+// fund-group/<type>, and taking that type from HERE rather than from the fact's
+// own fund_group is what keeps the fold from being a tautology: funds.yaml's
+// `type:` is transcribed from the appendix pp.253-257, while a fact's fund_group
+// comes from the section header its row sits under on pp.131-140. Two
+// independent records of one claim, which is the only shape in which comparing
+// them says anything.
+//
+// It returns the type and false for an unlisted fund rather than "" and true,
+// because "" is not a fund type and a node parented to `fund-group/` would be a
+// node parented to nothing.
+func (r *Registry) FundType(number int) (string, bool) {
+	f, ok := r.funds[number]
+	if !ok {
+		return "", false
+	}
+	return f.Type, true
+}
+
+// RestrictionNote is our reading of what ties a fund's money down, from the
+// Description of Funds narrative (pp. 258-261).
+//
+// IT IS DERIVED AND THE CALLER IS PUBLISHING IT. funds.yaml's own header says
+// constraint_tier and restriction_note "must not be presented as something the
+// city printed", so a node carrying a ConstraintTier carries this beside it as
+// the rationale: the classification and the sentence it was read from travel
+// together or the classification is unsourced. See docs/sankey-contract.md's
+// constraint_tier section.
+func (r *Registry) RestrictionNote(fund int) string {
+	return r.funds[fund].RestrictionNote
+}
+
+// DivisionLabel is the city's own words for a division slug, which is what a
+// fact's `department` field holds.
+//
+// It exists beside Division for FundName's reason: Division returns a
+// registry.Division, so internal/project declaring it in [project.Labels] would
+// import this package, which is the coupling the narrow interface avoids.
+//
+// A miss is not an error: an unlabelled division renders as its slug.
+func (r *Registry) DivisionLabel(slug string) (string, bool) {
+	d, ok := r.divisions[slug]
+	if !ok || d.Label == "" {
+		return "", false
+	}
+	return d.Label, true
+}
+
 // FundGroup reports whether name is a fund type funds.yaml actually uses.
 //
 // The answer comes from the loaded file rather than from this package's known

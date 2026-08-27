@@ -45,28 +45,14 @@ type vacancy struct {
 var declaredVacuous = map[string]vacancy{
 	"transfer-legs-pair": {
 		bead: "fisc-9gh",
-		reason: "no link carries a transfer_id, and publishing Budget Book p76 will not " +
-			"change that on its own: internal/project keys cells on " +
-			"(kind, category, fund_group) and never reads a fact's fund, so the 22 " +
-			"printed legs net into 9 fund-group cells before a pairing could be " +
-			"attached. Retiring it needs leg-level links, which is the node tier " +
-			"hierarchy, plus a Link.TransferID derived from the two legs' shared " +
-			"(doc_id, page, offset)",
-	},
-	"aggregation-invariance": {
-		bead: "fisc-gxa.2",
-		reason: "no node carries a parent, so the published graph has one tier depth and " +
-			"there is nothing to fold. It becomes the load-bearing check the instant " +
-			"finest-grain links exist -- it is what catches a double-parented or " +
-			"orphaned node -- and it hard-errors rather than passing the moment any " +
-			"node does carry one, so it cannot be reached by halves",
-	},
-	"constraint-tier-vocabulary": {
-		bead: "fisc-gxa.2",
-		reason: "no node carries a constraint_tier. A constraint tier is a property of a " +
-			"FUND and the published graph's finest fund axis is the fund GROUP, whose " +
-			"columns contain funds of several tiers, so no node in this graph could " +
-			"carry one truthfully",
+		reason: "no link carries a transfer_id. The tier hierarchy has now landed and " +
+			"did NOT retire this: p76's legs are in scope transfers-by-fund, and no " +
+			"projection selects it. It cannot simply be added to the drill-down " +
+			"either -- measured, transfers-by-fund and revenue-by-fund both publish " +
+			"transfer_in and overlap by 21,045,597 in FY2026, so one document holding " +
+			"both would double it, which projection-scopes-are-disjoint refuses. " +
+			"Retiring this needs a document of its own for p76 plus a Link.TransferID " +
+			"derived from the two legs' shared (doc_id, page, offset)",
 	},
 }
 

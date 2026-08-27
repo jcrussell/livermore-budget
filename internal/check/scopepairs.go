@@ -136,7 +136,15 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 
 	// ARM 3: no projection selects a related pair, and every pair it does
 	// select is positively declared disjoint.
-	examined := 0
+	//
+	// CO-SELECTED PAIRS ARE COUNTED AND REPORTED ONCE, not once per document
+	// that selects them. A projection publishing four documents selects the same
+	// pair four times, and reporting that as "4 pairs" beside a total of 6 sends
+	// a reader looking for four entries in disjointScopes when there is one --
+	// the same multiplicity would also emit four byte-identical findings for a
+	// single declaration defect.
+	coSelected := map[scopePair]bool{}
+	reported := map[scopePair]bool{}
 	for _, pr := range s.Projections {
 		scopes := pr.Options.Scopes
 		if len(scopes) < 2 {
@@ -145,7 +153,11 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 		for i := 0; i < len(scopes); i++ {
 			for j := i + 1; j < len(scopes); j++ {
 				p := pairOf(scopes[i], scopes[j])
-				examined++
+				coSelected[p] = true
+				if reported[p] {
+					continue
+				}
+				reported[p] = true
 				switch {
 				case reconciledScopes[p] != "":
 					findings = append(findings, finding(pr.String(),
@@ -198,8 +210,8 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 		held: fmt.Sprintf("%d pair(s) over the %d scope(s) the corpus carries, of which %d "+
 			"restate the same money: %d related by a reconciliation check, %d by a shared "+
 			"(kind, category, fund_group, fund, fiscal year, basis) key, %d by both. %d "+
-			"pair(s) are selected together by a projection, each declared disjoint",
-			len(pairs), countScopes(s.Facts), related, byCheck, byKey, byBoth, examined),
+			"distinct pair(s) are selected together by a projection, each declared disjoint",
+			len(pairs), countScopes(s.Facts), related, byCheck, byKey, byBoth, len(coSelected)),
 		nothing:  "the corpus carries fewer than two scopes, so no pair could restate another",
 		findings: findings,
 	}.result(), nil

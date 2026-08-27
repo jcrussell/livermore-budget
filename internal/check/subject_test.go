@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -244,6 +245,8 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"fact-vocabulary":                  StatusPass,
 		"fact-kind-matches-category":       StatusPass,
 		"node-tiers-are-declared":          StatusPass,
+		"link-kinds-match-their-facts":     StatusPass,
+		"fund-flows-counts-reconcile":      StatusPass,
 		"projection-scopes-are-disjoint":   StatusPass,
 		"projections-build":                StatusPass,
 		"published-projection-built":       StatusPass,
@@ -262,18 +265,23 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"headline-ties-to-facts":           StatusPass,
 		"headline-transfer-residual":       StatusPass,
 		"headline-naive-expenditure":       StatusPass,
-		// Vacuous, each for a reason that is recorded rather than incidental: no
-		// link can carry a transfer_id (fisc-4rh), the graph has one tier depth
-		// (fisc-gxa.2), and no node carries a constraint tier because pp.66-67
-		// publish only fund groups.
+		// ONE VACUOUS CHECK REMAINS OF THE FIVE fisc-0ux ENUMERATED, and the
+		// two that were here until the drill-down landed are now PASSES: the
+		// document carries node.parent on 523 nodes and a constraint tier on
+		// 247, so both have subjects for the first time.
 		//
-		// fact-funds-resolve was on this list until fisc-5gk.1 mapped pp.127-140,
-		// whose columns are per FUND rather than per fund group. It is the last
-		// of the five fisc-0ux enumerated that the two General Fund coverage
-		// lanes retire; what remains is the tier hierarchy and p76.
+		// fact-funds-resolve left this list when fisc-5gk.1 mapped pp.127-140,
+		// whose columns are per FUND rather than per fund group.
+		//
+		// transfer-legs-pair stays, and the tier hierarchy did NOT retire it,
+		// which was the expectation this line used to encode. p76's legs are in
+		// scope transfers-by-fund and no projection selects it -- and it cannot
+		// simply be added to the drill-down, because transfers-by-fund and
+		// revenue-by-fund overlap by 21,045,597 of FY2026 transfer_in and one
+		// document holding both would double it (fisc-9gh).
 		"transfer-legs-pair":              StatusVacuous,
-		"aggregation-invariance":          StatusVacuous,
-		"constraint-tier-vocabulary":      StatusVacuous,
+		"node-hierarchy-well-formed":      StatusPass,
+		"constraint-tier-vocabulary":      StatusPass,
 		"fact-departments-resolve":        StatusPass,
 		"fact-funds-resolve":              StatusPass,
 		"rule-funds-match-their-headings": StatusPass,
@@ -729,12 +737,24 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 			"trends document were retargeted and no document was built from them",
 			res.Status, res.Summary, moved)
 	}
-	if len(res.Findings) != 1 {
-		t.Fatalf("findings = %v, want exactly one: the spine is untouched", res.Findings)
+	// EVERY DOCUMENT OF THE RETARGETED SCHEDULE, and the spine is not one of
+	// them. It used to be exactly one finding; the drill-down draws the same
+	// schedule, so retargeting it unbuilds those four documents too and five
+	// findings is the correct answer. Asserting a COUNT here would have to be
+	// re-edited by every future document of pp.127-140, and would go quiet on
+	// the case that matters -- a finding naming the spine.
+	var named []string
+	for _, f := range res.Findings {
+		named = append(named, f.Subject)
+		if strings.Contains(f.Subject, project.PublishedProjection) {
+			t.Errorf("finding %q names the spine, which this mutation did not touch", f.Subject)
+		}
 	}
-	if !strings.Contains(res.Findings[0].Subject, project.TrendsProjection) {
-		t.Errorf("finding subject %q does not name the document that stopped being built",
-			res.Findings[0].Subject)
+	if !slices.ContainsFunc(res.Findings, func(f Finding) bool {
+		return strings.Contains(f.Subject, project.TrendsProjection)
+	}) {
+		t.Errorf("no finding names %q, the document that stopped being built: %v",
+			project.TrendsProjection, named)
 	}
 
 	// The spine is still checked. That is what makes this a report about ONE
@@ -862,13 +882,24 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 		t.Fatalf("published-projection-built = %s (%s), want fail: %d facts of one published "+
 			"column are gone and the document was built without it", res.Status, res.Summary, gone)
 	}
-	if len(res.Findings) != 1 {
-		t.Fatalf("findings = %v, want exactly one", res.Findings)
-	}
 	// "built without", not "nothing checked it": a document short a column and a
 	// document that does not exist are two different repairs, and a finding that
 	// cannot tell them apart sends a reader to the wrong one.
-	detail := res.Findings[0].Detail
+	//
+	// The trends document is short a column; the drill-down's FY2024 document
+	// stops existing altogether, because its Slices declares a column only when
+	// BOTH its schedules carry it. Two documents, two different findings, and
+	// this test is about the first -- so it looks for the one naming the trends
+	// stem rather than counting.
+	var detail string
+	for _, f := range res.Findings {
+		if strings.Contains(f.Subject, project.TrendsProjection) {
+			detail = f.Detail
+		}
+	}
+	if detail == "" {
+		t.Fatalf("no finding names %q: %v", project.TrendsProjection, res.Findings)
+	}
 	if !strings.Contains(detail, "built without") ||
 		!strings.Contains(detail, project.Describe([]project.Column{dropped})) {
 		t.Errorf("finding %q does not say the document was built without %s",

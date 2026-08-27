@@ -48,10 +48,10 @@ func (*graphAcyclic) Description() string {
 func (*graphAcyclic) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	links, nodes := 0, 0
-	for _, p := range s.Graphs() {
-		links += len(p.Graph.Links)
-		nodes += len(p.Graph.Nodes)
-		if cycle := findCycle(p.Graph.Links); len(cycle) > 0 {
+	for _, p := range s.LinkedDocuments() {
+		links += len(p.Links)
+		nodes += len(p.Nodes)
+		if cycle := findCycle(p.Links); len(cycle) > 0 {
 			findings = append(findings, finding(p.String(),
 				"these nodes form a cycle: %s", strings.Join(cycle, " -> ")))
 		}
@@ -60,7 +60,7 @@ func (*graphAcyclic) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: links,
 		unit:     "links",
 		held: fmt.Sprintf("%d links over %d nodes in %d projections, no cycle",
-			links, nodes, len(s.Graphs())),
+			links, nodes, len(s.LinkedDocuments())),
 		nothing:  "no projection carries a link, so there is no path to walk",
 		findings: findings,
 	}.result(), nil
@@ -139,8 +139,8 @@ func (*derivedNodesJustified) Run(_ context.Context, s *Subject) (Result, error)
 	var findings []Finding
 	subjects := 0
 
-	for _, p := range s.Graphs() {
-		for _, n := range p.Graph.Nodes {
+	for _, p := range s.LinkedDocuments() {
+		for _, n := range p.Nodes {
 			isInferred := slices.Contains(inferred, n.ID)
 			if !n.Derived && !isInferred {
 				continue
@@ -213,9 +213,9 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 
 	var findings []Finding
 	links := 0
-	for _, p := range s.Graphs() {
+	for _, p := range s.LinkedDocuments() {
 		selected := factIndex(factsFor(s.Facts, p.Options))
-		for _, l := range p.Graph.Links {
+		for _, l := range p.Links {
 			links++
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
 			if len(l.FactIDs) == 0 {
@@ -638,8 +638,8 @@ func (*transferLegsPair) Description() string {
 func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	legs := map[string][]project.Link{}
 	var ids []string
-	for _, p := range s.Graphs() {
-		for _, l := range p.Graph.Links {
+	for _, p := range s.LinkedDocuments() {
+		for _, l := range p.Links {
 			if l.TransferID == "" {
 				continue
 			}
@@ -682,57 +682,144 @@ func describeLegs(legs []project.Link) string {
 	return strings.Join(out, ", ")
 }
 
-// aggregationInvariance asserts the total at every tier depth equals the total
-// at every other depth, which is what catches a double-parented or an orphaned
-// node.
+// nodeHierarchyWellFormed asserts the tier hierarchy a document publishes can
+// actually be folded: every parent resolves, the hierarchy runs coarse to fine,
+// and no node is its own ancestor.
 //
-// It is vacuous today because no node carries a parent: the shipped graph has one
-// tier depth and there is nothing to fold. It becomes the load-bearing check of
-// this tier the instant a hierarchy exists, and fisc-1wr.1.1 owns writing the
-// fold.
+// THIS CHECK USED TO BE CALLED aggregation-invariance AND IT PROMISED SOMETHING
+// IT CANNOT DELIVER. Its old description — "the total at every tier depth equals
+// the total at every other depth" — cannot fail on arithmetic within one
+// document, because a fold maps each link to exactly one folded link and the sum
+// is invariant under relabelling whatever node.parent says. Node.Parent is one
+// string, so it cannot even express the double parent the old doc comment named
+// as the thing it caught. Written that way the check passes on any input, and
+// retiring a DECLARED vacuous check by replacing it with a green tautology is
+// worse than the state it replaced: the vacuity was at least visible in the
+// report. Check.ID's own doc comment says an id "says what is claimed rather
+// than what is done", so the id moved with the claim.
 //
-// Until then this check refuses to be present-but-asleep. The moment a node
-// carries a parent it reports an ERROR — not a pass, not a failure — because it
-// genuinely cannot reach a verdict about a hierarchy whose arithmetic it does not
-// implement, and a stub that answered "pass" the day its subject arrived would be
-// worse than no check at all.
-type aggregationInvariance struct{}
+// THE INTER-DOCUMENT FOLD IS REAL AND IS ALREADY DISCHARGED ELSEWHERE, which is
+// the other half of why this one is structural. Folding this document's fund
+// totals to fund groups and comparing them against the SPINE's published
+// fund-group figures is a comparison between two schedules, and the
+// <kind>-detail-ties-to-spine family makes exactly that comparison, per cell, at
+// zero tolerance, over Subject.Facts and without a graph. Rebuilding it here
+// would buy nothing.
+//
+// WHAT IS GENUINELY NEW IS STRUCTURAL, and none of it was asserted anywhere
+// before:
+//
+//   - every node.parent RESOLVES to a node in this document. A dangling parent
+//     is a fold that loses money: the client aggregating to a coarser tier finds
+//     no box to put the child in.
+//   - the parent's tier is strictly COARSER than the child's. An inverted edge
+//     makes the fold run the wrong way, and a client walking it renders a
+//     hierarchy inside out.
+//   - no node is its own ancestor. Parent is one string so a cycle needs at
+//     least two nodes, and a client folding one would not terminate.
+//   - no node is parented to a FLOW ENDPOINT. transfers/in and the fund-balance
+//     nodes sit outside the hierarchy and aggregate nothing, so a node folding
+//     into one would disappear into a box that is not a level.
+//
+// SUBJECTS ARE THE PARENTED NODES, so this stays honestly vacuous over a
+// document with no hierarchy — the spine — and goes live over the first one that
+// has a hierarchy to be well-formed.
+type nodeHierarchyWellFormed struct{}
 
-var _ Check = (*aggregationInvariance)(nil)
+var _ Check = (*nodeHierarchyWellFormed)(nil)
 
-func (*aggregationInvariance) ID() string { return "aggregation-invariance" }
-func (*aggregationInvariance) Tier() int  { return 1 }
-func (*aggregationInvariance) Full() bool { return false }
-func (*aggregationInvariance) Description() string {
-	return "the total at every tier depth equals the total at every other depth — vacuous until " +
-		"a node carries a parent, and unimplemented after that (fisc-1wr.1.1)"
+func (*nodeHierarchyWellFormed) ID() string { return "node-hierarchy-well-formed" }
+func (*nodeHierarchyWellFormed) Tier() int  { return 1 }
+func (*nodeHierarchyWellFormed) Full() bool { return false }
+func (*nodeHierarchyWellFormed) Description() string {
+	return "every node.parent resolves to a node of the same document, at a strictly coarser " +
+		"tier, with no node its own ancestor and none parented to a flow endpoint"
 }
 
-func (*aggregationInvariance) Run(_ context.Context, s *Subject) (Result, error) {
-	parented := 0
-	for _, p := range s.Graphs() {
-		for _, n := range p.Graph.Nodes {
-			if n.Parent != "" {
-				parented++
+func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, error) {
+	var findings []Finding
+	parented, docs := 0, 0
+
+	for _, p := range s.LinkedDocuments() {
+		byID := make(map[string]project.Node, len(p.Nodes))
+		for _, n := range p.Nodes {
+			byID[n.ID] = n
+		}
+		some := false
+		for _, n := range p.Nodes {
+			if n.Parent == "" {
+				continue
+			}
+			parented++
+			some = true
+
+			parent, ok := byID[n.Parent]
+			if !ok {
+				findings = append(findings, finding(p.String(),
+					"node %q is parented to %q, which is not a node of this document. A "+
+						"client folding to a coarser tier has no box to put it in, so the "+
+						"money it carries leaves the picture", n.ID, n.Parent))
+				continue
+			}
+			if _, isEndpoint := endpointTiers[n.Parent]; isEndpoint {
+				findings = append(findings, finding(p.String(),
+					"node %q is parented to %q, which is a flow endpoint rather than a "+
+						"level. Endpoints sit outside the hierarchy and aggregate nothing",
+					n.ID, n.Parent))
+				continue
+			}
+			if parent.Tier >= n.Tier {
+				findings = append(findings, finding(p.String(),
+					"node %q is at tier %d and its parent %q is at tier %d. A parent is "+
+						"strictly coarser than its child, or the fold runs the wrong way "+
+						"and the client renders the hierarchy inside out",
+					n.ID, n.Tier, n.Parent, parent.Tier))
+				continue
+			}
+			if cycle := ancestorCycle(byID, n.ID); len(cycle) > 0 {
+				findings = append(findings, finding(p.String(),
+					"node %q is its own ancestor: %s. A client folding this chain does not "+
+						"terminate", n.ID, joinArrow(cycle)))
 			}
 		}
+		if some {
+			docs++
+		}
 	}
-	if parented > 0 {
-		return Result{}, fmt.Errorf("%d nodes now carry a parent, so this graph has more than "+
-			"one tier depth and the fold is finally testable — but the fold is not implemented "+
-			"here; fisc-1wr.1.1 owns it and this check must not report a verdict until it does",
-			parented)
-	}
-	// Constructed rather than routed through result(): with the branch above,
-	// this check has no reachable pass, and handing result() a summary that can
-	// never be printed would suggest otherwise.
-	return Result{
-		Status: StatusVacuous,
-		Summary: "no node carries a parent, so the graph has one tier depth and there is " +
-			"nothing to fold (fisc-gxa.2)",
-		Findings: []Finding{},
-	}, nil
+
+	return conclusion{
+		subjects: parented,
+		unit:     "parented nodes",
+		held: fmt.Sprintf("%d parented nodes across %d document(s) with a hierarchy, each "+
+			"resolving to a node of its own document at a strictly coarser tier, none its "+
+			"own ancestor and none folding into a flow endpoint", parented, docs),
+		nothing: "no node carries a parent, so no document publishes a hierarchy to be " +
+			"well-formed",
+		findings: findings,
+	}.result(), nil
 }
+
+// ancestorCycle walks a node's parent chain and returns the cycle it closes, or
+// nil. The visited set is what makes it terminate on the very input it exists to
+// report.
+func ancestorCycle(byID map[string]project.Node, start string) []string {
+	seen := map[string]bool{start: true}
+	path := []string{start}
+	for id := byID[start].Parent; id != ""; id = byID[id].Parent {
+		path = append(path, id)
+		if seen[id] {
+			return path
+		}
+		seen[id] = true
+		if _, ok := byID[id]; !ok {
+			return nil
+		}
+	}
+	return nil
+}
+
+// joinArrow renders a chain the way a reader follows it.
+func joinArrow(path []string) string { return strings.Join(path, " -> ") }
 
 // constraintTierVocabulary asserts a node's constraint_tier is one the fund
 // registry actually uses.
@@ -771,8 +858,9 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 
 	var findings []Finding
 	subjects := 0
-	for _, p := range s.Graphs() {
-		for _, n := range p.Graph.Nodes {
+	tiered := map[string]bool{}
+	for _, p := range s.LinkedDocuments() {
+		for _, n := range p.Nodes {
 			if n.ConstraintTier == "" {
 				continue
 			}
@@ -782,12 +870,64 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 					"constraint_tier %q is not one data/funds.yaml uses (%s)",
 					n.ConstraintTier, strings.Join(known, ", ")))
 			}
+			// THE ARM WITH TEETH. The vocabulary clause above cannot fail short
+			// of a corrupted copy; this one asserts the thing the project's
+			// premise actually turns on.
+			if n.SourceNote == "" {
+				findings = append(findings, finding(p.String()+" "+n.ID,
+					"carries constraint_tier %q and no source_note. The tier is OUR reading "+
+						"of the Description of Funds narrative (pp.258-261) and the node is "+
+						"the city's, so node.derived stays false and the disclosure has "+
+						"nowhere else to go", n.ConstraintTier))
+			}
+			if n.Rationale == "" {
+				findings = append(findings, finding(p.String()+" "+n.ID,
+					"carries constraint_tier %q and no rationale. The rationale is the "+
+						"restriction note the tier was read from; a classification "+
+						"published without the sentence behind it is the editorial claim "+
+						"this project refuses to make unmarked", n.ConstraintTier))
+			}
+			tiered[p.String()] = true
 		}
 	}
+
+	// AND THE DOCUMENT ITSELF MUST DISCLOSE, or the per-node notes are a
+	// provenance panel a reader has to know to open. docs/sankey-contract.md
+	// requires the sentence in metadata.caveats, and it is compared against
+	// project's own constant rather than against prose written twice: two
+	// authors agreeing is not the same claim as the document saying the thing.
+	for _, p := range s.Projections {
+		if !tiered[p.String()] {
+			continue
+		}
+		// EVERY SHAPE THAT CARRIES CAVEATS, not just the drill-down. Reading
+		// only FundFlowsDocuments here while the node arms above read every
+		// linked document is a fail-open: project.Graph.Metadata has a Caveats
+		// field too, so the day the spine carried a constraint tier its nodes
+		// would be checked and its document would not, and the requirement that
+		// exists so "a reader of this file alone" is not misled would pass in
+		// silence over the one file most readers fetch.
+		var caveats []string
+		switch {
+		case p.FundFlows != nil:
+			caveats = p.FundFlows.Metadata.Caveats
+		case p.Graph != nil:
+			caveats = p.Graph.Metadata.Caveats
+		}
+		if !slices.Contains(caveats, project.ConstraintTierCaveat()) {
+			findings = append(findings, finding(p.String(),
+				"nodes here carry constraint tiers and metadata.caveats does not carry the "+
+					"disclosure sentence. A reader of this file alone would take an "+
+					"editorial classification for something the city printed"))
+		}
+	}
+
 	return conclusion{
 		subjects: subjects,
 		unit:     "nodes",
-		held:     fmt.Sprintf("%d nodes carry one of %s", subjects, strings.Join(known, ", ")),
+		held: fmt.Sprintf("%d nodes carry one of %s, each with the source note and the "+
+			"restriction note it was read from, in %d document(s) that disclose the "+
+			"derivation in metadata.caveats", subjects, strings.Join(known, ", "), len(tiered)),
 		nothing:  "no node carries a constraint_tier, so none has been checked against data/funds.yaml",
 		findings: findings,
 	}.result(), nil

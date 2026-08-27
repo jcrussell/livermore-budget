@@ -173,12 +173,59 @@ func PublishedDocuments() []PublishedDocument {
 			Columns:    []Column{{FiscalYear: year, Basis: PublishedBasis}},
 		})
 	}
-	return append(out, PublishedDocument{
+	out = append(out, PublishedDocument{
 		Projection: TrendsProjection,
 		Stem:       TrendsProjection,
 		Scopes:     []string{TrendsScope},
 		Columns:    TrendsColumns(),
 	})
+
+	// THE DRILL-DOWN PUBLISHES ALL FOUR COLUMNS, not just the two adopted years
+	// the spine prints. Two reasons, and the second is the load-bearing one.
+	//
+	// It is the only document that draws pp.167-170 at all, and
+	// unprojectedScopes' declaration for that schedule retires only when the
+	// schedule is drawn EXHAUSTIVELY: draw two of its four columns and
+	// staleDeclarations' partial arm fires and demands the reason be rewritten
+	// to say which slices it still covers. Publishing all four retires the
+	// declaration outright, which is the mechanism working rather than being
+	// worked around.
+	//
+	// And the historical columns are worth drawing on their own account: a
+	// reader asking where a fund's money came from in FY2024 is asking the
+	// question this document exists to answer, and the spine printing no actual
+	// column is a fact about pp.66-67 rather than about pp.127-140.
+	declared := fundFlowsSlices()
+	for _, o := range declared {
+		out = append(out, PublishedDocument{
+			Projection: FundFlowsProjection,
+			Stem:       stemOrPanic(FundFlowsProjection, o, declared),
+			Scopes:     FundFlowsScopes(),
+			Columns:    slices.Clone(o.Columns),
+		})
+	}
+	return out
+}
+
+// fundFlowsSlices is every document the drill-down publishes, as
+// [FundFlows.Slices] would declare them over a corpus that carries both its
+// schedules across the four printed columns.
+//
+// STATED HERE RATHER THAN READ OFF THE FACTS, for the reason [PublishedDocuments]
+// gives: a published set that consulted the corpus would agree with it by
+// construction and could not report that the corpus stopped covering it.
+func fundFlowsSlices() []Options {
+	cols := []Column{
+		{FiscalYear: 2024, Basis: mapping.BasisActual},
+		{FiscalYear: 2025, Basis: mapping.BasisRevised},
+		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
+		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	}
+	out := make([]Options, 0, len(cols))
+	for _, c := range cols {
+		out = append(out, Options{Columns: []Column{c}, Scopes: FundFlowsScopes()})
+	}
+	return out
 }
 
 // MissingColumns is the columns a published document promises that the Options
@@ -560,5 +607,5 @@ type Sliced interface {
 // and every node is labelled "Use Of Money And Property" instead of the words
 // the city printed.
 func Registry(l Labels) []Projection {
-	return []Projection{&Sankey{Labels: l}, &Trends{Labels: l}}
+	return []Projection{&Sankey{Labels: l}, &Trends{Labels: l}, &FundFlows{Labels: l}}
 }

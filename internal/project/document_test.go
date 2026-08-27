@@ -127,3 +127,66 @@ func TestEncodeLeavesHTMLAlone(t *testing.T) {
 		t.Fatalf("the encoder produced undecodable JSON: %v", err)
 	}
 }
+
+// TestTheFundFlowsMetadataKeyOrderMatchesTheContract pins
+// docs/general-fund-drilldown-contract.md against the code.
+//
+// A THIRD DOCUMENT NEEDS A THIRD TEST, and that is not obvious from the two
+// above it. TestSharedMetadataTagsHaveNotDrifted compares exactly two types and
+// asserts only that every Envelope tag APPEARS in both; key ORDER is pinned per
+// type, here and in the two tests above, and a new shape inherits neither.
+func TestTheFundFlowsMetadataKeyOrderMatchesTheContract(t *testing.T) {
+	want := []string{
+		"generated_by", "scopes", "currency", "units",
+		"fiscal_year", "fiscal_year_label", "basis", "sources", "counts", "caveats",
+	}
+	if got := jsonTags(t, FundFlowsMetadata{}); !reflect.DeepEqual(got, want) {
+		t.Errorf("metadata key order (-want +got):\n%v\n%v", want, got)
+	}
+}
+
+// TestTheMultiScopeEnvelopeIsTheEnvelopeWithOneKeyPluralised is what keeps the
+// sibling from drifting into a second, differently-shaped preamble.
+//
+// MultiScopeEnvelope exists because Envelope.Scope is one string and a document
+// of two schedules cannot write Scopes[0] into it without publishing one
+// schedule as the whole of it. That is a reason to change ONE key, and the test
+// says so: the other three are identical, in the same positions, so a reader who
+// knows where generated_by and units are in one document finds them in the other.
+func TestTheMultiScopeEnvelopeIsTheEnvelopeWithOneKeyPluralised(t *testing.T) {
+	single := jsonTags(t, Envelope{})
+	multi := jsonTags(t, MultiScopeEnvelope{})
+	if len(single) != len(multi) {
+		t.Fatalf("the two envelopes have %d and %d keys; they differ by one key's TYPE, "+
+			"not by their contents:\n%v\n%v", len(single), len(multi), single, multi)
+	}
+	for i := range single {
+		switch {
+		case single[i] == "scope" && multi[i] == "scopes":
+			// The one intended difference.
+		case single[i] != multi[i]:
+			t.Errorf("key %d is %q in Envelope and %q in MultiScopeEnvelope; only scope "+
+				"may differ, and only by becoming plural", i, single[i], multi[i])
+		}
+	}
+}
+
+// TestTheFundFlowsCountsPublishTheirOwnIdentity pins the shape of a count block
+// that deliberately is NOT Counts.
+//
+// The spine's identity assumes each fact is behind at most one link and that
+// some rows are stocks. Neither holds here, so borrowing Counts would publish a
+// facts_cited a reader would subtract from facts and get the wrong answer.
+func TestTheFundFlowsCountsPublishTheirOwnIdentity(t *testing.T) {
+	want := []string{"facts", "facts_cited", "facts_uncited", "facts_cited_twice",
+		"nodes", "links"}
+	if got := jsonTags(t, FundFlowsCounts{}); !reflect.DeepEqual(got, want) {
+		t.Errorf("counts key order (-want +got):\n%v\n%v", want, got)
+	}
+	// It must NOT be mistakable for the spine's block, whose facts_cited means
+	// something else.
+	if reflect.DeepEqual(jsonTags(t, FundFlowsCounts{}), jsonTags(t, Counts{})) {
+		t.Error("the two count blocks have the same keys; a reader would apply the spine's " +
+			"identity to a document that does not hold it")
+	}
+}

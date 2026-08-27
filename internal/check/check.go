@@ -194,13 +194,15 @@ func All() []Check {
 		&nodeTiersAreDeclared{},
 		&derivedNodesJustified{},
 		&linkValuesTieToFacts{},
+		&linkKindsMatchTheirFacts{},
 		&countsReconcile{},
+		&fundFlowsCountsReconcile{},
 		&headlineTiesToFacts{},
 		&headlineTransferResidual{},
 		&headlineNaiveExpenditure{},
 
 		&transferLegsPair{},
-		&aggregationInvariance{},
+		&nodeHierarchyWellFormed{},
 		&constraintTierVocabulary{},
 	}
 }

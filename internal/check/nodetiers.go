@@ -97,9 +97,9 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 	nodes := 0
 	links := 0
 
-	for _, p := range s.Graphs() {
+	for _, p := range s.LinkedDocuments() {
 		tierOf := map[string]int{}
-		for _, n := range p.Graph.Nodes {
+		for _, n := range p.Nodes {
 			nodes++
 			tierOf[n.ID] = n.Tier
 
@@ -130,7 +130,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			}
 		}
 
-		for _, l := range p.Graph.Links {
+		for _, l := range p.Links {
 			links++
 			src, sok := tierOf[l.Source]
 			dst, dok := tierOf[l.Target]
@@ -175,7 +175,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		held: fmt.Sprintf("%d nodes over %d graph document(s), each at the tier its id form "+
 			"declares, and %d links each running from a coarser tier to a finer one; the "+
 			"declared forms are %s, plus %d flow endpoints named individually",
-			nodes, len(s.Graphs()), links, describeForms(), len(endpointTiers)),
+			nodes, len(s.LinkedDocuments()), links, describeForms(), len(endpointTiers)),
 		nothing:  "no projection carries a node, so no tier has been read",
 		findings: findings,
 	}.result(), nil

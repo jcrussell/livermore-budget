@@ -43,8 +43,17 @@ const (
 // Node tiers. The hierarchy has six levels; this schedule publishes two of
 // them, and the flow endpoints below sit at the ends rather than inside it.
 const (
-	tierRevenueSource  = 0
+	tierRevenueSource = 0
+	// Tier 1 is UNUSED. It was the constraint tier and the layer cannot exist:
+	// a constraint tier is a property of a fund and the fund groups do not
+	// partition along it (data/funds.yaml has capital = 3 committed + 43
+	// restricted-by-law). It rides as Node.ConstraintTier instead. The number
+	// is left unassigned rather than renumbering, because tiers 2-5 are
+	// published in node.tier and shifting them would change every document
+	// already written. See docs/sankey-contract.md.
 	tierFundGroup      = 2
+	tierFund           = 3
+	tierDepartment     = 4
 	tierObjectCategory = 5
 )
 
@@ -52,6 +61,8 @@ const (
 const (
 	roleRevenueSource           = "revenue_source"
 	roleFundGroup               = "fund_group"
+	roleFund                    = "fund"
+	roleDepartment              = "department"
 	roleObjectCategory          = "object_category"
 	roleTransferIn              = "transfer_in"
 	roleTransferOut             = "transfer_out"
@@ -69,7 +80,14 @@ const (
 	prefixRevenue     = "revenue/"
 	prefixExpenditure = "expenditure/"
 	prefixFundGroup   = "fund-group/"
+	prefixFund        = "fund/"
+	prefixDept        = "dept/"
 )
+
+// nodeTransfersIn is the flow endpoint every transfer arrives from. It sits
+// OUTSIDE the hierarchy -- nothing is parented to it and it aggregates nothing --
+// and carries tier 0 only so the diagram lays out left to right.
+const nodeTransfersIn = "transfers/in"
 
 // The slugs this projection has to recognize by name rather than by shape.
 const (
@@ -120,6 +138,35 @@ type Labels interface {
 	//
 	// A miss is not an error, as with Label: the number is shown instead.
 	FundName(number int) (string, bool)
+	// FundType is the fund type data/funds.yaml records, and whether the
+	// registry knows the fund at all.
+	//
+	// IT IS THE PARENT EDGE OF THE TIER HIERARCHY. A tier-3 fund node's parent
+	// is fund-group/<type>, and the type comes from HERE and never from the
+	// fact's own fund_group: funds.yaml's `type:` is transcribed from the
+	// appendix pp.253-257 while a fact's fund_group is read off the section
+	// header its row sits under, and comparing two independent records is the
+	// only version of that comparison that says anything.
+	//
+	// A miss IS an error to the caller, unlike Label and FundName: a node
+	// parented to `fund-group/` is parented to nothing.
+	FundType(number int) (string, bool)
+	// ConstraintTier is how tightly a fund's money is tied down, and it is
+	// DERIVED -- our reading of the Description of Funds narrative, pp.258-261.
+	// A node publishing one must publish a source note and a rationale beside
+	// it; see docs/sankey-contract.md's constraint_tier section.
+	//
+	// "" for a fund the registry does not list is a DIFFERENT answer from the
+	// tier "unknown", which is a real classification meaning the document does
+	// not establish a restriction. Do not collapse them.
+	ConstraintTier(fund int) string
+	// RestrictionNote is the sentence a constraint tier was read from, which is
+	// what a node carrying one publishes as its rationale.
+	RestrictionNote(fund int) string
+	// DivisionLabel is the city's own words for a division slug, which is what
+	// a fact's `department` field holds. A miss is not an error: the slug is
+	// shown instead.
+	DivisionLabel(slug string) (string, bool)
 }
 
 // derived carries the two fields fisc verify requires on anything we inferred.

@@ -218,6 +218,17 @@ func (s stubLabels) Label(slug string) (string, bool) {
 // miss unless a test supplies stubFunds instead.
 func (stubLabels) FundName(int) (string, bool) { return "", false }
 
+// The four methods a fund- or department-keyed document needs. The spine keys on
+// neither, so these are misses here and stubFundFlows supplies them where a test
+// needs a real answer.
+//
+// FundType returning false is the honest stub: it is the PARENT EDGE, and a stub
+// that invented a type would let a test pass over a hierarchy nothing built.
+func (stubLabels) FundType(int) (string, bool)         { return "", false }
+func (stubLabels) ConstraintTier(int) string           { return "" }
+func (stubLabels) RestrictionNote(int) string          { return "" }
+func (stubLabels) DivisionLabel(string) (string, bool) { return "", false }
+
 // stubFunds is stubLabels with fund names attached, for the documents that key
 // on funds rather than on categories.
 type stubFunds struct {

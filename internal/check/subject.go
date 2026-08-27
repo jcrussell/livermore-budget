@@ -128,6 +128,25 @@ type trendsBuilder interface {
 	Document(facts []fact.Fact, o project.Options) (*project.TrendsDocument, error)
 }
 
+// fundFlowsBuilder is a projection whose document is a graph WITHOUT a headline.
+//
+// IT IS A THIRD INTERFACE RATHER THAN A THIRD IMPLEMENTATION OF graphBuilder,
+// and the reason is not the missing key. project.Graph.Metadata is the spine's
+// concrete Metadata type, whose headline block is required, so a drill-down
+// returning *project.Graph would have to publish eight zeros -- absent-is-not-
+// zero at document level, and the false green fisc-xau measured: a revenue-side
+// drill-down has transfers IN and none out, so transfer_residual_cents would
+// publish -21,045,597 and headline-transfer-residual would report it correct,
+// the figure being the sum of the facts and the facts being one leg.
+//
+// The STRUCTURAL checks do not care which of the two shapes they are given --
+// both carry nodes and links -- and read [Subject.Linked] instead. The three
+// headline checks stay on [Subject.Graphs], which is the set that publishes one.
+type fundFlowsBuilder interface {
+	Name() string
+	Document(facts []fact.Fact, o project.Options) (*project.FundFlowsDocument, error)
+}
+
 // Projection is one built graph, with the options it was built under.
 //
 // The options are carried because they are the difference between a graph that
@@ -150,6 +169,34 @@ type Projection struct {
 	// a document no structural check reads, which is the state that lets a wrong
 	// document ship under an all-green verify.
 	Trends *project.TrendsDocument
+	// FundFlows is the built drill-down, or nil. Read it through
+	// [Subject.LinkedDocuments] for the structural checks, and through
+	// [Subject.FundFlowsDocuments] for the ones that are of this shape alone.
+	//
+	// EXACTLY ONE OF THE THREE IS NON-NIL on a healthy projection.
+	FundFlows *project.FundFlowsDocument
+}
+
+// Linked is one document's nodes and links, whatever shape carried them.
+//
+// THE STRUCTURAL CHECKS ARE ABOUT A GRAPH AND NOT ABOUT A HEADLINE. Acyclicity,
+// tier ordering, a link's value against its citation, a parent that resolves --
+// every one of those claims is true of any document made of nodes and links, and
+// none of them reads Metadata at all. Written against [Subject.Graphs], which is
+// the set of documents that publish a HEADLINE, all six would have skipped the
+// first headline-less document entirely while documents-are-checked reported it
+// as a shape no check reads.
+//
+// WHAT STAYS ON Graphs IS THE THREE HEADLINE CHECKS, and that narrowing has a
+// STRUCTURAL predicate rather than a value test: a document is in that set
+// because its TYPE publishes a headline, never because the figures in one happen
+// to be non-zero. A value test would go green over a spine whose headline had
+// been zeroed, which publishedProjectionBuilt's doc comment calls worse than no
+// coverage at all.
+type Linked struct {
+	Projection
+	Nodes []project.Node
+	Links []project.Link
 }
 
 // String names the projection the way a report should: the file stem plus the
@@ -285,6 +332,37 @@ func (s *Subject) Graphs() []Projection {
 	out := make([]Projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		if p.Graph != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// LinkedDocuments is every projection carrying nodes and links, whatever
+// document shape carried them, in the order they were built.
+//
+// This is what the STRUCTURAL checks read. See [Linked] for why they cannot read
+// [Subject.Graphs] and why the headline checks still do.
+func (s *Subject) LinkedDocuments() []Linked {
+	out := make([]Linked, 0, len(s.Projections))
+	for _, p := range s.Projections {
+		switch {
+		case p.Graph != nil:
+			out = append(out, Linked{Projection: p, Nodes: p.Graph.Nodes, Links: p.Graph.Links})
+		case p.FundFlows != nil:
+			out = append(out, Linked{Projection: p,
+				Nodes: p.FundFlows.Nodes, Links: p.FundFlows.Links})
+		}
+	}
+	return out
+}
+
+// FundFlowsDocuments is every projection that built a drill-down, for the checks
+// that are of that shape alone.
+func (s *Subject) FundFlowsDocuments() []Projection {
+	out := make([]Projection, 0, len(s.Projections))
+	for _, p := range s.Projections {
+		if p.FundFlows != nil {
 			out = append(out, p)
 		}
 	}
@@ -685,6 +763,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		// with a report around it rather than a dead run.
 		g, isGraph := p.(graphBuilder)
 		t, isTrends := p.(trendsBuilder)
+		ff, isFundFlows := p.(fundFlowsBuilder)
 
 		for _, o := range want {
 			built := Projection{Name: p.Name(), Options: o}
@@ -694,6 +773,8 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				built.Graph, err = g.Graph(facts, o)
 			case isTrends:
 				built.Trends, err = t.Document(facts, o)
+			case isFundFlows:
+				built.FundFlows, err = ff.Document(facts, o)
 			}
 			if err != nil {
 				// Recorded, not returned: see ProjectionFailure. The loop goes

@@ -53,16 +53,6 @@ import (
 // cells against the spine. Retiring a declaration here costs nothing, which is
 // what makes the automatic retirement safe.
 var unprojectedScopes = map[string]string{
-	expenditureDetailScope: "Budget Book pp.167-170, General Fund Expenditures by Major " +
-		"Category: the department x object decomposition of p66's General Fund expenditure " +
-		"block, not additional money. Its 49 object rows total 144,650,802 in FY2025-26 and " +
-		"149,014,579 in FY2026-27 -- p66's TOTAL EXPENDITURES to the cent -- so drawing them " +
-		"into the fund-group spine doubles General Fund spending. " +
-		"expenditure-detail-ties-to-spine reconciles the 98 of its 196 facts that the spine " +
-		"prints a column for -- the two adopted years -- against spine facts that ARE " +
-		"graph-checked; pp.66-67 print no actual or revised column, so the FY2024 and FY2025 " +
-		"halves are published with nothing to tie to. A department tier in the graph is " +
-		"fisc-gxa.2 / fisc-oxf.",
 	transfersDetailScope: "Budget Book p76, Summary of Transfers: the per-fund decomposition " +
 		"of pp.66-67's TRANSFER IN and TRANSFER OUT rows, not additional money. Its 22 " +
 		"printed rows sum, per receiving fund group, to those pages' TRANSFER IN cells " +

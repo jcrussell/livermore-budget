@@ -206,6 +206,13 @@ func documentShape(p Projection) string {
 	case p.Trends != nil:
 		// trend-points-tie-to-facts and trend-series-are-complete.
 		return "series"
+	case p.FundFlows != nil:
+		// The six structural checks that read Subject.Linked: graph-acyclic,
+		// node-tiers-are-declared, derived-nodes-justified,
+		// link-values-tie-to-facts, node-hierarchy-well-formed and
+		// constraint-tier-vocabulary. NOT the three headline ones, which is the
+		// whole point of the shape: this document publishes no headline.
+		return "linked graph, no headline"
 	default:
 		return ""
 	}

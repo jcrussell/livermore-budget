@@ -447,7 +447,15 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	// verbatim -- revenue-trends spans four columns, and putting it through
 	// PublishedStem would write it twice, once per published year, as two
 	// byte-identical files one of which claims a year it does not cover.
-	if diff := cmp.Diff([]string{"revenue-trends", "sankey", "sankey-2027"}, keys(got)); diff != "" {
+	// A THIRD RULE IS NOW VISIBLE IN THE LIST. fund-flows publishes four
+	// single-column documents, so the FY2026 adopted one -- the opening
+	// published column -- takes the bare stem and the other three are suffixed,
+	// the historical two by year AND basis because their basis is not the
+	// published one.
+	if diff := cmp.Diff([]string{
+		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
+		"revenue-trends", "sankey", "sankey-2027",
+	}, keys(got)); diff != "" {
 		t.Errorf("projection names (-want +got):\n%s", diff)
 	}
 
@@ -530,7 +538,10 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	want := []string{"revenue-trends", "sankey", "sankey-2027"}
+	want := []string{
+		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
+		"revenue-trends", "sankey", "sankey-2027",
+	}
 	got := keys(built)
 	sort.Strings(got)
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -851,8 +862,15 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 				// is why both are read and exactly one is expected to be set.
 				FiscalYear int    `json:"fiscal_year"`
 				Basis      string `json:"basis"`
-				Scope      string `json:"scope"`
-				Columns    []struct {
+				// The spine and the trends publish ONE schedule and name it
+				// singularly; the drill-down publishes two and carries a list.
+				// Exactly one of the two keys is present on any document, which
+				// is what MultiScopeEnvelope exists to keep true -- a document
+				// of two schedules writing Scopes[0] into a singular key would
+				// name one as the whole of it.
+				Scope   string   `json:"scope"`
+				Scopes  []string `json:"scopes"`
+				Columns []struct {
 					FiscalYear int    `json:"fiscal_year"`
 					Basis      string `json:"basis"`
 				} `json:"columns"`
@@ -862,8 +880,12 @@ func TestPublishedDocumentsAreWhatTheCorpusBuilds(t *testing.T) {
 			t.Errorf("decode %s: %v", d.Stem, err)
 			continue
 		}
-		if want := strings.Join(d.Scopes, ", "); doc.Metadata.Scope != want {
-			t.Errorf("%s ships scope %q, declared %q", d.Stem, doc.Metadata.Scope, want)
+		shippedScopes := doc.Metadata.Scopes
+		if doc.Metadata.Scope != "" {
+			shippedScopes = []string{doc.Metadata.Scope}
+		}
+		if diff := cmp.Diff(d.Scopes, shippedScopes); diff != "" {
+			t.Errorf("%s ships scopes (-declared +shipped):\n%s", d.Stem, diff)
 		}
 		shipped := make([]project.Column, 0, len(doc.Metadata.Columns))
 		for _, c := range doc.Metadata.Columns {

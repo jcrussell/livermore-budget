@@ -63,16 +63,20 @@ func TestFixtureVerdicts(t *testing.T) {
 		// Two projections are registered, but the fixture is a miniature of the
 		// SPINE and the trends projection is of nothing here, so one document is
 		// built and one document is examined.
-		"documents-are-checked":      "pass over 1",
-		"facts-are-projected":        "pass over 10",
-		"graph-acyclic":              "pass over 7",
-		"node-tiers-are-declared":    "pass over 9",
-		"derived-nodes-justified":    "pass over 2",
-		"link-values-tie-to-facts":   "pass over 7",
-		"counts-reconcile":           "pass over 1",
-		"headline-ties-to-facts":     "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
-		"headline-transfer-residual": "pass over 2",
-		"headline-naive-expenditure": "pass over 1",
+		"documents-are-checked":   "pass over 1",
+		"facts-are-projected":     "pass over 10",
+		"graph-acyclic":           "pass over 7",
+		"node-tiers-are-declared": "pass over 9",
+		// The drill-down's two checks are vacuous over the miniature spine,
+		// which carries neither of the schedules it draws.
+		"fund-flows-counts-reconcile":  "vacuous over 0",
+		"derived-nodes-justified":      "pass over 2",
+		"link-values-tie-to-facts":     "pass over 7",
+		"link-kinds-match-their-facts": "pass over 7",
+		"counts-reconcile":             "pass over 1",
+		"headline-ties-to-facts":       "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
+		"headline-transfer-residual":   "pass over 2",
+		"headline-naive-expenditure":   "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
 		// constraint tier, no fact a department or a fund number.
 		"transfer-legs-pair": "vacuous over 0",
@@ -87,7 +91,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		// neither a point nor a series to examine.
 		"trend-points-tie-to-facts":  "vacuous over 0",
 		"trend-series-are-complete":  "vacuous over 0",
-		"aggregation-invariance":     "vacuous over 0",
+		"node-hierarchy-well-formed": "vacuous over 0",
 		"constraint-tier-vocabulary": "vacuous over 0",
 		"fact-departments-resolve":   "vacuous over 0",
 		"fact-funds-resolve":         "vacuous over 0",
@@ -100,7 +104,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 19, Vacuous: 18, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 20, Vacuous: 19, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -122,8 +126,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 18 {
-		t.Fatalf("vacuous count = %d, want 18", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 19 {
+		t.Fatalf("vacuous count = %d, want 19", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
@@ -144,7 +148,7 @@ func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 	rep := runChecks(t, testSubject(t))
 	for id, want := range map[string]string{
 		"transfer-legs-pair":         "no link carries a transfer_id",
-		"aggregation-invariance":     "no node carries a parent",
+		"node-hierarchy-well-formed": "no node carries a parent",
 		"constraint-tier-vocabulary": "no node carries a constraint_tier",
 		"fact-departments-resolve":   "no fact carries a department",
 		"fact-funds-resolve":         "no fact names a fund",
@@ -842,26 +846,124 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 	}
 }
 
-// TestAggregationInvarianceErrorsWhenAHierarchyArrives is the ratchet on
-// fisc-1wr.1.1. The fold is not implemented, so the moment a node carries a
-// parent this check must refuse to report a verdict — an error, which is neither
-// a pass nor a claim about the corpus.
-func TestAggregationInvarianceErrorsWhenAHierarchyArrives(t *testing.T) {
-	s := testSubject(t)
-	nodePointer(t, s.Projections[0].Graph, project.NodeFundBalanceDraw).Parent = "fund-balance"
-	res := resultFor(t, runChecks(t, s), "aggregation-invariance")
+// TestNodeHierarchyWellFormedIsFailable damages a hierarchy four ways, one per
+// claim.
+//
+// THIS REPLACES TestAggregationInvarianceErrorsWhenAHierarchyArrives, which
+// asserted the old check's hard error on the first parented node. That error was
+// a ratchet on an unwritten fold and it did its job: the fold is now written, and
+// it is STRUCTURAL rather than arithmetic. The arithmetic version could not fail
+// -- a fold maps each link to exactly one folded link, so the sum is invariant
+// under relabelling whatever node.parent says -- and the inter-document version
+// is already discharged, per cell and at zero tolerance, by the
+// <kind>-detail-ties-to-spine family.
+//
+// The fixture's spine carries no hierarchy, so each case builds one, which is
+// also what proves the check is not merely counting nothing.
+func TestNodeHierarchyWellFormedIsFailable(t *testing.T) {
+	const id = "node-hierarchy-well-formed"
 
-	if res.Status != StatusError {
-		t.Fatalf("status = %s, want error", res.Status)
+	// A well-formed two-level hierarchy over the fixture: an object-category
+	// node (tier 5) parented to a fund-group node (tier 2) that exists.
+	wellFormed := func(t *testing.T) *Subject {
+		t.Helper()
+		s := testSubject(t)
+		g := s.Projections[0].Graph
+		child, parent := "", ""
+		for _, n := range g.Nodes {
+			if n.Tier == 5 && child == "" {
+				child = n.ID
+			}
+			if n.Tier == 2 && parent == "" {
+				parent = n.ID
+			}
+		}
+		if child == "" || parent == "" {
+			t.Fatal("the fixture has no tier-5 and tier-2 pair to hang a hierarchy on")
+		}
+		nodePointer(t, g, child).Parent = parent
+		return s
 	}
-	if !strings.Contains(res.Summary, "fisc-1wr.1.1") {
-		t.Errorf("summary %q does not name the bead that owns the fold", res.Summary)
+
+	if res := resultFor(t, runChecks(t, wellFormed(t)), id); res.Status != StatusPass {
+		t.Fatalf("a well-formed hierarchy is %s, want pass: %v", res.Status, res.Findings)
 	}
-	// An error fails the run without --strict, which is the difference between
-	// this and a vacuous result.
-	if !runChecks(t, s).Failed() {
-		t.Error("Failed() = false for a report containing an error")
+
+	cases := []struct {
+		name   string
+		damage func(t *testing.T, s *Subject)
+		want   string
+	}{
+		{
+			name: "a parent that is not a node of this document",
+			damage: func(t *testing.T, s *Subject) {
+				g := s.Projections[0].Graph
+				nodePointer(t, g, tierNode(t, g, 5)).Parent = "fund-group/nowhere"
+			},
+			want: "not a node of this document",
+		},
+		{
+			// The fold must run coarse to fine. Parenting a COARSE node to a
+			// fine one inverts it, and a client walking the chain renders the
+			// hierarchy inside out.
+			name: "a parent at a finer tier than its child",
+			damage: func(t *testing.T, s *Subject) {
+				g := s.Projections[0].Graph
+				nodePointer(t, g, tierNode(t, g, 2)).Parent = tierNode(t, g, 5)
+			},
+			want: "strictly coarser",
+		},
+		{
+			// Node.Parent is one string, so a cycle needs two nodes -- which is
+			// exactly why the old doc comment's "double-parented node" could
+			// never have been the thing this caught.
+			name: "a node that is its own ancestor",
+			damage: func(t *testing.T, s *Subject) {
+				g := s.Projections[0].Graph
+				a, b := tierNode(t, g, 5), tierNode(t, g, 2)
+				nodePointer(t, g, a).Parent = b
+				nodePointer(t, g, b).Parent = a
+			},
+			want: "its own ancestor",
+		},
+		{
+			// transfers/in and the fund-balance nodes are ends of a flow, not
+			// levels of a fold: nothing aggregates into them.
+			name: "a node parented to a flow endpoint",
+			damage: func(t *testing.T, s *Subject) {
+				g := s.Projections[0].Graph
+				nodePointer(t, g, tierNode(t, g, 2)).Parent = project.NodeFundBalanceDraw
+			},
+			want: "flow endpoint",
+		},
 	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := testSubject(t)
+			c.damage(t, s)
+			res := resultFor(t, runChecks(t, s), id)
+			if res.Status != StatusFail {
+				t.Fatalf("status = %s, want fail", res.Status)
+			}
+			if !strings.Contains(findingDetails(res), c.want) {
+				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
+			}
+		})
+	}
+}
+
+// tierNode is the id of some node at the given tier, so the cases above damage
+// the fixture's shape rather than a node id spelled into the test.
+func tierNode(t *testing.T, g *project.Graph, tier int) string {
+	t.Helper()
+	for _, n := range g.Nodes {
+		if n.Tier == tier {
+			return n.ID
+		}
+	}
+	t.Fatalf("the fixture carries no node at tier %d", tier)
+	return ""
 }
 
 // TestConstraintTierComesFromTheFile pins where the vocabulary comes from. The
@@ -880,7 +982,11 @@ func TestConstraintTierComesFromTheFile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := testSubject(t)
-			nodePointer(t, s.Projections[0].Graph, project.NodeFundBalanceDraw).ConstraintTier = tt.tier
+			// The disclosure travels with the tier, which is the other arm of
+			// this check: a node carrying one and no source note is a finding
+			// whatever the tier says. Set here so these cases are about the
+			// VOCABULARY alone.
+			tierNodeWithDisclosure(t, s, tt.tier)
 			res := resultFor(t, runChecks(t, s), "constraint-tier-vocabulary")
 
 			if res.Status != tt.status {
@@ -888,6 +994,61 @@ func TestConstraintTierComesFromTheFile(t *testing.T) {
 			}
 			if res.Subjects != 1 {
 				t.Errorf("subjects = %d, want 1", res.Subjects)
+			}
+		})
+	}
+}
+
+// tierNodeWithDisclosure hangs a constraint tier on the fixture's fund-balance
+// node, with the source note and rationale the contract requires beside it.
+func tierNodeWithDisclosure(t *testing.T, s *Subject, tier string) {
+	t.Helper()
+	n := nodePointer(t, s.Projections[0].Graph, project.NodeFundBalanceDraw)
+	n.ConstraintTier = tier
+	n.SourceNote = "data/funds.yaml, our reading of Budget Book pp.258-261"
+	n.Rationale = "A restriction note read off the narrative."
+	s.Projections[0].Graph.Metadata.Caveats = append(
+		s.Projections[0].Graph.Metadata.Caveats, project.ConstraintTierCaveat())
+}
+
+// TestAConstraintTierWithoutItsDisclosureIsAFinding is fisc-yor's requirement
+// asserted rather than described.
+//
+// A FUND NODE IS THE INVERSE OF A DERIVED ONE: the node is published -- the city
+// prints the fund and its revenue -- while the constraint tier is our reading of
+// the Description of Funds narrative, pp.258-261. So node.derived stays FALSE,
+// which means derived-nodes-justified skips the node entirely (graph.go:144) and
+// the disclosure has nowhere else to be asserted. Without these three arms the
+// site would publish an editorial classification unmarked, which is the single
+// thing this project's premise refuses.
+func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
+	const id = "constraint-tier-vocabulary"
+	cases := []struct {
+		name  string
+		strip func(*testing.T, *Subject)
+		want  string
+	}{
+		{"no source note", func(t *testing.T, s *Subject) {
+			nodePointer(t, s.Projections[0].Graph, project.NodeFundBalanceDraw).SourceNote = ""
+		}, "no source_note"},
+		{"no rationale", func(t *testing.T, s *Subject) {
+			nodePointer(t, s.Projections[0].Graph, project.NodeFundBalanceDraw).Rationale = ""
+		}, "no rationale"},
+		{"the document does not disclose", func(_ *testing.T, s *Subject) {
+			s.Projections[0].Graph.Metadata.Caveats = nil
+		}, "does not carry the disclosure sentence"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			s := testSubject(t)
+			tierNodeWithDisclosure(t, s, "discretionary")
+			c.strip(t, s)
+			res := resultFor(t, runChecks(t, s), id)
+			if res.Status != StatusFail {
+				t.Fatalf("status = %s, want fail: %s", res.Status, res.Summary)
+			}
+			if !strings.Contains(findingDetails(res), c.want) {
+				t.Errorf("findings %v do not mention %q", res.Findings, c.want)
 			}
 		})
 	}
@@ -1471,6 +1632,10 @@ func TestUnprojectedScopesAreDeclarations(t *testing.T) {
 	}
 }
 
+// It uses transfersDetailScope because that is the only entry left in the map:
+// expenditure-by-department's declaration retired for real when the drill-down
+// began drawing it, which is this very mechanism firing over the committed
+// corpus rather than over a fixture.
 // A declaration that has stopped being true goes red rather than going quiet.
 //
 // factsAreProjected consults the map only for UNPROJECTED facts, so the moment
@@ -1484,7 +1649,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		// built OF that scope — which is what fisc-gxa.2 will do for real.
 		facts := testFacts()
 		for i := range facts {
-			facts[i].Scope = expenditureDetailScope
+			facts[i].Scope = transfersDetailScope
 		}
 		fact.Sort(facts)
 		s := factsSubject(t, facts)
@@ -1494,7 +1659,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 				Columns: []project.Column{{
 					FiscalYear: facts[0].FiscalYear, Basis: facts[0].Basis,
 				}},
-				Scopes: []string{expenditureDetailScope},
+				Scopes: []string{transfersDetailScope},
 			},
 		}}
 		// The check is run directly rather than through the whole set: this
@@ -1554,7 +1719,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 			Name: "detail",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
-				Scopes:  []string{expenditureDetailScope},
+				Scopes:  []string{transfersDetailScope},
 			},
 		})
 		res, err := (&factsAreProjected{}).Run(context.Background(), s)
@@ -1589,7 +1754,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		// had, leaving 462 of 924 facts declared and saying nothing.
 		facts := testFacts()
 		for i := range facts {
-			facts[i].Scope = expenditureDetailScope
+			facts[i].Scope = transfersDetailScope
 		}
 		other := make([]fact.Fact, 0, len(facts))
 		for _, f := range facts {
@@ -1606,7 +1771,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 			Name: "half",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2027, Basis: facts[0].Basis}},
-				Scopes:  []string{expenditureDetailScope},
+				Scopes:  []string{transfersDetailScope},
 			},
 		}}
 		res, err := (&factsAreProjected{}).Run(context.Background(), s)

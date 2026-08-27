@@ -115,6 +115,10 @@ The number 1 is left unused rather than renumbering. Tiers 2-5 are published in
 `node.tier` today, and shifting them would silently change the meaning of every
 document already written.
 
+**The documents that use the other tiers are elsewhere.** The drill-down
+(`docs/general-fund-drilldown-contract.md`) publishes tiers 0, 2, 3, 4 and 5 over
+Budget Book pp.127-140 and pp.167-170, and states its own counts there.
+
 **How many nodes a tier holds is a property of the DOCUMENT, not of the
 hierarchy.** A second document at another scope draws a different set: the
 citywide spine (pp.66-67) prints six fund groups, while revenue-by-fund
