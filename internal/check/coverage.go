@@ -235,12 +235,19 @@ func (*publishedProjectionBuilt) Description() string {
 // became a list: a repository publishing nothing has nothing here to look at,
 // and that state is what the nothing: string below is for.
 func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, error) {
-	// Every column built, grouped by the projection that built it. A published
-	// document is satisfied by the UNION of what that projection built, not by
-	// any single slice of it: the spine publishes one document per year and
-	// builds one Options per year, while the trends publish one document over
-	// four columns built as one Options, and this check must not care which
-	// shape it is looking at.
+	// Every SLICE built, grouped by the projection and scope that built it. A
+	// published document must be covered by ONE of them.
+	//
+	// IT USED TO BE THE UNION OF THEM, and that is fisc-b8o. The union was
+	// justified as not caring what shape a document is -- the spine publishes
+	// one document per year and builds one Options per year, the trends publish
+	// one document over four columns built as one Options -- but the shape is
+	// exactly what decides whether the published FILE exists. Measured: a
+	// four-column document is satisfied by four single-column slices, and
+	// `fisc export` then writes four files of which the one at the declared
+	// stem covers a quarter of what it declares. Verify green, site wrong. One
+	// document is one file is one slice, and today every published document is
+	// covered by exactly one.
 	//
 	// It is keyed on the projection NAME, and that is not belt-and-braces.
 	// Since each projection is built over the slices it declares
@@ -254,18 +261,18 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 	// nothing and the alternative is a silent wrong answer rather than a
 	// refusal.
 	type source struct{ name, scope string }
-	built := map[source]project.Options{}
+	built := map[source][]project.Options{}
 	names := make([]string, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		k := source{p.Name, p.Options.Scope}
-		o := built[k]
-		o.Scope = p.Options.Scope
-		o.Columns = append(o.Columns, p.Options.Columns...)
-		built[k] = o
+		built[k] = append(built[k], p.Options)
 		names = append(names, p.String())
 	}
 
 	var findings []Finding
+	// The slices some published document claims, so the sweep below can report
+	// the ones none does.
+	claimed := map[string]bool{}
 	for _, d := range s.Published {
 		// project.MissingColumns rather than a comparison written here: `fisc
 		// export` asks the same question of the documents it wrote, and two
@@ -273,7 +280,23 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 		// shared declaration exists to remove. It compares the scope too, so a
 		// projection of the right name built over a different SCHEDULE does not
 		// satisfy a published document by accident.
-		absent := project.MissingColumns(d, built[source{d.Projection, d.Scope}])
+		// The BEST-covering slice, not the first, and it is marked claimed even
+		// when it covers the document only partly. A slice short a column is
+		// already reported here, by name and by which column; letting the sweep
+		// below report it a second time as "no document covers this" would give
+		// one defect two findings that read as two, and send a reader looking
+		// for a stray document that is really the declared one gone short.
+		absent := d.Columns
+		for _, o := range built[source{d.Projection, d.Scope}] {
+			missing := project.MissingColumns(d, o)
+			if len(missing) < len(absent) {
+				absent = missing
+				claimed[sliceID(d.Projection, o)] = true
+			}
+			if len(absent) == 0 {
+				break
+			}
+		}
 		if len(absent) == 0 {
 			continue
 		}
@@ -296,6 +319,44 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 				"it is unexamined", what, detail))
 	}
 
+	// THE OTHER DIRECTION, and it is the half fisc-b8o's acceptance criterion
+	// asks for. A slice that built and that no published document claims is a
+	// file `fisc export` writes and the site never declares -- and the way it
+	// bites is not the stray file. project.PublishedStem names a document by
+	// its opening fiscal year, so the moment the spine carries two BASES for one
+	// year, two slices compute one stem and export's duplicate-stem guard takes
+	// the WHOLE export down: no file written, including the ones that were fine.
+	// Before this, verify reported that corpus green.
+	//
+	// It asks project.PublishedStem rather than pkg/cmd/export's stemFor, and
+	// the distinction is the decision this bead left open. PublishedStem is the
+	// shared declaration -- its own doc comment says it lives beside the year
+	// list "because `fisc verify` has to name the same documents the site serves
+	// in order to say one of them was not built" -- so reading it is this
+	// package doing its job, where reaching into a command's naming helper would
+	// have been the coupling internal/check avoids everywhere else.
+	at := map[string]string{}
+	for _, d := range s.Published {
+		at[d.Stem] = d.String()
+	}
+	for _, p := range s.Projections {
+		if claimed[sliceID(p.Name, p.Options)] || len(p.Options.Columns) == 0 {
+			continue
+		}
+		stem := project.PublishedStem(p.Name, p.Options.Columns[0].FiscalYear)
+		detail := "the site declares no document at that stem, so `fisc export` would " +
+			"write a file nothing published claims"
+		if other, ok := at[stem]; ok {
+			detail = fmt.Sprintf("the site already publishes %s at that stem, so `fisc "+
+				"export` computes one stem for two documents and its duplicate-stem guard "+
+				"refuses the ENTIRE export -- no file written, including the ones that "+
+				"were fine (fisc-rmx)", other)
+		}
+		findings = append(findings, finding(p.String(),
+			"this slice was built and no document the site publishes covers it. It would "+
+				"be written at stem %q, and %s", stem, detail))
+	}
+
 	return conclusion{
 		// One subject per published document, so the summary counts what the
 		// site serves rather than what happened to build.
@@ -311,6 +372,13 @@ func (*publishedProjectionBuilt) Run(_ context.Context, s *Subject) (Result, err
 // describeDocuments names the published documents the way the report should: the
 // stem a reader can fetch, then the columns and the scope behind it, so one can
 // be matched against the projections listed elsewhere in the run.
+// sliceID names one built slice, for telling a claimed slice from an unclaimed
+// one. Name, scope and every column, so two slices of one projection that
+// differ only in basis are two ids and not one.
+func sliceID(name string, o project.Options) string {
+	return name + "\x1f" + o.Scope + "\x1f" + project.Describe(o.Columns)
+}
+
 func describeDocuments(docs []project.PublishedDocument) []string {
 	out := make([]string, 0, len(docs))
 	for _, d := range docs {

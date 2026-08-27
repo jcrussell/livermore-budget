@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
@@ -746,6 +747,74 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	for _, id := range []string{"trend-points-tie-to-facts", "trend-series-are-complete"} {
 		if got := resultFor(t, rep, id).Status; got != StatusVacuous {
 			t.Errorf("%s = %s, want vacuous: it reads documents and there is no document", id, got)
+		}
+	}
+}
+
+// TestASliceNoDocumentClaimsIsReported is fisc-b8o, from the input side.
+//
+// THE CORPUS IT BUILDS IS THE ONE THE BEAD NAMES: the spine carrying two BASES
+// for one fiscal year, an FY2026 revised column beside the adopted one. That is
+// not a hypothetical shape -- pp.66-67 print no revised column today, and the
+// day they are mapped Sankey.Slices declares a third slice, because it derives
+// its years from the facts rather than from a list.
+//
+// WHAT USED TO HAPPEN. publishedProjectionBuilt unioned every slice of a
+// projection before comparing, so the three slices unioned to {2026 adopted,
+// 2026 revised, 2027 adopted} and satisfied every published document. verify
+// green. `fisc export` refuses the very same corpus and refuses it ENTIRELY:
+// project.PublishedStem names a document by its opening fiscal year, so the two
+// FY2026 slices compute one stem and the duplicate-stem guard fires before any
+// file is written. A check that greens what the next command in the pipeline
+// rejects is worse than no check, because it is the one a reader trusts to have
+// looked.
+func TestASliceNoDocumentClaimsIsReported(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	added := 0
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		out := append([]fact.Fact{}, facts...)
+		for _, f := range facts {
+			if f.Scope != project.PublishedScope || f.FiscalYear != project.PublishedFiscalYear ||
+				f.Basis != project.PublishedBasis {
+				continue
+			}
+			// A second BASIS for the same year, which is the whole scenario.
+			// The id is recomputed because it hashes the basis, and two facts
+			// sharing one id is a different failure that would mask this one.
+			f.Basis = mapping.BasisRevised
+			f.ID = fact.MakeID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath,
+				f.FiscalYear, f.Basis)
+			out = append(out, f)
+			added++
+		}
+		fact.Sort(out)
+		return out
+	})
+	if added == 0 {
+		t.Fatal("no spine fact carries the published year and basis")
+	}
+
+	rep := loadAndRun(t, root)
+	res := resultFor(t, rep, "published-projection-built")
+	if res.Status != StatusFail {
+		t.Fatalf("published-projection-built = %s (%s), want fail: %d facts made a third "+
+			"spine slice that no published document covers", res.Status, res.Summary, added)
+	}
+	// The finding has to name the stem and the document already at it, because
+	// "a slice nobody publishes" and "two documents at one path" are the same
+	// defect seen from two ends and only the second says what export will do.
+	var got string
+	for _, f := range res.Findings {
+		if strings.Contains(f.Detail, "duplicate-stem") {
+			got = f.Detail
+		}
+	}
+	if got == "" {
+		t.Fatalf("findings = %v, want one naming the duplicate-stem refusal", res.Findings)
+	}
+	for _, want := range []string{`"sankey"`, "ENTIRE export", "FY2026 revised"} {
+		if !strings.Contains(got+" "+res.Findings[0].Subject, want) {
+			t.Errorf("finding = %q, want it to contain %q", got, want)
 		}
 	}
 }
