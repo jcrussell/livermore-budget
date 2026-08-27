@@ -563,6 +563,32 @@ func TestGraphRejectsBadOptions(t *testing.T) {
 	}
 }
 
+// TestGraphRefusesAForeignSchedule calls Graph directly with another
+// schedule's scope, which is the only way to reach the refusal: Slices pins
+// PublishedScope, so nothing in the tree asks for this today.
+//
+// It is worth a test anyway, and the reason is what the facts below do without
+// it. pp.127-140's revenue-by-fund rows net perfectly well on
+// (kind, category, fund_group) -- they carry all three -- so before this
+// refusal Graph returned a FULLY FORMED graph over them, with
+// metadata.scope "revenue-by-fund" and a headline that is a different total
+// from the spine's. A wrong document rather than an error, which is the shape
+// Options.Scope exists to prevent.
+func TestGraphRefusesAForeignSchedule(t *testing.T) {
+	o := testOptions()
+	o.Scope = TrendsScope
+
+	_, err := (&Sankey{}).Graph(spineFacts(t, testYear), o)
+	if err == nil {
+		t.Fatal("got no error, want one")
+	}
+	for _, want := range []string{"sankey:", TrendsScope, PublishedScope} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("got %q, want it to contain %q", err.Error(), want)
+		}
+	}
+}
+
 // TestNodeTiersAndRoles pins the two hierarchy levels this schedule publishes
 // and the flow endpoints that sit outside it.
 func TestNodeTiersAndRoles(t *testing.T) {

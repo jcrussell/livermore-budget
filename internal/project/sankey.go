@@ -296,7 +296,16 @@ type Sankey struct {
 	Labels Labels
 }
 
-var _ Projection = (*Sankey)(nil)
+var (
+	_ Projection = (*Sankey)(nil)
+	// Sliced is asserted here and not only relied on. It is consumed through a
+	// runtime type assertion in both callers -- pkg/cmd/export's data.go and
+	// internal/check's subject.go -- so a drift in Slices' signature would
+	// compile clean, make both assertions return false, and silently fall back
+	// to PublishedFiscalYears() x PublishedBasis. The spine would then stop
+	// being built over the years it declares with no error anywhere.
+	_ Sliced = (*Sankey)(nil)
+)
 
 // Name is the file stem: sankey.json.
 func (*Sankey) Name() string { return "sankey" }
@@ -386,6 +395,20 @@ type cell struct {
 func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	if err := o.Validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)
+	}
+	// The scope selects the SCHEDULE, and refusing a foreign one is what stops
+	// this projection publishing another schedule's rows under the spine's
+	// contract. Trends.Document makes the same refusal in the same shape; the
+	// asymmetry was that the one document the site publishes as its headline
+	// was the one that did not make it, while the newer and smaller document
+	// did. Unreachable through Slices, which pins PublishedScope -- but Graph
+	// is exported and Options.Scope's own doc comment says the field exists to
+	// stop exactly the doubling this would produce.
+	if o.Scope != PublishedScope {
+		return nil, cmdutil.WithHint(
+			fmt.Errorf("sankey: scope is %q, want %q", o.Scope, PublishedScope),
+			"this document is of one schedule; a projection built over another "+
+				"schedule's facts would publish them under this one's contract")
 	}
 	// A Sankey is of ONE column, and the refusal is here rather than in
 	// Validate because it is this projection's rule and not the type's: a
