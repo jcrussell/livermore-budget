@@ -347,10 +347,17 @@ button[aria-pressed="true"] {
    THE FIX IS NOT A NEW NUMBER. Re-deriving a ring token for the 0.55 case
    would mean publishing a second hand-computed ratio beside the first, and
    nothing in this tree parses or renders CSS to check either of them
-   (fisc-6at). Dimming everything BUT the selected pill costs no measurement at
-   all: the legend and the unchecked pills carry the "not live yet" signal, and
-   every figure in the table below stays a true statement about what ships. */
-.year-toggle:disabled legend,
+   (fisc-6at). Dimming the UNCHECKED pills costs no measurement at all: the
+   selected pill keeps its ring, its fill and its text at full strength, so
+   every figure in the table below stays a true statement about what ships,
+   while the group still reads differently from its enabled state.
+
+   NOT THE LEGEND, and that is worth saying because it was the obvious second
+   selector to reach for. `.year-toggle legend` above is a screen-reader
+   caption: absolutely positioned, 1x1, clip-path inset(50%). Dimming it changes
+   nothing a sighted reader can see, so listing it here would have been a rule
+   that looks like a signal and is not -- and a test pinning it would have said
+   the control carried a signal it did not. */
 .year-toggle:disabled input:not(:checked) + label {
   opacity: 0.55;
 }

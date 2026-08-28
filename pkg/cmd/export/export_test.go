@@ -439,6 +439,54 @@ func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {
 	}
 }
 
+// TestExportRunRefusesBeforeCleanDestroysTheSite pins the ORDER of the
+// reachability check against --clean, which is the whole of its consequence.
+//
+// The check needs nothing SafeCleanDir produces. While it sat between Clean and
+// Write, `fisc export --clean` over a corpus that had just published an
+// undeclared document emptied the reader's output directory and THEN refused --
+// destroying a working site to report a fault that was detectable before
+// anything was touched. A validation that runs after a destructive step is a
+// validation in the wrong place, however correct its verdict.
+//
+// Found by /code-review of this range, 2026-08-28.
+func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("first export: %v", err)
+	}
+	index := filepath.Join(opts.OutputDir, "index.html")
+	if _, err := os.Stat(index); err != nil {
+		t.Fatalf("no site to destroy: %v", err)
+	}
+
+	// A published document that is BUILT, rendered by no view, and declared by
+	// no entry. The stub builds only the spine, and the check skips documents
+	// that were not built (that is assertPublishedBuilt's finding), so the
+	// builder has to produce this one for the state to be reachable at all.
+	stem := project.FundFlowsProjection
+	reason, ok := unviewedDocuments[stem]
+	if !ok {
+		t.Fatalf("unviewedDocuments no longer declares %q; point this test at whatever it declares", stem)
+	}
+	delete(unviewedDocuments, stem)
+	t.Cleanup(func() { unviewedDocuments[stem] = reason })
+	opts.Build = func(string) (map[string][]byte, error) {
+		return map[string][]byte{"sankey": goldenSankey(t), stem: goldenSankey(t)}, nil
+	}
+
+	opts.Clean = true
+	if err := exportRun(opts); err == nil {
+		t.Fatal("exportRun accepted an undeclared unrendered document")
+	} else if !strings.Contains(err.Error(), "no view renders it") {
+		t.Fatalf("got %v, want the reachability refusal", err)
+	}
+	if _, err := os.Stat(index); err != nil {
+		t.Errorf("--clean emptied the output directory and then refused, so the reader's "+
+			"site is gone and no new one was written: %v", err)
+	}
+}
+
 func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(opts); err != nil {

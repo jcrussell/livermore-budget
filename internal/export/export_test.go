@@ -890,11 +890,14 @@ func TestTheDisabledYearToggleDoesNotDimItsOwnSelectionRing(t *testing.T) {
 			"either looks live or was rewritten; if rewritten, this test must name " +
 			"whatever now carries the not-yet-live signal")
 	}
-	// Without this the test above would pass over a stylesheet that had simply
-	// deleted the disabled treatment altogether.
-	if !strings.Contains(css, ".year-toggle:disabled legend,") {
-		t.Error("style.css no longer dims the year toggle's legend, which is half of " +
-			"what says the control is not live yet")
+	// AND NOT THE LEGEND. `.year-toggle legend` is a screen-reader caption --
+	// absolutely positioned, 1x1, clip-path inset(50%) -- so dimming it changes
+	// nothing anyone can see. An earlier version of this test pinned that
+	// selector and called it "half of what says the control is not live yet",
+	// which asserted a signal the page did not carry. Found by /code-review.
+	if strings.Contains(css, ".year-toggle:disabled legend") {
+		t.Error("style.css dims the year toggle's legend, which is visually hidden; " +
+			"that is an inert rule dressed as a state indicator")
 	}
 }
 

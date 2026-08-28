@@ -1365,18 +1365,6 @@ function paintYearWords(year) {
 }
 
 /**
- * Wires the year radio group.
- *
- * The control is rendered server-side, so this only adds the behaviour. A year
- * that fails to load leaves the radio where the reader put it and shows the
- * refusal: moving it back would claim the page is showing a year it is not.
- *
- * IT DOES NOT ASSUME THE CONTROL SHOWS THE FIRST YEAR. This comment used to say
- * the control "already shows the right year", and that is true only of a cold
- * load. See checkedYear.
- * @param {FiscYear[]} years
- */
-/**
  * The year the CONTROL is showing, which is not always the first one.
  *
  * index.html.tmpl hard-codes `checked` on years[0] and the radios carry no
@@ -1419,6 +1407,17 @@ function checkedYear(years) {
   return years[0];
 }
 
+/**
+ * Wires the year radio group.
+ *
+ * The control is rendered server-side, so this only adds the behaviour. A year
+ * that fails to load leaves the radio where the reader put it and shows the
+ * refusal: moving it back would claim the page is showing a year it is not.
+ *
+ * IT DOES NOT ASSUME THE CONTROL SHOWS THE FIRST YEAR, which main() is where
+ * that matters -- see checkedYear.
+ * @param {FiscYear[]} years
+ */
 function wireYears(years) {
   const group = maybeEl("year-toggle");
   if (!group || years.length < 2) return;

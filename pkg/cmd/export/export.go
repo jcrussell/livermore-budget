@@ -173,21 +173,28 @@ func exportRun(o *Options) error {
 		return err
 	}
 
-	if o.Clean {
-		if cerr := cmdutil.SafeCleanDir(o.OutputDir); cerr != nil {
-			return cmdutil.WithHint(cerr, "pass a different --output, or empty that directory yourself")
-		}
-	}
-
-	// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED, and
-	// this runs before Write rather than inside it because internal/export does
+	// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED. It
+	// lives here rather than inside export.Write because internal/export does
 	// not know what the site publishes -- PublishedDocuments lives in
 	// internal/project, which that package deliberately does not import.
 	// assertPublishedBuilt above says the document exists; this says a reader
 	// can get to it.
+	//
+	// AND IT RUNS BEFORE --clean, with every other validation, rather than
+	// between Clean and Write. It needs nothing Clean produces, and running it
+	// after would mean `fisc export --clean` over a corpus that has just
+	// published an undeclared document EMPTIES the output directory and then
+	// refuses -- destroying a site to report a fault that was detectable before
+	// anything was touched.
 	siteViews := views(projections)
 	if err = assertPublishedReachable(siteViews, projections); err != nil {
 		return err
+	}
+
+	if o.Clean {
+		if cerr := cmdutil.SafeCleanDir(o.OutputDir); cerr != nil {
+			return cmdutil.WithHint(cerr, "pass a different --output, or empty that directory yourself")
+		}
 	}
 
 	written, err := export.Write(export.Options{
