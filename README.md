@@ -136,9 +136,11 @@ Issues live in [beads](https://github.com/gastownhall/beads), not in this file â
 run `bd ready` for available work and `bd prime` for the workflow. Agent-facing
 guidance is in [`docs/agents/`](docs/agents/). Each published document has a
 frozen contract of its own: [`docs/sankey-contract.md`](docs/sankey-contract.md)
-for the citywide spine and
+for the citywide spine,
 [`docs/revenue-trends-contract.md`](docs/revenue-trends-contract.md) for the
-per-fund revenue series.
+per-fund revenue series, and
+[`docs/general-fund-drilldown-contract.md`](docs/general-fund-drilldown-contract.md)
+for the fund-and-division drill-down.
 
 One thing a newcomer should know. The site publishes from the `pages-build` and
 `pages-deploy` jobs at the foot of

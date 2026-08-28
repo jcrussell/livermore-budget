@@ -79,9 +79,12 @@ Every key is present on every object, in declaration order. **No `omitempty`, no
 stated in both: a key that vanishes when it is empty makes a diff between two
 releases read as a structural change.
 
-Money is an integer `amount_cents`, and it is **signed**. Eight of the 924 are
-`sign: contra` — General Fund ERAF and RPTTF Reduction, printed in parentheses —
-and they carry negative amounts. The Sankey nets contra rows into their parent
+Money is an integer `amount_cents`, and it is **signed**. **Nine** of the 924
+points are negative: General Fund ERAF and RPTTF Reduction, four columns each,
+plus Prior Year - Unsecured in the FY2023-24 actual column alone, all printed in
+parentheses. Find them with `amount_cents < 0` and not with a sign field — this
+document publishes no `sign` key at any level, so the filter an earlier draft of
+this paragraph named matches nothing. The Sankey nets contra rows into their parent
 category before building links; this document does not, because a series is a
 **printed row** and those two rows are printed. Summing a fund's series
 therefore works arithmetically without a special case.

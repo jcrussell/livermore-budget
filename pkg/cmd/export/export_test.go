@@ -634,7 +634,7 @@ func keys(m map[string][]byte) []string {
 	return out
 }
 
-// TestTheCommittedStemsAreUnchanged pins the three published paths as literal
+// TestTheCommittedStemsAreUnchanged pins the seven published paths as literal
 // strings, which is fisc-rmx's own acceptance criterion and the only thing that
 // makes the naming rule safe to change again.
 //

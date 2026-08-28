@@ -25,10 +25,12 @@ second spelling is a chance for the site to serve a document under a name
 nothing else expects. A projection publishing one document takes its name
 verbatim; among several, the opening published slice keeps the bare name and the
 rest are suffixed by every column they carry, with the basis spelled out
-whenever it is not the published one. Today that is `sankey`, `sankey-2027` and
-`revenue-trends`, pinned as literal strings by
-`TestTheCommittedStemsAreUnchanged`, because these are the paths this document
-promises and the values the year radio carries. The browser `fetch`es it; it is never inlined into
+whenever it is not the published one. Today that is seven: `sankey` and `sankey-2027` for the spine's two published
+years, `revenue-trends`, and the drill-down's four — `fund-flows`,
+`fund-flows-2024-actual`, `fund-flows-2025-revised` and `fund-flows-2027`. All
+seven are pinned as literal strings by `TestTheCommittedStemsAreUnchanged`,
+because these are the paths this document promises and the values the year radio
+carries. The browser `fetch`es it; it is never inlined into
 the page, because a provenance file you cannot curl on its own is not much of
 an audit trail.
 
@@ -181,14 +183,21 @@ error — and the disclosure travels on the two fields beside it instead:
 - `source_note` cites `data/funds.yaml` and pp.258-261;
 - `rationale` carries that fund's `restriction_note`, which is the reading itself.
 
-**No document publishes a constraint tier yet**, so the paragraph above is an
-obligation on the first one that does rather than a description of something the
-tree contains. What that document owes, in its own commit: `source_note` and
-`rationale` on every tier-bearing node; the disclosure sentence in
-`metadata.caveats`, held as a constant in `internal/project` so the caveat and
-the check cannot drift apart; and a check that fails a node carrying a tier
-without a source note. `derived-nodes-justified` will not cover it — that check
-inspects only `derived: true` nodes, and these are deliberately not among them.
+**Four documents publish a constraint tier**, so the paragraph above is a
+description rather than the obligation it was written as. The four `fund-flows`
+years carry 247 nodes with a non-empty `constraint_tier` between them — 61, 65,
+60 and 61 — of which 204 are `restricted-by-law`, 32 `committed`, 7 `unknown` and
+4 `discretionary`. `sankey` and `sankey-2027` publish none: the spine classifies
+no node, which is `""`'s meaning below. Read *non-empty* rather than *present*:
+there is no `omitempty` here, so every node in every document carries the key.
+
+What those documents owed, and carry: `source_note` and `rationale` on every
+tier-bearing node; the disclosure sentence in `metadata.caveats`, held as a
+constant in `internal/project` so the caveat and the check cannot drift apart;
+and `constraint-tier-vocabulary`, which fails a node carrying a tier without the
+source note and the restriction note it was read from.
+`derived-nodes-justified` does not cover it — that check inspects only
+`derived: true` nodes, and these are deliberately not among them.
 
 **`""` and `unknown` are different claims and must not be read as one.** `""`
 means *this document does not classify this node* — the spine's answer, and the
