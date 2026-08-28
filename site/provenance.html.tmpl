@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="Every figure this site publishes, as records you can download, indexed by the page of the city's own document it was read from.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint, the same way index.html does, so
+  // a reader who chose dark there does not get a white flash here. This page
+  // ships no app.js, so this is the whole of its scripting.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    <p class="lede">{{.Lede}}</p>
+  </div>
+</header>
+
+<main>
+
+<p class="lede">
+  {{.Records}} figures across {{.Pages}} pages of {{.Documents}} document{{if ne .Documents 1}}s{{end}}. Every one carries
+  the document, page and byte offset it was read from, and the text it was parsed from,
+  kept verbatim. Nothing on this page is computed: it is an index of what the site
+  publishes, not a summary of it.
+</p>
+
+<!-- The addressing rule is stated where a reader meets it. It is the promise
+     that makes these links worth citing: a rebuilt store moves fact ids, and
+     does not move a page. -->
+<p class="lede subtle">
+  A citation here is a <strong>locator</strong> — document, page, byte offset — and never a
+  fact id. The records for any page are at <code>facts/&lt;document&gt;/pages/pNNNN.jsonl</code>,
+  a path you can compose yourself from the locator alone, with no lookup. Fact ids are
+  content-addressed over the rule that produced them, so revising a rule moves every id on a
+  page; the page cannot move. Amounts are <strong>integer cents</strong> throughout —
+  divide by 100 for dollars.
+</p>
+
+<h2>Download</h2>
+<ul class="downloads">
+  {{- range .Downloads}}
+  <li><a href="{{.Path}}">{{.Label}}</a> <span class="subtle">— {{.Path}}, {{.Bytes}} bytes{{if .Note}}. {{.Note}}{{end}}</span></li>
+  {{- end}}
+</ul>
+
+<h2>By page</h2>
+<div class="table-scroll">
+<table>
+  <thead>
+    <tr>
+      <th scope="col">Page</th>
+      <th scope="col" class="num">Figures</th>
+      <th scope="col">What is on it</th>
+      <th scope="col">Read it</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{- range .Rows}}
+    <tr>
+      <th scope="row">{{.DocTitle}} p{{.Page}}</th>
+      <td class="num">{{.Records}}</td>
+      <td>{{.Note}}</td>
+      <td>
+        {{- if .PDFURL}}<a href="{{.PDFURL}}">PDF</a> / {{end}}
+        <a href="{{.TextURL}}">extracted text</a> /
+        <a href="{{.DataURL}}">{{.Records}} records</a>
+        <span class="subtle">({{.Bytes}} bytes)</span>
+      </td>
+    </tr>
+    {{- end}}
+  </tbody>
+</table>
+</div>
+
+</main>
+
+<footer>
+  <h3>Sources</h3>
+  <ul>
+    {{- range .Sources}}
+    <li>
+      {{if .PDFURL}}<a href="{{.PDFURL}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}{{if .Publisher}}, {{.Publisher}}{{end}}
+      {{- if .Pages}} —
+      {{- range $i, $p := .Pages}}{{if $i}}, {{end}}
+        <a href="{{$p.PDFURL}}">p{{$p.Number}} (PDF)</a> /
+        <a href="{{$p.TextURL}}">extracted text</a>
+      {{- end}}{{end}}
+    </li>
+    {{- end}}
+  </ul>
+  <p class="subtle">
+    Packaged by {{.ExportedBy}}. This page draws no projection: it indexes the record store
+    the other pages are built from.
+    Every data file the site publishes, each fetchable on its own:
+    {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
+  </p>
+</footer>
+
+</body>
+</html>

@@ -41,6 +41,15 @@ type Result struct {
 	// exactly one user -- the cited pages' text, put through it by Write
 	// itself -- because until now no Builder could reach it.
 	Files map[string][]byte
+
+	// PageIndex and Downloads are what the composition root SAYS ABOUT those
+	// files: which locator each one holds the records for, and which are whole-
+	// store downloads. They are here rather than recovered inside
+	// internal/export by reading the Files keys, because that would be the
+	// packager parsing a path to learn what a name means -- the guessing
+	// export.Options.Views' doc comment refuses.
+	PageIndex []export.PageIndexEntry
+	Downloads []export.Download
 }
 
 // Builder produces everything to publish: the projection documents, keyed by
@@ -212,7 +221,7 @@ func exportRun(o *Options) error {
 	// published an undeclared document EMPTIES the output directory and then
 	// refuses -- destroying a site to report a fault that was detectable before
 	// anything was touched.
-	siteViews := views(projections)
+	siteViews := views(built)
 	if err = assertPublishedReachable(siteViews, projections); err != nil {
 		return err
 	}
@@ -240,7 +249,9 @@ func exportRun(o *Options) error {
 		// Whatever else the Builder produced. Every key is screened through
 		// assetPath, so a path that escapes the output root or shadows a fixed
 		// one is refused rather than written and noticed later.
-		Files: built.Files,
+		Files:     built.Files,
+		PageIndex: built.PageIndex,
+		Downloads: built.Downloads,
 	}
 
 	// AND THE WHOLE THING IS VALIDATED BEFORE --clean, for the reason spelled

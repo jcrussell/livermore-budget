@@ -910,7 +910,7 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 // The count assertions that test did make are kept below, under their own name.
 func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	built := builtStemsForTest(t)
-	if err := assertPublishedReachable(views(built), built); err != nil {
+	if err := assertPublishedReachable(views(Result{Projections: built}), built); err != nil {
 		t.Fatalf("the committed corpus: %v", err)
 	}
 
@@ -931,7 +931,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// Built from the REAL view set plus one, so the only thing wrong with it is
 	// the stale declaration -- starting from a bare slice would trip the
 	// missing-view arm above instead and prove nothing about this one.
-	stale := views(built)
+	stale := views(Result{Projections: built})
 	for stem := range unviewedDocuments {
 		stale = append(stale, export.View{Path: "x.html", Projection: stem})
 		break
@@ -950,7 +950,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// refuse.
 	unviewedDocuments["no-such-document"] = "left behind"
 	t.Cleanup(func() { delete(unviewedDocuments, "no-such-document") })
-	if err := assertPublishedReachable(views(built), built); err == nil {
+	if err := assertPublishedReachable(views(Result{Projections: built}), built); err == nil {
 		t.Error("a declaration naming no published document was accepted")
 	} else if !strings.Contains(err.Error(), "publishes no such document") {
 		t.Errorf("got %v, want a refusal naming the leftover entry", err)
@@ -984,7 +984,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	got := views(built)
+	got := views(Result{Projections: built})
 
 	if len(got) != 3 {
 		t.Fatalf("got %d views over %v, want the spine, the revenue trends and the drill-down",
@@ -1041,7 +1041,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 // `fisc verify` is what says the document is missing.
 func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	only := map[string][]byte{export.PrimaryProjection: {}}
-	got := views(only)
+	got := views(Result{Projections: only})
 	if len(got) != 1 {
 		t.Fatalf("got %d views with only the spine built, want 1: %+v", len(got), got)
 	}

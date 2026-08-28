@@ -1320,3 +1320,186 @@ func TestAProjectionWithNoViewStillShipsItsCitedPages(t *testing.T) {
 		}
 	}
 }
+
+// provenanceSite writes a site whose third view is the provenance index, over a
+// hand-built page index of two locators.
+func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
+	t.Helper()
+	dir := t.TempDir()
+	shard66 := []byte(`{"id":"a","doc_id":"` + budgetDocID + `","page":66}` + "\n")
+	shard127 := []byte(`{"id":"b","doc_id":"` + budgetDocID + `","page":127}` + "\n")
+	base := export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "provenance.html", Nav: "Sources and data",
+				Template: export.ProvenanceTemplate, Title: "Every figure"},
+		},
+		Files: map[string][]byte{
+			"facts/d/pages/p0066.jsonl": shard66,
+			"facts/d/pages/p0127.jsonl": shard127,
+			"facts/facts.csv":           []byte("id\na\n"),
+		},
+		PageIndex: []export.PageIndexEntry{
+			{Citation: export.Citation{DocID: budgetDocID, Page: 66}, Records: 1,
+				Data: "facts/d/pages/p0066.jsonl", Bytes: len(shard66), Note: "the spine"},
+			{Citation: export.Citation{DocID: budgetDocID, Page: 127}, Records: 1,
+				Data: "facts/d/pages/p0127.jsonl", Bytes: len(shard127), Note: "property taxes"},
+		},
+		Downloads: []export.Download{
+			{Path: "facts/facts.csv", Label: "Every figure as CSV", Bytes: 5},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		PageText:    twoViewPageText(66, 127),
+	}
+	if edit != nil {
+		edit(&base)
+	}
+	_, err := export.Write(base)
+	return base.Dir, err
+}
+
+// TestTheProvenanceViewNeedsNoProjection is the weakening this page required,
+// asserted in both directions so it stays narrow.
+//
+// View.validate refused a view naming no projection, unconditionally. The
+// provenance index renders none -- it is built from Options.PageIndex and
+// decodes nothing -- so the guard had to become conditional on the template.
+// The mirror arm is what keeps that from being a hole: a template that DOES
+// render a document must still name one, and a projection named on a template
+// that renders none is refused rather than ignored.
+func TestTheProvenanceViewNeedsNoProjection(t *testing.T) {
+	dir, err := provenanceSite(t, nil)
+	if err != nil {
+		t.Fatalf("Write refused a provenance view with no projection: %v", err)
+	}
+	if _, serr := os.Stat(filepath.Join(dir, "provenance.html")); serr != nil {
+		t.Fatalf("the provenance page was not written: %v", serr)
+	}
+
+	_, err = export.Write(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "provenance.html", Nav: "Sources and data",
+				Template: export.ProvenanceTemplate, Projection: "sankey"},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
+	if err == nil {
+		t.Fatal("Write accepted a projection on a template that renders none")
+	}
+	if !strings.Contains(err.Error(), "would be ignored") {
+		t.Errorf("got %v, want the refusal naming the ignored projection", err)
+	}
+}
+
+// TestWriteRefusesAProvenanceRowWithNoShard: the page's whole claim is that its
+// citations resolve, so an entry naming a file the caller did not supply would
+// publish a link that 404s -- worse than publishing nothing. And nothing is
+// created, because validate runs before Write makes a directory.
+func TestWriteRefusesAProvenanceRowWithNoShard(t *testing.T) {
+	var dir string
+	// ONE FILE DELETED, everything else intact -- so the refusal under test is
+	// the missing shard and not a byte count that no longer matches.
+	_, err := provenanceSite(t, func(o *export.Options) {
+		dir = o.Dir
+		delete(o.Files, "facts/d/pages/p0127.jsonl")
+	})
+	if err == nil {
+		t.Fatal("Write accepted a page index entry naming no file")
+	}
+	if !strings.Contains(err.Error(), "not among the files to be written") {
+		t.Errorf("got %v, want the missing-shard refusal", err)
+	}
+	if entries, rerr := os.ReadDir(dir); rerr == nil && len(entries) > 0 {
+		t.Errorf("the refusal wrote %d entries; validate must precede any output", len(entries))
+	}
+}
+
+// TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes is the p76 case
+// in miniature, and the reason cited is seeded from PageIndex rather than from
+// a second mechanism.
+//
+// The shipped extraction used to be whatever the projections' own
+// metadata.sources named. The fact store covers a page the charts do not, so a
+// provenance link resolved to a shard beside a 404. Routing the index's pages
+// through the same cited set means withPageText's existing refusal covers them:
+// a published locator whose page text is not in the extraction tree is an
+// error, not a dangling link.
+func TestTheProvenancePageShipsThePageTextOfEveryLocatorItPublishes(t *testing.T) {
+	// The page text carries 66 only; the index publishes 66 and 127.
+	_, err := provenanceSite(t, func(o *export.Options) { o.PageText = twoViewPageText(66) })
+	if err == nil {
+		t.Fatal("Write shipped a locator whose page text it does not carry")
+	}
+	if !strings.Contains(err.Error(), "p0127") {
+		t.Errorf("got %v, want it to name the page that is missing", err)
+	}
+
+	// And the positive: a page cited by NO projection still ships, because the
+	// index cites it.
+	dir, err := provenanceSite(t, nil)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	for _, page := range []string{"p0066.txt", "p0127.txt"} {
+		p := filepath.Join(dir, "extracted", budgetDocID, "pages", page)
+		if _, serr := os.Stat(p); serr != nil {
+			t.Errorf("%s was published as a locator and its text was not shipped: %v", page, serr)
+		}
+	}
+}
+
+// TestTheProvenancePageLinksBothHalvesOfEveryCitation. The page exists to be
+// followed, so every link it draws for a row has to land on something the site
+// wrote or on the city's own document -- and the PDF link must be the city's
+// canonical URL, never a forge's raw host, which serves LFS pointer text rather
+// than a PDF.
+func TestTheProvenancePageLinksBothHalvesOfEveryCitation(t *testing.T) {
+	dir, err := provenanceSite(t, nil)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readFile(t, dir, "provenance.html")
+	for _, want := range []string{
+		"facts/d/pages/p0066.jsonl",
+		"facts/d/pages/p0127.jsonl",
+		"extracted/" + budgetDocID + "/pages/p0066.txt",
+		"#page=66",
+		"#page=127",
+		"the spine",
+		"property taxes",
+	} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the provenance page does not carry %q", want)
+		}
+	}
+	if strings.Contains(page, "raw.githubusercontent.com") {
+		t.Error("a citation points at the raw host, which serves LFS pointer text")
+	}
+
+	// Every relative reference resolves, the same walk the other views get.
+	ref := regexp.MustCompile(`(?:src|href)="([^"]+)"`)
+	found := 0
+	for _, m := range ref.FindAllStringSubmatch(page, -1) {
+		target := m[1]
+		if target == "" || strings.Contains(target, "://") || strings.HasPrefix(target, "#") {
+			continue
+		}
+		found++
+		if _, serr := os.Stat(filepath.Join(dir, filepath.FromSlash(target))); serr != nil {
+			t.Errorf("provenance.html references %q, which was not written: %v", target, serr)
+		}
+	}
+	if found < 6 {
+		t.Errorf("provenance.html has %d relative references, want its shards, its "+
+			"page text and its stylesheet", found)
+	}
+}

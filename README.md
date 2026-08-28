@@ -140,7 +140,9 @@ for the citywide spine,
 [`docs/revenue-trends-contract.md`](docs/revenue-trends-contract.md) for the
 per-fund revenue series, and
 [`docs/general-fund-drilldown-contract.md`](docs/general-fund-drilldown-contract.md)
-for the fund-and-division drill-down.
+for the fund-and-division drill-down, and
+[`docs/fact-store-contract.md`](docs/fact-store-contract.md) for the record
+store the three of them are drawn from.
 
 One thing a newcomer should know. The site publishes from the `pages-build` and
 `pages-deploy` jobs at the foot of

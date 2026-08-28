@@ -47,12 +47,22 @@ type factPage struct {
 	// SHA256 is over the shard as shipped. It is here so a consumer can check
 	// a download it did not watch being written.
 	SHA256 string `json:"sha256"`
-	// Path is where the records are; TextPath is the extracted text of the same
-	// page. Both are site-relative, and both are COMPUTABLE from (doc_id, page)
-	// -- see shardPath. They are published anyway because an index that makes a
-	// consumer re-implement a path rule is an index that will disagree with it.
-	Path     string `json:"path"`
-	TextPath string `json:"text_path"`
+	// Path is where the records are: site-relative, and computable from
+	// (doc_id, page) by shardPath. Published anyway, because an index that
+	// makes a consumer re-implement a path rule is an index that will disagree
+	// with it.
+	//
+	// THERE IS NO text_path HERE, and its absence is the considered answer.
+	// The obvious companion field would name the page's extracted text, and
+	// this packager CANNOT KNOW that path: export.Write chooses between the
+	// shipped copy under extracted/ and a remote browse URL, and it makes that
+	// choice after this index has been built. An earlier draft published the
+	// local form unconditionally, so `fisc export --source-browse-url` shipped
+	// an index naming 21 files the site does not write. Publishing a path this
+	// side cannot guarantee is a false statement in a file whose whole value is
+	// that its statements hold; the HTML rows carry the correct link because
+	// they are composed inside Write, where the decision lives.
+	Path string `json:"path"`
 	// Rules and Years are what is on this page, for a reader choosing which
 	// shard to open. Read off the facts, never declared.
 	Rules []string `json:"rules"`
@@ -81,12 +91,6 @@ type factAssets struct {
 // split moves every id on a page, while (doc_id, page) cannot move at all.
 func shardPath(docID string, page int) string {
 	return fmt.Sprintf("%s/%s/pages/p%04d.jsonl", FactsDir, docID, page)
-}
-
-// pageTextPath is the other half of the same citation, in the tree
-// export.PageTextDir owns.
-func pageTextPath(docID string, page int) string {
-	return export.LocalPageTextBase(docID) + fmt.Sprintf("p%04d.txt", page)
 }
 
 // buildFactAssets shards the committed store by (doc_id, page), transcodes it
@@ -159,8 +163,7 @@ func buildFactAssets(raw []byte, facts []fact.Fact, version string) (factAssets,
 		assets.Pages = append(assets.Pages, factPage{
 			DocID: docID, Page: page,
 			Facts: len(group), Bytes: len(b), SHA256: hex.EncodeToString(sum[:]),
-			Path: rel, TextPath: pageTextPath(docID, page),
-			Rules: distinctRules(group), Years: distinctYears(group),
+			Path: rel, Rules: distinctRules(group), Years: distinctYears(group),
 		})
 		start = end
 	}
@@ -439,5 +442,59 @@ func csvCell(v any) (string, error) {
 		return "", fmt.Errorf("value is null, which the fact store never publishes")
 	default:
 		return "", fmt.Errorf("value %v is not a scalar; a fact has no nested values", v)
+	}
+}
+
+// pageIndex describes each shard in the terms the provenance view publishes.
+//
+// THE NOTE IS COMPOSED HERE, in the composition root, because it is a sentence
+// about a FACT STORE and internal/export does not know what a fact is. It says
+// what a reader would want before deciding to open a 75 KB file: which rules
+// read this page, and which years they read.
+func (a factAssets) pageIndex() []export.PageIndexEntry {
+	out := make([]export.PageIndexEntry, 0, len(a.Pages))
+	for _, p := range a.Pages {
+		out = append(out, export.PageIndexEntry{
+			Citation: export.Citation{DocID: p.DocID, Page: p.Page},
+			Records:  p.Facts,
+			Data:     p.Path,
+			Bytes:    p.Bytes,
+			Note:     noteFor(p),
+		})
+	}
+	return out
+}
+
+// noteFor is one page's sentence: what was read off it, and for which years.
+func noteFor(p factPage) string {
+	years := make([]string, 0, len(p.Years))
+	for _, y := range p.Years {
+		years = append(years, strconv.Itoa(y))
+	}
+	rules := strings.Join(p.Rules, ", ")
+	if len(p.Rules) > 4 {
+		rules = strings.Join(p.Rules[:4], ", ") +
+			fmt.Sprintf(" and %d more", len(p.Rules)-4)
+	}
+	return fmt.Sprintf("%s \u2014 fiscal years %s", rules, strings.Join(years, ", "))
+}
+
+// downloads are the whole-store artifacts the page offers.
+func (a factAssets) downloads() []export.Download {
+	return []export.Download{
+		{
+			Path:  factsCSVPath,
+			Label: "Every figure as CSV",
+			Note: "One row per figure, the columns of the record store verbatim. " +
+				"Amounts are integer cents.",
+			Bytes: a.CSVBytes,
+		},
+		{
+			Path:  factsIndexPath,
+			Label: "The index of pages, as JSON",
+			Note: "Every page with its record count, size and SHA-256. Not needed to " +
+				"resolve a citation \u2014 that path is computed from the locator.",
+			Bytes: len(a.Files[factsIndexPath]),
+		},
 	}
 }

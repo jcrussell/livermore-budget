@@ -35,12 +35,27 @@ the page, because a provenance file you cannot curl on its own is not much of
 an audit trail.
 
 Beside it, `<output>/extracted/<doc-id>/pages/pNNNN.txt` carries the committed
-extraction of every page `metadata.sources` cites, copied out of
-`data/extracted/` and only for the cited pages. That is what a citation on the
-page points at, so both classes — the city's PDF at `#page=N` and the extracted
-text — resolve with no third party involved; `fisc export --source-browse-url`
-cites a browsable copy of the repository instead. Anything else the site has to
-ship travels the same channel (`export.Options.Files`).
+extraction of every page the site cites, copied out of `data/extracted/`. That
+is what a citation on the page points at, so both classes — the city's PDF at
+`#page=N` and the extracted text — resolve with no third party involved;
+`fisc export --source-browse-url` cites a browsable copy of the repository
+instead.
+
+**Cited means cited by the site, not by a chart**, and the distinction is
+load-bearing since the fact store began shipping. This sentence used to say
+"only for the cited pages", meaning the pages named in some projection's
+`metadata.sources`. The published record store covers a page no chart draws —
+p76's transfer schedule is in scope `transfers-by-fund`, which no projection
+selects — so under the old rule a provenance link resolved to a record file
+sitting beside a 404. Worse, the set was unstable: a page entered and left the
+published extraction as views were added, with no event anyone could see. The
+pages `facts/index.json` publishes are cited, so the extraction covers every
+locator the site can resolve. It is still not the whole corpus: 21 pages of 786.
+
+And `<output>/facts/` carries the record store itself — the shards, the CSV and
+the index. It has a contract of its own:
+[`fact-store-contract.md`](fact-store-contract.md). Anything else the site has
+to ship travels the same channel (`export.Options.Files`).
 
 ## Shape
 

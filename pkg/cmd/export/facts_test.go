@@ -12,6 +12,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
 // committedStore reads the real facts/facts.jsonl, both ways.
@@ -406,9 +407,6 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 			t.Errorf("index path %q for %s p%d, want the computed %q",
 				p.Path, p.DocID, p.Page, want)
 		}
-		if want := pageTextPath(p.DocID, p.Page); p.TextPath != want {
-			t.Errorf("index text path %q, want %q", p.TextPath, want)
-		}
 		b, ok := assets.Files[p.Path]
 		if !ok {
 			t.Errorf("index names %s and no such file was produced", p.Path)
@@ -442,5 +440,179 @@ func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 			t.Errorf("%s p%d carries %d facts and its extracted text is not committed: %v",
 				p.DocID, p.Page, p.Facts, err)
 		}
+	}
+}
+
+// TestTheSiteLinksEveryShardItShips applies unviewedDocuments' standard to
+// assets: bytes no reader can reach are a defect.
+//
+// assertPublishedReachable governs PROJECTIONS -- it is why four fund-flows
+// documents cannot ship as files no page opens. Nothing governed Files, so the
+// fact store could have shipped 1.1 MB that no page linked and every check
+// would have stayed green. This closes that for the store specifically: every
+// key under facts/ is either a row of the page index or an offered download.
+func TestTheSiteLinksEveryShardItShips(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+
+	linked := map[string]bool{}
+	for _, e := range built.PageIndex {
+		linked[e.Data] = true
+	}
+	for _, d := range built.Downloads {
+		linked[d.Path] = true
+	}
+	shipped := 0
+	for rel := range built.Files {
+		if !strings.HasPrefix(rel, FactsDir+"/") {
+			continue
+		}
+		shipped++
+		if !linked[rel] {
+			t.Errorf("%s ships and no row or download links it", rel)
+		}
+	}
+	if shipped == 0 {
+		t.Fatal("no fact-store file shipped, so this test asserts nothing")
+	}
+	// And the other direction: a row naming a file that was not produced would
+	// publish a dead link. export.Options.validate refuses it, but this says so
+	// against the real corpus rather than against a fixture.
+	for rel := range linked {
+		if _, ok := built.Files[rel]; !ok {
+			t.Errorf("the page links %s and no such file was produced", rel)
+		}
+	}
+	t.Logf("%d fact-store files, all linked", shipped)
+}
+
+// TestTheProvenanceViewIsPublishedWhenThereIsAStore pins the fourth view into
+// the real view set, which TestViewsOpensOnTheSpineAndGivesYearsToItAlone
+// deliberately does not (it passes a Result with no page index).
+func TestTheProvenanceViewIsPublishedWhenThereIsAStore(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+
+	vs := views(built)
+	var found *struct {
+		path, nav, projection string
+	}
+	for _, v := range vs {
+		if v.Template == "provenance.html.tmpl" {
+			found = &struct{ path, nav, projection string }{v.Path, v.Nav, v.Projection}
+		}
+	}
+	if found == nil {
+		t.Fatalf("the view set has no provenance page: %d views", len(vs))
+	}
+	if found.path != "provenance.html" || found.nav == "" {
+		t.Errorf("provenance view is %+v, want a labelled provenance.html", *found)
+	}
+	if found.projection != "" {
+		t.Errorf("the provenance view names projection %q; it renders none", found.projection)
+	}
+
+	// AND IT IS ABSENT WITHOUT A STORE, so the nav never points at a page that
+	// was not written -- the property views() exists to hold.
+	for _, v := range views(Result{Projections: built.Projections}) {
+		if v.Template == "provenance.html.tmpl" {
+			t.Error("a provenance view was published with no page index behind it")
+		}
+	}
+}
+
+// TestTheIndexNamesOnlyFilesTheSiteWrites, under BOTH page-text modes.
+//
+// The test this replaces compared factPage.TextPath against pageTextPath() --
+// the function that produced it -- so it asserted nothing and could not see
+// that the field was wrong. It was: export.Write chooses between shipping the
+// extracted text and citing a remote browsable copy, and it makes that choice
+// AFTER this index is built, so the packager was publishing 21 paths that
+// `fisc export --source-browse-url` does not write.
+//
+// The general property is the one worth pinning, rather than the one field:
+// every path facts/index.json names is a file the site actually wrote. It runs
+// over both modes because the defect existed in exactly one of them.
+func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	for _, browse := range []string{"", "https://example.invalid/blob/main"} {
+		name := "shipping the page text"
+		if browse != "" {
+			name = "citing a remote copy"
+		}
+		t.Run(name, func(t *testing.T) {
+			io, _, _, _ := iostreams.Test()
+			dir := filepath.Join(t.TempDir(), "dist")
+			if err := exportRun(&Options{
+				IO:              io,
+				RepoRoot:        func() (string, error) { return root, nil },
+				OutputDir:       dir,
+				SourceBrowseURL: browse,
+			}); err != nil {
+				t.Fatalf("exportRun: %v", err)
+			}
+
+			b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(factsIndexPath)))
+			if err != nil {
+				t.Fatalf("read the index: %v", err)
+			}
+			var doc factsIndexDoc
+			if err := json.Unmarshal(b, &doc); err != nil {
+				t.Fatalf("decode the index: %v", err)
+			}
+			if len(doc.Pages) == 0 {
+				t.Fatal("the index names no pages, so this test asserts nothing")
+			}
+
+			// Every string field of every entry that looks like a site path
+			// must resolve. Walking the decoded JSON rather than named fields,
+			// so a path field added later is covered without editing this.
+			var entries []map[string]any
+			if err := json.Unmarshal(b, &struct {
+				Pages *[]map[string]any `json:"pages"`
+			}{&entries}); err != nil {
+				t.Fatalf("re-decode: %v", err)
+			}
+			checked := 0
+			for _, e := range entries {
+				for key, v := range e {
+					s, ok := v.(string)
+					if !ok || !strings.Contains(s, "/") || strings.Contains(s, "://") {
+						continue
+					}
+					checked++
+					if _, serr := os.Stat(filepath.Join(dir, filepath.FromSlash(s))); serr != nil {
+						t.Errorf("index key %q names %q, which this export did not write: %v",
+							key, s, serr)
+					}
+				}
+			}
+			if checked < len(doc.Pages) {
+				t.Errorf("checked %d paths across %d entries; every entry names at least "+
+					"its records", checked, len(doc.Pages))
+			}
+			for _, d := range doc.Pages {
+				if _, serr := os.Stat(filepath.Join(dir,
+					filepath.FromSlash(doc.CSVPath))); serr != nil {
+					t.Fatalf("the index offers %q and it was not written: %v", doc.CSVPath, serr)
+				}
+				_ = d
+			}
+		})
 	}
 }

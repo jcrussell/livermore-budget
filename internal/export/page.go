@@ -25,6 +25,10 @@ const (
 	SankeyTemplate    = "index.html.tmpl"
 	TrendsTemplate    = "revenue.html.tmpl"
 	DrilldownTemplate = "drilldown.html.tmpl"
+	// ProvenanceTemplate renders the fact store's index. It is the one
+	// template that renders no projection document -- see
+	// templateRendersADocument.
+	ProvenanceTemplate = "provenance.html.tmpl"
 )
 
 // SchemaVersion is the projection schema this packager understands.
@@ -194,15 +198,6 @@ type figure struct {
 	// the figure the page exists to argue against, "" for the rest. It is a
 	// class name, not a colour: the stylesheet owns the palette.
 	Kind string `json:"kind"`
-}
-
-// citation is one (document, page) pair the page cites. It is what Write needs
-// out of buildPage besides the page itself: the projection's metadata says
-// which pages are cited, and re-decoding it to find out would be the second
-// implementation of the contract this package refuses to become.
-type citation struct {
-	DocID string
-	Page  int
 }
 
 // pageRef is one cited page of one source document.
@@ -691,7 +686,7 @@ func decodeDrilldown(stem string, raw []byte) (projectionDoc, drilldownMetadata,
 // It decodes through documentSources rather than through either shape's
 // metadata, so a view of a document this packager has never heard of still
 // contributes its pages to the set the site ships.
-func citationsOf(stem string, raw []byte) ([]citation, error) {
+func citationsOf(stem string, raw []byte) ([]Citation, error) {
 	if _, err := decodeDocument(stem, raw); err != nil {
 		return nil, err
 	}
@@ -699,10 +694,10 @@ func citationsOf(stem string, raw []byte) ([]citation, error) {
 	if err := json.Unmarshal(raw, &src); err != nil {
 		return nil, fmt.Errorf("decode %s sources: %w", stem, err)
 	}
-	out := make([]citation, 0, len(src.Metadata.Sources))
+	out := make([]Citation, 0, len(src.Metadata.Sources))
 	for _, s := range src.Metadata.Sources {
 		for _, p := range s.Pages {
-			out = append(out, citation{DocID: s.DocID, Page: p})
+			out = append(out, Citation{DocID: s.DocID, Page: p})
 		}
 	}
 	return out, nil
@@ -742,7 +737,7 @@ type navItem struct {
 // follow it. Between a defect a reader cannot detect and one they can, this
 // takes the one they can -- and then says so on the page rather than leaving
 // them to infer the set, which is why the heading names the years.
-func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, []citation, error) {
+func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, []Citation, error) {
 	views := o.views()
 	nav := make([]navItem, 0, len(views))
 	for _, v := range views {
@@ -758,9 +753,18 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 		byID[d.ID] = d
 	}
 
-	var cited []citation
-	seen := map[citation]bool{}
+	var cited []Citation
+	seen := map[Citation]bool{}
 	collect := func(stem string) error {
+		// A VIEW WITH NO PROJECTION CITES NOTHING THROUGH THIS PATH, and the
+		// guard is here rather than at the call site because there are three
+		// of them. Without it the provenance view reaches
+		// json.Unmarshal(nil, ...) and Write fails with "unexpected end of
+		// JSON input" naming an empty stem -- a refusal that describes neither
+		// the view nor the cause.
+		if stem == "" {
+			return nil
+		}
 		// Deduplicated: a document that cites a page twice is one file to ship,
 		// and shipping it twice is a write collision. Two VIEWS citing one page
 		// is the same statement one scale up, and is the ordinary case -- both
@@ -818,6 +822,8 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 			data, err = buildSankeyPage(o, v, here, byID, pageTextBase)
 		case DrilldownTemplate:
 			data, err = buildDrilldownPage(o, v, here, byID, pageTextBase)
+		case ProvenanceTemplate:
+			data, err = buildProvenancePage(o, v, here, byID, pageTextBase)
 		default:
 			return nil, nil, cmdutil.WithHint(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
@@ -849,6 +855,29 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 	for _, stem := range sortedKeys(o.Projections) {
 		if err := collect(stem); err != nil {
 			return nil, nil, err
+		}
+	}
+
+	// AND EVERY PAGE THE INDEX PUBLISHES IS CITED, which is what makes the
+	// published store complete rather than a function of what the charts
+	// happen to draw.
+	//
+	// Before this, the shipped extraction was whatever the projections' own
+	// metadata.sources named. The fact store covers a page the charts do not:
+	// p76's 88 transfer facts are in scope transfers-by-fund, which no
+	// projection selects, so a provenance link to that page resolved to a
+	// shard beside a 404. Worse, the set was unstable -- a fact would enter
+	// and leave the published extraction as views were added, with no event
+	// anyone could see.
+	//
+	// Routing it through cited rather than through a second mechanism means
+	// withPageText's existing refusal covers it: a cited page absent from the
+	// extraction tree is an error, so a locator the site publishes cannot
+	// point at text the site does not carry.
+	for _, e := range o.PageIndex {
+		if !seen[e.Citation] {
+			seen[e.Citation] = true
+			cited = append(cited, e.Citation)
 		}
 	}
 	return pages, cited, nil
@@ -1462,6 +1491,145 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Series:  series,
 		Facts:   meta.Counts.Facts,
 		Count:   meta.Counts.Series,
+	}, nil
+}
+
+// provenancePageData is the provenance index's own shape.
+type provenancePageData struct {
+	chrome
+	Rows      []provenanceRow
+	Downloads []downloadRef
+	Documents int
+	Pages     int
+	Records   int
+}
+
+// provenanceRow is one published locator, with both halves of its citation
+// already composed.
+type provenanceRow struct {
+	DocID    string
+	DocTitle string
+	Page     int
+	Records  int
+	Bytes    int
+	Note     string
+	DataURL  string
+	PDFURL   string
+	TextURL  string
+}
+
+// downloadRef is one whole-store artifact offered for download.
+type downloadRef struct {
+	Path  string
+	Label string
+	Note  string
+	Bytes int
+}
+
+// buildProvenancePage renders the index of the published fact store.
+//
+// IT COMPOSES NO URL ITSELF, and that is the one thing worth guarding here.
+// Every PDF and page-text link comes back out of sourcesFor, the same function
+// the other three pages' footers go through, so pdfPageURL and pageTextFile are
+// reached by exactly one path in this package. It matters beyond tidiness: the
+// PDF link must target the city's canonical URL with #page=N and never a forge's
+// raw host, which serves LFS pointer text rather than the document. A second
+// composition here would be a second place for that to go wrong, on the one
+// page whose entire purpose is that its links resolve.
+//
+// THE DATA LINK IS THE EXCEPTION AND IS NOT COMPOSED EITHER: it is
+// PageIndexEntry.Data verbatim, the path the caller says it wrote the records
+// to, which Options.validate has already checked against the files being
+// written. This package does not know how that path is built and must not
+// learn -- the locator-to-URL rule belongs to whoever produced the records.
+func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
+	pageTextBase func(docID string) string) (provenancePageData, error) {
+	if len(o.PageIndex) == 0 {
+		// A page listing nothing is not an empty state, it is a page that
+		// should not have been asked for: views() adds this one only when
+		// there is an index, so reaching here means two callers disagree.
+		return provenancePageData{}, fmt.Errorf(
+			"view %q renders the provenance index and Options carries no page index", v.Path)
+	}
+
+	// The sources this page cites ARE its rows, so they are built from the
+	// index rather than read out of a document -- and then put through the
+	// same union and the same composition every other page uses.
+	byDoc := map[string][]int{}
+	order := []string{}
+	for _, e := range o.PageIndex {
+		if _, ok := byDoc[e.DocID]; !ok {
+			order = append(order, e.DocID)
+		}
+		byDoc[e.DocID] = append(byDoc[e.DocID], e.Page)
+	}
+	metas := make([]sourceMeta, 0, len(order))
+	for _, id := range order {
+		metas = append(metas, sourceMeta{DocID: id, Pages: byDoc[id]})
+	}
+	sources, _ := sourcesFor(unionSources(metas), byID, pageTextBase)
+
+	// Index the composed refs so each row can take its own, rather than
+	// recomposing them.
+	type key struct {
+		doc  string
+		page int
+	}
+	refs := map[key]pageRef{}
+	titles := map[string]string{}
+	for _, s := range sources {
+		titles[s.DocID] = s.Title
+		for _, p := range s.Pages {
+			refs[key{s.DocID, p.Number}] = p
+		}
+	}
+
+	rows := make([]provenanceRow, 0, len(o.PageIndex))
+	records := 0
+	for _, e := range o.PageIndex {
+		ref, ok := refs[key{e.DocID, e.Page}]
+		if !ok {
+			return provenancePageData{}, fmt.Errorf(
+				"page index entry %s p%d composed no citation", e.DocID, e.Page)
+		}
+		records += e.Records
+		rows = append(rows, provenanceRow{
+			DocID: e.DocID, DocTitle: titles[e.DocID], Page: e.Page,
+			Records: e.Records, Bytes: e.Bytes, Note: e.Note,
+			DataURL: e.Data, PDFURL: ref.PDFURL, TextURL: ref.TextURL,
+		})
+	}
+
+	downloads := make([]downloadRef, 0, len(o.Downloads))
+	for _, d := range o.Downloads {
+		// A conversion rather than a field-by-field copy: the two types have
+		// the same shape ON PURPOSE -- Download is the caller's vocabulary and
+		// downloadRef is the template's -- and a conversion cannot silently
+		// drop a field the day one of them gains one.
+		downloads = append(downloads, downloadRef(d))
+	}
+
+	title := v.Title
+	if title == "" {
+		title = "City of Livermore budget: every published figure"
+	}
+	return provenancePageData{
+		chrome: chrome{
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			Sources:     sources,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o.Projections),
+			// NO DataPath. Every other page names the projection it draws;
+			// this one draws none, and pointing it at an unrelated document
+			// would be a false statement about where its figures came from.
+		},
+		Rows:      rows,
+		Downloads: downloads,
+		Documents: len(order),
+		Pages:     len(rows),
+		Records:   records,
 	}, nil
 }
 

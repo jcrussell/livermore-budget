@@ -70,10 +70,17 @@ const DataDir = "data"
 // rule composes a citation whether the text is served from here or from a
 // forge's blob view, and a reader who knows one layout knows the other.
 //
-// Only CITED pages are copied. The corpus is 786 pages; the projection cites
-// two of them today and around two dozen once the coverage lanes land, and a
-// packager that shipped the whole extraction would put the corpus in every
-// deploy to publish a handful of citations.
+// ONLY CITED PAGES ARE COPIED, where cited means cited by the SITE and not by a
+// chart. The corpus is 786 pages and the site cites 21, so a packager that
+// shipped the whole extraction would put the corpus in every deploy to publish
+// a handful of citations.
+//
+// The set is the union of every projection's metadata.sources AND every entry
+// of [Options.PageIndex]. That second half is what makes the published record
+// store complete rather than a function of what the charts happen to draw:
+// without it a page whose facts ship but whose figures no projection selects --
+// p76 today -- would be published as records sitting beside a 404, and the set
+// would change silently as views were added.
 const PageTextDir = "extracted"
 
 // MarkerName is the sentinel written into a generated site. It is what tells
@@ -255,6 +262,25 @@ type Options struct {
 	// embedded asset or a projection.
 	Files map[string][]byte
 
+	// PageIndex is what the provenance view publishes: one entry per locator
+	// the site can resolve, in the order the page lists them.
+	//
+	// THE PACKAGE STILL DOES NOT KNOW WHAT A FACT IS. An entry says "there are
+	// N records for (doc, page), they are at this path, and here is a sentence
+	// about them" -- which is a statement the composition root makes, in the
+	// same way Views is. Inferring it here from the shape of the Files keys
+	// would be this package guessing what a name means, which is exactly what
+	// Views' doc comment above refuses.
+	//
+	// IT ALSO DECIDES WHAT PAGE TEXT SHIPS. Every entry's page is cited, so
+	// the extraction copied into the output covers every locator published --
+	// not merely every page a chart happens to draw from. See PageTextDir.
+	PageIndex []PageIndexEntry
+
+	// Downloads are the whole-store artifacts a page offers, described so the
+	// reader knows the size before starting the fetch.
+	Downloads []Download
+
 	// GeneratedBy names the tool and version that wrote the output. It is
 	// shown in the page footer beside the projection's own generated_by.
 	GeneratedBy string
@@ -262,6 +288,42 @@ type Options struct {
 	// Assets is the site source tree. Empty means the embedded one; a test
 	// can substitute an fstest.MapFS.
 	Assets fs.FS
+}
+
+// Citation is one (document, page) pair the site cites.
+//
+// Exported because [PageIndexEntry] embeds it: a page index entry IS a
+// citation, plus what is published about it, and saying so in the type is what
+// makes "every published locator ships its page text" a property of the code
+// rather than a claim in a comment.
+type Citation struct {
+	DocID string
+	Page  int
+}
+
+// PageIndexEntry is one locator the provenance view publishes.
+type PageIndexEntry struct {
+	Citation
+	// Records is how many records the shard holds. Named for what it counts
+	// rather than "Facts", because this package does not know what a fact is.
+	Records int
+	// Data is the site-relative path the records are at. It must be a key of
+	// [Options.Files]; validate refuses an entry whose file was not supplied,
+	// so the page cannot publish a link to bytes the site does not ship.
+	Data string
+	// Bytes is the size of that file, for a reader sizing a fetch. Validate
+	// checks it against the file rather than trusting it.
+	Bytes int
+	// Note is the caller's sentence about this page, rendered verbatim.
+	Note string
+}
+
+// Download is one whole-store artifact a page offers.
+type Download struct {
+	Path  string
+	Label string
+	Note  string
+	Bytes int
 }
 
 // ErrNoPrimary reports a projection set with no PrimaryProjection in it.
@@ -343,6 +405,45 @@ func (o *Options) validate() error {
 			return err
 		}
 	}
+	// A PUBLISHED LOCATOR MUST POINT AT BYTES THIS SITE SHIPS. The provenance
+	// page's whole claim is that a citation resolves; an entry naming a file
+	// the caller did not supply publishes a link that 404s, which is worse
+	// than publishing nothing.
+	for _, e := range o.PageIndex {
+		switch {
+		case e.DocID == "":
+			return errors.New("a page index entry names no document")
+		case e.Page < 1:
+			return fmt.Errorf("page index entry for %q is at page %d", e.DocID, e.Page)
+		case e.Data == "":
+			return fmt.Errorf("page index entry %s p%d names no file", e.DocID, e.Page)
+		}
+		b, ok := o.Files[e.Data]
+		if !ok {
+			return fmt.Errorf("page index entry %s p%d publishes %q, which is not among "+
+				"the files to be written", e.DocID, e.Page, e.Data)
+		}
+		// Checked rather than trusted: the size is printed to a reader as a
+		// promise about a download, and a caller computing it from something
+		// other than these bytes is how it comes to be wrong.
+		if e.Bytes != len(b) {
+			return fmt.Errorf("page index entry %s p%d says %q is %d bytes and it is %d",
+				e.DocID, e.Page, e.Data, e.Bytes, len(b))
+		}
+	}
+	for _, d := range o.Downloads {
+		b, ok := o.Files[d.Path]
+		if !ok {
+			return fmt.Errorf("download %q is offered and is not among the files to be written",
+				d.Path)
+		}
+		if d.Bytes != len(b) {
+			return fmt.Errorf("download %q is offered as %d bytes and is %d", d.Path, d.Bytes, len(b))
+		}
+		if d.Label == "" {
+			return fmt.Errorf("download %q has no label", d.Path)
+		}
+	}
 	return nil
 }
 
@@ -416,8 +517,20 @@ func (v View) validate(built map[string][]byte) error {
 		// Flat, per the View doc comment: every asset path in the output is
 		// relative, so a page in a subdirectory would need ../ on all of them.
 		return fmt.Errorf("view path %q is not at the site root", v.Path)
-	case v.Projection == "":
+	// A WEAKENING, NOT A THIRD RULE OF THE FAMILY BELOW, and it is worth being
+	// plain about that. Lede, YearStems and RenderTiers each REFUSE a field a
+	// template cannot render. This arm stops refusing something: a template
+	// that renders no projection document -- the provenance index, which is
+	// built from Options.PageIndex and decodes nothing -- has no projection to
+	// name, and requiring one would mean naming an unrelated document to
+	// satisfy a guard. Both directions are refused so the weakening stays
+	// narrow: a template that DOES render a document still must name one.
+	case v.Projection == "" && templateRendersADocument(v.Template):
 		return fmt.Errorf("view %q names no projection", v.Path)
+	case v.Projection != "" && !templateRendersADocument(v.Template):
+		return fmt.Errorf(
+			"view %q names projection %q and renders template %q, which renders no "+
+				"document; the projection would be ignored", v.Path, v.Projection, v.Template)
 	case v.Template == "":
 		return fmt.Errorf("view %q names no template", v.Path)
 	case v.Lede != "" && !templateRendersLede(v.Template):
@@ -434,7 +547,7 @@ func (v View) validate(built map[string][]byte) error {
 			"view %q asks for render tiers %v and renders template %q, which publishes "+
 				"none; the chart would draw every tier", v.Path, v.RenderTiers, v.Template)
 	}
-	if _, ok := built[v.Projection]; !ok {
+	if _, ok := built[v.Projection]; !ok && v.Projection != "" {
 		// Named rather than "a projection is missing": the fix differs by which
 		// side is wrong, and an operator holding both names can tell.
 		return fmt.Errorf("view %q renders projection %q, which was not built", v.Path, v.Projection)
@@ -471,7 +584,7 @@ func (v View) validate(built map[string][]byte) error {
 // is louder than a page quietly not showing it.
 func templateRendersLede(name string) bool {
 	switch name {
-	case TrendsTemplate, DrilldownTemplate:
+	case TrendsTemplate, DrilldownTemplate, ProvenanceTemplate:
 		return true
 	default:
 		return false
@@ -498,6 +611,18 @@ func templateRendersAYearControl(name string) bool {
 	default:
 		return false
 	}
+}
+
+// templateRendersADocument answers whether a template renders a projection
+// document, as opposed to being built from Options directly.
+//
+// Every template did until the provenance index, which is an index OF the
+// site's own artifacts and reads no projection at all. It is spelled as a
+// property of the template for the reason templateRendersLede gives at length:
+// the negated form -- "every template except the provenance one" -- goes stale
+// in silence the next time a template lands.
+func templateRendersADocument(name string) bool {
+	return name != ProvenanceTemplate
 }
 
 // templateRendersTiers answers whether a template publishes [View.RenderTiers]
@@ -689,7 +814,7 @@ func sortedKeys[V any](m map[string]V) []string {
 // A cited page the tree does not hold is an error. The alternative is a page
 // that renders a citation nobody can follow, which is the failure this whole
 // change exists to remove.
-func withPageText(files map[string][]byte, tree fs.FS, cited []citation, reserved map[string]bool) (map[string][]byte, error) {
+func withPageText(files map[string][]byte, tree fs.FS, cited []Citation, reserved map[string]bool) (map[string][]byte, error) {
 	out := make(map[string][]byte, len(files)+len(cited))
 	maps.Copy(out, files)
 	for _, c := range cited {

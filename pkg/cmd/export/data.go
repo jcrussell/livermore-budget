@@ -32,11 +32,28 @@ const factsPath = cmdutil.FactsPath
 // what keeps the ~10 direct callers of buildProjections in the test suite
 // unchanged.
 func buildAll(repoRoot string) (Result, error) {
-	projections, err := buildProjections(repoRoot)
+	// ONE READ OF THE STORE, used twice: the projections are built from the
+	// decoded facts and the shards are compared against the raw bytes. Reading
+	// it twice would make that comparison a claim about two files that happen
+	// to have the same name.
+	raw, facts, err := readFactStore(repoRoot)
 	if err != nil {
 		return Result{}, err
 	}
-	return Result{Projections: projections}, nil
+	projections, err := buildProjectionsFrom(repoRoot, facts)
+	if err != nil {
+		return Result{}, err
+	}
+	assets, err := buildFactAssets(raw, facts, generatedBy())
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{
+		Projections: projections,
+		Files:       assets.Files,
+		PageIndex:   assets.pageIndex(),
+		Downloads:   assets.downloads(),
+	}, nil
 }
 
 // buildProjections is the projection half of buildAll: read the committed fact store and
@@ -444,7 +461,8 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 // refusing to export at all would mean a corpus that lost one schedule could not
 // publish the others. What must never happen is a NAV ENTRY pointing at a page
 // that was not written, and dropping the view is exactly what prevents that.
-func views(projections map[string][]byte) []export.View {
+func views(built Result) []export.View {
+	projections := built.Projections
 	out := []export.View{{
 		Path:       export.IndexPath,
 		Nav:        "Budget flows",
@@ -491,6 +509,26 @@ func views(projections map[string][]byte) []export.View {
 				"is given it \u2014 two schedules the city prints separately, over 18 pages. " +
 				"It publishes no total, because the same money appears here at more than " +
 				"one grain and any total would quietly count part of it twice.",
+		})
+	}
+	// THE PROVENANCE INDEX, WHICH NAMES NO PROJECTION. It is an index of the
+	// site's own record store, built from Result.PageIndex, and it is the one
+	// view whose template renders no document -- see
+	// export.templateRendersADocument.
+	//
+	// Conditional on the index being non-empty for the same reason every other
+	// view is conditional on its document: a nav entry pointing at a page that
+	// was not written is the failure this function exists to prevent.
+	if len(built.PageIndex) > 0 {
+		out = append(out, export.View{
+			Path:     "provenance.html",
+			Nav:      "Sources and data",
+			Template: export.ProvenanceTemplate,
+			Title:    "Every figure this site publishes, and the page it came from",
+			Lede: "This site's other pages draw the city's budget. This one publishes the " +
+				"records they are drawn from — every figure with the document, page and " +
+				"byte offset it was read from, and the text it was parsed from, kept " +
+				"verbatim. Download the lot, or open one page at a time.",
 		})
 	}
 	return out
