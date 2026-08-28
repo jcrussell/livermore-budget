@@ -1267,7 +1267,14 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	if err == nil {
 		t.Fatal("Write = nil, want a refusal naming the template with no builder")
 	}
-	for _, want := range []string{"unclaimed.html", orphan} {
+	// "has no builder for" IS THE DISPATCH'S OWN WORDING, and asserting it is
+	// the point rather than pedantry. This test used to check only that the
+	// error named the view and the template, which any refusal mentioning both
+	// satisfies -- and one did: an arm in View.validate began catching an
+	// unknown template first, so restoring the historical
+	// `default: buildSankeyPage` bug left this test GREEN. Pinning the message
+	// that only the dispatch produces is what makes it test its own name again.
+	for _, want := range []string{"unclaimed.html", orphan, "has no builder for"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("got error %q, want it to name %q", err, want)
 		}

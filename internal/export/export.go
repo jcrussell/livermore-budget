@@ -521,7 +521,7 @@ func (v View) validate(built map[string][]byte) error {
 	// narrow: a template that DOES render a document still must name one.
 	case v.Projection == "" && templateRendersADocument(v.Template):
 		return fmt.Errorf("view %q names no projection", v.Path)
-	case v.Projection != "" && !templateRendersADocument(v.Template):
+	case v.Projection != "" && templateIsKnown(v.Template) && !templateRendersADocument(v.Template):
 		return fmt.Errorf(
 			"view %q names projection %q and renders template %q, which renders no "+
 				"document; the projection would be ignored", v.Path, v.Projection, v.Template)
@@ -625,6 +625,31 @@ func templateRendersADocument(name string) bool {
 	default:
 		return false
 	}
+}
+
+// templateIsKnown answers whether this package has a builder for a template.
+//
+// IT KEEPS buildSite's DISPATCH REFUSAL REACHABLE, which is its only job. The
+// arm above refuses a projection named on a template that renders none, and
+// without this clause it also swallowed a template with no builder AT ALL: an
+// unrecognised name renders no document by this package's reckoning, so the
+// view was refused before the dispatch ever saw it, with a message that told a
+// reader to drop the projection. Following that advice slips the view past
+// validate and into a decode of an empty stem.
+//
+// Found by review, which measured the cost: restoring the historical
+// `default: buildSankeyPage` bug -- the one that rendered any unknown template
+// as a page of blanks -- left TestATemplateWithNoArmIsRefusedRatherThanRendered
+// AsASpine PASSING, because the new message happened to contain both strings it
+// asserted. A guard that passes over the defect it is named for is worse than
+// no guard.
+//
+// Drift against buildSite's switch is benign in both directions, which is why
+// there is no test pairing them: a template missing here loses the
+// ignored-projection guard and is still dispatched correctly, and one missing
+// there is refused by the dispatch.
+func templateIsKnown(name string) bool {
+	return templateRendersADocument(name) || name == ProvenanceTemplate
 }
 
 // templateRendersTiers answers whether a template publishes [View.RenderTiers]
