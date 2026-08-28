@@ -284,7 +284,8 @@ func TestASingleViewSiteRendersNoNav(t *testing.T) {
 // package a set of pages it must not write. Each one would fail in the browser
 // and nowhere else.
 func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
-	ok := export.View{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"}
+	ok := export.View{Path: export.IndexPath, Nav: "Budget flows",
+		Template: export.SankeyTemplate, Projection: "sankey"}
 	cases := []struct {
 		name  string
 		views []export.View
@@ -322,8 +323,21 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"no template", []export.View{ok, {Path: "revenue.html", Projection: "sankey"}},
 			"names no template"},
 		{"a year stem that was not built", []export.View{{Path: export.IndexPath,
-			Template: export.SankeyTemplate, Projection: "sankey",
+			Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey",
 			YearStems: []string{"sankey", "sankey-2099"}}}, "names no projection that was built"},
+		// The Lede trap one field over, and a worse one: a lede dropped in
+		// silence loses a sentence, year stems dropped in silence lose whole
+		// documents. Only the two chart templates render a year control, and
+		// nothing anywhere told a caller that.
+		{"year stems a template cannot render", []export.View{ok,
+			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate,
+				Projection: "sankey", YearStems: []string{"sankey"}}},
+			"has no year control"},
+		// buildSite falls back Nav -> Title and has nothing after that, so this
+		// set shipped <a href="revenue.html"></a> on every page of the site.
+		{"a view with neither a nav label nor a title", []export.View{ok,
+			{Path: "revenue.html", Template: export.SankeyTemplate, Projection: "sankey"}},
+			"empty link"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -353,8 +367,8 @@ func TestAnAssetCannotShadowAView(t *testing.T) {
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(127)},
 		Views: []export.View{
-			{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Files:       map[string][]byte{"revenue.html": []byte("not the view")},
 		Docs:        budgetDocs(),
@@ -407,8 +421,8 @@ func TestTheTrendsViewRefusesADocumentWithNoColumns(t *testing.T) {
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc()},
 		Views: []export.View{
-			{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -502,6 +516,13 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	// this test assert the refusal instead of the layout it is named for.
 	meta := doc["metadata"].(map[string]any)
 	meta["counts"].(map[string]any)["points"] = 1
+	// AND counts.facts WITH IT, because that is what the producer would have
+	// emitted. trends.go appends exactly one Point per selected fact and counts
+	// facts as len(selected), so a series short a column is short a fact and a
+	// point alike -- the two diverge only in a document somebody edited. Write
+	// reconciles the rendered cells against BOTH now, since facts is the number
+	// the lede prints (fisc-5tu).
+	meta["counts"].(map[string]any)["facts"] = 1
 	short, err := json.Marshal(doc)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
@@ -514,8 +535,8 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 			"sankey": goldenSankey(t), "revenue-trends": short,
 		},
 		Views: []export.View{
-			{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -589,8 +610,8 @@ func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(pages...)},
 		Views: []export.View{
-			{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		PageText:    twoViewPageText(pages...),
@@ -645,8 +666,8 @@ func writeTrends(t *testing.T, raw []byte, pages ...int) error {
 			"sankey": goldenSankey(t), "revenue-trends": raw,
 		},
 		Views: []export.View{
-			{Path: export.IndexPath, Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
+			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -695,6 +716,53 @@ func TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused(t *testing.T
 	// BOTH NUMBERS, because a refusal that says only "these disagree" leaves the
 	// reader to go and count.
 	for _, want := range []string{"counts.points 2", "carry 1"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("Write error = %q, want it to name %q", err, want)
+		}
+	}
+}
+
+// TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused is fisc-5tu: the
+// figure-loss above, reached through the OTHER count.
+//
+// The guard beside this one reconciles the rendered cells against
+// counts.points, and the sentence it exists to protect prints a DIFFERENT
+// number -- revenue.html.tmpl renders {{.Facts}}, "N figures in all", from
+// counts.facts. project.TrendCounts' doc comment states the two are computed
+// independently, facts off the selection and points off the series actually
+// built, so they are free to disagree.
+//
+// So this document -- facts 2, points 1, one point carried, one cell rendered
+// -- exported cleanly and published a lede claiming two figures over a table
+// showing one. Every guard was green; the page contradicted itself in prose.
+//
+// UNREACHABLE THROUGH internal/project, like its neighbour and for a sharper
+// reason: trends.go appends exactly one Point per selected fact and counts
+// facts as len(selected), so the producer cannot emit facts != points at all.
+// That is also why reconciling against facts costs nothing legitimate -- a
+// series short a column is short a fact and a point alike.
+func TestALedeClaimingMoreFiguresThanTheTableShowsIsRefused(t *testing.T) {
+	var doc map[string]any
+	if err := json.Unmarshal(trendsDoc(127, 128), &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	series := doc["series"].([]any)[0].(map[string]any)
+	series["points"] = []any{series["points"].([]any)[1]}
+	// counts.points FOLLOWS the document, so the arm beside this one stays
+	// green and only the lede's number is left disagreeing. Without this line
+	// the test would pass for the wrong reason.
+	doc["metadata"].(map[string]any)["counts"].(map[string]any)["points"] = 1
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+
+	err = writeTrends(t, raw, 127, 128)
+	if err == nil {
+		t.Fatal("Write accepted a lede claiming more figures than the table shows, want a refusal")
+	}
+	// BOTH NUMBERS, so the reader does not have to go and count.
+	for _, want := range []string{"counts.facts 2", "carry 1 cells"} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("Write error = %q, want it to name %q", err, want)
 		}
@@ -890,6 +958,76 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 		t.Fatalf("read index: %v", err)
 	}
 	return string(markup), nil
+}
+
+// TestBothChartTemplatesAcceptYearStems pins the OTHER half of
+// templateRendersAYearControl, and the reason is the failure the helper it
+// mirrors was written to document.
+//
+// A refusal test alone pins only that the set is non-empty. templateRendersLede
+// exists because its predecessor was spelled `v.Template != TrendsTemplate`
+// while exactly one template rendered a lede, and that spelling went stale in
+// silence the next time a template landed -- refusing a lede on a page that
+// would have rendered one perfectly well (fisc-5miz.5). A year-control guard
+// spelled `v.Template == SankeyTemplate` would have been born with that defect
+// already in it: the bead naming this trap was filed BEFORE the drill-down grew
+// a year control, so the obvious reading of it is wrong.
+//
+// So both arms are asserted, and by rendering rather than by calling the
+// unexported helper: what matters is that a caller can hand either chart
+// template a year list and get a page.
+func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	second := reyeared(t, goldenSankey(t), 2027, "FY 2026-27")
+
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey": goldenSankey(t), "sankey-2027": second, "fund-flows": fundFlows,
+		},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"}},
+			{Path: "drilldown.html", Nav: "Fund and division",
+				Template: export.DrilldownTemplate, Projection: "fund-flows",
+				YearStems: []string{"fund-flows"}, RenderTiers: []int{0, 2, 4}},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused year stems on a template that renders them: %v", err)
+	}
+
+	// AND THE YEARS REACHED THE PAGE, not merely past the guard. A validate arm
+	// that accepts a field the builder then ignores is the defect this whole
+	// commit is about, one layer down.
+	for _, page := range []string{export.IndexPath, "drilldown.html"} {
+		if got := len(yearsIn(t, readFile(t, dir, page))); got == 0 {
+			t.Errorf("%s renders %d years, want its stems", page, got)
+		}
+	}
+}
+
+// reyeared restamps a projection's fiscal year, so one golden document can serve
+// as two published years.
+func reyeared(t *testing.T, raw []byte, year int, label string) []byte {
+	t.Helper()
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta := doc["metadata"].(map[string]any)
+	meta["fiscal_year"] = year
+	meta["fiscal_year_label"] = label
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	return out
 }
 
 // yearsIn decodes CONFIG.years out of a rendered page.

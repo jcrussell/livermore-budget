@@ -304,6 +304,26 @@ func (o *Options) validate() error {
 	if index != 1 {
 		return fmt.Errorf("%d views are at %s; the site opens on exactly one", index, IndexPath)
 	}
+	// A NAV LABEL IS ONLY OWED WHEN A NAV IS RENDERED, which is why this is
+	// here and not in View.validate: only Options knows how many views there
+	// are. Every template guards its nav with {{if gt (len .Nav) 1}}, so a
+	// single-view site draws none and a view with neither field loses nothing.
+	// From two views up, buildSite falls back Nav -> Title and has nothing
+	// after that, so the nav ships <a href="revenue.html"></a> -- a link a
+	// reader can see, cannot read, and can still click.
+	//
+	// Refused rather than defaulted to path.Base(v.Path). A filename is not a
+	// label, and dropping the caller's intent into one is what the Lede rule
+	// above declines to do.
+	if len(o.views()) > 1 {
+		for _, v := range o.views() {
+			if v.Nav == "" && v.Title == "" {
+				return fmt.Errorf(
+					"view %q has neither a nav label nor a title; every page's nav "+
+						"would list it as an empty link", v.Path)
+			}
+		}
+	}
 	for rel := range o.Files {
 		if err := assetPath(rel, o.reservedPaths()); err != nil {
 			return err
@@ -390,6 +410,11 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q sets a lede and renders template %q, which has no {{.Lede}}; "+
 				"the sentence would be dropped in silence", v.Path, v.Template)
+	case len(v.YearStems) > 0 && !templateRendersAYearControl(v.Template):
+		return fmt.Errorf(
+			"view %q lists %d year stems and renders template %q, which has no year "+
+				"control; the years would be dropped in silence",
+			v.Path, len(v.YearStems), v.Template)
 	}
 	if _, ok := built[v.Projection]; !ok {
 		// Named rather than "a projection is missing": the fix differs by which
@@ -429,6 +454,28 @@ func (v View) validate(built map[string][]byte) error {
 func templateRendersLede(name string) bool {
 	switch name {
 	case TrendsTemplate, DrilldownTemplate:
+		return true
+	default:
+		return false
+	}
+}
+
+// templateRendersAYearControl answers whether a template has a year control to
+// render [View.YearStems] in.
+//
+// The same shape as templateRendersLede above and for the same reason, but the
+// trap it closes is a step worse: a lede dropped in silence loses a sentence,
+// and year stems dropped in silence lose whole documents. revenue.html took a
+// four-stem list and rendered one year, with every check green, because the
+// only thing that reads YearStems is a template arm that page does not have.
+//
+// TWO TEMPLATES, NOT ONE. The drill-down grew a year control after the bead
+// that named this defect was filed, so a guard spelled
+// `v.Template == SankeyTemplate` would have been born stale -- which is the
+// exact failure templateRendersLede exists to document.
+func templateRendersAYearControl(name string) bool {
+	switch name {
+	case SankeyTemplate, DrilldownTemplate:
 		return true
 	default:
 		return false

@@ -1413,6 +1413,26 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				"lost a figure between the projection that built it and this page",
 			v.Projection, meta.Counts.Points, rendered)
 	}
+	// AND AGAINST facts, WHICH IS THE NUMBER THE LEDE ACTUALLY PRINTS.
+	// revenue.html.tmpl renders {{.Facts}} -- "N figures in all" -- fed from
+	// counts.facts, while the arm above reconciles against counts.points, and
+	// project.TrendCounts' doc comment says in so many words that the two are
+	// computed independently: facts off the selection, points off the series
+	// actually built, so "a document that dropped a series publishes points
+	// below facts".
+	//
+	// So counts.facts 924 / counts.points 920 / 920 rendered cells passed
+	// everything above and published a lede claiming 924 figures over a table
+	// carrying 920 -- the page whose own prose contradicts what it shows, which
+	// is the thing the comment above claims to have closed. Reconciling against
+	// facts rather than printing points in the lede is the direction that keeps
+	// the sentence meaning what it says (fisc-5tu).
+	if rendered != meta.Counts.Facts {
+		return trendsPageData{}, fmt.Errorf(
+			"%s prints counts.facts %d in its lede and its series carry %d cells; "+
+				"the page would claim more figures than it shows",
+			v.Projection, meta.Counts.Facts, rendered)
+	}
 	if len(body.Series) != meta.Counts.Series {
 		return trendsPageData{}, fmt.Errorf(
 			"%s declares counts.series %d and carries %d",
