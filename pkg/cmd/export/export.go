@@ -179,6 +179,17 @@ func exportRun(o *Options) error {
 		}
 	}
 
+	// EVERY PUBLISHED DOCUMENT IS EITHER RENDERED OR DECLARED UNRENDERED, and
+	// this runs before Write rather than inside it because internal/export does
+	// not know what the site publishes -- PublishedDocuments lives in
+	// internal/project, which that package deliberately does not import.
+	// assertPublishedBuilt above says the document exists; this says a reader
+	// can get to it.
+	siteViews := views(projections)
+	if err := assertPublishedReachable(siteViews, projections); err != nil {
+		return err
+	}
+
 	written, err := export.Write(export.Options{
 		Dir:         o.OutputDir,
 		Projections: projections,
@@ -188,7 +199,7 @@ func exportRun(o *Options) error {
 		// means -- which document is a year of which, and which are separate
 		// views, are both facts about the projections and neither is legible
 		// from a filename.
-		Views:       views(projections),
+		Views:       siteViews,
 		Docs:        docs,
 		GeneratedBy: generatedBy(),
 		// The extraction tree, so the site ships the text of the pages it

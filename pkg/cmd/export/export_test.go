@@ -733,11 +733,87 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 	}
 }
 
-// TestViewsNamesEveryDocumentTheSitePublishes is the composition root's half of
-// the multi-view shell: internal/export lays out what it is handed and never
-// guesses what a stem means, so this is the only place that knows the revenue
-// trends are a view rather than a year of the Sankey.
-func TestViewsNamesEveryDocumentTheSitePublishes(t *testing.T) {
+// TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered is the assertion
+// whose absence let four documents ship unreachable.
+//
+// WHAT WENT WRONG, and it is why the name of this test matters. Its predecessor
+// was called TestViewsNamesEveryDocumentTheSitePublishes and its body asserted
+// `len(got) != 2` over seven projections -- a claim about a count, under a name
+// promising a claim about coverage. Meanwhile published-projection-built and
+// assertPublishedBuilt both assert every published document was BUILT, and
+// neither asks whether a page renders it. So `fisc export` wrote the four
+// fund-flows documents, listed them all in window.FISC_CONFIG.projections, gave
+// none of them a page, and `fisc verify` reported 38 passed / 0 failed.
+//
+// The count assertions that test did make are kept below, under their own name.
+func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
+	built := builtStemsForTest(t)
+	if err := assertPublishedReachable(views(built), built); err != nil {
+		t.Fatalf("the committed corpus: %v", err)
+	}
+
+	// A published document that is neither rendered nor declared must be
+	// refused. Driving it through a view set with the spine removed is the
+	// cheapest way to reach that state without inventing a document.
+	if err := assertPublishedReachable(nil, built); err == nil {
+		t.Error("no views at all was accepted; every published document is then " +
+			"unreachable and only the declared ones may be")
+	} else if !strings.Contains(err.Error(), "no view renders it") {
+		t.Errorf("got %v, want a refusal naming the unrendered document", err)
+	}
+
+	// And a declaration that has stopped being true must go red rather than
+	// quiet, which is the property that retires an entry instead of leaving an
+	// exemption for whoever forgets. Same standard internal/check's
+	// staleDeclarations applies to unprojectedScopes.
+	// Built from the REAL view set plus one, so the only thing wrong with it is
+	// the stale declaration -- starting from a bare slice would trip the
+	// missing-view arm above instead and prove nothing about this one.
+	stale := views(built)
+	for stem := range unviewedDocuments {
+		stale = append(stale, export.View{Path: "x.html", Projection: stem})
+		break
+	}
+	if err := assertPublishedReachable(stale, built); err == nil {
+		t.Error("a view rendering a document unviewedDocuments still declares unrendered " +
+			"was accepted; the declaration is then a false statement about the site")
+	} else if !strings.Contains(err.Error(), "delete that entry") {
+		t.Errorf("got %v, want a refusal telling the caller to delete the declaration", err)
+	}
+
+	// A leftover entry naming no published document is the other half of the
+	// same property. A MISTYPED entry is already caught by the arm above -- the
+	// real document goes undeclared -- but one left behind when a document stops
+	// being published is silent, and silence is what this declaration exists to
+	// refuse.
+	unviewedDocuments["no-such-document"] = "left behind"
+	t.Cleanup(func() { delete(unviewedDocuments, "no-such-document") })
+	if err := assertPublishedReachable(views(built), built); err == nil {
+		t.Error("a declaration naming no published document was accepted")
+	} else if !strings.Contains(err.Error(), "publishes no such document") {
+		t.Errorf("got %v, want a refusal naming the leftover entry", err)
+	}
+}
+
+// builtStemsForTest is the real corpus's projections, for the tests that assert
+// over what the repository actually publishes rather than over a fixture.
+func builtStemsForTest(t *testing.T) map[string][]byte {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildProjections(root)
+	if err != nil {
+		t.Fatalf("buildProjections: %v", err)
+	}
+	return built
+}
+
+// TestViewsOpensOnTheSpineAndGivesYearsToItAlone pins the shape of the view
+// list: which page the site opens on, and that the year control belongs to the
+// spine and to no other view.
+func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatalf("resolve repo root: %v", err)

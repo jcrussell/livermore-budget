@@ -289,6 +289,109 @@ func yearStems(name string, projections map[string][]byte) []string {
 	return out
 }
 
+// unviewedDocuments are documents the site PUBLISHES and no page RENDERS, each
+// with the reason and the bead that will give it one.
+//
+// AN ENTRY IS A DECLARATION, NOT A NOTE, and it exists because the gap it
+// records shipped silently. `fisc export` wrote four fund-flows documents into
+// data/, published every one of them in window.FISC_CONFIG.projections, and
+// gave none of them a page. published-projection-built and assertPublishedBuilt
+// both passed: they assert a published document was BUILT and neither asks
+// whether a reader can reach it. `fisc verify` was green at 38 checks with four
+// documents shipping as bytes nobody could open, and the test that should have
+// caught it -- TestViewsNamesEveryDocumentTheSitePublishes -- asserted a view
+// count of two over seven projections.
+//
+// AN ENTRY THAT HAS STOPPED BEING TRUE MUST GO RED, NOT QUIET, which is the
+// same standard internal/check's staleDeclarations applies to
+// unprojectedScopes: the moment a view names one of these stems, the entry is a
+// false statement about the site, so assertPublishedReachable refuses it and
+// the entry is deleted rather than left for whoever forgets.
+//
+// WHY A DECLARATION RATHER THAN JUST LANDING THE PAGE. The drill-down cannot be
+// rendered by the view it needs today, and the reason is arithmetic:
+// fund-flows.json is 145 nodes with a 61-node middle column, and site/app.js
+// lays out at CHART_HEIGHT 820 with NODE_PADDING 14, so the padding alone wants
+// 60 x 14 = 840px. d3-sankey clamps it and every node height and link width
+// comes out at zero. A view added now would publish a blank chart, which is a
+// worse answer than a declared gap.
+var unviewedDocuments = map[string]string{
+	project.FundFlowsProjection:                   fundFlowsUnviewed,
+	project.FundFlowsProjection + "-2024-actual":  fundFlowsUnviewed,
+	project.FundFlowsProjection + "-2025-revised": fundFlowsUnviewed,
+	project.FundFlowsProjection + "-2027":         fundFlowsUnviewed,
+}
+
+const fundFlowsUnviewed = "the General Fund drill-down: built, checked and published as data, " +
+	"and rendered by no page. It cannot simply be given one -- its middle column is 61 " +
+	"fund nodes and site/app.js lays a Sankey out at CHART_HEIGHT 820 with NODE_PADDING " +
+	"14, so the padding alone needs 840px and d3-sankey clamps every node to zero height. " +
+	"It also draws no link with a fund-group end, so linkColor paints every ribbon --muted " +
+	"and nodeRank sorts every node equal. A page needs the chart form settled first (fisc-f75)"
+
+// assertPublishedReachable is the half of the published-document contract that
+// assertPublishedBuilt does not make: a document a reader can open.
+//
+// It takes the views rather than reading them, for assertPublishedBuilt's
+// reason -- a test can hand it a set the real repository is never in.
+//
+// A DOCUMENT IS REACHABLE THROUGH A VIEW'S PROJECTION OR THROUGH ITS YEAR
+// STEMS, and both arms are needed: the spine's second year has no view of its
+// own and is reached only from the first view's year control.
+func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
+	reachable := make(map[string]struct{}, len(vs))
+	for _, v := range vs {
+		reachable[v.Projection] = struct{}{}
+		for _, stem := range v.YearStems {
+			reachable[stem] = struct{}{}
+		}
+	}
+	for _, d := range project.PublishedDocuments() {
+		// A document that was not BUILT is assertPublishedBuilt's finding, not
+		// this one -- and views() drops a view whose document is missing on
+		// purpose, so every unbuilt document would otherwise be reported here
+		// as unreachable too. That matters beyond tidiness: Options.Build is a
+		// documented seam for a caller supplying its own builder, and a caller
+		// building one document must not be told the other six are unreachable.
+		if _, ok := built[d.Stem]; !ok {
+			continue
+		}
+		_, drawn := reachable[d.Stem]
+		reason, declared := unviewedDocuments[d.Stem]
+		switch {
+		case drawn && declared:
+			return fmt.Errorf(
+				"the site publishes %s and a view now renders it, while unviewedDocuments "+
+					"still declares it unrendered (%q); delete that entry", d, reason)
+		case !drawn && !declared:
+			return fmt.Errorf(
+				"the site publishes %s and no view renders it, so it ships as bytes no "+
+					"reader can open; give it a view or declare it in unviewedDocuments "+
+					"with the bead that will", d)
+		}
+	}
+
+	// AND AN ENTRY NAMING NO PUBLISHED DOCUMENT IS ITSELF STALE. Without this
+	// arm the map is only half-checked: a stem that stops being published
+	// leaves its declaration behind, still asserting something about a document
+	// the site no longer has, and nothing would ever say so. A MISTYPED entry
+	// is already caught -- the real document goes undeclared and the arm above
+	// fires -- but a leftover one is silent, which is the shape this whole
+	// declaration exists to refuse.
+	published := make(map[string]struct{}, len(unviewedDocuments))
+	for _, d := range project.PublishedDocuments() {
+		published[d.Stem] = struct{}{}
+	}
+	for stem := range unviewedDocuments {
+		if _, ok := published[stem]; !ok {
+			return fmt.Errorf(
+				"unviewedDocuments declares %q unrendered and the site publishes no such "+
+					"document; delete that entry or correct its stem", stem)
+		}
+	}
+	return nil
+}
+
 // views is the site's pages, in nav order, the page it opens on first.
 //
 // IT LIVES IN THE COMMAND, not in internal/export, and that is what keeps that
