@@ -239,6 +239,13 @@ So the client folds. The rule, in full:
 **The page draws tiers 0, 2 and 4** — revenue source, fund group, division —
 giving 52 links over columns of 11 / 6 / 23.
 
+**Expanding a fund group back into its funds is not a per-node interaction on
+this d3-sankey** (`fisc-ppkq`). The vendored build takes the column count from
+topology and clamps the align into it, so expanding one group draws the funds
+and the divisions in the same column while the unexpanded ribbons span two —
+which `tools/jscheck/layout.mjs`'s `bands()` refuses. The shape that works is
+filtering to one group and rescaling to its own total.
+
 **Tier 5 is not a one-constant alternative.** Drawing `{0,2,4,5}` puts 29 of the
 44 object nodes under one pixel (smallest 0.030px), and that column's labels are
 23× "Services & Supplies" and 21× "Wages & Benefits". The object grain is not

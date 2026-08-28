@@ -312,7 +312,8 @@ func yearStems(name string, projections map[string][]byte) []string {
 // the drill-down's 61-node fund column laid every node and every ribbon out at
 // zero height, and c3a337d landed the fold that fixes it. drilldown.html renders
 // fund-flows now. What the other three columns still lack is a YEAR CONTROL, and
-// that is a different piece of work with a trap of its own -- see the const.
+// that is a different piece of work with a trap of its own (fisc-zojk) -- see
+// the const.
 var unviewedDocuments = map[string]string{
 	project.FundFlowsProjection + "-2024-actual":  fundFlowsUnviewed,
 	project.FundFlowsProjection + "-2025-revised": fundFlowsUnviewed,
@@ -327,7 +328,7 @@ const fundFlowsUnviewed = "a published column of the General Fund drill-down tha
 	"projection -- so the opening year has to be hoisted deliberately. FY2023-24 also " +
 	"carries a seventh fund group, permanent, which FUND_ORDER has no hue for and " +
 	"buildLegend no entry for, and site/style.css records that a seventh hue would " +
-	"invalidate a measured CVD result"
+	"invalidate a measured CVD result (fisc-zojk)"
 
 // assertPublishedReachable is the half of the published-document contract that
 // assertPublishedBuilt does not make: a document a reader can open.
