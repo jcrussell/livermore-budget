@@ -1,6 +1,7 @@
 package export
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -92,8 +93,8 @@ func testOptions(t *testing.T) (*Options, *iostreams.IOStreams, func() string, f
 		IO:        io,
 		RepoRoot:  func() (string, error) { return root, nil },
 		OutputDir: filepath.Join(t.TempDir(), "dist"),
-		Build: func(string) (map[string][]byte, error) {
-			return map[string][]byte{"sankey": goldenSankey(t)}, nil
+		Build: func(string) (Result, error) {
+			return Result{Projections: map[string][]byte{"sankey": goldenSankey(t)}}, nil
 		},
 	}
 	return opts, io, out.String, errOut.String
@@ -484,8 +485,9 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	}
 	delete(unviewedDocuments, stem)
 	t.Cleanup(func() { unviewedDocuments[stem] = reason })
-	opts.Build = func(string) (map[string][]byte, error) {
-		return map[string][]byte{"sankey": goldenSankey(t), stem: goldenSankey(t)}, nil
+	opts.Build = func(string) (Result, error) {
+		return Result{Projections: map[string][]byte{
+			"sankey": goldenSankey(t), stem: goldenSankey(t)}}, nil
 	}
 
 	opts.Clean = true
@@ -522,10 +524,79 @@ func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
 	}
 }
 
+// TestExportRunShipsTheBuildersFiles is fisc-xgr's whole point, and nothing
+// else asserts it.
+//
+// export.Options.Files has existed since fisc-ze7 and this command never set
+// it, so the only thing that ever travelled the asset channel was the cited
+// page text, which Write puts through it on its own behalf. A Builder could
+// produce an asset and had no way to hand it over. TestFilesShipVerbatimBeside
+// TheSite covers the channel, but it calls export.Write directly -- it would
+// stay green with the two ends of this command still unconnected, which is the
+// state that shipped.
+//
+// So this asserts the wiring rather than the writing: an asset the BUILDER
+// returned reaches the output tree, at the path it asked for, byte for byte,
+// and is reported to stdout with the rest.
+func TestExportRunShipsTheBuildersFiles(t *testing.T) {
+	opts, _, out, _ := testOptions(t)
+	shard := []byte(`{"id":"fisc-f-000000000000","doc_id":"d","page":66}` + "\n")
+	opts.Build = func(string) (Result, error) {
+		return Result{
+			Projections: map[string][]byte{"sankey": goldenSankey(t)},
+			Files:       map[string][]byte{"facts/d/pages/p0066.jsonl": shard},
+		}, nil
+	}
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+
+	got, err := os.ReadFile(filepath.Join(opts.OutputDir, "facts", "d", "pages", "p0066.jsonl"))
+	if err != nil {
+		t.Fatalf("the builder's asset did not reach the site: %v", err)
+	}
+	if !bytes.Equal(got, shard) {
+		t.Errorf("asset shipped as %q, want %q", got, shard)
+	}
+	// AND IT IS REPORTED, because the written paths are this command's data --
+	// what a caller pipes into a deploy. An asset that ships without appearing
+	// there is invisible to everything downstream.
+	if !strings.Contains(out(), "facts/d/pages/p0066.jsonl") {
+		t.Errorf("stdout %q does not name the asset that was written", out())
+	}
+}
+
+// TestExportRunRefusesAnAssetThatEscapesTheSite is the other half: the channel
+// now reaches a caller, so the guard on it has to be reachable too.
+//
+// It is assetPath's refusal, asserted through the command rather than through
+// export.Write, because that is the path a Builder now takes. And nothing is
+// created -- Options.validate runs before Write makes a directory, so a bad
+// path costs a reader nothing.
+func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	opts.Build = func(string) (Result, error) {
+		return Result{
+			Projections: map[string][]byte{"sankey": goldenSankey(t)},
+			Files:       map[string][]byte{"../escaped.jsonl": []byte("{}")},
+		}, nil
+	}
+	err := exportRun(opts)
+	if err == nil {
+		t.Fatal("exportRun accepted an asset path outside the site")
+	}
+	if !strings.Contains(err.Error(), "clean relative path") {
+		t.Errorf("got %v, want the asset-path refusal", err)
+	}
+	if _, serr := os.Stat(opts.OutputDir); serr == nil {
+		t.Error("the output directory was created before the assets were screened")
+	}
+}
+
 func TestExportRunReportsABuilderFailure(t *testing.T) {
 	opts, _, _, errOut := testOptions(t)
-	opts.Build = func(string) (map[string][]byte, error) {
-		return nil, os.ErrNotExist
+	opts.Build = func(string) (Result, error) {
+		return Result{}, os.ErrNotExist
 	}
 	if err := exportRun(opts); err == nil {
 		t.Fatal("got nil error, want the builder's failure")

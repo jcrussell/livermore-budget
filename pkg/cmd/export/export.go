@@ -24,15 +24,40 @@ import (
 // status` noise the price of looking at your own chart.
 const DefaultOutputDir = "dist"
 
-// Builder produces the projection documents to publish, keyed by the filename
-// stem they are written under (data/<stem>.json).
+// Result is everything a Builder produces for one export.
+//
+// TWO MAPS RATHER THAN ONE, because they land in different namespaces and the
+// difference is contractual. Projections is keyed by filename STEM and written
+// to data/<stem>.json, a name internal/export refuses if it contains '/', '\\'
+// or '.', because docs/sankey-contract.md promises that directory means "one
+// file per projection". Files is keyed by a slash-separated path RELATIVE TO
+// THE OUTPUT ROOT and written verbatim wherever it says. Merging them would
+// need a rule for telling a stem from a path, and every such rule is a guess
+// about what a name means.
+type Result struct {
+	Projections map[string][]byte
+	// Files is the non-projection asset channel: anything the site ships that
+	// is not a projection document. See export.Options.Files, which has had
+	// exactly one user -- the cited pages' text, put through it by Write
+	// itself -- because until now no Builder could reach it.
+	Files map[string][]byte
+}
+
+// Builder produces everything to publish: the projection documents, keyed by
+// the filename stem they are written under (data/<stem>.json), and any other
+// assets the site ships.
 //
 // This is the seam onto internal/project (fisc-gxa.1). It is a function type
 // rather than that package's Projection interface on purpose: internal/export
 // must not know how a projection is built, and this command must not fall
-// over because the projection package is mid-flight. When Registry() exists,
-// buildProjections becomes a loop over it and nothing else here changes.
-type Builder func(repoRoot string) (map[string][]byte, error)
+// over because the projection package is mid-flight.
+//
+// IT RETURNS ASSETS AS WELL AS PROJECTIONS (fisc-xgr) because the asset channel
+// was reachable only from inside internal/export. export.Options.Files existed
+// and this command never set it, so the one thing that travelled it was the
+// page text Write ships on its own behalf; nothing a Builder produced could get
+// out. That is what the fact store needs.
+type Builder func(repoRoot string) (Result, error)
 
 // Options is one invocation of the command.
 type Options struct {
@@ -56,7 +81,7 @@ type Options struct {
 	// about somebody else's server.
 	SourceBrowseURL string
 
-	// Build produces the projections. Nil means buildProjections.
+	// Build produces the projections and any other assets. Nil means buildAll.
 	Build Builder
 }
 
@@ -161,12 +186,13 @@ func exportRun(o *Options) error {
 
 	build := o.Build
 	if build == nil {
-		build = buildProjections
+		build = buildAll
 	}
-	projections, err := build(root)
+	built, err := build(root)
 	if err != nil {
 		return err
 	}
+	projections := built.Projections
 
 	docs, err := loadDocs(root)
 	if err != nil {
@@ -217,6 +243,11 @@ func exportRun(o *Options) error {
 		// would be a second place for it to change.
 		PageText:        os.DirFS(filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir))),
 		SourceBrowseURL: o.SourceBrowseURL,
+		// Whatever else the Builder produced. Write screens every key through
+		// assetPath before it creates anything, so a path that escapes the
+		// output root or shadows a fixed one is refused at the door rather
+		// than written and noticed later.
+		Files: built.Files,
 	})
 	if err != nil {
 		return err

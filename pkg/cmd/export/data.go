@@ -22,7 +22,23 @@ import (
 // a site built from a different file than either would still export cleanly.
 const factsPath = cmdutil.FactsPath
 
-// buildProjections is the default Builder: read the committed fact store and
+// buildAll is the default Builder: everything the site ships.
+//
+// It is a thin seam on purpose. buildProjections keeps its own signature and
+// its own tests -- it answers "what does the projection pipeline produce",
+// which is a question worth asking without an export around it -- and this
+// function answers the wider one the command actually needs. The split is also
+// what keeps the ~10 direct callers of buildProjections in the test suite
+// unchanged.
+func buildAll(repoRoot string) (Result, error) {
+	projections, err := buildProjections(repoRoot)
+	if err != nil {
+		return Result{}, err
+	}
+	return Result{Projections: projections}, nil
+}
+
+// buildProjections is the projection half of buildAll: read the committed fact store and
 // run every registered projection over it.
 //
 // It reads facts/facts.jsonl rather than re-running the mapping engine, and
