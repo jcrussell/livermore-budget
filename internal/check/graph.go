@@ -824,10 +824,13 @@ func joinArrow(path []string) string { return strings.Join(path, " -> ") }
 // constraintTierVocabulary asserts a node's constraint_tier is one the fund
 // registry actually uses.
 //
-// It is vacuous today: constraint_tier is "" on every node this schedule
-// produces, which is correct rather than lazy — data/funds.yaml records a tier
-// per fund, pp.66-67 publish only fund groups, and filling one in would present
-// an editorial classification as published data.
+// IT IS NO LONGER VACUOUS, and this comment said it was long after the
+// drill-down landed. The four fund-flows documents publish 247 nodes carrying a
+// non-empty constraint_tier; the two spine documents publish none, and that
+// remains correct rather than lazy — data/funds.yaml records a tier per fund,
+// pp.66-67 publish only fund groups, and filling one in there would present an
+// editorial classification as published data. The distinction is per document,
+// which is what the old wording lost.
 type constraintTierVocabulary struct{}
 
 var _ Check = (*constraintTierVocabulary)(nil)
@@ -836,8 +839,8 @@ func (*constraintTierVocabulary) ID() string { return "constraint-tier-vocabular
 func (*constraintTierVocabulary) Tier() int  { return 1 }
 func (*constraintTierVocabulary) Full() bool { return false }
 func (*constraintTierVocabulary) Description() string {
-	return "every constraint_tier a node carries is one data/funds.yaml uses — vacuous until a " +
-		"node carries one"
+	return "every constraint_tier a node carries is one data/funds.yaml uses, with the source " +
+		"note and the restriction note it was read from"
 }
 
 // Run takes the vocabulary from the loaded registry rather than from a list in

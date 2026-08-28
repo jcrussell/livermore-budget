@@ -267,6 +267,20 @@ type Options struct {
 // ErrNoPrimary reports a projection set with no PrimaryProjection in it.
 var ErrNoPrimary = errors.New("no " + PrimaryProjection + " projection to build the page from")
 
+// Validate reports whether this Options could be written, without writing it.
+//
+// IT EXISTS SO A CALLER CAN REFUSE BEFORE IT DESTROYS SOMETHING. Write validates
+// too, and that is not enough for `fisc export --clean`, which empties the
+// output directory first: a caller that learns its input is bad from Write has
+// already deleted the reader's site to find out. Nothing validate inspects is
+// produced by cleaning, so the check can always be hoisted, and the same
+// argument is written out at length beside assertPublishedReachable in
+// pkg/cmd/export.
+//
+// Write still validates. This is a second opportunity to refuse, not a
+// precondition callers are trusted to have met.
+func (o Options) Validate() error { return (&o).validate() }
+
 func (o *Options) validate() error {
 	if o.Dir == "" {
 		return errors.New("output directory is required")
@@ -415,6 +429,10 @@ func (v View) validate(built map[string][]byte) error {
 			"view %q lists %d year stems and renders template %q, which has no year "+
 				"control; the years would be dropped in silence",
 			v.Path, len(v.YearStems), v.Template)
+	case len(v.RenderTiers) > 0 && !templateRendersTiers(v.Template):
+		return fmt.Errorf(
+			"view %q asks for render tiers %v and renders template %q, which publishes "+
+				"none; the chart would draw every tier", v.Path, v.RenderTiers, v.Template)
 	}
 	if _, ok := built[v.Projection]; !ok {
 		// Named rather than "a projection is missing": the fix differs by which
@@ -480,6 +498,20 @@ func templateRendersAYearControl(name string) bool {
 	default:
 		return false
 	}
+}
+
+// templateRendersTiers answers whether a template publishes [View.RenderTiers]
+// to the client.
+//
+// The third field of this family, found by review of the commit that closed the
+// first two -- which is the argument for writing them as a family rather than as
+// three guards. Only buildDrilldownPage puts RenderTiers in the config blob;
+// buildSankeyPage omits the key entirely, and app.js reads
+// `CONFIG.render_tiers ?? []`, so a fold asked for on the spine is not refused,
+// not reported, and not applied: the chart draws every tier and looks like a
+// chart rather than like a defect.
+func templateRendersTiers(name string) bool {
+	return name == DrilldownTemplate
 }
 
 // assetPath screens one [Options.Files] key. The output tree is a web root

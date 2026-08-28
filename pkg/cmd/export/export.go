@@ -217,13 +217,7 @@ func exportRun(o *Options) error {
 		return err
 	}
 
-	if o.Clean {
-		if cerr := cmdutil.SafeCleanDir(o.OutputDir); cerr != nil {
-			return cmdutil.WithHint(cerr, "pass a different --output, or empty that directory yourself")
-		}
-	}
-
-	written, err := export.Write(export.Options{
+	site := export.Options{
 		Dir:         o.OutputDir,
 		Projections: projections,
 		// WHICH VIEWS THE SITE HAS IS STATED HERE, in the composition root, and
@@ -243,12 +237,31 @@ func exportRun(o *Options) error {
 		// would be a second place for it to change.
 		PageText:        os.DirFS(filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir))),
 		SourceBrowseURL: o.SourceBrowseURL,
-		// Whatever else the Builder produced. Write screens every key through
-		// assetPath before it creates anything, so a path that escapes the
-		// output root or shadows a fixed one is refused at the door rather
-		// than written and noticed later.
+		// Whatever else the Builder produced. Every key is screened through
+		// assetPath, so a path that escapes the output root or shadows a fixed
+		// one is refused rather than written and noticed later.
 		Files: built.Files,
-	})
+	}
+
+	// AND THE WHOLE THING IS VALIDATED BEFORE --clean, for the reason spelled
+	// out above assertPublishedReachable and now applying to a second class of
+	// input. Write validates, but Write runs after SafeCleanDir: a caller that
+	// learns its assets are bad from Write has already emptied the reader's
+	// site to find out. Found by /code-review of the commit that gave Builder
+	// an asset channel -- one bad key from a Builder was enough, and
+	// TestExportRunRefusesAnAssetThatEscapesTheSite did not see it because it
+	// ran without --clean.
+	if err = site.Validate(); err != nil {
+		return err
+	}
+
+	if o.Clean {
+		if cerr := cmdutil.SafeCleanDir(o.OutputDir); cerr != nil {
+			return cmdutil.WithHint(cerr, "pass a different --output, or empty that directory yourself")
+		}
+	}
+
+	written, err := export.Write(site)
 	if err != nil {
 		return err
 	}

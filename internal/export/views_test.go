@@ -338,6 +338,16 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a view with neither a nav label nor a title", []export.View{ok,
 			{Path: "revenue.html", Template: export.SankeyTemplate, Projection: "sankey"}},
 			"empty link"},
+		// THE THIRD FIELD OF THE SAME FAMILY, found by review of the commit
+		// that closed the first two. Only the drill-down publishes render_tiers
+		// to the client; buildSankeyPage omits the key and app.js reads
+		// `CONFIG.render_tiers ?? []`, so a fold asked for here was not
+		// refused, not reported and not applied -- the chart drew every tier
+		// and looked like a chart rather than like a defect.
+		{"render tiers a template does not publish", []export.View{ok,
+			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
+				Projection: "sankey", RenderTiers: []int{0, 2, 4}}},
+			"publishes none"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

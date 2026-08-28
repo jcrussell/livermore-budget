@@ -570,26 +570,56 @@ func TestExportRunShipsTheBuildersFiles(t *testing.T) {
 // now reaches a caller, so the guard on it has to be reachable too.
 //
 // It is assetPath's refusal, asserted through the command rather than through
-// export.Write, because that is the path a Builder now takes. And nothing is
-// created -- Options.validate runs before Write makes a directory, so a bad
-// path costs a reader nothing.
+// export.Write, because that is the path a Builder now takes.
+//
+// IT RUNS BOTH WITH AND WITHOUT --clean, and the second case is the one that
+// matters. The first version of this test ran only without, and stayed green
+// while `fisc export --clean` emptied the reader's site and THEN refused: Write
+// validates, but Write runs after SafeCleanDir. Found by /code-review of the
+// commit that introduced the channel. The fix hoisted Options.Validate above
+// the clean, which is the same ordering assertPublishedReachable argues for one
+// screen up; this is what would have caught it.
 func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
-	opts, _, _, _ := testOptions(t)
-	opts.Build = func(string) (Result, error) {
-		return Result{
-			Projections: map[string][]byte{"sankey": goldenSankey(t)},
-			Files:       map[string][]byte{"../escaped.jsonl": []byte("{}")},
-		}, nil
-	}
-	err := exportRun(opts)
-	if err == nil {
-		t.Fatal("exportRun accepted an asset path outside the site")
-	}
-	if !strings.Contains(err.Error(), "clean relative path") {
-		t.Errorf("got %v, want the asset-path refusal", err)
-	}
-	if _, serr := os.Stat(opts.OutputDir); serr == nil {
-		t.Error("the output directory was created before the assets were screened")
+	for _, clean := range []bool{false, true} {
+		name := "without --clean"
+		if clean {
+			name = "with --clean"
+		}
+		t.Run(name, func(t *testing.T) {
+			opts, _, _, _ := testOptions(t)
+			opts.Clean = clean
+
+			// A SITE THE REFUSAL COULD DESTROY, written by a good run first.
+			// Without it --clean has nothing to empty and the test asserts
+			// against an absence rather than against a survivor.
+			if err := exportRun(opts); err != nil {
+				t.Fatalf("seed export: %v", err)
+			}
+			index := filepath.Join(opts.OutputDir, "index.html")
+			if _, err := os.Stat(index); err != nil {
+				t.Fatalf("seed export wrote no index: %v", err)
+			}
+
+			opts.Build = func(string) (Result, error) {
+				return Result{
+					Projections: map[string][]byte{"sankey": goldenSankey(t)},
+					Files:       map[string][]byte{"../escaped.jsonl": []byte("{}")},
+				}, nil
+			}
+			err := exportRun(opts)
+			if err == nil {
+				t.Fatal("exportRun accepted an asset path outside the site")
+			}
+			if !strings.Contains(err.Error(), "clean relative path") {
+				t.Errorf("got %v, want the asset-path refusal", err)
+			}
+			if _, serr := os.Stat(index); serr != nil {
+				t.Errorf("the refusal destroyed the reader's site: %v", serr)
+			}
+			if _, serr := os.Stat(filepath.Join(opts.OutputDir, "escaped.jsonl")); serr == nil {
+				t.Error("the escaping asset was written")
+			}
+		})
 	}
 }
 
