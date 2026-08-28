@@ -186,7 +186,7 @@ func exportRun(o *Options) error {
 	// assertPublishedBuilt above says the document exists; this says a reader
 	// can get to it.
 	siteViews := views(projections)
-	if err := assertPublishedReachable(siteViews, projections); err != nil {
+	if err = assertPublishedReachable(siteViews, projections); err != nil {
 		return err
 	}
 
