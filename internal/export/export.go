@@ -329,20 +329,6 @@ type Download struct {
 // ErrNoPrimary reports a projection set with no PrimaryProjection in it.
 var ErrNoPrimary = errors.New("no " + PrimaryProjection + " projection to build the page from")
 
-// Validate reports whether this Options could be written, without writing it.
-//
-// IT EXISTS SO A CALLER CAN REFUSE BEFORE IT DESTROYS SOMETHING. Write validates
-// too, and that is not enough for `fisc export --clean`, which empties the
-// output directory first: a caller that learns its input is bad from Write has
-// already deleted the reader's site to find out. Nothing validate inspects is
-// produced by cleaning, so the check can always be hoisted, and the same
-// argument is written out at length beside assertPublishedReachable in
-// pkg/cmd/export.
-//
-// Write still validates. This is a second opportunity to refuse, not a
-// precondition callers are trusted to have met.
-func (o Options) Validate() error { return (&o).validate() }
-
 func (o *Options) validate() error {
 	if o.Dir == "" {
 		return errors.New("output directory is required")
@@ -517,6 +503,14 @@ func (v View) validate(built map[string][]byte) error {
 		// Flat, per the View doc comment: every asset path in the output is
 		// relative, so a page in a subdirectory would need ../ on all of them.
 		return fmt.Errorf("view path %q is not at the site root", v.Path)
+	// BEFORE ANYTHING ABOUT WHAT A TEMPLATE RENDERS, because nothing can be
+	// said about the renderings of a template that is not named. With this arm
+	// below the pair that follows, an empty Template made
+	// templateRendersADocument return false and a view with a projection was
+	// refused as "renders template \"\", which renders no document" -- true,
+	// and useless next to "names no template".
+	case v.Template == "":
+		return fmt.Errorf("view %q names no template", v.Path)
 	// A WEAKENING, NOT A THIRD RULE OF THE FAMILY BELOW, and it is worth being
 	// plain about that. Lede, YearStems and RenderTiers each REFUSE a field a
 	// template cannot render. This arm stops refusing something: a template
@@ -531,8 +525,6 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q names projection %q and renders template %q, which renders no "+
 				"document; the projection would be ignored", v.Path, v.Projection, v.Template)
-	case v.Template == "":
-		return fmt.Errorf("view %q names no template", v.Path)
 	case v.Lede != "" && !templateRendersLede(v.Template):
 		return fmt.Errorf(
 			"view %q sets a lede and renders template %q, which has no {{.Lede}}; "+
@@ -617,12 +609,22 @@ func templateRendersAYearControl(name string) bool {
 // document, as opposed to being built from Options directly.
 //
 // Every template did until the provenance index, which is an index OF the
-// site's own artifacts and reads no projection at all. It is spelled as a
-// property of the template for the reason templateRendersLede gives at length:
-// the negated form -- "every template except the provenance one" -- goes stale
-// in silence the next time a template lands.
+// site's own artifacts and reads no projection at all.
+//
+// AN ALLOW-LIST, like its two siblings, and the first draft of this was the
+// negated form -- `name != ProvenanceTemplate` -- which its own doc comment
+// then claimed not to be. That form fails OPEN: a second document-less
+// template would default to true, so View.validate would demand a projection
+// the page cannot render and the mirror arm that catches an ignored projection
+// would never fire. The allow-list fails the other way, loudly, and a new
+// template needs an arm in buildSite's exhaustive switch regardless.
 func templateRendersADocument(name string) bool {
-	return name != ProvenanceTemplate
+	switch name {
+	case SankeyTemplate, TrendsTemplate, DrilldownTemplate:
+		return true
+	default:
+		return false
+	}
 }
 
 // templateRendersTiers answers whether a template publishes [View.RenderTiers]
@@ -656,13 +658,35 @@ func assetPath(rel string, reserved map[string]bool) error {
 	return nil
 }
 
-// Write renders the site into o.Dir, creating it if needed, and returns the
-// slash-separated paths it wrote, relative to o.Dir and sorted.
+// Plan is a site resolved in full and not yet written: every byte of every
+// file, in the order it goes down.
 //
-// Write does not clean the directory: destroying files is a separate decision
-// with its own guard rail (cmdutil.SafeCleanDir), and burying it in a writer
-// would make every caller of Write a caller of RemoveAll.
-func Write(o Options) ([]string, error) {
+// IT EXISTS SO A CALLER CAN LEARN ITS INPUT IS BAD BEFORE IT DESTROYS ANYTHING.
+// `fisc export --clean` empties the output directory, and everything that can
+// refuse an export -- validation, rendering, resolving the cited page text out
+// of the extraction tree, reading the embedded assets -- needs nothing that
+// cleaning produces. Leaving any of it inside the writer means a fault that was
+// detectable up front is discovered after the reader's site is gone.
+//
+// That is not hypothetical and it is why this type replaced a plain
+// Options.Validate(): validation alone was hoisted first, and withPageText was
+// left behind inside Write, so an export whose store covers a page the
+// extraction does not still emptied the directory and then refused. Found by
+// review, reproduced by moving one committed page text aside.
+type Plan struct {
+	dir   string
+	files []plannedFile
+}
+
+// plannedFile is one output file, resolved.
+type plannedFile struct {
+	Path  string
+	Bytes []byte
+}
+
+// Prepare resolves an Options into a Plan, or refuses it. It touches no
+// filesystem outside the inputs it reads.
+func Prepare(o Options) (*Plan, error) {
 	if err := o.validate(); err != nil {
 		return nil, err
 	}
@@ -693,15 +717,9 @@ func Write(o Options) ([]string, error) {
 		}
 	}
 
-	// #nosec G301 -- the output is a web root; a directory a server running as
-	// another user cannot traverse is a broken deploy, not a hardened one.
-	if err := os.MkdirAll(o.Dir, 0o755); err != nil {
-		return nil, fmt.Errorf("create output directory: %w", err)
-	}
-
-	var written []string
+	plan := &Plan{dir: o.Dir}
 	seen := make(map[string]bool)
-	write := func(rel string, b []byte) error {
+	add := func(rel string, b []byte) error {
 		if seen[rel] {
 			// Two writers landing on one path is a silent overwrite: the file
 			// is there, the export succeeds, and which of the two bytes won
@@ -709,17 +727,7 @@ func Write(o Options) ([]string, error) {
 			return fmt.Errorf("two assets claim the output path %q", rel)
 		}
 		seen[rel] = true
-		dst := filepath.Join(o.Dir, filepath.FromSlash(rel))
-		// #nosec G301 -- as above: these are published directories.
-		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			return fmt.Errorf("create %q: %w", path.Dir(rel), err)
-		}
-		// #nosec G306 -- these are published web assets; 0600 would make the
-		// output unreadable to a web server running as another user.
-		if err := os.WriteFile(dst, b, 0o644); err != nil {
-			return fmt.Errorf("write %q: %w", rel, err)
-		}
-		written = append(written, rel)
+		plan.files = append(plan.files, plannedFile{Path: rel, Bytes: b})
 		return nil
 	}
 
@@ -727,7 +735,7 @@ func Write(o Options) ([]string, error) {
 	// dies midway then leaves a directory that --clean recognises as ours;
 	// writing it last would dead-end the retry, because index.html is not
 	// there either and SafeCleanDir would refuse to touch the debris.
-	if err := write(MarkerName, []byte("fisc export\n")); err != nil {
+	if err := add(MarkerName, []byte("fisc export\n")); err != nil {
 		return nil, err
 	}
 	for _, name := range verbatimAssets {
@@ -735,20 +743,20 @@ func Write(o Options) ([]string, error) {
 		if rerr != nil {
 			return nil, fmt.Errorf("read embedded asset %q: %w", name, rerr)
 		}
-		if werr := write(name, b); werr != nil {
-			return nil, werr
+		if aerr := add(name, b); aerr != nil {
+			return nil, aerr
 		}
 	}
-	if err := copyTree(o.assetTree(), "vendor", write); err != nil {
+	if err := copyTree(o.assetTree(), "vendor", add); err != nil {
 		return nil, err
 	}
 	for _, name := range sortedKeys(o.Projections) {
-		if err := write(path.Join(DataDir, name+".json"), o.Projections[name]); err != nil {
+		if err := add(path.Join(DataDir, name+".json"), o.Projections[name]); err != nil {
 			return nil, err
 		}
 	}
 	for _, rel := range sortedKeys(files) {
-		if err := write(rel, files[rel]); err != nil {
+		if err := add(rel, files[rel]); err != nil {
 			return nil, err
 		}
 	}
@@ -756,25 +764,67 @@ func Write(o Options) ([]string, error) {
 	// completed-site sentinel, so it must not exist until the site around it
 	// does -- including the other views it links to, or the entry point would
 	// appear while its own nav pointed at 404s.
-	for _, p := range pages {
-		if p.Path == IndexPath {
+	for _, pg := range pages {
+		if pg.Path == IndexPath {
 			continue
 		}
-		if err := write(p.Path, p.HTML); err != nil {
+		if err := add(pg.Path, pg.HTML); err != nil {
 			return nil, err
 		}
 	}
-	for _, p := range pages {
-		if p.Path != IndexPath {
+	for _, pg := range pages {
+		if pg.Path != IndexPath {
 			continue
 		}
-		if err := write(p.Path, p.HTML); err != nil {
+		if err := add(pg.Path, pg.HTML); err != nil {
 			return nil, err
 		}
 	}
+	return plan, nil
+}
 
+// Write puts a prepared Plan on disk, creating o.Dir if needed, and returns the
+// slash-separated paths it wrote, relative to that directory and sorted.
+//
+// Everything that can be decided has been. What is left can fail only on I/O,
+// so a caller that has cleaned a directory is past the point where anything it
+// could have known in advance will stop it.
+//
+// It does not clean the directory: destroying files is a separate decision with
+// its own guard rail (cmdutil.SafeCleanDir), and burying it in a writer would
+// make every caller of Write a caller of RemoveAll.
+func (p *Plan) Write() ([]string, error) {
+	// #nosec G301 -- the output is a web root; a directory a server running as
+	// another user cannot traverse is a broken deploy, not a hardened one.
+	if err := os.MkdirAll(p.dir, 0o755); err != nil {
+		return nil, fmt.Errorf("create output directory: %w", err)
+	}
+	written := make([]string, 0, len(p.files))
+	for _, f := range p.files {
+		dst := filepath.Join(p.dir, filepath.FromSlash(f.Path))
+		// #nosec G301 -- as above: these are published directories.
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return nil, fmt.Errorf("create %q: %w", path.Dir(f.Path), err)
+		}
+		// #nosec G306 -- these are published web assets; 0600 would make the
+		// output unreadable to a web server running as another user.
+		if err := os.WriteFile(dst, f.Bytes, 0o644); err != nil {
+			return nil, fmt.Errorf("write %q: %w", f.Path, err)
+		}
+		written = append(written, f.Path)
+	}
 	sort.Strings(written)
 	return written, nil
+}
+
+// Write renders the site into o.Dir in one step, for a caller with nothing to
+// destroy. A caller that cleans first wants Prepare, then Plan.Write.
+func Write(o Options) ([]string, error) {
+	plan, err := Prepare(o)
+	if err != nil {
+		return nil, err
+	}
+	return plan.Write()
 }
 
 // copyTree copies every file under root in fsys, preserving relative paths.

@@ -92,6 +92,17 @@ type Options struct {
 
 	// Build produces the projections and any other assets. Nil means buildAll.
 	Build Builder
+
+	// extractedDir is the committed extraction tree. Empty means the
+	// repository's, which is what every real invocation uses.
+	//
+	// It is a seam of the same kind as Build above, and it exists because the
+	// property worth testing -- that a pre-detectable fault never costs a
+	// reader their site -- is reached through a page the extraction does not
+	// carry. The alternative was for a test to move a committed file aside and
+	// put it back, which takes the repository down with it if the test fails
+	// midway.
+	extractedDir string
 }
 
 // Validate checks the flags and canonicalises the output path. It runs before
@@ -187,6 +198,14 @@ the repository instead.`,
 	return cmd
 }
 
+// extractionTree is where the committed page text is read from.
+func (o *Options) extractionTree(repoRoot string) string {
+	if o.extractedDir != "" {
+		return o.extractedDir
+	}
+	return filepath.Join(repoRoot, filepath.FromSlash(cmdutil.ExtractedDir))
+}
+
 func exportRun(o *Options) error {
 	root, err := o.RepoRoot()
 	if err != nil {
@@ -244,7 +263,7 @@ func exportRun(o *Options) error {
 		// of it. Passed even with --source-browse-url set: Write decides
 		// between the two, and this command asserting the precedence too
 		// would be a second place for it to change.
-		PageText:        os.DirFS(filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir))),
+		PageText:        os.DirFS(o.extractionTree(root)),
 		SourceBrowseURL: o.SourceBrowseURL,
 		// Whatever else the Builder produced. Every key is screened through
 		// assetPath, so a path that escapes the output root or shadows a fixed
@@ -254,15 +273,23 @@ func exportRun(o *Options) error {
 		Downloads: built.Downloads,
 	}
 
-	// AND THE WHOLE THING IS VALIDATED BEFORE --clean, for the reason spelled
-	// out above assertPublishedReachable and now applying to a second class of
-	// input. Write validates, but Write runs after SafeCleanDir: a caller that
-	// learns its assets are bad from Write has already emptied the reader's
-	// site to find out. Found by /code-review of the commit that gave Builder
-	// an asset channel -- one bad key from a Builder was enough, and
-	// TestExportRunRefusesAnAssetThatEscapesTheSite did not see it because it
-	// ran without --clean.
-	if err = site.Validate(); err != nil {
+	// AND THE WHOLE SITE IS RESOLVED BEFORE --clean, for the reason spelled out
+	// above assertPublishedReachable and now applying to every remaining class
+	// of input. Prepare validates, renders every page, and resolves the cited
+	// page text out of the extraction tree; after it returns, only I/O can
+	// fail. A caller that learns any of that from Write has already emptied the
+	// reader's site to find out.
+	//
+	// THIS REPLACED A NARROWER HOIST, and the gap is worth recording. An
+	// earlier version of this hunk called a validate-only method here and left
+	// withPageText inside Write, so an export whose fact store covers a page
+	// the extraction does not still destroyed the output and then refused --
+	// and this command's own PageIndex seeding widened that class, because it
+	// makes pages cited that no projection names. Found by review, reproduced
+	// by moving one committed page text aside. Resolving everything is the only
+	// version of this that stays true as more is added to Write.
+	plan, err := export.Prepare(site)
+	if err != nil {
 		return err
 	}
 
@@ -272,7 +299,7 @@ func exportRun(o *Options) error {
 		}
 	}
 
-	written, err := export.Write(site)
+	written, err := plan.Write()
 	if err != nil {
 		return err
 	}

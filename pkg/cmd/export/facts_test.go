@@ -616,3 +616,82 @@ func TestTheIndexNamesOnlyFilesTheSiteWrites(t *testing.T) {
 		})
 	}
 }
+
+// TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen is the general form of
+// the ordering this command has argued for twice and got wrong twice.
+//
+// FIRST MISS: assetPath ran inside export.Write, after SafeCleanDir, so one bad
+// key from a Builder emptied the reader's site and then refused. Fixed by
+// hoisting validation.
+//
+// SECOND MISS, which is what this test is really for: the hoist covered
+// validation only, and withPageText was still inside Write. An export whose
+// fact store covers a page the extraction does not still destroyed the output
+// and then refused -- and the PageIndex seeding WIDENED that class, because it
+// makes pages cited that no projection names. p76 is exactly such a page.
+//
+// So the assertion is not about page text. It is that a fault detectable
+// without touching the filesystem never costs a reader their site, and it is
+// driven through the page-text arm because that is the one that got left
+// behind. export.Prepare resolves everything; only I/O can fail after it.
+func TestCleanDoesNotDestroyASiteOverAFaultItCouldHaveSeen(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	dir := filepath.Join(t.TempDir(), "dist")
+	opts := func() *Options {
+		io, _, _, _ := iostreams.Test()
+		return &Options{
+			IO:        io,
+			RepoRoot:  func() (string, error) { return root, nil },
+			OutputDir: dir,
+		}
+	}
+	if rerr := exportRun(opts()); rerr != nil {
+		t.Fatalf("seed export: %v", rerr)
+	}
+	before, err := os.ReadDir(dir)
+	if err != nil || len(before) == 0 {
+		t.Fatalf("seed export wrote nothing: %v", err)
+	}
+
+	// A COPY OF THE REPOSITORY'S EXTRACTION, minus one page the fact store
+	// covers. The real tree is never touched -- a test that moved a committed
+	// file aside would take the repository down with it if it failed midway.
+	tree := t.TempDir()
+	src := filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir))
+	if cerr := os.CopyFS(tree, os.DirFS(src)); cerr != nil {
+		t.Fatalf("copy the extraction: %v", cerr)
+	}
+	gone := filepath.Join(tree, budgetDocIDForTest, "pages", "p0076.txt")
+	if _, serr := os.Stat(gone); serr != nil {
+		t.Fatalf("the page this test removes is not in the extraction: %v", serr)
+	}
+	if rmerr := os.Remove(gone); rmerr != nil {
+		t.Fatalf("remove: %v", rmerr)
+	}
+
+	o := opts()
+	o.Clean = true
+	o.extractedDir = tree
+	err = exportRun(o)
+	if err == nil {
+		t.Fatal("exportRun accepted a locator whose page text is missing")
+	}
+	if !strings.Contains(err.Error(), "p0076") {
+		t.Errorf("got %v, want it to name the missing page", err)
+	}
+
+	after, rerr := os.ReadDir(dir)
+	if rerr != nil {
+		t.Fatalf("the output directory is gone: %v", rerr)
+	}
+	if len(after) != len(before) {
+		t.Errorf("--clean destroyed the site over a pre-detectable fault: %d entries before, "+
+			"%d after", len(before), len(after))
+	}
+}
+
+// budgetDocIDForTest is the one document the committed store covers.
+const budgetDocIDForTest = "livermore-budget-fy2026-2027"
