@@ -1,6 +1,7 @@
 package export
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -47,21 +48,40 @@ func buildAll(repoRoot string) (Result, error) {
 // claims it came from. `fisc build` regenerates it byte-deterministically, so
 // the two can be compared in CI (fisc-1wr.6).
 func buildProjections(repoRoot string) (map[string][]byte, error) {
+	_, facts, err := readFactStore(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	return buildProjectionsFrom(repoRoot, facts)
+}
+
+// readFactStore reads facts/facts.jsonl BOTH ways: the raw bytes as committed
+// and the decoded facts.
+//
+// Both, from one read, because the two are compared. buildFactAssets re-encodes
+// the facts and asserts the result is the raw bytes back, and that assertion is
+// worth nothing if the two came from different reads of a file something could
+// have changed in between.
+func readFactStore(repoRoot string) ([]byte, []fact.Fact, error) {
 	path := filepath.Join(repoRoot, filepath.FromSlash(factsPath))
 	// #nosec G304 -- the path is the repository root fisc found by walking up
 	// from the working directory, joined to a constant; it is not user input.
-	f, err := os.Open(path)
+	raw, err := os.ReadFile(path)
 	if err != nil {
-		return nil, cmdutil.Hintf(fmt.Errorf("read the fact store: %w", err),
+		return nil, nil, cmdutil.Hintf(fmt.Errorf("read the fact store: %w", err),
 			"run `fisc build` to generate %s", factsPath)
 	}
-	defer f.Close() //nolint:errcheck // read-only file; nothing to flush
-
-	facts, err := fact.Read(f)
+	facts, err := fact.Read(bytes.NewReader(raw))
 	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", factsPath, err)
+		return nil, nil, fmt.Errorf("read %s: %w", factsPath, err)
 	}
+	return raw, facts, nil
+}
 
+// buildProjectionsFrom is the pipeline itself, over facts already read. It
+// still takes repoRoot because the label registry is loaded from data/ here, in
+// the composition root, and handed to internal/project.
+func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte, error) {
 	// The label registry is loaded here, in the composition root, and passed
 	// in: internal/project is deliberately decoupled from internal/registry
 	// and reaches it through a one-method interface.

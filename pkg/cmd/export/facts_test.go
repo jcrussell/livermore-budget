@@ -1,0 +1,446 @@
+package export
+
+import (
+	"bytes"
+	"encoding/csv"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+)
+
+// committedStore reads the real facts/facts.jsonl, both ways.
+func committedStore(t *testing.T) ([]byte, []fact.Fact) {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	raw, facts, err := readFactStore(root)
+	if err != nil {
+		t.Fatalf("read the fact store: %v", err)
+	}
+	return raw, facts
+}
+
+// TestFactShardsReconstituteTheCommittedStore is the claim the whole published
+// store rests on, asserted over the real file rather than over a fixture.
+//
+// Concatenating the shards in order must reproduce facts.jsonl byte for byte.
+// That is one equality and it covers three failures at once: no fact lost, none
+// invented, none rewritten. It holds because fact.less opens on DocID then
+// Page, so (doc_id, page) is a strict PREFIX of the total order and each shard
+// is a contiguous run of the file.
+//
+// Asserted here as well as inside buildFactAssets because the two answer
+// different questions. The builder proves it about whatever store is being
+// shipped, on every run; this proves it about the store as committed, which is
+// the one a reader will actually download.
+func TestFactShardsReconstituteTheCommittedStore(t *testing.T) {
+	raw, facts := committedStore(t)
+	assets, err := buildFactAssets(raw, facts, "fisc test")
+	if err != nil {
+		t.Fatalf("buildFactAssets: %v", err)
+	}
+
+	var concat bytes.Buffer
+	for _, p := range assets.Pages {
+		b, ok := assets.Files[p.Path]
+		if !ok {
+			t.Fatalf("index names %s and no such file was produced", p.Path)
+		}
+		concat.Write(b)
+	}
+	if !bytes.Equal(concat.Bytes(), raw) {
+		t.Fatalf("the shards do not reproduce the store: %d bytes against %d",
+			concat.Len(), len(raw))
+	}
+
+	// AND THE COUNTS ADD UP, which the byte equality alone does not say: a
+	// shard could carry the right bytes under a page number read off the wrong
+	// fact and the concatenation would still match.
+	total := 0
+	for _, p := range assets.Pages {
+		total += p.Facts
+		first := strings.SplitN(string(assets.Files[p.Path]), "\n", 2)[0]
+		var f fact.Fact
+		if err := json.Unmarshal([]byte(first), &f); err != nil {
+			t.Fatalf("decode the first line of %s: %v", p.Path, err)
+		}
+		if f.DocID != p.DocID || f.Page != p.Page {
+			t.Errorf("%s opens on %s p%d, want %s p%d", p.Path, f.DocID, f.Page, p.DocID, p.Page)
+		}
+		if want := shardPath(f.DocID, f.Page); p.Path != want {
+			t.Errorf("shard path %q, want %q computed from the locator", p.Path, want)
+		}
+	}
+	if total != len(facts) {
+		t.Errorf("the shards account for %d facts, the store holds %d", total, len(facts))
+	}
+	if assets.Facts != len(facts) || assets.Bytes != len(raw) {
+		t.Errorf("assets report %d facts in %d bytes, want %d in %d",
+			assets.Facts, assets.Bytes, len(facts), len(raw))
+	}
+}
+
+// TestBuildFactAssetsRefusesAStoreItCannotReproduce mutates the INPUT, not an
+// in-memory structure, which is this project's standard for proving a check
+// can fail: a store whose keys are in a different order on one line is exactly
+// what a hand-edited facts.jsonl looks like, and it re-encodes to something
+// else.
+func TestBuildFactAssetsRefusesAStoreItCannotReproduce(t *testing.T) {
+	raw, facts := committedStore(t)
+	lines := bytes.SplitN(raw, []byte("\n"), 2)
+	var first map[string]any
+	if err := json.Unmarshal(lines[0], &first); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Re-marshalling through a map sorts the keys, which is precisely the
+	// silent re-ordering fact.Write's declaration-order guarantee forbids.
+	reordered, err := json.Marshal(first)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	edited := append(append([]byte{}, reordered...), '\n')
+	edited = append(edited, lines[1]...)
+
+	_, err = buildFactAssets(edited, facts, "fisc test")
+	if err == nil {
+		t.Fatal("buildFactAssets accepted a store its shards do not reproduce")
+	}
+	for _, want := range []string{"do not reproduce", "differ at byte"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not say %q", err, want)
+		}
+	}
+}
+
+// TestBuildFactAssetsRefusesAnUnsortedStore is the same refusal one step
+// earlier and with a better message. Every claim the sharding makes rests on
+// the total order; a store out of it does not shard into contiguous runs at
+// all, and reporting that as a byte mismatch would tell a reader nothing.
+func TestBuildFactAssetsRefusesAnUnsortedStore(t *testing.T) {
+	raw, facts := committedStore(t)
+	swapped := append([]fact.Fact{}, facts...)
+	// Across a page boundary: find the first fact of a later page and put it
+	// first, so the store's DocID/Page runs are broken rather than merely its
+	// within-page order.
+	for i := 1; i < len(swapped); i++ {
+		if swapped[i].Page != swapped[0].Page {
+			swapped[0], swapped[i] = swapped[i], swapped[0]
+			break
+		}
+	}
+	_, err := buildFactAssets(raw, swapped, "fisc test")
+	if err == nil {
+		t.Fatal("buildFactAssets accepted an unsorted store")
+	}
+	if !strings.Contains(err.Error(), "not in its total order") {
+		t.Errorf("error %q does not name the order", err)
+	}
+}
+
+// TestTheCSVHeaderIsEveryFactFieldInOrder pins the column list against the
+// struct that defines it.
+//
+// ORDER, NOT MEMBERSHIP. fact.Fact's doc comment says field order IS the JSON
+// key order and that the order is part of the format; a set comparison would
+// leave the one property the CSV promises untested. And it is compared against
+// a MARSHALLED FACT rather than against another reflection pass, so the test
+// and the code do not share their one possible mistake.
+func TestTheCSVHeaderIsEveryFactFieldInOrder(t *testing.T) {
+	b, err := json.Marshal(fact.Fact{})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	var keys []string
+	dec := json.NewDecoder(bytes.NewReader(b))
+	if _, err := dec.Token(); err != nil { // '{'
+		t.Fatalf("open: %v", err)
+	}
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			t.Fatalf("key: %v", err)
+		}
+		keys = append(keys, tok.(string))
+		var discard any
+		if err := dec.Decode(&discard); err != nil {
+			t.Fatalf("value: %v", err)
+		}
+	}
+
+	got := factCSVHeader()
+	if len(got) != len(keys) {
+		t.Fatalf("header has %d columns, fact.Fact marshals %d keys", len(got), len(keys))
+	}
+	for i := range keys {
+		if got[i] != keys[i] {
+			t.Errorf("column %d is %q, want %q", i, got[i], keys[i])
+		}
+	}
+}
+
+// TestTheCSVCarriesAmountCentsVerbatim is the no-float assertion.
+//
+// docs/agents/conventions.md forbids float amounts, and a CSV is where that
+// rule is easiest to break by accident: decode to float64, format, and
+// 6999000000 becomes 6.999e+09. Transcoding through json.Number means the
+// literal text never becomes a number at all, and this compares the CSV's cell
+// against the JSONL's characters to say so.
+func TestTheCSVCarriesAmountCentsVerbatim(t *testing.T) {
+	raw, facts := committedStore(t)
+	out, err := factsCSV(raw)
+	if err != nil {
+		t.Fatalf("factsCSV: %v", err)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(out)).ReadAll()
+	if err != nil {
+		t.Fatalf("read back the CSV: %v", err)
+	}
+	if len(rows) != len(facts)+1 {
+		t.Fatalf("CSV has %d rows for %d facts plus a header", len(rows), len(facts))
+	}
+	col := -1
+	for i, name := range rows[0] {
+		if name == "amount_cents" {
+			col = i
+		}
+	}
+	if col < 0 {
+		t.Fatal("the CSV has no amount_cents column")
+	}
+
+	// The JSONL's own characters, taken off the line rather than off the
+	// decoded fact -- comparing against strconv of an int64 would pass through
+	// the very conversion this test exists to rule out.
+	for i, line := range bytes.Split(bytes.TrimRight(raw, "\n"), []byte("\n")) {
+		want := literalOf(t, line, "amount_cents")
+		if got := rows[i+1][col]; got != want {
+			t.Fatalf("line %d: CSV amount_cents %q, JSONL %q", i+1, got, want)
+		}
+	}
+	// And one spot check that the value is a plain integer, so a store of all
+	// zeroes could not satisfy the comparison above vacuously.
+	if strings.ContainsAny(rows[1][col], ".eE") {
+		t.Errorf("amount_cents %q is not an integer literal", rows[1][col])
+	}
+}
+
+// literalOf pulls one key's raw literal text out of a JSON object.
+func literalOf(t *testing.T, line []byte, key string) string {
+	t.Helper()
+	dec := json.NewDecoder(bytes.NewReader(line))
+	dec.UseNumber()
+	if _, err := dec.Token(); err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			t.Fatalf("key: %v", err)
+		}
+		name := tok.(string)
+		val, err := dec.Token()
+		if err != nil {
+			t.Fatalf("value: %v", err)
+		}
+		if name == key {
+			return fmt.Sprint(val)
+		}
+	}
+	t.Fatalf("line carries no %q", key)
+	return ""
+}
+
+// TestTheCSVQuotesTokensThatCarryACommaAndRoundTrips is the reason the stdlib
+// writer is used rather than a Sprintf: 1,110 of the store's fields are grouped
+// numbers with commas in them, so a hand-rolled join would shift every column
+// after token on those lines.
+func TestTheCSVQuotesTokensThatCarryACommaAndRoundTrips(t *testing.T) {
+	raw, _ := committedStore(t)
+	out, err := factsCSV(raw)
+	if err != nil {
+		t.Fatalf("factsCSV: %v", err)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(out)).ReadAll()
+	if err != nil {
+		t.Fatalf("read back the CSV: %v", err)
+	}
+	width := len(rows[0])
+	quoted := 0
+	for i, row := range rows {
+		if len(row) != width {
+			t.Fatalf("row %d has %d fields, the header has %d", i, len(row), width)
+		}
+		for _, cell := range row {
+			if strings.Contains(cell, ",") {
+				quoted++
+			}
+		}
+	}
+	if quoted == 0 {
+		t.Fatal("no field carries a comma, so this test asserts nothing about quoting")
+	}
+	t.Logf("%d fields carry a comma and survived the round trip", quoted)
+}
+
+// TestTheCSVRefusesALineMissingAKey closes csv.Writer's own gap: it enforces no
+// field count -- only csv.Reader does -- so a short line would ship a short row
+// in silence, and every column after the gap would be shifted in a file that
+// still parses.
+func TestTheCSVRefusesALineMissingAKey(t *testing.T) {
+	raw, _ := committedStore(t)
+	lines := bytes.SplitN(raw, []byte("\n"), 2)
+	var first map[string]any
+	if err := json.Unmarshal(lines[0], &first); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Rebuild the line in declaration order, minus one key, so the failure is
+	// the missing key and not the re-ordering.
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for i, name := range factCSVHeader() {
+		if name == "department" {
+			continue
+		}
+		if b.Len() > 1 {
+			b.WriteByte(',')
+		}
+		v, err := json.Marshal(first[name])
+		if err != nil {
+			t.Fatalf("encode %s: %v", name, err)
+		}
+		fmt.Fprintf(&b, "%q:%s", name, v)
+		_ = i
+	}
+	b.WriteByte('}')
+	short := append(append(b.Bytes(), '\n'), lines[1]...)
+
+	if _, err := factsCSV(short); err == nil {
+		t.Fatal("factsCSV accepted a line missing a key")
+	} else if !strings.Contains(err.Error(), "department") {
+		t.Errorf("error %q does not name the key that went missing", err)
+	}
+}
+
+// TestTheCSVRefusesATruncatedStore is the failure mode a loop that stops on
+// io.EOF invites, and it is worse than it sounds.
+//
+// json.Decoder.Token() returns io.EOF at the end of the stream AND at MOST
+// points inside a cut-off object. Measured, because the first version of this
+// test got it wrong: a cut after a key, after a colon, mid-number, or straight
+// after the opening brace all return bare io.EOF; only a cut inside a string
+// literal returns io.ErrUnexpectedEOF. So a transcoder that treats io.EOF as
+// "done" writes a CSV silently missing its tail, which parses perfectly and
+// carries no sign of what it lost.
+//
+// EVERY CUT POSITION IN THE FINAL RECORD, not one. The first version cut at a
+// fixed offset, landed inside a string, and passed through the one shape the
+// rename is not needed for -- so it stayed green with the guard removed. A
+// test that proves a guard by accident is the thing this repository keeps
+// finding in its own history.
+func TestTheCSVRefusesATruncatedStore(t *testing.T) {
+	raw, _ := committedStore(t)
+	// TWO RECORDS, NOT 1,448. The property is about one cut-off object, and
+	// re-transcoding 718 KB per cut position costs twelve seconds to learn
+	// nothing extra.
+	lines := bytes.SplitN(raw, []byte("\n"), 3)
+	body := bytes.Join(lines[:2], []byte("\n"))
+	last := len(lines[0]) + 1
+
+	if _, err := factsCSV(append(append([]byte{}, body...), '\n')); err != nil {
+		t.Fatalf("factsCSV on the intact pair: %v", err)
+	}
+
+	// FROM last+1: cutting at exactly the record boundary leaves a store that
+	// is one record shorter and perfectly well formed, and factsCSV cannot know
+	// that -- it transcodes what it is given and has no expected count. What
+	// catches THAT is buildFactAssets' byte equality against facts.jsonl, which
+	// runs over the same bytes before this function ever sees them. The
+	// division of labour is worth stating: this refuses a record it cannot
+	// finish reading, the reconciliation refuses a store that is not the store.
+	for cut := last + 1; cut < len(body); cut++ {
+		out, err := factsCSV(body[:cut])
+		if err != nil {
+			continue
+		}
+		got, rerr := csv.NewReader(bytes.NewReader(out)).ReadAll()
+		if rerr != nil {
+			t.Fatalf("cut at %d: read back: %v", cut, rerr)
+		}
+		t.Fatalf("factsCSV accepted a record truncated at byte %d (%q...) and wrote "+
+			"%d rows against the two it was given",
+			cut-last, body[last:min(last+30, cut)], len(got)-1)
+	}
+}
+
+// TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath.
+//
+// The second half is the one worth an assertion. A locator resolves by
+// COMPUTING facts/<doc>/pages/pNNNN.jsonl; the index exists to build a page and
+// to check a download. So every path it publishes must equal what shardPath
+// returns for the same locator -- if the two could disagree, the index would be
+// load-bearing after all.
+func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.T) {
+	raw, facts := committedStore(t)
+	assets, err := buildFactAssets(raw, facts, "fisc test")
+	if err != nil {
+		t.Fatalf("buildFactAssets: %v", err)
+	}
+	var doc factsIndexDoc
+	if err := json.Unmarshal(assets.Files[factsIndexPath], &doc); err != nil {
+		t.Fatalf("decode the index: %v", err)
+	}
+	if doc.Store.Pages != len(assets.Pages) || doc.Store.Facts != len(facts) {
+		t.Errorf("index reports %d pages and %d facts, want %d and %d",
+			doc.Store.Pages, doc.Store.Facts, len(assets.Pages), len(facts))
+	}
+	for _, p := range doc.Pages {
+		if want := shardPath(p.DocID, p.Page); p.Path != want {
+			t.Errorf("index path %q for %s p%d, want the computed %q",
+				p.Path, p.DocID, p.Page, want)
+		}
+		if want := pageTextPath(p.DocID, p.Page); p.TextPath != want {
+			t.Errorf("index text path %q, want %q", p.TextPath, want)
+		}
+		b, ok := assets.Files[p.Path]
+		if !ok {
+			t.Errorf("index names %s and no such file was produced", p.Path)
+			continue
+		}
+		if p.Bytes != len(b) {
+			t.Errorf("%s: index says %d bytes, the file is %d", p.Path, p.Bytes, len(b))
+		}
+	}
+}
+
+// TestEveryShardedPageHasItsExtractedText is the p76 case, found before it
+// shipped: the fact store covers 21 pages and the site was shipping the text of
+// 20, because p76 is cited by no projection's metadata.sources. A provenance
+// link that resolves to a shard whose page text 404s is provenance the site
+// does not actually ship.
+func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	raw, facts := committedStore(t)
+	assets, err := buildFactAssets(raw, facts, "fisc test")
+	if err != nil {
+		t.Fatalf("buildFactAssets: %v", err)
+	}
+	for _, p := range assets.Pages {
+		rel := filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir),
+			p.DocID, "pages", fmt.Sprintf("p%04d.txt", p.Page))
+		if _, err := os.Stat(rel); err != nil {
+			t.Errorf("%s p%d carries %d facts and its extracted text is not committed: %v",
+				p.DocID, p.Page, p.Facts, err)
+		}
+	}
+}
