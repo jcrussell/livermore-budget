@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -1125,5 +1126,53 @@ func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
 	}, make([]project.Options, 2))
 	if err != nil || got != "sankey-2027" {
 		t.Errorf("stemFor = %q, %v; want \"sankey-2027\", nil", got, err)
+	}
+}
+
+// TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws keeps
+// testdata/fund-flows.golden.json honest.
+//
+// THAT FIXTURE IS A CAPTURE, NOT A DERIVATION, and this test is what makes the
+// difference bearable. testdata/sankey.golden.json is hand-derived from
+// fixture_test.go's spineRows, so reproducing it proves the projection reads
+// those rows correctly. Nothing comparable is affordable here: the drill-down
+// is 280 facts over 18 pages, and a hand-authored table of them would be a
+// transcription of the same schedules the mapping rules already read.
+//
+// So the fixture exists for tools/jscheck, which has no Go and no facts.jsonl
+// and cannot lay out a document it is not handed. What this test buys is that
+// the document it lays out is the one `fisc export` writes -- without it, the
+// fold could be proved to work on a drill-down that stopped being ours.
+//
+// metadata.generated_by is excluded because it carries the commit and the build
+// time, which no committed file can match. Nothing else is excluded: the nodes,
+// the links, the counts, the caveats and the key order are all compared.
+func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildProjections(root)
+	if err != nil {
+		t.Fatalf("buildProjections: %v", err)
+	}
+	got, ok := built[project.FundFlowsProjection]
+	if !ok {
+		t.Fatalf("buildProjections did not build %q", project.FundFlowsProjection)
+	}
+	want, err := os.ReadFile(filepath.Join(root, "testdata", "fund-flows.golden.json"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+
+	stamp := regexp.MustCompile(`"generated_by": "[^"]*"`)
+	blank := []byte(`"generated_by": ""`)
+	if diff := cmp.Diff(
+		strings.Split(string(stamp.ReplaceAll(want, blank)), "\n"),
+		strings.Split(string(stamp.ReplaceAll(got, blank)), "\n"),
+	); diff != "" {
+		t.Errorf("testdata/fund-flows.golden.json is no longer what fisc export writes "+
+			"(-fixture +built); re-capture it with `fisc export` and restore the "+
+			"generated_by line:\n%s", diff)
 	}
 }

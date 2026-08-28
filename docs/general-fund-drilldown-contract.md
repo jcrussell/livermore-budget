@@ -186,3 +186,70 @@ Tier 1 does not exist; see `docs/sankey-contract.md`.
 - **Transfers between funds.** p76's legs are scope `transfers-by-fund` and no
   projection selects it, because it overlaps `revenue-by-fund` on `transfer_in`.
   It needs a document of its own (fisc-9gh).
+
+## Drawing it: the fold
+
+**This document cannot be drawn as it stands, and that is arithmetic rather
+than an aesthetic judgement.** Its fund column is 61 nodes. `site/app.js` lays a
+Sankey out in 796px of usable height at `NODE_PADDING = 14`; d3-sankey shrinks
+the padding to fit — `min(14, 796/60) = 13.267` — and then divides what is left
+among the values, and what is left is nothing. Every node height and every link
+width comes out at exactly **0.0000px**. A view added without the fold publishes
+a blank chart with every check in this repository green, which is why the
+document shipped as data for four days with `unviewedDocuments` declaring in
+writing that no page rendered it.
+
+Height does not fix it. At **zero** padding 24 of the 61 funds are still
+sub-pixel and 45 are under 8px, because the General Fund alone is 49% of the
+column; the smallest fund reaches one pixel at a canvas 64,203px tall.
+
+So the client folds. The rule, in full:
+
+- **A page declares the tiers it draws**, as `render_tiers` in `FISC_CONFIG`.
+  It is per view and never a constant in `app.js`: the spine and this document
+  are drawn by the same script from different hierarchies, and `{0,2,4}` applied
+  to the spine — which has no tier 4 — would fold its whole expenditure column
+  away. A page that declares nothing is drawn whole, by exactly the code that
+  drew it before the fold existed.
+- **Each node folds to its nearest ancestor whose tier the page draws**,
+  following `parent`.
+- **Links fold with their ends** and merge on the folded pair, summing
+  `value_cents` and unioning `fact_ids`. Two links of different `kind` folding
+  onto one ribbon is refused rather than resolved; it occurs in no published
+  column.
+- **A link whose ends fold to the same node is dropped.** It was a flow inside
+  what is now one box. This is the tier-4-to-5 case warned about above, and it
+  **cites nothing away**: the fund-to-department link that survives carries the
+  same money and the same facts, over every cell including the printed zeros,
+  which is what `facts_cited_twice` counts. Measured on FY2025-26: 239 facts
+  cited by 175 links before the fold, 239 by 52 after.
+- **A retained node's `parent` is re-pointed at its own folded ancestor**, so
+  the folded document satisfies client-side what `node-hierarchy-well-formed`
+  asserts of the published one.
+- **A node no folded link touches is not drawn.** A zero-degree node gets depth
+  0 and value 0 from d3-sankey, which draws as a labelled rectangle of no height
+  in the first column.
+- **A node with no drawn ancestor stops the draw.** The tier set does not
+  describe the document, and both ways of carrying on are worse: dropping it
+  loses a column silently, keeping it leaves a node with no column to be drawn
+  in.
+
+**The page draws tiers 0, 2 and 4** — revenue source, fund group, division —
+giving 52 links over columns of 11 / 6 / 23.
+
+**Tier 5 is not a one-constant alternative.** Drawing `{0,2,4,5}` puts 29 of the
+44 object nodes under one pixel (smallest 0.030px), and that column's labels are
+23× "Services & Supplies" and 21× "Wages & Benefits". The object grain is not
+*hidden* by the fold; it is unrenderable at this canvas, and offering it needs a
+view that rescales to one division rather than a fourth column.
+
+**What the fold does not fix.** Seven of the 52 ribbons still lay out under 1px
+and are drawn at the 1px floor `render()` applies, so those marks do not encode
+their values. `tools/jscheck/fold.mjs` pins that count, so it cannot grow
+unnoticed.
+
+**The page describes the folded document, not the fetched one.** The legend, the
+flow table, the inferred list and the flow count are all statements about what
+the reader is looking at; pointing them at the file would put a 175-row table
+beside a 52-ribbon chart. The footer still links the unfolded file, and the
+merged links still name every fact behind every ribbon.

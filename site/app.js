@@ -103,6 +103,7 @@
  * @property {FiscYear[]} years
  * @property {FiscMetadata} metadata
  * @property {Record<string, FiscDoc>} docs
+ * @property {number[]} [render_tiers]
  */
 
 /**
@@ -182,6 +183,25 @@ const FUND_COLOR_VAR = {
   "fund-group/enterprise": "--fund-enterprise",
   "fund-group/debt-service": "--fund-debt-service",
 };
+
+/**
+ * The node tiers this page draws, coarsest first; empty draws the document as
+ * it stands.
+ *
+ * THIS IS PER-VIEW CONFIGURATION AND MUST NEVER BECOME A CONSTANT IN THIS FILE.
+ * The spine and the drill-down are drawn by the same script from documents with
+ * different hierarchies: the spine publishes tiers 0, 2 and 5 and is drawn
+ * whole, while the drill-down publishes 0, 2, 3, 4 and 5 and is drawn at
+ * 0/2/4. Applying either page's set to the other document is not a cosmetic
+ * mistake -- {0,2,4} over the spine has no tier 5 in it, and the spine's whole
+ * expenditure column would fold away.
+ *
+ * Absent, the fold is skipped entirely rather than run with a set covering
+ * every tier, so a page that does not opt in is laid out by exactly the code
+ * that laid it out before the fold existed.
+ * @type {number[]}
+ */
+const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.render_tiers : [];
 
 /** Human wording for link.kind. The JSON's vocabulary is not English. */
 const KIND_LABEL = {
@@ -279,15 +299,57 @@ function isFundGroup(node) {
 }
 
 /**
- * The hue a link wears is its fund group's: every link in this projection has
- * exactly one fund-group end, so the ribbon says which fund the money passed
- * through. Colour follows the entity, never the value or the rank.
+ * The fund group a node belongs to, walking node.parent until it reaches one.
+ *
+ * THE SPINE HAS NO HIERARCHY AND THIS IS WHY THE WALK IS SAFE THERE. Every one
+ * of testdata/sankey.golden.json's 25 nodes carries parent: "", so the loop
+ * exits on its first test and every node answers for itself exactly as
+ * isFundGroup did. The drill-down is the first document with parents to walk:
+ * a fund's group is its parent, and a department's is its fund's.
+ *
+ * Returns "" for a node with no fund group above it -- tier 0 revenue sources
+ * on both documents, and any node whose chain runs out. The callers all treat
+ * "" as "no categorical slot", which is what --muted means.
+ * @param {FiscNode | LaidNode} node
+ * @returns {string}
+ */
+function fundGroupOf(node) {
+  let at = node;
+  // Bounded by the hierarchy's depth; the guard is against a parent cycle in a
+  // malformed document, which node-hierarchy-well-formed rejects Go-side but
+  // this file cannot assume it ran.
+  for (let hops = 0; hops < 8; hops++) {
+    if (isFundGroup(at)) return at.id;
+    if (!at.parent) return "";
+    const up = groupIndex.get(at.parent);
+    if (!up) return "";
+    at = up;
+  }
+  return "";
+}
+
+/**
+ * The hue a link wears is its fund group's, inherited through node.parent when
+ * neither end IS one. Colour follows the entity, never the value or the rank.
+ *
+ * A link with a fund group at one end takes it. Otherwise both ends are inside
+ * one group's subtree -- the drill-down's department-to-object links are the
+ * case, all of them under fund/100 -- and the group they share is the honest
+ * answer. Ends in two different groups cannot happen: a link between subtrees
+ * would have to cross a fund group boundary, and the fold puts a fund-group
+ * node at that boundary. If it ever does, "" falls through to --muted, which
+ * says "no single fund group" rather than picking one of the two.
  * @param {LaidLink} link
  * @returns {string}
  */
 function linkColor(link) {
-  const fund = isFundGroup(link.source) ? link.source : link.target;
-  const name = /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[fund.id];
+  const source = fundGroupOf(link.source);
+  const target = fundGroupOf(link.target);
+  const group = isFundGroup(link.source) ? link.source.id
+    : isFundGroup(link.target) ? link.target.id
+    : source === target ? source
+    : "";
+  const name = /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[group];
   return name ? cssVar(name) : cssVar("--muted");
 }
 
@@ -329,6 +391,14 @@ function nodeColor(node) {
  * Ties are real and wanted. Three revenue categories touch only the General
  * Fund, so all three score exactly its index and fall to the caller's tie-break
  * on value, which stacks them beside their fund largest first.
+ *
+ * ON THE DRILL-DOWN THE TIES ARE THE RULE RATHER THAN THE EXCEPTION, and that
+ * is a property of the document, not a defect here. All 23 department nodes
+ * carry parent: "fund/100", so every one of them scores the General Fund's
+ * index exactly and the whole column falls through to size-descending. Said
+ * plainly because the bead this landed under (fisc-5miz.3) expected the
+ * inheritance to give that column an order, and it does not: there is only one
+ * fund group above it to inherit from.
  * @param {LaidNode} node
  * @returns {number}
  */
@@ -340,10 +410,13 @@ function nodeRank(node) {
   let place = 0;
   for (const l of node.sourceLinks.concat(node.targetLinks)) {
     const other = l.source === node ? l.target : l.source;
-    const at = FUND_ORDER.indexOf(other.id);
-    // Every link in this graph has exactly one fund-group end, so this skips
-    // nothing today; it is here so that a link that did not would be ignored
-    // rather than counted as position zero.
+    // The neighbour's fund GROUP, not the neighbour: on the spine every link
+    // has a fund-group end and this is the end itself, so the figures below are
+    // unchanged. On the drill-down the ends are funds and departments, and
+    // without the walk every one of them scores -1 and the column degenerates
+    // to the size ordering measured as the worst of the four.
+    const at = FUND_ORDER.indexOf(fundGroupOf(other));
+    // A node in no fund group is ignored rather than counted as position zero.
     if (at < 0) continue;
     place += at * l.value;
     weight += l.value;
@@ -442,9 +515,151 @@ let pinned = null;
  */
 let keyActivation = { id: "", at: -Infinity };
 
+/**
+ * Every node of the document being laid out, by id, so fundGroupOf can walk
+ * node.parent upward.
+ *
+ * LAYOUT STATE, NOT PAGE STATE. layOut assigns it before anything that can
+ * throw, from the document it was handed and nothing else, so it never
+ * describes a document other than the one the chart was last laid out from.
+ * That is what lets it survive into paint(), which recolours the existing
+ * ribbons on a theme change without laying anything out again.
+ * @type {Map<string, FiscNode>}
+ */
+let groupIndex = new Map();
+
 /* ------------------------------------------------------------------ *
  * Chart
  * ------------------------------------------------------------------ */
+
+/**
+ * Folds a document to the tiers this page draws.
+ *
+ * WHY A DOCUMENT IS FOLDED AT ALL, because it is the whole reason the
+ * drill-down has a page. fund-flows.json's fund column is 61 nodes. d3-sankey
+ * shrinks nodePadding to fit -- min(14, 796/60) = 13.267 -- and then divides
+ * what is left among the values, and what is left is nothing: every node height
+ * and every link width comes out at exactly zero. Nor is that a padding
+ * problem. At zero padding 24 of the 61 funds are still sub-pixel and 45 are
+ * under 8px, because the General Fund alone is 49% of the column; the smallest
+ * fund reaches one pixel at a canvas 64,203px tall. The column cannot be drawn,
+ * at any height, and folding it to its six fund groups is what makes the
+ * document renderable.
+ *
+ * THE RULE. Each node folds to its nearest ancestor whose tier this page draws,
+ * following node.parent. Links fold with their ends and merge on the folded
+ * pair, summing values and unioning fact ids. A link whose ends fold to the
+ * SAME node is dropped: it was a flow inside what is now one box. That is the
+ * drill-down's department-to-object links, which fold to fund/100 -> fund/100 --
+ * docs/general-fund-drilldown-contract.md warns about exactly this shape -- and
+ * dropping them cites nothing away, because the fund-to-department link that
+ * survives carries the same money AND the same facts, over every cell including
+ * the printed zeros. That is what facts_cited_twice counts.
+ *
+ * IT FAILS CLOSED ON A NODE IT CANNOT PLACE. A node with no drawn ancestor
+ * means the tier set does not describe this document, and the two ways of
+ * carrying on are both worse than stopping: drop it and the page silently loses
+ * a column, keep it and it has no column to be drawn in. The throw reaches
+ * showYear's caller and paints a banner over a page that is still internally
+ * consistent, which is the same contract layOut has.
+ *
+ * @param {FiscProjection} doc
+ * @returns {FiscProjection} doc itself when this page draws every tier.
+ */
+function foldDocument(doc) {
+  if (!RENDER_TIERS.length) return doc;
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const drawn = new Set(RENDER_TIERS);
+
+  /** @type {Map<string,string>} */
+  const foldsTo = new Map();
+  for (const n of doc.nodes) {
+    let at = n;
+    for (let hops = 0; !drawn.has(at.tier); hops++) {
+      const up = at.parent ? byID.get(at.parent) : undefined;
+      if (!up || hops > 8) {
+        throw new Error("cannot draw " + doc.projection + ": node " + n.id +
+          " is tier " + n.tier + " and no ancestor of it is a tier this page draws (" +
+          RENDER_TIERS.join(", ") + ")");
+      }
+      at = up;
+    }
+    foldsTo.set(n.id, at.id);
+  }
+
+  /** @type {Map<string, FiscLink>} */
+  const merged = new Map();
+  /** @type {Map<string, Set<string>>} */
+  const cited = new Map();
+  for (const l of doc.links) {
+    const source = foldsTo.get(l.source);
+    const target = foldsTo.get(l.target);
+    // d3-sankey throws on a link naming a node the document does not carry;
+    // this is the same fault one step earlier, with the id in the message.
+    if (!source || !target) {
+      throw new Error("cannot draw " + doc.projection + ": link " + l.source +
+        " -> " + l.target + " names a node the document does not carry");
+    }
+    if (source === target) continue;
+    const key = source + "\u001f" + target;
+    const at = merged.get(key);
+    const ids = cited.get(key);
+    if (!at || !ids) {
+      merged.set(key, Object.assign({}, l, { source: source, target: target }));
+      cited.set(key, new Set(l.fact_ids));
+      continue;
+    }
+    // Two links of different kinds folding onto one ribbon would leave that
+    // ribbon's tooltip and table row naming a kind that is true of only part of
+    // it. It does not occur in any published column; if it ever does, stop.
+    if (at.kind !== l.kind) {
+      throw new Error("cannot draw " + doc.projection + ": " + source + " -> " + target +
+        " folds together a " + at.kind + " flow and a " + l.kind + " one");
+    }
+    at.value_cents += l.value_cents;
+    // A transfer id names one leg of one transfer and cannot survive a merge.
+    if (at.transfer_id !== l.transfer_id) at.transfer_id = "";
+    at.derived = at.derived || l.derived;
+    for (const id of l.fact_ids) ids.add(id);
+  }
+
+  const links = Array.from(merged.entries())
+    .map(([key, l]) => Object.assign(l, {
+      fact_ids: Array.from(cited.get(key) || []).sort(),
+    }))
+    .sort((a, b) => (a.source < b.source ? -1 : a.source > b.source ? 1
+      : a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
+
+  // A node the folded links do not touch is not drawable: d3-sankey gives a
+  // zero-degree node depth 0 and value 0, so it lands in the first column as a
+  // labelled rectangle of no height. The unfolded drill-down carries six of
+  // them -- the fund groups exist to carry the hierarchy, not a flow -- and
+  // after the fold every one of them is touched, so on the documents this
+  // project publishes today the filter removes nothing. It is here because
+  // "every node is drawable" is a property of the fold, not of the data.
+  const touched = new Set();
+  for (const l of links) {
+    touched.add(l.source);
+    touched.add(l.target);
+  }
+  // A RETAINED NODE'S parent IS RE-POINTED AT ITS OWN FOLDED ANCESTOR, because
+  // a folded document has to be as well-formed as the one it came from. Left
+  // alone, dept/administrative-services still claims parent "fund/100" -- a
+  // node the fold just removed -- and every reader of the hierarchy silently
+  // gets nothing: fundGroupOf's walk stops at the first unresolvable parent, so
+  // the inheritance this same change added to linkColor and nodeRank would be
+  // dead on the one document it was added for. This is the client-side twin of
+  // node-hierarchy-well-formed, which asserts Go-side that every parent
+  // resolves within its own document.
+  //
+  // A node whose parent folded INTO IT has no parent left to name, and says so.
+  const nodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
+    const up = n.parent ? foldsTo.get(n.parent) : "";
+    return Object.assign({}, n, { parent: up && up !== n.id ? up : "" });
+  });
+
+  return Object.assign({}, doc, { nodes: nodes, links: links });
+}
 
 /**
  * Re-stacks each node's ribbons in the order of the ends they run to.
@@ -510,11 +725,26 @@ function restackLinks(graph) {
  * @param {FiscProjection} doc
  */
 function layOut(doc) {
+  // Assigned from the document being laid out, before anything that can throw,
+  // so fundGroupOf never walks a parent chain belonging to another document.
+  groupIndex = new Map(doc.nodes.map((n) => [n.id, n]));
+
+  // WHICH COLUMN A NODE IS DRAWN IN IS A PROPERTY OF ITS TIER ONCE THIS PAGE
+  // FOLDS. sankeyJustify aligns link-less sinks to the LAST column, which is
+  // right for a document drawn whole and wrong the moment tiers can be skipped:
+  // a node terminating early is shoved across the chart to sit among nodes it
+  // shares nothing with. The spine is drawn whole and keeps sankeyJustify
+  // exactly, which is why the crossing figures pinned in tools/jscheck do not
+  // move.
+  const align = RENDER_TIERS.length
+    ? /** @param {LaidNode} d */ (d) => RENDER_TIERS.indexOf(d.tier)
+    : D3.sankeyJustify;
+
   const sankey = D3.sankey()
     .nodeId(/** @param {LaidNode} d */ (d) => d.id)
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
-    .nodeAlign(D3.sankeyJustify)
+    .nodeAlign(align)
     // Supplying this switches d3's own ordering pass off, which is what makes
     // the fund column's colour adjacency a property of the page rather than of
     // the library. nodeRank puts the crossing count back.
@@ -1265,9 +1495,21 @@ async function showYear(year) {
   // showing the new year's words over the old year's chart (fisc-bsg). Doing it
   // first means a failure propagates to the change handler's .catch with the
   // page still wholly the year it was already on.
-  const laid = layOut(doc);
+  // THE FOLD IS PART OF THE LAY-OUT AND SITS INSIDE THE SAME GUARANTEE. It
+  // throws on a node it cannot place, which is a fault in this page's tier set
+  // rather than in the document, and it must throw here -- before the repaint --
+  // for the same reason layOut does.
+  const drawn = foldDocument(doc);
+  const laid = layOut(drawn);
 
-  projection = doc;
+  // THE FOLDED DOCUMENT IS THE ONE THE PAGE DESCRIBES, not the one it fetched.
+  // The legend, the flow table, the inferred list, the tooltips and the detail
+  // panel all read this, and every one of them is a statement about what the
+  // reader is looking at. Pointing them at the unfolded document would put a
+  // 175-row table beside a 52-ribbon chart. Nothing is lost by it: the fold
+  // unions the fact ids it merges, so the table still names every fact behind
+  // every ribbon, and the footer still links the unfolded file it came from.
+  projection = drawn;
   // A refusal from an earlier attempt is about a year no longer on screen, and
   // fail() only ever added banners because it used to be the end of the story.
   // Now that a switch can recover, a stale role="alert" left above a correct
@@ -1323,9 +1565,18 @@ function paintYearWords(year) {
   const lede = maybeEl("lede-year");
   if (lede) lede.textContent = year.label + " " + year.basis;
 
+  // THE FLOW COUNT IS A CLAIM ABOUT THE CHART, so it counts the marks that were
+  // drawn rather than the rows the file holds. On a page drawn whole the two
+  // are the same number and this is the packager's figure verbatim. On a page
+  // that folds they are not: fund-flows.json holds 175 links over 145 nodes and
+  // the chart beside this sentence draws 52 over 40, and printing the file's
+  // figures there would have the page miscount what the reader can see. The
+  // fact total stays the document's, because folding cites nothing away.
   const counts = maybeEl("counts-line");
   if (counts) {
-    counts.textContent = year.counts.links + " flows between " + year.counts.nodes +
+    const links = projection ? projection.links.length : year.counts.links;
+    const nodes = projection ? projection.nodes.length : year.counts.nodes;
+    counts.textContent = links + " flows between " + nodes +
       " nodes, from " + year.counts.facts + " facts";
   }
 

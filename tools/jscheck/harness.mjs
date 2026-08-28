@@ -287,6 +287,17 @@ const NAMES = [
   "FUND_ORDER", "nodeRank", "restackLinks", "understands", "isFundGroup",
   "paintYearWords", "wireYears", "showYear", "maybeEl", "SCHEMA_VERSION",
   "NODE_WIDTH", "NODE_PADDING", "CHART_WIDTH", "CHART_HEIGHT", "LABEL_GUTTER",
+  // layOut AND foldDocument ARE EXPORTED BECAUSE layout.mjs REIMPLEMENTED THE
+  // FIRST OF THEM. Its layout() builds its own d3.sankey from the constants
+  // above, which was fine while the only thing to get wrong was a constant --
+  // and it meant every figure that file pins (195 crossings, $457,434,169, the
+  // 14 stale pairs) stayed green NO MATTER WHAT layOut DID. Found by peer
+  // review, 2026-08-28. layout() still exists, because the alternative sorts it
+  // measures cannot be reached through layOut, which hard-codes its nodeSort;
+  // what is new is a check that the two agree on the golden graph, so the
+  // reimplementation is now pinned to the shipped function rather than trusted
+  // to match it.
+  "layOut", "foldDocument", "fundGroupOf", "RENDER_TIERS",
   // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
   // "#legend button .key", and the swatches that selector finds do not exist
   // until buildLegend has run -- so a check cannot plant them before the draw
@@ -519,6 +530,18 @@ export function selectorsIn(source) {
 }
 
 /** The committed worked example, which is FY2026 and is what the claims are about. */
+/**
+ * The committed drill-down document, FY2025-26 -- 145 nodes, 175 links.
+ *
+ * SEPARATE FROM goldenGraph RATHER THAN A PARAMETER ON IT, so that every
+ * existing caller keeps meaning what it meant. It is a capture of what `fisc
+ * export` writes, pinned to that by a Go test; testdata/README.md says why it
+ * is the one fixture in the tree that is not derived by hand.
+ */
+export function goldenFundFlows() {
+  return JSON.parse(readFileSync(join(repoRoot, "testdata", "fund-flows.golden.json"), "utf8"));
+}
+
 export function goldenGraph() {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", "sankey.golden.json"), "utf8"));
 }
