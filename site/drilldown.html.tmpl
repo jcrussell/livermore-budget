@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="Which fund each of the city's revenue sources lands in, and which General Fund division spends it — traced to the city's published schedules.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint. Inline and tiny on purpose: a
+  // deferred script would repaint the page in the wrong mode first.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    <p class="lede">{{.Lede}}</p>
+  </div>
+  <div class="head-controls">
+    {{- if gt (len .Years) 1}}
+    <fieldset class="year-toggle" id="year-toggle" disabled>
+      <legend>Budget year</legend>
+      {{- range $i, $y := .Years}}
+      <input type="radio" name="fisc-year" id="year-{{$y.Stem}}" value="{{$y.Stem}}"
+             {{if eq $i 0}}checked{{end}}>
+      <label for="year-{{$y.Stem}}">{{$y.Label}}</label>
+      {{- end}}
+    </fieldset>
+    {{- end}}
+    <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
+  </div>
+</header>
+
+<main>
+
+<!-- THIS PAGE RENDERS NO STAT TILES AND NO HEADLINE, and that is its central
+     design constraint rather than a gap (fisc-5miz.6).
+
+     The document behind it holds the same money at more than one grain: 44
+     facts sit behind both a division's object rows and the fund-to-division
+     link that totals them. So a "total spending" tile, a column total, or a
+     table a reader could add up would be WRONG QUIETLY -- every figure on it
+     tying to a fact, every check green. internal/project publishes no headline
+     for this document for the same reason, and
+     docs/general-fund-drilldown-contract.md's "No headline" section is the
+     argument. There is no <section class="figures"> here and buildDrilldownPage
+     hands the client no Hero and no Figures, so a year switch cannot put one
+     back either. -->
+
+<h2>The flow</h2>
+<p class="lede">
+  <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span>. Revenue sources on the left,
+  the fund group each lands in through its individual funds in the middle, and the General
+  Fund divisions that spend it on the right.
+</p>
+<p class="lede">
+  <strong>Read one pair of columns at a time.</strong> The same money appears at more than
+  one grain here, so adding every flow up counts part of it twice — and unlike a missing
+  figure, that total would look right. Read left-to-middle for where a revenue source lands,
+  middle-to-right for what a division is given. Neither column is a budget total, and this
+  page publishes none.
+</p>
+<p class="lede">
+  <strong>The right-hand column is smaller than the middle one, and no money went missing.</strong>
+  Budget Book pp.167-170 decompose the General Fund alone, so every other fund group's money
+  ends at its fund group: the schedule that would break those down is not published. The
+  General Fund's own difference between what it takes in and what these divisions spend is
+  transfers out and the change in working capital, printed on pp.66-67 and not carried here.
+</p>
+
+<div class="card">
+  <div class="controls">
+    <div class="legend" id="legend" aria-label="Fund groups"></div>
+  </div>
+  <div class="legend" aria-label="How to read the marks">
+    <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
+    <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
+    <span class="subtle">Hover, tap or tab to a flow for its amount, fact ids and sources.
+      Click a node or a fund swatch to follow only that money; Escape puts the rest back.</span>
+  </div>
+  <div class="chart-wrap">
+    <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
+      <title id="chart-title">Sankey diagram of the {{.FiscalYearLabel}} {{.Basis}} budget by fund and division</title>
+      <desc id="chart-desc">
+        Revenue sources flow into fund groups, and the General Fund flows on into the
+        divisions that spend it. Only the General Fund has a spending side. The same
+        figures are listed in the table below.
+      </desc>
+    </svg>
+    <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+  </div>
+  <div class="detail" id="detail" aria-live="polite">
+    <p class="subtle">Select a flow or a node to pin its provenance here.</p>
+  </div>
+  <noscript>
+    <p>
+      This page draws its chart in the browser from
+      <a href="{{.DataPath}}">{{.DataPath}}</a>. With JavaScript off, that file is the whole
+      story: every amount, fact id and source page is in it, at a finer grain than the chart
+      draws.
+    </p>
+  </noscript>
+</div>
+
+<h2>What we inferred</h2>
+<p class="lede">
+  A figure the city printed and a classification we made are different things, so they are
+  never drawn alike. Everything listed here is ours, with the reasoning and the row it came
+  from.
+</p>
+<ul class="derived-list" id="derived-list">
+  <li class="subtle">Loading from {{.DataPath}}…</li>
+</ul>
+
+<h2>Caveats</h2>
+<p class="lede">
+  These are the reasons this chart will not reconcile row-for-row against the printed
+  schedules. They ship with the data, not in a footnote.
+</p>
+<ul class="caveats" id="caveats">
+  {{- range .Caveats}}
+  <li>{{.}}</li>
+  {{- end}}
+</ul>
+
+<h2>Every flow the chart draws, as a table</h2>
+<!-- THE TABLE IS THE CHART'S TWIN AND NOT THE FILE'S. app.js builds it from the
+     FOLDED document, so it holds one row per ribbon: the 44 division-to-object
+     links the fold merges away are not rows here, and their fact ids ride on the
+     rows that absorbed them. The count below is server-rendered from the FILE
+     and repainted by paintYearWords to what was drawn, so a reader with
+     JavaScript off is told what the file holds and a reader with a chart in
+     front of them is told what the chart shows. Both sentences are true of what
+     that reader can see. -->
+<p class="lede">
+  The chart's twin. Same numbers, no colour, no hovering — <span id="counts-line">{{.Links}} flows between
+  {{.Nodes}} nodes, from {{.Facts}} facts</span>. Every fact behind a merged flow is listed on
+  the row that carries it, so nothing here is cited less precisely than the file cites it.
+</p>
+<details id="table-view" open>
+  <summary>Show the table</summary>
+  <div class="table-scroll">
+    <table id="flow-table">
+      <thead>
+        <tr>
+          <th scope="col">From</th>
+          <th scope="col">To</th>
+          <th scope="col">Amount</th>
+          <th scope="col">Kind</th>
+          <th scope="col">Basis</th>
+          <th scope="col">Fact ids</th>
+          <th scope="col">Source</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</details>
+
+</main>
+
+<footer>
+  <h3>Sources for every year this page can show</h3>
+  <ul>
+    {{- range .Sources}}
+    <li>
+      {{if .PDFURL}}<a href="{{.PDFURL}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}{{if .Publisher}}, {{.Publisher}}{{end}}
+      {{- if .Pages}} —
+      {{- range $i, $p := .Pages}}{{if $i}}, {{end}}
+        <a href="{{$p.PDFURL}}">p{{$p.Number}} (PDF)</a> /
+        <a href="{{$p.TextURL}}">extracted text</a>
+      {{- end}}{{end}}
+    </li>
+    {{- end}}
+  </ul>
+  <p class="subtle">
+    <!-- SCOPES, PLURAL, AND THAT IS THE ONE ENVELOPE DIFFERENCE THIS DOCUMENT
+         CARRIES. Two schedules sit in one file because they are disjoint by
+         kind, which projection-scopes-are-disjoint asserts; writing one of them
+         here would publish half a document as the whole of it. -->
+    Scope{{if gt (len .Scopes) 1}}s{{end}}
+    {{- range $i, $s := .Scopes}}{{if $i}},{{end}} {{$s}}{{end}}, basis
+    <span id="page-basis">{{.Basis}}</span>. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+    <span data-year-path>This chart is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.</span>
+    Every data file the site publishes, each fetchable on its own:
+    {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
+  </p>
+</footer>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/d3-sankey.min.js"></script>
+<script>window.FISC_CONFIG = {{.ConfigJSON}};</script>
+<script src="app.js"></script>
+</body>
+</html>

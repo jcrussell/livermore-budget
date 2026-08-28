@@ -308,26 +308,26 @@ func yearStems(name string, projections map[string][]byte) []string {
 // false statement about the site, so assertPublishedReachable refuses it and
 // the entry is deleted rather than left for whoever forgets.
 //
-// WHY A DECLARATION RATHER THAN JUST LANDING THE PAGE. The drill-down cannot be
-// rendered by the view it needs today, and the reason is arithmetic:
-// fund-flows.json is 145 nodes with a 61-node middle column, and site/app.js
-// lays out at CHART_HEIGHT 820 with NODE_PADDING 14, so the padding alone wants
-// 60 x 14 = 840px. d3-sankey clamps it and every node height and link width
-// comes out at zero. A view added now would publish a blank chart, which is a
-// worse answer than a declared gap.
+// WHY THE THREE REMAINING ENTRIES ARE NOT A CHART PROBLEM ANY MORE. They were:
+// the drill-down's 61-node fund column laid every node and every ribbon out at
+// zero height, and c3a337d landed the fold that fixes it. drilldown.html renders
+// fund-flows now. What the other three columns still lack is a YEAR CONTROL, and
+// that is a different piece of work with a trap of its own -- see the const.
 var unviewedDocuments = map[string]string{
-	project.FundFlowsProjection:                   fundFlowsUnviewed,
 	project.FundFlowsProjection + "-2024-actual":  fundFlowsUnviewed,
 	project.FundFlowsProjection + "-2025-revised": fundFlowsUnviewed,
 	project.FundFlowsProjection + "-2027":         fundFlowsUnviewed,
 }
 
-const fundFlowsUnviewed = "the General Fund drill-down: built, checked and published as data, " +
-	"and rendered by no page. It cannot simply be given one -- its middle column is 61 " +
-	"fund nodes and site/app.js lays a Sankey out at CHART_HEIGHT 820 with NODE_PADDING " +
-	"14, so the padding alone needs 840px and d3-sankey clamps every node to zero height. " +
-	"It also draws no link with a fund-group end, so linkColor paints every ribbon --muted " +
-	"and nodeRank sorts every node equal. A page needs the chart form settled first (fisc-f75)"
+const fundFlowsUnviewed = "a published column of the General Fund drill-down that its page " +
+	"cannot yet reach. drilldown.html renders fund-flows (FY2025-26) and lists no year " +
+	"control, so these three ship as data no reader can open. Giving them one is not a " +
+	"line in views(): yearStems walks PublishedDocuments() in declared order, which puts " +
+	"2024-actual first, and View.validate refuses a view whose first stem is not its own " +
+	"projection -- so the opening year has to be hoisted deliberately. FY2023-24 also " +
+	"carries a seventh fund group, permanent, which FUND_ORDER has no hue for and " +
+	"buildLegend no entry for, and site/style.css records that a seventh hue would " +
+	"invalidate a measured CVD result"
 
 // assertPublishedReachable is the half of the published-document contract that
 // assertPublishedBuilt does not make: a document a reader can open.
@@ -426,6 +426,34 @@ func views(projections map[string][]byte) []export.View {
 				"budget columns. The columns are not one measurement: FY 2023-24 is money " +
 				"that moved, FY 2024-25 is a mid-year re-forecast, and the two later years " +
 				"are intentions adopted together.",
+		})
+	}
+	// THE DRILL-DOWN OPENS ON FY2025-26 AND LISTS NO YEAR STEMS, which is a
+	// smaller view than the four published columns could support and is
+	// deliberate. See unviewedDocuments for the two things a year control here
+	// has to solve first.
+	//
+	// RenderTiers is what makes this view drawable at all: 0 is the revenue
+	// source, 2 the fund group, 4 the division. Tier 3 -- the 61 individual
+	// funds -- folds into tier 2 in the client, because a 61-node column lays
+	// every node and every ribbon out at zero height. Tier 5, the object
+	// categories, folds into tier 4, because drawing it puts 29 of its 44 nodes
+	// under one pixel and its labels are two strings repeated 44 times.
+	// docs/general-fund-drilldown-contract.md's "Drawing it" section carries the
+	// measurements; tools/jscheck/fold.mjs re-measures them on every run.
+	if _, ok := projections[project.FundFlowsProjection]; ok {
+		out = append(out, export.View{
+			Path:        "drilldown.html",
+			Nav:         "Fund and division",
+			Template:    export.DrilldownTemplate,
+			Projection:  project.FundFlowsProjection,
+			RenderTiers: []int{0, 2, 4},
+			Title:       "Which fund Livermore's money lands in, and which division spends it",
+			Lede: "The citywide picture answers how big the budget is. This one answers " +
+				"which fund a revenue source lands in, and which General Fund division " +
+				"is given it \u2014 two schedules the city prints separately, over 18 pages. " +
+				"It publishes no total, because the same money appears here at more than " +
+				"one grain and any total would quietly count part of it twice.",
 		})
 	}
 	return out

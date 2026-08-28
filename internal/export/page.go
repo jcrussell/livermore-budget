@@ -22,8 +22,9 @@ import (
 // into a directory it does not own. What the caller chooses is which view uses
 // which, by name.
 const (
-	SankeyTemplate = "index.html.tmpl"
-	TrendsTemplate = "revenue.html.tmpl"
+	SankeyTemplate    = "index.html.tmpl"
+	TrendsTemplate    = "revenue.html.tmpl"
+	DrilldownTemplate = "drilldown.html.tmpl"
 )
 
 // SchemaVersion is the projection schema this packager understands.
@@ -129,6 +130,36 @@ type projectionMetadata struct {
 	Units           string       `json:"units"`
 	Sources         []sourceMeta `json:"sources"`
 	Headline        headline     `json:"headline"`
+	Counts          struct {
+		Facts int `json:"facts"`
+		Nodes int `json:"nodes"`
+		Links int `json:"links"`
+	} `json:"counts"`
+	Caveats []string `json:"caveats"`
+}
+
+// drilldownMetadata is the decoded metadata block of a DRILL-DOWN document.
+//
+// IT IS NOT projectionMetadata WITH A FIELD RENAMED, and the difference is the
+// reason this type exists rather than a widened one.
+//
+//   - scopes is a LIST. A document of two schedules writing scopes[0] into a
+//     singular scope would publish one of them as the whole of it.
+//   - There is NO headline, deliberately. The document holds the same money at
+//     more than one grain, so "the total" is ambiguous and no key disambiguates
+//     it; docs/general-fund-drilldown-contract.md's "No headline" section is the
+//     argument. decodeSankey's refusal of a headline-less document is correct
+//     and stays; this is the shape that has no business being asked.
+//   - counts carries six keys, not three, and facts_cited is not the spine's.
+//     Only the three the page renders are read; the rest are ignored by
+//     encoding/json, which is what we want here rather than a refusal.
+type drilldownMetadata struct {
+	GeneratedBy     string       `json:"generated_by"`
+	Scopes          []string     `json:"scopes"`
+	FiscalYear      int          `json:"fiscal_year"`
+	FiscalYearLabel string       `json:"fiscal_year_label"`
+	Basis           string       `json:"basis"`
+	Sources         []sourceMeta `json:"sources"`
 	Counts          struct {
 		Facts int `json:"facts"`
 		Nodes int `json:"nodes"`
@@ -251,6 +282,32 @@ type pageData struct {
 	Links int
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
 	// their \u form, so the blob cannot close the script element it sits in.
+	ConfigJSON template.JS
+}
+
+// drilldownPageData is the drill-down template's input.
+//
+// IT CARRIES Scopes RATHER THAN WIDENING chrome.Scope. chrome is embedded in
+// both other page types and its Scope is rendered in both their footers, so
+// making it a list to suit a third page edits two shipped pages and the prose
+// pinned about them. chrome.Scope is left empty here and this template never
+// asks for it.
+//
+// IT CARRIES NO Hero AND NO Figures, and that is the page's design rather than
+// an omission. See the template.
+type drilldownPageData struct {
+	chrome
+	FiscalYearLabel string
+	Basis           string
+	// Scopes is every schedule this document publishes, in the order it
+	// publishes them.
+	Scopes []string
+	Years  []yearView
+	Facts  int
+	Nodes  int
+	Links  int
+	// ConfigJSON is window.FISC_CONFIG, as on the spine page: this view draws a
+	// chart, so it ships app.js and the config app.js reads.
 	ConfigJSON template.JS
 }
 
@@ -469,6 +526,13 @@ type clientConfig struct {
 	// the packager so the client never composes a figure or a caveat itself.
 	Years []yearView           `json:"years"`
 	Docs  map[string]clientDoc `json:"docs"`
+	// RenderTiers is the node tiers the page draws, coarsest first; omitted
+	// when the page draws its document whole.
+	//
+	// OMITTED AND NOT [] WHEN ABSENT, which app.js relies on: a page that
+	// declares nothing is laid out by exactly the code that laid it out before
+	// the fold existed, and the spine's config blob is unchanged byte for byte.
+	RenderTiers []int `json:"render_tiers,omitempty"`
 }
 
 // buildPage decodes the primary projection and assembles everything the
@@ -583,6 +647,32 @@ func decodeSankey(stem string, raw []byte) (projectionDoc, projectionMetadata, e
 	}
 	if meta.Headline.AllFundsGrossExpenditureCents == 0 {
 		return doc, projectionMetadata{}, fmt.Errorf("%s metadata has no headline expenditure", stem)
+	}
+	return doc, meta, nil
+}
+
+// decodeDrilldown reads a document as a DRILL-DOWN document, and refuses one
+// that is not.
+//
+// Its refusals are the mirror of decodeSankey's. A fiscal year label is
+// required, because the page states one in its lede and a blank there is a page
+// that will not say which budget it is about. At least one scope is required,
+// because the footer names the schedules the figures come from. A headline is
+// NOT required and not looked for.
+func decodeDrilldown(stem string, raw []byte) (projectionDoc, drilldownMetadata, error) {
+	doc, err := decodeDocument(stem, raw)
+	if err != nil {
+		return doc, drilldownMetadata{}, err
+	}
+	var meta drilldownMetadata
+	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
+		return doc, drilldownMetadata{}, fmt.Errorf("decode %s metadata: %w", stem, err)
+	}
+	if meta.FiscalYearLabel == "" {
+		return doc, drilldownMetadata{}, fmt.Errorf("%s metadata has no fiscal_year_label", stem)
+	}
+	if len(meta.Scopes) == 0 {
+		return doc, drilldownMetadata{}, fmt.Errorf("%s metadata declares no scopes", stem)
 	}
 	return doc, meta, nil
 }
@@ -717,6 +807,8 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 			data, err = buildTrendsPage(o, v, here, byID, pageTextBase)
 		case SankeyTemplate:
 			data, err = buildSankeyPage(o, v, here, byID, pageTextBase)
+		case DrilldownTemplate:
+			data, err = buildDrilldownPage(o, v, here, byID, pageTextBase)
 		default:
 			return nil, nil, cmdutil.WithHint(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
@@ -1018,6 +1110,116 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a
 		// string, would corrupt the JSON.
+		ConfigJSON: template.JS(blob),
+	}, nil
+}
+
+// buildDrilldownPage assembles the drill-down view.
+//
+// IT IS A THIRD ARM AND NOT A RELAXED buildSankeyPage. The two pages differ in
+// what they are allowed to say, not only in which keys they read: this one has
+// no headline, no hero tile and no stat row, because the document holds the same
+// money at more than one grain and any figure that invites a reader to add a
+// column up would be wrong QUIETLY -- every number on it tying to a fact. See
+// the template and docs/general-fund-drilldown-contract.md.
+func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
+	pageTextBase func(string) string,
+) (drilldownPageData, error) {
+	doc, meta, err := decodeDrilldown(v.Projection, o.Projections[v.Projection])
+	if err != nil {
+		return drilldownPageData{}, err
+	}
+
+	stems := v.YearStems
+	if len(stems) == 0 {
+		stems = []string{v.Projection}
+	}
+	years := make([]yearView, 0, len(stems))
+	var cited []sourceMeta
+	for _, stem := range stems {
+		m := meta
+		if stem != v.Projection {
+			if _, m, err = decodeDrilldown(stem, o.Projections[stem]); err != nil {
+				return drilldownPageData{}, err
+			}
+		}
+		// The spine's two cross-stem refusals, restated for a plural scope.
+		// Same argument as buildSankeyPage's: the footer states one scope list
+		// and one builder for a page that can show several years, so a year
+		// disagreeing about either would have the footer describe a document
+		// other than the one on screen.
+		if !slices.Equal(m.Scopes, meta.Scopes) {
+			return drilldownPageData{}, fmt.Errorf(
+				"view %q opens on %q with scopes %v but its year stem %q has scopes %v; "+
+					"one page cannot state two scope lists",
+				v.Path, v.Projection, meta.Scopes, stem, m.Scopes)
+		}
+		if m.GeneratedBy != meta.GeneratedBy {
+			return drilldownPageData{}, fmt.Errorf(
+				"view %q opens on %q built by %q but its year stem %q was built by %q; "+
+					"the footer credits one projection for figures drawn from both",
+				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
+		}
+		cited = append(cited, m.Sources...)
+		years = append(years, yearView{
+			Year:  m.FiscalYear,
+			Label: m.FiscalYearLabel,
+			Stem:  stem,
+			Path:  path.Join(DataDir, stem+".json"),
+			Basis: m.Basis,
+			Title: v.Title,
+			// NO HERO AND NO FIGURES, and the empty slices are the point rather
+			// than a gap: paintYearWords replaces the tile row from these on
+			// every year switch, so a page that renders none server-side must
+			// hand the client none either.
+			Caveats: m.Caveats,
+			Counts: countsRef{
+				Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links,
+			},
+		})
+	}
+	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase)
+
+	refs := projectionRefs(o.Projections)
+	files := make(map[string]string, len(refs))
+	for _, r := range refs {
+		files[r.Name] = r.Path
+	}
+	cfg := clientConfig{
+		SchemaVersion: doc.SchemaVersion,
+		ExportedBy:    o.GeneratedBy,
+		Primary:       v.Projection,
+		Projections:   files,
+		Metadata:      doc.Metadata,
+		Years:         years,
+		Docs:          clientDocs,
+		RenderTiers:   v.RenderTiers,
+	}
+	blob, err := json.Marshal(cfg)
+	if err != nil {
+		return drilldownPageData{}, fmt.Errorf("encode page config: %w", err)
+	}
+
+	return drilldownPageData{
+		chrome: chrome{
+			Title:        v.Title,
+			Lede:         v.Lede,
+			Nav:          nav,
+			Sources:      sources,
+			ProjectionBy: meta.GeneratedBy,
+			ExportedBy:   o.GeneratedBy,
+			Projections:  refs,
+			DataPath:     files[v.Projection],
+			Caveats:      meta.Caveats,
+		},
+		FiscalYearLabel: meta.FiscalYearLabel,
+		Basis:           meta.Basis,
+		Scopes:          meta.Scopes,
+		Years:           years,
+		Facts:           meta.Counts.Facts,
+		Nodes:           meta.Counts.Nodes,
+		Links:           meta.Counts.Links,
+		// #nosec G203 -- see buildSankeyPage; blob is encoding/json's output.
 		ConfigJSON: template.JS(blob),
 	}, nil
 }

@@ -1086,12 +1086,18 @@ func TestTheLedesProseNamesThePagesScope(t *testing.T) {
 // about the dispatch rather than about a missing file. Under the old default the
 // page below renders successfully and ships a title and nothing else.
 func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
-	const orphan = "drilldown.html.tmpl"
+	// A NAME NO TEMPLATE IN THE TREE HAS, and it has to stay that way. This
+	// read "drilldown.html.tmpl" until that became a real template with a real
+	// arm, at which point the test asserted the opposite of reality and said so
+	// by going red. Whatever this is renamed to next, check first that
+	// buildSite has no case for it -- a test about an unhandled template is
+	// worthless the moment its template is handled.
+	const orphan = "unclaimed.html.tmpl"
 	assets := fstest.MapFS{
 		"index.html.tmpl":   {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		"revenue.html.tmpl": {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		// Reads nothing. That is the point: it is what a page of blanks is.
-		orphan:             {Data: []byte(`<!doctype html><title>drill-down</title>`)},
+		orphan:             {Data: []byte(`<!doctype html><title>unclaimed</title>`)},
 		"app.js":           {Data: []byte(`/* app */`)},
 		"style.css":        {Data: []byte(`body{}`)},
 		".nojekyll":        {Data: []byte{}},
@@ -1104,7 +1110,7 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "drilldown.html", Nav: "Drill-down",
+			{Path: "unclaimed.html", Nav: "Unclaimed",
 				Template: orphan, Projection: "sankey"},
 		},
 		Docs:        budgetDocs(),
@@ -1113,7 +1119,7 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	if err == nil {
 		t.Fatal("Write = nil, want a refusal naming the template with no builder")
 	}
-	for _, want := range []string{"drilldown.html", orphan} {
+	for _, want := range []string{"unclaimed.html", orphan} {
 		if !strings.Contains(err.Error(), want) {
 			t.Errorf("got error %q, want it to name %q", err, want)
 		}

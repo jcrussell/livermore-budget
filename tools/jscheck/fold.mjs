@@ -14,7 +14,7 @@
 // test pins to what `fisc export` writes. See testdata/README.md for why that
 // fixture is a capture rather than a derivation, and what the Go test buys.
 
-import { loadApp, goldenGraph, goldenFundFlows } from "./harness.mjs";
+import { loadApp, goldenGraph, goldenFundFlows, plannedFetch, settle, refusals } from "./harness.mjs";
 
 /** The tiers the drill-down page draws: revenue source, fund group, division. */
 const DRAWN = [0, 2, 4];
@@ -26,8 +26,9 @@ const DRAWN = [0, 2, 4];
  * be handed to an app after the fact — which is the point of it being config
  * rather than a constant, and means each set needs its own instance.
  */
-function appDrawing(tiers) {
+function appDrawing(tiers, fetch) {
   return loadApp({
+    fetch,
     config: {
       schema_version: 1,
       primary: "fund-flows",
@@ -129,7 +130,43 @@ function attempt(fn) {
   }
 }
 
-export function checks() {
+/**
+ * The drill-down page opened for real: main() fetches the committed document,
+ * folds it, lays it out and repaints, and this reads back what the DOM was told
+ * to show.
+ *
+ * THIS IS THE CLOSEST THING IN THE TREE TO LOOKING AT THE PAGE, and it exists
+ * because looking is what the zero-height bug needed and nothing else does. No
+ * Go check can see a chart, and the four fund-flows documents shipped for four
+ * days with every Go check green. Driving showYear rather than layOut is the
+ * difference: the legend, the flow table and the counts line are all repaints
+ * that happen after the layout, from the FOLDED document, and each of them is a
+ * statement about what the reader is looking at.
+ */
+async function opened() {
+  const app = appDrawing(DRAWN, plannedFetch({
+    "data/fund-flows.json": { doc: goldenFundFlows() },
+  }));
+  // main() plants nothing; buildTable returns at its first line without a
+  // <tbody> to fill, which is the one step of the repaint that would otherwise
+  // execute in no check here. Same seam lifecycle.mjs's page() uses.
+  const body = app.dom.document.node();
+  app.dom.document.getElementById("flow-table").selectable = { tbody: body };
+  const main = app.dom.document.node();
+  app.dom.document.plant("main", main);
+  await settle();
+  const el = (id) => app.dom.byId.get(id);
+  return {
+    counts: el("counts-line") ? el("counts-line").textContent : "",
+    lede: el("lede-year") ? el("lede-year").textContent : "",
+    legend: el("legend") ? el("legend").children.map((b) => b.dataset.node) : [],
+    rows: body.children.length,
+    banners: refusals(main).length,
+  };
+}
+
+export async function checks() {
+  const page = await opened();
   const whole = loadApp();
   const drill = appDrawing(DRAWN);
 
@@ -300,6 +337,60 @@ export function checks() {
             whole.fundGroupOf(n) === (whole.isFundGroup(n) ? n.id : "")),
       detail: `all ${goldenGraph().nodes.length} spine nodes are parentless, so ` +
               "fundGroupOf is isFundGroup by another name there",
+    },
+    {
+      // NOT DERIVED FROM THE FOLD, READ OFF THE PAGE. Every check above this
+      // one asks foldDocument what it returns; this one opens the drill-down
+      // through main(), fetches the committed document and reads back what the
+      // DOM was told to show. It is the closest thing in the tree to looking at
+      // the page, and looking is what this document needed: it shipped for four
+      // days with every Go check green over a chart nobody could see.
+      name: "the drill-down page opens, and every word on it describes the chart beside it",
+      ok: page.banners === 0 &&
+          page.lede === "FY 2025-26 adopted" &&
+          page.counts === "52 flows between 40 nodes, from 280 facts" &&
+          page.rows === 52,
+      detail: `${page.banners} refusal banner(s); lede "${page.lede}"; ` +
+              `counts "${page.counts}"; ${page.rows} table rows`,
+    },
+    {
+      // THE PALETTE WAS WHOLLY DEAD ON THIS DOCUMENT and this is what says it
+      // is not any more. Unfolded, 0 of 175 links have a fund-group end, so
+      // linkColor returned --muted for every ribbon and buildLegend rendered
+      // six swatches over nodes with no flows to isolate. Folded, the fund
+      // groups ARE the middle column: 52 of 52 links touch one.
+      // THE INHERITANCE IS DORMANT AT THE TIER SET THE PAGE SHIPS, and this is
+      // the check that keeps it honest rather than merely present. At {0,2,4}
+      // every folded link already has a fund-group END, so linkColor and
+      // nodeRank never reach the parent walk: reverting nodeRank to
+      // FUND_ORDER.indexOf(other.id) leaves every other check in this tree
+      // green. Measured, 2026-08-28.
+      //
+      // It is not dead code -- it is what the fold's re-pointed parents are
+      // FOR, and the moment tier 5 is drawn every department-to-object link
+      // depends on it -- so it is exercised here at the tier set that reaches
+      // it. Without this check the whole of fisc-5miz.3 would be unfalsifiable.
+      name: "a node inherits its fund group through parent, at a tier set that needs it",
+      ok: (() => {
+        const deep = appDrawing([0, 2, 4, 5]);
+        const doc = deep.foldDocument(goldenFundFlows());
+        // layOut is what populates the index fundGroupOf walks.
+        deep.layOut(doc);
+        const objects = doc.nodes.filter((n) => n.id.startsWith("expenditure/"));
+        const depts = doc.nodes.filter((n) => n.id.startsWith("dept/"));
+        return objects.length === 44 && depts.length === 23 &&
+               objects.every((n) => deep.fundGroupOf(n) === "fund-group/general") &&
+               depts.every((n) => deep.fundGroupOf(n) === "fund-group/general");
+      })(),
+      detail: "all 44 object cells and all 23 divisions resolve to fund-group/general " +
+              "through parent, which is the only thing that would colour or rank them",
+    },
+    {
+      name: "the legend is the six fund groups, in the palette's order, and each has flows",
+      ok: JSON.stringify(page.legend) === JSON.stringify(whole.FUND_ORDER),
+      detail: page.legend.length
+        ? page.legend.map((id) => id.replace("fund-group/", "")).join(", ")
+        : "the legend is empty",
     },
   ];
 }

@@ -465,10 +465,22 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	// no entry. The stub builds only the spine, and the check skips documents
 	// that were not built (that is assertPublishedBuilt's finding), so the
 	// builder has to produce this one for the state to be reachable at all.
-	stem := project.FundFlowsProjection
+	// A DECLARED STEM, READ OUT OF THE MAP RATHER THAN NAMED. This was
+	// project.FundFlowsProjection until drilldown.html started rendering it, at
+	// which point the entry was correctly deleted and this test went red naming
+	// its own remedy. Taking whichever stem is declared means the next page to
+	// land does not send it red again -- and if the map ever empties, the
+	// Fatalf below still says so rather than the test quietly asserting nothing.
+	stem := ""
+	for k := range unviewedDocuments {
+		if stem == "" || k < stem {
+			stem = k
+		}
+	}
 	reason, ok := unviewedDocuments[stem]
 	if !ok {
-		t.Fatalf("unviewedDocuments no longer declares %q; point this test at whatever it declares", stem)
+		t.Fatalf("unviewedDocuments declares nothing, so the state this test is about " +
+			"cannot be reached; delete it or give it a document rendered by no view")
 	}
 	delete(unviewedDocuments, stem)
 	t.Cleanup(func() { unviewedDocuments[stem] = reason })
@@ -873,8 +885,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	}
 	got := views(built)
 
-	if len(got) != 2 {
-		t.Fatalf("got %d views over %v, want the spine and the revenue trends", len(got), keys(built))
+	if len(got) != 3 {
+		t.Fatalf("got %d views over %v, want the spine, the revenue trends and the drill-down",
+			len(got), keys(built))
 	}
 	if got[0].Path != export.IndexPath || got[0].Projection != export.PrimaryProjection {
 		t.Errorf("the site opens on %+v, want the spine at %s", got[0], export.IndexPath)
@@ -897,6 +910,27 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	// a document would be making a claim about figures it may not recompute.
 	if got[1].Title == "" || got[1].Lede == "" {
 		t.Error("the revenue view ships no title or lede, so the page would head itself")
+	}
+
+	// THE DRILL-DOWN LISTS NO YEAR STEMS EITHER, and for a different reason from
+	// the trends view: it has four published columns and reaches one. That is
+	// what the three surviving unviewedDocuments entries declare, and pinning it
+	// here is what makes the day it changes a decision rather than a diff.
+	if got[2].Projection != project.FundFlowsProjection {
+		t.Errorf("the third view renders %q, want %q", got[2].Projection, project.FundFlowsProjection)
+	}
+	if len(got[2].YearStems) != 0 {
+		t.Errorf("the drill-down view lists year stems %v; giving it a year control is "+
+			"the work unviewedDocuments still declares", got[2].YearStems)
+	}
+	// The tier set is what makes the view drawable, so an empty one is not a
+	// smaller page -- it is a blank chart. See tools/jscheck/fold.mjs.
+	if len(got[2].RenderTiers) == 0 {
+		t.Error("the drill-down view declares no render tiers, so app.js would draw its " +
+			"61-node fund column whole and every node at zero height")
+	}
+	if got[2].Title == "" || got[2].Lede == "" {
+		t.Error("the drill-down view ships no title or lede, so the page would head itself")
 	}
 }
 

@@ -160,6 +160,23 @@ type View struct {
 	// document spanning four columns and have no year to switch between. A
 	// single site-wide list could not say that.
 	YearStems []string
+
+	// RenderTiers is the node tiers this view's chart draws, coarsest first,
+	// shipped to the client as FISC_CONFIG.render_tiers. Empty draws the
+	// document whole.
+	//
+	// IT IS PER VIEW BECAUSE THE DOCUMENTS HAVE DIFFERENT HIERARCHIES. The
+	// spine publishes tiers 0, 2 and 5 and is drawn whole; the drill-down
+	// publishes 0, 2, 3, 4 and 5 and cannot be drawn whole at all -- its
+	// 61-node fund column lays every node and every ribbon out at zero height.
+	// A tier set that belonged to this package rather than to a view would fold
+	// one of those two documents into something it is not.
+	//
+	// The fold itself is the client's: see site/app.js's foldDocument and the
+	// "Drawing it" section of docs/general-fund-drilldown-contract.md. This
+	// package ships the declaration and never applies it, which is the same
+	// division of labour as every other figure on the page.
+	RenderTiers []int
 }
 
 // Doc describes one source document the page cites. The caller supplies these
@@ -367,7 +384,7 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf("view %q names no projection", v.Path)
 	case v.Template == "":
 		return fmt.Errorf("view %q names no template", v.Path)
-	case v.Lede != "" && v.Template != TrendsTemplate:
+	case v.Lede != "" && !templateRendersLede(v.Template):
 		return fmt.Errorf(
 			"view %q sets a lede and renders template %q, which has no {{.Lede}}; "+
 				"the sentence would be dropped in silence", v.Path, v.Template)
@@ -393,6 +410,27 @@ func (v View) validate(built map[string][]byte) error {
 		}
 	}
 	return nil
+}
+
+// templateRendersLede answers whether a template has a {{.Lede}} to render.
+//
+// IT IS A PROPERTY OF THE TEMPLATE AND NOT A LIST OF EXCEPTIONS, which is the
+// whole reason it exists as a function. The guard above read
+// `v.Template != TrendsTemplate` while exactly one template rendered a lede,
+// and that spelling has one failure mode: it goes stale silently the next time
+// a template lands, refusing a lede on a page that would have rendered one
+// perfectly well. That is what it did to the drill-down (fisc-5miz.5).
+//
+// A template ABSENT from this set is refused a lede rather than dropping it,
+// which is the conservative direction: a page missing a sentence somebody wrote
+// is louder than a page quietly not showing it.
+func templateRendersLede(name string) bool {
+	switch name {
+	case TrendsTemplate, DrilldownTemplate:
+		return true
+	default:
+		return false
+	}
 }
 
 // assetPath screens one [Options.Files] key. The output tree is a web root
