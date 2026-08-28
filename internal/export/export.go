@@ -169,8 +169,10 @@ type View struct {
 	// spine publishes tiers 0, 2 and 5 and is drawn whole; the drill-down
 	// publishes 0, 2, 3, 4 and 5 and cannot be drawn whole at all -- its
 	// 61-node fund column lays every node and every ribbon out at zero height.
-	// A tier set that belonged to this package rather than to a view would fold
-	// one of those two documents into something it is not.
+	// A tier set belonging to this package rather than to a view would be wrong
+	// for one of them: the drill-down's set over the spine REFUSES to draw,
+	// because a spine node is parentless and has no ancestor to fold to. A
+	// refusal is the better of the two failures and still a broken page.
 	//
 	// The fold itself is the client's: see site/app.js's foldDocument and the
 	// "Drawing it" section of docs/general-fund-drilldown-contract.md. This

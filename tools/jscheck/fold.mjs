@@ -40,6 +40,11 @@ function appDrawing(tiers, fetch) {
         hero: { label: "l", value: "v", note: "n", kind: "hero" },
         figures: [], caveats: [],
         counts: { facts: 280, nodes: 145, links: 175 },
+        // THE PACKAGER'S STRING, and the check below reads it back. It is
+        // buildDrilldownPage's wording verbatim rather than a placeholder,
+        // because what that check is about is the client writing what it was
+        // handed instead of composing the spine's literal.
+        chart_title: "Sankey diagram of the FY 2025-26 adopted budget by fund and division",
       }],
       docs: {},
     },
@@ -60,6 +65,8 @@ function appDrawing(tiers, fetch) {
  *   expenditure/fire/*   a tier it does not, folding onto its own parent: the
  *                        SELF-LOOP, which is the case the contract warns about
  *   fund-group/capital   a drawn tier that no folded link touches: the DROP
+ *   dept/parks           retained, but its own fund group is the dropped one:
+ *                        the re-pointed parent must WALK PAST it, not name it
  */
 function miniature() {
   const node = (id, tier, parent) => ({
@@ -82,7 +89,9 @@ function miniature() {
       node("fund/100", 3, "fund-group/general"),
       node("fund/101", 3, "fund-group/general"),
       node("fund/640", 3, "fund-group/enterprise"),
+      node("fund/700", 3, "fund-group/capital"),
       node("dept/fire", 4, "fund/100"),
+      node("dept/parks", 4, "fund/700"),
       node("expenditure/fire/wages", 5, "dept/fire"),
     ],
     links: [
@@ -91,6 +100,10 @@ function miniature() {
       link("revenue/tax", "fund/640", 400, ["c"]),
       link("fund/100", "dept/fire", 90, ["d"]),
       link("dept/fire", "expenditure/fire/wages", 90, ["d"]),
+      // Paid by a fund of ANOTHER group, so dept/parks survives the fold while
+      // fund-group/capital -- the group its own parent chain leads to -- takes
+      // in nothing and is dropped.
+      link("fund/640", "dept/parks", 50, ["e"]),
     ],
   };
 }
@@ -162,6 +175,7 @@ async function opened() {
     legend: el("legend") ? el("legend").children.map((b) => b.dataset.node) : [],
     rows: body.children.length,
     banners: refusals(main).length,
+    chartTitle: el("chart-title") ? el("chart-title").textContent : "",
   };
 }
 
@@ -181,7 +195,14 @@ export async function checks() {
   const unfolded = attempt(() => smallest(whole.layOut(raw)));
   const laid = attempt(() => drill.layOut(folded));
   const drawn = laid.ok ? smallest(laid.value) : null;
+  // BOTH FLOORS, NOT JUST THE RIBBON ONE. render() floors a ribbon at 1px
+  // (Math.max(1, width - RIBBON_GAP)) and a node rect at 2px (Math.max(2, y1 -
+  // y0)), and the first version of this pin counted only ribbons -- so four
+  // node rects were being drawn at a size that does not encode their value,
+  // under a check whose whole claim is that such marks "cannot grow unnoticed".
+  // Found by /code-review, 2026-08-28.
   const hairlines = laid.ok ? laid.value.links.filter((l) => l.width < 1).length : -1;
+  const slivers = laid.ok ? laid.value.nodes.filter((n) => n.y1 - n.y0 < 2).length : -1;
   const flat = unfolded.ok ? unfolded.value : null;
 
   // The spine, laid out by the function the page ships, against the same graph
@@ -223,9 +244,10 @@ export async function checks() {
       // page has to say so; this counts how many it has to say it about, and
       // fails if that number grows.
       name: "the count of marks too small to encode their value is pinned",
-      ok: hairlines === 7,
-      detail: `${hairlines} of ${folded.links.length} ribbons lay out under 1px ` +
-              "and are drawn at 1px",
+      ok: hairlines === 7 && slivers === 4,
+      detail: `${hairlines} of ${folded.links.length} ribbons lay out under 1px and are ` +
+              `drawn at 1px; ${slivers} of ${folded.nodes.length} node rects lay out ` +
+              "under 2px and are drawn at 2px",
     },
     {
       name: "the fold merges two funds of one group onto one ribbon, keeping both facts",
@@ -244,7 +266,7 @@ export async function checks() {
       // dept/fire -> expenditure/fire/wages becomes dept/fire -> dept/fire and
       // goes. Four links in, three out.
       name: "a link whose ends fold together is dropped rather than drawn as a loop",
-      ok: folding.ok && mini.links.length === 3 &&
+      ok: folding.ok && mini.links.length === 4 &&
           !mini.links.some((l) => l.source === l.target) &&
           byPair.has("fund-group/general -> dept/fire"),
       detail: mini.links.map((l) => l.source + "->" + l.target).join(", "),
@@ -252,7 +274,7 @@ export async function checks() {
     {
       name: "a drawn tier no folded link touches is not drawn",
       ok: !mini.nodes.some((n) => n.id === "fund-group/capital") &&
-          mini.nodes.length === 4,
+          mini.nodes.length === 5,
       detail: mini.nodes.map((n) => n.id).join(", ") +
               " -- fund-group/capital is a tier this page draws and has no flow",
     },
@@ -263,7 +285,13 @@ export async function checks() {
       // document the hierarchy was added for.
       name: "a folded node's parent names a node the folded document still carries",
       ok: mini.nodes.every((n) => !n.parent || mini.nodes.some((m) => m.id === n.parent)) &&
-          (mini.nodes.find((n) => n.id === "dept/fire") || {}).parent === "fund-group/general",
+          (mini.nodes.find((n) => n.id === "dept/fire") || {}).parent === "fund-group/general" &&
+          // THE DROPPED-ANCESTOR CASE. dept/parks folds to itself and survives,
+          // but its own fund group takes in nothing and is dropped, so a
+          // one-step re-point would name a node the folded document does not
+          // carry -- the exact dead-inheritance failure the re-pointing exists
+          // to prevent, reached from the other side. Found by /code-review.
+          (mini.nodes.find((n) => n.id === "dept/parks") || {}).parent === "",
       detail: mini.nodes.map((n) => n.id + "<-" + (n.parent || "root")).join(", "),
     },
     {
@@ -301,6 +329,32 @@ export async function checks() {
       })(),
       detail: "dropping it loses a column silently; keeping it leaves a node with no " +
               "column to be drawn in",
+    },
+    {
+      // PUBLISHED IS NOT DERIVED, and a merge is where the two could quietly
+      // become one mark. OR-ing the flag draws the merged ribbon dashed and
+      // lists its WHOLE amount under "what we inferred" -- a false statement
+      // about a figure the city printed most of. Latent today (all four
+      // published columns carry zero derived links) and refused rather than
+      // left to the day one does. Found by /code-review, 2026-08-28.
+      name: "a printed flow and an inferred one are not folded into one mark",
+      ok: (() => {
+        const mixed = miniature();
+        // Same folded pair as revenue/tax -> fund-group/general, one leg
+        // inferred: fund/101 is the general group's second fund.
+        mixed.links.push({
+          source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external",
+          transfer_id: "", fact_ids: ["y"], derived: true,
+        });
+        try {
+          drill.foldDocument(mixed);
+          return false;
+        } catch (e) {
+          return String(e.message).includes("printed flow and an inferred one");
+        }
+      })(),
+      detail: "the merged ribbon would be drawn dashed over an amount the city " +
+              "printed most of, and listed whole under what we inferred",
     },
     {
       // THE REIMPLEMENTATION IS NOW PINNED TO THE SHIPPED FUNCTION. layout.mjs
@@ -349,9 +403,17 @@ export async function checks() {
       ok: page.banners === 0 &&
           page.lede === "FY 2025-26 adopted" &&
           page.counts === "52 flows between 40 nodes, from 280 facts" &&
-          page.rows === 52,
+          page.rows === 52 &&
+          // THE CHART'S ACCESSIBLE NAME IS THIS CHART'S. paintYearWords composed
+          // it from a literal naming a Sankey "of the <year> <basis> budget",
+          // which is the SPINE's wording -- so the first repaint replaced the
+          // drill-down's own <title> with it and two different charts announced
+          // themselves identically. The template alone cannot catch that: it
+          // renders the right string and the client overwrites it.
+          page.chartTitle.includes("by fund and division"),
       detail: `${page.banners} refusal banner(s); lede "${page.lede}"; ` +
-              `counts "${page.counts}"; ${page.rows} table rows`,
+              `counts "${page.counts}"; ${page.rows} table rows; ` +
+              `chart named "${page.chartTitle}"`,
     },
     {
       // THE PALETTE WAS WHOLLY DEAD ON THIS DOCUMENT and this is what says it

@@ -256,6 +256,15 @@ type yearView struct {
 	Figures []figure  `json:"figures"`
 	Caveats []string  `json:"caveats"`
 	Counts  countsRef `json:"counts"`
+	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
+	// and a different string from Title, which is the document's.
+	//
+	// BUILT HERE FOR THE REASON Title IS. paintYearWords composed this from a
+	// literal naming a Sankey "of the <year> <basis> budget", which is right on
+	// the spine and wrong on any other chart: the drill-down's template names a
+	// diagram by fund and division, and the first year repaint replaced it, so
+	// two different charts announced themselves identically to a screen reader.
+	ChartTitle string `json:"chart_title"`
 }
 
 // countsRef is the "N flows between M nodes, from K facts" line, per year.
@@ -1048,15 +1057,16 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		cited = append(cited, m.Sources...)
 		hero, figures := tilesFor(m)
 		years = append(years, yearView{
-			Year:    m.FiscalYear,
-			Label:   m.FiscalYearLabel,
-			Stem:    stem,
-			Path:    path.Join(DataDir, stem+".json"),
-			Basis:   m.Basis,
-			Title:   sankeyTitle(v.Title, m.FiscalYearLabel),
-			Hero:    hero,
-			Figures: figures,
-			Caveats: m.Caveats,
+			Year:       m.FiscalYear,
+			Label:      m.FiscalYearLabel,
+			Stem:       stem,
+			Path:       path.Join(DataDir, stem+".json"),
+			Basis:      m.Basis,
+			Title:      sankeyTitle(v.Title, m.FiscalYearLabel),
+			ChartTitle: "Sankey diagram of the " + m.FiscalYearLabel + " " + m.Basis + " budget",
+			Hero:       hero,
+			Figures:    figures,
+			Caveats:    m.Caveats,
 			Counts: countsRef{
 				Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links,
 			},
@@ -1168,6 +1178,8 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Path:  path.Join(DataDir, stem+".json"),
 			Basis: m.Basis,
 			Title: v.Title,
+			ChartTitle: "Sankey diagram of the " + m.FiscalYearLabel + " " + m.Basis +
+				" budget by fund and division",
 			// NO HERO AND NO FIGURES, and the empty slices are the point rather
 			// than a gap: paintYearWords replaces the tile row from these on
 			// every year switch, so a page that renders none server-side must

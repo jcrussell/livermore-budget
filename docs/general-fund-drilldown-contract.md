@@ -207,9 +207,11 @@ So the client folds. The rule, in full:
 
 - **A page declares the tiers it draws**, as `render_tiers` in `FISC_CONFIG`.
   It is per view and never a constant in `app.js`: the spine and this document
-  are drawn by the same script from different hierarchies, and `{0,2,4}` applied
-  to the spine — which has no tier 4 — would fold its whole expenditure column
-  away. A page that declares nothing is drawn whole, by exactly the code that
+  are drawn by the same script from different hierarchies. Applying one page's
+  set to the other document **refuses** rather than corrupts — `{0,2,4}` over
+  the spine throws, because every spine node is parentless and a tier-5 node has
+  no drawn ancestor to fold to — which is the better of the two failures and
+  still a broken page. A page that declares nothing is drawn whole, by exactly the code that
   drew it before the fold existed.
 - **Each node folds to its nearest ancestor whose tier the page draws**,
   following `parent`.
@@ -243,9 +245,10 @@ giving 52 links over columns of 11 / 6 / 23.
 *hidden* by the fold; it is unrenderable at this canvas, and offering it needs a
 view that rescales to one division rather than a fourth column.
 
-**What the fold does not fix.** Seven of the 52 ribbons still lay out under 1px
-and are drawn at the 1px floor `render()` applies, so those marks do not encode
-their values. `tools/jscheck/fold.mjs` pins that count, so it cannot grow
+**What the fold does not fix.** Seven of the 52 ribbons lay out under 1px and
+four of the 40 node rects under 2px, and `render()` floors both — `Math.max(1,
+width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those marks do not encode
+their values. `tools/jscheck/fold.mjs` pins **both** counts, so neither can grow
 unnoticed.
 
 **The page describes the folded document, not the fetched one.** The legend, the

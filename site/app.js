@@ -92,6 +92,7 @@
  * @property {FiscFigure[]} figures
  * @property {string[]} caveats
  * @property {{facts:number, nodes:number, links:number}} counts
+ * @property {string} chart_title
  */
 
 /**
@@ -191,10 +192,15 @@ const FUND_COLOR_VAR = {
  * THIS IS PER-VIEW CONFIGURATION AND MUST NEVER BECOME A CONSTANT IN THIS FILE.
  * The spine and the drill-down are drawn by the same script from documents with
  * different hierarchies: the spine publishes tiers 0, 2 and 5 and is drawn
- * whole, while the drill-down publishes 0, 2, 3, 4 and 5 and is drawn at
- * 0/2/4. Applying either page's set to the other document is not a cosmetic
- * mistake -- {0,2,4} over the spine has no tier 5 in it, and the spine's whole
- * expenditure column would fold away.
+ * whole, while the drill-down publishes 0, 2, 3, 4 and 5 and is drawn at 0/2/4.
+ *
+ * Applying one page's set to the other document REFUSES rather than corrupts,
+ * and the distinction is worth stating because the first version of this
+ * comment got it wrong: {0,2,4} over the spine does not quietly fold its
+ * expenditure column away, it throws, because every spine node is parentless
+ * and a tier-5 node has no drawn ancestor to fold to. That is the better of the
+ * two failures and it is still a broken page, which is what makes the tier set
+ * something a view declares rather than something this file assumes.
  *
  * Absent, the fold is skipped entirely rather than run with a set covering
  * every tier, so a page that does not opt in is laid out by exactly the code
@@ -616,10 +622,20 @@ function foldDocument(doc) {
       throw new Error("cannot draw " + doc.projection + ": " + source + " -> " + target +
         " folds together a " + at.kind + " flow and a " + l.kind + " one");
     }
+    // A PRINTED LEG AND AN INFERRED ONE CANNOT MERGE, for the same reason two
+    // kinds cannot, and it is this project's oldest rule: published is not
+    // derived. OR-ing the flag draws the merged ribbon dashed and lists its
+    // WHOLE amount under "what we inferred", which is a false statement about a
+    // figure the city printed most of. Latent -- all four published columns
+    // carry zero derived links -- and refused rather than left to the day one
+    // does. Found by /code-review, 2026-08-28.
+    if (at.derived !== l.derived) {
+      throw new Error("cannot draw " + doc.projection + ": " + source + " -> " + target +
+        " folds together a printed flow and an inferred one, which cannot be drawn as one mark");
+    }
     at.value_cents += l.value_cents;
     // A transfer id names one leg of one transfer and cannot survive a merge.
     if (at.transfer_id !== l.transfer_id) at.transfer_id = "";
-    at.derived = at.derived || l.derived;
     for (const id of l.fact_ids) ids.add(id);
   }
 
@@ -653,8 +669,20 @@ function foldDocument(doc) {
   // resolves within its own document.
   //
   // A node whose parent folded INTO IT has no parent left to name, and says so.
+  //
+  // THE WALK CONTINUES PAST AN ANCESTOR THE FILTER DROPPED, which is the whole
+  // reason this is a loop rather than one lookup. A fund group with no flows of
+  // its own is removed above while a node beneath it survives -- a division
+  // whose fund group takes in nothing but which is itself paid by another
+  // group -- and re-pointing at it would leave the folded document naming a
+  // node it does not carry, which is exactly the dead-inheritance failure this
+  // re-pointing exists to prevent. Found by /code-review, 2026-08-28.
   const nodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
-    const up = n.parent ? foldsTo.get(n.parent) : "";
+    let up = n.parent ? foldsTo.get(n.parent) : "";
+    for (let hops = 0; up && up !== n.id && !touched.has(up); hops++) {
+      const above = byID.get(up);
+      up = above && above.parent && hops < 8 ? foldsTo.get(above.parent) : "";
+    }
     return Object.assign({}, n, { parent: up && up !== n.id ? up : "" });
   });
 
@@ -1580,8 +1608,16 @@ function paintYearWords(year) {
       " nodes, from " + year.counts.facts + " facts";
   }
 
+  // THE CHART'S ACCESSIBLE NAME IS BUILT IN GO, like every other string this
+  // function writes. It was composed here from a literal, and the moment a
+  // second page drew a chart that literal was WRONG on it: the drill-down's
+  // template names a diagram "by fund and division", and the first repaint
+  // replaced that with the spine's wording -- so two different charts announced
+  // themselves identically to a screen reader. Same defect as fisc-rn0, which
+  // is why sankeyTitle exists, reached through the one string that had not been
+  // moved yet. Found by /code-review, 2026-08-28.
   const title = maybeEl("chart-title");
-  if (title) title.textContent = "Sankey diagram of the " + year.label + " " + year.basis + " budget";
+  if (title && year.chart_title) title.textContent = year.chart_title;
 
   // The footer's "Scope X, basis Y" sentence is a claim about the document ON
   // SCREEN -- the comment beside it in the template says so in as many words --
