@@ -374,9 +374,13 @@ A worked example of the standard: rejecting a leading minus sign in
 only the positive reading reconciles to the printed total. The test is
 `TestLeadingMinusIsReallyPositive`, in `internal/amount/amount_test.go`, and it
 carries the arithmetic; `internal/mapping/acfr_p177_test.go` reads the same row
-off the committed fixture and reconciles all ten rows of the schedule. That is the level of proof a claim about these
-documents needs — a claim about these documents is proved with arithmetic, not
-intuition, and review does not substitute for it.
+off the committed fixture and reconciles the schedule against the city's own
+printed totals — nine of its ten rows tie exactly and FY2024 is short by
+$176,292, which is exactly that row's own Financed Purchases column, so the test
+is named `TestACFRDebtScheduleTiesExceptOneRow` rather than pretending
+otherwise. That is the level of proof a claim about these documents needs: they
+are proved with arithmetic, not intuition, and review does not substitute for
+it.
 
 ## Prove it can fail
 
@@ -433,20 +437,25 @@ project treats an unchecked one as a defect. Three traps:
   committed file is the audit trail and CI compares it byte for byte.
 - **A commit message describing a fix is a claim about the tree, and so is
   every id in it.** Grep for the fix before writing the sentence, and read the
-  id back — `bd create` prints the new bead's id and it is not guessable. Both
-  halves have failed in this repo: a fix asserted and never made, and a bead
-  correctly filed but cited under an invented id, which is worse in one way
-  because the bead is real and the pointer still goes nowhere. `261c78f` said it had reworded a citation and
+  id back — `bd create` prints the new bead's id and it is not guessable.
+
+  Both halves have failed here. `261c78f` said it had reworded a citation and
   spelled out a README cell; the fifth review pass found both unchanged. The
   cause was mechanical and will recur: a batch of scripted edits with an
   assertion in the middle aborted at the second, the later edits never ran, and
-  the message had already been drafted from the plan rather than from the diff.
-  This is the same class as writing "filed as a bead" without filing one, and
-  it is worse in one way — the claim reads as *done* rather than as *tracked*,
-  so nobody goes looking.
+  the message had been drafted from the plan rather than from the diff. Two
+  commits later, a bead correctly filed was cited under an invented id.
+
+  Both are the class of writing "filed as a bead" without filing one, and both
+  are worse than a missing note in the same way: the claim reads as *done*, or
+  as *tracked*, so nobody goes looking. The invented id is the worst of the
+  three, because the work really is tracked and only the pointer is dead.
 
 The gate line most commits here end with is those two together: *"facts.jsonl
-unmoved; fisc verify 39 passed, 0 failed."*
+unmoved; fisc verify 40 passed, 0 failed."* The count in that template is itself
+the trap above — it has been 33, 34, 39, 40 and 41 in this file's lifetime, and
+was written as 39 here while the log's last eight commits said 40. Rebuild and
+read it; do not copy the template's number.
 
 **At a lane boundary, audit the whole range's claims at once.** Every "this
 commit fixes X" in the range, checked against the tree in one script. Over
@@ -475,6 +484,8 @@ work. From the log:
   COMPARED BASENAMES"*.
 - **Measurements inline, labelled as measured.** *"Measured -- dropping
   data/reconciliations.yaml ... leaves fisc verify at 39 passed, 0 failed."*
+  (Quoted from the log, so the 39 is what was true then and is not a live
+  count.)
   A number in a commit message is a claim like any other.
 - **The mutation stated**, per [Prove it can fail](#prove-it-can-fail): what
   was reverted, and what went red.
