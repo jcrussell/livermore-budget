@@ -192,6 +192,81 @@ func TestUnsortedFactStoreFails(t *testing.T) {
 	}
 }
 
+// TestKindMatchesCategorySummariesArePinned covers the two sentences
+// fact-kind-matches-category can publish, neither of which was asserted by
+// anything (fisc-9nw part 2).
+//
+// A check that quietly shrinks its own denominator while still printing a pass
+// line is the coverage.go incident fisc-u2v records. The pass summary carries
+// the count, so pinning it is what makes a silent drop visible; the vacuous
+// sentence was unreachable in any test at all, which means the wording a
+// reader sees when the check has nothing to say had never been read.
+func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
+	t.Run("pass", func(t *testing.T) {
+		res := resultFor(t, runChecks(t, testSubject(t)), "fact-kind-matches-category")
+		if res.Status != StatusPass {
+			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
+		}
+		if want := "10 facts over 8 kind/category pairs, each kind one its category " +
+			"declares in data/taxonomy.yaml"; res.Summary != want {
+			t.Errorf("summary = %q, want %q", res.Summary, want)
+		}
+	})
+
+	// Every fact stripped of its category: the check has nothing to assert
+	// about and must SAY so rather than report a pass over zero.
+	t.Run("vacuous", func(t *testing.T) {
+		facts := testFacts()
+		for i := range facts {
+			facts[i].Category = ""
+		}
+		res := resultFor(t, runChecks(t, testSubject(t, facts...)), "fact-kind-matches-category")
+		if res.Status != StatusVacuous {
+			t.Fatalf("status = %s (%s), want vacuous", res.Status, res.Summary)
+		}
+		if want := "no fact carries both a kind and a category data/taxonomy.yaml defines"; res.Summary != want {
+			t.Errorf("summary = %q, want %q", res.Summary, want)
+		}
+		if res.Findings == nil {
+			t.Error("findings is nil; a vacuous result carries an empty slice")
+		}
+	})
+}
+
+// TestAnUnassignableCategoryReddensOneVocabularyCheck is fisc-9nw part 3, and
+// it is the condition that was wrong rather than the comment.
+//
+// `taxes` is a rollup: assignable: false, so no rule may write it as a
+// category. factVocabulary reports that precisely, with the fix. Until
+// 2026-08-29 fact-kind-matches-category excluded only categories the taxonomy
+// does not DEFINE, so it reddened as well -- and its finding said the kind was
+// not among the category's declared kinds, which sends a reader to fix a
+// `kinds:` list that is not the problem.
+//
+// The surviving check must PASS over the remaining facts rather than go
+// vacuous: this package distinguishes "checked and held" from "had nothing to
+// check", and collapsing the two is how a hole gets reported as a pass.
+func TestAnUnassignableCategoryReddensOneVocabularyCheck(t *testing.T) {
+	facts := testFacts()
+	facts[0].Category = "taxes"
+	results := runChecks(t, testSubject(t, facts...))
+
+	if res := resultFor(t, results, "fact-vocabulary"); res.Status != StatusFail {
+		t.Errorf("fact-vocabulary = %s, want fail; it owns this finding", res.Status)
+	}
+	res := resultFor(t, results, "fact-kind-matches-category")
+	if res.Status != StatusPass {
+		t.Fatalf("fact-kind-matches-category = %s (%s), want pass over the rest",
+			res.Status, res.Summary)
+	}
+	// One fact left the denominator, and the summary says so rather than
+	// printing the old count over a smaller set.
+	if want := "9 facts"; !strings.Contains(res.Summary, want) {
+		t.Errorf("summary = %q, want it to contain %q; the excluded fact must leave "+
+			"the count as well as the findings", res.Summary, want)
+	}
+}
+
 // TestCollidingIDsFail covers the other fact-store check. Two facts with one id
 // mean two rules claim the same cell of the same document.
 func TestCollidingIDsFail(t *testing.T) {

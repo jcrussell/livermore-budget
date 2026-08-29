@@ -405,14 +405,29 @@ func validateRule(r *Rule, errf errFunc) error {
 			return errf(r.ID, "rows", "row %q: kind %q is not one of the five",
 				row.Label, row.Kind)
 		}
-		// A row with no classification would emit facts into an empty
-		// category, where they either vanish from the breakdown or silently
-		// merge with every other uncategorised row.
-		if !row.Skip && row.Category == "" && row.Department == "" {
+		// EVERY ROW CARRIES A CATEGORY. A department is a SECOND AXIS and not
+		// a substitute for one: pp.167-170 cross department against object
+		// category, so a department row still says what KIND of spending the
+		// figure is.
+		//
+		// The rule used to accept `department:` INSTEAD, and the hole was
+		// silent rather than theoretical. A fact with no category is in no
+		// graph unless its scope is projected, so in scope transfers-by-fund
+		// -- 88 facts, selected by no projection -- it is named by NOTHING:
+		// measured, swapping a p76 row's category: for a department: produced
+		// two facts with category "" and left fisc verify at 38 passed, 0
+		// failed. internal/check cannot close that: factVocabulary declines an
+		// absent value on purpose ("an absent value is the mapping's
+		// business") and factKindMatchesCategory skips it. So it is closed
+		// here, at the boundary, which is where it was always the mapping's
+		// business to close it. All 49 department rows already carried one, so
+		// no fact moved.
+		if !row.Skip && row.Category == "" {
 			return cmdutil.WithHint(
-				errf(r.ID, "rows", "row %q has neither category nor department", row.Label),
-				"add a category, or skip: true if the row is a subtotal that "+
-					"would double-count")
+				errf(r.ID, "rows", "row %q has no category", row.Label),
+				"every row needs one, including a row that declares a department: "+
+					"department is a second axis, not a substitute. Use skip: true if "+
+					"the row is a subtotal that would double-count")
 		}
 		if err := checkCounterpart(r, row, errf); err != nil {
 			return err

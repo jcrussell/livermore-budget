@@ -310,7 +310,18 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 		{
 			name: "row with no classification",
 			yaml: strings.Replace(base(""), `{label: "A", category: a}`, `{label: "A"}`, 1),
-			want: "neither category nor department",
+			want: "has no category",
+		},
+		{
+			// A DEPARTMENT IS NOT A SUBSTITUTE FOR A CATEGORY, and until
+			// 2026-08-29 it was accepted as one. A fact with no category is in
+			// no graph unless its scope is projected, so in an unprojected
+			// scope it was named by nothing at all -- fisc verify stayed at 38
+			// passed, 0 failed with two such facts in the store.
+			name: "row that declares a department and no category",
+			yaml: strings.Replace(base(""), `{label: "A", category: a}`,
+				`{label: "A", department: city-manager}`, 1),
+			want: "has no category",
 		},
 		{
 			// Anchoring a block on the total it is checked against is

@@ -124,9 +124,23 @@ func unassignable(v Vocabulary, slug string) string {
 // not one of the five mapping.Kind values and never was, which is why correcting
 // the file closed the hole rather than widening the check.
 //
-// A category the taxonomy does not define is NOT counted here: it has no kinds to
-// be among, and factVocabulary already names it. One typo must not redden two
-// checks with two different fixes.
+// A category factVocabulary ALREADY NAMES is not counted here, and that is two
+// cases rather than one. A category the taxonomy does not define has no kinds
+// to be among; a category it defines as `assignable: false` is a rollup no rule
+// may write, which factVocabulary reports precisely, with the fix. Both are
+// skipped so one typo does not redden two checks of this family with two
+// different fixes.
+//
+// SCOPED TO THIS FAMILY DELIBERATELY. It is not a claim that a typo reddens
+// exactly one check overall -- `category: taxes` on an expenditure fact also
+// reddens expenditure-detail-ties-to-spine, because money really has left the
+// category the spine expects. That is a different fact about the corpus, not a
+// duplicate report of this one.
+//
+// The unassignable arm was tested for `!ok` alone until 2026-08-29, so
+// `category: taxes` + `kind: expenditure` reddened BOTH vocabulary checks --
+// the exact case this comment said it avoided (fisc-9nw part 3). The condition
+// was wrong, not the comment.
 type factKindMatchesCategory struct{}
 
 var _ Check = (*factKindMatchesCategory)(nil)
@@ -148,7 +162,7 @@ func (*factKindMatchesCategory) Run(_ context.Context, s *Subject) (Result, erro
 			continue
 		}
 		c, ok := s.Vocabulary.Category(f.Category)
-		if !ok {
+		if !ok || !c.Assignable {
 			continue
 		}
 		subjects++
