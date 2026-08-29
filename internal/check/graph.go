@@ -3,8 +3,11 @@ package check
 import (
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
+
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -264,6 +267,111 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 		nothing:  "no projection carries a link",
 		findings: findings,
 	}.result(), nil
+}
+
+// linkLocatorsMatchTheirFacts asserts every link's locators are exactly the
+// pages its facts were read from.
+//
+// A link publishes its citation twice -- fact_ids, and the (doc_id, page) pairs
+// a client resolves the fact store by -- and the second is the one the site
+// actually turns into a URL. Nothing else compares them. A locator naming a
+// page the link's facts do not come from sends a reader to a shard that does
+// not hold the figure they clicked, and every other check would stay green:
+// link-values-tie-to-facts reads only fact_ids, and the shard itself is
+// well-formed either way.
+//
+// IT RE-DERIVES THE GROUPING RATHER THAN CALLING project.sourcesOf, for the
+// reason this file's header already gives for categoryFundBalanceBeginning: a
+// check that asks the producer for the answer is asking the thing under test.
+// locatorSet is exactly the code that built the field, so comparing against it
+// would pass on any bug inside it.
+//
+// It resolves ids in the projection's OWN slice, as its neighbour does, so a
+// locator derived from another year's fact is caught here rather than accepted
+// because the page number happened to agree.
+type linkLocatorsMatchTheirFacts struct{}
+
+var _ Check = (*linkLocatorsMatchTheirFacts)(nil)
+
+func (*linkLocatorsMatchTheirFacts) ID() string { return "link-locators-match-their-facts" }
+func (*linkLocatorsMatchTheirFacts) Tier() int  { return 1 }
+func (*linkLocatorsMatchTheirFacts) Full() bool { return false }
+func (*linkLocatorsMatchTheirFacts) Description() string {
+	return "every link's locators are exactly the (doc_id, page) pairs of the facts its " +
+		"fact_ids name, so a reader following one lands on the page the figure was read from"
+}
+
+func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {
+	var findings []Finding
+	links := 0
+	for _, p := range s.LinkedDocuments() {
+		selected := factIndex(factsFor(s.Facts, p.Options))
+		for _, l := range p.Links {
+			links++
+			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
+			if l.Locators == nil {
+				findings = append(findings, finding(subject,
+					"has no locators at all, so nothing on the page can resolve the "+
+						"%d facts it cites", len(l.FactIDs)))
+				continue
+			}
+			pages := map[string]map[int]bool{}
+			unknown := false
+			for _, id := range l.FactIDs {
+				f, ok := selected[id]
+				if !ok {
+					// link-values-tie-to-facts already names an unresolvable
+					// citation, and with two findings per id a reader would
+					// chase the same fix twice.
+					unknown = true
+					break
+				}
+				if pages[f.DocID] == nil {
+					pages[f.DocID] = map[int]bool{}
+				}
+				pages[f.DocID][f.Page] = true
+			}
+			if unknown {
+				continue
+			}
+			want := make([]project.Source, 0, len(pages))
+			for _, doc := range slices.Sorted(maps.Keys(pages)) {
+				ps := slices.Sorted(maps.Keys(pages[doc]))
+				want = append(want, project.Source{DocID: doc, Pages: ps})
+			}
+			if diff := cmp.Diff(want, l.Locators); diff != "" {
+				findings = append(findings, finding(subject,
+					"locators are %s but its %d facts were read from %s",
+					describeSources(l.Locators), len(l.FactIDs), describeSources(want)))
+			}
+		}
+	}
+	return conclusion{
+		subjects: links,
+		unit:     "links",
+		held: fmt.Sprintf("%d links, each citing exactly the pages its facts were read from",
+			links),
+		nothing:  "no projection carries a link",
+		findings: findings,
+	}.result(), nil
+}
+
+// describeSources writes a locator list the way a citation reads, so a finding
+// says "p66, p67" rather than printing a Go struct at someone trying to find
+// the page.
+func describeSources(ss []project.Source) string {
+	if len(ss) == 0 {
+		return "none"
+	}
+	parts := make([]string, 0, len(ss))
+	for _, s := range ss {
+		ps := make([]string, len(s.Pages))
+		for i, p := range s.Pages {
+			ps[i] = fmt.Sprintf("p%d", p)
+		}
+		parts = append(parts, fmt.Sprintf("%s %s", s.DocID, strings.Join(ps, ", ")))
+	}
+	return strings.Join(parts, "; ")
 }
 
 // countsReconcile asserts the published counts account for every fact.

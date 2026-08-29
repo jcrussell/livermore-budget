@@ -194,6 +194,7 @@ func All() []Check {
 		&nodeTiersAreDeclared{},
 		&derivedNodesJustified{},
 		&linkValuesTieToFacts{},
+		&linkLocatorsMatchTheirFacts{},
 		&linkKindsMatchTheirFacts{},
 		&countsReconcile{},
 		&fundFlowsCountsReconcile{},

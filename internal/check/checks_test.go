@@ -69,14 +69,15 @@ func TestFixtureVerdicts(t *testing.T) {
 		"node-tiers-are-declared": "pass over 9",
 		// The drill-down's two checks are vacuous over the miniature spine,
 		// which carries neither of the schedules it draws.
-		"fund-flows-counts-reconcile":  "vacuous over 0",
-		"derived-nodes-justified":      "pass over 2",
-		"link-values-tie-to-facts":     "pass over 7",
-		"link-kinds-match-their-facts": "pass over 7",
-		"counts-reconcile":             "pass over 1",
-		"headline-ties-to-facts":       "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
-		"headline-transfer-residual":   "pass over 2",
-		"headline-naive-expenditure":   "pass over 1",
+		"fund-flows-counts-reconcile":     "vacuous over 0",
+		"derived-nodes-justified":         "pass over 2",
+		"link-locators-match-their-facts": "pass over 7",
+		"link-values-tie-to-facts":        "pass over 7",
+		"link-kinds-match-their-facts":    "pass over 7",
+		"counts-reconcile":                "pass over 1",
+		"headline-ties-to-facts":          "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
+		"headline-transfer-residual":      "pass over 2",
+		"headline-naive-expenditure":      "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
 		// constraint tier, no fact a department or a fund number.
 		"transfer-legs-pair": "vacuous over 0",
@@ -104,7 +105,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 20, Vacuous: 19, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 21, Vacuous: 19, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -622,6 +623,95 @@ func TestLinkValueMustEqualItsFacts(t *testing.T) {
 	}
 	if !strings.Contains(f.Detail, "off by $1.00") {
 		t.Errorf("finding %q does not state the difference", f.Detail)
+	}
+}
+
+// TestLinkLocatorsMustBeThePagesOfItsFacts proves the locator check can fail,
+// in the two ways a real defect would produce.
+//
+// This matters more than it looks. Nothing ELSE compares the two citations a
+// link publishes: link-values-tie-to-facts reads fact_ids only, and the shard
+// a wrong locator points at is a well-formed file either way. So if this check
+// could not fail, a mark on the chart could send a reader to a page its figure
+// was never printed on and every gate would stay green.
+func TestLinkLocatorsMustBeThePagesOfItsFacts(t *testing.T) {
+	t.Run("a page the facts did not come from", func(t *testing.T) {
+		s := testSubject(t)
+		link := &s.Projections[0].Graph.Links[0]
+		if len(link.Locators) == 0 || len(link.Locators[0].Pages) == 0 {
+			t.Fatalf("the fixture's first link has no locator to corrupt: %+v", link.Locators)
+		}
+		was := link.Locators[0].Pages[0]
+		link.Locators[0].Pages = []int{9999}
+		res := resultFor(t, runChecks(t, s), "link-locators-match-their-facts")
+
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if got := len(res.Findings); got != 1 {
+			t.Fatalf("findings = %d, want 1: %v", got, res.Findings)
+		}
+		f := res.Findings[0]
+		if !strings.Contains(f.Subject, link.Source) || !strings.Contains(f.Subject, link.Target) {
+			t.Errorf("finding subject %q does not name the link's endpoints", f.Subject)
+		}
+		// The finding has to name BOTH pages, or a reader cannot tell whether
+		// the locator is wrong or the facts moved.
+		for _, want := range []string{"p9999", fmt.Sprintf("p%d", was)} {
+			if !strings.Contains(f.Detail, want) {
+				t.Errorf("finding %q does not name %s", f.Detail, want)
+			}
+		}
+	})
+
+	// The failure a rule split actually produces: the projection keeps citing
+	// the facts and stops citing one of their pages.
+	t.Run("a locator dropped entirely", func(t *testing.T) {
+		s := testSubject(t)
+		link := &s.Projections[0].Graph.Links[0]
+		link.Locators = []project.Source{}
+		res := resultFor(t, runChecks(t, s), "link-locators-match-their-facts")
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if got := len(res.Findings); got != 1 {
+			t.Fatalf("findings = %d, want 1: %v", got, res.Findings)
+		}
+	})
+
+	// A nil list is not the same as an empty one and gets its own sentence,
+	// because it is what a projection that never populated the field at all
+	// would publish -- the state every link was in before fisc-5hxr.
+	t.Run("no locators at all", func(t *testing.T) {
+		s := testSubject(t)
+		link := &s.Projections[0].Graph.Links[0]
+		link.Locators = nil
+		res := resultFor(t, runChecks(t, s), "link-locators-match-their-facts")
+		if res.Status != StatusFail {
+			t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+		}
+		if got := res.Findings[0].Detail; !strings.Contains(got, "no locators at all") {
+			t.Errorf("finding %q does not say the field is absent rather than wrong", got)
+		}
+	})
+}
+
+// TestALinkCitingAnUnresolvableFactIsNamedOnce stops the locator check
+// double-reporting. A fact_id that resolves in no slice is already
+// link-values-tie-to-facts's finding, with the fix; repeating it here would
+// send a reader to chase one edit twice.
+func TestALinkCitingAnUnresolvableFactIsNamedOnce(t *testing.T) {
+	s := testSubject(t)
+	link := &s.Projections[0].Graph.Links[0]
+	link.FactIDs = []string{"fisc-f-notafact"}
+	results := runChecks(t, s)
+
+	if res := resultFor(t, results, "link-values-tie-to-facts"); res.Status != StatusFail {
+		t.Errorf("link-values-tie-to-facts = %s, want fail; it owns this finding", res.Status)
+	}
+	if res := resultFor(t, results, "link-locators-match-their-facts"); res.Status == StatusFail {
+		t.Errorf("link-locators-match-their-facts also failed (%v); an unresolvable "+
+			"citation is one defect with one fix and must be named once", res.Findings)
 	}
 }
 
