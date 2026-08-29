@@ -20,6 +20,7 @@ package registry_test
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -99,6 +100,48 @@ func TestLoadRefusesAKindMappingDoesNotDefine(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestRegistryOffersNoKindMappingLacks closes the pin's other direction, and
+// it is not symmetry for its own sake.
+//
+// The two tests above prove registry ACCEPTS every mapping.Kind. They say
+// nothing about a member of registry.factKinds that mapping has never defined:
+// adding "grant" there leaves the whole suite green, and `kinds: [grant]`
+// would then load as a category NO FACT CAN EVER MATCH -- silently, because
+// fact-kind-matches-category only consults a category some fact reached. That
+// is the fisc-ttq shape from the other side, and it is exactly what this file
+// exists to prevent.
+//
+// The refusal message is the only view of the list from out here, and it
+// already has to enumerate the alternatives for the reader's sake, so this
+// reads the set back off it. Coupling the test to that wording is deliberate:
+// the message IS the remedy, and it should not be free to change silently.
+func TestRegistryOffersNoKindMappingLacks(t *testing.T) {
+	err := loadWithKinds(t, "banana")
+	if err == nil {
+		t.Fatal("Load with kinds: [banana] = nil error, want a refusal")
+	}
+	_, list, ok := strings.Cut(err.Error(), "want one of ")
+	if !ok {
+		t.Fatalf("Load error = %q, want it to contain \"want one of \" so the "+
+			"offered set can be read back", err)
+	}
+	var offered []string
+	for _, k := range strings.Split(list, ", ") {
+		offered = append(offered, strings.TrimSpace(k))
+	}
+	var want []string
+	for _, k := range mapping.Kinds() {
+		want = append(want, string(k))
+	}
+	slices.Sort(offered)
+	slices.Sort(want)
+	if !slices.Equal(offered, want) {
+		t.Errorf("registry offers kinds %v, want exactly mapping.Kinds() %v; a kind "+
+			"registry accepts and mapping never defines loads as a category no fact "+
+			"can match", offered, want)
 	}
 }
 

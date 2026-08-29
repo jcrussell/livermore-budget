@@ -405,11 +405,12 @@ func TestLoadRealRegistries(t *testing.T) {
 	// tautology. What is not a tautology is that the committed taxonomy
 	// actually carries entries of each kind: an arm no real entry reaches is
 	// dead code that happens to have a test.
-	var withPages, withAliases, withContra, kindMembers int
+	var withAliases, withContra, kindMembers int
+	var pageless []string
 	for _, c := range cats {
 		kindMembers += len(c.Kinds)
-		if len(c.Pages) > 0 {
-			withPages++
+		if len(c.Pages) == 0 {
+			pageless = append(pageless, c.Slug)
 		}
 		withAliases += len(c.Aliases)
 		withContra += len(c.ContraRows)
@@ -421,9 +422,13 @@ func TestLoadRealRegistries(t *testing.T) {
 	// rollups above -- which is why the shape arm is applied and the presence
 	// arm is not. If that stops being true, "required when assignable" becomes
 	// landable and should be taken.
-	if got, want := len(cats)-withPages, len(wantUnassignable); got != want {
-		t.Errorf("%d categories carry no pages, want %d (the unassignable rollups %v)",
-			got, want, wantUnassignable)
+	//
+	// COMPARE THE SLUGS, NOT THE COUNT. A count-only assertion stays green if
+	// a rollup gains pages while an assignable category loses them -- and that
+	// swap would also silently take a real category out of reach of the
+	// contra-row arm, which is checked against `pages`.
+	if diff := cmp.Diff(wantUnassignable, pageless); diff != "" {
+		t.Errorf("categories carrying no pages mismatch (-want +got):\n%s", diff)
 	}
 	if withAliases == 0 {
 		t.Error("no category carries an alias; validateAlias is unexercised on this channel")

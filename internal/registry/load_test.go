@@ -279,6 +279,17 @@ categories:
 `,
 			want: `taxonomy.yaml: category "taxes": contra_rows[0].page: is 0 for "Refunds"; pages are 1-based PDF page numbers`,
 		}, {
+			// The arm that checks a contra row is checked AGAINST `pages`, so a
+			// category declaring contra rows and no pages used to skip it
+			// entirely -- fail-open, and green.
+			name: "contra row on a category with no pages to check it against",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], contra_rows: [{term: "Refunds", page: 127}]}
+`,
+			want: `taxonomy.yaml: category "taxes": pages: is required when contra_rows is set`,
+		}, {
 			// A contra row is a detail line inside this category's own printed
 			// subtotal, so a page the category does not claim means one of the
 			// two records is wrong -- and nothing else in the tree reads

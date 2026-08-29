@@ -609,6 +609,18 @@ func validateCategory(c Category, catf errFunc) error {
 			return err
 		}
 	}
+	// A contra row is checked AGAINST the category's pages, so a category
+	// that declares contra rows and no pages would skip the arm entirely --
+	// which is fail-open, and was: `contra_rows: [{term: x, page: 9999}]` on a
+	// page-less rollup loaded clean. `pages` is optional in general (three
+	// rollups carry none) and is REQUIRED the moment a contra row needs
+	// somewhere to be checked against.
+	if len(c.ContraRows) > 0 && len(c.Pages) == 0 {
+		return catf(c.Slug, "pages",
+			"is required when contra_rows is set; a contra row is a detail line "+
+				"inside this category's printed subtotal, and with no pages there is "+
+				"nothing to check it against")
+	}
 	for i, cr := range c.ContraRows {
 		at := fmt.Sprintf("contra_rows[%d]", i)
 		if cr.Term == "" {
@@ -631,7 +643,7 @@ func validateCategory(c Category, catf errFunc) error {
 		// is to widen `pages`, because the category IS printed there.
 		//
 		// It must NOT be copied onto aliases -- see validateAlias.
-		if len(c.Pages) > 0 && !slices.Contains(c.Pages, cr.Page) {
+		if !slices.Contains(c.Pages, cr.Page) {
 			return catf(c.Slug, at+".page",
 				"is %d for %q, which is not one of the category's pages %v",
 				cr.Page, cr.Term, c.Pages)
