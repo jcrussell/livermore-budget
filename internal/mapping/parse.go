@@ -331,8 +331,7 @@ type errFunc func(ruleID, field, format string, args ...any) error
 
 func validateRule(r *Rule, errf errFunc) error {
 	if !r.Kind.valid() {
-		return errf(r.ID, "kind", "got %q, want one of revenue, expenditure, "+
-			"transfer_in, transfer_out, fund_balance", r.Kind)
+		return errf(r.ID, "kind", "got %q, want one of %s", r.Kind, kindList())
 	}
 	if !r.Basis.valid() {
 		return errf(r.ID, "basis", "got %q, want one of adopted, revised, actual, "+

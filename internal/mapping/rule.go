@@ -15,6 +15,7 @@ package mapping
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	yaml "go.yaml.in/yaml/v3"
 
@@ -47,12 +48,39 @@ const (
 	KindFundBalance Kind = "fund_balance"
 )
 
-func (k Kind) valid() bool {
-	switch k {
-	case KindRevenue, KindExpenditure, KindTransferIn, KindTransferOut, KindFundBalance:
-		return true
+// kinds is the closed set, in the order the constants declare it. It is the one
+// list: Kinds and valid both read it, so a sixth kind cannot be added to one
+// spelling and missed by the other.
+var kinds = []Kind{
+	KindRevenue,
+	KindExpenditure,
+	KindTransferIn,
+	KindTransferOut,
+	KindFundBalance,
+}
+
+// Kinds returns the closed set of kinds a rule can produce, in declaration
+// order.
+//
+// It is exported for readers OUTSIDE this package that must agree with this
+// vocabulary -- data/taxonomy.yaml declares kinds per category, and
+// internal/registry has to refuse a member that is not one of these. Without
+// it that package would re-spell the five values, which is the second copy the
+// taxonomy's own header argues against. The returned slice is a copy: a caller
+// that sorts or appends must not be able to move the vocabulary.
+func Kinds() []Kind { return slices.Clone(kinds) }
+
+func (k Kind) valid() bool { return slices.Contains(kinds, k) }
+
+// kindList spells the closed set for an error message, comma separated in
+// declaration order. It exists so no message re-types the five values: one
+// such literal had already drifted out of sight in validateRule.
+func kindList() string {
+	s := make([]string, len(kinds))
+	for i, k := range kinds {
+		s[i] = string(k)
 	}
-	return false
+	return strings.Join(s, ", ")
 }
 
 // Basis distinguishes a budgeted figure from an audited one. Mixing them in a
