@@ -422,8 +422,10 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 // shipped: at the time the store covered 21 pages and the site was shipping the
 // text of 20, because p76 is cited by no projection's metadata.sources. A
 // provenance link that resolves to a shard whose page text 404s is provenance
-// the site does not actually ship. The two counts move as lanes land -- what
-// this test asserts is that they stay equal, not that they equal 21.
+// the site does not actually ship. Both counts have moved since -- do not read
+// 21 as current. What this test asserts is one direction only: every page the
+// store shards has its extracted text committed. The equality the p76 case was
+// really about is kept by pageIndex() seeding buildSite's cited set.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {

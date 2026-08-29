@@ -91,16 +91,18 @@ one; and `fisc-71j` asserted that `row-funds-match-their-anchors` guarded the
 78 fund numbers it was about to publish, which it does not and cannot, because
 those row labels carry no verb phrase for it to read.
 
-The corpus knows this about itself. Measured at `44be60d`: **ten** of the 52
-injected memories carry a line whose only job is to say earlier text has gone
-stale — *"the bead text describing it as blocked is historical"*, *"text on those
-beads describing work as pending is historical"*, *"same stale-premise class as
+The corpus knows this about itself. Measured at `44be60d`, when there were 52
+injected memories: **ten** of them carried a line whose only job is to say
+earlier text has gone stale — *"the bead text describing it as blocked is historical"*, *"text on
+those beads describing work as pending is historical"*, *"same stale-premise class as
 p76 (see p76-is-extractable-and-ties): claims written against the old extractor
 outlived it"*. The criterion is that reading, applied by hand; there is no
 command that re-measures a judgement over prose, which is why the count is
-pinned to a commit rather than left live. The log carries the same habit, and
-there **is** a command for it: `git log --format=%s | grep -ci stale` finds
-**six** commits that say so in the subject line alone.
+pinned to a commit rather than left live — the population itself moves, and the
+very next commit took it to 48. The log carries the same habit, and there the
+count *can* be re-measured rather than pinned: `git log --format=%s | grep -ci
+stale` counts the commits that say so in the subject line alone. Run it; it was
+six at `44be60d` and only goes up.
 
 So: **correct the bead in the same session you find it stale**, in its notes,
 saying what was measured. And do not write "filed as a bead" in a comment or a
@@ -452,9 +454,10 @@ project treats an unchecked one as a defect. Three traps:
 
   **So: one edit per script, or check each edit's exit status.** A heredoc that
   raises halfway leaves a tree that still builds and still passes every test,
-  which is why nothing catches it but reading the diff.
+  so no gate goes red; what catches it is reading the diff, or the range audit
+  below, which is how both real instances were found.
 
-  Both are the class of writing "filed as a bead" without filing one, and both
+  Both the unmade edit and the invented id are the class of writing "filed as a bead" without filing one, and both
   are worse than a missing note in the same way: the claim reads as *done*, or
   as *tracked*, so nobody goes looking. The invented id is the worst of the
   three, because the work really is tracked and only the pointer is dead.
@@ -697,13 +700,22 @@ resolve it by defaulting a missing token to zero** — that turns an absent cell
 into a printed one and invents a row. Tracked as `fisc-8ln`.
 
 Where this lives in the code is `(*Resolver).labelledValues` in
-`internal/mapping/resolve.go`. Read it before writing a rule against a sparse
-page: it refuses a row carrying fewer tokens than the part has columns — *"row
-%q is followed by %d values, want %d"* — and then truncates the extras with
-`toks = toks[:ncols]`. So a row that simply loses a cell fails closed, and the
-truncation is why a trailing footnote marker is harmless. What it cannot see is
-a row that reaches the right token count with the wrong tokens; that is the
-case the geometry column guard exists for.
+`internal/mapping/resolve.go`, and **read it before assuming a sparse row fails
+closed, because mostly it does not.** It tokenises `blk.Text[after:]` — the
+whole remainder of the *block*, not of the row — so a row missing a cell simply
+borrows the next row's leading token and reaches `ncols` anyway. The
+`len(toks) < ncols` guard, *"row %q is followed by %d values, want %d (one per
+column)"*, therefore fires only when the shortfall runs off the end of the
+block; a mid-block row slides its whole tail left by one column and every
+figure after the gap is filed under the wrong year. `toks = toks[:ncols]` then
+discards the overflow, which is separately why a trailing footnote marker is
+harmless.
+
+What actually stops this on CIP p40 is not that guard. It is either
+`amount.Parse` choking on a neighbouring row's label word, which is luck rather
+than a check, or the geometry column guard, which is the real answer. That is
+the whole argument for `-bbox`: on a sparse grid the positional read has no way
+to know a cell was skipped.
 
 poppler has no structured error channel: it writes free-form English to stderr
 and exits 0. The manifest records every stderr line under `warnings`, and
