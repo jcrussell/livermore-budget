@@ -102,11 +102,11 @@ command that re-measures a judgement over prose, which is why the count names
 the commit it was taken at rather than being left live — the population moves,
 and the session that landed this sentence went on to take it to 48. The pin
 dates the claim; it does not make it reproducible, because memories live in the
-Dolt DB and in no git
-artifact, so the only record of a superseded one is the commit message of the
-session that changed it. The log carries the same habit, and there the
-count *can* be re-measured rather than pinned: `git log --format=%s | grep -ci
-stale` counts the commits that say so in the subject line alone — six at
+Dolt DB and in no git artifact, so the only record of a superseded one is the
+commit message of the session that changed it. The log carries the same habit,
+and there the count *can* be re-measured rather than pinned:
+`git log --format=%s | grep -ci stale` counts the commits that say so in the
+subject line alone — six at
 `44be60d`. That is a floor and not the answer: the grep misses others of the
 same class whose subjects never use the word — `a76a8dc`'s "corrects six beads"
 and `f6e4d00`'s "correct two wrong premises" among them — so a plain-meaning
@@ -728,22 +728,30 @@ unexplained text. That is precisely why p76's headerless marker column has to be
 `cursor` advances to the end of the last token consumed, so a row that borrows
 its neighbour's figures also steps the cursor past that neighbour's *label*, and
 the next iteration refuses the part with `row %q does not occur after %s`.
-`checkGap` refuses anything but whitespace between rows. Between them a labelled
-block is well defended, and the `len(toks) < ncols` message is the rarest of the
-three rather than the first line of defence.
+`checkGap` refuses text between rows unless it is a declared `wrapped_labels`
+entry — a real exception, not a formality: CIP p40 needs three of them before a
+read gets through at all. Between them a labelled block is well defended, and
+the `len(toks) < ncols` message is the rarest of the three rather than the first
+line of defence.
 
 **The designed answer for what those miss is the geometry column guard**, and it
-is the reason `-bbox` is extracted at all. Every one of the 139 parts in
-`mappings/livermore-budget-fy2026-2027.yaml` declares `column_headers`, and with
-them declared CIP p40's PB200654 is refused on *position*: `placementMessage`
-(`internal/mapping/geometry.go`) reports which column a token's x actually lands
-in against the one the rule reads it as, and it fires before `amount.Parse` ever
-reaches a neighbour's label word. `geometry_test.go` pins the message shape.
+is the reason `-bbox` is extracted at all. With `column_headers` declared —
+which all 139 parts of `mappings/livermore-budget-fy2026-2027.yaml` do —
+`placementMessage` (`internal/mapping/geometry.go`) reports which column a
+token's x actually lands in against the one the rule reads it as, and it fires
+before `amount.Parse` ever reaches a neighbour's label word. `geometry_test.go`
+pins the message shape.
+
+Be careful with CIP p40 as the worked example, though: `mappings/` holds one
+file and it maps the Budget Book only, so **no production rule reads that page
+at all**. The refusal above is reproducible for a CIP part you write yourself,
+and that is the evidence — not a guard standing over committed facts.
 
 Which is why the honest statement is that **nobody has enumerated what is left**
 once all four are in play — a block-final row backed by an unlabelled total line
-is the obvious candidate. `fisc-8ln` owns that residue and
-`fisc-i0d9` owns the fact that the test named for it never reaches the row read.
+is the obvious candidate. `fisc-8ln` owns that residue; `fisc-i0d9` owns the
+separate fact that `TestCIPp40SparseRowFailsClosedButDoesNotRead`, which is
+named for `fisc-8ln`'s row, never reaches the row read.
 Three successive attempts in this file to summarise this function were wrong in
 three different ways; if you need the behaviour, read `labelledValues` and write
 a probe, and do not trust this paragraph over the code.

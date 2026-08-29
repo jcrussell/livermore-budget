@@ -711,9 +711,16 @@ func TestCIPp29SplitFigureFailsClosed(t *testing.T) {
 // cannot be read correctly by any amount of geometry, and this test does not
 // claim it can (fisc-8ln).
 //
-// What it does claim is the half that matters here: the read fails, and it fails
-// naming the row rather than filing the second 550,000 under a year the city
-// never put it in.
+// What it means to claim is the half that matters here: the read fails, and it
+// fails naming the row rather than filing the second 550,000 under a year the
+// city never put it in.
+//
+// IT DOES NOT CURRENTLY PROVE THAT -- see fisc-i0d9. Measured: this fails on
+// checkGap's leading-gap arm ("figures appear before the first row"), because
+// the block starts at the column headers, and never reaches the row read. The
+// Contains assertion below passes on the row's ANCHOR NAME appearing in that
+// unrelated message. Do not cite this test as evidence for the row-read
+// behaviour until the section anchor is moved past the headers.
 func TestCIPp40SparseRowFailsClosedButDoesNotRead(t *testing.T) {
 	res, rule, part := cipRule(t, 40, "PROJECT NAME", "TOTAL - PARKS", "PB200654")
 
