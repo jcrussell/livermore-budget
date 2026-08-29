@@ -7,8 +7,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/google/go-cmp/cmp"
-
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
@@ -339,7 +337,16 @@ func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, 
 				ps := slices.Sorted(maps.Keys(pages[doc]))
 				want = append(want, project.Source{DocID: doc, Pages: ps})
 			}
-			if diff := cmp.Diff(want, l.Locators); diff != "" {
+			// slices.EqualFunc and not cmp.Diff: this is the fisc binary that
+			// IS the gate, and go-cmp is a test library that panics on types
+			// it cannot walk. The diff was never shown to anyone anyway --
+			// the reader-facing message is describeSources' -- so it bought
+			// nothing and put a panic path in the check.
+			same := slices.EqualFunc(want, l.Locators,
+				func(a, b project.Source) bool {
+					return a.DocID == b.DocID && slices.Equal(a.Pages, b.Pages)
+				})
+			if !same {
 				findings = append(findings, finding(subject,
 					"locators are %s but its %d facts were read from %s",
 					describeSources(l.Locators), len(l.FactIDs), describeSources(want)))

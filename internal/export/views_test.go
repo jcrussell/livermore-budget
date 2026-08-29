@@ -1485,13 +1485,18 @@ func TestWriteRefusesARecordsBaseTheEntriesContradict(t *testing.T) {
 	if err == nil {
 		t.Fatal("Write accepted a records base that no page index entry is under")
 	}
-	if !strings.Contains(err.Error(), "contradicts") {
+	if !strings.Contains(err.Error(), "has its records in") {
 		t.Errorf("got %v, want the base-contradicts-entry refusal", err)
 	}
 }
 
 // TestWriteRefusesARecordsBaseWithNoTrailingSeparator is the string-prefix
 // trap, and it is the likeliest way a caller gets this wrong.
+//
+// Now covered by the exact-directory rule rather than by a separator arm of
+// its own, and kept as its own case because the CAUSE is distinct: this one is
+// path.Join dropping the separator, and TestWriteRefusesAnAncestorRecordsBase
+// is a caller naming the wrong directory entirely.
 //
 // "facts/d/pages" is a clean STRING prefix of "facts/d/pages/p0066.jsonl", so
 // a prefix test alone accepts it -- and the client, which appends a filename,
@@ -1505,8 +1510,28 @@ func TestWriteRefusesARecordsBaseWithNoTrailingSeparator(t *testing.T) {
 	if err == nil {
 		t.Fatal("Write accepted a records base the client cannot append a filename to")
 	}
-	if !strings.Contains(err.Error(), "does not end in") {
-		t.Errorf("got %v, want the missing-separator refusal", err)
+	if !strings.Contains(err.Error(), "has its records in") {
+		t.Errorf("got %v, want the wrong-directory refusal", err)
+	}
+}
+
+// TestWriteRefusesAnAncestorRecordsBase is the hole a prefix test leaves open
+// even WITH a trailing separator.
+//
+// "facts/" ends in "/" and is a clean prefix of "facts/d/pages/p0066.jsonl",
+// so both earlier forms of this guard accepted it -- and the client, which
+// appends only a filename, composes "facts/p0066.jsonl". The base has to BE
+// the entry's directory, which is the relationship the client actually relies
+// on, so that is what is asserted rather than a containment approximation.
+func TestWriteRefusesAnAncestorRecordsBase(t *testing.T) {
+	_, err := provenanceSite(t, func(o *export.Options) {
+		o.RecordsBase = map[string]string{budgetDocID: "facts/"}
+	})
+	if err == nil {
+		t.Fatal("Write accepted a records base that is an ancestor of where the shards are")
+	}
+	if !strings.Contains(err.Error(), "has its records in") {
+		t.Errorf("got %v, want the wrong-directory refusal", err)
 	}
 }
 

@@ -452,13 +452,18 @@ func (o *Options) validate() error {
 			// base that validated. Options.Build is a public seam, so a caller
 			// reaching for path.Join instead of shardBase is the likely way in,
 			// and it is exactly the mis-wired caller this guard claims to catch.
-			if !strings.HasSuffix(base, "/") {
-				return fmt.Errorf("records base for %s is %q, which does not end in "+
-					"%q; the client appends a filename to it", e.DocID, base, "/")
-			}
-			if !strings.HasPrefix(e.Data, base) {
-				return fmt.Errorf("records base for %s is %q, which page index entry p%d "+
-					"contradicts: its records are at %q", e.DocID, base, e.Page, e.Data)
+			// EXACT DIRECTORY, not a prefix and not an ancestor. A prefix test
+			// accepts "facts/" while the shards live at "facts/<doc>/pages/",
+			// and the client -- which appends only a filename -- then composes
+			// "facts/p0066.jsonl" and 404s every anchor. The trailing-separator
+			// arm alone does not catch that: "facts/" has one. Both failures
+			// are the same mis-wired caller and this states the relationship
+			// the client actually relies on, which is that the base IS the
+			// entry's directory.
+			if want := path.Dir(e.Data) + "/"; base != want {
+				return fmt.Errorf("records base for %s is %q, but page index entry p%d "+
+					"has its records in %q; the client appends only a filename to the base",
+					e.DocID, base, e.Page, want)
 			}
 		}
 	}
