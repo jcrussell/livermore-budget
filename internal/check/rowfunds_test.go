@@ -137,13 +137,67 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 		t.Errorf("the summary does not count the rows whose label carries no verb phrase "+
 			"separately from the rows the page leaves blank:\n%s", res.Summary)
 	}
-	for _, want := range []string{
-		`funding-city-council "General Fund" (the fund that receives, 100)`,
-		`funding-public-works "Water" (the fund that receives, 640)`,
-	} {
-		if !strings.Contains(res.Summary, want) {
-			t.Errorf("the summary does not name the unread row %s:\n%s", want, res.Summary)
+	// ATTRIBUTED TO ELEVEN RULES AND NOT LISTED AS 78 ROWS. Naming each row put
+	// this check's PASS line at 11 KB, against roughly 450 bytes before, which
+	// is detailtie.go's "a count is the honest middle" argument arriving one
+	// check late. The rule id is what a reader opens.
+	if !strings.Contains(res.Summary, "funding-city-council") ||
+		!strings.Contains(res.Summary, "funding-public-works") {
+		t.Errorf("the summary does not attribute the unread declarations to their "+
+			"rules:\n%s", res.Summary)
+	}
+	if strings.Contains(res.Summary, `funding-public-works "Water"`) {
+		t.Errorf("the summary names the unread rows one by one again; 78 of them is a "+
+			"count, not a list:\n%s", res.Summary)
+	}
+	if n := len(res.Summary); n > 2000 {
+		t.Errorf("the summary is %d bytes; it is printed on every fisc verify run", n)
+	}
+}
+
+// TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw is the arm the first pass of
+// /code-review over this lane found missing.
+//
+// The vacuous reason is printed by --strict as the justification for a check
+// having nothing to look at, so a false one is worse than no reason at all --
+// which is what the comment beside `nothing` already said. It tested only the
+// unanchored counter, so a corpus of nothing but pp.85-125 reported "no row
+// declares a fund" while 78 did. Reverting the guard to `unanchored > 0` makes
+// this red.
+func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
+	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// Only the funding-source rules, whose row labels carry no verb phrase, so
+	// every declared fund is unphrased and none is unanchored.
+	s := *base
+	s.Files = nil
+	for _, f := range base.Files {
+		cut := *f
+		cut.Rules = nil
+		for i := range f.Rules {
+			if strings.HasPrefix(f.Rules[i].ID, "funding-") {
+				cut.Rules = append(cut.Rules, f.Rules[i])
+			}
 		}
+		s.Files = append(s.Files, &cut)
+	}
+
+	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), &s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusVacuous {
+		t.Fatalf("over a corpus of bare-label rows the check reported %s: %s",
+			res.Status, res.Summary)
+	}
+	if strings.Contains(res.Summary, "no row declares a fund") {
+		t.Errorf("the vacuous reason denies the 78 rows that do declare one:\n%s",
+			res.Summary)
+	}
+	if !strings.Contains(res.Summary, "78 declared fund(s)") {
+		t.Errorf("the vacuous reason does not say what it saw:\n%s", res.Summary)
 	}
 }
 

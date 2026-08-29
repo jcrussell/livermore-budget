@@ -481,6 +481,34 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 		}
 	})
 
+	t.Run("the entry is removed", func(t *testing.T) {
+		// The third way the exception can go wrong, and the one the commit
+		// message claimed was covered while the sub-test below mutated a
+		// different group. Found by /code-review over this range. Without the
+		// entry the cell is compared against the spine like any other and the
+		// 250,000 is a plain difference.
+		saved := fundingSourcesExceptions
+		t.Cleanup(func() { fundingSourcesExceptions = saved })
+		fundingSourcesExceptions = nil
+
+		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), base)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if res.Status != StatusFail {
+			t.Fatalf("with no exception declared the check reported %s, so the entry is "+
+				"absorbing nothing and could be deleted: %s", res.Status, res.Summary)
+		}
+		if len(res.Findings) != 1 {
+			t.Errorf("deleting the one entry produced %d findings, want 1: %+v",
+				len(res.Findings), res.Findings)
+		}
+		if !strings.Contains(res.Findings[0].Subject, "internal-service") {
+			t.Errorf("the finding is not about the cell the entry names: %+v",
+				res.Findings[0])
+		}
+	})
+
 	t.Run("another group cannot hide behind it", func(t *testing.T) {
 		res := run(t, func(f *fact.Fact) bool {
 			if f.Scope != fundingSourcesScope || f.FiscalYear != 2026 ||

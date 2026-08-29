@@ -102,7 +102,12 @@ func (*rowFundsMatchTheirAnchors) Description() string {
 func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects, unanchored, unphrased := 0, 0, 0
-	var unanchoredRows, unphrasedRows []string
+	var unanchoredRows []string
+	// The rules an unphrased declaration belongs to, deduplicated: 78 rows over
+	// eleven rules is a list of eleven, not of 78. See the note where it is
+	// formatted.
+	var unphrasedRules []string
+	seenRule := map[string]bool{}
 
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -179,9 +184,12 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 					if phrased {
 						unanchored++
 						unanchoredRows = append(unanchoredRows, where)
-					} else {
-						unphrased++
-						unphrasedRows = append(unphrasedRows, where)
+						continue
+					}
+					unphrased++
+					if !seenRule[ru.ID] {
+						seenRule[ru.ID] = true
+						unphrasedRules = append(unphrasedRules, ru.ID)
 					}
 				}
 			}
@@ -194,21 +202,34 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 			"their own line and are checked by nothing here: %s", unanchored,
 			joinComma(unanchoredRows))
 	}
+	// COUNTED AND ATTRIBUTED TO ITS RULES, NOT LISTED ROW BY ROW, which is the
+	// opposite of the arm above and deliberately so. detailtie.go's argument
+	// applies here: a count is the honest middle, loud without being a wall. The
+	// three rows above are three, are p76's own, and each needs naming because a
+	// reader cannot otherwise find which line the page leaves blank. These are
+	// 78 and they are ALL of a schedule -- naming them turned this check's PASS
+	// line into 11 KB on every run, which is a list nobody reads reported as a
+	// summary. The rules are what a reader acts on.
 	if unphrased > 0 {
 		unanchoredNote += fmt.Sprintf("; a further %d declared fund(s) sit on rows whose "+
-			"printed label names a fund but no direction, which %s matches nothing in, so "+
-			"this check makes no claim about them either (fisc-90fp): %s", unphrased,
-			"rowAnchorPrefixes", joinComma(unphrasedRows))
+			"printed label names a fund but no direction, which rowAnchorPrefixes matches "+
+			"nothing in, so this check makes no claim about them either (fisc-90fp): %s",
+			unphrased, joinComma(unphrasedRules))
 	}
 	// THE VACUOUS SUMMARY HAS TO STAY TRUE OF THE CORPUS IT RAN OVER. If rows
 	// declare funds and none of them is anchored, "no row declares a fund" is a
 	// false statement -- and under --strict it would surface as an undeclared
 	// vacancy carrying a misleading reason, which is worse than no reason.
+	//
+	// BOTH COUNTERS GUARD IT, and testing only the first was a defect this check
+	// shipped with for one commit: over a corpus of nothing but pp.85-125 every
+	// declared fund is unphrased rather than unanchored, so the check reported
+	// vacuous while announcing that no row declares a fund and 78 did.
 	nothing := "no row declares a fund: every mapped schedule takes its fund from a " +
 		"column, where rule-funds-match-their-headings checks it"
-	if unanchored > 0 {
-		nothing = "every fund declared on a row is at an end the page prints no anchor " +
-			"for, so there is nothing to resolve" + unanchoredNote
+	if unanchored > 0 || unphrased > 0 {
+		nothing = "every fund declared on a row is at an end this check can make no claim " +
+			"about, so there is nothing to resolve" + unanchoredNote
 	}
 	return conclusion{
 		subjects: subjects,
