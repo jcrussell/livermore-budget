@@ -352,7 +352,7 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 			return deptf(d.Slug, "document_term",
 				"is required; it is the ALL-CAPS heading pp.167-170 print for this department")
 		}
-		if err := validatePages(d.Pages, d.Slug, "", deptf); err != nil {
+		if err := validatePages(d.Pages, d.Slug, deptf); err != nil {
 			return err
 		}
 		if err := validateProvenance(d.Slug, d.Derived, d.Rationale, d.SourceNote, deptf); err != nil {
@@ -400,7 +400,7 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 			return divf(d.Slug, "department", "unknown department %q", d.Department)
 		}
 		claimed[d.Department] = true
-		if err := validatePages(d.Pages, d.Slug, "", divf); err != nil {
+		if err := validatePages(d.Pages, d.Slug, divf); err != nil {
 			return err
 		}
 		if err := validateProvenance(d.Slug, d.Derived, d.Rationale, d.SourceNote, divf); err != nil {
@@ -437,11 +437,11 @@ func validateSlug(slug string, ef errFunc) error {
 // once. The rules are validateAlias's, applied to an entry rather than to
 // an alias, because the claim is the same one -- this entry is printed there,
 // go and look.
-func validatePages(pages []int, slug, at string, ef errFunc) error {
+func validatePages(pages []int, slug string, ef errFunc) error {
 	if len(pages) == 0 {
-		return ef(slug, pagesField(at), "is required; say which page the entry is printed on")
+		return ef(slug, "pages", "is required; say which page the entry is printed on")
 	}
-	return validatePagesShape(pages, slug, at, ef)
+	return validatePagesShape(pages, slug, ef)
 }
 
 // validatePagesShape is validatePages WITHOUT the presence rule: 1-based,
@@ -455,8 +455,8 @@ func validatePages(pages []int, slug, at string, ef errFunc) error {
 // rule with no live violation. What is NOT defensible is the state this
 // replaces, where a category could claim page 0 or list a page twice and load
 // clean.
-func validatePagesShape(pages []int, slug, at string, ef errFunc) error {
-	field := pagesField(at)
+func validatePagesShape(pages []int, slug string, ef errFunc) error {
+	const field = "pages"
 	for i, p := range pages {
 		if p <= 0 {
 			return ef(slug, field, "is %d; pages are 1-based PDF page numbers", p)
@@ -467,13 +467,6 @@ func validatePagesShape(pages []int, slug, at string, ef errFunc) error {
 		}
 	}
 	return nil
-}
-
-func pagesField(at string) string {
-	if at == "" {
-		return "pages"
-	}
-	return at + ".pages"
 }
 
 // validateProvenance is the fourth invariant on an entry that carries derived,
@@ -598,16 +591,35 @@ func validateCategory(c Category, catf errFunc) error {
 	}
 	// A category's pages are optional (see validatePagesShape) and their shape
 	// is not.
-	if err := validatePagesShape(c.Pages, c.Slug, "", catf); err != nil {
+	if err := validatePagesShape(c.Pages, c.Slug, catf); err != nil {
 		return err
 	}
 	catAliasf := func(field, format string, args ...any) error {
 		return catf(c.Slug, field, format, args...)
 	}
+	// UNIQUENESS IS PER CATEGORY AND MUST NOT BE FILE-WIDE. A fund gets
+	// claimLabel, which spans funds.yaml, because a label answering to two
+	// funds is a label no schedule can be mapped by. A category alias is not
+	// that: fund-balance/beginning and fund-balance/ending BOTH publish
+	// "Fund Balance / Working Capital", and correctly -- pp.66-67 print the
+	// same words on two rows and the surrounding structure says which is
+	// which. What is never right is one category saying it twice, or an alias
+	// repeating the label it is supposed to be an alternative TO.
+	terms := make(map[string]bool, len(c.Aliases))
 	for i, a := range c.Aliases {
 		if err := validateAlias(i, a, catAliasf); err != nil {
 			return err
 		}
+		if a.Term == c.Label {
+			return catf(c.Slug, fmt.Sprintf("aliases[%d].term", i),
+				"%q is the category's own label; an alias records a DIFFERENT "+
+					"spelling the city prints", a.Term)
+		}
+		if terms[a.Term] {
+			return catf(c.Slug, fmt.Sprintf("aliases[%d].term", i),
+				"%q is listed twice", a.Term)
+		}
+		terms[a.Term] = true
 	}
 	// A contra row is checked AGAINST the category's pages, so a category
 	// that declares contra rows and no pages would skip the arm entirely --
@@ -621,6 +633,7 @@ func validateCategory(c Category, catf errFunc) error {
 				"inside this category's printed subtotal, and with no pages there is "+
 				"nothing to check it against")
 	}
+	rows := make(map[ContraRow]bool, len(c.ContraRows))
 	for i, cr := range c.ContraRows {
 		at := fmt.Sprintf("contra_rows[%d]", i)
 		if cr.Term == "" {
@@ -648,6 +661,17 @@ func validateCategory(c Category, catf errFunc) error {
 				"is %d for %q, which is not one of the category's pages %v",
 				cr.Page, cr.Term, c.Pages)
 		}
+		// A contra row NAMES ONE PRINTED LINE, so the same term on the same
+		// page twice is that line recorded twice -- and a consumer re-summing
+		// the detail would apply its sign flip twice, which on p127's ERAF row
+		// is a -14,086,438 error that no other reader could catch, because
+		// Load is the only reader of contra_rows in the tree. The same term on
+		// a DIFFERENT page is fine: a schedule may print the row more than
+		// once.
+		if rows[cr] {
+			return catf(c.Slug, at, "repeats %q on page %d", cr.Term, cr.Page)
+		}
+		rows[cr] = true
 	}
 
 	// The fourth provenance invariant: a classification we inferred and a

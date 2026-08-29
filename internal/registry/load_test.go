@@ -3,9 +3,12 @@ package registry
 import (
 	"errors"
 	"io/fs"
+	"os"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
@@ -278,6 +281,33 @@ categories:
   - {slug: taxes, label: "Taxes", kinds: [revenue], pages: [127], contra_rows: [{term: "Refunds"}]}
 `,
 			want: `taxonomy.yaml: category "taxes": contra_rows[0].page: is 0 for "Refunds"; pages are 1-based PDF page numbers`,
+		}, {
+			name: "category alias repeating the label it is an alternative to",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], aliases: [{term: "Taxes", pages: [66]}]}
+`,
+			want: `taxonomy.yaml: category "taxes": aliases[0].term: "Taxes" is the category's own label`,
+		}, {
+			// Per category, NOT file-wide: fund-balance/beginning and
+			// fund-balance/ending both publish "Fund Balance / Working
+			// Capital" and both are right.
+			name: "category alias listed twice in one category",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], aliases: [{term: "TAXES:", pages: [66]}, {term: "TAXES:", pages: [127]}]}
+`,
+			want: `taxonomy.yaml: category "taxes": aliases[1].term: "TAXES:" is listed twice`,
+		}, {
+			name: "contra row repeated on the same page",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], pages: [127], contra_rows: [{term: "ERAF", page: 127}, {term: "ERAF", page: 127}]}
+`,
+			want: `taxonomy.yaml: category "taxes": contra_rows[1]: repeats "ERAF" on page 127`,
 		}, {
 			// The arm that checks a contra row is checked AGAINST `pages`, so a
 			// category declaring contra rows and no pages used to skip it
@@ -591,5 +621,58 @@ categories:
 		if c.Assignable != tt.want {
 			t.Errorf("Category(%q).Assignable = %v, want %v", tt.slug, c.Assignable, tt.want)
 		}
+	}
+}
+
+// TestOneAliasTermMaySpanTwoCategories pins the LIMIT of the uniqueness rule
+// TestLoadRejects covers, and it is not a hypothetical.
+//
+// A fund alias is unique file-wide (claimLabel), because a label two funds
+// answer to is a label no schedule can be mapped by. A category alias is not,
+// and must not be: data/taxonomy.yaml has fund-balance/beginning and
+// fund-balance/ending BOTH publishing "Fund Balance / Working Capital",
+// because pp.66-67 print those same words on two rows and the surrounding
+// structure says which is which. Tightening the rule to the file would reject
+// the committed taxonomy.
+func TestOneAliasTermMaySpanTwoCategories(t *testing.T) {
+	r := load(t, "", `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], aliases: [{term: "Shared", pages: [66]}]}
+  - {slug: rents, label: "Rents", kinds: [revenue], aliases: [{term: "Shared", pages: [66]}]}
+`, "")
+	for _, slug := range []string{"taxes", "rents"} {
+		c, ok := r.Category(slug)
+		if !ok {
+			t.Fatalf("Category(%q) not found", slug)
+		}
+		if len(c.Aliases) != 1 || c.Aliases[0].Term != "Shared" {
+			t.Errorf("category %q aliases = %v, want the one term %q", slug, c.Aliases, "Shared")
+		}
+	}
+}
+
+// TestTheRealTaxonomyShareOfFundBalanceIsTheReasonWhy names the committed
+// entries the test above is generalising from, so a reader hitting the
+// per-category rule can go and look rather than take it on trust.
+func TestTheRealTaxonomyShareOfFundBalanceIsTheReasonWhy(t *testing.T) {
+	r, err := Load(os.DirFS(realData))
+	if err != nil {
+		t.Fatalf("Load(%s): %v", realData, err)
+	}
+	const shared = "Fund Balance / Working Capital"
+	var carriers []string
+	for _, c := range r.Categories() {
+		for _, a := range c.Aliases {
+			if a.Term == shared {
+				carriers = append(carriers, c.Slug)
+			}
+		}
+	}
+	want := []string{"fund-balance/beginning", "fund-balance/ending"}
+	if diff := cmp.Diff(want, carriers); diff != "" {
+		t.Errorf("categories publishing alias %q mismatch (-want +got):\n%s\n"+
+			"if this is now one category, the alias uniqueness rule could be "+
+			"tightened to the file as funds already are", shared, diff)
 	}
 }
