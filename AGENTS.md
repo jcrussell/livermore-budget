@@ -27,14 +27,20 @@ wrong for this repository.
 ## Review is a loop, not a pass
 
 Run `/code-review` at each lane or epic boundary, then **iterate until a pass
-returns clean — three iterations at most**. One pass is not the gate: over the
-last session's three boundaries it took nine passes to find 23 defects, and
+returns clean — three passes at least, five at most**. One pass is not the gate:
+over one session's three boundaries it took nine passes to find 23 defects, and
 three of those were introduced by an *earlier pass's own fix* — including a
 prefix check that was itself the fix for a prefix bug, and still wrong.
 
 **Every fix lands with the test that would have caught it, and that test is
 proved red without the fix.** A test that passes either way is the most common
 thing a review pass leaves behind.
+
+**At the cap, file every outstanding finding as a bead before you stop** — the
+small ones especially, at P3 or P4 if that is what they are worth. A finding
+that lived only in a session report is gone. This is not the same as reporting
+to the owner, which you also do: the report is for now, the bead is for whoever
+picks it up.
 
 Skip review for mechanical commits. See
 [`docs/agents/workflow.md`](docs/agents/workflow.md) for the loop, the stopping

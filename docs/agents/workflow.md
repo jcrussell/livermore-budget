@@ -68,13 +68,15 @@ fix, a docs typo. Review has a real cost and those have no design surface.
 
 Everywhere else, **a single pass is not the gate**. Measured over one session's
 three lane boundaries: nine passes, 23 findings. Three of those were defects
-introduced by an *earlier pass's own fix* —
+introduced by an *earlier pass's own fix*; a later session added the fourth row
+below —
 
 | the fix | what the next pass found in it |
 |---|---|
 | `HasSuffix(base, "/")`, itself the fix for a string-prefix bug | still accepted an ancestor base: `facts/` passed, and the client composed `facts/p0066.jsonl` |
 | a reworded `fact.FromValues` comment, claiming a backstop | the condition it tested could not reach the shape it claimed to catch |
 | two commits saying "filed as a bead" | neither bead existed |
+| a test written for a summary defect, asserting `Contains("78 declared fund(s)")` | the malformed string it was written for satisfies that substring, so it passed on the bug |
 
 The rest were defects in the original work — but they were found across all
 three passes, not the first. The two worth recognising by shape: a guard
@@ -82,6 +84,38 @@ written as fail-closed that shipped **fail-open**, and a test that passed
 identically with and without the fix it was named for.
 
 Severity decayed across passes and never reached zero. Hence the loop.
+
+**And it does not always decay.** The pp.85-125 lane (`cd1192c..261c78f`) went
+5, 4, **5** — the third pass found *more* than the second, and **every one of
+its five was a defect in the original commit that two passes had read past.**
+
+Four were false statements in committed text: a page list naming five pages that
+carry no such declaration; a README cell whose back-reference pointed at the row
+above the one it meant; a summary clause reading `a further 78` with nothing
+before it; and a **derived** figure cited as a printed one — three commits after
+the test beside it said in as many words that the figure appears on no page in
+the corpus. Two of those four are strings `fisc verify` prints on every run, and
+the last is the "published is not derived" invariant broken in published text.
+The fifth was a map read with no ok-check, which left the one test guarding
+against a wrong-column read unable to fail on it.
+
+The table's fourth row comes from the same pass and is the *fix* side rather
+than the finding side: the first pass's fix shipped a test for the `a further
+78` string asserting a substring that the malformed string satisfies, so it
+passed on the bug it was written for.
+
+A three-pass cap would have shipped all five. So the count is a floor as well as
+a ceiling — see below.
+
+*(Correction, recorded here rather than by amending, because the log is the
+audit trail: `261c78f`'s own message says two of that pass's findings were
+"introduced by an earlier pass's own fix" and attributes the malformed summary
+clause to the second pass. Checked against `git show cd1192c` — the clause was
+in the original commit, and what an earlier fix introduced was the test that
+failed to catch it. One, not two, and on the fix side rather than the finding
+side. The habit that produced the error is the one
+[Before you quote a number](#before-you-quote-a-number) exists for, applied to a
+commit message about review rather than about the corpus.)*
 
 ### The loop
 
@@ -100,15 +134,56 @@ Severity decayed across passes and never reached zero. Hence the loop.
    ones you can state a reason for declining. **File the declines as beads** —
    `fisc-i38`, `fisc-oz4` and `fisc-8fr` all exist because a review pass
    surfaced something real that was not worth taking then.
+6. **File whatever is still open when you stop**, whether you are stopping
+   because you declined it or because you hit the cap. See
+   [Nothing leaves a pass unfiled](#nothing-leaves-a-pass-unfiled).
 
-### Three iterations, then stop and report
+### Three passes at least, five at most
 
-A third pass still finding real defects is a signal about the **change**, not
-about the review. Stop, report what the last pass found, and let the owner
-decide whether to narrow the commit rather than keep patching it. Every
-boundary in the measured session hit this cap with findings still outstanding,
-and that is information the owner should have rather than something to absorb
-silently.
+**Three is the floor.** Two passes is one pass plus a check that the fixes
+parse. The table above and the pp.85-125 counts both say the same thing: the
+defects an earlier fix introduces are only visible to a pass that runs after it,
+and the second pass is usually still finding original defects rather than
+introduced ones.
+
+**Five is the ceiling**, raised from three because three was demonstrably too
+low on a lane whose third pass found five real defects, all of them in the
+original commit. The ceiling is not a target — stop the moment a pass returns
+clean, which is often the third.
+
+**A late pass still finding real defects is a signal about the change, not about
+the review.** At the cap, report what the last pass found and let the owner
+decide whether to narrow the commit rather than keep patching it. Every boundary
+in the measured session hit its cap with findings still outstanding, and that is
+information the owner should have rather than something to absorb silently.
+
+### Nothing leaves a pass unfiled
+
+**Every finding you do not fix becomes a bead, in the same session, before you
+report.** Declined, deferred, out of scope, too small to bother with, or simply
+past the cap — all the same rule. Priority is where the judgement goes: P3 and
+P4 exist so that "not worth doing now" has somewhere to live that is not a
+paragraph in a session summary nobody reads again.
+
+The small ones are the point. A finding worth a P1 will be re-found; a
+one-sentence P4 about a misleading count in a doc comment will not, and it is
+precisely the class this project keeps discovering years-stale. `fisc-i38`,
+`fisc-oz4` and `fisc-8fr` are the good case — all three were declined on purpose
+and all three are still findable. The bad case is a finding that was reported to
+the owner, agreed with, and never written down.
+
+Two failure modes to refuse by name:
+
+- **"I will fix it in the next commit."** File it anyway. If the next commit
+  fixes it, close the bead in that commit; a bead that lived twenty minutes
+  costs nothing.
+- **"Filed as a bead"** written without filing one. This has happened twice and
+  both claims were false until a later pass caught them. See
+  [A bead records what was true when it was written](#a-bead-records-what-was-true-when-it-was-written).
+
+Reporting to the owner is not a substitute and neither is the commit message.
+The report is for the person reading it now; the bead is for whoever opens
+`bd ready` next month.
 
 ### A finding that touches a golden gets one extra step
 
