@@ -431,8 +431,12 @@ project treats an unchecked one as a defect. Three traps:
 - **Rebuild-and-`cmp`, don't rebuild in place.** `./bin/fisc build --output
   bin/facts-rebuilt.jsonl` then `cmp` against `facts/facts.jsonl`; the
   committed file is the audit trail and CI compares it byte for byte.
-- **A commit message describing a fix is a claim about the tree.** Grep for it
-  before writing the sentence. `261c78f` said it had reworded a citation and
+- **A commit message describing a fix is a claim about the tree, and so is
+  every id in it.** Grep for the fix before writing the sentence, and read the
+  id back — `bd create` prints the new bead's id and it is not guessable. Both
+  halves have failed in this repo: a fix asserted and never made, and a bead
+  correctly filed but cited under an invented id, which is worse in one way
+  because the bead is real and the pointer still goes nowhere. `261c78f` said it had reworded a citation and
   spelled out a README cell; the fifth review pass found both unchanged. The
   cause was mechanical and will recur: a batch of scripted edits with an
   assertion in the middle aborted at the second, the later edits never ran, and
