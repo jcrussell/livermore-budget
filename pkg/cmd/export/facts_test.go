@@ -426,6 +426,11 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 // 21 as current. What this test asserts is one direction only: every page the
 // store shards has its extracted text committed. The equality the p76 case was
 // really about is kept by pageIndex() seeding buildSite's cited set.
+//
+// Note what that leaves: with one document topping out at p170 against a
+// contiguous p0001..p0268 committed, this arm cannot currently go red, and
+// fact-offset-points-at-token already forecloses the case. It is a guard for a
+// second document, not a live check today.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {

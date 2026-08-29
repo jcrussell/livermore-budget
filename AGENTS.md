@@ -94,12 +94,15 @@ those row labels carry no verb phrase for it to read.
 The corpus knows this about itself. Measured at `44be60d`, when there were 52
 injected memories: **ten** of them carried a line whose only job is to say
 earlier text has gone stale — *"the bead text describing it as blocked is historical"*, *"text on
-those beads describing work as pending is historical"*, *"same stale-premise class as
+the lane's beads describing work as pending is historical"*, *"same stale-premise class as
 p76 (see p76-is-extractable-and-ties): claims written against the old extractor
 outlived it"*. The criterion is that reading, applied by hand; there is no
-command that re-measures a judgement over prose, which is why the count is
-pinned to a commit rather than left live — the population itself moves, and the
-very next commit took it to 48. The log carries the same habit, and there the
+command that re-measures a judgement over prose, which is why the count names
+the commit it was taken at rather than being left live — the population moves,
+and the very next commit took it to 48. The pin dates the claim; it does not
+make it reproducible, because memories live in the Dolt DB and in no git
+artifact, so the only record of a superseded one is the commit message of the
+session that changed it. The log carries the same habit, and there the
 count *can* be re-measured rather than pinned: `git log --format=%s | grep -ci
 stale` counts the commits that say so in the subject line alone. Run it; it was
 six at `44be60d` and only goes up.
@@ -708,8 +711,11 @@ borrows the next row's leading token and reaches `ncols` anyway. The
 column)"*, therefore fires only when the shortfall runs off the end of the
 block; a mid-block row slides its whole tail left by one column and every
 figure after the gap is filed under the wrong year. `toks = toks[:ncols]` then
-discards the overflow, which is separately why a trailing footnote marker is
-harmless.
+discards the overflow — and note that discarding is *not* a way to absorb a
+trailing footnote marker, because the truncated marker is left sitting in the
+gap where `checkGap` refuses it as unexplained text. That is precisely why p76's
+headerless marker column has to be *declared* rather than ignored (`fisc-wfi`,
+and `internal/mapping/rule.go`'s `ColumnHeader` comment).
 
 What actually stops this on CIP p40 is not that guard. It is either
 `amount.Parse` choking on a neighbouring row's label word, which is luck rather
