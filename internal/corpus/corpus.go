@@ -250,7 +250,7 @@ func (d *Doc) Warnings() []Warning { return slices.Clone(d.man.Warnings) }
 // records the same three claims; two parties recording them independently is
 // what makes agreement evidence, and extract.py deliberately has no YAML parser
 // so that neither copy is derived from the other
-// (AGENTS.md, Provenance invariants, "the extraction boundary").
+// (AGENTS.md, "The extraction boundary").
 func (d *Doc) SourceFile() string { return d.man.SourceFile }
 
 // SourceSHA256 is the hash of the PDF this extraction was made from.
@@ -281,7 +281,7 @@ func PagePath(n int) string { return fmt.Sprintf("pages/p%04d.txt", n) }
 // Both substrates are emitted for every page and both are needed: `-layout`
 // reproduces the printed grid in runs of spaces but says nothing about which
 // column a token belongs to on a sparse row, and geometry is what settles it
-// (AGENTS.md, Provenance invariants, "the extraction boundary"). [Doc.Geometry] is the
+// (AGENTS.md, "The extraction boundary"). [Doc.Geometry] is the
 // reader; `fisc verify` separately checks that both artifacts exist for every
 // page, because an extraction missing half its geometry looks complete right up
 // until a rule asks for the half that is gone.

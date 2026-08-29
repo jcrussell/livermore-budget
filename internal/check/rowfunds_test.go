@@ -203,8 +203,10 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	// declared fund(s)..." -- a clause with no antecedent, because the note was
 	// seeded in the unanchored arm and appended to in the unphrased one. Found
 	// by the third review pass; the defect was introduced by the second pass's
-	// own fix, which is the failure mode AGENTS.md tabulates under "Review is a
-	// loop, not a pass".
+	// own TEST, and the distinction is the one AGENTS.md records under "Review is a
+	// loop, not a pass": the malformed clause was in the original commit, and what
+	// an earlier pass's fix introduced was this test, asserting a substring the
+	// malformed string satisfies.
 	if strings.Contains(res.Summary, "a further") {
 		t.Errorf("the summary says \"a further\" with nothing before it:\n%s", res.Summary)
 	}

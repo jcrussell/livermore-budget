@@ -56,7 +56,7 @@ const budgetDocID = "livermore-budget-fy2026-2027"
 // The bytes are synthetic rather than copied from data/extracted/: this package
 // does not read page text, it copies it, so what is asserted is that the bytes
 // arrive unchanged. A real fixture here would be one more file to re-copy when
-// the extraction changes (AGENTS.md, Provenance invariants) and would prove nothing
+// the extraction changes (AGENTS.md, "Testing") and would prove nothing
 // extra.
 func pageTextFS() fstest.MapFS {
 	return fstest.MapFS{
@@ -284,7 +284,7 @@ func TestPageCitesThePDFPageAndTheTextTheSiteShips(t *testing.T) {
 }
 
 // The copy has to be byte-for-byte: the runs of spaces ARE the printed column
-// grid (AGENTS.md, Provenance invariants), so text that arrives reflowed is text a
+// grid (AGENTS.md, "The extraction boundary"), so text that arrives reflowed is text a
 // reader cannot check a figure against.
 func TestCitedPageTextIsShippedVerbatimAndOnlyWhenCited(t *testing.T) {
 	tree := pageTextFS()

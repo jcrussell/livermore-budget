@@ -55,7 +55,7 @@
 // [Load] reads facts/facts.jsonl, mappings/, the three registries under data/, and
 // every artifact under data/extracted/ — all committed. Without Full it touches
 // data/pdf/ nowhere, which is what lets CI verify without an LFS checkout or a
-// venv (AGENTS.md, Provenance invariants, "the extraction boundary"). A check that needs
+// venv (AGENTS.md, "The extraction boundary"). A check that needs
 // the source documents themselves says so with Full and is skipped, not failed,
 // when --full is absent; today that is one check, source-pdfs-match-both-records,
 // and Load is the one place allowed to open data/pdf/ for it.

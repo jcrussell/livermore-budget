@@ -28,6 +28,7 @@ bd ready --exclude-type=byob,epic # claimable work; byob decisions and epics hid
 `bd prime` injects the project's memories, which carry the things a new
 session would otherwise re-derive — why page text rather than tables is the
 mapping substrate, why the amount parser is strict, and the environment traps.
+Status and next steps live in the bead graph, not in a status document.
 
 ## Read before changing anything non-trivial
 
@@ -366,8 +367,11 @@ review ran. Treat review as a complement to that evidence, never a substitute.
 
 A worked example of the standard: rejecting a leading minus sign in
 `internal/amount` is justified by summing ACFR p177 row 2017 and showing that
-only the positive reading reconciles to the printed total. The test carries the
-arithmetic. That is the level of proof a claim about these documents needs.
+only the positive reading reconciles to the printed total. The test is
+`TestLeadingMinusIsReallyPositive`, in `internal/mapping/acfr_p177_test.go`, and
+it carries the arithmetic. That is the level of proof a claim about these
+documents needs — a claim about these documents is proved with arithmetic, not
+intuition, and review does not substitute for it.
 
 ## Prove it can fail
 
@@ -414,7 +418,7 @@ hiding, and what would have to break for this to go red?"**
 ## Before you quote a number
 
 Every claim in a comment, a commit message or a bead is checkable, and this
-project treats an unchecked one as a defect. Two traps:
+project treats an unchecked one as a defect. Three traps:
 
 - **`make pre-commit` does not run `fisc verify`.** Rebuild `bin/fisc` before
   quoting a check count. One session reported "38 passed" after landing a check
