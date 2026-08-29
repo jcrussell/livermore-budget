@@ -47,6 +47,39 @@ mappings.
 ones. A browser cache stays warm across a release, and a link published today
 resolves after the store grows.
 
+### Who holds a locator
+
+The URL is composed from two halves, so nothing has to parse a path to take it
+apart:
+
+| half | who states it | where the client reads it |
+|---|---|---|
+| `facts/<doc_id>/pages/` | `pkg/cmd/export`'s `shardBase` | `CONFIG.docs[<doc_id>].records_base` |
+| `p<page padded to 4>.jsonl` | `pkg/cmd/export`'s `shardFile` | composed by `citations()` in `site/app.js` |
+
+Both are `shardPath` split at exactly the point a client has to compose it, so
+"the rule is spelled once" survives the split — and
+`TestTheRecordsBaseComposesBackToTheShardPath` asserts the halves still make
+the whole for every page published, rather than leaving it to the comment.
+
+`internal/export` publishes `records_base` and **does not know how it is
+built**. That is the same rule `PageIndexEntry.Data` follows and it is stated
+in `buildProvenancePage`: the locator-to-URL rule belongs to whoever produced
+the records.
+
+`records_base` is always site-relative, unlike `page_text_base` beside it in
+the same object. Shards are written into the output tree on every export; page
+text is not, and goes absolute under `--source-browse-url`.
+
+### What a chart cites
+
+A projection's links publish `locators` — the `(doc_id, page)` pairs of the
+facts each link sums — so a mark on the chart resolves to the records behind
+it. This is a **page** locator: `offset` addresses one printed figure and a
+link is an aggregate. See
+[`sankey-contract.md`](sankey-contract.md#a-link-cites-its-facts-twice-and-the-two-citations-are-not-redundant)
+for why a link publishes `fact_ids` as well and why neither replaces the other.
+
 ## The shards
 
 One file per `(doc_id, page)`, JSONL, **byte-identical to the corresponding run
@@ -151,3 +184,15 @@ new hazard, but the collision of names is worth knowing before you try it.
 - `TestEveryShardedPageHasItsExtractedText` and the citation seeding in
   `buildSite` — every published locator's page text is shipped, so both halves of
   a citation resolve.
+- `link-locators-match-their-facts` (`fisc verify`, tier 1) — every link's
+  `locators` are exactly the pages its `fact_ids` were read from. Nothing else
+  compares the two citations a link publishes, and a locator naming the wrong
+  page sends a reader to a well-formed shard that does not hold their figure.
+- `TestTheRecordsBaseComposesBackToTheShardPath` and
+  `TestEveryShippedDocumentCanResolveItsRecords` — the base a client composes
+  with rebuilds the path the shard was written at, and every document
+  publishing records has one. The second is the fail-closed arm for a field
+  whose absence is legal: a caller publishing no records is not a caller
+  publishing a base pointing nowhere.
+- `tools/jscheck` — the fold unions locators with de-duplication, and a
+  document missing `links[].locators` is refused before the page repaints.
