@@ -249,7 +249,13 @@ func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
 // check", and collapsing the two is how a hole gets reported as a pass.
 func TestAnUnassignableCategoryReddensOneVocabularyCheck(t *testing.T) {
 	facts := testFacts()
+	// BOTH FIELDS, and the kind is the load-bearing one. The fixture taxonomy
+	// declares taxes with kinds: [revenue] and facts[0] is a revenue cell, so
+	// setting only the category leaves declaresKind TRUE -- the pre-fix build
+	// emitted no finding either, and this test passed in both. It has to be a
+	// kind `taxes` does NOT declare for the double-redden to exist at all.
 	facts[0].Category = "taxes"
+	facts[0].Kind = mapping.KindExpenditure
 	results := runChecks(t, testSubject(t, facts...))
 
 	if res := resultFor(t, results, "fact-vocabulary"); res.Status != StatusFail {
