@@ -453,15 +453,21 @@ project treats an unchecked one as a defect. Three traps:
 
 The gate line most commits here end with is those two together: *"facts.jsonl
 unmoved; fisc verify 40 passed, 0 failed."* The count in that template is itself
-the trap above — it has been 33, 34, 39, 40 and 41 in this file's lifetime, and
-was written as 39 here while the log's last eight commits said 40. Rebuild and
-read it; do not copy the template's number.
+the trap above. Measured over the whole log, the passed-counts actually written
+are 20, 38, 39 and 40 — it moves every time a check lands — and this template
+said 39 while the eight most recent commits said 40. Rebuild and read it; do not
+copy the template's number. And do not reach for `check.All()`'s total either:
+that is a different quantity (42 today, because one check is vacuous and one
+needs `--full`), and an earlier draft of this very sentence quoted it as though
+the two were the same.
 
 **At a lane boundary, audit the whole range's claims at once.** Every "this
 commit fixes X" in the range, checked against the tree in one script. Over
-`cd1192c^..HEAD` that was 23 claims and 2 were false — both of them fixes
-asserted in a message that never landed, and both found by review rather than by
-the author.
+`cd1192c..4f3c3ab` — the pp.85-125 lane and its four fix passes — that was 23
+claims and 2 were false, both of them fixes asserted in a message that never
+landed, and both found by review rather than by the author. The range is written
+as two commits and not as `..HEAD`, because a doc that names a moving range
+stops naming what it measured the moment anything else lands.
 
 ## Commits
 
