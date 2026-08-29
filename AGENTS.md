@@ -452,22 +452,29 @@ project treats an unchecked one as a defect. Three traps:
   three, because the work really is tracked and only the pointer is dead.
 
 The gate line most commits here end with is those two together: *"facts.jsonl
-unmoved; fisc verify 40 passed, 0 failed."* The count in that template is itself
-the trap above. Measured over the whole log, the passed-counts actually written
-are 20, 38, 39 and 40 — it moves every time a check lands — and this template
-said 39 while the eight most recent commits said 40. Rebuild and read it; do not
-copy the template's number. And do not reach for `check.All()`'s total either:
-that is a different quantity (42 today, because one check is vacuous and one
-needs `--full`), and an earlier draft of this very sentence quoted it as though
-the two were the same.
+unmoved; fisc verify 40 passed, 0 failed."*
+
+**The count in that template is itself the trap, and this sentence is where to
+learn it.** Three consecutive review passes corrected it and each correction was
+wrong in a new way: the template shipped stale; the fix that replaced it quoted
+`check.All()`'s total instead, which is a different quantity (42 today, because
+one check is vacuous and one needs `--full`); and the fix that replaced THAT
+asserted an exhaustive list of every count the log has carried, measured with a
+grep narrow enough to miss several spellings of the same line. So no list is
+given here. Rebuild `bin/fisc`, run it, and read the number off the run you are
+about to describe. A count copied from anywhere — this file, another commit,
+memory — is the defect this section exists to name.
 
 **At a lane boundary, audit the whole range's claims at once.** Every "this
 commit fixes X" in the range, checked against the tree in one script. Over
-`cd1192c..4f3c3ab` — the pp.85-125 lane and its four fix passes — that was 23
-claims and 2 were false, both of them fixes asserted in a message that never
-landed, and both found by review rather than by the author. The range is written
-as two commits and not as `..HEAD`, because a doc that names a moving range
-stops naming what it measured the moment anything else lands.
+`cd1192c^..4f3c3ab` — eight commits: the pp.85-125 lane, its five review-fix
+passes, and two of beads and docs — that was 23 claims and 2 were false, both of
+them fixes asserted in a message that never landed, and both found by review
+rather than by the author. The range is pinned to two commit ids and not written
+as `..HEAD`, because a doc that names a moving range stops naming what it
+measured the moment anything else lands; and it starts at `cd1192c^`, because
+`a..b` excludes `a` and the lane's own commit is the one carrying most of the
+claims.
 
 ## Commits
 
@@ -490,9 +497,8 @@ work. From the log:
   COMPARED BASENAMES"*.
 - **Measurements inline, labelled as measured.** *"Measured -- dropping
   data/reconciliations.yaml ... leaves fisc verify at 39 passed, 0 failed."*
-  (Quoted from the log, so the 39 is what was true then and is not a live
-  count.)
-  A number in a commit message is a claim like any other.
+  A number in a commit message is a claim like any other. (That 39 is quoted
+  from the log, so it is what was true then rather than a live count.)
 - **The mutation stated**, per [Prove it can fail](#prove-it-can-fail): what
   was reverted, and what went red.
 - **The gate line**, near-formulaic: *"facts.jsonl unmoved; fisc verify 39
