@@ -82,6 +82,31 @@ var fundTypes = []string{
 	"permanent",
 }
 
+// factKinds is the closed set of `kinds` members a taxonomy category may
+// declare. IT IS A SECOND SPELLING OF mapping.Kind AND THAT IS DELIBERATE.
+//
+// This package cannot import internal/mapping. Every test file there is
+// `package mapping` and one of them (transfers_p76_test.go) imports THIS
+// package, so the edge closes a cycle in the test build -- `go build` passes
+// and `go vet` does not, which is the worst way to find out. The alternative
+// considered and rejected was a leaf `internal/kind` package both import; it
+// removes the duplication rather than pinning it, at the cost of a new package
+// and a type alias through every use site in mapping. Recorded on fisc-iki.
+//
+// So the list is duplicated and pinned instead: kinds_test.go is
+// `package registry_test`, may import both, and asserts that Load accepts
+// every mapping.Kinds() member and refuses a string that is not one. The pin
+// is BEHAVIOURAL rather than a slice comparison, because an unexported list is
+// invisible from an external test package -- and because it also pins the
+// error message, which a slice comparison could not.
+var factKinds = []string{
+	"revenue",
+	"expenditure",
+	"transfer_in",
+	"transfer_out",
+	"fund_balance",
+}
+
 // constraintTiers is the closed set of constraint_tier values. Unlike the
 // fund types these are DERIVED — our reading of the Description of Funds
 // narrative — which is why `unknown` is a member: it records that the

@@ -211,8 +211,11 @@ func (r *Registry) loadFunds(fsys fs.FS) error {
 		if err := claimLabel(f.Name, f, false); err != nil {
 			return err
 		}
+		fundAliasf := func(field, format string, args ...any) error {
+			return fundf(f.Number, field, format, args...)
+		}
 		for j, a := range f.Aliases {
-			if err := validateFundAlias(f, j, a, fundf); err != nil {
+			if err := validateAlias(j, a, fundAliasf); err != nil {
 				return err
 			}
 			if err := claimLabel(a.Term, f, true); err != nil {
@@ -431,17 +434,29 @@ func validateSlug(slug string, ef errFunc) error {
 }
 
 // validatePages checks a `pages` list: present, 1-based, ascending, each page
-// once. The rules are validateFundAlias's, applied to an entry rather than to
+// once. The rules are validateAlias's, applied to an entry rather than to
 // an alias, because the claim is the same one -- this entry is printed there,
 // go and look.
 func validatePages(pages []int, slug, at string, ef errFunc) error {
-	field := "pages"
-	if at != "" {
-		field = at + ".pages"
-	}
 	if len(pages) == 0 {
-		return ef(slug, field, "is required; say which page the entry is printed on")
+		return ef(slug, pagesField(at), "is required; say which page the entry is printed on")
 	}
+	return validatePagesShape(pages, slug, at, ef)
+}
+
+// validatePagesShape is validatePages WITHOUT the presence rule: 1-based,
+// ascending, each page once.
+//
+// The split exists because a taxonomy category's `pages` is optional and its
+// shape is not. Three of the twenty-five categories carry none, and they are
+// exactly the three `assignable: false` rollups -- so "required when
+// assignable" is defensible on today's data and is filed as its own bead
+// rather than taken here, because it would churn forty inline fixtures for a
+// rule with no live violation. What is NOT defensible is the state this
+// replaces, where a category could claim page 0 or list a page twice and load
+// clean.
+func validatePagesShape(pages []int, slug, at string, ef errFunc) error {
+	field := pagesField(at)
 	for i, p := range pages {
 		if p <= 0 {
 			return ef(slug, field, "is %d; pages are 1-based PDF page numbers", p)
@@ -452,6 +467,13 @@ func validatePages(pages []int, slug, at string, ef errFunc) error {
 		}
 	}
 	return nil
+}
+
+func pagesField(at string) string {
+	if at == "" {
+		return "pages"
+	}
+	return at + ".pages"
 }
 
 // validateProvenance is the fourth invariant on an entry that carries derived,
@@ -477,32 +499,43 @@ func validateProvenance(slug string, derived bool, rationale, sourceNote string,
 // errFunc formats an error against one named entry.
 type errFunc func(entry, field, format string, args ...any) error
 
-// fundErrFunc formats an error against one fund, which is named by its number
-// rather than by a slug.
-type fundErrFunc func(number int, field, format string, args ...any) error
+// entryErrFunc formats an error against a field of one already-named entry.
+// It is what lets validateAlias serve both channels: a fund is named by its
+// number and a category by its slug, and the alias rules care about neither.
+type entryErrFunc func(field, format string, args ...any) error
 
-// validateFundAlias checks one published spelling. Uniqueness is not checked
-// here — that is claimLabel's job, because it spans the whole file — so this
-// is only the shape of the entry itself.
-func validateFundAlias(f Fund, i int, a Alias, fundf fundErrFunc) error {
+// validateAlias checks one published spelling. Uniqueness is not checked
+// here — for funds that is claimLabel's job, because it spans the whole file —
+// so this is only the shape of the entry itself.
+//
+// IT DELIBERATELY MAKES NO CLAIM ABOUT THE OWNING ENTRY'S OWN `pages`.
+// contra_rows gets exactly that cross-field arm below and aliases must never
+// get it: measured over the committed taxonomy, all 8 of 8 category alias
+// blocks are WHOLLY DISJOINT from their category's pages. That is not a defect
+// -- a contra row is a detail line inside the category's own printed subtotal,
+// so it is on a page the category claims; an alias is the OTHER SPELLING, and
+// the reason a spelling needs recording at all is that some other schedule
+// prints it. Adding the arm here "by symmetry" would reject the whole
+// committed alias channel.
+func validateAlias(i int, a Alias, ef entryErrFunc) error {
 	at := fmt.Sprintf("aliases[%d]", i)
 	if a.Term == "" {
-		return fundf(f.Number, at+".term", "is required")
+		return ef(at+".term", "is required")
 	}
 	// An alias asserts that the city prints this string. Without a page that
 	// assertion cannot be checked, and an alias nobody can check is a rename
 	// we have made up: the whole channel exists so a reader can go and look.
 	if len(a.Pages) == 0 {
-		return fundf(f.Number, at+".pages",
+		return ef(at+".pages",
 			"is required; alias %q must say which page it was read from", a.Term)
 	}
 	for j, p := range a.Pages {
 		if p <= 0 {
-			return fundf(f.Number, at+".pages",
+			return ef(at+".pages",
 				"is %d for alias %q; pages are 1-based PDF page numbers", p, a.Term)
 		}
 		if j > 0 && p <= a.Pages[j-1] {
-			return fundf(f.Number, at+".pages",
+			return ef(at+".pages",
 				"%d follows %d for alias %q; pages are listed once each, in ascending order",
 				p, a.Pages[j-1], a.Term)
 		}
@@ -513,14 +546,14 @@ func validateFundAlias(f Fund, i int, a Alias, fundf fundErrFunc) error {
 	// reader must be able to tell the two apart without re-doing the work.
 	switch {
 	case a.Derived && a.Rationale == "":
-		return fundf(f.Number, at+".rationale",
+		return ef(at+".rationale",
 			"is required when derived is true; alias %q must say what the binding rests on",
 			a.Term)
 	case !a.Derived && a.Rationale != "":
 		// Same asymmetry validateCategory records: a forgotten `derived: true`
 		// is far likelier than a stray rationale, and it fails open — the entry
 		// reads as justified while nothing ever demands the justification.
-		return fundf(f.Number, at+".derived",
+		return ef(at+".derived",
 			"is not set for alias %q, but a rationale is given; a binding the city prints needs none",
 			a.Term)
 	}
@@ -539,9 +572,70 @@ func validateCategory(c Category, catf errFunc) error {
 	if len(c.Kinds) == 0 {
 		return catf(c.Slug, "kinds", "is required")
 	}
+	// AND A MEMBER MUST BE A REAL KIND. Until this landed, `kinds: [banana]`
+	// loaded clean and left `fisc verify` fully green -- 38 passed, 0 failed --
+	// because internal/check's fact-kind-matches-category compares a fact's
+	// kind against this list and a category no fact has reached is never
+	// consulted. Four of the twenty-five categories are in that state today,
+	// including an assignable one, so the typo would surface years later as a
+	// mass failure instead of now as a one-line file error. It is the shape
+	// fisc-ttq already cost this repo once, when all four transfer categories
+	// declared a `transfer` kind that mapping.Kind has never defined.
+	seen := make(map[string]bool, len(c.Kinds))
+	for _, k := range c.Kinds {
+		if !slices.Contains(factKinds, k) {
+			return catf(c.Slug, "kinds", "got %q, want one of %s",
+				k, strings.Join(factKinds, ", "))
+		}
+		if seen[k] {
+			return catf(c.Slug, "kinds", "%q is listed twice", k)
+		}
+		seen[k] = true
+	}
 	if n := strings.Count(c.Slug, "/"); n > 1 {
 		return catf(c.Slug, "slug",
 			"has %d parent segments; the taxonomy is one level deep", n)
+	}
+	// A category's pages are optional (see validatePagesShape) and their shape
+	// is not.
+	if err := validatePagesShape(c.Pages, c.Slug, "", catf); err != nil {
+		return err
+	}
+	catAliasf := func(field, format string, args ...any) error {
+		return catf(c.Slug, field, format, args...)
+	}
+	for i, a := range c.Aliases {
+		if err := validateAlias(i, a, catAliasf); err != nil {
+			return err
+		}
+	}
+	for i, cr := range c.ContraRows {
+		at := fmt.Sprintf("contra_rows[%d]", i)
+		if cr.Term == "" {
+			return catf(c.Slug, at+".term", "is required")
+		}
+		if cr.Page <= 0 {
+			return catf(c.Slug, at+".page",
+				"is %d for %q; pages are 1-based PDF page numbers", cr.Page, cr.Term)
+		}
+		// THE CROSS-FIELD ARM, and it is the one worth having: a contra row is
+		// a detail line printed INSIDE this category's own subtotal, so it can
+		// only be on a page this category claims. A row citing some other page
+		// means one of the two records is wrong, and today neither is read by
+		// anything in production -- so nothing else would ever notice.
+		//
+		// Note the arm is proved by n=2, both in taxes/property, both on p127
+		// which that category lists. It is the only rule here that can become
+		// false as data grows rather than only as a file is mistyped. If a
+		// contra row ever needs a page its category does not claim, the answer
+		// is to widen `pages`, because the category IS printed there.
+		//
+		// It must NOT be copied onto aliases -- see validateAlias.
+		if len(c.Pages) > 0 && !slices.Contains(c.Pages, cr.Page) {
+			return catf(c.Slug, at+".page",
+				"is %d for %q, which is not one of the category's pages %v",
+				cr.Page, cr.Term, c.Pages)
+		}
 	}
 
 	// The fourth provenance invariant: a classification we inferred and a

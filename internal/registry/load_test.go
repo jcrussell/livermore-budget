@@ -199,10 +199,97 @@ categories:
 			taxonomy: `
 schema_version: 1
 categories:
-  - {slug: transfers, label: "Transfers", kinds: [transfer]}
+  - {slug: transfers, label: "Transfers", kinds: [transfer_in]}
   - {slug: taxes/property, label: "Property Taxes", parent: transfers, kinds: [revenue]}
 `,
 			want: `taxonomy.yaml: category "taxes/property": parent: is "transfers", but the slug's head noun is "taxes"`,
+		}, {
+			// The defect this whole arm exists for. Before it landed this
+			// file loaded clean and `fisc verify` was 38 passed, 0 failed.
+			name: "category kind that mapping.Kind has never defined",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: transfers, label: "Transfers", kinds: [transfer]}
+`,
+			want: `taxonomy.yaml: category "transfers": kinds: got "transfer", want one of ` +
+				`revenue, expenditure, transfer_in, transfer_out, fund_balance`,
+		}, {
+			name: "category kind listed twice",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: transfers, label: "Transfers", kinds: [transfer_in, transfer_in]}
+`,
+			want: `taxonomy.yaml: category "transfers": kinds: "transfer_in" is listed twice`,
+		}, {
+			name: "category page that is not 1-based",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], pages: [0]}
+`,
+			want: `taxonomy.yaml: category "taxes": pages: is 0; pages are 1-based PDF page numbers`,
+		}, {
+			name: "category pages out of order",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], pages: [66, 66]}
+`,
+			want: `taxonomy.yaml: category "taxes": pages: 66 follows 66; pages are listed once each, in ascending order`,
+		}, {
+			name: "category alias with no term",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], aliases: [{pages: [66]}]}
+`,
+			want: `taxonomy.yaml: category "taxes": aliases[0].term: is required`,
+		}, {
+			name: "category alias with no page to check it against",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], aliases: [{term: "TAXES:"}]}
+`,
+			want: `taxonomy.yaml: category "taxes": aliases[0].pages: is required; alias "TAXES:" must say which page it was read from`,
+		}, {
+			name: "category alias derived with no rationale",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], aliases: [{term: "TAXES:", pages: [66], derived: true}]}
+`,
+			want: `taxonomy.yaml: category "taxes": aliases[0].rationale: is required when derived is true`,
+		}, {
+			name: "contra row with no term",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], pages: [127], contra_rows: [{page: 127}]}
+`,
+			want: `taxonomy.yaml: category "taxes": contra_rows[0].term: is required`,
+		}, {
+			name: "contra row with no page",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], pages: [127], contra_rows: [{term: "Refunds"}]}
+`,
+			want: `taxonomy.yaml: category "taxes": contra_rows[0].page: is 0 for "Refunds"; pages are 1-based PDF page numbers`,
+		}, {
+			// A contra row is a detail line inside this category's own printed
+			// subtotal, so a page the category does not claim means one of the
+			// two records is wrong -- and nothing else in the tree reads
+			// contra_rows at all, so nothing else would notice.
+			name: "contra row on a page its category does not claim",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], pages: [66, 127], contra_rows: [{term: "Refunds", page: 139}]}
+`,
+			want: `taxonomy.yaml: category "taxes": contra_rows[0].page: is 139 for "Refunds", which is not one of the category's pages [66 127]`,
 		}, {
 			name: "nested slug with no parent",
 			taxonomy: `

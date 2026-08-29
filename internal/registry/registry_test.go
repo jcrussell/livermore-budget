@@ -398,6 +398,40 @@ func TestLoadRealRegistries(t *testing.T) {
 		t.Errorf("derived categories = %d %v, want %d", got, derived, want)
 	}
 
+	// THE NEW VALIDATORS MUST BE EXERCISED BY THE REAL FILE, not only by
+	// fixtures. Load already refuses a bad kind, a mis-shaped `pages`, a
+	// mis-shaped alias and a contra row off its category's pages -- so
+	// re-asserting those here over a registry that LOADED would be a
+	// tautology. What is not a tautology is that the committed taxonomy
+	// actually carries entries of each kind: an arm no real entry reaches is
+	// dead code that happens to have a test.
+	var withPages, withAliases, withContra, kindMembers int
+	for _, c := range cats {
+		kindMembers += len(c.Kinds)
+		if len(c.Pages) > 0 {
+			withPages++
+		}
+		withAliases += len(c.Aliases)
+		withContra += len(c.ContraRows)
+	}
+	if kindMembers == 0 {
+		t.Error("no category declares any kinds; the membership arm is unexercised")
+	}
+	// Three of the twenty-five carry no pages, and they are exactly the three
+	// rollups above -- which is why the shape arm is applied and the presence
+	// arm is not. If that stops being true, "required when assignable" becomes
+	// landable and should be taken.
+	if got, want := len(cats)-withPages, len(wantUnassignable); got != want {
+		t.Errorf("%d categories carry no pages, want %d (the unassignable rollups %v)",
+			got, want, wantUnassignable)
+	}
+	if withAliases == 0 {
+		t.Error("no category carries an alias; validateAlias is unexercised on this channel")
+	}
+	if withContra == 0 {
+		t.Error("no category carries a contra row; the contra_rows arms are unexercised")
+	}
+
 	// 112 funds, every one with a tier this package recognizes.
 	funds := r.Funds()
 	if got, want := len(funds), 112; got != want {
