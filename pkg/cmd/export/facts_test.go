@@ -430,7 +430,7 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 // Note what that leaves: with one document topping out at p170 against a
 // contiguous p0001..p0268 committed, this arm cannot currently go red, and
 // fact-offset-points-at-token already forecloses the case. It is a guard for a
-// second document, not a live check today.
+// second document, not a live check today -- fisc-73cq.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {

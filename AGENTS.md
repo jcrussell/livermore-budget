@@ -99,13 +99,16 @@ p76 (see p76-is-extractable-and-ties): claims written against the old extractor
 outlived it"*. The criterion is that reading, applied by hand; there is no
 command that re-measures a judgement over prose, which is why the count names
 the commit it was taken at rather than being left live — the population moves,
-and the very next commit took it to 48. The pin dates the claim; it does not
+and the session that landed this sentence went on to take it to 48. The pin dates the claim; it does not
 make it reproducible, because memories live in the Dolt DB and in no git
 artifact, so the only record of a superseded one is the commit message of the
 session that changed it. The log carries the same habit, and there the
 count *can* be re-measured rather than pinned: `git log --format=%s | grep -ci
-stale` counts the commits that say so in the subject line alone. Run it; it was
-six at `44be60d` and only goes up.
+stale` counts the commits that say so in the subject line alone — six at
+`44be60d`. That is a floor and not the answer: the grep misses at least six more
+of the same class whose subjects say "corrects four beads" or "two wrong
+premises" instead, so a plain-meaning count is 13-15. It is quoted because it is
+reproducible, not because it is complete.
 
 So: **correct the bead in the same session you find it stale**, in its notes,
 saying what was measured. And do not write "filed as a bead" in a comment or a
@@ -458,7 +461,8 @@ project treats an unchecked one as a defect. Three traps:
   **So: one edit per script, or check each edit's exit status.** A heredoc that
   raises halfway leaves a tree that still builds and still passes every test,
   so no gate goes red; what catches it is reading the diff, or the range audit
-  below, which is how both real instances were found.
+  below — which is how the unmade edit was found. The invented id the author
+  caught, in `e630516`.
 
   Both the unmade edit and the invented id are the class of writing "filed as a bead" without filing one, and both
   are worse than a missing note in the same way: the claim reads as *done*, or
@@ -709,19 +713,29 @@ whole remainder of the *block*, not of the row — so a row missing a cell simpl
 borrows the next row's leading token and reaches `ncols` anyway. The
 `len(toks) < ncols` guard, *"row %q is followed by %d values, want %d (one per
 column)"*, therefore fires only when the shortfall runs off the end of the
-block; a mid-block row slides its whole tail left by one column and every
-figure after the gap is filed under the wrong year. `toks = toks[:ncols]` then
-discards the overflow — and note that discarding is *not* a way to absorb a
-trailing footnote marker, because the truncated marker is left sitting in the
-gap where `checkGap` refuses it as unexplained text. That is precisely why p76's
-headerless marker column has to be *declared* rather than ignored (`fisc-wfi`,
-and `internal/mapping/rule.go`'s `ColumnHeader` comment).
+block. `toks = toks[:ncols]` then discards the overflow — and note that
+discarding is *not* a way to absorb a trailing footnote marker, because the
+truncated marker is left sitting in the gap where `checkGap` refuses it as
+unexplained text. That is precisely why p76's headerless marker column has to be
+*declared* rather than ignored (`fisc-wfi`, and `internal/mapping/rule.go`'s
+`ColumnHeader` comment).
 
-What actually stops this on CIP p40 is not that guard. It is either
-`amount.Parse` choking on a neighbouring row's label word, which is luck rather
-than a check, or the geometry column guard, which is the real answer. That is
-the whole argument for `-bbox`: on a sparse grid the positional read has no way
-to know a cell was skipped.
+**What catches the borrowing is mostly downstream of the read, not in it.**
+`cursor` advances to the end of the last token consumed, so a row that borrows
+its neighbour's figures also steps the cursor past that neighbour's *label*, and
+the next iteration refuses the part with `row %q does not occur after %s`.
+`checkGap` refuses anything but whitespace between rows. Between them a labelled
+block is well defended, and the `len(toks) < ncols` message is the rarest of the
+three rather than the first line of defence.
+
+Which is why the honest statement is that **nobody has enumerated what is left**
+— a block-final row backed by an unlabelled total line is the obvious candidate,
+and `amount.Parse` choking on a neighbour's label word has saved at least one
+real case by luck rather than by design. `fisc-8ln` owns that residue and
+`fisc-i0d9` owns the fact that the test named for it never reaches the row read.
+Three successive attempts in this file to summarise this function were wrong in
+three different ways; if you need the behaviour, read `labelledValues` and write
+a probe, and do not trust this paragraph over the code.
 
 poppler has no structured error channel: it writes free-form English to stderr
 and exits 0. The manifest records every stderr line under `warnings`, and
