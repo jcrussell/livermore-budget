@@ -344,7 +344,30 @@ type Link struct {
 	// FactIDs cite every fact this link sums, ascending. More than one means
 	// contra rows netted into their parent category.
 	FactIDs []string `json:"fact_ids"`
-	Derived bool     `json:"derived"`
+	// Locators cite the same facts BY PAGE: the (doc_id, page) pairs they were
+	// read from, documents ascending, pages ascending within each, each page
+	// once, never nil.
+	//
+	// IT IS NOT A REDUNDANT SPELLING OF FactIDs, and the difference is the
+	// whole reason this field exists. fact.MakeID hashes rule_id, so splitting
+	// or revising a rule moves every id on the pages it covers -- a citation
+	// by id would 404 after a change that altered no figure. (doc_id, page)
+	// cannot move, and the fact store's shard path is COMPUTED from it
+	// (docs/fact-store-contract.md), so a client holding this can resolve the
+	// records behind one mark in a single fetch with no lookup. Holding
+	// FactIDs it can resolve nothing: it has no index and must not be given
+	// one.
+	//
+	// Both are published because neither substitutes for the other. A page
+	// holds facts from several rules, so a locator cannot say WHICH facts this
+	// link summed -- which is what link-values-tie-to-facts, counts-reconcile
+	// and citedFacts all need.
+	//
+	// This is a PAGE locator, not the (doc_id, page, offset) triple that
+	// document names: offset addresses one printed figure and a link is an
+	// aggregate.
+	Locators []Source `json:"locators"`
+	Derived  bool     `json:"derived"`
 }
 
 // Sankey projects the citywide spine as a flow diagram.
@@ -452,6 +475,7 @@ type cellKey struct {
 type cell struct {
 	cents   int64
 	factIDs []string
+	locs    locatorSet
 }
 
 // Graph builds the graph without encoding it, so fisc verify can check the
@@ -608,6 +632,7 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 			Kind:       kind,
 			TransferID: "",
 			FactIDs:    c.factIDs,
+			Locators:   c.locs.sources(),
 			Derived:    isDerived,
 		})
 	}
@@ -674,7 +699,8 @@ func selectFacts(facts []fact.Fact, o Options) []fact.Fact {
 // netCells sums the facts of each printed cell and collects their ids.
 func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 	cells := make(map[cellKey]*cell)
-	for _, f := range facts {
+	for i := range facts {
+		f := facts[i]
 		if f.Category == "" {
 			return nil, cmdutil.WithHint(
 				fmt.Errorf("sankey: fact %s (%s p%d %q) has no category", f.ID, f.DocID, f.Page, f.RowLabel),
@@ -705,6 +731,7 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 		// relates to its category, it is not an instruction to negate.
 		c.cents += f.AmountCents
 		c.factIDs = append(c.factIDs, f.ID)
+		c.locs.add(&facts[i])
 	}
 	for _, c := range cells {
 		sort.Strings(c.factIDs)
@@ -860,24 +887,11 @@ func checkDistinctLinks(links []Link) error {
 // sourcesOf lists the documents and pages the facts were read from, so the
 // citation on the page names pages rather than a document.
 func sourcesOf(facts []fact.Fact) []Source {
-	pages := make(map[string]map[int]bool)
-	for _, f := range facts {
-		if pages[f.DocID] == nil {
-			pages[f.DocID] = make(map[int]bool)
-		}
-		pages[f.DocID][f.Page] = true
+	var l locatorSet
+	for i := range facts {
+		l.add(&facts[i])
 	}
-	out := make([]Source, 0, len(pages))
-	for doc, ps := range pages {
-		nums := make([]int, 0, len(ps))
-		for p := range ps {
-			nums = append(nums, p)
-		}
-		sort.Ints(nums)
-		out = append(out, Source{DocID: doc, Pages: nums})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].DocID < out[j].DocID })
-	return out
+	return l.sources()
 }
 
 // fiscalYearLabel writes a fiscal year the way the budget book does: FY2026 is

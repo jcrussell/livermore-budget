@@ -1658,6 +1658,14 @@
       "fact_ids": [
         "fisc-f-72ab54568ffa"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1668,6 +1676,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-f44e1e43ef2e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -1680,6 +1696,14 @@
       "fact_ids": [
         "fisc-f-8c4503567efa"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1690,6 +1714,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-36e38c998fdc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -1702,6 +1734,14 @@
       "fact_ids": [
         "fisc-f-4f922f3c60e3"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1712,6 +1752,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-c240e5d41c2c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -1724,6 +1772,14 @@
       "fact_ids": [
         "fisc-f-3a9a154ac61f"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1734,6 +1790,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-34654103587d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -1746,6 +1810,14 @@
       "fact_ids": [
         "fisc-f-2f74cc153b1a"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1756,6 +1828,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-25bcf477bf2f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -1768,6 +1848,14 @@
       "fact_ids": [
         "fisc-f-9817efcb73e5"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1778,6 +1866,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-60e021a9366e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -1790,6 +1886,14 @@
       "fact_ids": [
         "fisc-f-e87e00bc5eba"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1800,6 +1904,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-87315f968074"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -1812,6 +1924,14 @@
       "fact_ids": [
         "fisc-f-6d98c4650651"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1822,6 +1942,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-d5710dd1e4f0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -1834,6 +1962,14 @@
       "fact_ids": [
         "fisc-f-ffd4cf799e8c"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            170
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1844,6 +1980,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-521d52265b13"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -1856,6 +2000,14 @@
       "fact_ids": [
         "fisc-f-ca36888fe93a"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1866,6 +2018,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-fdd415c5a9fe"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -1878,6 +2038,14 @@
       "fact_ids": [
         "fisc-f-b6ffb072cd0e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            170
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1888,6 +2056,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-c7962e6ca7d1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -1900,6 +2076,14 @@
       "fact_ids": [
         "fisc-f-a11f4305a258"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1910,6 +2094,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-0a243da9439e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -1922,6 +2114,14 @@
       "fact_ids": [
         "fisc-f-b2fdb91bd3f3"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1932,6 +2132,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-e1fcc61f92d0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -1944,6 +2152,14 @@
       "fact_ids": [
         "fisc-f-59169c248dd3"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1954,6 +2170,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-f27916544ed1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -1966,6 +2190,14 @@
       "fact_ids": [
         "fisc-f-dd6c0ed2f38a"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1976,6 +2208,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-7af9d0d00cef"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -1988,6 +2228,14 @@
       "fact_ids": [
         "fisc-f-3d7d8b49ff7c"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -1998,6 +2246,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-c42c1c9154e4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2010,6 +2266,14 @@
       "fact_ids": [
         "fisc-f-021a5b419b66"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2020,6 +2284,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-1a1a89b74d01"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -2032,6 +2304,14 @@
       "fact_ids": [
         "fisc-f-63520dc09a7e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2042,6 +2322,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-f5685c2e73f5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2054,6 +2342,14 @@
       "fact_ids": [
         "fisc-f-53a477834f0e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2064,6 +2360,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-3de1f054a637"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -2076,6 +2380,14 @@
       "fact_ids": [
         "fisc-f-cdbfd9f4b738"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2086,6 +2398,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-2119fd084a94"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2098,6 +2418,14 @@
       "fact_ids": [
         "fisc-f-b8404203c44d"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2108,6 +2436,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-55b9d867de13"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -2120,6 +2456,14 @@
       "fact_ids": [
         "fisc-f-f0a756064830"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2130,6 +2474,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-87b808526121"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -2143,6 +2495,14 @@
         "fisc-f-72ab54568ffa",
         "fisc-f-f44e1e43ef2e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2154,6 +2514,14 @@
       "fact_ids": [
         "fisc-f-36e38c998fdc",
         "fisc-f-8c4503567efa"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2167,6 +2535,14 @@
         "fisc-f-4f922f3c60e3",
         "fisc-f-c240e5d41c2c"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2178,6 +2554,14 @@
       "fact_ids": [
         "fisc-f-34654103587d",
         "fisc-f-3a9a154ac61f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -2191,6 +2575,14 @@
         "fisc-f-25bcf477bf2f",
         "fisc-f-2f74cc153b1a"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2202,6 +2594,14 @@
       "fact_ids": [
         "fisc-f-60e021a9366e",
         "fisc-f-9817efcb73e5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -2215,6 +2615,14 @@
         "fisc-f-87315f968074",
         "fisc-f-e87e00bc5eba"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2226,6 +2634,14 @@
       "fact_ids": [
         "fisc-f-6d98c4650651",
         "fisc-f-d5710dd1e4f0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2239,6 +2655,15 @@
         "fisc-f-521d52265b13",
         "fisc-f-ffd4cf799e8c"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169,
+            170
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2251,6 +2676,14 @@
         "fisc-f-ca36888fe93a",
         "fisc-f-fdd415c5a9fe"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2261,6 +2694,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-b6ffb072cd0e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            170
+          ]
+        }
       ],
       "derived": false
     },
@@ -2275,6 +2716,15 @@
         "fisc-f-c7962e6ca7d1",
         "fisc-f-e49a49bd75f6"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167,
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2286,6 +2736,14 @@
       "fact_ids": [
         "fisc-f-0a243da9439e",
         "fisc-f-a11f4305a258"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2299,6 +2757,14 @@
         "fisc-f-b2fdb91bd3f3",
         "fisc-f-e1fcc61f92d0"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2310,6 +2776,14 @@
       "fact_ids": [
         "fisc-f-59169c248dd3",
         "fisc-f-f27916544ed1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
       ],
       "derived": false
     },
@@ -2323,6 +2797,14 @@
         "fisc-f-7af9d0d00cef",
         "fisc-f-dd6c0ed2f38a"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            167
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2334,6 +2816,14 @@
       "fact_ids": [
         "fisc-f-3d7d8b49ff7c",
         "fisc-f-c42c1c9154e4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2348,6 +2838,14 @@
         "fisc-f-1a1a89b74d01",
         "fisc-f-d753a7e90140"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2359,6 +2857,14 @@
       "fact_ids": [
         "fisc-f-63520dc09a7e",
         "fisc-f-f5685c2e73f5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2372,6 +2878,14 @@
         "fisc-f-3de1f054a637",
         "fisc-f-53a477834f0e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2383,6 +2897,14 @@
       "fact_ids": [
         "fisc-f-2119fd084a94",
         "fisc-f-cdbfd9f4b738"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            169
+          ]
+        }
       ],
       "derived": false
     },
@@ -2397,6 +2919,15 @@
         "fisc-f-b8404203c44d",
         "fisc-f-dbee118cea40"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168,
+            169
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2409,6 +2940,14 @@
         "fisc-f-46ec67a94b6d",
         "fisc-f-87b808526121",
         "fisc-f-f0a756064830"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            168
+          ]
+        }
       ],
       "derived": false
     },
@@ -2440,6 +2979,14 @@
         "fisc-f-dc2447fd3d14",
         "fisc-f-f59e348c54ec"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2450,6 +2997,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-5be476f92861"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
       ],
       "derived": false
     },
@@ -2462,6 +3017,14 @@
       "fact_ids": [
         "fisc-f-50482651cfcc"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2472,6 +3035,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-a1605f9fec09"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
       ],
       "derived": false
     },
@@ -2484,6 +3055,14 @@
       "fact_ids": [
         "fisc-f-cad1d5341c9a"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2494,6 +3073,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-f736ad396acc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
       ],
       "derived": false
     },
@@ -2506,6 +3093,14 @@
       "fact_ids": [
         "fisc-f-cb034e47ddc5"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2516,6 +3111,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-cda6680a6014"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
       ],
       "derived": false
     },
@@ -2528,6 +3131,14 @@
       "fact_ids": [
         "fisc-f-ef6c3486edc0"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2538,6 +3149,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-20ff99273c37"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
       ],
       "derived": false
     },
@@ -2550,6 +3169,14 @@
       "fact_ids": [
         "fisc-f-f2d451c451d3"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2560,6 +3187,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-e2ae53ea1a6c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
       ],
       "derived": false
     },
@@ -2572,6 +3207,14 @@
       "fact_ids": [
         "fisc-f-89d696edf237"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2582,6 +3225,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-17af1af3a6e6"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
       ],
       "derived": false
     },
@@ -2594,6 +3245,14 @@
       "fact_ids": [
         "fisc-f-667d92d90e08"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2604,6 +3263,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-5e5389bb3c6e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
       ],
       "derived": false
     },
@@ -2616,6 +3283,14 @@
       "fact_ids": [
         "fisc-f-d6d11d88f6ea"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2626,6 +3301,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-955a219cdac2"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
       ],
       "derived": false
     },
@@ -2638,6 +3321,14 @@
       "fact_ids": [
         "fisc-f-2755c77802c6",
         "fisc-f-9a79989e2250"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
       ],
       "derived": false
     },
@@ -2655,6 +3346,14 @@
         "fisc-f-4bffc93f20b8",
         "fisc-f-f11c2cfa9b15"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2665,6 +3364,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-d5be3825a051"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
       ],
       "derived": false
     },
@@ -2677,6 +3384,14 @@
       "fact_ids": [
         "fisc-f-14f95ad1a6ea"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2687,6 +3402,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-40055f204b1a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
       ],
       "derived": false
     },
@@ -2699,6 +3422,14 @@
       "fact_ids": [
         "fisc-f-5fed8c56cc2f"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2709,6 +3440,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-f76f1296b143"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
       ],
       "derived": false
     },
@@ -2721,6 +3460,14 @@
       "fact_ids": [
         "fisc-f-c2bac1c7d756"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2731,6 +3478,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-320d131e1937"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
       ],
       "derived": false
     },
@@ -2743,6 +3498,14 @@
       "fact_ids": [
         "fisc-f-d0749e8c1057"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2753,6 +3516,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-1135219a0378"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
       ],
       "derived": false
     },
@@ -2765,6 +3536,14 @@
       "fact_ids": [
         "fisc-f-46e79c110d14"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2775,6 +3554,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-e76a2eef26c2"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
       ],
       "derived": false
     },
@@ -2787,6 +3574,14 @@
       "fact_ids": [
         "fisc-f-f6df4a9575d3"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            134
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2797,6 +3592,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-7c0a17a4021d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
       ],
       "derived": false
     },
@@ -2809,6 +3612,14 @@
       "fact_ids": [
         "fisc-f-d1244e333bc3"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            140
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2819,6 +3630,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-13a3ea47bd08"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            140
+          ]
+        }
       ],
       "derived": false
     },
@@ -2831,6 +3650,14 @@
       "fact_ids": [
         "fisc-f-721669d231ac"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            140
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2841,6 +3668,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-cf198bf7d7ff"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            140
+          ]
+        }
       ],
       "derived": false
     },
@@ -2867,6 +3702,14 @@
         "fisc-f-f8549ffe912d",
         "fisc-f-fcf2173ae14f"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2890,6 +3733,14 @@
         "fisc-f-f4741d7e741b",
         "fisc-f-f872028af2ab"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2900,6 +3751,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-1d63ae85385c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
       ],
       "derived": false
     },
@@ -2912,6 +3771,14 @@
       "fact_ids": [
         "fisc-f-4e760b02224d"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2922,6 +3789,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-cb0b38e36242"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
       ],
       "derived": false
     },
@@ -2934,6 +3809,14 @@
       "fact_ids": [
         "fisc-f-188fa013cf74"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2944,6 +3827,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-3261ee9d7781"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
       ],
       "derived": false
     },
@@ -2956,6 +3847,14 @@
       "fact_ids": [
         "fisc-f-5b92256e79bc"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2966,6 +3865,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-36a5415663f7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
       ],
       "derived": false
     },
@@ -2978,6 +3885,14 @@
       "fact_ids": [
         "fisc-f-3ae69677ef36"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -2988,6 +3903,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-1353232a8c77"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
       ],
       "derived": false
     },
@@ -3000,6 +3923,14 @@
       "fact_ids": [
         "fisc-f-78db684f803e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3010,6 +3941,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-df8c35825f36"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
       ],
       "derived": false
     },
@@ -3022,6 +3961,14 @@
       "fact_ids": [
         "fisc-f-2bfbffef1c80"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3032,6 +3979,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-be49395433f8"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
       ],
       "derived": false
     },
@@ -3044,6 +3999,14 @@
       "fact_ids": [
         "fisc-f-e81670aba60f"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3054,6 +4017,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-949b8eb7c13f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
       ],
       "derived": false
     },
@@ -3066,6 +4037,14 @@
       "fact_ids": [
         "fisc-f-12f4ed2c9498"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3077,6 +4056,14 @@
       "fact_ids": [
         "fisc-f-8bbf6085ef9e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3087,6 +4074,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-03cec9cd3492"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
       ],
       "derived": false
     },
@@ -3112,6 +4107,15 @@
         "fisc-f-7b25ffbeaa30",
         "fisc-f-bfd5a9f77392"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127,
+            128
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3123,6 +4127,14 @@
       "fact_ids": [
         "fisc-f-b20eacc7335b"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3133,6 +4145,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-147c93696656"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
       ],
       "derived": false
     },
@@ -3157,6 +4177,14 @@
         "fisc-f-d28c379749f9",
         "fisc-f-dae14cab0e14"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3167,6 +4195,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-68ff8dc55cf0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
       ],
       "derived": false
     },
@@ -3179,6 +4215,14 @@
       "fact_ids": [
         "fisc-f-f4863a45b13d"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3189,6 +4233,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-5088deacfd55"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
       ],
       "derived": false
     },
@@ -3201,6 +4253,14 @@
       "fact_ids": [
         "fisc-f-352efa9658e9"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3212,6 +4272,14 @@
       "fact_ids": [
         "fisc-f-111d510c3250",
         "fisc-f-7879c9292870"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
       ],
       "derived": false
     },
@@ -3229,6 +4297,14 @@
         "fisc-f-ad9e1402f780",
         "fisc-f-b31f58fcaedd"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3239,6 +4315,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-119423a5a9ef"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
       ],
       "derived": false
     },
@@ -3251,6 +4335,14 @@
       "fact_ids": [
         "fisc-f-43ce1bfdf67e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3261,6 +4353,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-aa178e4c6404"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            135
+          ]
+        }
       ],
       "derived": false
     },
@@ -3273,6 +4373,14 @@
       "fact_ids": [
         "fisc-f-6935c7b67950"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3283,6 +4391,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-4e744bf2468e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
       ],
       "derived": false
     },
@@ -3295,6 +4411,14 @@
       "fact_ids": [
         "fisc-f-d92a6e436c28"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3305,6 +4429,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-5e6578688766"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
       ],
       "derived": false
     },
@@ -3317,6 +4449,14 @@
       "fact_ids": [
         "fisc-f-331d34f4b962"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            137
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3327,6 +4467,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-339598a4e2c9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
       ],
       "derived": false
     },
@@ -3339,6 +4487,14 @@
       "fact_ids": [
         "fisc-f-7769fc02460d"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3349,6 +4505,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-6135366e80de"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
       ],
       "derived": false
     },
@@ -3361,6 +4525,14 @@
       "fact_ids": [
         "fisc-f-565d9ac7898b"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3371,6 +4543,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-7ad5df220ca8"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
       ],
       "derived": false
     },
@@ -3383,6 +4563,14 @@
       "fact_ids": [
         "fisc-f-8d80805f63b0"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3393,6 +4581,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-32897f7dddae"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
       ],
       "derived": false
     },
@@ -3405,6 +4601,14 @@
       "fact_ids": [
         "fisc-f-52813beda725"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3415,6 +4619,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-22e199391b7a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
       ],
       "derived": false
     },
@@ -3427,6 +4639,14 @@
       "fact_ids": [
         "fisc-f-7afca1a47a1e"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3437,6 +4657,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-906f6ef9c946"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
       ],
       "derived": false
     },
@@ -3449,6 +4677,14 @@
       "fact_ids": [
         "fisc-f-532888e639dd"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3459,6 +4695,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-6d30a59b7f8d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133
+          ]
+        }
       ],
       "derived": false
     },
@@ -3471,6 +4715,14 @@
       "fact_ids": [
         "fisc-f-a6b0fa41e174"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            134
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3481,6 +4733,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-56fa6c6827c0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            134
+          ]
+        }
       ],
       "derived": false
     },
@@ -3493,6 +4753,14 @@
       "fact_ids": [
         "fisc-f-1f62955075b5"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            134
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3503,6 +4771,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-d34d8328f9b9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
       ],
       "derived": false
     },
@@ -3515,6 +4791,14 @@
       "fact_ids": [
         "fisc-f-a15274bafc95"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3525,6 +4809,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-fec3b9e87f5d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
       ],
       "derived": false
     },
@@ -3537,6 +4829,14 @@
       "fact_ids": [
         "fisc-f-301f36891169"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3547,6 +4847,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-78e176dc3746"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
       ],
       "derived": false
     },
@@ -3559,6 +4867,14 @@
       "fact_ids": [
         "fisc-f-eef0a6362e7f"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3569,6 +4885,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-1d8247257dc2"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
       ],
       "derived": false
     },
@@ -3581,6 +4905,14 @@
       "fact_ids": [
         "fisc-f-650f66757541"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3591,6 +4923,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-eeb777127dda"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            140
+          ]
+        }
       ],
       "derived": false
     },
@@ -3603,6 +4943,14 @@
       "fact_ids": [
         "fisc-f-749367249ba0"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3613,6 +4961,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-bf9ca3b21dd7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
       ],
       "derived": false
     },
@@ -3625,6 +4981,14 @@
       "fact_ids": [
         "fisc-f-203377aadd61"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            134
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3635,6 +4999,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-0161399909dc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            134
+          ]
+        }
       ],
       "derived": false
     },
@@ -3647,6 +5019,14 @@
       "fact_ids": [
         "fisc-f-400847e407b4"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            134
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3657,6 +5037,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-41ab2dd1eec7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
       ],
       "derived": false
     },
@@ -3669,6 +5057,14 @@
       "fact_ids": [
         "fisc-f-be8ac2e777c5"
       ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131
+          ]
+        }
+      ],
       "derived": false
     },
     {
@@ -3679,6 +5075,14 @@
       "transfer_id": "",
       "fact_ids": [
         "fisc-f-de7607dbfbd7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            132
+          ]
+        }
       ],
       "derived": false
     }

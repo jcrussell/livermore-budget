@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"sort"
+
+	"github.com/jcrussell/livermore-budget/internal/fact"
 )
 
 // This file holds the parts of a published document that are NOT the Sankey's.
@@ -51,6 +54,66 @@ type Counts struct {
 type Source struct {
 	DocID string `json:"doc_id"`
 	Pages []int  `json:"pages"`
+}
+
+// locatorSet collects the (doc_id, page) pairs of a set of facts.
+//
+// IT IS THE ONE GROUPING RULE IN THIS PACKAGE. Both sourcesOf (a whole
+// document's citation) and every Link's Locators (one flow's) go through it,
+// so the two cannot disagree about ordering, de-duplication or the empty case
+// -- which matters because the client renders them with the same function, and
+// a link whose list were shaped differently would compose a different URL for
+// the same page.
+type locatorSet struct {
+	pages map[string]map[int]bool
+}
+
+// add records the page one fact was read from.
+func (l *locatorSet) add(f *fact.Fact) {
+	if l.pages == nil {
+		l.pages = make(map[string]map[int]bool)
+	}
+	if l.pages[f.DocID] == nil {
+		l.pages[f.DocID] = make(map[int]bool)
+	}
+	l.pages[f.DocID][f.Page] = true
+}
+
+// merge folds another set into this one. It is what a rollup link needs: the
+// tier-3-to-4 flow in fundflows cites every fact of every cell beneath it, and
+// its locators must be the union of theirs rather than the first one's.
+func (l *locatorSet) merge(o *locatorSet) {
+	for doc, ps := range o.pages {
+		for p := range ps {
+			if l.pages == nil {
+				l.pages = make(map[string]map[int]bool)
+			}
+			if l.pages[doc] == nil {
+				l.pages[doc] = make(map[int]bool)
+			}
+			l.pages[doc][p] = true
+		}
+	}
+}
+
+// sources renders the set as the published shape: documents ascending, pages
+// ascending within each, each page once.
+//
+// It never returns nil. docs/sankey-contract.md requires every key present on
+// every object with no null, and an empty locator list would otherwise encode
+// as null the moment a caller built one from no facts.
+func (l *locatorSet) sources() []Source {
+	out := make([]Source, 0, len(l.pages))
+	for doc, ps := range l.pages {
+		nums := make([]int, 0, len(ps))
+		for p := range ps {
+			nums = append(nums, p)
+		}
+		sort.Ints(nums)
+		out = append(out, Source{DocID: doc, Pages: nums})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].DocID < out[j].DocID })
+	return out
 }
 
 // encode renders a document as the canonical JSON every projection publishes.

@@ -80,7 +80,9 @@ to ship travels the same channel (`export.Options.Files`).
   "links": [{
     "source": "revenue/taxes/property", "target": "fund-group/general",
     "value_cents": 6414376200, "kind": "external", "transfer_id": "",
-    "fact_ids": ["fisc-f-..."], "derived": false
+    "fact_ids": ["fisc-f-..."],
+    "locators": [{"doc_id": "livermore-budget-fy2026-2027", "pages": [66]}],
+    "derived": false
   }]
 }
 ```
@@ -101,7 +103,41 @@ columns — and d3-sankey draws zero-height paths that churn node order. The
 dropped.
 
 Determinism: nodes sorted by `(tier, id)`, links by `(source, target)`,
-`fact_ids` ascending. Two builds of the same facts are byte-identical.
+`fact_ids` ascending, `locators` by `doc_id` with `pages` ascending inside each
+and every page once. Two builds of the same facts are byte-identical.
+
+### A link cites its facts twice, and the two citations are not redundant
+
+`fact_ids` names *which* facts a link summed. `locators` says *where they were
+printed* — the `(doc_id, page)` pairs, in the same shape as `metadata.sources`,
+so a client resolves both with one function.
+
+Only one of them survives a rule change. `fact.MakeID` hashes `rule_id`, so
+splitting or revising a rule moves every id on the pages it covers; a citation
+by id would 404 after an edit that altered no figure. `(doc_id, page)` cannot
+move, and the fact store's shard path is *computed* from it — see
+[`fact-store-contract.md`](fact-store-contract.md) — so a mark on the chart
+resolves to the records behind it in one fetch with no index. That is what
+`locators` is for and it is the only thing it is for.
+
+Neither replaces the other. A page holds facts from several rules, so a locator
+cannot say which facts a link summed, which is what `link-values-tie-to-facts`,
+`counts-reconcile` and `counts.facts_cited` all need. Both are published on
+every link.
+
+It is a **page** locator. `fact-store-contract.md` writes a locator as
+`(doc_id, page, offset)`; `offset` addresses one printed figure and a link is
+an aggregate, so it stops at the page. Measured over the six published
+documents: every link resolves to 1 or 2 pairs.
+
+`locators` was added without bumping `schema_version`. The project is
+pre-release, so the number is not yet a promise to any reader outside this
+tree, and the three constants that must agree — `project.SchemaVersion`,
+`export.SchemaVersion` and `app.js`'s `SCHEMA_VERSION` — stay at 1 together.
+Recorded as a decision on fisc-5hxr rather than assumed, because
+[`revenue-trends-contract.md`](revenue-trends-contract.md) says a bump is a
+decision and not a number someone increments. The next additive key is
+re-decided, not waved through on this precedent.
 
 ## Tiers and node ids
 

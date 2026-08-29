@@ -306,6 +306,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
 			Kind: revenueLinkKind(k), FactIDs: c.factIDs,
+			Locators: c.locs.sources(),
 		})
 	}
 
@@ -324,6 +325,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		// of one set: a zero cell adds 0 to the value and its ids to the list.
 		d.cents += c.cents
 		d.factIDs = append(d.factIDs, c.factIDs...)
+		d.locs.merge(&c.locs)
 
 		if c.cents == 0 {
 			for _, id := range c.factIDs {
@@ -341,6 +343,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
 			Kind: KindExternal, FactIDs: c.factIDs,
+			Locators: c.locs.sources(),
 		})
 	}
 
@@ -366,6 +369,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		links = append(links, Link{
 			Source: fundNode.id, Target: dst.id, ValueCents: d.cents,
 			Kind: KindExternal, FactIDs: d.factIDs,
+			Locators: d.locs.sources(),
 		})
 	}
 
@@ -455,6 +459,7 @@ func fundFlowsCaveats(twice int) []string {
 type cellSum struct {
 	cents   int64
 	factIDs []string
+	locs    locatorSet
 }
 
 // revKey addresses a revenue cell: the money a fund takes in, by category.
@@ -572,6 +577,7 @@ func add[K comparable](m map[K]*cellSum, k K, fa *fact.Fact) {
 	}
 	c.cents += fa.AmountCents
 	c.factIDs = append(c.factIDs, fa.ID)
+	c.locs.add(fa)
 }
 
 // revenueLinkKind classifies a tier-0-to-3 flow.
