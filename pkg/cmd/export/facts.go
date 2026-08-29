@@ -336,8 +336,8 @@ func factCSVHeader() []string {
 // "no float" structural instead of promised. json.Decoder.Token() with
 // UseNumber yields each number as the LITERAL TEXT the encoder wrote, so
 // amount_cents lands in the CSV as the same digits that are in facts.jsonl and
-// no float64 is constructed anywhere on the money path. docs/agents/conventions
-// .md forbids float amounts; this makes it impossible rather than avoided.
+// no float64 is constructed anywhere on the money path. AGENTS.md's provenance
+// invariants forbid float amounts; this makes it impossible rather than avoided.
 //
 // AND IT IS Token() RATHER THAN Decode(&map[string]any) FOR THE KEY ORDER.
 // Decoding an object into a Go map loses it, so a header "in declaration order"

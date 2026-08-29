@@ -12,7 +12,7 @@ import (
 
 // ACFR p177, the ten-year schedule of outstanding debt by type. It is the page
 // behind this project's most-cited claim -- amount.TestLeadingMinusIsReallyPositive,
-// quoted in CLAUDE.md and docs/agents/conventions.md as the worked example of
+// quoted in CLAUDE.md and AGENTS.md, Provenance invariants as the worked example of
 // proving a reading with arithmetic rather than intuition.
 //
 // That test reconciles a row TRANSCRIBED INTO ITS OWN COMMENT. Nothing checked

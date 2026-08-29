@@ -104,7 +104,7 @@ Four things the Sankey's metadata carries are **absent here, deliberately**:
 - `headline` — its keys are `all_funds_gross_revenue_cents` and
   `naive_expenditure_cents`. They are the spine's and mean nothing here.
 
-Absent is not zero (`docs/agents/conventions.md`): a trends document is not
+Absent is not zero ([`AGENTS.md`](../AGENTS.md)): a trends document is not
 defective for lacking a fiscal year, so it must not publish `"fiscal_year": 0`
 or `"basis": ""` to keep a shape it is not of. Consumers key on `projection`.
 
@@ -251,7 +251,7 @@ without running anything.
 
 **No point is dropped for being zero.** The Sankey omits zero-valued *links*
 because d3-sankey draws zero-height paths that churn node order; a trend point
-has no such problem, and a printed `-` is a published zero (`docs/agents/conventions.md`).
+has no such problem, and a printed `-` is a published zero ([`AGENTS.md`](../AGENTS.md)).
 Dropping it would make a series with a gap indistinguishable from a series the
 city stopped printing — which is the exact case `trend-series-are-complete`
 exists to catch.

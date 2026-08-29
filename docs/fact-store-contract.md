@@ -113,7 +113,7 @@ every `fact.Fact` JSON key, **in declaration order**, taken by reflection from
 the struct. Every row is one record.
 
 **Amounts are integer cents.** There is no `amount_dollars` column: it would be
-either a float, which `docs/agents/conventions.md` forbids, or a second decimal
+either a float, which [`AGENTS.md`](../AGENTS.md) forbids, or a second decimal
 spelling of one integer — a second answer to what the amount is, and the one a
 spreadsheet silently reformats. Divide by 100.
 

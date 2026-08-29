@@ -101,7 +101,7 @@ pre-commit: fmt vet test lint-if-available js-if-available ## Format, vet, test,
 
 # A HOOK CANNOT BE COMMITTED. .git/hooks is not tracked, so "symlink pre-commit
 # into it" is per-checkout setup somebody has to actually run -- and until this
-# target existed, CLAUDE.md and docs/agents/workflow.md both described the
+# target existed, CLAUDE.md and AGENTS.md both described the
 # symlink as though it were already there. It was not, in any checkout anyone
 # looked at, which made a workflow document assert a guard that did not exist.
 #

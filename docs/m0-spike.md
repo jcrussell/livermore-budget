@@ -2,7 +2,7 @@
 
 > **Historical record, 2026-08-15. Read the notes marked SUPERSEDED.**
 >
-> This is the spike that chose the substrate, and `docs/agents/README.md` still
+> This is the spike that chose the substrate, and [`AGENTS.md`](../AGENTS.md) still
 > names it as required reading — so the parts of it that are no longer true have
 > to say so rather than be quietly deleted. The extraction pipeline was replaced
 > wholesale on 2026-08-17 (`fisc-yqv`): **xberg is gone, `pdftotext` from poppler

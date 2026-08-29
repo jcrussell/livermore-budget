@@ -400,7 +400,7 @@ type Options struct {
 	// failure mode this whole type exists to prevent back inside it: every
 	// fiscal year the city publishes lives in the same facts.jsonl, and a
 	// projection that quietly selected two of them doubles every figure while
-	// still balancing perfectly. Absent is not zero (docs/agents/conventions.md).
+	// still balancing perfectly. Absent is not zero (AGENTS.md, Provenance invariants).
 	Columns []Column
 	// Scopes selects the schedules a fact may have come from. It is also the
 	// guard that keeps a second schedule's facts out of a projection built for

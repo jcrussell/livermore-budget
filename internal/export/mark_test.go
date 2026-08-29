@@ -100,7 +100,7 @@ func TestAContraRowSplitsTheBaseline(t *testing.T) {
 // TestAnAbsentColumnAndAPublishedZeroDoNotLookAlike is the mark's version of the
 // invariant the whole project turns on: a printed dash is a figure the city
 // published, and an empty cell means the line does not apply
-// (docs/agents/conventions.md). A mark that drew them the same way would be
+// (AGENTS.md, Provenance invariants). A mark that drew them the same way would be
 // asserting the city published a zero it did not.
 func TestAnAbsentColumnAndAPublishedZeroDoNotLookAlike(t *testing.T) {
 	cols := fourColumns()

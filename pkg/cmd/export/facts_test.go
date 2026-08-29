@@ -189,7 +189,7 @@ func TestTheCSVHeaderIsEveryFactFieldInOrder(t *testing.T) {
 
 // TestTheCSVCarriesAmountCentsVerbatim is the no-float assertion.
 //
-// docs/agents/conventions.md forbids float amounts, and a CSV is where that
+// AGENTS.md's provenance invariants forbid float amounts, and a CSV is where that
 // rule is easiest to break by accident: decode to float64, format, and
 // 6999000000 becomes 6.999e+09. Transcoding through json.Number means the
 // literal text never becomes a number at all, and this compares the CSV's cell

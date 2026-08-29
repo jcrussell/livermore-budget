@@ -443,7 +443,7 @@ type barRef struct {
 	X, Y, Width, Height int
 	// Zero marks a PUBLISHED zero — a printed dash, which is a figure — drawn
 	// as a DOT on the baseline rather than as a rectangle. Absent is not zero
-	// (docs/agents/conventions.md) and the three states must not look alike: a
+	// (AGENTS.md, Provenance invariants) and the three states must not look alike: a
 	// column this row does not carry produces no barRef at all and the slot is
 	// empty, a published zero is a dot, and the smallest real figure is a
 	// rectangle markMinBar high.
@@ -1836,7 +1836,7 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 			// and this is not that: this is a row the schedule does not carry in
 			// this column at all. The title says which, because the two are
 			// indistinguishable on the page otherwise and a published zero is a
-			// fact while an absence is not (docs/agents/conventions.md).
+			// fact while an absence is not (AGENTS.md, Provenance invariants).
 			cell.Missing = true
 			cell.Value = "—"
 			out = append(out, cell)

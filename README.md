@@ -139,7 +139,7 @@ City of Livermore.
 
 Issues live in [beads](https://github.com/gastownhall/beads), not in this file —
 run `bd ready` for available work and `bd prime` for the workflow. Agent-facing
-guidance is in [`docs/agents/`](docs/agents/). Each published document has a
+guidance is in [`AGENTS.md`](AGENTS.md). Each published document has a
 frozen contract of its own: [`docs/sankey-contract.md`](docs/sankey-contract.md)
 for the citywide spine,
 [`docs/revenue-trends-contract.md`](docs/revenue-trends-contract.md) for the
@@ -159,4 +159,4 @@ built locally by `make site`.
 
 An agent working here never pushes: the repository owner runs `git push` and
 `git pull`, so unpushed local commits are the expected end of a session rather
-than unfinished work. See [`docs/agents/workflow.md`](docs/agents/workflow.md).
+than unfinished work. See [`AGENTS.md`](AGENTS.md).
