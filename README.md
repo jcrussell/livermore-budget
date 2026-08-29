@@ -43,16 +43,20 @@ one, because naively summing the expenditure column double-counts transfers by
 23%, and showing the error you are avoiding is more useful than quietly avoiding
 it.
 
-The site publishes **two pages**. `index.html` is the fund-group spine as a
+The site publishes **four pages**. `index.html` is the fund-group spine as a
 Sankey, with a toggle between the two adopted years. `revenue.html` draws all
 **924** of pp.127-140 — 231 printed rows across four columns, every figure a link
 to the extracted text of the page it was read from, and a per-row mark whose
-scale is that row's own.
+scale is that row's own. `drilldown.html` draws pp.127-140 and pp.167-170
+together, one document per printed column. `provenance.html` is the record store
+itself: every fact, its page, and the text it was read from.
 
-The other three detail schedules are published and checked but **not yet drawn**:
-pp.167-170 (196 facts), pp.85-125 (312) and p.76 (88). `fisc verify` declares each undrawn
-schedule with the reason it is undrawn rather than leaving it unsaid. The CIP and
-the ACFR are extracted and entirely unmapped. See `bd ready`.
+Two schedules are published and checked but **not yet drawn**: pp.85-125 (312
+facts) and p.76 (88). `fisc verify` declares each undrawn schedule with the
+reason it is undrawn rather than leaving it unsaid, and retires the declaration
+by itself the moment a projection starts drawing one — which is how pp.167-170
+left this list. The CIP and the ACFR are extracted and entirely unmapped. See
+`bd ready`.
 
 ## Build and look at it
 

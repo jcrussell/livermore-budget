@@ -147,6 +147,14 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 // loudly; these rows carry no department, only a fund. As with pp.127-140 the
 // scope string and this check are the whole of it.
 //
+// THAT THEY CARRY NO DEPARTMENT IS A CONSTRAINT AND NOT A CHOICE, which is
+// worth knowing before reading the paragraph above as an oversight.
+// fact-departments-resolve resolves the field against a DIVISION, and six of
+// data/departments.yaml's eleven departments are not division slugs, so typing
+// it here reddens six of the eleven rules. fisc-xudn owns the decision, and it
+// has to be made before fisc-7q6 maps the same fourteen pages at the division
+// tier and carries a department on every row.
+//
 // TIER 1, ZERO TOLERANCE, AND THE TOLERANCE QUESTION IS SETTLED BY THE PAGES.
 // Eleven of the twelve reconciled cells tie to the cent. The twelfth is a defect
 // in p0067 that five other schedules contradict, and it is handled by naming
@@ -214,6 +222,7 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 	for _, e := range fundingSourcesExceptions {
 		byException[e.key()] = e
 	}
+	applied := map[groupKey]bool{}
 
 	var findings []Finding
 	subjects, oneSided := 0, 0
@@ -225,6 +234,7 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 		subjects++
 
 		if e, ok := byException[k]; ok {
+			applied[k] = true
 			// Both sides are asserted against a figure the book prints. Neither
 			// is derived from the other, so this cell fails if either moves.
 			if d.cents != e.printedCents {
@@ -267,6 +277,26 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 					"difference of %s; these are the same money decomposed two ways and must "+
 					"tie to the cent", d.cents, sp.cents, d.cents-sp.cents))
 		}
+	}
+
+	// EVERY DECLARED EXCEPTION MUST HAVE BEEN APPLIED. An entry is consulted
+	// only from inside the union loop, so one naming a cell neither scope
+	// produces -- a fund group that stopped appearing, a year the spine stopped
+	// publishing, a typo in the key -- is silently inert while `held` goes on
+	// advertising it as a live reconciliation. That is the same failure shape
+	// staleDeclarations refuses for unprojectedScopes and declaredToCIPGroups
+	// for transfersdetail.go's table, and it is a finding rather than a note
+	// because a reader of the summary would have no way to tell.
+	//
+	// Found by /code-review over cd1192c.
+	for _, e := range fundingSourcesExceptions {
+		if applied[e.key()] {
+			continue
+		}
+		findings = append(findings, finding(e.key().String(),
+			"a declared exception names this cell and neither scope produces it, so it "+
+				"reconciles nothing while the summary reports it as reconciled. Delete "+
+				"the entry, or fix its key (%s)", e.bead))
 	}
 
 	held := fmt.Sprintf("%d cells over %d (fiscal year, basis) pair(s) the spine publishes, "+

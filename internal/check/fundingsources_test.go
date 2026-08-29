@@ -292,6 +292,38 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 			t.Errorf("%s: p%d %q FY%d publishes %s and the page prints %s",
 				f.ID, f.Page, f.RowLabel, f.FiscalYear, got, want)
 		}
+
+		// THE PRINTED LABEL DECIDES THE FUND, and this is the only thing in the
+		// tree that says so for this schedule.
+		//
+		// fisc-90fp is that the hand-typed fund number is guarded by nothing:
+		// fact-funds-resolve catches a fund whose TYPE disagrees with the group
+		// typed beside it, and funding-sources-tie-to-spine catches a fund that
+		// leaves its group, but a same-type substitution passes both. Measured
+		// on the corpus: Water 640 -> CIP Water 641 leaves fisc verify --strict
+		// at 40 passed, 0 failed, because all four of Public Works' CIP twins
+		// carry their operating fund's own type.
+		//
+		// The page settles it. Every one of the 63 distinct labels resolves
+		// through data/funds.yaml to exactly one fund, so the number a rule
+		// types is checkable against the line it was typed for. That does not
+		// retire fisc-90fp -- which is about a mechanism the whole corpus can
+		// use rather than one lane's test -- but it does close this lane:
+		// with these two assertions the 640 -> 641 swap above is red.
+		entry, err := s.Vocabulary.FundByLabel(f.RowLabel)
+		if err != nil {
+			t.Errorf("%s: %q resolves to no fund: %v", f.ID, f.RowLabel, err)
+			continue
+		}
+		if entry.Number != f.Fund {
+			t.Errorf("%s: p%d prints %q, which is fund %d (%s), and the rule declares "+
+				"fund %d", f.ID, f.Page, f.RowLabel, entry.Number, entry.Name, f.Fund)
+		}
+		if entry.Type != f.FundGroup {
+			t.Errorf("%s: p%d %q is fund %d, type %q in data/funds.yaml, and the rule "+
+				"declares fund group %q", f.ID, f.Page, f.RowLabel, entry.Number,
+				entry.Type, f.FundGroup)
+		}
 	}
 	if want := 78 * 4; seen != want {
 		t.Errorf("scope %q carries %d facts, want %d (78 rows x 4 columns)",
@@ -506,6 +538,35 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 		if !strings.Contains(res.Findings[0].Subject, "internal-service") {
 			t.Errorf("the finding is not about the cell the entry names: %+v",
 				res.Findings[0])
+		}
+	})
+
+	t.Run("an entry naming a cell neither scope produces is a finding", func(t *testing.T) {
+		// An exception is consulted only from inside the union loop, so a key
+		// nothing produces would reconcile nothing while the summary went on
+		// advertising it. Found by /code-review over cd1192c; deleting the
+		// applied[] arm in fundingsources.go makes this pass silently.
+		saved := fundingSourcesExceptions
+		t.Cleanup(func() { fundingSourcesExceptions = saved })
+		stale := saved[0]
+		stale.fundGroup = "no-such-group"
+		fundingSourcesExceptions = []fundingSourcesException{stale}
+
+		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), base)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if res.Status != StatusFail {
+			t.Fatalf("an inert exception left the check %s: %s", res.Status, res.Summary)
+		}
+		var told bool
+		for _, f := range res.Findings {
+			if strings.Contains(f.Detail, "reconciles nothing") {
+				told = true
+			}
+		}
+		if !told {
+			t.Errorf("no finding reports the exception as inert: %+v", res.Findings)
 		}
 	})
 

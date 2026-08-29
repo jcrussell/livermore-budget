@@ -350,6 +350,16 @@ categories:
   # category at all, because pp. 85-125 do not print one beside it. The
   # row's own label is the fund, and `fund:` is where that goes.
   #
+  # AND THE FACTS CARRY NO `department:` EITHER, which is not an omission.
+  # fact-departments-resolve resolves that field against a DIVISION, and six of
+  # data/departments.yaml's eleven departments are not division slugs --
+  # library-department, innovation-and-economic-development, police-department,
+  # community-development, public-works, fire-department. Typing the department
+  # on these rows makes the check red on six of the eleven rules. The cost is
+  # real and is tracked as fisc-xudn: netCells refuses a fact carrying a
+  # department, so a department on these rows would make a mis-scoped rule a
+  # build-time error rather than something only one check sees.
+  #
   # SUMMING THIS WITH THE FOUR ABOVE DOUBLES THE CITY'S EXPENDITURE, and
   # the scope is what prevents it, not this note: these facts are
   # published at scope `department-funding-sources` and the spine's are
