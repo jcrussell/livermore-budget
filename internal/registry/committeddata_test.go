@@ -41,7 +41,12 @@ func TestEveryFileUnderDataIsValidatedBySomething(t *testing.T) {
 
 	t.Run("data/", func(t *testing.T) {
 		files, dirs := readDir(t, realData)
+		// Sorted, because readDir's result is: the constants are not
+		// alphabetical by construction, and a fifth one -- which this test's
+		// own doc comment invites -- would otherwise fail with an ordering
+		// diff that reads as a data problem.
 		wantFiles := []string{DepartmentsFile, FundsFile, SourcesFile, TaxonomyFile}
+		sort.Strings(wantFiles)
 		if diff := cmp.Diff(wantFiles, files); diff != "" {
 			t.Errorf("files directly under data/ (-want +got):\n%s\n%s", diff, hint)
 		}

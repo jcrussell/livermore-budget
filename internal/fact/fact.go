@@ -282,11 +282,19 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		columnPath := ColumnPath(col, rule.Scope)
 		missing := ""
 		switch {
+		// THE CATEGORY, NOT THE ROW PATH, because the row path does not
+		// witness it. RowPath returns the bare department when Category is
+		// empty, so a Value carrying `department:` and no category yields a
+		// non-empty path and would publish a fact with Category: "" -- which
+		// both vocabulary checks SKIP, and which in an unprojected scope is
+		// named by nothing at all. That is the hole mapping.Parse closed on
+		// 2026-08-29; this is the same rule at the other constructor, so a
+		// Value built without the parser cannot reopen it. An earlier version
+		// of this comment claimed to be that backstop while testing a
+		// condition it could not reach.
+		case v.Row.Category == "":
+			missing = "category (a department is a second axis, not a substitute)"
 		case rowPath == "":
-			// Unreachable through mapping.Parse since 2026-08-29, which
-			// requires a category on every non-skip row -- kept as defence in
-			// depth for a Value built some other way, and worded for what it
-			// now means rather than for the rule it used to restate.
 			missing = "row path (the row has no category)"
 		case columnPath == "":
 			missing = "column path (the column has no fund and the rule no scope)"

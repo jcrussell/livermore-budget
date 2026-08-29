@@ -847,6 +847,38 @@ func TestACounterpartWithNoFundIsRefusedRatherThanFiledUnderTheScope(t *testing.
 // LATENT, NOT LIVE, which is why this test has to build the value by hand:
 // mapping's checkCounterpart refuses an empty counterpart category, so nothing
 // reachable through the parser can produce one. The hole is open to any direct
+// TestARowWithADepartmentAndNoCategoryIsRefused is the near-leg equivalent, and
+// it exists because RowPath does not witness the thing that matters.
+//
+// RowPath returns the bare department when Category is empty, so a Value with
+// `department:` and no category produced a NON-empty row path, passed the
+// guard, and published a fact carrying Category: "" -- which factVocabulary
+// and factKindMatchesCategory both skip, and which in a scope no projection
+// selects is named by nothing at all. mapping.Parse closed that on 2026-08-29;
+// this is the same rule at the other constructor, because the parser is not
+// the only FromValues caller and the guard beside it already says so.
+func TestARowWithADepartmentAndNoCategoryIsRefused(t *testing.T) {
+	f := &mapping.File{DocID: "doc"}
+	rule := &mapping.Rule{ID: "r", Kind: mapping.KindExpenditure,
+		Basis: mapping.BasisAdopted, Scope: "expenditure-by-department"}
+
+	_, err := FromValues(f, rule, []mapping.Value{{
+		Row:    mapping.Row{Label: "Wages & Benefits", Department: "city-manager"},
+		Column: mapping.Column{FundGroup: "general", FiscalYear: 2026},
+		Cents:  100, Page: 167, Offset: 1, Token: "1",
+	}})
+	if err == nil {
+		t.Fatal("no error; the row published a fact with category \"\", which every " +
+			"vocabulary check skips")
+	}
+	if !strings.Contains(err.Error(), "no addressable category") {
+		t.Errorf("error %q does not say the category is what is missing", err)
+	}
+	if !strings.Contains(err.Error(), "second axis") {
+		t.Errorf("error %q does not say a department is not a substitute", err)
+	}
+}
+
 // FromValues caller, and the parser is not the only thing that will ever be one.
 func TestACounterpartWithNoRowPathIsRefused(t *testing.T) {
 	f := &mapping.File{DocID: "doc"}
