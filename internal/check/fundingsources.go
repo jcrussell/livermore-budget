@@ -119,7 +119,9 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 		"Expenditures pp.172-183, prints the same six fund groups by the same four object " +
 		"categories for both budget years — 47 of those 48 cells agree with pp.66-67 to " +
 		"the dollar, and the one that does not is this group's Services & Supplies for " +
-		"FY2026-27: 16,546,010 at pp.172-183 against 16,796,010 at p0067. Five published " +
+		"FY2026-27, where p0067 prints 16,796,010 and pp.172-183 print no such subtotal " +
+		"at all -- their five internal service funds' own totals sum to 250,000 less. " +
+		"Five published " +
 		"schedules give this group's FY2026-27 expenditure as 26,294,515 and none gives " +
 		"26,544,515: p0183:64, p0075:53, p0205:17, p0209:20, and p0061:39 (26,906,515 = " +
 		"26,294,515 + the 612,000 transfer to the CIP). p0067's error runs on down its own " +

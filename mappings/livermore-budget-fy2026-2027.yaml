@@ -3370,8 +3370,9 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
-              168/172/173/181/183 already carry: five of these eleven departments miss
+              The city's own rounding, and it is the same shape this file already
+              declares on pp.127/128/129/130/131/135/168/169/170: five of these
+              eleven departments miss
               their own printed total by exactly one dollar, EVERY ONE of them in the
               FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
               two are over by one. All three of the revised and budget columns tie
@@ -3407,8 +3408,9 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
-              168/172/173/181/183 already carry: five of these eleven departments miss
+              The city's own rounding, and it is the same shape this file already
+              declares on pp.127/128/129/130/131/135/168/169/170: five of these
+              eleven departments miss
               their own printed total by exactly one dollar, EVERY ONE of them in the
               FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
               two are over by one. All three of the revised and budget columns tie
@@ -3576,8 +3578,9 @@ rules:
           - column: 1
             delta_cents: 100
             note: >-
-              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
-              168/172/173/181/183 already carry: five of these eleven departments miss
+              The city's own rounding, and it is the same shape this file already
+              declares on pp.127/128/129/130/131/135/168/169/170: five of these
+              eleven departments miss
               their own printed total by exactly one dollar, EVERY ONE of them in the
               FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
               two are over by one. All three of the revised and budget columns tie
@@ -3625,8 +3628,9 @@ rules:
           - column: 1
             delta_cents: -100
             note: >-
-              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
-              168/172/173/181/183 already carry: five of these eleven departments miss
+              The city's own rounding, and it is the same shape this file already
+              declares on pp.127/128/129/130/131/135/168/169/170: five of these
+              eleven departments miss
               their own printed total by exactly one dollar, EVERY ONE of them in the
               FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
               two are over by one. All three of the revised and budget columns tie
@@ -3688,8 +3692,9 @@ rules:
           - column: 1
             delta_cents: -100
             note: >-
-              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
-              168/172/173/181/183 already carry: five of these eleven departments miss
+              The city's own rounding, and it is the same shape this file already
+              declares on pp.127/128/129/130/131/135/168/169/170: five of these
+              eleven departments miss
               their own printed total by exactly one dollar, EVERY ONE of them in the
               FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
               two are over by one. All three of the revised and budget columns tie

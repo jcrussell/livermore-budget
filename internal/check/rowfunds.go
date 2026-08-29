@@ -196,11 +196,18 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		}
 	}
 
-	unanchoredNote := ""
+	// EACH CLAUSE HAS TO READ ON ITS OWN, because either arm can fire without
+	// the other. Seeding the note in the first arm and appending "a further" in
+	// the second left a corpus of nothing but bare-label rows announcing "a
+	// further 78" with no prior count -- and the test written for that corpus
+	// asserted Contains("78 declared fund(s)"), which the malformed string
+	// satisfies. Found by the third review pass over this range; it was
+	// introduced by the second pass's own fix.
+	var clauses []string
 	if unanchored > 0 {
-		unanchoredNote = fmt.Sprintf("; %d declared fund(s) have no printed anchor on "+
-			"their own line and are checked by nothing here: %s", unanchored,
-			joinComma(unanchoredRows))
+		clauses = append(clauses, fmt.Sprintf("%d declared fund(s) have no printed anchor "+
+			"on their own line and are checked by nothing here: %s", unanchored,
+			joinComma(unanchoredRows)))
 	}
 	// COUNTED AND ATTRIBUTED TO ITS RULES, NOT LISTED ROW BY ROW, which is the
 	// opposite of the arm above and deliberately so. detailtie.go's argument
@@ -211,10 +218,18 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 	// line into 11 KB on every run, which is a list nobody reads reported as a
 	// summary. The rules are what a reader acts on.
 	if unphrased > 0 {
-		unanchoredNote += fmt.Sprintf("; a further %d declared fund(s) sit on rows whose "+
+		lead := ""
+		if unanchored > 0 {
+			lead = "a further "
+		}
+		clauses = append(clauses, fmt.Sprintf("%s%d declared fund(s) sit on rows whose "+
 			"printed label names a fund but no direction, which rowAnchorPrefixes matches "+
 			"nothing in, so this check makes no claim about them either (fisc-90fp): %s",
-			unphrased, joinComma(unphrasedRules))
+			lead, unphrased, joinComma(unphrasedRules)))
+	}
+	unanchoredNote := ""
+	if len(clauses) > 0 {
+		unanchoredNote = "; " + strings.Join(clauses, "; ")
 	}
 	// THE VACUOUS SUMMARY HAS TO STAY TRUE OF THE CORPUS IT RAN OVER. If rows
 	// declare funds and none of them is anchored, "no row declares a fund" is a

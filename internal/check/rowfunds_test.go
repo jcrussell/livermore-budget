@@ -199,6 +199,17 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	if !strings.Contains(res.Summary, "78 declared fund(s)") {
 		t.Errorf("the vacuous reason does not say what it saw:\n%s", res.Summary)
 	}
+	// AND IT HAS TO READ. The assertion above passed on "; a further 78
+	// declared fund(s)..." -- a clause with no antecedent, because the note was
+	// seeded in the unanchored arm and appended to in the unphrased one. Found
+	// by the third review pass; the defect was introduced by the second pass's
+	// own fix, which is the failure mode docs/agents/workflow.md tabulates.
+	if strings.Contains(res.Summary, "a further") {
+		t.Errorf("the summary says \"a further\" with nothing before it:\n%s", res.Summary)
+	}
+	if !strings.Contains(res.Summary, "resolve; 78 declared fund(s)") {
+		t.Errorf("the one clause does not follow the reason directly:\n%s", res.Summary)
+	}
 }
 
 // TestABareFundLabelIsNotReportedAsAnUnprintedAnchor is the property the split

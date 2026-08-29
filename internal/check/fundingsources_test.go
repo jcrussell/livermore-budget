@@ -282,7 +282,20 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 			continue
 		}
 		seen++
-		key := fmt.Sprintf("%d\x1f%s\x1f%d", f.Page, f.RowLabel, column[f.FiscalYear])
+		// THE YEAR HAS TO BE ONE OF THE FOUR, checked rather than looked up.
+		// A bare map read aliases an unknown year to column index 0, so a
+		// `fiscal_year: 2023` typo on the first column would satisfy the very
+		// test written to catch a wrong-column read -- and nothing else catches
+		// it either: parse.go rejects only year 0, and the tie check leaves an
+		// unmatched (year, basis) pair unfailed by design. Found by the third
+		// review pass over this range.
+		col, ok := column[f.FiscalYear]
+		if !ok {
+			t.Errorf("%s: p%d %q publishes FY%d and these pages print four columns, "+
+				"FY2024 through FY2027", f.ID, f.Page, f.RowLabel, f.FiscalYear)
+			continue
+		}
+		key := fmt.Sprintf("%d\x1f%s\x1f%d", f.Page, f.RowLabel, col)
 		want, ok := printed[key]
 		if !ok {
 			t.Errorf("%s: p%d prints no funding-source row %q", f.ID, f.Page, f.RowLabel)
