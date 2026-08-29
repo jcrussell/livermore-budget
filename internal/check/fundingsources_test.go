@@ -632,6 +632,20 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 				t.Errorf("the entry is reported stale because the SPINE lost its column: %+v", f)
 			}
 		}
+		// AND IT MUST STOP ADVERTISING THE RECONCILIATION IT NO LONGER MAKES.
+		// `held` used to loop over every declared entry, so this subject
+		// reported "FY2027 adopted internal-service is reconciled against
+		// $26,294,515.00" beside an exempt count of zero -- coverage claimed
+		// and not provided. Found by the fifth review pass; dropping the
+		// applied[] guard in the held loop makes this red.
+		if strings.Contains(res.Summary, "is reconciled against") {
+			t.Errorf("the summary still advertises an exception the loop never applied:\n%s",
+				res.Summary)
+		}
+		if strings.Contains(res.Summary, "are NOT among") {
+			t.Errorf("the summary holds apart an exception that did not fire:\n%s",
+				res.Summary)
+		}
 	})
 
 	t.Run("another group cannot hide behind it", func(t *testing.T) {

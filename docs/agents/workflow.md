@@ -267,9 +267,24 @@ project treats an unchecked one as a defect. Two traps:
 - **Rebuild-and-`cmp`, don't rebuild in place.** `./bin/fisc build --output
   bin/facts-rebuilt.jsonl` then `cmp` against `facts/facts.jsonl`; the
   committed file is the audit trail and CI compares it byte for byte.
+- **A commit message describing a fix is a claim about the tree.** Grep for it
+  before writing the sentence. `261c78f` said it had reworded a citation and
+  spelled out a README cell; the fifth review pass found both unchanged. The
+  cause was mechanical and will recur: a batch of scripted edits with an
+  assertion in the middle aborted at the second, the later edits never ran, and
+  the message had already been drafted from the plan rather than from the diff.
+  This is the same class as writing "filed as a bead" without filing one, and
+  it is worse in one way — the claim reads as *done* rather than as *tracked*,
+  so nobody goes looking.
 
 The gate line most commits here end with is those two together: *"facts.jsonl
 unmoved; fisc verify 39 passed, 0 failed."*
+
+**At a lane boundary, audit the whole range's claims at once.** Every "this
+commit fixes X" in the range, checked against the tree in one script. Over
+`cd1192c^..HEAD` that was 23 claims and 2 were false — both of them fixes
+asserted in a message that never landed, and both found by review rather than by
+the author.
 
 ## Commits
 

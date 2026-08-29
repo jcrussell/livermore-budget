@@ -3263,10 +3263,14 @@ rules:
   # unprojectedScopes entry, and funding-sources-tie-to-spine.
   #
   # THE TWELFTH CELL IS THE CITY'S ERROR, NOT OURS. pp.172-183 ("Citywide
-  # Expenditures") print the same six groups x four objects x two budget years,
-  # and 47 of those 48 cells agree with pp.66-67 to the dollar. The one that
-  # does not is internal-service Services & Supplies FY2026-27: pp.172-183 give
-  # 16,546,010 and p0067 prints 16,796,010. Five other published schedules --
+  # Expenditures") print every fund's object rows and one Total per fund group.
+  # DERIVED from those printed lines -- no page prints a group-by-object
+  # subtotal, so the grid is ours -- the six groups by four objects over two
+  # budget years give 48 cells, and 47 agree with pp.66-67 to the dollar. The
+  # one that does not is internal-service Services & Supplies FY2026-27, where
+  # p0067 prints 16,796,010 and the five internal service funds' printed rows
+  # sum to 250,000 less. 16,546,010 is that sum and is PRINTED ON NO PAGE; do
+  # not cite it as one. Five other published schedules --
   # p0183:64, p0075:53, p0205:17, p0209:20, p0061:39 -- all say 26,294,515 and
   # none says 26,544,515. Tracked as fisc-av0w; funding-sources-tie-to-spine
   # carries one named exception for that cell and nothing else.

@@ -30,7 +30,7 @@ against something the city itself printed:
 | pp. 127–140 | 924 | revenue by fund and line item | 2024 actual, 2025 revised, 2026 + 2027 adopted |
 | pp. 167–170 | 196 | General Fund department × object category | the same four |
 | p. 76 | 88 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
-| pp. 85–125 | 312 | which funds pay for each department | the same four |
+| pp. 85–125 | 312 | which funds pay for each department | 2024 actual, 2025 revised, 2026 + 2027 adopted |
 
 The spine gives the all-funds picture the chart draws:
 

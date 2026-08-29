@@ -116,12 +116,15 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 	bead: "fisc-av0w",
 	reason: "p0067's Internal Service Funds column is the one cell in this book that " +
 		"disagrees with the rest of it. The same book's line-item schedule, Citywide " +
-		"Expenditures pp.172-183, prints the same six fund groups by the same four object " +
-		"categories for both budget years — 47 of those 48 cells agree with pp.66-67 to " +
-		"the dollar, and the one that does not is this group's Services & Supplies for " +
-		"FY2026-27, where p0067 prints 16,796,010 and pp.172-183 print no such subtotal " +
-		"at all -- their five internal service funds' own totals sum to 250,000 less. " +
-		"Five published " +
+		"Expenditures pp.172-183, prints every fund's object rows and one Total per fund " +
+		"group; DERIVED from those printed lines, the six groups by four object categories " +
+		"over two budget years give 48 cells and 47 agree with pp.66-67 to the dollar. " +
+		"Neither pp.172-183 nor any other page prints a group-by-object subtotal, so that " +
+		"48-cell grid is our arithmetic and not the city's -- what the pages print, and " +
+		"what this exception rests on, are the Totals below. The cell that disagrees is " +
+		"this group's Services & Supplies for FY2026-27, where p0067 prints 16,796,010 " +
+		"and the five internal service funds' printed rows sum to 250,000 less. Five " +
+		"published " +
 		"schedules give this group's FY2026-27 expenditure as 26,294,515 and none gives " +
 		"26,544,515: p0183:64, p0075:53, p0205:17, p0209:20, and p0061:39 (26,906,515 = " +
 		"26,294,515 + the 612,000 transfer to the CIP). p0067's error runs on down its own " +
@@ -332,7 +335,16 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 		held += fmt.Sprintf("; %d further cell(s) are declared exceptions and are NOT among "+
 			"the %d", exempt, subjects)
 	}
+	// ONLY THE ONES THAT FIRED. An entry the union loop never reached -- because
+	// the spine stopped publishing its column, say -- would otherwise be printed
+	// as a live reconciliation beside an `exempt` of zero and no holding-apart
+	// clause, which is the check advertising coverage it did not provide. The
+	// stale-entry arm above reports the other case, where the pair IS reconciled
+	// and the cell is not produced. Found by the fifth review pass.
 	for _, e := range fundingSourcesExceptions {
+		if !applied[e.key()] {
+			continue
+		}
 		held += fmt.Sprintf("; %s is reconciled against %s rather than against the spine's %s, "+
 			"and both figures are printed: %s (%s)",
 			e.key(), e.printedCents, e.spineCents, e.reason, e.bead)
