@@ -444,9 +444,22 @@ func (o *Options) validate() error {
 		// MIS-WIRED CALLER, one that fills RecordsBase from a different source
 		// than the entries, which is how the client would come to compose a
 		// URL for a file no one wrote. Claimed as that and no more.
-		if base, ok := o.RecordsBase[e.DocID]; ok && !strings.HasPrefix(e.Data, base) {
-			return fmt.Errorf("records base for %s is %q, which page index entry p%d "+
-				"contradicts: its records are at %q", e.DocID, base, e.Page, e.Data)
+		if base, ok := o.RecordsBase[e.DocID]; ok {
+			// A DIRECTORY PREFIX, NOT A STRING PREFIX. Without the trailing
+			// separator "facts/d/pages" is a clean prefix of
+			// "facts/d/pages/p0066.jsonl" and the client composes
+			// "facts/d/pagesp0066.jsonl" -- every records anchor 404s, from a
+			// base that validated. Options.Build is a public seam, so a caller
+			// reaching for path.Join instead of shardBase is the likely way in,
+			// and it is exactly the mis-wired caller this guard claims to catch.
+			if !strings.HasSuffix(base, "/") {
+				return fmt.Errorf("records base for %s is %q, which does not end in "+
+					"%q; the client appends a filename to it", e.DocID, base, "/")
+			}
+			if !strings.HasPrefix(e.Data, base) {
+				return fmt.Errorf("records base for %s is %q, which page index entry p%d "+
+					"contradicts: its records are at %q", e.DocID, base, e.Page, e.Data)
+			}
 		}
 	}
 	// A base for a document the site publishes no records of is a link the

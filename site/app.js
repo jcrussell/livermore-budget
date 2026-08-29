@@ -1486,6 +1486,7 @@ function isDocument(doc, what) {
  *
  *   links[].fact_ids          buildTable, `l.fact_ids.join(" ")`
  *   links[].locators          buildTable, `citations(l.locators)`
+ *   links[].locators[].pages  citations(), `for (const page of source.pages)`
  *
  * links[].fact_ids was missing while this comment already stated the rule
  * below, which is fisc-60r: a schema_version 1 document whose links lack
@@ -1523,6 +1524,16 @@ function drawableSankey(doc, what) {
   if (!Array.isArray(doc.links)) missing.push("links");
   else if (doc.links.some((l) => !Array.isArray(l.fact_ids))) missing.push("links[].fact_ids");
   else if (doc.links.some((l) => !Array.isArray(l.locators))) missing.push("links[].locators");
+  else if (doc.links.some((l) => l.locators.some((s) => !Array.isArray(s.pages)))) {
+    // ONE ELEMENT DEEPER, for the same reason metadata.sources[].pages is:
+    // citations() does `for (const page of source.pages)` and a locator
+    // carrying only a doc_id passes every arm above. On the spine there is no
+    // fold and layOut never touches locators, so such a document reaches
+    // buildTable and throws there -- after paintYearWords, buildLegend and
+    // buildDerivedList have repainted. That is fisc-bsg exactly, and it is the
+    // arm fisc-5hxr forgot for the key it introduced.
+    missing.push("links[].locators[].pages");
+  }
   if (!doc.metadata || typeof doc.metadata !== "object") missing.push("metadata");
   else if (!Array.isArray(doc.metadata.sources)) missing.push("metadata.sources");
   else if (doc.metadata.sources.some((s) => !Array.isArray(s.pages))) {

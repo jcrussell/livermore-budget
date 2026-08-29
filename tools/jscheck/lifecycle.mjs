@@ -451,6 +451,24 @@ export async function checks() {
       links: doc.links.map((l) => ({ ...l, fact_ids: undefined })),
     },
   }, {
+    // ONE DEEPER, and the arm fisc-5hxr shipped without: a locator carrying a
+    // doc_id and no pages passes every top-level check, and citations() does
+    // `for (const page of source.pages)`. On the spine nothing folds and
+    // layOut never reads locators, so it reaches buildTable and throws there.
+    key: "links[].locators[].pages",
+    doc: {
+      schema_version: 1,
+      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }] },
+      nodes: doc.nodes,
+      // The doc id MUST be one CONFIG.docs carries, or citations() returns at
+      // `if (!doc) continue` and never reaches source.pages -- and this check
+      // would pass because the gate fired rather than because a throw was
+      // prevented.
+      links: doc.links.map((l) => ({
+        ...l, locators: [{ doc_id: "livermore-budget-fy2026-2027" }],
+      })),
+    },
+  }, {
     // The key the pin panel and the flow table now dereference to build a
     // per-mark source link. A document without it draws a chart whose every
     // citation throws at the reader.
@@ -462,6 +480,13 @@ export async function checks() {
       links: doc.links.map((l) => ({ ...l, locators: undefined })),
     },
   }, {
+    // WEAKER THAN ITS SIBLINGS SINCE fisc-5hxr, and recorded so a later reader
+    // does not assume otherwise. buildTable no longer calls
+    // citations(projection.metadata.sources) -- it reads each link's own
+    // locators -- so deleting this arm no longer produces a half-repaint here;
+    // the only remaining reader is pin(), on a click. The arm stays because a
+    // detail panel that throws at a reader is still worth naming in words, and
+    // this case still proves the gate fires.
     key: "metadata.sources[].pages",
     doc: {
       schema_version: 1,

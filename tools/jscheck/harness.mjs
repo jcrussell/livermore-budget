@@ -590,7 +590,25 @@ export function twoYearConfig() {
     primary: "sankey",
     projections: { sankey: "data/sankey.json", "sankey-2027": "data/sankey-2027.json" },
     years: [year(2026, "FY 2025-26", "sankey"), year(2027, "FY 2026-27", "sankey-2027")],
-    docs: {},
+    // POPULATED, AND IT IS LOAD-BEARING. citations() opens with
+    // `const doc = CONFIG.docs[source.doc_id]; if (!doc) continue;`, so an
+    // EMPTY docs map makes it return before it reaches
+    // `for (const page of source.pages)` -- and every required-key check for a
+    // `[].pages` key then passes because the GATE fired, never because a throw
+    // was prevented. That is the green-but-dead shape this file already warns
+    // about one fixture over. With this populated, deleting the
+    // metadata.sources[].pages or links[].locators[].pages arm from
+    // drawableSankey produces a real TypeError inside buildTable, which is
+    // what those checks are supposed to be standing in front of.
+    docs: {
+      "livermore-budget-fy2026-2027": {
+        title: "Adopted Budget FY2026-2027",
+        publisher: "City of Livermore",
+        pdf_url: "https://example.invalid/budget.pdf",
+        page_text_base: "extracted/livermore-budget-fy2026-2027/pages/",
+        records_base: "facts/livermore-budget-fy2026-2027/pages/",
+      },
+    },
   };
 }
 

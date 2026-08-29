@@ -1490,6 +1490,26 @@ func TestWriteRefusesARecordsBaseTheEntriesContradict(t *testing.T) {
 	}
 }
 
+// TestWriteRefusesARecordsBaseWithNoTrailingSeparator is the string-prefix
+// trap, and it is the likeliest way a caller gets this wrong.
+//
+// "facts/d/pages" is a clean STRING prefix of "facts/d/pages/p0066.jsonl", so
+// a prefix test alone accepts it -- and the client, which appends a filename,
+// composes "facts/d/pagesp0066.jsonl". Every records anchor 404s from a base
+// that validated. Options.Build is a public seam and path.Join drops the
+// trailing separator, so this is one reach for the wrong helper away.
+func TestWriteRefusesARecordsBaseWithNoTrailingSeparator(t *testing.T) {
+	_, err := provenanceSite(t, func(o *export.Options) {
+		o.RecordsBase = map[string]string{budgetDocID: "facts/d/pages"}
+	})
+	if err == nil {
+		t.Fatal("Write accepted a records base the client cannot append a filename to")
+	}
+	if !strings.Contains(err.Error(), "does not end in") {
+		t.Errorf("got %v, want the missing-separator refusal", err)
+	}
+}
+
 // TestWriteRefusesARecordsBaseForADocumentItPublishesNothingOf is the other
 // direction: a base the client would build links from and nothing would answer.
 func TestWriteRefusesARecordsBaseForADocumentItPublishesNothingOf(t *testing.T) {
