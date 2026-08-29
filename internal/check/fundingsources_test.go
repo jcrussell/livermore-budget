@@ -309,20 +309,26 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 		// THE PRINTED LABEL DECIDES THE FUND, and this is the only thing in the
 		// tree that says so for this schedule.
 		//
-		// fisc-90fp is that the hand-typed fund number is guarded by nothing:
-		// fact-funds-resolve catches a fund whose TYPE disagrees with the group
-		// typed beside it, and funding-sources-tie-to-spine catches a fund that
-		// leaves its group, but a same-type substitution passes both. Measured
-		// on the corpus: Water 640 -> CIP Water 641 leaves fisc verify --strict
-		// at 40 passed, 0 failed, because all four of Public Works' CIP twins
-		// carry their operating fund's own type.
+		// The arithmetic does not settle it: fact-funds-resolve catches a fund
+		// whose TYPE disagrees with the group typed beside it, and
+		// funding-sources-tie-to-spine catches a fund that leaves its group, but
+		// a same-type substitution passes both, and all four of Public Works'
+		// CIP twins carry their operating fund's own type.
 		//
 		// The page settles it. Every one of the 63 distinct labels resolves
 		// through data/funds.yaml to exactly one fund, so the number a rule
-		// types is checkable against the line it was typed for. That does not
-		// retire fisc-90fp -- which is about a mechanism the whole corpus can
-		// use rather than one lane's test -- but it does close this lane:
-		// with these two assertions the 640 -> 641 swap above is red.
+		// types is checkable against the line it was typed for.
+		//
+		// THIS IS NO LONGER THE ONLY THING ASSERTING IT, and the difference is
+		// the whole of fisc-90fp. These assertions made the 640 -> 641 swap red
+		// under `go test` while it stayed GREEN under `fisc verify` -- 40 passed,
+		// 0 failed -- so the guarantee lived in one lane's test rather than in
+		// the gate. The eleven rules now declare row_labels_name_funds and
+		// row-funds-match-their-anchors makes the same comparison, in the gate,
+		// for any schedule that opts in. This stays because it is the fact-side
+		// statement of it: it reads f.RowLabel off the published record, where
+		// the check reads mapping.Row, and a defect between the row and the fact
+		// would show here and not there.
 		entry, err := s.Vocabulary.FundByLabel(f.RowLabel)
 		if err != nil {
 			t.Errorf("%s: %q resolves to no fund: %v", f.ID, f.RowLabel, err)

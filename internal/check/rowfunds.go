@@ -81,12 +81,20 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 //     From" carries over from the row above, so their declared payer has no
 //     printed anchor of its own to be checked against (fisc-30j). The other end
 //     of the same row IS anchored, which is how these are told apart.
-//   - NO VERB PHRASE. pp.85-125's Department Funding Sources rows are labelled
-//     with a bare fund name -- "General Fund", "Cal Home Reuse" -- which names
-//     a fund unambiguously and names no direction, so rowAnchorPrefixes matches
-//     nothing and this check makes no claim at all. Seventy-eight rows, every
-//     fund number hand-typed. Reporting them as "no printed anchor" would be
-//     false about the page: the label is right there. Tracked as fisc-90fp.
+//
+//   - NO VERB PHRASE, AND NO DECLARATION. A row labelled with a bare fund name
+//     -- "General Fund", "Cal Home Reuse" -- names a fund unambiguously and
+//     names no direction, so rowAnchorPrefixes matches nothing. Reporting it as
+//     "no printed anchor" would be false about the page: the label is right
+//     there. Such a row is read only where its rule declares
+//     row_labels_name_funds, which is what the third arm of Run is for; where it
+//     does not, this check still makes no claim and the summary says so per
+//     rule. pp.85-125's 78 rows all declare it (fisc-90fp).
+//
+//     THE DIRECTION HALF IS NOT RECOVERED BY THAT DECLARATION and must not be.
+//     A bare fund name says which fund, never which end, so the third arm
+//     asserts the row's own fund and never the counterpart's. What the verb
+//     phrase buys over the declaration is exactly the `side` field above.
 type rowFundsMatchTheirAnchors struct{}
 
 var _ Check = (*rowFundsMatchTheirAnchors)(nil)
@@ -127,6 +135,49 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				}
 
 				namedNear, namedFar, phrased := false, false, false
+
+				// THE BARE-LABEL ARM, and it runs before the prefix arm
+				// because the two read the same string for different
+				// purposes. A rule that declares row_labels_name_funds says
+				// its labels ARE printed fund names, so the label is resolved
+				// whole rather than after stripping a verb phrase off it --
+				// "Cal Home Reuse" names a fund unambiguously and names no
+				// direction, so this asserts the row's OWN fund and never the
+				// counterpart's.
+				//
+				// IT IS FAIL-CLOSED, and that is the whole reason it is worth
+				// writing rather than skipping the unresolvable case. If a
+				// label that resolves to nothing were a `continue`, a rule
+				// could declare this over labels the registry has never heard
+				// of and the check would report exactly nothing -- vacuously
+				// green, with a declaration standing over it that reads like a
+				// guarantee. So an unresolved label is a FINDING, and
+				// namedNear is set on both paths so the row never also lands
+				// in the omission counters below as a fund the page prints no
+				// anchor for. The page prints the anchor; that is what the
+				// declaration asserts.
+				if ru.RowLabelsNameFunds && near != 0 {
+					subjects++
+					namedNear = true
+					label := row.PrintedLabel()
+					switch entry, err := s.Vocabulary.FundByLabel(label); {
+					case err != nil:
+						findings = append(findings, finding(
+							fmt.Sprintf("%s %q", ru.ID, label),
+							"this rule declares that its row labels are printed fund "+
+								"names and %q is not one data/funds.yaml records, so "+
+								"the fund %d typed on this row is checked against "+
+								"nothing: %v", label, near, err))
+					case entry.Number != near:
+						findings = append(findings, finding(
+							fmt.Sprintf("%s %q", ru.ID, label),
+							"the page prints %q, which is fund %d (%s), and this row "+
+								"declares fund %d. A fund mis-typed inside its own "+
+								"type changes no column sum and no other check sees it",
+							label, entry.Number, entry.Name, near))
+					}
+				}
+
 				for _, a := range []string{row.Label, row.LabelTail} {
 					if anchorHasVerbPhrase(a) {
 						phrased = true
@@ -214,9 +265,17 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 	// applies here: a count is the honest middle, loud without being a wall. The
 	// three rows above are three, are p76's own, and each needs naming because a
 	// reader cannot otherwise find which line the page leaves blank. These are
-	// 78 and they are ALL of a schedule -- naming them turned this check's PASS
-	// line into 11 KB on every run, which is a list nobody reads reported as a
-	// summary. The rules are what a reader acts on.
+	// a whole schedule at a time -- naming pp.85-125's 78 individually turned
+	// this check's PASS line into 11 KB on every run, which is a list nobody
+	// reads reported as a summary. The rules are what a reader acts on.
+	//
+	// THIS ARM IS EMPTY OVER THE COMMITTED CORPUS as of fisc-90fp, because the
+	// eleven rules it was written for now declare row_labels_name_funds and are
+	// read by the arm above. It is kept rather than deleted: declining the
+	// declaration is a legitimate state -- every schedule mapped before those
+	// eleven is in it -- and this is the sentence that says so out loud instead
+	// of letting a rule be silently unread. TestAVacuousRowFundsSummaryCannot-
+	// DenyTheRowsItSaw exercises it by clearing the flag.
 	if unphrased > 0 {
 		lead := ""
 		if unanchored > 0 {
@@ -224,7 +283,8 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		}
 		clauses = append(clauses, fmt.Sprintf("%s%d declared fund(s) sit on rows whose "+
 			"printed label names a fund but no direction, which rowAnchorPrefixes matches "+
-			"nothing in, so this check makes no claim about them either (fisc-90fp): %s",
+			"nothing in, and whose rule does not declare row_labels_name_funds, so this "+
+			"check makes no claim about them either: %s",
 			lead, unphrased, joinComma(unphrasedRules)))
 	}
 	unanchoredNote := ""

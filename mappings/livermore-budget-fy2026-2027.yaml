@@ -3297,16 +3297,20 @@ rules:
   # that omitted the list would be a hard parse error, not a silently weaker
   # read. One printed header line serves both blocks on each page.
   #
-  # WHAT IS NOT GUARDED, stated because it is easy to assume otherwise: the fund
-  # number on each of these 78 rows is hand-typed and row-funds-match-their-
-  # anchors does NOT see it. That check reads a fund off labels prefixed
-  # "Transfer From " or "to " (internal/check/rowfunds.go), and these labels are
-  # bare fund names, so every row is skipped. rule-funds-match-their-headings
-  # reads column funds only and never enters. What DOES catch a wrong number is
-  # indirect and partial: a fund of a different type breaks its group's sum
-  # against the spine, and fact-funds-resolve refuses a fund whose type
-  # disagrees with the group typed beside it. A same-type substitution is caught
-  # by nothing. Tracked as fisc-90fp.
+  # WHAT GUARDS THE 78 HAND-TYPED FUND NUMBERS, and it is not the arithmetic.
+  # A fund of a different type breaks its group's sum against the spine, and
+  # fact-funds-resolve refuses a fund whose type disagrees with the group typed
+  # beside it -- but a SAME-TYPE substitution moves no sum and neither sees it.
+  #
+  # Every rule below therefore declares `row_labels_name_funds: true`, which is
+  # the claim that its row labels are the printed names of the funds they carry.
+  # row-funds-match-their-anchors reads each label whole against data/funds.yaml
+  # and checks the number typed beside it (fisc-90fp). Before that declaration
+  # existed the swap was red under `go test` -- TestEveryFundingSourceFactMatches-
+  # ThePrintedRow has asserted it since this lane landed -- and GREEN under
+  # `fisc verify`, which is the gate a reader of the published site runs.
+  # rule-funds-match-their-headings still never enters: it reads column funds
+  # and these rules declare none.
   #
   # The numbers below were resolved by matching each printed label against
   # data/funds.yaml's `name` and `aliases[].term` -- 54 by name, 9 by alias, and
@@ -3320,6 +3324,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     parts:
       - page: 85
         section: "Department Funding Sources\n"
@@ -3340,6 +3345,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     parts:
       - page: 89
         section: "Department Funding Sources\n"
@@ -3361,6 +3367,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     note: >-
       The department is General Fund plus the two risk funds it administers,
       General Liability (700) and Workers Comp Insurance (710) -- both
@@ -3399,6 +3406,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     note: >-
       Information Technology (720) pays more of this department than the General
       Fund does: 7,505,369 against 6,686,710 in FY2025-26. It is an internal
@@ -3436,6 +3444,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     total_spans_parts: true
     note: >-
       Straddles a page break: eight funds on p101, eighteen more and the printed
@@ -3497,6 +3506,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     parts:
       - page: 105
         section: "Department Funding Sources\n"
@@ -3518,6 +3528,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     note: >-
       The city's debt service lives here. The three COPS funds (400, 401, 402) sum
       to 6,984,597 in FY2025-26 and 6,969,898 in FY2026-27, which is pp.66-67's
@@ -3546,6 +3557,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     note: >-
       The Airport (600) is an enterprise fund and it funds a department that is
       otherwise General Fund; it is the only enterprise money outside Public
@@ -3574,6 +3586,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     parts:
       - page: 115
         section: "Department Funding Sources\n"
@@ -3608,6 +3621,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     total_spans_parts: true
     note: >-
       Straddles a page break: eight funds on p119, two more and the printed total
@@ -3664,6 +3678,7 @@ rules:
     scope: department-funding-sources
     units: dollars
     total_row: "Total Department Funding Sources"
+    row_labels_name_funds: true
     total_spans_parts: true
     note: >-
       Straddles a page break: nine funds on p124, twelve more and the printed
@@ -3671,12 +3686,14 @@ rules:
       and the operating/CIP twin hazard is concentrated here -- Water (640) not
       641, Wastewater (620) not 621, Stormwater (610) not 611, Facilities Rehab
       Pgm (740) not 741. Each was resolved by exact label match against
-      data/funds.yaml; no twin's printed name appears on this page. AND NOTHING
-      WOULD CATCH A SWAP: measured, replacing 640 with 641 and rebuilding leaves
-      fisc verify at 40 passed, 0 failed, because every one of these four twins
-      carries its operating fund's own type, so the money does not leave its
-      group and no sum moves. That is fisc-90fp, and it is why the label match
-      was done mechanically rather than by eye.
+      data/funds.yaml; no twin's printed name appears on this page. NO SUM WOULD
+      CATCH A SWAP -- every one of these four twins carries its operating fund's
+      own type, so replacing 640 with 641 moves no money out of its group and
+      leaves fact-funds-resolve and funding-sources-tie-to-spine both green. It
+      is caught by row-funds-match-their-anchors, via the
+      row_labels_name_funds declaration above: measured, that swap now leaves
+      fisc verify at 39 passed, 1 failed, where before the declaration it left
+      it at 40 passed, 0 failed. That was fisc-90fp.
     parts:
       - page: 124
         section: "Department Funding Sources\n"

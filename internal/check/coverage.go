@@ -76,7 +76,8 @@ var unprojectedScopes = map[string]string{
 		"totals), and five of p76's payer labels match an operating fund AND its CIP " +
 		"twin -- every twin type: capital, so a leg under the wrong twin moves inside " +
 		"the collapsed non-major cell and ties anyway. row-funds-match-their-anchors " +
-		"resolves 40 printed row anchors against data/funds.yaml instead. Three " +
+		"resolves the printed row anchors against data/funds.yaml instead -- its own " +
+		"summary line carries the count, which is why one is not repeated here. Three " +
 		"declared payers it cannot reach: p76 prints three continuation rows whose " +
 		"\"Transfer From\" carries over from the row above, so they have no printed " +
 		"anchor on their own line. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; " +
@@ -103,14 +104,15 @@ var unprojectedScopes = map[string]string{
 		"nothing on the spine, because pp.66-67 print no actual or revised column; five of " +
 		"the eleven departments miss that printed total by exactly one dollar, every one in " +
 		"the FY2023-24 Actual column, declared as stated_total_deltas. THE FUND NUMBER ON " +
-		"EACH ROW IS NOT COVERED BY THE ARITHMETIC AT ALL and is checked by nothing: it is " +
-		"hand-typed 78 times, row-funds-match-their-anchors reads a fund only off labels " +
-		"prefixed \"Transfer From \" or \"to \" and these labels are bare fund names, and " +
-		"rule-funds-match-their-headings reads column funds and never enters. What the " +
-		"arithmetic does catch is a fund of the wrong TYPE, because that moves money " +
-		"between groups and breaks a sum, and fact-funds-resolve refuses a fund whose type " +
-		"disagrees with the group typed beside it; a same-type substitution is caught by " +
-		"nothing (fisc-90fp). Drawing this schedule as department pages is fisc-4ua.2, " +
+		"EACH ROW IS NOT COVERED BY THE ARITHMETIC AT ALL -- it is hand-typed 78 times, " +
+		"and what the arithmetic catches is a fund of the wrong TYPE, because that moves " +
+		"money between groups and breaks a sum, while a same-type substitution such as " +
+		"Water 640 for CIP Water 641 moves nothing. It is checked instead by " +
+		"row-funds-match-their-anchors, because these eleven rules declare " +
+		"row_labels_name_funds: their row labels are printed fund names, so the number " +
+		"typed beside each one is read against the label the page prints (fisc-90fp). " +
+		"rule-funds-match-their-headings still never enters, because it reads column " +
+		"funds and these rules declare none. Drawing this schedule as department pages is fisc-4ua.2, " +
 		"which also needs the Expenditures by Category block above it (fisc-7q6).",
 }
 

@@ -663,7 +663,48 @@ func validateRule(r *Rule, errf errFunc) error {
 	if err := validateTotalRowKinds(r, errf); err != nil {
 		return err
 	}
+	if err := validateRowLabelFunds(r, errf); err != nil {
+		return err
+	}
 	return validateTotalSpansParts(r, errf)
+}
+
+// validateRowLabelFunds checks the preconditions of the claim that this rule's
+// row labels are printed fund names.
+//
+// It cannot check the claim itself: whether "Water" is fund 640 is a question
+// about data/funds.yaml, and whether the page prints that label on that line is
+// a question about the document. Both belong to
+// row-funds-match-their-anchors, which has the registry and the pages. What is
+// checkable without either is that the declaration asserts something, and that
+// is the same discipline validateTotalRowKinds applies: a declaration that
+// cannot fail records an author's belief rather than a property of the page.
+//
+// So the one refusal is a row the declaration would say nothing about. A rule
+// whose rows carry no fund declares nothing by declaring this, and a single
+// such row is enough — the check reads every row of the rule, so one row
+// without a fund is one row the claim silently does not cover.
+func validateRowLabelFunds(r *Rule, errf errFunc) error {
+	if !r.RowLabelsNameFunds {
+		return nil
+	}
+	for _, row := range r.Rows {
+		if row.Skip {
+			// A skipped row is not read, so the claim is not about it. This is
+			// the same reading validateTotalRowKinds takes of `have`.
+			continue
+		}
+		if row.Fund == 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, "row_labels_name_funds",
+					"row %q declares no fund, so the declaration says nothing about it",
+					row.PrintedLabel()),
+				"the declaration is what lets row-funds-match-their-anchors read "+
+					"a fund off the printed label and check the number typed "+
+					"beside it; a row with no number to check needs no label read")
+		}
+	}
+	return nil
 }
 
 // validateTotalRowKinds checks the claim that the printed total covers only

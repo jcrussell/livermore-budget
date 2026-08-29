@@ -269,6 +269,37 @@ type Rule struct {
 	// (fisc-56f); nothing does so yet.
 	TotalRowKinds []Kind `yaml:"total_row_kinds"`
 
+	// RowLabelsNameFunds declares that every row of this rule is labelled with
+	// the printed name of the fund it carries, so row-funds-match-their-anchors
+	// can read that name off the page and check the hand-typed number against
+	// it.
+	//
+	// IT IS OPT-IN FOR THE SAME REASON Part.ColumnHeaders IS: declaring it is a
+	// claim about a specific schedule that someone has looked at, and the
+	// alternative — trying every row label in the corpus against
+	// registry.FundByLabel — is unsafe in a way a count does not show. Most
+	// labels would miss and be skipped; the hazard is the ones that
+	// ACCIDENTALLY resolve. p127 prints "Current Year - Secured", p167 prints
+	// object categories, the spine prints "Wages & Benefits", and the check
+	// would go from 78 subjects to thousands of which only 78 were ever
+	// intended. A rule author saying "these rows name funds" is a statement
+	// review can check; a resolver guessing it is not.
+	//
+	// WHY THE RULE AND NOT THE PART. Rule.Rows is one list shared by every part,
+	// and the check that reads this iterates Rule.ActiveRows unioned across
+	// parts precisely so a multi-part schedule's rows are visited once rather
+	// than once per part — so it holds a rule and no part at the point it needs
+	// this, and a per-part spelling would not be reachable there. (Not because
+	// of labels_from: no rule carrying this declares one. Budget Book pp.85-125
+	// straddles two parts with omitted_rows instead.)
+	//
+	// A BARE FUND NAME NAMES A FUND AND NAMES NO DIRECTION, which is why this is
+	// a separate declaration from the "Transfer From X to Y" anchors p76 prints.
+	// Those carry a verb phrase, so the check reads which END of the movement
+	// each fund sits at; these carry none, so it can assert identity and must
+	// not assert direction.
+	RowLabelsNameFunds bool `yaml:"row_labels_name_funds"`
+
 	// Note records why this rule looks the way it does, for the next reader.
 	Note string `yaml:"note"`
 }

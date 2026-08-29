@@ -182,16 +182,24 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 //     the spine. Five of the eleven departments miss that printed total by
 //     exactly one dollar, every one of them in the FY2023-24 Actual column and
 //     nowhere else; those are declared as stated_total_deltas.
+//
 //   - The `permanent` group. Doolan Canyon Preserve Endow (470) pays 620,581 of
 //     Community Development in FY2023-24 and nothing thereafter, and pp.66-67
 //     print no Permanent column at all (fisc-u8o). It is reconciled by nothing
 //     here — but it is zero in both budget years, so it is a group this check
 //     names rather than a sum it is missing.
-//   - The fund NUMBER on each row. It is hand-typed and neither
-//     row-funds-match-their-anchors nor rule-funds-match-their-headings sees it
-//     (fisc-90fp). This check catches a wrong fund of a different TYPE, because
-//     that moves money between groups and breaks a sum; a same-type substitution
-//     is caught by nothing.
+//
+//   - The fund NUMBER on each row, by THIS check. It is hand-typed 78 times,
+//     and what the arithmetic here catches is a fund of the wrong TYPE, because
+//     that moves money between groups and breaks a sum. A same-type
+//     substitution — Water 640 for CIP Water 641, and all four of Public Works'
+//     operating/CIP twins keep their operating fund's type — moves no sum and is
+//     invisible to it.
+//
+//     It is caught by row-funds-match-their-anchors instead, since these eleven
+//     rules declare row_labels_name_funds and it reads the printed label
+//     (fisc-90fp). rule-funds-match-their-headings still never enters: it reads
+//     column funds and these rules declare none.
 type fundingSourcesTiesToSpine struct{}
 
 var _ Check = (*fundingSourcesTiesToSpine)(nil)
