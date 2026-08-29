@@ -1358,6 +1358,7 @@ func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
 		Downloads: []export.Download{
 			{Path: "facts/facts.csv", Label: "Every figure as CSV", Bytes: 5},
 		},
+		RecordsBase: map[string]string{budgetDocID: "facts/d/pages/"},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 		PageText:    twoViewPageText(66, 127),
@@ -1427,6 +1428,100 @@ func TestWriteRefusesAProvenanceRowWithNoShard(t *testing.T) {
 	}
 	if entries, rerr := os.ReadDir(dir); rerr == nil && len(entries) > 0 {
 		t.Errorf("the refusal wrote %d entries; validate must precede any output", len(entries))
+	}
+}
+
+// TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL is the asymmetry the
+// clientDoc doc comment warns about, asserted rather than described.
+//
+// --source-browse-url ships no page text and cites a remote URL, so
+// page_text_base goes ABSOLUTE. The shards are written into the output tree on
+// every export, so records_base must stay SITE-RELATIVE -- two keys that look
+// alike, sit beside each other in one clientDoc, and differ in kind. Making
+// records_base follow page_text_base would publish a browse URL for 21 files
+// the remote does not have, which is the mistake facts.go's index comment
+// records having already been made once.
+func TestRecordsBaseStaysSiteRelativeUnderSourceBrowseURL(t *testing.T) {
+	dir, err := provenanceSite(t, func(o *export.Options) {
+		o.SourceBrowseURL = "https://example.invalid/tree/main/"
+		o.PageText = nil
+	})
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	b, rerr := os.ReadFile(filepath.Join(dir, export.IndexPath))
+	if rerr != nil {
+		t.Fatalf("read index: %v", rerr)
+	}
+	page := string(b)
+	if !strings.Contains(page, `"records_base":"facts/d/pages/"`) {
+		t.Error("records_base is not the site-relative path; shards ship locally whatever " +
+			"the page text does")
+	}
+	if strings.Contains(page, `"records_base":"https://`) {
+		t.Error("records_base went absolute, following page_text_base; the shards are " +
+			"in this output tree and the remote does not have them")
+	}
+	if !strings.Contains(page, `"page_text_base":"https://example.invalid/`) {
+		t.Fatal("page_text_base did not go remote, so this test is not exercising " +
+			"the asymmetry it is named for")
+	}
+}
+
+// TestWriteRefusesARecordsBaseTheEntriesContradict covers the MIS-WIRED CALLER
+// and is claimed as no more than that.
+//
+// A base and the entries' Data both come from the same producer, so this
+// cannot witness a wrong path RULE -- what it catches is a caller filling
+// RecordsBase from a different source than PageIndex, which is how the client
+// would come to compose a URL for a file nobody wrote. That failure is
+// otherwise completely silent: every shard is present, every byte count
+// matches, the provenance page's own links work, and only the chart's records
+// links 404.
+func TestWriteRefusesARecordsBaseTheEntriesContradict(t *testing.T) {
+	_, err := provenanceSite(t, func(o *export.Options) {
+		o.RecordsBase = map[string]string{budgetDocID: "facts/somewhere-else/pages/"}
+	})
+	if err == nil {
+		t.Fatal("Write accepted a records base that no page index entry is under")
+	}
+	if !strings.Contains(err.Error(), "contradicts") {
+		t.Errorf("got %v, want the base-contradicts-entry refusal", err)
+	}
+}
+
+// TestWriteRefusesARecordsBaseForADocumentItPublishesNothingOf is the other
+// direction: a base the client would build links from and nothing would answer.
+func TestWriteRefusesARecordsBaseForADocumentItPublishesNothingOf(t *testing.T) {
+	_, err := provenanceSite(t, func(o *export.Options) {
+		o.RecordsBase["acfr-fy2024"] = "facts/acfr-fy2024/pages/"
+	})
+	if err == nil {
+		t.Fatal("Write accepted a records base for a document with no page index entry")
+	}
+	if !strings.Contains(err.Error(), "which no page index entry does") {
+		t.Errorf("got %v, want the unknown-document refusal", err)
+	}
+}
+
+// TestAnAbsentRecordsBaseIsNotAnError pins the absent-is-not-zero half. A
+// caller that publishes no records for a document is not a caller publishing a
+// base pointing at nothing, and the client must render no records link rather
+// than a broken one.
+func TestAnAbsentRecordsBaseIsNotAnError(t *testing.T) {
+	dir, err := provenanceSite(t, func(o *export.Options) {
+		o.RecordsBase = nil
+	})
+	if err != nil {
+		t.Fatalf("Write with no records base: %v", err)
+	}
+	b, rerr := os.ReadFile(filepath.Join(dir, export.IndexPath))
+	if rerr != nil {
+		t.Fatalf("read index: %v", rerr)
+	}
+	if !strings.Contains(string(b), `"records_base":""`) {
+		t.Error("the page config does not carry an empty records_base; the key must be " +
+			"present and empty rather than absent, as every other clientDoc key is")
 	}
 }
 

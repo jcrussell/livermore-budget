@@ -515,6 +515,17 @@ type clientDoc struct {
 	// to cite a remote instead. The client appends the same filename either
 	// way and must not assume a scheme.
 	PageTextBase string `json:"page_text_base"`
+	// RecordsBase is the directory holding this document's fact-store shards;
+	// the client appends pNNNN.jsonl. It is what turns a link's locators into
+	// a fetchable URL, which is the whole point of publishing them.
+	//
+	// IT IS ALWAYS SITE-RELATIVE, unlike PageTextBase beside it. Shards are
+	// written into the output tree on every export; page text is not, and goes
+	// absolute under --source-browse-url. The two look alike and are not.
+	//
+	// "" means the caller published no records for this document and the
+	// client renders no records link -- absent, not a base pointing nowhere.
+	RecordsBase string `json:"records_base"`
 }
 
 // clientConfig is window.FISC_CONFIG: the metadata the page needs before it
@@ -899,7 +910,9 @@ type chrome struct {
 
 // sourcesFor builds a view's own footer citations, and the client's copy of the
 // same documents.
-func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string) string) ([]sourceRef, map[string]clientDoc) {
+func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string) string,
+	recordsBase map[string]string,
+) ([]sourceRef, map[string]clientDoc) {
 	sources := make([]sourceRef, 0, len(srcs))
 	clientDocs := make(map[string]clientDoc, len(srcs))
 	for _, s := range srcs {
@@ -925,6 +938,7 @@ func sourcesFor(srcs []sourceMeta, byID map[string]Doc, pageTextBase func(string
 			Publisher:    ref.Publisher,
 			PDFURL:       d.PDFURL,
 			PageTextBase: base,
+			RecordsBase:  recordsBase[s.DocID],
 		}
 	}
 	return sources, clientDocs
@@ -1102,7 +1116,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		})
 	}
 	hero, figures := tilesFor(meta)
-	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase)
+	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
 	files := make(map[string]string, len(refs))
@@ -1219,7 +1233,7 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			},
 		})
 	}
-	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase)
+	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
 	files := make(map[string]string, len(refs))
@@ -1468,7 +1482,7 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			v.Projection, meta.Counts.Series, len(body.Series))
 	}
 
-	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase)
+	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
 	refs := projectionRefs(o.Projections)
 	title := v.Title
 	if title == "" {
@@ -1567,7 +1581,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	for _, id := range order {
 		metas = append(metas, sourceMeta{DocID: id, Pages: byDoc[id]})
 	}
-	sources, _ := sourcesFor(unionSources(metas), byID, pageTextBase)
+	sources, _ := sourcesFor(unionSources(metas), byID, pageTextBase, o.RecordsBase)
 
 	// Index the composed refs so each row can take its own, rather than
 	// recomposing them.

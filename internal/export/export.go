@@ -35,6 +35,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -281,6 +282,27 @@ type Options struct {
 	// reader knows the size before starting the fetch.
 	Downloads []Download
 
+	// RecordsBase is where each document's records live, keyed by doc id, in
+	// the form a client appends pNNNN.jsonl to. It is what lets a mark on a
+	// chart resolve to the facts behind it: a link publishes locators, and the
+	// client composes base + file.
+	//
+	// THIS PACKAGE DOES NOT KNOW HOW THAT PATH IS BUILT AND MUST NOT LEARN.
+	// The rule is spelled once, in whoever produced the records -- the same
+	// rule PageIndexEntry.Data is written by, which is why validate can assert
+	// the two agree instead of taking this on trust.
+	//
+	// UNLIKE PageTextBase THERE IS NO LOCAL/REMOTE FORK. A --source-browse-url
+	// export ships no page text and cites a remote URL, so page_text_base goes
+	// absolute; the shards are always written into the output tree, so this
+	// stays site-relative. The two therefore differ in kind while sitting
+	// beside each other in the same clientDoc.
+	//
+	// A doc with no entry publishes records_base: "" and the client renders no
+	// records link. Absent is not zero: a base that was never supplied is not
+	// a base pointing at nothing.
+	RecordsBase map[string]string
+
 	// GeneratedBy names the tool and version that wrote the output. It is
 	// shown in the page footer beside the projection's own generated_by.
 	GeneratedBy string
@@ -415,6 +437,23 @@ func (o *Options) validate() error {
 		if e.Bytes != len(b) {
 			return fmt.Errorf("page index entry %s p%d says %q is %d bytes and it is %d",
 				e.DocID, e.Page, e.Data, e.Bytes, len(b))
+		}
+		// AND THE BASE THE CLIENT COMPOSES WITH MUST BE THE DIRECTORY THE
+		// RECORDS WERE ACTUALLY WRITTEN INTO. Both sides come from the same
+		// producer, so this cannot witness a wrong path rule -- it catches a
+		// MIS-WIRED CALLER, one that fills RecordsBase from a different source
+		// than the entries, which is how the client would come to compose a
+		// URL for a file no one wrote. Claimed as that and no more.
+		if base, ok := o.RecordsBase[e.DocID]; ok && !strings.HasPrefix(e.Data, base) {
+			return fmt.Errorf("records base for %s is %q, which page index entry p%d "+
+				"contradicts: its records are at %q", e.DocID, base, e.Page, e.Data)
+		}
+	}
+	// A base for a document the site publishes no records of is a link the
+	// client would build and nothing would answer.
+	for doc := range o.RecordsBase {
+		if !slices.ContainsFunc(o.PageIndex, func(e PageIndexEntry) bool { return e.DocID == doc }) {
+			return fmt.Errorf("records base names document %q, which no page index entry does", doc)
 		}
 	}
 	for _, d := range o.Downloads {

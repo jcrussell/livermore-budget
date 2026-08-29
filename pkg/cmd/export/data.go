@@ -53,6 +53,7 @@ func buildAll(repoRoot string) (Result, error) {
 		Files:       assets.Files,
 		PageIndex:   assets.pageIndex(),
 		Downloads:   assets.downloads(),
+		RecordsBase: assets.recordsBase(),
 	}, nil
 }
 

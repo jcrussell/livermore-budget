@@ -50,6 +50,11 @@ type Result struct {
 	// export.Options.Views' doc comment refuses.
 	PageIndex []export.PageIndexEntry
 	Downloads []export.Download
+	// RecordsBase is where each document's shards live, keyed by doc id, in the
+	// form a client appends pNNNN.jsonl to. Same reason as the two above: the
+	// locator-to-URL rule is this package's, and internal/export publishes the
+	// base without learning it.
+	RecordsBase map[string]string
 }
 
 // Builder produces everything to publish: the projection documents, keyed by
@@ -268,9 +273,10 @@ func exportRun(o *Options) error {
 		// Whatever else the Builder produced. Every key is screened through
 		// assetPath, so a path that escapes the output root or shadows a fixed
 		// one is refused rather than written and noticed later.
-		Files:     built.Files,
-		PageIndex: built.PageIndex,
-		Downloads: built.Downloads,
+		Files:       built.Files,
+		PageIndex:   built.PageIndex,
+		Downloads:   built.Downloads,
+		RecordsBase: built.RecordsBase,
 	}
 
 	// AND THE WHOLE SITE IS RESOLVED BEFORE --clean, for the reason spelled out

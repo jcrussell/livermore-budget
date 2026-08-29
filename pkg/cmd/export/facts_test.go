@@ -451,6 +451,77 @@ func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 // fact store could have shipped 1.1 MB that no page linked and every check
 // would have stayed green. This closes that for the store specifically: every
 // key under facts/ is either a row of the page index or an offered download.
+// TestEveryShippedDocumentCanResolveItsRecords is the fail-closed arm for a
+// field whose absence is legal.
+//
+// Options.RecordsBase may be empty -- absent is not zero, and a caller
+// publishing no records is not a caller publishing a base pointing nowhere --
+// so validate cannot demand one. That leaves "the real export forgot to wire
+// it" as a silent regression: every page still renders, every chart still
+// draws, and only the records links vanish. This is where that is caught, over
+// what fisc export actually ships.
+func TestEveryShippedDocumentCanResolveItsRecords(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	docs := map[string]bool{}
+	for _, e := range built.PageIndex {
+		docs[e.DocID] = true
+	}
+	if len(docs) == 0 {
+		t.Fatal("the export published records for no document, so this asserts nothing")
+	}
+	for doc := range docs {
+		if built.RecordsBase[doc] == "" {
+			t.Errorf("document %s publishes records and no records base; every link "+
+				"citing it would render with nothing to resolve", doc)
+		}
+	}
+}
+
+// TestTheRecordsBaseComposesBackToTheShardPath is what makes the split safe.
+//
+// shardPath is documented as the ONE place the locator-to-URL rule is spelled,
+// and it is now spelled in two halves so a client can hold the first and
+// compute the second. This asserts the halves still make the whole for every
+// page actually published -- otherwise "the rule is spelled once" would be a
+// comment rather than a property.
+func TestTheRecordsBaseComposesBackToTheShardPath(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	if len(built.PageIndex) == 0 {
+		t.Fatal("the export published no page index, so this asserts nothing")
+	}
+	for _, e := range built.PageIndex {
+		base, ok := built.RecordsBase[e.DocID]
+		if !ok {
+			t.Errorf("no records base for %s, which page index entry p%d publishes",
+				e.DocID, e.Page)
+			continue
+		}
+		if got, want := base+shardFile(e.Page), shardPath(e.DocID, e.Page); got != want {
+			t.Errorf("base+file = %q for %s p%d, want %q", got, e.DocID, e.Page, want)
+		}
+		// And the composed path is a file the site actually writes, which is
+		// the claim a reader following a records link depends on.
+		if _, ok := built.Files[base+shardFile(e.Page)]; !ok {
+			t.Errorf("%s composes to %q, which is not among the files shipped",
+				e.DocID, base+shardFile(e.Page))
+		}
+	}
+}
+
 func TestTheSiteLinksEveryShardItShips(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {

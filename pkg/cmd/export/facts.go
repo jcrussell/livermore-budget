@@ -90,7 +90,24 @@ type factAssets struct {
 // survive a rebuild: fact.MakeID hashes rule_id among other things, so a rule
 // split moves every id on a page, while (doc_id, page) cannot move at all.
 func shardPath(docID string, page int) string {
-	return fmt.Sprintf("%s/%s/pages/p%04d.jsonl", FactsDir, docID, page)
+	return shardBase(docID) + shardFile(page)
+}
+
+// shardBase and shardFile are shardPath split at the point a CLIENT has to
+// compose it: the base is per-document and goes into the page config once, and
+// the file is computed from the page number by whoever holds the locator.
+//
+// It is the same split internal/export already uses for the OTHER half of a
+// citation -- LocalPageTextBase plus pageTextFile -- and it exists so that
+// package can publish a records base without learning the rule. It must not:
+// buildProvenancePage's comment says the locator-to-URL rule belongs to
+// whoever produced the records, and that is here.
+func shardBase(docID string) string {
+	return fmt.Sprintf("%s/%s/pages/", FactsDir, docID)
+}
+
+func shardFile(page int) string {
+	return fmt.Sprintf("p%04d.jsonl", page)
 }
 
 // buildFactAssets shards the committed store by (doc_id, page), transcodes it
@@ -461,6 +478,24 @@ func (a factAssets) pageIndex() []export.PageIndexEntry {
 			Bytes:    p.Bytes,
 			Note:     noteFor(p),
 		})
+	}
+	return out
+}
+
+// recordsBase says where each document's shards live, in the form a client
+// appends pNNNN.jsonl to.
+//
+// It is the SAME rule pageIndex's Data uses, split rather than restated --
+// shardBase is what shardPath calls -- so the base the page config publishes
+// and the path the file was written at cannot drift apart. internal/export
+// asserts that relationship rather than trusting it.
+//
+// Unlike page_text_base there is no local/remote fork: shards are always
+// written into the output tree, so this is always site-relative.
+func (a factAssets) recordsBase() map[string]string {
+	out := make(map[string]string, len(a.Pages))
+	for _, p := range a.Pages {
+		out[p.DocID] = shardBase(p.DocID)
 	}
 	return out
 }
