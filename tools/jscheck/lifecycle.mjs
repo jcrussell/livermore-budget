@@ -308,7 +308,16 @@ export async function checks() {
             // only in its CONTENT, which is what a truncated file looks like.
             metadata: { fiscal_year: 2027, sources: [] },
             nodes: [{ id: "a", label: "A", value_cents: 1 }],
-            links: [{ source: "a", target: "not-a-node", value_cents: 1, fact_ids: [], kind: "revenue" }],
+            // locators IS LOAD-BEARING FOR THE SAME REASON sources: [] IS, one
+            // key later. drawableSankey refuses a document missing
+            // links[].locators before layOut runs, so leaving it off here
+            // would silently turn this block back into a duplicate of that
+            // gate -- still one banner, still the first year, still PASSING,
+            // with the .catch it exists to reach no longer reached.
+            links: [{
+              source: "a", target: "not-a-node", value_cents: 1, fact_ids: [],
+              locators: [], kind: "revenue",
+            }],
           },
         },
       }),
@@ -431,6 +440,17 @@ export async function checks() {
       metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }] },
       nodes: doc.nodes,
       links: doc.links.map((l) => ({ ...l, fact_ids: undefined })),
+    },
+  }, {
+    // The key the pin panel and the flow table now dereference to build a
+    // per-mark source link. A document without it draws a chart whose every
+    // citation throws at the reader.
+    key: "links[].locators",
+    doc: {
+      schema_version: 1,
+      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }] },
+      nodes: doc.nodes,
+      links: doc.links.map((l) => ({ ...l, locators: undefined })),
     },
   }, {
     key: "metadata.sources[].pages",

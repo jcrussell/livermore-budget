@@ -73,9 +73,12 @@ function miniature() {
     id, label: id, tier, parent, constraint_tier: "", role: "",
     derived: false, rationale: "", source_note: "",
   });
-  const link = (source, target, cents, facts, kind = "external") => ({
+  // locators default to one page of doc "d" so every synthetic link is shaped
+  // like a published one; the locator cases below pass their own.
+  const link = (source, target, cents, facts, kind = "external",
+                locators = [{ doc_id: "d", pages: [1] }]) => ({
     source, target, value_cents: cents, kind, transfer_id: "",
-    fact_ids: facts, derived: false,
+    fact_ids: facts, locators, derived: false,
   });
   return {
     schema_version: 1,
@@ -262,6 +265,53 @@ export async function checks() {
         : "no revenue/tax -> fund-group/general link at all",
     },
     {
+      // THE UNION IS WHY THE FLOW TABLE IS HONEST. buildTable renders the
+      // FOLDED document, and foldDocument builds each merged ribbon with
+      // Object.assign from its first leg -- so without an explicit union the
+      // ribbon would carry that leg's locators and cite a strict subset of the
+      // pages its figure was read from. A reader clicking "records p2" would
+      // get a shard holding part of the number they were shown.
+      name: "a folded ribbon's locators are the union of its legs', pages ascending",
+      ok: (() => {
+        const doc = miniature();
+        // The two legs of revenue/tax -> fund-group/general, read off
+        // different pages of one document, plus a second document on one of
+        // them so the doc-level grouping is exercised too.
+        doc.links[0].locators = [{ doc_id: "d", pages: [3] }];
+        doc.links[1].locators = [{ doc_id: "d", pages: [1] }, { doc_id: "acfr", pages: [7] }];
+        const folded = drill.foldDocument(doc);
+        const l = folded.links.find((x) =>
+          x.source === "revenue/tax" && x.target === "fund-group/general");
+        return Boolean(l) && JSON.stringify(l.locators) === JSON.stringify([
+          { doc_id: "acfr", pages: [7] },
+          { doc_id: "d", pages: [1, 3] },
+        ]);
+      })(),
+      detail: "documents ascending and pages ascending within each, which is the shape " +
+              "internal/project publishes -- citations() reads a link's locators and " +
+              "metadata.sources with the same code, so the two must not differ",
+    },
+    {
+      // THE ONE THING THE FACT-ID UNION CANNOT SHOW. Two facts on one page are
+      // two ids and one locator, so a fold that merely concatenated locators
+      // would render the same page twice in the Source column and nothing
+      // about fact_ids would look wrong.
+      name: "two legs read off one page fold to ONE locator, not two",
+      ok: (() => {
+        const doc = miniature();
+        doc.links[0].locators = [{ doc_id: "d", pages: [1] }];
+        doc.links[1].locators = [{ doc_id: "d", pages: [1] }];
+        const folded = drill.foldDocument(doc);
+        const l = folded.links.find((x) =>
+          x.source === "revenue/tax" && x.target === "fund-group/general");
+        // Both facts survive; only the duplicated page collapses.
+        return Boolean(l) &&
+               JSON.stringify(l.locators) === JSON.stringify([{ doc_id: "d", pages: [1] }]) &&
+               JSON.stringify(l.fact_ids) === JSON.stringify(["a", "b"]);
+      })(),
+      detail: "two ids, one page; the citation de-duplicates and the fact list does not",
+    },
+    {
       // fund/100 -> dept/fire becomes fund-group/general -> dept/fire, and
       // dept/fire -> expenditure/fire/wages becomes dept/fire -> dept/fire and
       // goes. Four links in, three out.
@@ -318,7 +368,8 @@ export async function checks() {
         });
         orphan.links.push({
           source: "revenue/tax", target: "stray", value_cents: 1, kind: "external",
-          transfer_id: "", fact_ids: ["z"], derived: false,
+          transfer_id: "", fact_ids: ["z"], locators: [{ doc_id: "d", pages: [1] }],
+          derived: false,
         });
         try {
           drill.foldDocument(orphan);
@@ -344,7 +395,8 @@ export async function checks() {
         // inferred: fund/101 is the general group's second fund.
         mixed.links.push({
           source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external",
-          transfer_id: "", fact_ids: ["y"], derived: true,
+          transfer_id: "", fact_ids: ["y"], locators: [{ doc_id: "d", pages: [1] }],
+          derived: true,
         });
         try {
           drill.foldDocument(mixed);

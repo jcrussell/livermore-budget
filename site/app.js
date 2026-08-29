@@ -38,6 +38,7 @@
  * @property {string} kind
  * @property {string} transfer_id
  * @property {string[]} fact_ids
+ * @property {FiscSource[]} locators
  * @property {boolean} derived
  */
 
@@ -68,6 +69,7 @@
  * @property {string} publisher
  * @property {string} pdf_url
  * @property {string} page_text_base
+ * @property {string} records_base
  */
 
 /**
@@ -471,6 +473,15 @@ function citations(sources) {
         const padded = String(page).padStart(4, "0");
         out.push({ label: "extracted p" + page, href: doc.page_text_base + "p" + padded + ".txt" });
       }
+      // The third shape, and the one a link's own locators resolve through:
+      // the fact-store shard holding every record read off this page. Same
+      // zero-pad rule as the text file, which is why this lives here rather
+      // than in a sibling function -- one place spells the client's half of a
+      // citation.
+      if (doc.records_base) {
+        const padded = String(page).padStart(4, "0");
+        out.push({ label: "records p" + page, href: doc.records_base + "p" + padded + ".jsonl" });
+      }
     }
   }
   return out;
@@ -572,6 +583,35 @@ let groupIndex = new Map();
  * @param {FiscProjection} doc
  * @returns {FiscProjection} doc itself when this page draws every tier.
  */
+/**
+ * Rebuild a set of doc\u001fpage keys as the FiscSource[] the packager
+ * publishes: documents ascending, pages ascending within each, each once.
+ *
+ * The shape is not incidental. citations() is the client's whole URL
+ * vocabulary and it reads metadata.sources and a link's locators with the same
+ * code, so a fold that produced a differently-ordered list would make the same
+ * page render as a different citation depending on whether the reader was
+ * looking at the spine or the drill-down.
+ * @param {Set<string>|undefined} keys
+ * @returns {FiscSource[]}
+ */
+function regroupLocators(keys) {
+  /** @type {Map<string, number[]>} */
+  const byDoc = new Map();
+  for (const k of keys || []) {
+    const cut = k.indexOf("\u001f");
+    const doc = k.slice(0, cut);
+    const page = Number(k.slice(cut + 1));
+    const pages = byDoc.get(doc);
+    if (pages) pages.push(page);
+    else byDoc.set(doc, [page]);
+  }
+  return Array.from(byDoc.keys()).sort().map((doc) => ({
+    doc_id: doc,
+    pages: (byDoc.get(doc) || []).sort((a, b) => a - b),
+  }));
+}
+
 function foldDocument(doc) {
   if (!RENDER_TIERS.length) return doc;
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
@@ -597,6 +637,22 @@ function foldDocument(doc) {
   const merged = new Map();
   /** @type {Map<string, Set<string>>} */
   const cited = new Map();
+  // Locators fold with their ends exactly as fact_ids do, keyed doc\u001fpage so
+  // two legs read off ONE page collapse to one locator -- something the
+  // fact-id union cannot show, because two facts on one page are two ids.
+  // Without this a merged ribbon would carry the FIRST leg's locators, copied
+  // by the Object.assign below, and cite a strict subset of the pages its
+  // figure was read from.
+  /** @type {Map<string, Set<string>>} */
+  const located = new Map();
+  /** @param {FiscSource[]} ss @returns {string[]} */
+  const locatorKeys = (ss) => {
+    const out = [];
+    for (const s of ss || []) {
+      for (const p of s.pages) out.push(s.doc_id + "\u001f" + p);
+    }
+    return out;
+  };
   for (const l of doc.links) {
     const source = foldsTo.get(l.source);
     const target = foldsTo.get(l.target);
@@ -613,6 +669,7 @@ function foldDocument(doc) {
     if (!at || !ids) {
       merged.set(key, Object.assign({}, l, { source: source, target: target }));
       cited.set(key, new Set(l.fact_ids));
+      located.set(key, new Set(locatorKeys(l.locators)));
       continue;
     }
     // Two links of different kinds folding onto one ribbon would leave that
@@ -637,11 +694,20 @@ function foldDocument(doc) {
     // A transfer id names one leg of one transfer and cannot survive a merge.
     if (at.transfer_id !== l.transfer_id) at.transfer_id = "";
     for (const id of l.fact_ids) ids.add(id);
+    // The union runs AFTER the kind and derived guards above, so a leg that
+    // cannot be merged throws with its own message rather than dying on a
+    // locators field the fixture happened not to carry.
+    const locs = located.get(key);
+    if (locs) for (const k of locatorKeys(l.locators)) locs.add(k);
   }
 
   const links = Array.from(merged.entries())
     .map(([key, l]) => Object.assign(l, {
       fact_ids: Array.from(cited.get(key) || []).sort(),
+      // Rebuilt into the SAME shape internal/project publishes -- documents
+      // ascending, pages ascending within each -- so a folded link and an
+      // unfolded one are indistinguishable to citations().
+      locators: regroupLocators(located.get(key)),
     }))
     .sort((a, b) => (a.source < b.source ? -1 : a.source > b.source ? 1
       : a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
@@ -1103,9 +1169,25 @@ function pin(d) {
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
   }
 
+  // THE CITATIONS ARE THE MARK'S OWN WHEN THE MARK HAS ANY, and the whole
+  // document's otherwise.
+  //
+  // A LINK cites its locators: the pages its own facts were read from. Before
+  // this, pinning any mark rendered the same list -- on the drill-down that is
+  // 18 pages x 2 shapes, identical for every one of the 52 ribbons, which
+  // tells a reader where the CHART came from and nothing about the flow they
+  // clicked.
+  //
+  // A NODE keeps the document's, and that asymmetry is stated rather than left
+  // to be noticed: a node is an aggregation point and cites no facts, so there
+  // is nothing narrower to show.
+  //
+  // The label stays "Sources:" and not "Records:" -- citations() emits PDF,
+  // extracted-text AND records anchors, so naming it for the last would name a
+  // third of the row.
   const prov = h("div", "prov");
   prov.append(h("span", "subtle", "Sources:"));
-  for (const c of citations(projection.metadata.sources)) {
+  for (const c of citations(asLink ? /** @type {LaidLink} */ (d).locators : projection.metadata.sources)) {
     prov.append(link(c.label, c.href));
   }
   panel.append(prov);
@@ -1185,7 +1267,6 @@ function buildTable() {
   if (!body) return;
   body.replaceChildren();
   const labels = new Map(projection.nodes.map((n) => [n.id, n.label]));
-  const cites = citations(projection.metadata.sources);
 
   for (const l of projection.links) {
     const tr = document.createElement("tr");
@@ -1195,8 +1276,15 @@ function buildTable() {
     tr.append(h("td", "", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
     tr.append(h("td", "", l.derived ? "◇ inferred" : "printed"));
     tr.append(h("td", "ids", l.fact_ids.join(" ")));
+    // PER ROW, not per document. The column header says "Source" and until
+    // this it printed the same 36 anchors on all 52 drill-down rows -- a
+    // Source column that is the same for every row is a lie by repetition.
+    // Now it is the pages that row's own figure was read from: 237 anchors
+    // over the whole table, each about the row it sits in. The links read
+    // projection.links, which is the FOLDED document (see showYear), so the
+    // fold's locator union is what makes these complete.
     const td = h("td", "");
-    for (const c of cites) {
+    for (const c of citations(l.locators)) {
       td.append(link(c.label, c.href));
       td.append(document.createTextNode(" "));
     }
@@ -1420,6 +1508,7 @@ function drawableSankey(doc, what) {
   if (!Array.isArray(doc.nodes)) missing.push("nodes");
   if (!Array.isArray(doc.links)) missing.push("links");
   else if (doc.links.some((l) => !Array.isArray(l.fact_ids))) missing.push("links[].fact_ids");
+  else if (doc.links.some((l) => !Array.isArray(l.locators))) missing.push("links[].locators");
   if (!doc.metadata || typeof doc.metadata !== "object") missing.push("metadata");
   else if (!Array.isArray(doc.metadata.sources)) missing.push("metadata.sources");
   else if (doc.metadata.sources.some((s) => !Array.isArray(s.pages))) {

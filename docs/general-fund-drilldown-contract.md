@@ -216,9 +216,23 @@ So the client folds. The rule, in full:
 - **Each node folds to its nearest ancestor whose tier the page draws**,
   following `parent`.
 - **Links fold with their ends** and merge on the folded pair, summing
-  `value_cents` and unioning `fact_ids`. Two links of different `kind` folding
-  onto one ribbon is refused rather than resolved; it occurs in no published
-  column.
+  `value_cents` and unioning both `fact_ids` and `locators`. Two links of
+  different `kind` folding onto one ribbon is refused rather than resolved; it
+  occurs in no published column.
+
+  The locator union is not decoration. `buildTable` and `pin` render the
+  **folded** document, and the fold builds a merged ribbon by copying its first
+  leg — so without an explicit union a ribbon would cite a strict subset of the
+  pages its figure was read from, and a reader clicking through would land on a
+  shard holding part of the number they were shown. It de-duplicates on
+  `(doc_id, page)`, which is something the fact-id union cannot express: two
+  facts on one page are two ids and one locator. Measured on FY2025-26: 52
+  folded rows carry 79 locators, at most 5 on any one row.
+
+  This is what makes the flow table's `Source` column true. It used to print
+  the document's own 18 pages identically on all 52 rows — 1,872 anchors saying
+  nothing about the row they sat in. It is now 237, each naming the pages that
+  row's figure came from.
 - **A link whose ends fold to the same node is dropped.** It was a flow inside
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
