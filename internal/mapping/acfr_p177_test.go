@@ -12,9 +12,10 @@ import (
 
 // ACFR p177, the ten-year schedule of outstanding debt by type. It is the page
 // behind this project's most-cited claim -- amount.TestLeadingMinusIsReallyPositive,
-// AGENTS.md's "Review does not cover this project's main risks" names this
-// standard of proof without naming the test; this is the test. It is the worked
-// example of
+// AGENTS.md's "Review does not cover this project's main risks" names
+// TestLeadingMinusIsReallyPositive (internal/amount) as the worked example of
+// the standard; this file is its other half, reading the same row off the
+// committed fixture. It is the worked example of
 // proving a reading with arithmetic rather than intuition.
 //
 // That test reconciles a row TRANSCRIBED INTO ITS OWN COMMENT. Nothing checked

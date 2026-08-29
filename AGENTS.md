@@ -204,8 +204,12 @@ bd update <id> --claim             # claim before starting
 bd close <id> --reason "..."       # close with what actually happened
 ```
 
-The roadmap is eight epics, `E1 Foundations` through `E8 Further projections`,
-with dependencies wired so `bd ready` surfaces only genuinely unblocked work.
+The roadmap is ten epics. `E1 Foundations` through `E8 Further projections` are
+the plan as first written; `E0 Extraction replacement` (`fisc-yqv`) and `E9 The
+drill-down reaches a reader` (`fisc-5miz`) were added afterwards and are both
+closed, so a count of eight is a claim about the plan rather than about the
+tracker. Dependencies are wired so `bd ready` surfaces only genuinely unblocked
+work.
 Each task cites the byob decision it follows.
 
 Use `bd remember` for cross-session knowledge rather than MEMORY.md files. When
@@ -368,8 +372,9 @@ review ran. Treat review as a complement to that evidence, never a substitute.
 A worked example of the standard: rejecting a leading minus sign in
 `internal/amount` is justified by summing ACFR p177 row 2017 and showing that
 only the positive reading reconciles to the printed total. The test is
-`TestLeadingMinusIsReallyPositive`, in `internal/mapping/acfr_p177_test.go`, and
-it carries the arithmetic. That is the level of proof a claim about these
+`TestLeadingMinusIsReallyPositive`, in `internal/amount/amount_test.go`, and it
+carries the arithmetic; `internal/mapping/acfr_p177_test.go` reads the same row
+off the committed fixture and reconciles all ten rows of the schedule. That is the level of proof a claim about these
 documents needs — a claim about these documents is proved with arithmetic, not
 intuition, and review does not substitute for it.
 
@@ -473,18 +478,14 @@ work. From the log:
   passed, 0 failed."*
 - **Credit where a finding came from**: *"Found by /code-review over this
   range."* It tells the next reader whether a fix was designed or discovered.
-- `make pre-commit` runs fmt, vet, test, lint **and the app.js checks**. It
-  warns rather than fails when `golangci-lint` or node is absent, so a
-  contributor with only Go can still commit; `make lint` alone still fails,
-  because that is CI's required check. Before lint was in this target, CI was
-  the first place a violation showed and `main` carried a red lint across three
-  commits.
-- **`make hooks` installs the local pre-commit hook, and CI is still the gate.**
-  `.git/hooks` is not tracked, so the hook is per-checkout setup that nobody
-  may have run — this text used to say the symlink "is what makes it the
-  contract" while no checkout anyone looked at had one, which is a workflow
-  document asserting a guard that did not exist. Run `make pre-commit`
-  yourself; do not assume a hook ran. Note it does **not** run `fisc verify`.
+- **Run `make pre-commit` yourself before committing**, and see "Build & Test"
+  above for what it does and does not cover. The two things worth repeating
+  here because they bite at commit time: it does **not** run `fisc verify`, and
+  the local hook is per-checkout setup nobody may have run, so it is a
+  convenience and CI is the gate. This paragraph used to restate the whole of
+  that section and the two copies had already drifted apart on whether node is
+  mentioned — which is the duplication this file was merged to end, reappearing
+  inside it.
 
 ## Provenance invariants
 
@@ -588,8 +589,8 @@ correct in the diff and were wrong in the file.
 - **Go tests never require Python, the source PDFs, or the network.** Use the
   fixtures in `testdata/`, which are real artifacts copied from
   `data/extracted/`. They are *copies*, and `make extract` does not touch them:
-  the five page fixtures under `testdata/pages/` and
-  `pkg/cmd/build/testdata/pages/` have to be re-copied by hand when the
+  the 26 page fixtures under `testdata/pages/` (24) and
+  `pkg/cmd/build/testdata/pages/` (2) have to be re-copied by hand when the
   extraction changes, and their sha256s must equal the ones the source
   document's `manifest.json` records. A fixture that has drifted is the bad
   case — the tests reading it stay green against a substrate that no longer
