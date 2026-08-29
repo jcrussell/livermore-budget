@@ -91,12 +91,16 @@ one; and `fisc-71j` asserted that `row-funds-match-their-anchors` guarded the
 78 fund numbers it was about to publish, which it does not and cannot, because
 those row labels carry no verb phrase for it to read.
 
-The corpus knows this about itself. **Five** of the injected memories carry a
-line whose only job is to say earlier text has gone stale — *"the bead text
-describing it as blocked is historical"*, *"text on those beads describing work
-as pending is historical"*, *"same stale-premise class as p76: claims written
-against the old extractor outlived it"* — and **eight** commits in the log have
-correcting stale text as their whole purpose.
+The corpus knows this about itself. Measured at `44be60d`: **ten** of the 52
+injected memories carry a line whose only job is to say earlier text has gone
+stale — *"the bead text describing it as blocked is historical"*, *"text on those
+beads describing work as pending is historical"*, *"same stale-premise class as
+p76 (see p76-is-extractable-and-ties): claims written against the old extractor
+outlived it"*. The criterion is that reading, applied by hand; there is no
+command that re-measures a judgement over prose, which is why the count is
+pinned to a commit rather than left live. The log carries the same habit, and
+there **is** a command for it: `git log --format=%s | grep -ci stale` finds
+**six** commits that say so in the subject line alone.
 
 So: **correct the bead in the same session you find it stale**, in its notes,
 saying what was measured. And do not write "filed as a bead" in a comment or a
@@ -446,6 +450,10 @@ project treats an unchecked one as a defect. Three traps:
   the message had been drafted from the plan rather than from the diff. Two
   commits later, a bead correctly filed was cited under an invented id.
 
+  **So: one edit per script, or check each edit's exit status.** A heredoc that
+  raises halfway leaves a tree that still builds and still passes every test,
+  which is why nothing catches it but reading the diff.
+
   Both are the class of writing "filed as a bead" without filing one, and both
   are worse than a missing note in the same way: the claim reads as *done*, or
   as *tracked*, so nobody goes looking. The invented id is the worst of the
@@ -457,8 +465,9 @@ unmoved; fisc verify 40 passed, 0 failed."*
 **The count in that template is itself the trap, and this sentence is where to
 learn it.** Three consecutive review passes corrected it and each correction was
 wrong in a new way: the template shipped stale; the fix that replaced it quoted
-`check.All()`'s total instead, which is a different quantity (42 today, because
-one check is vacuous and one needs `--full`); and the fix that replaced THAT
+`check.All()`'s total instead, which is a different quantity, because a vacuous
+check and a `--full`-only check are both in that total and neither is in the
+"passed" line; and the fix that replaced THAT
 asserted an exhaustive list of every count the log has carried, measured with a
 grep narrow enough to miss several spellings of the same line. So no list is
 given here. Rebuild `bin/fisc`, run it, and read the number off the run you are
@@ -683,7 +692,18 @@ recover a value the PDF never put in its text layer, and it does not settle
 in their intervening FY columns and those dashes appear in neither substrate,
 because they are drawn as non-text. Row PB200429 on the same page does carry
 its dashes, so this is per-row and not a flag chosen wrong. A rule that needs
-to tell an absent cell from a zero one must say so itself.
+to tell an absent cell from a zero one must say so itself, and **must not
+resolve it by defaulting a missing token to zero** — that turns an absent cell
+into a printed one and invents a row. Tracked as `fisc-8ln`.
+
+Where this lives in the code is `(*Resolver).labelledValues` in
+`internal/mapping/resolve.go`. Read it before writing a rule against a sparse
+page: it refuses a row carrying fewer tokens than the part has columns — *"row
+%q is followed by %d values, want %d"* — and then truncates the extras with
+`toks = toks[:ncols]`. So a row that simply loses a cell fails closed, and the
+truncation is why a trailing footnote marker is harmless. What it cannot see is
+a row that reaches the right token count with the wrong tokens; that is the
+case the geometry column guard exists for.
 
 poppler has no structured error channel: it writes free-form English to stderr
 and exits 0. The manifest records every stderr line under `warnings`, and

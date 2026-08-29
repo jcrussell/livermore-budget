@@ -419,10 +419,11 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 }
 
 // TestEveryShardedPageHasItsExtractedText is the p76 case, found before it
-// shipped: the fact store covers 21 pages and the site was shipping the text of
-// 20, because p76 is cited by no projection's metadata.sources. A provenance
-// link that resolves to a shard whose page text 404s is provenance the site
-// does not actually ship.
+// shipped: at the time the store covered 21 pages and the site was shipping the
+// text of 20, because p76 is cited by no projection's metadata.sources. A
+// provenance link that resolves to a shard whose page text 404s is provenance
+// the site does not actually ship. The two counts move as lanes land -- what
+// this test asserts is that they stay equal, not that they equal 21.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
