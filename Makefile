@@ -99,6 +99,33 @@ js-if-available: ## Run js, warning rather than failing if node is absent
 .PHONY: pre-commit
 pre-commit: fmt vet test lint-if-available js-if-available ## Format, vet, test, lint, and check app.js
 
+# A HOOK CANNOT BE COMMITTED. .git/hooks is not tracked, so "symlink pre-commit
+# into it" is per-checkout setup somebody has to actually run -- and until this
+# target existed, CLAUDE.md and docs/agents/workflow.md both described the
+# symlink as though it were already there. It was not, in any checkout anyone
+# looked at, which made a workflow document assert a guard that did not exist.
+#
+# THE LOCAL HOOK IS A CONVENIENCE AND CI IS THE GATE. A contributor who never
+# runs this target is not doing anything wrong; the required lint and verify
+# jobs still fail their PR. Keep it that way -- a repository whose correctness
+# depends on every clone having run a setup step has no gate at all.
+#
+# It refuses an existing regular file rather than clobbering it, because that
+# file is somebody's own hook and losing it silently is worse than not
+# installing ours.
+.PHONY: hooks
+hooks: ## Install the local pre-commit hook (idempotent; CI is still the gate)
+	@test -d .git/hooks || { echo "no .git/hooks; not a git checkout?" >&2; exit 1; }
+	@if [ -e .git/hooks/pre-commit ] && [ ! -L .git/hooks/pre-commit ]; then \
+		echo "refusing: .git/hooks/pre-commit exists and is not a symlink" >&2; \
+		echo "  move it aside, then re-run 'make hooks'" >&2; \
+		exit 1; \
+	fi
+	@printf '#!/bin/sh\nexec make pre-commit\n' > .git/hooks/pre-commit.fisc
+	@chmod +x .git/hooks/pre-commit.fisc
+	@ln -sf pre-commit.fisc .git/hooks/pre-commit
+	@echo "installed .git/hooks/pre-commit -> pre-commit.fisc (runs 'make pre-commit')"
+
 # Extraction is deliberately NOT part of the Go binary. It is a rare,
 # human-initiated step whose output is committed; fisc reads only that output
 # and needs neither Python nor the PDFs.

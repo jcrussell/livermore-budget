@@ -7,9 +7,11 @@
 
 Orient with `bd prime`, then `bd ready --exclude-type=byob,epic`.
 
-Two rules are repeated here rather than only linked, because the generated
-beads block below contradicts the first of them and a pointer would not
-defeat text living in this same file.
+The rules below are repeated here rather than only linked, because each is
+contradicted or undermined by text that arrives in this same context: the
+generated beads block below asserts the opposite of the first, and `bd`
+injects possibly-stale bead text for the last. A pointer elsewhere would not
+defeat either.
 
 ## The human pushes and pulls, never the agent
 
@@ -22,12 +24,37 @@ agent session, not unfinished work.
 below**, which claims work is incomplete until `git push` succeeds. That is
 wrong for this repository.
 
-## Review before committing new packages
+## Review is a loop, not a pass
 
-Run `/code-review` before any commit that lands a new package, and at each
-epic boundary. Skip it for mechanical commits. Fix findings before committing.
-See [`docs/agents/workflow.md`](docs/agents/workflow.md) for the full cadence
-and for why review does not replace this project's empirical checks.
+Run `/code-review` at each lane or epic boundary, then **iterate until a pass
+returns clean — three iterations at most**. One pass is not the gate: over the
+last session's three boundaries it took nine passes to find 23 defects, and
+three of those were introduced by an *earlier pass's own fix* — including a
+prefix check that was itself the fix for a prefix bug, and still wrong.
+
+**Every fix lands with the test that would have caught it, and that test is
+proved red without the fix.** A test that passes either way is the most common
+thing a review pass leaves behind.
+
+Skip review for mechanical commits. See
+[`docs/agents/workflow.md`](docs/agents/workflow.md) for the loop, the stopping
+rule, and why review does not replace this project's empirical checks.
+
+## A bead's text is a claim, not a fact
+
+`bd prime` injects the memories and `bd show` prints a bead's description, so
+possibly-stale text arrives in context automatically — which is why this is
+here rather than only in `docs/`.
+
+**Re-derive a bead's premise against the tree before working it**, and correct
+the bead in the same session when it has moved. Last session `fisc-9nw` asked
+for a check guarding a case the parser already made unreachable, and
+`fisc-5hxr`'s central cost trade-off dissolved on measurement — the option it
+called expensive was the cheap one.
+
+And do not write "filed as a bead" in a comment or a commit message without
+filing it. That happened twice last session; both claims were false until
+review caught them.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:7510c1e2 -->
 ## Beads Issue Tracker
@@ -85,7 +112,8 @@ Go only — neither the PDFs nor Python are needed to build, test, or verify.
 ```bash
 make build        # bin/fisc
 make test         # always -race
-make pre-commit   # fmt, vet, test, lint — symlink it to .git/hooks/pre-commit
+make pre-commit   # fmt, vet, test, lint, js
+make hooks        # install the local pre-commit hook, once per checkout
 make site         # static site into dist/ (gitignored)
 make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
 ```
@@ -95,6 +123,11 @@ PATH — the linter is not needed to build or test this project, so its absence
 must not stop a commit. `make lint` on its own still fails, because that target
 is CI's required check. Lint was red on `main` across three commits before this
 was wired up, which is the gap it closes.
+
+`make hooks` installs the local hook. It is per-checkout setup nobody may have
+run — `.git/hooks` is not tracked — so **CI is the gate and the hook is a
+convenience**. Do not assume the gate ran; run `make pre-commit` yourself. Note
+it does *not* run `fisc verify`.
 
 `./bin/fisc verify` is the gate. `--full` adds the PDF hash check and needs the
 LFS files. Run `./bin/fisc build --output bin/facts-rebuilt.jsonl` and `cmp`

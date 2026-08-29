@@ -77,6 +77,23 @@ Layout and idioms follow the byob decisions; read them with
   modernc sqlite and goreleaser needs its own decision bead in the same
   change — see `fisc-j8f` for the YAML one.
 
+### Comments are checkable claims
+
+The node-boundary section below says *"quote what the current code does"* about
+numbers. The same holds for comments that restate a **rule**: one that outlived
+its rule is a defect, not cosmetics, because the next reader acts on it. One
+session found four — a required-key list naming keys the caller no longer
+dereferenced, a parse error reading "row %q has neither category nor
+department" that would fire on a row which *had* a department, a guard message
+describing a check its condition could not perform, and a summary sentence that
+went false one commit after it was pinned.
+
+**Do not insert code between a doc comment and its declaration.** It happened
+twice in one commit: a new helper orphaned `foldDocument`'s JSDoc, costing that
+function its `@param` under `// @ts-check` and leaving its body unchecked, and
+a new test orphaned the rationale belonging to the test below it. Both read as
+correct in the diff and were wrong in the file.
+
 ### Testing
 
 - Tests ship in the same commit as the code they cover (`byob-testing.4`).
