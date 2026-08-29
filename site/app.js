@@ -550,6 +550,35 @@ let groupIndex = new Map();
  * ------------------------------------------------------------------ */
 
 /**
+ * Rebuild a set of doc\u001fpage keys as the FiscSource[] the packager
+ * publishes: documents ascending, pages ascending within each, each once.
+ *
+ * The shape is not incidental. citations() is the client's whole URL
+ * vocabulary and it reads metadata.sources and a link's locators with the same
+ * code, so a fold that produced a differently-ordered list would make the same
+ * page render as a different citation depending on whether the reader was
+ * looking at the spine or the drill-down.
+ * @param {Set<string>|undefined} keys
+ * @returns {FiscSource[]}
+ */
+function regroupLocators(keys) {
+  /** @type {Map<string, number[]>} */
+  const byDoc = new Map();
+  for (const k of keys || []) {
+    const cut = k.indexOf("\u001f");
+    const doc = k.slice(0, cut);
+    const page = Number(k.slice(cut + 1));
+    const pages = byDoc.get(doc);
+    if (pages) pages.push(page);
+    else byDoc.set(doc, [page]);
+  }
+  return Array.from(byDoc.keys()).sort().map((doc) => ({
+    doc_id: doc,
+    pages: (byDoc.get(doc) || []).sort((a, b) => a - b),
+  }));
+}
+
+/**
  * Folds a document to the tiers this page draws.
  *
  * WHY A DOCUMENT IS FOLDED AT ALL, because it is the whole reason the
@@ -583,35 +612,6 @@ let groupIndex = new Map();
  * @param {FiscProjection} doc
  * @returns {FiscProjection} doc itself when this page draws every tier.
  */
-/**
- * Rebuild a set of doc\u001fpage keys as the FiscSource[] the packager
- * publishes: documents ascending, pages ascending within each, each once.
- *
- * The shape is not incidental. citations() is the client's whole URL
- * vocabulary and it reads metadata.sources and a link's locators with the same
- * code, so a fold that produced a differently-ordered list would make the same
- * page render as a different citation depending on whether the reader was
- * looking at the spine or the drill-down.
- * @param {Set<string>|undefined} keys
- * @returns {FiscSource[]}
- */
-function regroupLocators(keys) {
-  /** @type {Map<string, number[]>} */
-  const byDoc = new Map();
-  for (const k of keys || []) {
-    const cut = k.indexOf("\u001f");
-    const doc = k.slice(0, cut);
-    const page = Number(k.slice(cut + 1));
-    const pages = byDoc.get(doc);
-    if (pages) pages.push(page);
-    else byDoc.set(doc, [page]);
-  }
-  return Array.from(byDoc.keys()).sort().map((doc) => ({
-    doc_id: doc,
-    pages: (byDoc.get(doc) || []).sort((a, b) => a - b),
-  }));
-}
-
 function foldDocument(doc) {
   if (!RENDER_TIERS.length) return doc;
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
@@ -1484,15 +1484,29 @@ function isDocument(doc, what) {
  * planted no <tbody> and so buildTable returned at its first line in every
  * lifecycle check.
  *
- *   metadata.sources          citations(...), the for..of
- *   metadata.sources[].pages  citations(), `for (const page of source.pages)`
  *   links[].fact_ids          buildTable, `l.fact_ids.join(" ")`
+ *   links[].locators          buildTable, `citations(l.locators)`
  *
- * The last two were missing while this comment already stated the rule below,
- * which is fisc-60r: a schema_version 1 document whose links lack fact_ids
- * passed here AND passed layOut -- neither touches the key -- and threw inside
- * buildTable. The per-element arms cost one scan each of links and sources,
- * both of which the repaint already walks more than once.
+ * links[].fact_ids was missing while this comment already stated the rule
+ * below, which is fisc-60r: a schema_version 1 document whose links lack
+ * fact_ids passed here AND passed layOut -- neither touches the key -- and
+ * threw inside buildTable.
+ *
+ * TWO OF THE FOUR ARMS ARE NOW KEPT FOR A WEAKER REASON, and saying so is the
+ * point of a list that claims not to be a guess. metadata.sources and
+ * metadata.sources[].pages used to be reached from buildTable, through
+ * citations(projection.metadata.sources). They are not any more: fisc-5hxr
+ * moved the flow table onto each link's OWN locators, and the only remaining
+ * reader of the document-scope list is pin(), for a node mark. pin runs on a
+ * click, after the repaint has finished, so a throw there breaks the detail
+ * panel rather than leaving one year's words over another year's chart. The
+ * arms stay -- a panel that throws at a reader is still a defect the gate can
+ * name in words -- but they are no longer fisc-bsg cases and must not be cited
+ * as though they were. links[].locators IS one: buildTable dereferences it on
+ * every row of every repaint.
+ *
+ * The per-element arms cost one scan each of links and sources, both of which
+ * the repaint already walks more than once.
  *
  * THE RULE THIS LIST FOLLOWS, then: every key the draw DEREFERENCES before it
  * could report a failure. Not every key the contract names -- a client that
@@ -1515,12 +1529,20 @@ function drawableSankey(doc, what) {
     missing.push("metadata.sources[].pages");
   }
   if (!missing.length) return true;
+  // THE THIRD CAUSE IS NAMED BECAUSE IT IS THE LIKELIEST AND THE ONLY ONE THE
+  // READER CAN FIX. The site publishes no cache-busting on data/<stem>.json and
+  // the year documents are fetched lazily on click, so a browser can hold a
+  // pre-deploy document beside a post-deploy app.js -- and every key this gate
+  // has gained since launch reaches the reader that way first. Telling them the
+  // file is truncated when their copy is merely old sends them to file a bug
+  // about a file that is fine.
   fail(
     "This page will not draw " + what + ": it declares schema_version " +
     SCHEMA_VERSION + ", which promises " + missing.join(", ") + ", and the file " +
-    "does not carry " + (missing.length === 1 ? "it" : "them") + ". The file is " +
-    "truncated or is not the document this page expected. Nothing on the page " +
-    "was changed."
+    "does not carry " + (missing.length === 1 ? "it" : "them") + ". Your browser " +
+    "may be holding a copy from before the last update — reload the page. " +
+    "Otherwise the file is truncated or is not the document this page expected. " +
+    "Nothing on the page was changed."
   );
   return false;
 }

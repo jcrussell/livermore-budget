@@ -40,11 +40,15 @@ function page(opts) {
   // answered null here, the step carrying the most work executed in none of the
   // checks that assert the page is left consistent.
   //
-  // That gap hid a live defect for exactly one commit: buildTable reaches
+  // That gap hid a live defect for exactly one commit: buildTable reached
   // citations(projection.metadata.sources), which throws on a document whose
   // metadata carries no sources -- AFTER paintYearWords, buildLegend and
   // buildDerivedList have repainted. The fisc-bsg split, one function past the
   // fix for it, with `make js` green over the whole thing.
+  //
+  // Past tense: fisc-5hxr moved the flow table onto each LINK's own locators,
+  // so buildTable now reaches citations(l.locators) instead. The gap this
+  // <tbody> closes is the same one and the key it exposes has changed.
   const body = app.dom.document.node();
   app.dom.document.getElementById("flow-table").selectable = { tbody: body };
   return { app, main, body };
@@ -421,7 +425,12 @@ export async function checks() {
   // top-level Array.isArray can see:
   //
   //   links[].fact_ids          `l.fact_ids.join(" ")`
+  //   links[].locators          citations(l.locators), one call per row
   //   metadata.sources[].pages  citations(), `for (const page of source.pages)`
+  //
+  // The last of those is now reached from pin() rather than from buildTable
+  // (fisc-5hxr), so it is no longer a half-repaint case; the first two are,
+  // and links[].locators is dereferenced on every row of every repaint.
   //
   // Each is the fisc-bsg split repaint reached one function later, by the same
   // route and with the same consequence: paintYearWords, buildLegend and
