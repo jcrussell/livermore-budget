@@ -60,6 +60,16 @@ func TestEveryFileUnderDataIsValidatedBySomething(t *testing.T) {
 	}
 	var wantPDFs, wantDirs []string
 	for _, s := range srcs {
+		// THE WHOLE PATH IS CHECKED, not just the basename. LoadSources only
+		// requires fs.ValidPath, so `file: data/pdfs/x.pdf` loads clean; a
+		// basename comparison would then pass the very test that exists to tie
+		// data/pdf to the registry, and the only reader of the full path is a
+		// --full check that CI runs monthly. This is the claim the directory
+		// layout actually rests on.
+		if want := "data/pdf/" + filepath.Base(s.File); s.File != want {
+			t.Errorf("sources.yaml %s has file %q, want %q; every PDF lives in data/pdf",
+				s.ID, s.File, want)
+		}
 		wantPDFs = append(wantPDFs, filepath.Base(s.File))
 		wantDirs = append(wantDirs, s.ID)
 	}

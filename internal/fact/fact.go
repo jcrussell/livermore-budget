@@ -283,7 +283,11 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 		missing := ""
 		switch {
 		case rowPath == "":
-			missing = "row path (the row has neither category nor department)"
+			// Unreachable through mapping.Parse since 2026-08-29, which
+			// requires a category on every non-skip row -- kept as defence in
+			// depth for a Value built some other way, and worded for what it
+			// now means rather than for the rule it used to restate.
+			missing = "row path (the row has no category)"
 		case columnPath == "":
 			missing = "column path (the column has no fund and the rule no scope)"
 		}

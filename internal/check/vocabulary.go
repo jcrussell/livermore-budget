@@ -180,7 +180,12 @@ func (*factKindMatchesCategory) Run(_ context.Context, s *Subject) (Result, erro
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts over %d kind/category pairs, each kind one its category "+
 			"declares in data/taxonomy.yaml", subjects, len(pairs)),
-		nothing:  "no fact carries both a kind and a category data/taxonomy.yaml defines",
+		// "assignable" and not merely "defines": the skip above now also
+		// passes over a rollup, so a store of nothing but `taxes` facts would
+		// otherwise be told the taxonomy defines no such category when it
+		// defines it precisely and forbids writing it.
+		nothing: "no fact carries both a kind and an assignable category " +
+			"data/taxonomy.yaml defines",
 		findings: findings,
 	}.result(), nil
 }

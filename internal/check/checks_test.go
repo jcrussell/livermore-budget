@@ -224,7 +224,8 @@ func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
 		if res.Status != StatusVacuous {
 			t.Fatalf("status = %s (%s), want vacuous", res.Status, res.Summary)
 		}
-		if want := "no fact carries both a kind and a category data/taxonomy.yaml defines"; res.Summary != want {
+		if want := "no fact carries both a kind and an assignable category " +
+			"data/taxonomy.yaml defines"; res.Summary != want {
 			t.Errorf("summary = %q, want %q", res.Summary, want)
 		}
 		if res.Findings == nil {
