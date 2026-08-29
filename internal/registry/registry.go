@@ -91,7 +91,10 @@ var fundTypes = []string{
 // and `go vet` does not, which is the worst way to find out. The alternative
 // considered and rejected was a leaf `internal/kind` package both import; it
 // removes the duplication rather than pinning it, at the cost of a new package
-// and a type alias through every use site in mapping. Recorded on fisc-iki.
+// and a type alias through every use site in mapping. The full reasoning, and
+// the measurement that shows exporting mapping.Kind.valid() would NOT have
+// been enough, is the 2026-08-29 note on fisc-iki -- which also retracts that
+// bead's own earlier recommendation to prefer the export.
 //
 // So the list is duplicated and pinned instead: kinds_test.go is
 // `package registry_test`, may import both, and asserts that Load accepts

@@ -290,6 +290,18 @@ categories:
 `,
 			want: `taxonomy.yaml: category "taxes": aliases[0].term: "Taxes" is the category's own label`,
 		}, {
+			// Five committed categories have a document_term that differs from
+			// their label, so a rule comparing only the label would appear to
+			// work while letting exactly those five list themselves.
+			name: "category alias repeating its own document_term",
+			taxonomy: `
+schema_version: 1
+categories:
+  - {slug: fund-balance, label: "Fund Balance", kinds: [fund_balance]}
+  - {slug: fund-balance/beginning, label: "Beginning Fund Balance", parent: fund-balance, document_term: "BEGINNING WORKING CAPITAL", kinds: [fund_balance], aliases: [{term: "BEGINNING WORKING CAPITAL", pages: [66]}]}
+`,
+			want: `taxonomy.yaml: category "fund-balance/beginning": aliases[0].term: "BEGINNING WORKING CAPITAL" is the category's own document_term`,
+		}, {
 			// Per category, NOT file-wide: fund-balance/beginning and
 			// fund-balance/ending both publish "Fund Balance / Working
 			// Capital" and both are right.

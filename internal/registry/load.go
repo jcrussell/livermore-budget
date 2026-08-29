@@ -450,7 +450,7 @@ func validatePages(pages []int, slug string, ef errFunc) error {
 // The split exists because a taxonomy category's `pages` is optional and its
 // shape is not. Three of the twenty-five categories carry none, and they are
 // exactly the three `assignable: false` rollups -- so "required when
-// assignable" is defensible on today's data and is filed as its own bead
+// assignable" is defensible on today's data and is filed as fisc-3did
 // rather than taken here, because it would churn forty inline fixtures for a
 // rule with no live violation. What is NOT defensible is the state this
 // replaces, where a category could claim page 0 or list a page twice and load
@@ -610,10 +610,22 @@ func validateCategory(c Category, catf errFunc) error {
 		if err := validateAlias(i, a, catAliasf); err != nil {
 			return err
 		}
-		if a.Term == c.Label {
-			return catf(c.Slug, fmt.Sprintf("aliases[%d].term", i),
-				"%q is the category's own label; an alias records a DIFFERENT "+
-					"spelling the city prints", a.Term)
+		// BOTH published spellings, not just the label. Five committed
+		// categories have a document_term that differs from their label --
+		// fund-balance/beginning is "Beginning Fund Balance / Working Capital"
+		// against a printed "BEGINNING WORKING CAPITAL" -- so a rule that
+		// compared only the label would let a category list its own
+		// document_term as an alternative to itself, and would have appeared
+		// to work purely because most entries have the two the same.
+		for _, own := range [...]struct{ field, value string }{
+			{"label", c.Label},
+			{"document_term", c.DocumentTerm},
+		} {
+			if own.value != "" && a.Term == own.value {
+				return catf(c.Slug, fmt.Sprintf("aliases[%d].term", i),
+					"%q is the category's own %s; an alias records a DIFFERENT "+
+						"spelling the city prints", a.Term, own.field)
+			}
 		}
 		if terms[a.Term] {
 			return catf(c.Slug, fmt.Sprintf("aliases[%d].term", i),
@@ -651,9 +663,16 @@ func validateCategory(c Category, catf errFunc) error {
 		//
 		// Note the arm is proved by n=2, both in taxes/property, both on p127
 		// which that category lists. It is the only rule here that can become
-		// false as data grows rather than only as a file is mistyped. If a
-		// contra row ever needs a page its category does not claim, the answer
-		// is to widen `pages`, because the category IS printed there.
+		// false as data grows rather than only as a file is mistyped.
+		//
+		// AND IT IS INTERNAL CONSISTENCY ONLY. Nothing here bounds `pages` to
+		// a page the document actually has, so widening `pages` is both the
+		// honest remedy for a contra row on a page the category really is
+		// printed on AND the way to defeat this check: pages: [..., 9999]
+		// with a contra row on 9999 loads clean. Load reads three YAML files
+		// and has no corpus to ask, so the bound cannot be taken here --
+		// registry_test.go's TestFundAliasesArePrintedOnTheirPages is the
+		// shape that can, against the extracted text. Filed as fisc-e0p8.
 		//
 		// It must NOT be copied onto aliases -- see validateAlias.
 		if !slices.Contains(c.Pages, cr.Page) {
