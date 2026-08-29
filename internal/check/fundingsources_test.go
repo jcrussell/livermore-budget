@@ -583,6 +583,57 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 		}
 	})
 
+	t.Run("the exception is not counted among the cells that tie", func(t *testing.T) {
+		// `held` says every counted cell equals the spine to the cent, and the
+		// exception deliberately does not, so counting it made the PASS line
+		// claim 14 where 13 hold. Moving subjects++ back above the exception
+		// arm makes this red. Found by the fourth review pass over this range.
+		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), base)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		if !strings.HasPrefix(res.Summary, "13 cells over 2 ") {
+			t.Errorf("the summary counts the exception among the cells that tie:\n%s",
+				res.Summary)
+		}
+		if !strings.Contains(res.Summary, "are NOT among the 13") {
+			t.Errorf("the summary does not hold the exception apart from the count:\n%s",
+				res.Summary)
+		}
+	})
+
+	t.Run("a pair the spine stopped publishing does not make the entry stale", func(t *testing.T) {
+		// The union loop skips an unreconciled (year, basis) before reaching the
+		// exception arm, so without the reconcile guard the check would tell a
+		// reader to delete a still-valid entry the day pp.66-67 stopped printing
+		// an FY2027 column. That is a change in the DOCUMENT, not a declaration
+		// going stale, and the two need different fixes. Dropping the
+		// `if !reconcile[...]` guard makes this red.
+		s := *base
+		s.Facts = nil
+		dropped := 0
+		for _, f := range base.Facts {
+			if f.Scope == spineScope && f.FiscalYear == 2027 {
+				dropped++
+				continue
+			}
+			s.Facts = append(s.Facts, f)
+		}
+		if dropped == 0 {
+			t.Fatal("the spine carries no FY2027 facts, so this test proves nothing")
+		}
+
+		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), &s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		for _, f := range res.Findings {
+			if strings.Contains(f.Detail, "reconciles nothing") {
+				t.Errorf("the entry is reported stale because the SPINE lost its column: %+v", f)
+			}
+		}
+	})
+
 	t.Run("another group cannot hide behind it", func(t *testing.T) {
 		res := run(t, func(f *fact.Fact) bool {
 			if f.Scope != fundingSourcesScope || f.FiscalYear != 2026 ||

@@ -3249,6 +3249,12 @@ rules:
   #        special-revenue   19,267,561  11,808,000
   #        total            254,095,412 252,604,896
   #
+  # The total row is THESE PAGES' total and not the spine's. FY2025-26 is also
+  # all_funds_gross_expenditure_cents, the headline the site publishes;
+  # FY2026-27's headline is 252,854,896, because the spine carries p0067's
+  # 26,544,515. Reading the second column as the spine's is the mistake the
+  # rest of this comment exists to prevent.
+  #
   # Eleven of twelve cells tie TO THE CENT. That is the same money pp.66-67
   # already publish, cut by paying fund instead of by object -- so publishing it
   # at all-funds-gross would double the city's expenditure with every check

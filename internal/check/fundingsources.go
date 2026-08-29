@@ -138,11 +138,18 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 // THE FAILURE THIS EXISTS FOR IS THE SAME SILENT ONE THE OTHER THREE GUARD, and
 // on this schedule it is the whole city rather than one slice of it. Summed by
 // the fund each row names, the 78 rows reproduce pp.66-67's TOTAL EXPENDITURES
-// for EVERY fund group in BOTH budget years — 254,095,412 and 252,604,896, which
-// is all_funds_gross_expenditure_cents. A rule written at `all-funds-gross`
-// would put them in the spine's own cells and double the city's expenditure with
-// every graph check green, because those checks tie the graph to the facts it
-// was built from and not to the document.
+// for eleven of the twelve (fund group, budget year) cells — every group in
+// FY2026, and every group but internal-service in FY2027, whose twelfth cell is
+// the exception declared above. The FY2026 total is 254,095,412, which IS
+// all_funds_gross_expenditure_cents, the headline the site publishes. These
+// pages give 252,604,896 for FY2027 and the headline there is 252,854,896,
+// because the spine carries p0067's figure — do not read the schedule's own
+// total as the headline in both years.
+//
+// A rule written at `all-funds-gross` would put these facts in the spine's own
+// cells and double the city's expenditure with every graph check green, because
+// those checks tie the graph to the facts it was built from and not to the
+// document.
 //
 // AND THE SECOND GUARD DOES NOT REACH HERE EITHER. netCells refuses a fact
 // carrying a department, which is what makes a mis-scoped pp.167-170 rule fail
@@ -227,15 +234,21 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 	applied := map[groupKey]bool{}
 
 	var findings []Finding
-	subjects, oneSided := 0, 0
+	subjects, oneSided, exempt := 0, 0, 0
 	for _, k := range unionGroupKeys(detail, spine) {
 		if !reconcile[k.yb()] {
 			continue
 		}
 		d, sp := detail[k], spine[k]
-		subjects++
 
 		if e, ok := byException[k]; ok {
+			// NOT COUNTED AMONG THE SUBJECTS, because `held` says every one of
+			// them equals the spine to the cent and this one deliberately does
+			// not. Counting it made the PASS line claim 14 cells tie where 13
+			// do, which is the overstatement revenuedetail.go avoids by saying
+			// its exceptions are "NOT among the 134". Reported separately
+			// below. Found by the fourth review pass over this range.
+			exempt++
 			applied[k] = true
 			// Both sides are asserted against a figure the book prints. Neither
 			// is derived from the other, so this cell fails if either moves.
@@ -255,6 +268,7 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 			continue
 		}
 
+		subjects++
 		if !d.present || !sp.present {
 			oneSided++
 		}
@@ -295,6 +309,15 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 		if applied[e.key()] {
 			continue
 		}
+		// A PAIR THE SPINE DOES NOT PUBLISH IS NOT A STALE ENTRY. The union
+		// loop skips an unreconciled (fiscal year, basis) before it reaches the
+		// exception arm, so without this the check would tell a reader to delete
+		// a still-valid entry the day pp.66-67 stopped printing an FY2027
+		// column -- a change in the document, not a declaration going stale.
+		// Found by the fourth review pass over this range.
+		if !reconcile[e.key().yb()] {
+			continue
+		}
 		findings = append(findings, finding(e.key().String(),
 			"a declared exception names this cell and neither scope produces it, so it "+
 				"reconciles nothing while the summary reports it as reconciled. Delete "+
@@ -305,6 +328,10 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 		"each the sum of pp.85-125's funding-source rows equal to the spine's own "+
 		"expenditure for that fund group to the cent; %d of those are a key only one scope "+
 		"produces and both sides agree at zero", subjects, len(reconcile), oneSided)
+	if exempt > 0 {
+		held += fmt.Sprintf("; %d further cell(s) are declared exceptions and are NOT among "+
+			"the %d", exempt, subjects)
+	}
 	for _, e := range fundingSourcesExceptions {
 		held += fmt.Sprintf("; %s is reconciled against %s rather than against the spine's %s, "+
 			"and both figures are printed: %s (%s)",

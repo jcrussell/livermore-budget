@@ -86,9 +86,13 @@ var unprojectedScopes = map[string]string{
 		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +
 		"printed rows sum, per fund group, to those pages' expenditure cells -- capital " +
 		"1,061,355 / 969,934, debt-service 6,984,597 / 6,969,898, enterprise 57,053,730 / " +
-		"57,547,970, general 144,650,802 / 149,014,579, special-revenue 19,267,561 / " +
-		"11,808,000 -- so drawing them into the fund-group spine doubles the city's " +
-		"expenditure. WHAT IS RECONCILED IS THE TWO BUDGET COLUMNS AND NOTHING ELSE: " +
+		"57,547,970, general 144,650,802 / 149,014,579, internal-service 25,077,367 / " +
+		"26,294,515, special-revenue 19,267,561 / 11,808,000, total 254,095,412 / " +
+		"252,604,896 -- so drawing them into the fund-group spine doubles the city's " +
+		"expenditure. ALL SEVEN GROUPS ARE LISTED ON PURPOSE: an earlier draft omitted " +
+		"internal-service, and the five that were left sum to 229,018,045, which is a " +
+		"DIFFERENT published headline -- the sankey's external expenditure -- so a reader " +
+		"adding the list up landed on a real figure that was not this schedule's total. WHAT IS RECONCILED IS THE TWO BUDGET COLUMNS AND NOTHING ELSE: " +
 		"funding-sources-tie-to-spine ties 14 cells, seven fund groups over FY2026 adopted " +
 		"and FY2027 adopted, of which eleven tie to the cent against the spine, two are the " +
 		"permanent group agreeing at zero against a spine that prints no Permanent column " +
