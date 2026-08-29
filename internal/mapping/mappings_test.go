@@ -411,11 +411,16 @@ func TestPublishedPartsDeclareColumnHeaders(t *testing.T) {
 	// 10 spine parts over pp.66-67; 26 division parts over pp.167-170, of which
 	// three divisions declare two because they straddle a page break; 84
 	// revenue parts over pp.127-140, of which five declare two because either
-	// their rows or their printed total is on the far side of a page break; and
+	// their rows or their printed total is on the far side of a page break;
 	// 5 transfer parts on p76, one per printed section -- the first parts in
 	// this file to declare a column the page prints no header over, which they
-	// spell as a trailing null (fisc-wfi).
-	if want := 125; parts != want {
+	// spell as a trailing null (fisc-wfi); and 14 funding-source parts over
+	// pp.85-125, one per page, of which three departments declare two because
+	// their fund rows and their printed total straddle a page break. Those 14
+	// are why fisc-7q6 must declare the same four headers when it maps the
+	// Expenditures by Category block on the same eleven pages: checkColumnGrids
+	// is per (doc_id, page) and all-or-none.
+	if want := 139; parts != want {
 		t.Errorf("checked %d parts, want %d; the published file's shape changed",
 			parts, want)
 	}

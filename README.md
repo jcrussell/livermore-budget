@@ -12,16 +12,16 @@ defect here regardless of how good the chart looks.
 
 ## What is covered today
 
-**Twenty-one pages of 786.** This is still a proof of concept, and saying so
+**Thirty-five pages of 786.** This is still a proof of concept, and saying so
 plainly is part of the point.
 
 | document | pages | extracted | mapped |
 |---|---:|---:|---:|
-| FY 2025-2027 Budget Book | 268 | all | **21** (pp. 66–67, 76, 127–140, 167–170) |
+| FY 2025-2027 Budget Book | 268 | all | **35** (pp. 66–67, 76, 85–125 in part, 127–140, 167–170) |
 | 2025-2030 Capital Improvement Plan | 323 | all | 0 |
 | FY 2024-25 Annual Comprehensive Financial Report | 195 | all | 0 |
 
-Those pages yield **1,448 facts** across four schedules, each of which reconciles
+Those pages yield **1,760 facts** across five schedules, each of which reconciles
 against something the city itself printed:
 
 | schedule | facts | what it is | fiscal years |
@@ -30,6 +30,7 @@ against something the city itself printed:
 | pp. 127–140 | 924 | revenue by fund and line item | 2024 actual, 2025 revised, 2026 + 2027 adopted |
 | pp. 167–170 | 196 | General Fund department × object category | the same four |
 | p. 76 | 88 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
+| pp. 85–125 | 312 | which funds pay for each department | the same four |
 
 The spine gives the all-funds picture the chart draws:
 
@@ -96,7 +97,7 @@ data/extracted/<doc>/              786 pages of -layout text + -bbox geometry,
   │  mappings/*.yaml               the judgment layer: which rows, which columns,
   │                                what they mean. Written to be read.
   ▼
-facts/facts.jsonl                  1,448 content-addressed facts, each carrying
+facts/facts.jsonl                  1,760 content-addressed facts, each carrying
                                    doc_id / page / offset / token
   │  internal/project              projections over (columns, scope): one column
   │                                 per Sankey year, four for the revenue trends

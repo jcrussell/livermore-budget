@@ -3222,6 +3222,502 @@ rules:
       - {label: "Transfer From Measure D", label_tail: "to Import Mitigation Fee", category: "transfers/in", fund: 288,
          counterpart: {category: "transfers/out", kind: transfer_out, fund: 550, fund_group: capital}}
 
+  # ==========================================================================
+  # DEPARTMENT FUNDING SOURCES, pp. 85-125 (fisc-71j)
+  #
+  # Fourteen pages print "DEPARTMENTWIDE EXPENDITURES WITH FUNDING SOURCES" for
+  # eleven departments; three of those departments run onto a second page. The
+  # block at the foot of each answers a question no other schedule in this book
+  # answers directly: WHICH FUNDS PAY FOR THIS DEPARTMENT. 78 rows, four columns
+  # each.
+  #
+  # THE ROW IS A FUND AND THE COLUMN IS A YEAR, which is p76's inversion and not
+  # the usual shape -- so `fund` and `fund_group` sit on the ROW here, and the
+  # columns carry no fund dimension at all. Each row's pair is what makes
+  # fact-funds-resolve a real check on this schedule: it refuses a fund whose
+  # type in data/funds.yaml disagrees with the group the row claims.
+  #
+  # ITS OWN SCOPE, AND THE MEASUREMENT IS THE REASON. Summed by fund group these
+  # 78 rows give, per group, pp.66-67's printed TOTAL EXPENDITURES:
+  #
+  #        FY2025-26                     FY2026-27
+  #        capital            1,061,355     969,934
+  #        debt-service       6,984,597   6,969,898
+  #        enterprise        57,053,730  57,547,970
+  #        general          144,650,802 149,014,579
+  #        internal-service  25,077,367  26,294,515  (p0067 prints 26,544,515)
+  #        special-revenue   19,267,561  11,808,000
+  #        total            254,095,412 252,604,896
+  #
+  # Eleven of twelve cells tie TO THE CENT. That is the same money pp.66-67
+  # already publish, cut by paying fund instead of by object -- so publishing it
+  # at all-funds-gross would double the city's expenditure with every check
+  # green, which is fisc-u2v's mechanism (see the bd memory
+  # detail-pages-double-the-spine). Hence scope: department-funding-sources, one
+  # unprojectedScopes entry, and funding-sources-tie-to-spine.
+  #
+  # THE TWELFTH CELL IS THE CITY'S ERROR, NOT OURS. pp.172-183 ("Citywide
+  # Expenditures") print the same six groups x four objects x two budget years,
+  # and 47 of those 48 cells agree with pp.66-67 to the dollar. The one that
+  # does not is internal-service Services & Supplies FY2026-27: pp.172-183 give
+  # 16,546,010 and p0067 prints 16,796,010. Five other published schedules --
+  # p0183:64, p0075:53, p0205:17, p0209:20, p0061:39 -- all say 26,294,515 and
+  # none says 26,544,515. Tracked as fisc-av0w; funding-sources-tie-to-spine
+  # carries one named exception for that cell and nothing else.
+  #
+  # A SEVENTH GROUP APPEARS AND IS HARMLESS. Doolan Canyon Preserve Endow (470)
+  # is `permanent`, which has no spine column (fisc-u8o). It is 620,581 in
+  # FY2023-24 and ZERO in all three later columns, so the budget-year tie above
+  # is unaffected -- but the check names it rather than leaving a group silently
+  # unmentioned.
+  #
+  # THE ANCHORS. "Department Funding Sources" occurs twice on every page that
+  # prints its own total, because "Total Department Funding Sources" contains
+  # it; the trailing newline is what makes the heading unique, the same device
+  # the spine uses with "Internal Service Funds\n", and it fails closed if the
+  # heading stops ending its line. The three continuation parts print no such
+  # heading, so they anchor on the end of the column header line, "FY 2026-27\n"
+  # -- which occurs exactly once on all fourteen pages. No section_ordinal is
+  # needed anywhere in this block, and that is a checked claim rather than an
+  # omission.
+  #
+  # EVERY PART DECLARES column_headers, and fisc-7q6 must repeat them BYTE FOR
+  # BYTE when it maps the Expenditures by Category block above. checkColumnGrids
+  # is per (doc_id, page) and all-or-none: a later part on one of these pages
+  # that omitted the list would be a hard parse error, not a silently weaker
+  # read. One printed header line serves both blocks on each page.
+  #
+  # WHAT IS NOT GUARDED, stated because it is easy to assume otherwise: the fund
+  # number on each of these 78 rows is hand-typed and row-funds-match-their-
+  # anchors does NOT see it. That check reads a fund off labels prefixed
+  # "Transfer From " or "to " (internal/check/rowfunds.go), and these labels are
+  # bare fund names, so every row is skipped. rule-funds-match-their-headings
+  # reads column funds only and never enters. What DOES catch a wrong number is
+  # indirect and partial: a fund of a different type breaks its group's sum
+  # against the spine, and fact-funds-resolve refuses a fund whose type
+  # disagrees with the group typed beside it. A same-type substitution is caught
+  # by nothing. Tracked as fisc-90fp.
+  #
+  # The numbers below were resolved by matching each printed label against
+  # data/funds.yaml's `name` and `aliases[].term` -- 54 by name, 9 by alias, and
+  # no label matches two funds. No fund-registry edit was needed for this lane.
+  # ==========================================================================
+
+  # --------------------------------------------------------------------------
+  - id: funding-city-council
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    parts:
+      - page: 85
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+
+  # --------------------------------------------------------------------------
+  - id: funding-city-manager
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    parts:
+      - page: 89
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "PEG Capital Fees", category: department-funding-sources, fund: 287, fund_group: special-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: funding-city-attorney
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    note: >-
+      The department is General Fund plus the two risk funds it administers,
+      General Liability (700) and Workers Comp Insurance (710) -- both
+      internal-service, so more than half of this department's money is not the
+      General Fund's.
+    parts:
+      - page: 93
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
+              168/172/173/181/183 already carry: five of these eleven departments miss
+              their own printed total by exactly one dollar, EVERY ONE of them in the
+              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
+              two are over by one. All three of the revised and budget columns tie
+              exactly on all eleven. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "General Liability", category: department-funding-sources, fund: 700, fund_group: internal-service}
+      - {label: "Workers Comp Insurance", category: department-funding-sources, fund: 710, fund_group: internal-service}
+
+  # --------------------------------------------------------------------------
+  - id: funding-administrative-services
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    note: >-
+      Information Technology (720) pays more of this department than the General
+      Fund does: 7,505,369 against 6,686,710 in FY2025-26. It is an internal
+      service fund, so that half is charges to other departments coming back
+      round -- the double-count fisc-5gk.4 exists to surface.
+    parts:
+      - page: 97
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
+              168/172/173/181/183 already carry: five of these eleven departments miss
+              their own printed total by exactly one dollar, EVERY ONE of them in the
+              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
+              two are over by one. All three of the revised and budget columns tie
+              exactly on all eleven. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "Information Technology", category: department-funding-sources, fund: 720, fund_group: internal-service}
+
+  # --------------------------------------------------------------------------
+  - id: funding-community-development
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    total_spans_parts: true
+    note: >-
+      Straddles a page break: eight funds on p101, eighteen more and the printed
+      total on p102. The widest funding base in the book -- 26 funds, four fund
+      groups, and the corpus's only `permanent` fund appearing as a payer.
+    parts:
+      - page: 101
+        section: "Department Funding Sources\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        omitted_rows: ["Local Housing Trust", "Grant - HUD EDI Special Grant", "Grant - CDBG", "Grant - Home Grant", "FEMA Funding", "Grant - State Grant Fund", "Opioid Settlement", "Accessibility Compliance", "Human Services Facility Fee", "Open Space Acquisition & Mgmt", "Doolan Canyon Preserve Endow", "Traffic Impact Fee (TIF)", "Park Fee - AB 1600", "County Meas BB-Bike/Pedestrian", "County Meas BB-Local St & Rd", "County Measure F Veh Reg Fee", "State - Gas Tax", "State - SB1"]
+      - page: 102
+        section: "FY 2026-27\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        omitted_rows: ["General Fund", "Low Income Housing Fund", "Housing Successor Agency", "SOEF (Social Op Endowment)", "Mortgage Assistance", "HHS Loan Fund", "Cal Home Reuse", "California Begin Program"]
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "Low Income Housing Fund", category: department-funding-sources, fund: 200, fund_group: special-revenue}
+      - {label: "Housing Successor Agency", category: department-funding-sources, fund: 201, fund_group: special-revenue}
+      - {label: "SOEF (Social Op Endowment)", category: department-funding-sources, fund: 202, fund_group: special-revenue}
+      - {label: "Mortgage Assistance", category: department-funding-sources, fund: 203, fund_group: special-revenue}
+      - {label: "HHS Loan Fund", category: department-funding-sources, fund: 204, fund_group: special-revenue}
+      - {label: "Cal Home Reuse", category: department-funding-sources, fund: 205, fund_group: special-revenue}
+      - {label: "California Begin Program", category: department-funding-sources, fund: 206, fund_group: special-revenue}
+      - {label: "Local Housing Trust", category: department-funding-sources, fund: 207, fund_group: special-revenue}
+      - {label: "Grant - HUD EDI Special Grant", category: department-funding-sources, fund: 223, fund_group: special-revenue}
+      - {label: "Grant - CDBG", category: department-funding-sources, fund: 224, fund_group: special-revenue}
+      - {label: "Grant - Home Grant", category: department-funding-sources, fund: 225, fund_group: special-revenue}
+      - {label: "FEMA Funding", category: department-funding-sources, fund: 226, fund_group: special-revenue}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
+      - {label: "Opioid Settlement", category: department-funding-sources, fund: 241, fund_group: special-revenue}
+      - {label: "Accessibility Compliance", category: department-funding-sources, fund: 286, fund_group: special-revenue}
+      - {label: "Human Services Facility Fee", category: department-funding-sources, fund: 290, fund_group: special-revenue}
+      - {label: "Open Space Acquisition & Mgmt", category: department-funding-sources, fund: 300, fund_group: special-revenue}
+      - {label: "Doolan Canyon Preserve Endow", category: department-funding-sources, fund: 470, fund_group: permanent}
+      - {label: "Traffic Impact Fee (TIF)", category: department-funding-sources, fund: 510, fund_group: capital}
+      - {label: "Park Fee - AB 1600", category: department-funding-sources, fund: 512, fund_group: capital}
+      - {label: "County Meas BB-Bike/Pedestrian", category: department-funding-sources, fund: 551, fund_group: capital}
+      - {label: "County Meas BB-Local St & Rd", category: department-funding-sources, fund: 552, fund_group: capital}
+      - {label: "County Measure F Veh Reg Fee", category: department-funding-sources, fund: 553, fund_group: capital}
+      - {label: "State - Gas Tax", category: department-funding-sources, fund: 560, fund_group: capital}
+      - {label: "State - SB1", category: department-funding-sources, fund: 561, fund_group: capital}
+
+  # --------------------------------------------------------------------------
+  - id: funding-fire
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    parts:
+      - page: 105
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: funding-general-services
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    note: >-
+      The city's debt service lives here. The three COPS funds (400, 401, 402) sum
+      to 6,984,597 in FY2025-26 and 6,969,898 in FY2026-27, which is pp.66-67's
+      whole Debt Service Funds TOTAL EXPENDITURES column in both budget years --
+      no other department names a debt-service fund.
+    parts:
+      - page: 108
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "2020 COPS Series A", category: department-funding-sources, fund: 400, fund_group: debt-service}
+      - {label: "2020 COPS Series B", category: department-funding-sources, fund: 401, fund_group: debt-service}
+      - {label: "2022 COPS", category: department-funding-sources, fund: 402, fund_group: debt-service}
+
+  # --------------------------------------------------------------------------
+  - id: funding-innovation-and-economic-development
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    note: >-
+      The Airport (600) is an enterprise fund and it funds a department that is
+      otherwise General Fund; it is the only enterprise money outside Public
+      Works. `Devel` wraps onto its own line in the Expenditures by Category block
+      above, which is fisc-7q6's problem and not this rule's -- the funding block
+      prints no wrapped label.
+    parts:
+      - page: 111
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "Public Art Fee", category: department-funding-sources, fund: 284, fund_group: special-revenue}
+      - {label: "Airport", category: department-funding-sources, fund: 600, fund_group: enterprise}
+
+  # --------------------------------------------------------------------------
+  - id: funding-library
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    parts:
+      - page: 115
+        section: "Department Funding Sources\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
+              168/172/173/181/183 already carry: five of these eleven departments miss
+              their own printed total by exactly one dollar, EVERY ONE of them in the
+              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
+              two are over by one. All three of the revised and budget columns tie
+              exactly on all eleven. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
+      - {label: "Public Art Fee", category: department-funding-sources, fund: 284, fund_group: special-revenue}
+      - {label: "Library Donations", category: department-funding-sources, fund: 330, fund_group: special-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: funding-police
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    total_spans_parts: true
+    note: >-
+      Straddles a page break: eight funds on p119, two more and the printed total
+      on p120. `Horizons` (210) and `Asset Seizure - County` (211) are the two
+      funds whose identification data/funds.yaml had to settle arithmetically.
+    parts:
+      - page: 119
+        section: "Department Funding Sources\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        omitted_rows: ["Vehicle Impound Fee", "Police Donations"]
+      - page: 120
+        section: "FY 2026-27\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        omitted_rows: ["General Fund", "Horizons", "Asset Seizure - County", "Grant - Federal Grant Fund", "Asset Seizure - Dep of Justice", "Asset Seizure - Treasury", "Grant - State Grant Fund", "PD COPS Grant"]
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -100
+            note: >-
+              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
+              168/172/173/181/183 already carry: five of these eleven departments miss
+              their own printed total by exactly one dollar, EVERY ONE of them in the
+              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
+              two are over by one. All three of the revised and budget columns tie
+              exactly on all eleven. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "Horizons", category: department-funding-sources, fund: 210, fund_group: special-revenue}
+      - {label: "Asset Seizure - County", category: department-funding-sources, fund: 211, fund_group: special-revenue}
+      - {label: "Grant - Federal Grant Fund", category: department-funding-sources, fund: 220, fund_group: special-revenue}
+      - {label: "Asset Seizure - Dep of Justice", category: department-funding-sources, fund: 221, fund_group: special-revenue}
+      - {label: "Asset Seizure - Treasury", category: department-funding-sources, fund: 222, fund_group: special-revenue}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
+      - {label: "PD COPS Grant", category: department-funding-sources, fund: 242, fund_group: special-revenue}
+      - {label: "Vehicle Impound Fee", category: department-funding-sources, fund: 285, fund_group: special-revenue}
+      - {label: "Police Donations", category: department-funding-sources, fund: 331, fund_group: special-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: funding-public-works
+    kind: expenditure
+    basis: adopted
+    scope: department-funding-sources
+    units: dollars
+    total_row: "Total Department Funding Sources"
+    total_spans_parts: true
+    note: >-
+      Straddles a page break: nine funds on p124, twelve more and the printed
+      total on p125. Every enterprise fund in the city pays into this department,
+      and the operating/CIP twin hazard is concentrated here -- Water (640) not
+      641, Wastewater (620) not 621, Stormwater (610) not 611, Facilities Rehab
+      Pgm (740) not 741. Each was resolved by exact label match against
+      data/funds.yaml; no twin's printed name appears on this page. AND NOTHING
+      WOULD CATCH A SWAP: measured, replacing 640 with 641 and rebuilding leaves
+      fisc verify at 40 passed, 0 failed, because every one of these four twins
+      carries its operating fund's own type, so the money does not leave its
+      group and no sum moves. That is fisc-90fp, and it is why the label match
+      was done mechanically rather than by eye.
+    parts:
+      - page: 124
+        section: "Department Funding Sources\n"
+        stop_at: "BUDGET FY 2025-27"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        omitted_rows: ["Other Maintenance CFDs", "County Measure D", "Stormwater", "Storm Drain", "Wastewater", "Wastewater Replacement", "Wastewater Connection Fees", "Water", "Water Replacement", "Water Connection Fees", "Fleet & Equipment Services", "Facilities Rehab Pgm"]
+      - page: 125
+        section: "FY 2026-27\n"
+        stop_at: "Total Department Funding Sources"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+        omitted_rows: ["General Fund", "Grant - State Grant Fund", "Host Community Impact Fee", "City Street Sweeping Fee", "Import Mitigation Fee", "Solid Waste & Recycling Fee", "Downtown LMD", "Other LMD", "El Charro CFD 2009-1 Maint"]
+        stated_total_deltas:
+          - column: 1
+            delta_cents: -100
+            note: >-
+              The city's own rounding, and it is the same shape pp.111/128/129/131/135/
+              168/172/173/181/183 already carry: five of these eleven departments miss
+              their own printed total by exactly one dollar, EVERY ONE of them in the
+              FY 2023-24 Actual column and nowhere else. Three are short by a dollar and
+              two are over by one. All three of the revised and budget columns tie
+              exactly on all eleven. Measured off the page, stated minus mapped.
+    rows:
+      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
+      - {label: "Host Community Impact Fee", category: department-funding-sources, fund: 282, fund_group: special-revenue}
+      - {label: "City Street Sweeping Fee", category: department-funding-sources, fund: 283, fund_group: special-revenue}
+      - {label: "Import Mitigation Fee", category: department-funding-sources, fund: 288, fund_group: special-revenue}
+      - {label: "Solid Waste & Recycling Fee", category: department-funding-sources, fund: 289, fund_group: special-revenue}
+      - {label: "Downtown LMD", category: department-funding-sources, fund: 310, fund_group: special-revenue}
+      - {label: "Other LMD", category: department-funding-sources, fund: 311, fund_group: special-revenue}
+      - {label: "El Charro CFD 2009-1 Maint", category: department-funding-sources, fund: 320, fund_group: special-revenue}
+      - {label: "Other Maintenance CFDs", category: department-funding-sources, fund: 321, fund_group: special-revenue}
+      - {label: "County Measure D", category: department-funding-sources, fund: 550, fund_group: capital}
+      - {label: "Stormwater", category: department-funding-sources, fund: 610, fund_group: enterprise}
+      - {label: "Storm Drain", category: department-funding-sources, fund: 612, fund_group: enterprise}
+      - {label: "Wastewater", category: department-funding-sources, fund: 620, fund_group: enterprise}
+      - {label: "Wastewater Replacement", category: department-funding-sources, fund: 622, fund_group: enterprise}
+      - {label: "Wastewater Connection Fees", category: department-funding-sources, fund: 623, fund_group: enterprise}
+      - {label: "Water", category: department-funding-sources, fund: 640, fund_group: enterprise}
+      - {label: "Water Replacement", category: department-funding-sources, fund: 642, fund_group: enterprise}
+      - {label: "Water Connection Fees", category: department-funding-sources, fund: 643, fund_group: enterprise}
+      - {label: "Fleet & Equipment Services", category: department-funding-sources, fund: 730, fund_group: internal-service}
+      - {label: "Facilities Rehab Pgm", category: department-funding-sources, fund: 740, fund_group: internal-service}
+
+
 rollups:
   # --------------------------------------------------------------------------
   - id: dept-city-council

@@ -104,7 +104,7 @@ with the file it claims to be is the failure this project exists to refuse.
 `LC_ALL=C` in the command above is not decoration. With more than one document
 id, a UTF-8 locale's collation ignores punctuation on its first pass, so the
 shell could glob in an order `fact.less` does not produce. Today there is one
-document and 21 pages and the orders coincide.
+document and 35 pages and the orders coincide.
 
 ## The CSV
 
@@ -152,7 +152,7 @@ index becoming load-bearing.
 
 ## What this does not promise
 
-**The store is what the mappings cover, not what the documents contain.** 21
+**The store is what the mappings cover, not what the documents contain.** 35
 pages of 786 are mapped. A figure absent from the store is a page nobody has
 mapped yet, not a figure the city did not print — the store is not a claim about
 the corpus.

@@ -81,6 +81,33 @@ var unprojectedScopes = map[string]string{
 		"\"Transfer From\" carries over from the row above, so they have no printed " +
 		"anchor on their own line. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; " +
 		"leg-level links carrying a transfer_id are fisc-9gh.",
+
+	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
+		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +
+		"printed rows sum, per fund group, to those pages' expenditure cells -- capital " +
+		"1,061,355 / 969,934, debt-service 6,984,597 / 6,969,898, enterprise 57,053,730 / " +
+		"57,547,970, general 144,650,802 / 149,014,579, special-revenue 19,267,561 / " +
+		"11,808,000 -- so drawing them into the fund-group spine doubles the city's " +
+		"expenditure. WHAT IS RECONCILED IS THE TWO BUDGET COLUMNS AND NOTHING ELSE: " +
+		"funding-sources-tie-to-spine ties 14 cells, seven fund groups over FY2026 adopted " +
+		"and FY2027 adopted, of which eleven tie to the cent against the spine, two are the " +
+		"permanent group agreeing at zero against a spine that prints no Permanent column " +
+		"at all (fisc-u8o), and one -- internal-service FY2027 -- ties instead against " +
+		"26,294,515, the figure five other schedules print where p0067 prints 26,544,515 " +
+		"(fisc-av0w). The two historical columns, 156 of the 312 facts, tie to each " +
+		"department's own printed Total Department Funding Sources at build time and to " +
+		"nothing on the spine, because pp.66-67 print no actual or revised column; five of " +
+		"the eleven departments miss that printed total by exactly one dollar, every one in " +
+		"the FY2023-24 Actual column, declared as stated_total_deltas. THE FUND NUMBER ON " +
+		"EACH ROW IS NOT COVERED BY THE ARITHMETIC AT ALL and is checked by nothing: it is " +
+		"hand-typed 78 times, row-funds-match-their-anchors reads a fund only off labels " +
+		"prefixed \"Transfer From \" or \"to \" and these labels are bare fund names, and " +
+		"rule-funds-match-their-headings reads column funds and never enters. What the " +
+		"arithmetic does catch is a fund of the wrong TYPE, because that moves money " +
+		"between groups and breaks a sum, and fact-funds-resolve refuses a fund whose type " +
+		"disagrees with the group typed beside it; a same-type substitution is caught by " +
+		"nothing (fisc-90fp). Drawing this schedule as department pages is fisc-4ua.2, " +
+		"which also needs the Expenditures by Category block above it (fisc-7q6).",
 }
 
 // projectionsBuild asserts every slice of the fact store that a projection was

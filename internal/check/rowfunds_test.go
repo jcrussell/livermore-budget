@@ -124,6 +124,47 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	if !strings.Contains(res.Summary, "3 declared fund(s) have no printed anchor") {
 		t.Errorf("the summary does not count the unanchored declarations:\n%s", res.Summary)
 	}
+
+	// THE SEVENTY-EIGHT ROWS THE CHECK DOES NOT READ, and they are a different
+	// statement about the page from the three above. pp.85-125's Department
+	// Funding Sources rows print a bare fund name -- which names a fund and no
+	// direction, so rowAnchorPrefixes matches nothing. Counting them under "no
+	// printed anchor on their own line" would have been false about the page,
+	// and this check's summary is printed verbatim on every fisc verify run.
+	// The hand-typed fund on all 78 is guarded by nothing (fisc-90fp).
+	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit on rows whose "+
+		"printed label names a fund but no direction") {
+		t.Errorf("the summary does not count the rows whose label carries no verb phrase "+
+			"separately from the rows the page leaves blank:\n%s", res.Summary)
+	}
+	for _, want := range []string{
+		`funding-city-council "General Fund" (the fund that receives, 100)`,
+		`funding-public-works "Water" (the fund that receives, 640)`,
+	} {
+		if !strings.Contains(res.Summary, want) {
+			t.Errorf("the summary does not name the unread row %s:\n%s", want, res.Summary)
+		}
+	}
+}
+
+// TestABareFundLabelIsNotReportedAsAnUnprintedAnchor is the property the split
+// above exists for, stated so it can fail on its own.
+//
+// Before pp.85-125 landed, every declared fund with no resolved anchor was p76's
+// continuation-row case and the one sentence was true. Adding 78 rows whose
+// label IS printed made it false 78 times over, in a string fisc verify prints
+// verbatim. Reverting anchorHasVerbPhrase to a constant true collapses the two
+// lists back into one and makes this test red on the count.
+func TestABareFundLabelIsNotReportedAsAnUnprintedAnchor(t *testing.T) {
+	if anchorHasVerbPhrase("General Fund") {
+		t.Error(`"General Fund" carries no verb phrase, so it cannot be evidence of direction`)
+	}
+	// "to " is a prefix of nothing in the funding-source label set, and the
+	// nearest thing to a trap -- a fund whose name begins with a lowercase
+	// preposition -- does not exist in data/funds.yaml.
+	if !anchorHasVerbPhrase("to Downtown LMD") || !anchorHasVerbPhrase("Transfer From CASP Fee") {
+		t.Error("a p76 anchor stopped being recognised as carrying a verb phrase")
+	}
 }
 
 // TestRowFundsIsVacuousWithoutAPerRowSchedule is the arm that lets it be

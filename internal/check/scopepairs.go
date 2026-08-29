@@ -42,6 +42,7 @@ var reconciledScopes = map[scopePair]string{
 	pairOf(project.PublishedScope, revenueDetailScope):     "revenue-detail-ties-to-spine",
 	pairOf(project.PublishedScope, expenditureDetailScope): "expenditure-detail-ties-to-spine",
 	pairOf(project.PublishedScope, transfersDetailScope):   "transfers-detail-ties-to-spine",
+	pairOf(project.PublishedScope, fundingSourcesScope):    "funding-sources-tie-to-spine",
 }
 
 // disjointScopes are the pairs a projection MAY select together, each with the

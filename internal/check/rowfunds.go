@@ -73,10 +73,20 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 // see rowAnchorPrefix for the measurement that retired the argument that the
 // arithmetic covers direction.
 //
-// THREE ROWS IT CANNOT COVER, and they are counted and named rather than
-// skipped. p76 prints three continuation rows whose "Transfer From" carries
-// over from the row above, so their declared payer has no printed anchor on its
-// own line to be checked against (fisc-30j). A reader is told how many.
+// TWO KINDS OF ROW IT CANNOT COVER, counted and named SEPARATELY rather than
+// skipped, because the two are different claims about the page and the summary
+// is printed on every run.
+//
+//   - NO ANCHOR ON THE LINE. p76 prints three continuation rows whose "Transfer
+//     From" carries over from the row above, so their declared payer has no
+//     printed anchor of its own to be checked against (fisc-30j). The other end
+//     of the same row IS anchored, which is how these are told apart.
+//   - NO VERB PHRASE. pp.85-125's Department Funding Sources rows are labelled
+//     with a bare fund name -- "General Fund", "Cal Home Reuse" -- which names
+//     a fund unambiguously and names no direction, so rowAnchorPrefixes matches
+//     nothing and this check makes no claim at all. Seventy-eight rows, every
+//     fund number hand-typed. Reporting them as "no printed anchor" would be
+//     false about the page: the label is right there. Tracked as fisc-90fp.
 type rowFundsMatchTheirAnchors struct{}
 
 var _ Check = (*rowFundsMatchTheirAnchors)(nil)
@@ -91,8 +101,8 @@ func (*rowFundsMatchTheirAnchors) Description() string {
 
 func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
-	subjects, unanchored := 0, 0
-	var unanchoredRows []string
+	subjects, unanchored, unphrased := 0, 0, 0
+	var unanchoredRows, unphrasedRows []string
 
 	for _, f := range s.Files {
 		for i := range f.Rules {
@@ -111,8 +121,11 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 					continue
 				}
 
-				namedNear, namedFar := false, false
+				namedNear, namedFar, phrased := false, false, false
 				for _, a := range []string{row.Label, row.LabelTail} {
+					if anchorHasVerbPhrase(a) {
+						phrased = true
+					}
 					entry, isFar, ok := resolveAnchorFund(s, a)
 					if !ok {
 						continue
@@ -153,11 +166,22 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 					named bool
 					end   string
 				}{{near, namedNear, "receives"}, {far, namedFar, "pays"}} {
-					if d.fund != 0 && !d.named {
+					if d.fund == 0 || d.named {
+						continue
+					}
+					// WHICH LIST IT GOES IN IS DECIDED BY THE PAGE, not by the
+					// rule. A row whose OTHER end resolved is a continuation
+					// row: the page really does print nothing here. A row where
+					// no anchor carried a verb phrase at all has a printed
+					// label this check simply does not read.
+					where := fmt.Sprintf("%s %q (the fund that %s, %d)",
+						ru.ID, row.PrintedLabel(), d.end, d.fund)
+					if phrased {
 						unanchored++
-						unanchoredRows = append(unanchoredRows,
-							fmt.Sprintf("%s %q (the fund that %s, %d)",
-								ru.ID, row.PrintedLabel(), d.end, d.fund))
+						unanchoredRows = append(unanchoredRows, where)
+					} else {
+						unphrased++
+						unphrasedRows = append(unphrasedRows, where)
 					}
 				}
 			}
@@ -169,6 +193,12 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		unanchoredNote = fmt.Sprintf("; %d declared fund(s) have no printed anchor on "+
 			"their own line and are checked by nothing here: %s", unanchored,
 			joinComma(unanchoredRows))
+	}
+	if unphrased > 0 {
+		unanchoredNote += fmt.Sprintf("; a further %d declared fund(s) sit on rows whose "+
+			"printed label names a fund but no direction, which %s matches nothing in, so "+
+			"this check makes no claim about them either (fisc-90fp): %s", unphrased,
+			"rowAnchorPrefixes", joinComma(unphrasedRows))
 	}
 	// THE VACUOUS SUMMARY HAS TO STAY TRUE OF THE CORPUS IT RAN OVER. If rows
 	// declare funds and none of them is anchored, "no row declares a fund" is a
@@ -188,6 +218,23 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		nothing:  nothing,
 		findings: findings,
 	}.result(), nil
+}
+
+// anchorHasVerbPhrase reports whether a printed anchor opens with one of the
+// verb phrases this check reads a direction from.
+//
+// It is the difference between "the page prints nothing here" and "the page
+// prints a label this check does not read", and those are the two lists the
+// summary keeps apart. resolveAnchorFund cannot answer it: it returns the same
+// not-ok for an unmatched prefix and for a matched prefix whose remainder is
+// not a fund, which are opposite statements about the page.
+func anchorHasVerbPhrase(anchor string) bool {
+	for _, p := range rowAnchorPrefixes {
+		if strings.HasPrefix(anchor, p.prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveAnchorFund strips a known verb phrase off a printed anchor and looks

@@ -187,6 +187,7 @@ func All() []Check {
 		&expenditureDetailTiesToSpine{},
 		&revenueDetailTiesToSpine{},
 		&transfersDetailTiesToSpine{},
+		&fundingSourcesTiesToSpine{},
 		&trendPointsTieToFacts{},
 		&trendSeriesAreComplete{},
 

@@ -338,6 +338,38 @@ categories:
       plural when this file landed.
 
   # ==================================================================
+  # EXPENDITURE — the funding-source axis
+  #
+  # THE FIFTH EXPENDITURE CATEGORY IS NOT A FIFTH OBJECT. The four above
+  # answer "what was the money spent on"; this one answers "which fund
+  # paid for it", which is an orthogonal cut of the SAME money. It is
+  # here rather than in a field of its own for the reason the header of
+  # this file gives for departments in reverse: a department is a second
+  # axis a fact carries ALONGSIDE its object category, and departments
+  # accordingly got `department:`; a funding-source row carries NO object
+  # category at all, because pp. 85-125 do not print one beside it. The
+  # row's own label is the fund, and `fund:` is where that goes.
+  #
+  # SUMMING THIS WITH THE FOUR ABOVE DOUBLES THE CITY'S EXPENDITURE, and
+  # the scope is what prevents it, not this note: these facts are
+  # published at scope `department-funding-sources` and the spine's are
+  # at `all-funds-gross`, so no projection nets them together. Measured —
+  # the 78 rows sum, per fund group, to pp. 66-67's printed TOTAL
+  # EXPENDITURES in eleven of twelve (group, budget year) cells exactly.
+  # ==================================================================
+
+  #@cite p0085 "Department Funding Sources" / "General Fund 149,198 238,982
+  #@cite     230,858 232,129"
+  #@cite p0097 "Total Department Funding Sources $12,785,955 $13,702,413
+  #@cite     $14,192,079 $14,294,835" — equal, in every column, to the same
+  #@cite     page's "Total Department Expenditures"
+  - slug: department-funding-sources
+    label: "Department Funding Sources"
+    document_term: "Department Funding Sources"
+    kinds: [expenditure]
+    pages: [85, 89, 93, 97, 101, 102, 105, 108, 111, 115, 119, 120, 124, 125]
+
+  # ==================================================================
   # TRANSFER
   #
   # A transfer is money moving between the city's own funds. It is neither
