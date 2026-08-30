@@ -106,26 +106,39 @@
 #     a printed ending balance of 92.10. That is $200,000, $100,000 and $100,000
 #     on a page printed to the nearest $10,000 -- twenty, ten and ten printed
 #     units, nowhere near the document's own rounding and nothing this file may
-#     absorb.
+#     absorb. The table below repeats these with the sub-block beside them.
 #
 #     THE FOURTH BLOCK -- Other Financing Sources -- TIES IN BOTH COLUMNS:
 #     0.70 + (14.50) = (13.80) in FY2024 exactly as 0.53 + (25.72) = (25.19)
 #     does in FY2025. So the prior-year column is not simply broken.
 #
-#     BE PRECISE ABOUT WHICH BLOCKS THIS FILE MAPS, BECAUSE THE COUNT HAS MOVED
-#     TWICE AND EARLIER DRAFTS OF THIS PARAGRAPH GOT IT WRONG BOTH TIMES. It is
-#     now FOUR: the revenue block, Other Financing Sources, the General
-#     Government sub-block and the fund balances. THREE of those four miss in
-#     FY2024 -- revenue by 0.20, General Government by 0.17 (15.83 against a
-#     printed 16.00), and the fund balances by 0.10, the 92.00-against-92.10
-#     above. Only Other Financing Sources ties in both columns. So the FY2024
-#     skip is emphatically not "no defect in what this file reads"; the
-#     document's declared fiscal_years settles it and the arithmetic agrees.
+#     ONE DEFINITION OF "FOUR BLOCKS", USED EVERYWHERE, and getting this wrong
+#     has now cost three separate corrections. THE FOUR ARE THE BLOCKS THE PAGE
+#     PRINTS: revenue, expenditure, Other Financing Sources, fund balances.
+#     General Government is a SUB-BLOCK, inside the expenditure block, and is
+#     not one of the four however convenient it would be to count it as one.
 #
-#     The two earlier errors, kept because the shape recurs: the first draft
-#     said the page had three blocks and that FY2024 reconciled in none of them;
-#     the second said the block this file maps ties in both columns, singular,
-#     at a point when it mapped two.
+#     FY2024, measured off the page, every figure in printed units of $10,000:
+#
+#       revenue                 145.70 against 145.50   miss 0.20  (20 units)
+#       expenditure, top level  122.80 against 122.90   miss 0.10  (10 units)
+#       Other Financing Sources (13.80) against (13.80) TIES
+#       fund balances            92.00 against  92.10   miss 0.10  (10 units)
+#       -- and separately --
+#       General Government sub   15.83 against  16.00   miss 0.17  (17 units)
+#
+#     So three of the four printed blocks miss, the sub-block misses by more
+#     than any of them, and nothing here is within reach of a tolerance sized
+#     from this page. The document's declared fiscal_years would settle the
+#     skip on its own; the arithmetic agrees.
+#
+#     THE ERRORS, kept because the shape recurs and the last one was mine twice
+#     over: the first draft said the page had three blocks and that FY2024
+#     reconciled in none of them; the second said the block this file maps ties
+#     in both columns, singular, when it mapped two; the third quietly redefined
+#     "four" as the four blocks THIS FILE MAPS, which let a review pass "correct"
+#     internal/check's 0.10 to the sub-block's 0.17 and a later pass correct it
+#     back.
 #
 #     It is declared skip: true so the column grid still lines up.
 #

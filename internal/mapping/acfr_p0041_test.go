@@ -13,12 +13,17 @@ import (
 // ACFR p41, the General Fund's "Statement of Revenues, Expenditures And Changes
 // In Fund Balances (in Millions)". This is the page mappings/livermore-acfr-fy2025.yaml
 // reads, and this file is the arithmetic behind every decision that file makes
-// about it -- including the three blocks it declines to map.
+// about it -- including what it still declines to map, which is nine rows of the
+// expenditure block rather than a block.
 //
 // The page is read here with strings.Fields and amount.Parse rather than through
-// the resolver, for the reason acfr_p177_test.go gives: the claims below are
-// about what the DOCUMENT says, and two of its four blocks cannot be resolved at
-// all. Reading them by hand is the only way to carry the evidence for that.
+// the resolver, and the reason has CHANGED since this comment was written. It
+// used to be that two of the page's four blocks could not be resolved at all, so
+// reading by hand was the only way to carry evidence about them. Both can be
+// resolved now (fisc-hcus and fisc-h96o), and the reason is the one
+// acfr_p177_test.go gives instead: these claims are about what the DOCUMENT
+// says, and a hand read states them without depending on the rules that were
+// written FROM them.
 //
 // Units are millions printed to two decimals, so the least significant printed
 // digit is 0.01 million = $10,000, and one cent of amount.Cents is one cent.
@@ -43,9 +48,13 @@ var (
 // reasons the revenue block is unmapped". fisc-yun is CLOSED, dropCurrencyMarks
 // reads a lone mark in the labelled path, and the revenue block is now MAPPED --
 // the orphan "0.0" was the only blocker and it has an honest declaration
-// (fisc-hcus). This was the last surviving copy of a claim that had already been
-// corrected in the mapping file, internal/check/coverage.go and testdata/README.md,
-// and it survived because nothing reads a helper's doc comment. The assertion
+// (fisc-hcus). This was one of TWO surviving copies of a claim already corrected
+// in the mapping file, internal/check/coverage.go and testdata/README.md -- the
+// other is acfr_p177_test.go's header, about p177 rather than this page, and it
+// was corrected in the same commit. An earlier draft of this paragraph called
+// this "the last surviving copy", which was false as written and is the same
+// habit it is describing: a claim about the tree made without grepping it. Both
+// survived because nothing reads a helper's doc comment. The assertion
 // that the marks are not a blocker is in
 // TestACFRp0041RevenueBlockNeedsItsOrphanDeclared, where running the rule
 // settles it.
@@ -159,8 +168,10 @@ func TestACFRp0041FundBalancesSatisfyTheIdentity(t *testing.T) {
 }
 
 // TestACFRp0041ExpendituresTieUnderTheTopLevelReading carries the finding that
-// decided this lane, and it is the reason no document-derived tolerance landed
-// with it.
+// decided this lane. It used to end "and it is the reason no document-derived
+// tolerance landed with it"; one landed on this page, on the strength of the
+// arithmetic below, so what it is now is the reason the tolerance sits on the
+// SUBTOTAL and not on Total Expenditures.
 //
 // The page prints a "General Government:" subtotal AND its five constituent
 // rows. Read at the top level -- the subtotal and the nine rows beside it -- the
@@ -221,10 +232,17 @@ func TestACFRp0041ExpendituresTieUnderTheTopLevelReading(t *testing.T) {
 //
 // data/sources.yaml declares this document carries fiscal_years: [2025], which
 // would be reason enough. This is the stronger reason: three of the page's four
-// blocks do not reconcile in that column, by $200,000, $100,000 and $100,000 on
-// a page printed to the nearest $10,000. Those are twenty, ten and ten printed
-// units -- nowhere near the document's own rounding, and nothing a declared
-// delta should absorb.
+// PRINTED blocks do not reconcile in that column, by $200,000, $100,000 and
+// $100,000 on a page printed to the nearest $10,000. Those are twenty, ten and
+// ten printed units -- nowhere near the document's own rounding, and nothing a
+// declared delta or a page-derived tolerance should absorb.
+//
+// THE GENERAL GOVERNMENT SUB-BLOCK IS NOT ONE OF THOSE FOUR and misses by
+// $170,000 of its own, seventeen units. Keeping the two counts apart matters
+// here more than anywhere: a review pass "corrected" internal/check's $100,000
+// to that $170,000 and a later pass corrected it back, because an intermediate
+// draft of the mapping file had quietly redefined "four blocks" to mean the four
+// this file MAPS. Four means the four the PAGE prints.
 //
 // The expenditure figure is the TOP-LEVEL reading, the one that ties exactly in
 // FY2025, so FY2024 fails under either reading. An earlier version of this

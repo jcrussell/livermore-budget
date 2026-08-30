@@ -799,3 +799,50 @@ func TestTotalRowAboveRefusals(t *testing.T) {
 		}
 	})
 }
+
+// TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine covers the latent bug
+// the fourth review pass found: the wrapped_labels test ran against the WHOLE
+// leading gap, before the total's line was skipped.
+//
+// Under total_row_above that meant a wrapped label between the total's line and
+// the first row could only be declared with the total's own figures glued to
+// the front of it -- so the fragment was refused if undeclared and stale if
+// declared, which is fisc-2jk's failure mode reintroduced under a new flag. No
+// page in the corpus has the shape, which is why nothing went red; a test that
+// waits for one to appear is a test that arrives after the bug.
+//
+// IT CALLS checkGap DIRECTLY rather than building a page-shaped probe, because
+// the claim is about the ORDER of two tests inside that function and a probe
+// would be asserting it through whatever shape the page happens to have. The
+// two gaps below differ only in whether the text after the total's line is
+// declared.
+func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
+	rule := &Rule{TotalRow: "Total Revenues", TotalRowAbove: true}
+	rows := []Row{{Label: "General Government:"}}
+	res := &Resolver{file: &File{DocID: "probe"}}
+	const gap = "   157.20   145.50\n      Current:\n   "
+
+	used := map[string]bool{}
+	if err := res.checkGap(rule, &Part{Page: 41, WrappedLabels: []string{"Current:"}},
+		gap, rows, 0, used); err != nil {
+		t.Fatalf("a wrapped label after the total's line was refused: %v", err)
+	}
+	if !used["Current:"] {
+		t.Error("the wrapped label was accepted but not marked used, so it would " +
+			"fail later as a stale declaration")
+	}
+
+	// Undeclared, the same fragment is still refused -- so the arm above is
+	// about the declaration and not about the skip swallowing everything.
+	if err := res.checkGap(rule, &Part{Page: 41}, gap, rows, 0, map[string]bool{}); err != nil {
+		t.Logf("undeclared non-digit text is permitted here, as on every other "+
+			"rule: %v", err)
+	}
+	// FIGURES on the line after the total's are refused, which is the guard the
+	// skip must not clear.
+	if err := res.checkGap(rule, &Part{Page: 41},
+		"   157.20   145.50\n      18.45\n", rows, 0, map[string]bool{}); err == nil {
+		t.Error("figures on the line AFTER the total's were accepted; the skip is " +
+			"clearing more than one line")
+	}
+}

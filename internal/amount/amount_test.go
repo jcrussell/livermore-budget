@@ -158,9 +158,13 @@ func TestParseRejects(t *testing.T) {
 // it would mean a cell whose figure the extractor lost, leaving only the mark
 // it was printed with, reads as a value rather than as the failure it is.
 //
-// Whatever eventually fixes fisc-yun belongs in the reader, which knows how
-// many amounts it is looking for and can see a whole line. This parser sees one
-// token and must keep refusing this one.
+// The fix for fisc-yun DID land in the reader, which knows how many amounts it
+// is looking for and can see a whole line: mapping.dropCurrencyMarks drops a
+// token that is a currency mark and nothing else, in the labelled read. This
+// paragraph read "whatever eventually fixes fisc-yun belongs in the reader"
+// until the ACFR lane found several such sentences outliving that bead's close.
+// The rule here is unchanged and is what made that fix possible: this parser
+// sees one token and must keep refusing this one.
 func TestBareCurrencyMarkStaysARejection(t *testing.T) {
 	for _, token := range []string{"$", "$$", " $ "} {
 		if got, err := Parse(token, Dollars); err == nil {

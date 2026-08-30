@@ -574,16 +574,23 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		// words, are printed on every schedule, and are declared through
 		// column_headers rather than here. Requiring a declaration for undeclared
 		// leading text would demand one for every header on every part.
-		if trimmed := strings.TrimSpace(gap); slices.Contains(p.WrappedLabels, trimmed) {
-			used[trimmed] = true
-			return nil
-		}
 		// A total printed ABOVE its rows puts the block's own stated totals in
 		// this gap, on the section anchor's line, so the digit refusal below
 		// would fire on the very figures the rule went there to read. Skip that
 		// ONE line and no more: everything after it is still refused, so "the
 		// block starts too early" keeps its whole meaning for a rule that
 		// starts two lines early instead of one.
+		//
+		// IT RUNS BEFORE THE wrapped_labels TEST AND NOT AFTER, which is the
+		// order the first draft got wrong. Matching a wrapped label against the
+		// whole gap first meant that under total_row_above the label had to be
+		// declared WITH the total's figures glued to the front of it, which no
+		// author would write -- so a page wrapping a label between the total's
+		// line and the first row had a fragment that was refused if undeclared
+		// and stale if declared. That is fisc-2jk's failure mode exactly,
+		// reintroduced under a new flag. Skipping first leaves every check below
+		// looking at the same shape it sees on every other rule, and for a rule
+		// without the flag the skip is a no-op, so nothing else changes.
 		//
 		// IndexByte-guarded, deliberately, and not strings.Cut: Cut returns an
 		// empty remainder when there is no newline at all, which would make the
@@ -604,6 +611,10 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 						"a row on that same line means the anchor matched elsewhere")
 			}
 			gap = gap[nl+1:]
+		}
+		if trimmed := strings.TrimSpace(gap); slices.Contains(p.WrappedLabels, trimmed) {
+			used[trimmed] = true
+			return nil
 		}
 		// NOTE: unmapped_text is deliberately NOT honoured here. This gap is
 		// where column headers live and is already permissive about words, so
