@@ -9,12 +9,22 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// The three lines this identity is over. The set is exhaustive on purpose, and
-// the names are the ones internal/check/graph.go already declares -- this file
-// shipped a second spelling of two of them (categoryFundBalanceBeginning,
-// categoryFundBalanceEnding) beside the existing categoryFundBalance* pair, which is one
-// concept with two names in one package. graph.go's comment explains why THOSE
-// restate internal/project's constants; there was no such reason for a third set.
+// categoryFundBalanceChange is the third line this identity is over. The other
+// two come from internal/check/graph.go, which already declared them: this file
+// first shipped a second spelling of both, one concept with two names in one
+// package.
+//
+// THE CHANGE LINE STAYS HERE AND IS NOT ADDED TO THAT BLOCK, which is where the
+// de-duplication first put it and where it falsified three sentences at once.
+// graph.go introduces its constants as "the two rows pp.66-67 print that are
+// STOCKS rather than flows ... the projection records the facts and draws no
+// link", and as a restatement of "two unexported constants in internal/project".
+// fund-balance/change is none of those: it is a flow, the projection DOES draw a
+// link for it, and graph.go's own stock predicate excludes it. Three constants
+// under a comment saying two, one of them the opposite of what it describes.
+const categoryFundBalanceChange = "fund-balance/change"
+
+// The set of three is exhaustive on purpose.
 //
 // There is a FOURTH fund_balance category -- fund-balance/reserve-increase, the
 // spine's ADDITION TO RESERVES -- and it is NOT a term of this identity. It is a

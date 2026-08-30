@@ -26,7 +26,6 @@ import (
 // against a definition that has moved.
 const (
 	categoryFundBalanceBeginning = "fund-balance/beginning"
-	categoryFundBalanceChange    = "fund-balance/change"
 	categoryFundBalanceEnding    = "fund-balance/ending"
 )
 

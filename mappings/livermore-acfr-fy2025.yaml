@@ -189,7 +189,13 @@ rules:
       MEASURED, not argued: give the "Transfers in" row here a category and a
       matching kind instead of skip, rebuild, and the store publishes the page's
       single printed 0.53 TWICE -- $1,060,000 of ACFR transfers/in where the
-      page prints $530,000 -- at 40 passed, 0 failed under fisc verify --strict.
+      page prints $530,000 -- with fisc verify --strict reporting ZERO FAILED.
+      That measurement was taken at 0448a5b, when the run read 40 passed; it has
+      read 41 since fund-balance-identity landed one commit later, and three
+      review passes quoted 41 in their own gate lines while reading past this
+      sentence. The count is deliberately not restated here: what matters is that
+      nothing fails, and a count copied into a comment is the defect AGENTS.md's
+      "Before you quote a number" exists to name.
       The fact ids differ because rule_id is in the hashed tuple, so
       CheckUniqueIDs sees nothing; both facts re-parse, both offsets land on
       their token, and no scope-to-scope check applies. It goes red ONLY if the

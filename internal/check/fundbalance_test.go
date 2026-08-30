@@ -215,40 +215,70 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 	}
 }
 
-// TestFundBalanceFindingsAlwaysNameASubject is the test the second review pass
-// was owed, and it is written over BOTH arms because the defect it guards was
-// fixed in one arm and reintroduced in the other by the same commit.
+// TestFundBalanceFindingsAlwaysNameASubject covers BOTH arms that emit a
+// finding, and it is table-driven because its first version did not.
 //
-// A finding whose Subject is "" addresses nothing. The missing-lines arm chose
-// its id by ranging a map (non-reproducible across runs); the fix walked the
-// three categories in order; the duplicate arm then hard-coded the BEGINNING
-// line's id, which is "" on a balance that has no beginning line. Both now go
-// through balance.subject, and this asserts the property rather than the
-// implementation.
+// That version built one balance with no beginning line AND a duplicated ending
+// line, and asserted no finding had an empty subject. It looked like it covered
+// both arms. It covered one: the duplicate arm runs first and `continue`s, so
+// the missing-lines arm was never reached. MEASURED -- reverting that arm to
+// finding(b.ids[categoryFundBalanceBeginning], ...), which is the exact defect
+// the first review pass fixed there, left the whole internal/check suite GREEN.
+// A test named for a property, passing on the bug it was written for.
+//
+// So the two shapes are separate cases now, and each is reachable only through
+// the arm it is named for.
 func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
-	// A balance with NO beginning line, whose ending line is duplicated: the
-	// exact shape that produced subject="".
-	var cells []testCell
-	for _, c := range fixtureCells {
-		if c.category == categoryFundBalanceBeginning && c.group == "general" {
-			continue
+	// Both cases drop general's BEGINNING line, which is the id both arms used
+	// to reach for; a balance that still has one cannot show the defect.
+	withoutBeginning := func() []testCell {
+		var out []testCell
+		for _, c := range fixtureCells {
+			if c.category == categoryFundBalanceBeginning && c.group == "general" {
+				continue
+			}
+			out = append(out, c)
 		}
-		cells = append(cells, c)
-		if c.category == categoryFundBalanceEnding && c.group == "general" {
-			cells = append(cells, testCell{c.kind, c.category, c.group, c.cents + 999})
-		}
+		return out
 	}
 
-	res := fundBalanceResult(t, cells)
-	if res.Status != StatusFail {
-		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-	}
-	if len(res.Findings) == 0 {
-		t.Fatal("no findings, so this test asserts nothing about their subjects")
-	}
-	for _, f := range res.Findings {
-		if f.Subject == "" {
-			t.Errorf("finding %q has an empty subject; it addresses nothing", f.Detail)
-		}
+	for _, tt := range []struct {
+		name  string
+		cells func() []testCell
+	}{
+		{
+			// Reaches the MISSING-LINES arm: two of three lines, no duplicate.
+			name:  "a balance missing a line",
+			cells: withoutBeginning,
+		},
+		{
+			// Reaches the DUPLICATE arm, which returns before the one above.
+			name: "a balance with a duplicated line",
+			cells: func() []testCell {
+				var out []testCell
+				for _, c := range withoutBeginning() {
+					out = append(out, c)
+					if c.category == categoryFundBalanceEnding && c.group == "general" {
+						out = append(out, testCell{c.kind, c.category, c.group, c.cents + 999})
+					}
+				}
+				return out
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			res := fundBalanceResult(t, tt.cells())
+			if res.Status != StatusFail {
+				t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+			}
+			if len(res.Findings) == 0 {
+				t.Fatal("no findings, so this case asserts nothing about their subjects")
+			}
+			for _, f := range res.Findings {
+				if f.Subject == "" {
+					t.Errorf("finding %q has an empty subject; it addresses nothing", f.Detail)
+				}
+			}
+		})
 	}
 }

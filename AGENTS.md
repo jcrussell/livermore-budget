@@ -767,9 +767,11 @@ token's x actually lands in against the one the rule reads it as, and it fires
 before `amount.Parse` ever reaches a neighbour's label word. `geometry_test.go`
 pins the message shape.
 
-Be careful with CIP p40 as the worked example, though: `mappings/` holds one
-file and it maps the Budget Book only, so **no production rule reads that page
-at all**. The refusal above is reproducible for a CIP part you write yourself,
+Be careful with CIP p40 as the worked example, though: `mappings/` holds two
+files, mapping the Budget Book and one page of the ACFR, so **no production rule
+reads the CIP at all**. (That premise used to read "holds one file and it maps
+the Budget Book only"; the conclusion survived the second document, the premise
+did not.) The refusal above is reproducible for a CIP part you write yourself,
 and that is the evidence — not a guard standing over committed facts.
 
 Which is why the honest statement is that **nobody has enumerated what is left**
