@@ -1331,17 +1331,18 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 			}
 		}
 	}
-	// A rule with no parts cannot collide on a column, and the parser refuses
-	// one elsewhere -- but the row's own declaration is still checkable, and
-	// leaving it out would make this arm depend on a guard in another function.
-	near := row.EffectiveColumn(Column{})
-	if cp.Fund == near.Fund && cp.FundGroup == near.FundGroup {
-		return cmdutil.WithHint(
-			errf(r.ID, "rows", "row %q: counterpart is the same category and the "+
-				"same fund as the row itself", row.Label),
-			"the two legs of one figure are told apart by their category and "+
-				"their fund; identical on both, they are one fact published twice")
-	}
+	// THERE IS NO ROW-ONLY FALLBACK AFTER THIS LOOP, and there was one for two
+	// commits. It compared row.EffectiveColumn(Column{}) unconditionally, so it
+	// re-imposed the refusal on exactly the cells the exemptions above exist to
+	// excuse: a row omitted from its only part, or colliding only with a skipped
+	// column, was refused by the fallback after the loop had correctly passed
+	// over it. Reproduced through Parse.
+	//
+	// It was written for "a rule with no parts", which validateRule has already
+	// refused twenty lines earlier ("is empty; a rule must name at least one
+	// page") in this same function. So its only reachable effect was the false
+	// refusal. A guard for a state the caller has already excluded is not
+	// defensive; it is a second, worse copy of the check.
 	return nil
 }
 

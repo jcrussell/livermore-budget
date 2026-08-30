@@ -61,7 +61,15 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			row := base()
 			tt.mut(&row)
-			rule := &Rule{ID: "r", Kind: KindTransferIn}
+			// THE RULE NEEDS A PART. checkCounterpart's collision arm walks the
+			// columns of every part, because a collision is per cell; a
+			// hand-built Rule{} with no parts has no cell for it to find.
+			// validateRule refuses a partless rule twenty lines before this is
+			// reached, so a no-part fixture here was testing a state the parser
+			// cannot produce -- and the row-only fallback that made it pass was
+			// itself a false refusal on omitted rows and skipped columns.
+			rule := &Rule{ID: "r", Kind: KindTransferIn,
+				Parts: []Part{{Page: 76, Columns: []Column{{FiscalYear: 2026}}}}}
 			err := checkCounterpart(rule, row, errfLike)
 			if err == nil {
 				t.Fatalf("no error; a counterpart that is %s must be refused", tt.name)
@@ -74,7 +82,9 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 
 	// And the shape that is correct is accepted, so the arms above are
 	// rejecting the defect rather than the feature.
-	if err := checkCounterpart(&Rule{ID: "r"}, base(), errfLike); err != nil {
+	wellFormed := &Rule{ID: "r",
+		Parts: []Part{{Page: 76, Columns: []Column{{FiscalYear: 2026}}}}}
+	if err := checkCounterpart(wellFormed, base(), errfLike); err != nil {
 		t.Errorf("a well-formed counterpart was refused: %v", err)
 	}
 }
@@ -384,6 +394,39 @@ rules:
 	if _, err := Parse(strings.NewReader(omitted), "omitted.yaml"); err != nil {
 		t.Errorf("a counterpart colliding only with a column of a part that OMITS "+
 			"this row was refused: %v\nthe row has no cell there to collide with", err)
+	}
+
+	// THE SHARPEST CASE, and the one a row-only fallback after the loop got
+	// wrong: a row omitted from its ONLY part, declaring its own fund and group,
+	// with a counterpart repeating them. The loop passes over the part
+	// correctly; a fallback comparing row.EffectiveColumn(Column{}) then refused
+	// anyway, on a row that publishes no cell anywhere in the document.
+	const omittedEverywhere = `schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+rules:
+  - id: r
+    kind: transfer_in
+    basis: adopted
+    units: dollars
+    parts:
+      - page: 76
+        section: "S"
+        stop_at: "E"
+        omitted_rows: [{label: "Transfer From Low Income Hsng"}]
+        columns:
+          - {fund_group: general, fiscal_year: 2026}
+    rows:
+      - label: "Transfer From Low Income Hsng"
+        category: transfers/in
+        fund: 200
+        fund_group: special-revenue
+        counterpart: {category: transfers/in, kind: transfer_out, fund: 200, fund_group: special-revenue}
+      - label: "Transfer From Water"
+        category: transfers/in
+`
+	if _, err := Parse(strings.NewReader(omittedEverywhere), "everywhere.yaml"); err != nil {
+		t.Errorf("a counterpart on a row omitted from its ONLY part was refused: %v\n"+
+			"the row publishes no cell anywhere, so there is nothing to collide with", err)
 	}
 
 	// And with the omission removed, p77's column is live for this row and the

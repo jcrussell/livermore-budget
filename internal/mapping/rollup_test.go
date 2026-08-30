@@ -738,29 +738,17 @@ func TestFirstDifferingColumnRefusesRunsOfDifferentWidth(t *testing.T) {
 			if idx != 0 {
 				t.Errorf("idx = %d, want 0; an incomparable pair has no differing column", idx)
 			}
-			// AND THE OLD RETURN VALUE IS SHOWN TO BE UNUSABLE, which is the
-			// whole defect: min(len(a), len(b)) is a valid index into the LONGER
+			// WHY THE OLD RETURN VALUE WAS UNUSABLE IS HISTORY AND IS NOT
+			// ASSERTED HERE, after three attempts to assert it produced three
+			// tautologies. min(len(a), len(b)) is a valid index into the LONGER
 			// run and exactly one past the end of the shorter, so the caller's
-			// first indexing operation succeeded and its second panicked.
+			// first indexing operation succeeded and its second panicked -- but
+			// that is a property of `min`, not of anything in this tree. The
+			// code it describes is gone, and AGENTS.md's rule applies: a claim
+			// whose baseline no longer exists cannot be checked.
 			//
-			// Both halves are asserted. An earlier version wrote the condition
-			// as `old < len(a) && old < len(b)`, which is tautologically false --
-			// old IS the smaller length -- so the line billed as demonstrating
-			// the defect could never fire.
-			old := min(len(tt.a), len(tt.b))
-			shorter, longer := min(len(tt.a), len(tt.b)), max(len(tt.a), len(tt.b))
-			if old != shorter {
-				t.Errorf("min(%d, %d) = %d, want %d", len(tt.a), len(tt.b), old, shorter)
-			}
-			if old < shorter {
-				t.Errorf("%d is a valid index into the shorter run of %d, so this case "+
-					"does not reproduce the out-of-range index", old, shorter)
-			}
-			if old >= longer {
-				t.Errorf("%d is out of range for the longer run of %d too, so the "+
-					"caller's FIRST indexing operation would have panicked and the "+
-					"defect would not have been the subtle one it was", old, longer)
-			}
+			// What IS checkable is above and is proven by mutation: restoring
+			// the min() return makes `comparable` true and this test fails.
 		})
 	}
 
