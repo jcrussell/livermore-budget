@@ -24,7 +24,8 @@ import (
 // NOT here: each has its own check, because each is answered by a different file —
 // or, for departments, by no file yet — and one check reporting a single verdict
 // over all four would mean a real category typo and an unbuilt registry sharing an
-// id. That id is what a future data/reconciliations.yaml names.
+// id. Each is separately greppable in the report, and separately declarable in
+// vacuity.go, which is what having its own id buys.
 type factVocabulary struct{}
 
 var _ Check = (*factVocabulary)(nil)

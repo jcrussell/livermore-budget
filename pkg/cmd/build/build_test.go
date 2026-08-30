@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
@@ -330,7 +331,10 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 		},
 		// Empty rather than nil: a key that becomes null when a list is empty
 		// makes a consumer handle two shapes for one meaning, which is the
-		// contract newReport states.
+		// contract newReport states. ToleranceSlack is here for the same
+		// reason -- no rule in this fixture declares printed_decimals, and the
+		// key must still round-trip as [] rather than null.
+		ToleranceSlack:    []amount.Cents{},
 		RollupsUnasserted: []UnassertedRollup{},
 		Omissions: []DeclaredOmission{
 			{RuleID: "transfers-out", Page: 77, RowLabel: "Enterprise Funds"},

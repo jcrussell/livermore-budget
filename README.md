@@ -22,7 +22,7 @@ plainly is part of the point.
 | 2025-2030 Capital Improvement Plan | 323 | all | 0 |
 | FY 2024-25 Annual Comprehensive Financial Report | 195 | all | **1** (p. 41 in part) |
 
-Those pages yield **1,765 facts** across six schedules, each of which reconciles
+Those pages yield **1,780 facts** across six schedules, each of which reconciles
 against something the city itself printed:
 
 | schedule | facts | what it is | fiscal years |
@@ -32,7 +32,7 @@ against something the city itself printed:
 | pp. 167–170 | 196 | General Fund department × object category | the same four |
 | p. 76 | 88 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
 | pp. 85–125 | 312 | which funds pay for each department | 2024 actual, 2025 revised, 2026 + 2027 adopted |
-| ACFR p. 41 | 5 | the General Fund's transfers and fund balances, audited | 2025 audited |
+| ACFR p. 41 | 20 | the General Fund's revenues, transfers, General Government divisions and fund balances, audited | 2025 audited |
 
 The spine gives the all-funds picture the chart draws:
 
@@ -54,11 +54,13 @@ together, one document per printed column. `provenance.html` is the record store
 itself: every fact, its page, and the text it was read from.
 
 Two schedules are published and checked but **not yet drawn**: pp.85-125 (312
-facts) and p.76 (88). `fisc verify` declares each undrawn schedule with the
-reason it is undrawn rather than leaving it unsaid, and retires the declaration
-by itself the moment a projection starts drawing one — which is how pp.167-170
-left this list. The CIP and the ACFR are extracted and entirely unmapped. See
-`bd ready`.
+facts), p.76 (88) and ACFR p.41 (20). `fisc verify` declares each undrawn
+schedule with the reason it is undrawn rather than leaving it unsaid, and retires
+the declaration by itself the moment a projection starts drawing one — which is
+how pp.167-170 left this list. The CIP is extracted and entirely unmapped; the
+ACFR is extracted and one page of it is mapped. (That last sentence read "the CIP
+and the ACFR are extracted and entirely unmapped" until this was written, and had
+been false since the ACFR's first facts landed.) See `bd ready`.
 
 ## Build and look at it
 

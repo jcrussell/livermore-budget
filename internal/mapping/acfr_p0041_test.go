@@ -35,12 +35,20 @@ var (
 // acfrRow reads the one line whose label begins with want and returns its
 // figures, at millions.
 //
-// Bare "$" tokens are dropped rather than parsed. That is not tidying: the
-// revenue block prints a STANDALONE "$" before each figure on its first row
-// ("$       60.42    $        57.70"), which is fisc-yun -- the same shape that
-// makes ACFR p177 unreadable to the resolver. It is one of the two reasons the
-// revenue block is unmapped, and TestACFRp0041RevenueBlockCannotBeResolved
-// asserts it rather than leaving it to this helper's silence.
+// Bare "$" tokens are dropped rather than parsed, because this helper reads the
+// page with strings.Fields and the resolver's dropCurrencyMarks is not in play.
+//
+// THE COMMENT HERE USED TO SAY SOMETHING ELSE AND IT WAS FALSE. It read: the
+// standalone "$" on the first revenue row "is fisc-yun ... one of the two
+// reasons the revenue block is unmapped". fisc-yun is CLOSED, dropCurrencyMarks
+// reads a lone mark in the labelled path, and the revenue block is now MAPPED --
+// the orphan "0.0" was the only blocker and it has an honest declaration
+// (fisc-hcus). This was the last surviving copy of a claim that had already been
+// corrected in the mapping file, internal/check/coverage.go and testdata/README.md,
+// and it survived because nothing reads a helper's doc comment. The assertion
+// that the marks are not a blocker is in
+// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared, where running the rule
+// settles it.
 func acfrRow(t *testing.T, want string) []amount.Cents {
 	t.Helper()
 
@@ -266,23 +274,11 @@ func TestACFRp0041PriorYearColumnDoesNotReconcile(t *testing.T) {
 	}
 }
 
-// TestACFRp0041RevenueBlockCannotBeResolved runs the rule that would map the
-// revenue block and asserts the resolver refuses it, naming the orphan.
-//
-// It is written as a real read rather than as assertions about the page's text
-// because the first draft of this test was assertions about the text, and one of
-// them was WRONG. It claimed a second blocker -- the first revenue row prints a
-// standalone "$" before each figure, which is the shape fisc-yun is about -- and
-// fisc-yun is CLOSED: dropCurrencyMarks handles a lone currency mark in the
-// labelled read, and all ten rows here read through it without complaint. The
-// claim came from a bead title instead of from the tree. Running the rule cannot
-// make that mistake: whatever refuses, refuses.
-//
-// So the orphan "0.0" is the ONLY thing standing between this block and
-// publication (fisc-hcus). If it acquires an honest declaration, this test goes
-// red by succeeding, and the rule file's paragraph has to be rewritten.
-func TestACFRp0041RevenueBlockCannotBeResolved(t *testing.T) {
-	const yaml = `schema_version: 1
+// acfrRevenueProbe is the revenue block's rule WITHOUT the unmapped_text
+// declaration the production rule carries. Two tests read it -- one adds the
+// declaration and one does not -- so the difference between them is exactly the
+// declaration and nothing else.
+const acfrRevenueProbe = `schema_version: 1
 doc_id: livermore-acfr-fy2025
 rules:
   - id: probe
@@ -311,6 +307,63 @@ rules:
       - {label: "Use of money and property", category: use-of-money-and-property}
       - {label: "Miscellaneous", category: miscellaneous-revenue}
 `
+
+// acfrGeneralGovernmentProbe is acfr-p0041-gf-general-government as
+// mappings/livermore-acfr-fy2025.yaml declares it. It is spelled here rather
+// than loaded from that file because the tests below mutate it, and a test that
+// edited the committed mapping would be checking whatever the edit produced.
+const acfrGeneralGovernmentProbe = `schema_version: 1
+doc_id: livermore-acfr-fy2025
+rules:
+  - id: probe-general-government
+    kind: expenditure
+    basis: audited
+    scope: probe
+    units: millions
+    printed_decimals: 2
+    total_row: "General Government:"
+    total_row_above: true
+    parts:
+      - page: 41
+        section: "General Government:"
+        stop_at: "Fire"
+        columns:
+          - {fund_group: general, fiscal_year: 2025}
+          - {fiscal_year: 2024, skip: true}
+    rows:
+      - {label: "City Council", category: general-government}
+      - {label: "City Manager", category: general-government}
+      - {label: "City Attorney", category: general-government}
+      - {label: "Administrative Services", category: general-government}
+      - {label: "General Services", category: general-government}
+`
+
+// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared runs the rule that maps the
+// revenue block WITHOUT the unmapped_text declaration the production rule
+// carries, and asserts the resolver refuses it, naming the orphan.
+//
+// It is written as a real read rather than as assertions about the page's text
+// because the first draft of this test was assertions about the text, and one of
+// them was WRONG. It claimed a second blocker -- the first revenue row prints a
+// standalone "$" before each figure, which is the shape fisc-yun is about -- and
+// fisc-yun is CLOSED: dropCurrencyMarks handles a lone currency mark in the
+// labelled read, and all ten rows here read through it without complaint. The
+// claim came from a bead title instead of from the tree. Running the rule cannot
+// make that mistake: whatever refuses, refuses.
+//
+// WHAT IT ASSERTS CHANGED WHEN fisc-hcus LANDED AND THE NAME CHANGED WITH IT.
+// It used to be called ...CannotBeResolved and its comment ended "if it acquires
+// an honest declaration, this test goes red by succeeding". It did not, and
+// would not have: this probe rule declares no unmapped_text, so it stays refused
+// whatever the production rule does, and a test still named for a page that
+// cannot be read would have gone on passing beside a mapping file that reads it.
+// The assertion is now the useful half of the same read -- that the declaration
+// is LOAD-BEARING, and removing it puts the block back out of reach.
+//
+// Its sibling TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared is the
+// other half, and neither is worth much alone.
+func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
+	const yaml = acfrRevenueProbe
 	f, err := Parse(strings.NewReader(yaml), "probe.yaml")
 	if err != nil {
 		t.Fatalf("the rule does not even parse: %v", err)
@@ -323,8 +376,9 @@ rules:
 
 	_, _, err = r.Values(rule, &rule.Parts[0])
 	if err == nil {
-		t.Fatal("the revenue block now resolves; fisc-hcus is fixed and " +
-			"mappings/livermore-acfr-fy2025.yaml should publish it")
+		t.Fatal("the block resolved with no unmapped_text declaration; the " +
+			"declaration in mappings/livermore-acfr-fy2025.yaml is doing nothing, " +
+			"and the orphan is being admitted by something else")
 	}
 	// The refusal must be ABOUT THE ORPHAN. A test satisfied by any error would
 	// pass on a mistyped anchor, which is how the first draft of this file's
@@ -347,6 +401,113 @@ rules:
 	if bare != 2 {
 		t.Errorf("got %d standalone \"$\" tokens on the first revenue row, want 2; "+
 			"this row is the evidence that dropCurrencyMarks handles them", bare)
+	}
+}
+
+// TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared is the other half of
+// the test above: the same rule, plus the one unmapped_text entry the production
+// rule carries, reads all ten rows and ties to the printed total EXACTLY.
+//
+// The exactness is the point and is why this block declares no
+// printed_decimals. A tolerance no column needs is refused, so a rule that
+// reached for one here would not build -- see
+// TestPrintedDecimalsIsRefusedWhenNoColumnNeedsIt.
+func TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared(t *testing.T) {
+	f, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+		"        columns:", `        unmapped_text:
+          - text: "0.0"
+            note: "the spreadsheet artefact this test is about"
+        columns:`, 1)), "probe.yaml")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	rule := &f.Rules[0]
+	r, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	values, _, err := r.Values(rule, &rule.Parts[0])
+	if err != nil {
+		t.Fatalf("the declared block does not resolve: %v", err)
+	}
+	// Ten rows, one unskipped column. A count assertion is what stops this
+	// passing on a read that found some other block.
+	if got, want := len(values), 10; got != want {
+		t.Errorf("got %d values, want %d", got, want)
+	}
+	res, err := r.CheckTotals(rule, &rule.Parts[0])
+	if err != nil {
+		t.Fatalf("CheckTotals: %v", err)
+	}
+	// Nothing tied by declaration and nothing by tolerance: the page's own
+	// arithmetic holds here at zero slack.
+	if res.Declared != 0 || res.Tolerated != 0 {
+		t.Errorf("declared %d and tolerated %d columns, want 0 and 0; ACFR p41's "+
+			"revenue block ties to 157.20 exactly", res.Declared, res.Tolerated)
+	}
+}
+
+// TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance is the
+// arithmetic behind acfr-p0041-gf-general-government, and it is the ONLY
+// consumer of a document-derived tolerance in this corpus (fisc-1wr.2).
+//
+// The five divisions print 18.44 against a subtotal of 18.45 printed ABOVE them
+// (fisc-h96o). The page is captioned "(in Millions)" and prints two decimals, so
+// the unit is $10,000 and the bound is half a unit per row: $25,000 over five
+// terms, against a $10,000 error. Read the CAPTION instead of the printed digits
+// and the same sum would carry $2,500,000, which is a hundredfold wider and is
+// the mistake the declaration exists to prevent.
+func TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance(t *testing.T) {
+	f, err := Parse(strings.NewReader(acfrGeneralGovernmentProbe), "probe.yaml")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	rule := &f.Rules[0]
+	r, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	res, err := r.CheckTotals(rule, &rule.Parts[0])
+	if err != nil {
+		t.Fatalf("CheckTotals: %v", err)
+	}
+	if res.Tolerated != 1 || len(res.Slack) != 1 {
+		t.Fatalf("tolerated %d column(s) with %d slack figure(s), want 1 and 1; "+
+			"this block is the tolerance's only consumer and a clean tie here "+
+			"would mean the page changed", res.Tolerated, len(res.Slack))
+	}
+	// The FIGURE, not just the count. A test asserting only that something was
+	// tolerated would pass on a tolerance ten times too wide.
+	if got, want := res.Slack[0], amount.Cents(1_000_000); got != want {
+		t.Errorf("slack = %s, want %s (0.01 million, one printed unit)", got, want)
+	}
+	// And it is not a clean tie: Columns counts it, Tolerated says how it tied.
+	if got, want := res.Columns, 1; got != want {
+		t.Errorf("compared %d columns, want %d", got, want)
+	}
+}
+
+// TestACFRp0041GeneralGovernmentStopsAtFire pins the one assumption the
+// production rule makes that the resolver does not check for itself.
+//
+// Block resolves stop_at with a plain strings.Index and no uniqueness guard,
+// unlike section, which goes through anchor() and refuses an ambiguous match.
+// "Fire" is a four-character substring; it is unique after this rule's anchor
+// today, and that is a property of the page rather than of the code, so it is
+// asserted here. fisc-km5n owns giving stop_at a guard of its own.
+func TestACFRp0041GeneralGovernmentStopsAtFire(t *testing.T) {
+	b, err := os.ReadFile(acfrStatementText)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	text := string(b)
+	at := strings.Index(text, "General Government:")
+	if at < 0 {
+		t.Fatal(`the page no longer prints "General Government:"`)
+	}
+	if got := strings.Count(text[at:], "Fire"); got != 1 {
+		t.Errorf(`"Fire" occurs %d times after the General Government anchor, want 1; `+
+			"the rule's stop_at would bind to whichever came first", got)
 	}
 }
 

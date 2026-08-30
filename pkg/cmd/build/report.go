@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
@@ -41,6 +43,21 @@ type Report struct {
 	// $1 of the city's rounding" are different claims, and a build that stated
 	// the first while meaning the second would be overstating its evidence.
 	ColumnsTiedByDeclaration int `json:"columns_tied_by_declaration"`
+
+	// ColumnsTiedByTolerance is how many of ColumnsTied tied only inside the
+	// tolerance a rule's printed_decimals derives from its page (fisc-1wr.2),
+	// and ToleranceSlack what those columns were out by.
+	//
+	// SAME REASON AS ColumnsTiedByDeclaration, and it is the second half of the
+	// same discipline: a column that ties within half a printed unit per row has
+	// not tied EXACTLY, and a report adding the two together would publish this
+	// corpus as tighter than it is. The difference between the two counters is
+	// worth keeping straight -- a declaration names the exact figure the
+	// document is out by, a tolerance bounds an unnamed one -- so a reader can
+	// tell "the city's arithmetic is off by a stated $1" from "this page rounds
+	// and we did not have to say by how much".
+	ColumnsTiedByTolerance int            `json:"columns_tied_by_tolerance"`
+	ToleranceSlack         []amount.Cents `json:"tolerance_slack"`
 
 	// SpanningRulesChecked is how many of the checks above were rule-level
 	// rather than per-part -- a block whose rows straddle a page break, tied
@@ -117,6 +134,7 @@ const (
 // a list is empty makes a consumer handle two shapes for one meaning.
 func newReport() *Report {
 	return &Report{
+		ToleranceSlack:    []amount.Cents{},
 		PartsUnchecked:    []UncheckedPart{},
 		RollupsUnasserted: []UnassertedRollup{},
 		Omissions:         []DeclaredOmission{},
@@ -151,6 +169,8 @@ func (rep *Report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mappi
 		// count coverage this build did not earn.
 		rep.ColumnsTied += res.Columns
 		rep.ColumnsTiedByDeclaration += res.Declared
+		rep.ColumnsTiedByTolerance += res.Tolerated
+		rep.ToleranceSlack = append(rep.ToleranceSlack, res.Slack...)
 		return nil
 	case errors.Is(err, mapping.ErrNoStatedTotals):
 		rep.unchecked(rule, p, reasonNoStatedTotals)
@@ -182,6 +202,8 @@ func (rep *Report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) 
 	rep.PartsChecked += len(rule.Parts)
 	rep.ColumnsTied += res.Columns
 	rep.ColumnsTiedByDeclaration += res.Declared
+	rep.ColumnsTiedByTolerance += res.Tolerated
+	rep.ToleranceSlack = append(rep.ToleranceSlack, res.Slack...)
 	return nil
 }
 
@@ -252,6 +274,19 @@ func (rep *Report) print(ios *iostreams.IOStreams, asJSON bool) error {
 		fmt.Fprintf(w, "%d of those columns %s only to a declared delta in the document's own arithmetic\n",
 			rep.ColumnsTiedByDeclaration,
 			plural(rep.ColumnsTiedByDeclaration, "ties", "tie"))
+	}
+	if rep.ColumnsTiedByTolerance > 0 {
+		// The slack is printed, not just the count. A tolerance is derived from
+		// the page and a reader cannot check that derivation from a count alone;
+		// what they can check is the figure, against the page.
+		amounts := make([]string, 0, len(rep.ToleranceSlack))
+		for _, c := range rep.ToleranceSlack {
+			amounts = append(amounts, c.String())
+		}
+		fmt.Fprintf(w, "%d of those columns %s only within the tolerance the page's own printed precision allows, by %s\n",
+			rep.ColumnsTiedByTolerance,
+			plural(rep.ColumnsTiedByTolerance, "ties", "tie"),
+			strings.Join(amounts, ", "))
 	}
 	if rep.RollupsAsserted > 0 {
 		fmt.Fprintf(w, "%d printed %s covering several rules %s, over %d %s\n",

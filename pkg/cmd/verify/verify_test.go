@@ -325,7 +325,7 @@ func TestJSONRoundTripsWithEveryKeyPresent(t *testing.T) {
 	}
 	for _, res := range results {
 		if diff := cmp.Diff([]string{
-			"check_id", "delta_cents", "description", "findings", "reconciliation_id",
+			"check_id", "description", "findings",
 			"status", "subjects", "summary", "tier",
 		}, sortedKeys(res)); diff != "" {
 			t.Errorf("result keys (-want +got):\n%s", diff)

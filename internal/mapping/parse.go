@@ -580,6 +580,7 @@ func validateRule(r *Rule, errf errFunc) error {
 		// would fail later as a stale declaration rather than here as the typo
 		// it is. Blank and duplicate entries are refused for the same reason.
 		seenWrapped := map[string]bool{}
+		seenUnmapped := map[string]bool{}
 		// A LABELS_FROM PART CANNOT WRAP A LABEL, because it carries none.
 		// Row identity there is positional: the part routes to positionalValues,
 		// which never reads this field and never staleness-checks it, so a
@@ -616,7 +617,71 @@ func validateRule(r *Rule, errf errFunc) error {
 			if seenWrapped[w] {
 				return errf(r.ID, field, "%q is listed twice", w)
 			}
+			// A WRAPPED LABEL IS A LABEL, and until this refusal landed that
+			// was prose rather than a check. Measured before adding it:
+			// wrapped_labels: ["0.0"] on ACFR p41's revenue block PARSED,
+			// RESOLVED all ten rows and tied to the printed total exactly, with
+			// nothing objecting -- so the page's orphan figure could be
+			// published under a declaration asserting the page had wrapped a
+			// label onto its own line, which it had not. That is the shape
+			// fisc-hcus exists to give an honest home to (unmapped_text), and
+			// the honest home is worth nothing while the dishonest one still
+			// works.
+			//
+			// All five entries the corpus declares -- "Devel", "Development
+			// Admin", "Services", "Administration", "Connection" -- are refused
+			// by amount.Parse, so this costs the committed rules nothing.
+			if _, err := amount.Parse(w, r.Units); err == nil {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "%q is a currency amount", w),
+					"wrapped_labels declares that the page wrapped a row's LABEL "+
+						"onto its own line; a figure there belongs to no row and "+
+						"is declared with unmapped_text, which says so")
+			}
 			seenWrapped[w] = true
+		}
+		// unmapped_text is the mirror of the block above, and every arm is the
+		// mirror of one of its arms: same trimmed matching, same blank and
+		// duplicate refusals, same labels_from refusal for the same reason
+		// (fisc-ekj -- a positional part reads no gaps, so the declaration
+		// would be accepted and inert). The one INVERTED arm is amount.Parse:
+		// a wrapped label must not be a figure and this must be one.
+		if p.LabelsFrom != 0 && len(p.UnmappedText) > 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, fmt.Sprintf("parts[page %d].unmapped_text", p.Page),
+					"is declared on a part whose labels_from takes its row labels from page %d",
+					p.LabelsFrom),
+				"unmapped_text is checked against the gaps between a part's own "+
+					"labelled rows; a label-less part reads none, so the "+
+					"declaration would be accepted and never looked at")
+		}
+		for _, u := range p.UnmappedText {
+			field := fmt.Sprintf("parts[page %d].unmapped_text", p.Page)
+			if strings.TrimSpace(u.Text) == "" {
+				return errf(r.ID, field, "has an entry with no text")
+			}
+			if strings.TrimSpace(u.Text) != u.Text {
+				return errf(r.ID, field,
+					"%q has leading or trailing whitespace; it is matched against "+
+						"the trimmed text of the gap", u.Text)
+			}
+			if strings.TrimSpace(u.Note) == "" {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "%q has no note", u.Text),
+					"the note is why this is a declaration and not a silent skip; "+
+						"say what the page prints there and why it belongs to no row")
+			}
+			if _, err := amount.Parse(u.Text, r.Units); err != nil {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "%q is not a figure: %v", u.Text, err),
+					"unmapped_text declares a FIGURE the page prints that belongs "+
+						"to no row; text the page wrapped from a row's label is "+
+						"declared with wrapped_labels, which says that instead")
+			}
+			if seenUnmapped[u.Text] {
+				return errf(r.ID, field, "%q is listed twice", u.Text)
+			}
+			seenUnmapped[u.Text] = true
 		}
 		if len(p.Columns) == 0 {
 			return errf(r.ID, fmt.Sprintf("parts[page %d].columns", p.Page), "is empty")
@@ -773,6 +838,12 @@ func validateRule(r *Rule, errf errFunc) error {
 		}
 	}
 
+	if err := validateTotalRowAbove(r, errf); err != nil {
+		return err
+	}
+	if err := validatePrintedDecimals(r, errf); err != nil {
+		return err
+	}
 	if err := validateTotalRowKinds(r, errf); err != nil {
 		return err
 	}
@@ -780,6 +851,123 @@ func validateRule(r *Rule, errf errFunc) error {
 		return err
 	}
 	return validateTotalSpansParts(r, errf)
+}
+
+// validatePrintedDecimals checks the preconditions of a document-derived
+// tolerance. What it cannot check is the claim itself -- whether the page really
+// prints two decimals is a question about the document, and the resolver
+// answers it against the tokens it read.
+//
+// See Rule.PrintedDecimals for why each of these is a refusal rather than a
+// convention, and fisc-1wr.2 for the tier.
+func validatePrintedDecimals(r *Rule, errf errFunc) error {
+	if r.PrintedDecimals == nil {
+		return nil
+	}
+	d := *r.PrintedDecimals
+	if d < 0 {
+		return errf(r.ID, "printed_decimals", "is %d; a count of printed decimal places cannot be negative", d)
+	}
+	max, ok := amount.MaxDecimals(r.Units)
+	if !ok {
+		// Unreachable: units are validated above. Refusing rather than
+		// assuming keeps the arithmetic below from running on a zero scale.
+		return errf(r.ID, "printed_decimals", "cannot be checked against unknown units %q", string(r.Units))
+	}
+	if d > max {
+		return cmdutil.WithHint(
+			errf(r.ID, "printed_decimals", "is %d, but %s can represent only %d decimal places exactly",
+				d, string(r.Units), max),
+			"the tolerance is a whole number of cents derived from this count; "+
+				"a finer one would not be")
+	}
+	if r.Units == amount.Dollars {
+		return cmdutil.WithHint(
+			errf(r.ID, "printed_decimals", "declared on a rule printed in dollars"),
+			"a dollar-precision tolerance has no consumer in this corpus, and the "+
+				"dollar-level discrepancies it looks like it would cover are the "+
+				"city's own arithmetic rather than rounding -- p127's Total Property "+
+				"Taxes is $1 over 13 rows -- which stated_total_deltas names exactly "+
+				"and this must not absorb silently (fisc-2sd)")
+	}
+	if r.TotalRow == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, "printed_decimals", "declared without a total_row"),
+			"the tolerance applies to the comparison between the mapped rows and "+
+				"a printed total; with no total there is nothing for it to loosen")
+	}
+	if len(r.Parts) > 1 && !r.TotalSpansParts {
+		return cmdutil.WithHint(
+			errf(r.ID, "printed_decimals", "declared on a %d-part rule whose total does not span its parts", len(r.Parts)),
+			"such a rule is compared once PER PART, so the refusal of a tolerance "+
+				"no column needed would fire on whichever page happens to tie "+
+				"exactly; declare total_spans_parts, which makes it one comparison, "+
+				"or split the rule")
+	}
+	for i := range r.Parts {
+		if len(r.Parts[i].StatedTotalDeltas) == 0 {
+			continue
+		}
+		return cmdutil.WithHint(
+			errf(r.ID, fmt.Sprintf("parts[page %d].stated_total_deltas", r.Parts[i].Page),
+				"declared on a rule that also declares printed_decimals"),
+			"the two are disjoint on purpose: a delta names one exact figure the "+
+				"document is out by, a tolerance bounds an unnamed one, and a rule "+
+				"holding both offers a place to hide the difference between them")
+	}
+	return nil
+}
+
+// validateTotalRowAbove checks the preconditions of a total the document prints
+// above its own rows.
+//
+// THE SECTION-ANCHOR REQUIREMENT IS THE WHOLE MECHANISM, not a convenience. A
+// flag meaning only "the total is somewhere above" would be unbounded: no guard
+// in this package could say how far above, and checkGap's leading arm -- the one
+// thing standing between a block that starts too early and header figures read
+// as data -- would have to be retired to admit it. Requiring section ==
+// total_row pins the total to exactly one line, at a position Block already had
+// to resolve through anchor(), which refuses an ambiguous or missing one. The
+// resolver then skips that single line and refuses every digit after it.
+//
+// See Rule.TotalRowAbove and fisc-h96o.
+func validateTotalRowAbove(r *Rule, errf errFunc) error {
+	if !r.TotalRowAbove {
+		return nil
+	}
+	if r.TotalRow == "" {
+		return cmdutil.WithHint(
+			errf(r.ID, "total_row_above", "declared without a total_row"),
+			"total_row_above says WHERE the printed total is; total_row says "+
+				"which line it is, and there is nothing to find without it")
+	}
+	if r.TotalSpansParts {
+		return cmdutil.WithHint(
+			errf(r.ID, "total_row_above", "declared with total_spans_parts"),
+			"a total printed above its own rows is on the same page as them by "+
+				"construction, so it cannot also be the one total of a block "+
+				"that straddles a page break")
+	}
+	for i := range r.Parts {
+		p := &r.Parts[i]
+		if p.LabelsFrom != 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, fmt.Sprintf("parts[page %d].labels_from", p.Page),
+					"declared on a rule with total_row_above"),
+				"a label-less part finds its totals from stop_at and reads no "+
+					"section anchor, so it has nowhere to print a total above")
+		}
+		if p.Section != r.TotalRow {
+			return cmdutil.WithHint(
+				errf(r.ID, fmt.Sprintf("parts[page %d].section", p.Page),
+					"is %q, but total_row_above requires it to be the total_row %q",
+					p.Section, r.TotalRow),
+				"total_row_above means the stated totals sit on the section "+
+					"anchor's own line; anchoring anywhere else would leave the "+
+					"total unbounded above the block")
+		}
+	}
+	return nil
 }
 
 // validateRowLabelFunds checks the preconditions of the claim that this rule's

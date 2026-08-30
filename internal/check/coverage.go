@@ -97,12 +97,14 @@ var unprojectedScopes = map[string]string{
 		"leg-level links carrying a transfer_id are fisc-9gh.",
 
 	acfrGeneralFundScope: "ACFR p41, the General Fund's Statement of Revenues, Expenditures " +
-		"and Changes in Fund Balances: five audited FY2024-25 figures, and the first facts in " +
-		"this store from a document other than the Budget Book. Two transfer legs -- 0.53 in " +
-		"and (25.72) out, tying to the block's own printed Total Other Financing Sources " +
-		"(Uses) of (25.19) at zero tolerance -- and the three fund-balance lines that close " +
-		"the statement: beginning 92.10, change (5.00), ending 87.10. All in millions to two " +
-		"decimals, so the least significant printed digit is $10,000. " +
+		"and Changes in Fund Balances: 20 audited FY2024-25 figures, and the only facts in " +
+		"this store from a document other than the Budget Book. Three of the page's four " +
+		"blocks are mapped -- ten revenue rows tying to the printed Total Revenues of 157.20 " +
+		"exactly; two transfer legs, 0.53 in and (25.72) out, tying to the printed Total Other " +
+		"Financing Sources (Uses) of (25.19) exactly; and the five divisions of the General " +
+		"Government function -- plus the three fund-balance lines that close the statement, " +
+		"beginning 92.10, change (5.00), ending 87.10. All in millions to two decimals, so the " +
+		"least significant printed digit is $10,000. " +
 		"IT IS UNPROJECTED BECAUSE IT IS A DIFFERENT YEAR ON A DIFFERENT BASIS, not because " +
 		"it restates money some other scope already publishes -- which is the opposite of " +
 		"every other entry in this map. The Budget Book spine is FY2026 and FY2027 adopted; " +
@@ -114,23 +116,32 @@ var unprojectedScopes = map[string]string{
 		"two views of ONE schedule, not about drawing this one at all). " +
 		"AND SO THIS SCOPE CARRIES NO DETAIL-TIES-TO-SPINE CHECK, which breaks the rule every " +
 		"other non-spine scope here follows. There is nothing on the spine to tie it to. What " +
-		"asserts these facts instead is fund-balance-identity, which reaches three of the five " +
+		"asserts these facts instead is fund-balance-identity, which reaches three of the 20 " +
 		"-- beginning + change == ending, the same identity it asserts over the spine's twelve " +
-		"cells -- plus CheckTotals at build time on the other two. The remaining exposure is " +
-		"stated rather than absorbed: this page declares no column_headers, because its " +
-		"printed headers are the bare years 2025 and 2024 and the parser refuses a header " +
-		"amount.Parse accepts, and because the geometry line pairing fails on the page anyway " +
-		"(a stray \"0.0\" with no row label sits inside the line tolerance of the row above, " +
-		"giving 51 geometry lines against 52 text lines). So no geometry column guard stands " +
-		"over these five figures. " +
-		"The rest of the page is not mapped and mappings/livermore-acfr-fy2025.yaml says why: " +
-		"the revenue block cannot be read at all while that stray \"0.0\" has no honest " +
-		"declaration (fisc-hcus) -- and that orphan is the ONLY blocker, measured by " +
-		"running the rule rather than by reading the page. The expenditure block's " +
-		"rows are departments that " +
-		"fact-departments-resolve cannot accept (fisc-xudn). Its one discrepancy a " +
-		"document-derived tolerance could consume sits on a subtotal printed ABOVE its " +
-		"own rows, which no total_row can anchor (fisc-h96o).",
+		"cells -- plus CheckTotals at build time on the other 17. " +
+		"THE GENERAL GOVERNMENT BLOCK IS THE ONE PLACE IN THIS CORPUS THAT TIES ONLY WITHIN A " +
+		"TOLERANCE, and the build report says so on every run rather than counting it as a " +
+		"clean tie: its five divisions print 18.44 against a printed subtotal of 18.45, one " +
+		"printed unit over five terms, so the bound derived from the page (half a unit per " +
+		"row, $25,000) admits a $10,000 discrepancy and nothing wider (fisc-1wr.2). It is also " +
+		"the only rule reading a total the document prints ABOVE its own rows, which is bounded " +
+		"by pinning that total to the section anchor's own line (fisc-h96o). " +
+		"The remaining exposure is stated rather than absorbed: this page declares no " +
+		"column_headers, because its printed headers are the bare years 2025 and 2024 and the " +
+		"parser refuses a header amount.Parse accepts, and because the geometry line pairing " +
+		"fails on the page anyway (a stray \"0.0\" with no row label sits inside the line " +
+		"tolerance of the row above, giving 51 geometry lines against 52 text lines). So no " +
+		"geometry column guard stands over any of these figures -- the widest tolerance in the " +
+		"corpus over the fewest guards, which is why the bound is half a unit per row and not " +
+		"the worst case that would also add the printed total's own half unit. " +
+		"WHAT IS STILL NOT MAPPED is the rest of the expenditure block: its nine other rows " +
+		"are the ACFR's remaining functions, and unlike General Government's five divisions " +
+		"they are departments fact-departments-resolve cannot accept (fisc-xudn). No row of " +
+		"the mapped block carries a department either, for a reason of its own -- two of the " +
+		"five name departments covering several divisions -- see data/taxonomy.yaml's " +
+		"general-government entry. The FY2024 column of every block is present and skipped: " +
+		"three of the four blocks miss in it by $200,000, $100,000 and $100,000, which is " +
+		"twenty, ten and ten printed units and nothing a tolerance should reach.",
 
 	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
 		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +

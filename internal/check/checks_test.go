@@ -584,8 +584,7 @@ func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
 				t.Errorf("findings %v do not contain %q", res.Findings, tt.want)
 			}
 			// A category typo and an unresolved department must not share a
-			// verdict, because they will not share a fix — or a
-			// reconciliations.yaml entry.
+			// verdict, because they will not share a fix.
 			if got := resultFor(t, rep, "fact-vocabulary").Status; got != StatusPass {
 				t.Errorf("fact-vocabulary = %s, want pass: no category or fund group is wrong here", got)
 			}

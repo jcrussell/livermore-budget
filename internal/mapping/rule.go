@@ -251,6 +251,79 @@ type Rule struct {
 	// work rather than us checking our own.
 	TotalRow string `yaml:"total_row"`
 
+	// TotalRowAbove says the document prints the total_row ABOVE its own rows
+	// rather than below them, and that the total_row label is therefore also
+	// the part's section anchor.
+	//
+	// READ THIS AS "the stated totals are on the section anchor's own line".
+	// Under this flag total_row does NO independent resolution: totalAnchor
+	// returns the block's start, which Block already derived from the section
+	// anchor, so total_row's usual "does not occur after the block" path is
+	// unreachable for such a rule. The field is still required, and still
+	// refused as a row label, because it is what names the printed line for a
+	// reader of the rule and what a failure message reports against. A reader
+	// who takes it for a SECOND, independent anchor has it wrong.
+	//
+	// It exists for ACFR p41, which prints "General Government:  18.45" and
+	// then the five divisions summing to 18.44 beneath it. Every schedule
+	// mapped before it printed its total below its rows, so nothing needed
+	// otherwise, and two separate guards stood in the way: totalAnchor
+	// searched only text after the block, and checkGap's leading arm refuses
+	// any digit before the first row. Both are opened by this flag and by
+	// nothing else -- see fisc-h96o.
+	//
+	// The section-anchor requirement is what keeps it from being a loosening.
+	// Without it the flag would mean "look somewhere above", which no guard
+	// could bound; with it the total is exactly one line, at a position the
+	// resolver already had to find, and checkGap's refusal still stands over
+	// every line after that one.
+	TotalRowAbove bool `yaml:"total_row_above"`
+
+	// PrintedDecimals is how many decimal places this rule's page PRINTS its
+	// figures to, and declaring it is what gives CheckTotals a tolerance
+	// derived from the document instead of from an author's judgement.
+	//
+	// THE UNIT IS THE LEAST SIGNIFICANT PRINTED DIGIT, NOT THE CAPTION'S WORD.
+	// ACFR p41 is captioned "(in Millions)" and prints two decimals, so its
+	// unit is $10,000; reading the caption instead would hand a five-term sum
+	// $2,500,000 of slack rather than $25,000. A column then ties when
+	//
+	//	2*|stated - mapped| <= DigitCents(units, printed_decimals) * n_terms
+	//
+	// -- half a unit per row summed, which is the most a correctly-read set of
+	// rounded figures can be out by. The printed TOTAL's own half unit is
+	// deliberately NOT added: leaving it out makes the bound tighter than the
+	// worst case, which fails closed, and a page that misses by (n+1)/2 units
+	// should be read again rather than have the bound widened to fit it.
+	//
+	// IT IS A POINTER SO THAT ABSENT AND ZERO ARE DIFFERENT CLAIMS. Absent
+	// means no tolerance at all, which is what all 123 Budget Book rules want
+	// and what this project's arithmetic has always assumed. Zero is a real
+	// declaration -- a page printing whole millions, whose unit is $1,000,000 --
+	// and an int would have silently read it as "no tolerance".
+	//
+	// FOUR THINGS KEEP IT FROM BECOMING A GLOBAL EPSILON, which is the thing
+	// StatedTotalDeltas' doc comment below is right to refuse:
+	//
+	//   - It is refused on units: dollars. A dollar-precision branch would have
+	//     zero consumers in this corpus, and the discrepancies it would appear
+	//     to cover are not rounding: p127's Total Property Taxes is $1 over 13
+	//     rows and pp.168-170 carry six more, all of which are the city's own
+	//     arithmetic and belong in stated_total_deltas by decision (fisc-2sd).
+	//   - It is refused on a rule that also declares a stated_total_delta. The
+	//     two mechanisms are disjoint by construction rather than by prose:
+	//     one names an exact figure and the other bounds an unnamed one, and a
+	//     rule reaching for both is asking for a declaration it can hide inside.
+	//   - It must describe the page. Every token the rule reads is checked
+	//     against it, and a declaration no token justifies is refused.
+	//   - It must be NEEDED. A rule whose columns all tie exactly is refused,
+	//     the same way a stated_total_delta that now ties exactly is refused --
+	//     because a declaration that has stopped doing anything is the one shape
+	//     a declaration in this repository must not have.
+	//
+	// fisc-1wr.2 is the tier this implements.
+	PrintedDecimals *int `yaml:"printed_decimals"`
+
 	// TotalSpansParts says the printed total_row covers the rows of EVERY
 	// part, not just the rows of the part that prints it.
 	//
@@ -471,13 +544,83 @@ type Part struct {
 	// rounding in the city's own arithmetic, not in ours (fisc-2sd).
 	//
 	// This is a DECLARATION, not a tolerance, and the difference is the whole
-	// point. There is no global epsilon and no per-rule fuzz: an author writes
-	// down one column, one exact figure, and why. CheckTotals then accepts that
-	// figure and no other -- a column off by a different amount fails, and so
-	// does a column that now ties, because a declaration the document has
-	// stopped needing is a stale claim about the city's arithmetic and should
-	// surface rather than rot. Absent a declaration, exact equality still holds.
+	// point: an author writes down one column, one exact figure, and why.
+	// CheckTotals then accepts that figure and no other -- a column off by a
+	// different amount fails, and so does a column that now ties, because a
+	// declaration the document has stopped needing is a stale claim about the
+	// city's arithmetic and should surface rather than rot.
+	//
+	// THERE IS STILL NO GLOBAL EPSILON. What there now is, and what this
+	// comment used to deny, is a per-rule tolerance -- Rule.PrintedDecimals,
+	// which sizes itself from the page's own printed precision and the number
+	// of rows summed (fisc-1wr.2). The sentence here read "no global epsilon
+	// and no per-rule fuzz" until that landed; it is corrected rather than
+	// deleted because the distinction it was drawing is the one that keeps the
+	// two apart, and a reader needs it more now that both exist:
+	//
+	//   - A delta names the exact figure a document is out by. It fails when
+	//     the difference is anything else, including zero.
+	//   - A tolerance bounds an unnamed difference, is derived rather than
+	//     chosen, and is refused on dollar-precision tables -- which is every
+	//     rule the sentence above was written about. p127's $1 over 13 rows is
+	//     a delta and could never be a tolerance: ceil(13/2) is seven CENTS.
+	//
+	// A rule declaring both is refused, so no column is ever compared against
+	// a named figure with slack around it. Absent both, exact equality holds.
 	StatedTotalDeltas []StatedTotalDelta `yaml:"stated_total_deltas"`
+
+	// UnmappedText declares a FIGURE the page prints inside this block that
+	// belongs to no row, with the reason it is there.
+	//
+	// ACFR p41 is the case. Its revenue block prints a bare "0.0" on a line of
+	// its own between the Miscellaneous row's figures and the printed Total
+	// Revenues -- an artefact of the city's spreadsheet, in the FY2024 column,
+	// belonging to no printed label. Every other exit was closed: the trailing
+	// arm refuses it, stop_at cannot name it because the parser refuses an
+	// anchor amount.Parse accepts, and an eleventh skip: true row fails the
+	// value count because the block ends immediately after it.
+	//
+	// IT IS SPLIT FROM WrappedLabels RATHER THAN FOLDED INTO IT because the two
+	// assert different things about the document, and one of them would have
+	// been false. A wrapped label says the page broke a row's LABEL onto its
+	// own line. This says the page printed a FIGURE that is nobody's. Declaring
+	// the second as the first was mechanically accepted until the same change
+	// that added this field refused it -- measured, wrapped_labels: ["0.0"]
+	// published all ten of p41's revenue rows with nothing objecting. So the
+	// parser now requires a wrapped label NOT to parse as an amount and
+	// requires this to parse as one, and the two declarations cannot be
+	// substituted for each other in either direction.
+	//
+	// THIS IS THE WEAKEST DECLARATION CLASS IN THIS REPOSITORY, and a reader
+	// should know it before reaching for it. A stated_total_delta is ratified
+	// by exact arithmetic -- get the figure wrong and the column fails. A
+	// wrapped label is bounded downstream, by the cursor advance and by the
+	// per-row value count. This one is bounded by nothing but its own staleness
+	// arm, and its first consumer has no arithmetic behind it at all: "0.0"
+	// parses as zero and sits in a skipped column, so removing it from the read
+	// changes no sum and CheckTotals could not redden on a wrong declaration
+	// here. What actually keeps it narrow is that the text must match a gap
+	// exactly and every row still has to be found by its own label. The Note is
+	// therefore load-bearing rather than decorative.
+	//
+	// fisc-hcus.
+	UnmappedText []UnmappedText `yaml:"unmapped_text"`
+}
+
+// UnmappedText is one figure a page prints inside a block that belongs to no
+// row, and why.
+type UnmappedText struct {
+	// Text is the figure exactly as the page prints it, matched against the
+	// fully trimmed text of the gap it sits in -- the same matching
+	// wrapped_labels uses, so the two behave alike where they behave at all.
+	Text string `yaml:"text"`
+
+	// Note is required and says why the page prints it. Without one this would
+	// be a silent skip wearing a declaration's clothes, which is the whole
+	// difference between this and deleting the offending line from the read.
+	//
+	// Same requirement, and the same reason, as StatedTotalDelta.Note.
+	Note string `yaml:"note"`
 }
 
 // ColumnHeader is one entry in a part's ColumnHeaders: the header a page prints

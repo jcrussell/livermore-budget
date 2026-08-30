@@ -25,12 +25,25 @@ import (
 // extracted pages. The parser must still refuse one, which the amount package
 // asserts; what changes here is where the evidence comes from.
 //
-// The resolver cannot read this page, and that is recorded rather than worked
-// around: the FY2016 row prints its figures with a STANDALONE "$" before each
-// one ("$ 60,193,384", two tokens), which is fisc-yun. The page is parsed here
-// with strings.Fields and amount.Parse -- the real parser on every token, which
-// is the load-bearing part -- and the row structure is a year in column one, so
-// there is no row-identity judgment to get wrong.
+// The resolver cannot read this page, and WHAT STOPS IT IS THE PERCENTAGE
+// COLUMN, measured by building a rule over the page and running it rather than
+// by reading the page:
+//
+//	row "2016" column 9: cannot parse amount "2.5%": not a recognized number
+//
+// The row reads through the first eight columns before that, standalone "$" and
+// all. THE COMMENT HERE USED TO BLAME THAT "$", citing fisc-yun. fisc-yun is
+// CLOSED, dropCurrencyMarks reads a lone mark in the labelled path, and the same
+// wrong claim was made about ACFR p41 and caught there by running the rule --
+// which is what testdata/README.md:74 already suspected of this page and could
+// not confirm, because it had not been re-probed end to end. It has been now.
+// The remaining obstacle is fisc-4ua.4's undecided question: how a rule reads a
+// table whose columns are not all amounts. A rule cannot simply stop at column
+// nine either, because checkGap then refuses the unmapped tail.
+//
+// The page is parsed here with strings.Fields and amount.Parse -- the real
+// parser on every token, which is the load-bearing part -- and the row structure
+// is a year in column one, so there is no row-identity judgment to get wrong.
 const acfrDebtPage = 177
 
 // acfrDebtRow is one year of the schedule as the page prints it: seven debt

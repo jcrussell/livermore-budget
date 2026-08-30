@@ -358,7 +358,7 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 
 	cats := r.Categories()
-	if got, want := len(cats), 26; got != want {
+	if got, want := len(cats), 27; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
 	if got, want := len(r.FundGroups()), 7; got != want {

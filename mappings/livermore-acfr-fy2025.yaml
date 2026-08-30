@@ -1,68 +1,101 @@
 # City of Livermore, FY 2024-25 Annual Comprehensive Financial Report.
 #
 # THE SECOND DOCUMENT IN THE CORPUS. Until this file landed, mappings/ held one
-# file and the whole fact store was one document's. This one maps a single
-# block of a single page, and the smallness is the point: what it establishes
-# is that a second doc_id flows through the store, the shards and the site, and
-# it establishes that before anything large depends on it.
+# file and the whole fact store was one document's.
 #
 # WHAT IS MAPPED: PDF page 41, "General Fund / Statement of Revenues,
-# Expenditures And Changes In Fund Balances (in Millions)", the Other Financing
-# Sources block and the three fund-balance lines below it. Five figures.
+# Expenditures And Changes In Fund Balances (in Millions)" -- three of its four
+# blocks plus the fund-balance lines that close the statement. Twenty figures,
+# all FY2024-25 audited:
 #
-# WHAT IS NOT MAPPED, AND WHY -- because a reader will ask, and because two of
-# the three reasons are properties of the mapping engine rather than of the
-# page.
+#   - the ten revenue rows, tying to the printed Total Revenues of 157.20
+#     exactly;
+#   - the two Other Financing Sources rows, tying to the printed (25.19)
+#     exactly;
+#   - the five divisions of the General Government function, tying to the
+#     subtotal of 18.45 printed ABOVE them within the tolerance that page's own
+#     printed precision derives;
+#   - the three fund-balance lines, asserted by fund-balance-identity rather
+#     than by a printed total.
 #
-# (1) THE REVENUE BLOCK CANNOT BE READ. p0041.txt line 27 is a bare "0.0" on a
-#     line of its own, between the Miscellaneous row's figures and the Total
-#     Revenues row. It is in the FY2024 column and belongs to no printed row
-#     label. labelledValues' trailing arm refuses it ("follows the last mapped
-#     row but is not mapped"); stop_at cannot name it, because the parser
-#     refuses a block anchor that amount.Parse accepts; an eleventh skip: true
-#     row runs off the end of the block on the value count; and declaring it in
-#     wrapped_labels would assert that the page wrapped a LABEL there, which is
-#     false -- it is a figure. There is no honest declaration for it today.
-#     Tracked as fisc-hcus; do not "fix" this by declaring the figure a label.
+# TWO OF THESE ARRIVED LATER THAN THE OTHERS AND EACH NEEDED A MECHANISM, which
+# is most of what this file is a record of. An earlier version of this comment
+# argued at length for declining both; that argument is kept below rather than
+# deleted, because what it got RIGHT about the page is still true and what it
+# got wrong is instructive.
 #
-#     AND IT IS THE ONLY BLOCKER, which is worth stating because an earlier
+# (1) THE REVENUE BLOCK IS READ, AND WHAT WAS IN THE WAY WAS ONE ORPHAN FIGURE.
+#     p0041.txt line 27 is a bare "0.0" on a line of its own between the
+#     Miscellaneous row's figures and the Total Revenues row. It is in the FY2024
+#     column and belongs to no printed row label. labelledValues' trailing arm
+#     refuses it; stop_at cannot name it, because the parser refuses a block
+#     anchor that amount.Parse accepts; an eleventh skip: true row runs off the
+#     end of the block on the value count.
+#
+#     THE FOURTH EXIT WAS OPEN AND DISHONEST, AND CLOSING IT IS HALF OF WHAT
+#     fisc-hcus LANDED. This comment used to say that declaring the figure in
+#     wrapped_labels "would assert that the page wrapped a LABEL there, which is
+#     false" and that there was "no honest declaration for it today". The first
+#     half was true and the second was not the whole truth: the DISHONEST
+#     declaration worked. Measured before the parser was changed --
+#     wrapped_labels: ["0.0"] parsed, resolved all ten rows and tied to the
+#     printed total, with fisc verify reporting nothing. An instruction in a
+#     comment was the only thing standing there. The parser now refuses a
+#     wrapped label that amount.Parse accepts and requires an unmapped_text
+#     entry to be one, so the two declarations cannot be substituted for each
+#     other in either direction, and the block is published under the one that
+#     says what is true.
+#
+#     THE ORPHAN WAS THE ONLY BLOCKER, which is worth stating because an earlier
 #     draft of this comment claimed a second one and was wrong. The first
 #     revenue row prints a STANDALONE "$" before each figure ("$       60.42
 #     $        57.70"), which looks like fisc-yun -- but fisc-yun is CLOSED and
 #     dropCurrencyMarks handles a lone mark in the labelled read, so all ten
 #     rows read through it without complaint. The claim came from a bead title
-#     rather than from the tree. TestACFRp0041RevenueBlockCannotBeResolved now
-#     RUNS the rule instead of asserting things about the page text, and the
-#     refusal it gets back names the orphan and nothing else.
+#     rather than from the tree, and what settled it was RUNNING the rule.
 #
-# (2) THE EXPENDITURE BLOCK'S TOTAL TIES EXACTLY, so it demands nothing this
-#     file could not already do -- but its rows are DEPARTMENTS (Fire, Police,
-#     Public Works, Community Development, Economic Development, Library) and
-#     fact-departments-resolve accepts DIVISION slugs only. Six of
-#     data/departments.yaml's eleven departments are not division slugs, so
-#     those rows cannot carry the axis they are printed on. That is fisc-xudn,
-#     answered (c) for this file as it was for pp.85-125: the facts would carry
-#     department: "" and the schedule's own axis would be recoverable only from
-#     the row label. Deferred rather than published half-classified.
+# (2) THE GENERAL GOVERNMENT SUB-BLOCK IS READ, AND IT IS THIS CORPUS'S ONLY
+#     CONSUMER OF A DOCUMENT-DERIVED TOLERANCE (fisc-1wr.2).
 #
-#     The arithmetic, recorded because a later session will want it and it is
-#     cheap to get wrong: the TEN top-level rows -- General Government 18.45,
-#     Fire 28.62, Police 48.03, Public Works 9.28, Community Development 19.70,
-#     Economic Development 3.72, Library 7.58, Capital Outlay 0.82, Principal
-#     0.79, Interest 0.02 -- sum to 137.01, which is the printed Total
-#     Expenditures exactly. Descending past "General Government:" into its five
-#     children gives 137.00 instead, because those five sum to 18.44 against a
-#     printed 18.45. The 0.01 is the city's own rounding at one level down; it
-#     is NOT a discrepancy in the total, and a rule that compared fourteen
-#     leaves against a total the page prints over ten rows would be asserting an
-#     equality the city never states.
+#     The arithmetic, which the earlier draft got right and which is why this
+#     block was worth returning to: the TEN top-level expenditure rows --
+#     General Government 18.45, Fire 28.62, Police 48.03, Public Works 9.28,
+#     Community Development 19.70, Economic Development 3.72, Library 7.58,
+#     Capital Outlay 0.82, Principal 0.79, Interest 0.02 -- sum to 137.01, the
+#     printed Total Expenditures exactly. Descend past "General Government:"
+#     into its five children and the page gives 137.00 instead, because those
+#     five sum to 18.44 against a printed 18.45. The 0.01 belongs to the
+#     SUBTOTAL, one level down, and NOT to the total; a rule comparing fourteen
+#     leaves against a total the page prints over ten rows would assert an
+#     equality the city never states and then need a tolerance to absorb an
+#     error it had introduced itself. So this file maps the subtotal against its
+#     own five rows and leaves the ten-row total alone.
 #
-#     THAT 0.01 IS THE ONE THING ON THIS PAGE A DOCUMENT-DERIVED TOLERANCE
-#     (fisc-1wr.2) COULD CONSUME, and it cannot be reached: the subtotal is
-#     printed ABOVE its five rows, and totalAnchor resolves a total_row only in
-#     the text AFTER the block. There is no way to say "the total for these rows
-#     is printed above them". Filed as fisc-h96o, which is why no tolerance
-#     landed with this lane.
+#     WHAT HAD TO CHANGE was that the subtotal is printed ABOVE its rows, and
+#     totalAnchor resolved a total_row only in the text AFTER the block --
+#     "there is no way to say the total for these rows is printed above them",
+#     as this comment used to put it. total_row_above says it (fisc-h96o), and
+#     is bounded by requiring the total to BE the section anchor, so it names one
+#     printed line at a position the resolver already had to resolve. checkGap's
+#     leading arm then skips that one line and refuses every digit after it:
+#     move the anchor up to "Current:" and the refusal still fires.
+#
+#     WHAT IS STILL NOT MAPPED IS THE REST OF THE EXPENDITURE BLOCK, and the old
+#     reason stands for it. Its other rows are DEPARTMENTS (Fire, Police, Public
+#     Works, Community Development, Economic Development, Library) and
+#     fact-departments-resolve accepts DIVISION slugs only; six of
+#     data/departments.yaml's eleven departments are not division slugs. That is
+#     fisc-xudn, answered (c) for this file as it was for pp.85-125.
+#
+#     THE FIVE ROWS THAT ARE MAPPED CARRY NO department: EITHER, and the reason
+#     is NOT the same one. Three of the five -- City Council, City Attorney,
+#     General Services -- are 1:1 with a division and could carry one. Two are
+#     not: "Administrative Services" the DEPARTMENT covers three divisions and
+#     "City Manager" covers two, so typing the division slug would file a
+#     multi-division figure under one division and fact-departments-resolve
+#     would PASS on it, the strings coinciding. Three right and two silently
+#     wrong is worse than none. See data/taxonomy.yaml's general-government
+#     entry.
 #
 # (3) THE FY2024 COLUMN IS PRESENT AND IS NOT PUBLISHED. data/sources.yaml
 #     declares this document carries fiscal_years: [2025], which would be reason
@@ -79,15 +112,20 @@
 #     0.70 + (14.50) = (13.80) in FY2024 exactly as 0.53 + (25.72) = (25.19)
 #     does in FY2025. So the prior-year column is not simply broken.
 #
-#     BE PRECISE ABOUT WHICH BLOCKS THIS FILE MAPS, BECAUSE IT IS TWO AND NOT
-#     ONE: Other Financing Sources AND the fund balances. The fund-balance block
-#     is among the three that MISS in FY2024 -- it is the 92.00-against-92.10
-#     above. So the FY2024 skip is not "no defect in what this file reads": it is
-#     that this file reads one block that ties in both columns and one that does
-#     not, and the document's declared fiscal_years settles the rest. Two earlier
-#     drafts of this paragraph were wrong in two different ways -- the first said
-#     the page had three blocks and that FY2024 reconciled in none of them, the
-#     second said the block this file maps ties in both columns, singular.
+#     BE PRECISE ABOUT WHICH BLOCKS THIS FILE MAPS, BECAUSE THE COUNT HAS MOVED
+#     TWICE AND EARLIER DRAFTS OF THIS PARAGRAPH GOT IT WRONG BOTH TIMES. It is
+#     now FOUR: the revenue block, Other Financing Sources, the General
+#     Government sub-block and the fund balances. THREE of those four miss in
+#     FY2024 -- revenue by 0.20, General Government by 0.17 (15.83 against a
+#     printed 16.00), and the fund balances by 0.10, the 92.00-against-92.10
+#     above. Only Other Financing Sources ties in both columns. So the FY2024
+#     skip is emphatically not "no defect in what this file reads"; the
+#     document's declared fiscal_years settles it and the arithmetic agrees.
+#
+#     The two earlier errors, kept because the shape recurs: the first draft
+#     said the page had three blocks and that FY2024 reconciled in none of them;
+#     the second said the block this file maps ties in both columns, singular,
+#     at a point when it mapped two.
 #
 #     It is declared skip: true so the column grid still lines up.
 #
@@ -112,10 +150,19 @@
 #     puts it on its own. 51 geometry lines against 52 text lines, and the
 #     pairing refuses rather than guessing.
 #
-# So the only thing standing between these five figures and a wrong-column read
-# is the printed total this file anchors on, plus the fact that the block is
-# label-anchored rather than positional. Said out loud because AGENTS.md calls
+# So the only thing standing between these twenty figures and a wrong-column read
+# is the printed total each block anchors on, plus the fact that every block here
+# is label-anchored rather than positional. Said out loud because AGENTS.md calls
 # the geometry guard "the designed answer", and on this page it is absent.
+#
+# AND THE GENERAL GOVERNMENT BLOCK IS THE WEAKEST POINT OF THAT, because it is
+# the one block whose printed total is reached through a TOLERANCE rather than
+# exactly: the widest bound in the corpus standing over the fewest guards. What
+# is left holding it is that the bound is half a printed unit per row, so a
+# single row misread by three units or more still fails. That is thinner than
+# every other block in this file and is the reason the bound is not the worst
+# case -- adding the printed total's own half unit, which the arithmetic would
+# justify, would buy slack this page cannot afford.
 #
 # A NOTE ON SIGN, because it differs from the Budget Book and nothing checks it.
 # The ACFR prints Transfers (out) parenthesised -- (25.72) -- because the block
@@ -229,3 +276,135 @@ rules:
       - {label: "Net Change in Fund Balances", category: fund-balance/change}
       - {label: "Fund Balances- Beginning, as restated", category: fund-balance/beginning}
       - {label: "Fund Balances- Ending", category: fund-balance/ending}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0041-gf-revenues
+    kind: revenue
+    basis: audited
+    scope: acfr-general-fund-summary
+    units: millions
+    total_row: "Total Revenues"
+    note: >-
+      The General Fund's ten revenue lines for FY2024-25, audited. They tie to
+      the printed Total Revenues of 157.20 EXACTLY, at zero tolerance, which is
+      why this rule declares no printed_decimals: a tolerance no column needs is
+      refused, and rightly.
+
+      WHAT KEPT THIS BLOCK UNMAPPED UNTIL NOW was a single orphan figure, and
+      the fix is the `unmapped_text` entry below rather than anything about the
+      rows. The page prints a bare "0.0" on a line of its own between the
+      Miscellaneous row's figures and the total, in the FY2024 column, belonging
+      to no printed label. Every exit was closed: the trailing arm refuses it,
+      stop_at cannot name a figure, and an eleventh skip row fails the value
+      count because the block ends immediately after it.
+
+      THE FOURTH EXIT WAS OPEN AND DISHONEST, which is the part worth recording.
+      wrapped_labels: ["0.0"] parsed, resolved all ten rows and tied to the
+      printed total with nothing objecting -- measured before the parser was
+      changed. That declaration asserts the page wrapped a row's LABEL onto its
+      own line, which is false of a figure. The parser now refuses a wrapped
+      label that amount.Parse accepts and requires an unmapped_text entry to be
+      one, so the two cannot be substituted for each other. fisc-hcus.
+    parts:
+      - page: 41
+        # "Revenues" occurs first inside this page's title line ("Statement of
+        # Revenues, Expenditures And Changes In Fund Balances") and second as
+        # the block heading. The ordinal says which was read.
+        section: "Revenues"
+        section_ordinal: 2
+        stop_at: "Total Revenues"
+        unmapped_text:
+          - text: "0.0"
+            note: >-
+              A bare figure in the FY2024 column between the Miscellaneous row
+              and the printed total, belonging to no row label -- an artefact of
+              the city's spreadsheet rather than a line of the statement. It is
+              in the SKIPPED column and parses as zero, so removing it from the
+              read changes no sum and the totals check cannot witness a wrong
+              declaration here; the staleness arm is what stands over it. The
+              same "0.0" is why this page's geometry pairing fails: -bbox groups
+              it into the row above (0.32pt), giving 51 geometry lines against
+              -layout's 52.
+        columns:
+          - {fund_group: general, fiscal_year: 2025}
+          # The prior-year column. Present, skipped, and reason (3) above --
+          # these ten rows sum to 145.70 against a printed 145.50, twenty
+          # printed units.
+          - {fiscal_year: 2024, skip: true}
+    rows:
+      - {label: "Property taxes and special assessments", category: taxes/property}
+      - {label: "Sales Taxes", category: taxes/sales}
+      - {label: "Other taxes", category: taxes/other}
+      - {label: "Licenses and permits", category: licenses-and-permits}
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Contributions from outside sources", category: contributions-outsourced}
+      - {label: "Fines and forfeitures", category: fines-and-forfeitures}
+      - {label: "Charges for current services", category: charges-for-services}
+      - {label: "Use of money and property", category: use-of-money-and-property}
+      - {label: "Miscellaneous", category: miscellaneous-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0041-gf-general-government
+    kind: expenditure
+    basis: audited
+    scope: acfr-general-fund-summary
+    units: millions
+    printed_decimals: 2
+    total_row: "General Government:"
+    total_row_above: true
+    note: >-
+      THE ONLY DOCUMENT-DERIVED TOLERANCE IN THIS CORPUS, and the page earned it
+      rather than the rule choosing it. The five divisions print 0.22 + 5.30 +
+      2.66 + 7.39 + 2.87 = 18.44 against a printed subtotal of 18.45. The page
+      is captioned "(in Millions)" and prints two decimals, so its least
+      significant digit is $10,000 and the discrepancy is exactly one of them
+      over five terms: half a unit per row is $25,000 of slack against a $10,000
+      error. Read the caption's word instead of the printed digits and the same
+      sum would carry $2,500,000 -- which is the mistake Rule.PrintedDecimals
+      exists to prevent. fisc-1wr.2.
+
+      TWO GUARDS HAD TO OPEN FOR THIS BLOCK AND NOTHING ELSE DOES. The city
+      prints "General Government:" ABOVE its five rows, where every other
+      schedule in the corpus prints its total below; totalAnchor searched only
+      after the block, and checkGap's leading arm refuses any digit before the
+      first row. total_row_above opens both, and only by pinning the total to
+      the section anchor's own line -- move the anchor one line up, to
+      "Current:", and the leading-gap refusal still fires on this very subtotal.
+      fisc-h96o.
+
+      THE EXPOSURE, SAID HERE RATHER THAN LEFT TO BE FOUND. At five terms the
+      tolerance would also absorb a single row misread by one or two printed
+      digits, and this is the one page in the corpus with NO geometry column
+      guard -- the widest tolerance standing over the fewest guards. What is
+      left is the printed subtotal itself: a misread row moves the sum off 18.45
+      by more than the page's own rounding only if it moves by three units or
+      more, so the bound is doing real work and is not a blanket.
+
+      NO ROW CARRIES A `department:`, and see data/taxonomy.yaml's
+      general-government entry for why: two of these five name DEPARTMENTS that
+      cover several divisions, and fact-departments-resolve would pass on the
+      wrong division because the strings coincide.
+    parts:
+      - page: 41
+        # The section anchor IS the total_row, which is what total_row_above
+        # requires and what bounds it: the stated totals are read off this
+        # line and the rows begin on the next.
+        section: "General Government:"
+        # "Fire" is the next top-level function the page prints. It occurs
+        # exactly once after the anchor -- asserted by
+        # TestACFRp0041GeneralGovernmentStopsAtFire, because Block resolves
+        # stop_at with a plain first-match search and no uniqueness guard of
+        # its own (fisc-km5n).
+        stop_at: "Fire"
+        columns:
+          - {fund_group: general, fiscal_year: 2025}
+          # The prior-year column. Present, skipped, and reason (3) above --
+          # these five sum to 15.83 against a printed 16.00, seventeen printed
+          # units, which is nothing a tolerance should absorb.
+          - {fiscal_year: 2024, skip: true}
+    rows:
+      - {label: "City Council", category: general-government}
+      - {label: "City Manager", category: general-government}
+      - {label: "City Attorney", category: general-government}
+      - {label: "Administrative Services", category: general-government}
+      - {label: "General Services", category: general-government}

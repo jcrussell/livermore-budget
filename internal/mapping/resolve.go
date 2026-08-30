@@ -517,12 +517,13 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 	// unless the page wrapped a label there, which is the same shape as a gap
 	// between two rows and is declared the same way.
 	if rest := strings.TrimSpace(blk.Text[cursor:]); rest != "" {
-		if !slices.Contains(p.WrappedLabels, rest) {
+		if !slices.Contains(p.WrappedLabels, rest) && !declaresUnmapped(p, rest) {
 			return nil, fail("rows", fmt.Sprintf(
 				"%q follows the last mapped row but is not mapped", rest),
 				"every row inside the block must be listed in rows, with skip: true "+
-					"if it should not produce facts, or in wrapped_labels if the "+
-					"page wrapped a label onto its own line")
+					"if it should not produce facts, in wrapped_labels if the page "+
+					"wrapped a label onto its own line, or in unmapped_text if it is "+
+					"a figure belonging to no row")
 		}
 		used[rest] = true
 	}
@@ -535,6 +536,20 @@ func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *column
 				"%q is declared but does not appear between this part's rows", w),
 				"a wrapped label is a claim about what the page prints; remove "+
 					"the declaration when the page stops wrapping there")
+		}
+	}
+	// Its own arm, and its own message. Told that a figure "is declared but
+	// does not appear", a reader who saw the wrapped_labels wording would go
+	// looking for a wrapped label -- and the whole reason these are two
+	// declarations rather than one is that they say different things about the
+	// page. This is the ONLY thing standing over an unmapped_text entry: see
+	// Part.UnmappedText on why the class is the weakest here.
+	for _, u := range p.UnmappedText {
+		if !used[u.Text] {
+			return nil, fail("unmapped_text", fmt.Sprintf(
+				"%q is declared but does not appear inside this part's block", u.Text),
+				"an unmapped figure is a claim about what the page prints; remove "+
+					"the declaration when the page stops printing it there")
 		}
 	}
 	return values, nil
@@ -563,6 +578,40 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 			used[trimmed] = true
 			return nil
 		}
+		// A total printed ABOVE its rows puts the block's own stated totals in
+		// this gap, on the section anchor's line, so the digit refusal below
+		// would fire on the very figures the rule went there to read. Skip that
+		// ONE line and no more: everything after it is still refused, so "the
+		// block starts too early" keeps its whole meaning for a rule that
+		// starts two lines early instead of one.
+		//
+		// IndexByte-guarded, deliberately, and not strings.Cut: Cut returns an
+		// empty remainder when there is no newline at all, which would make the
+		// refusal below pass VACUOUSLY on a gap that lies entirely on the
+		// anchor's line. That gap is not the safe case -- it is the case where
+		// the first row's label was found on the same printed line as the
+		// total, which means the anchors matched something other than the block
+		// this rule describes.
+		if rule.TotalRowAbove {
+			nl := strings.IndexByte(gap, '\n')
+			if nl < 0 {
+				return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+					Page: p.Page, Field: "section", Err: ErrNotFound,
+					Msg: fmt.Sprintf("row %q is on the same printed line as the total %q",
+						rows[0].Label, rule.TotalRow)},
+					"total_row_above says the stated totals are on the section "+
+						"anchor's own line and the rows begin on the next one; "+
+						"a row on that same line means the anchor matched elsewhere")
+			}
+			gap = gap[nl+1:]
+		}
+		// NOTE: unmapped_text is deliberately NOT honoured here. This gap is
+		// where column headers live and is already permissive about words, so
+		// the digit refusal is the ONLY guard standing over it; letting a
+		// declared figure through would retire that guard, and with the
+		// total-line skip above there would be nothing left. A stray figure
+		// before the first row therefore still cannot be declared -- a real gap,
+		// and fisc-0cff rather than an oversight. No page in the corpus needs it.
 		if strings.ContainsFunc(gap, unicode.IsDigit) {
 			return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
 				Page: p.Page, Field: "section", Err: ErrNotFound,
@@ -582,6 +631,10 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		used[trimmed] = true
 		return nil
 	}
+	if declaresUnmapped(p, trimmed) {
+		used[trimmed] = true
+		return nil
+	}
 	return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
 		Page: p.Page, Field: "rows", Err: ErrNotFound,
 		Msg: fmt.Sprintf("%q sits between rows %q and %q but is not mapped",
@@ -589,6 +642,22 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		"add it to rows, with skip: true if it should not produce facts, or to "+
 			"wrapped_labels if the page wrapped a label onto its own line; "+
 			"leaving it out would publish a breakdown that does not add up")
+}
+
+// declaresUnmapped reports whether the part declares this exact gap text as a
+// figure belonging to no row.
+//
+// It takes the whole trimmed gap, exactly as the wrapped_labels test does, so a
+// declaration covers one gap and never part of one. A gap holding an orphan
+// figure AND something else stays refused, which is what stops the declaration
+// from being a way to admit a row.
+func declaresUnmapped(p *Part, trimmed string) bool {
+	for _, u := range p.UnmappedText {
+		if u.Text == trimmed {
+			return true
+		}
+	}
+	return false
 }
 
 func precedingRow(rows []Row, i int) string {
@@ -786,6 +855,19 @@ type TotalsResult struct {
 	// exactly -- the caller says so, rather than the number quietly counting
 	// as clean coverage.
 	Declared int
+
+	// Tolerated is how many columns tied only inside the tolerance the rule's
+	// printed_decimals derives from the page (fisc-1wr.2), and Slack is what
+	// each of those columns was actually out by, in the order they were
+	// compared.
+	//
+	// SAME REASON AS Declared, and the reason is the whole design: a column
+	// that ties within half a printed unit per row has NOT tied exactly, and a
+	// report that counted the two together would publish the corpus as tighter
+	// than it is. Every caller that adds Columns to a coverage figure must
+	// carry these two beside it.
+	Tolerated int
+	Slack     []amount.Cents
 }
 
 // CheckTotals asserts that the figures a part yields sum, per column, to the
@@ -810,13 +892,22 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 	}
 
 	sums := make([]amount.Cents, len(p.Columns))
+	terms := make([]int, len(p.Columns))
+	var w decimalsWitness
 	for _, v := range values {
 		if !rule.totalCovers(v.Row.EffectiveKind(rule)) {
 			continue
 		}
 		sums[v.ColumnIndex] += v.Cents
+		terms[v.ColumnIndex]++
+		if err := w.observe(rule, v); err != nil {
+			return nil, r.decimalsError(rule, p, err)
+		}
 	}
-	return r.compareTotals(rule, p, p, stated, sums)
+	if err := w.settle(rule); err != nil {
+		return nil, r.decimalsError(rule, p, err)
+	}
+	return r.compareTotals(rule, p, p, stated, sums, terms)
 }
 
 // CheckSpanningTotals asserts that the figures EVERY part of a rule yields sum,
@@ -862,6 +953,8 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*TotalsResult, error) {
 	}
 
 	sums := make([]amount.Cents, len(bearer.Columns))
+	terms := make([]int, len(bearer.Columns))
+	var w decimalsWitness
 	for i := range rule.Parts {
 		p := &rule.Parts[i]
 		values, _, err := r.Values(rule, p)
@@ -873,9 +966,16 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*TotalsResult, error) {
 				continue
 			}
 			sums[v.ColumnIndex] += v.Cents
+			terms[v.ColumnIndex]++
+			if err := w.observe(rule, v); err != nil {
+				return nil, r.decimalsError(rule, p, err)
+			}
 		}
 	}
-	return r.compareTotals(rule, bearer, bearer, stated, sums)
+	if err := w.settle(rule); err != nil {
+		return nil, r.decimalsError(rule, bearer, err)
+	}
+	return r.compareTotals(rule, bearer, bearer, stated, sums, terms)
 }
 
 // totalBearingPart finds the one part of a spanning rule whose page prints the
@@ -1258,6 +1358,15 @@ func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *Block, text string) (in
 			Page: p.Page, Field: "total_row", Msg: "the rule declares none",
 			Err: ErrNoStatedTotals}
 	}
+	// A total printed ABOVE its rows is on the section anchor's own line, and
+	// Block already resolved that anchor: blk.Start is the byte just past the
+	// label, which is exactly the shape the below-case returns. There is no
+	// search to do and so no ErrNotFound to report -- the parser has already
+	// required section == total_row, and anchor() has already refused an
+	// ambiguous or missing one. See Rule.TotalRowAbove and fisc-h96o.
+	if rule.TotalRowAbove {
+		return blk.Start, "total_row", nil
+	}
 	i := strings.Index(text[blk.End:], rule.TotalRow)
 	if i < 0 {
 		return 0, "total_row", &ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
@@ -1271,6 +1380,76 @@ func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *Block, text string) (in
 // answer the same here name one printed line, whatever strings they are.
 func lineAt(text string, off int) int { return strings.Count(text[:off], "\n") }
 
+// abs is |c|. amount.Cents is an int64 and a tolerance is symmetric: a document
+// that prints one unit LESS than its rows add to is rounding just as one that
+// prints one more is.
+func abs(c amount.Cents) amount.Cents {
+	if c < 0 {
+		return -c
+	}
+	return c
+}
+
+// decimalsWitness checks a printed_decimals declaration against the tokens the
+// rule actually read.
+//
+// THE DECLARATION IS A CLAIM ABOUT THE PAGE, so the page is what settles it,
+// and it is settled in BOTH directions for different reasons. A token printing
+// MORE decimals than declared is refused because it would mean the tolerance
+// was computed from too coarse a unit and is therefore too wide -- the unsafe
+// direction. A declaration NO token justifies is refused because it has gone
+// stale, the same standard wrapped_labels and stated_total_deltas are held to.
+//
+// A dash is skipped rather than counted as zero decimals. These documents spell
+// a zero cell "-", which says nothing about how finely the page prints; counting
+// it would let one dash in a column of hundredths claim the page prints whole
+// units, and that reading gives a hundredfold wider tolerance.
+//
+// THE PRINTED TOTAL'S OWN TOKENS ARE DELIBERATELY NOT WITNESSED. StatedTotals
+// and amountRun hand back []amount.Cents and carry no token, so including them
+// would change four signatures for a coarser total that could only WIDEN the
+// bound. Leaving it out fails closed, which is the direction to be wrong in.
+type decimalsWitness struct {
+	exact bool
+}
+
+// observe records what one value's token says about the page's precision.
+func (w *decimalsWitness) observe(rule *Rule, v Value) error {
+	if rule.PrintedDecimals == nil || v.Column.Skip {
+		return nil
+	}
+	d, ok := amount.Decimals(v.Token, rule.Units)
+	if !ok {
+		return nil
+	}
+	switch {
+	case d > *rule.PrintedDecimals:
+		return fmt.Errorf("row %q prints %q, which carries %d decimal place(s), but the rule declares %d",
+			v.Row.PrintedLabel(), v.Token, d, *rule.PrintedDecimals)
+	case d == *rule.PrintedDecimals:
+		w.exact = true
+	}
+	return nil
+}
+
+// settle refuses a declaration the page does not justify.
+func (w *decimalsWitness) settle(rule *Rule) error {
+	if rule.PrintedDecimals == nil || w.exact {
+		return nil
+	}
+	return fmt.Errorf("declares %d printed decimal place(s), but no token this rule reads prints that many",
+		*rule.PrintedDecimals)
+}
+
+// decimalsError wraps a witness complaint as a resolve error.
+func (r *Resolver) decimalsError(rule *Rule, p *Part, err error) error {
+	return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+		Field: "printed_decimals", Err: ErrNotFound, Msg: err.Error()},
+		"printed_decimals says how finely THIS page prints, and the tolerance is "+
+			"derived from it; a count the page does not bear out would size that "+
+			"tolerance from a unit the document never used")
+}
+
 // compareTotals is the arithmetic both totals checks share: per column, the
 // mapped sum against the stated total, with any declared discrepancy applied.
 //
@@ -1280,8 +1459,26 @@ func lineAt(text string, off int) int { return strings.Count(text[:off], "\n") }
 // by the parser's guard) and the declaration belongs to whichever part prints
 // the total. Passing them separately is what stops a spanning rule silently
 // reading a delta off the wrong page.
-func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amount.Cents) (*TotalsResult, error) {
+func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amount.Cents,
+	terms []int) (*TotalsResult, error) {
 	p := cols
+
+	// The tolerance, derived from the page rather than chosen. Zero unless the
+	// rule declares printed_decimals, which is every rule in the corpus but
+	// one. The parser has already bounded the count by the units' own
+	// precision, so DigitCents cannot fail here; refusing rather than assuming
+	// keeps a future caller from getting a silent zero unit.
+	var unit amount.Cents
+	if rule.PrintedDecimals != nil {
+		u, ok := amount.DigitCents(rule.Units, *rule.PrintedDecimals)
+		if !ok {
+			return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+				Field: "printed_decimals", Err: ErrNotFound,
+				Msg: fmt.Sprintf("%d decimal places is not exact at %s",
+					*rule.PrintedDecimals, string(rule.Units))}
+		}
+		unit = u
+	}
 
 	// Declared discrepancies, by 1-based column. The parser has already
 	// refused a duplicate, an out-of-range column, a skipped column, a zero
@@ -1308,6 +1505,19 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 		if diff == want {
 			continue
 		}
+		// Half a printed unit per row summed. Written as a doubled comparison
+		// rather than a halved bound so the arithmetic stays in whole cents:
+		// an odd term count would otherwise round the tolerance, and which way
+		// it rounded would be the difference between a page passing and not.
+		//
+		// It is tried only on an UNDECLARED column. A declared delta names an
+		// exact figure and must still match exactly, or the two mechanisms
+		// would compose into a declaration with slack around it.
+		if !isDeclared && unit > 0 && abs(diff)*2 <= unit*amount.Cents(terms[c]) {
+			res.Tolerated++
+			res.Slack = append(res.Slack, diff)
+			continue
+		}
 		switch {
 		case !isDeclared:
 			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, off by %s",
@@ -1322,6 +1532,21 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 			bad = append(bad, fmt.Sprintf("column %d (%s FY%d): mapped %s, document states %s, declared delta %s but the difference is %s",
 				c+1, col.FundGroup, col.FiscalYear, sums[c], stated[c], want, diff))
 		}
+	}
+	// A declaration that has stopped doing anything is the one shape a
+	// declaration in this repository must not have, and this is the exact
+	// mirror of the stale-delta arm above: there, a delta the document no
+	// longer needs; here, a tolerance no column needed. Both fail rather than
+	// pass quietly, because a tolerance nobody notices is how a global epsilon
+	// arrives one rule at a time.
+	if len(bad) == 0 && rule.PrintedDecimals != nil && res.Tolerated == 0 {
+		return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+			Field: "printed_decimals",
+			Msg: fmt.Sprintf("declares %d printed decimal places, but all %d compared column(s) tie exactly",
+				*rule.PrintedDecimals, res.Columns)},
+			"remove the declaration; a tolerance is earned by a discrepancy the "+
+				"document actually prints, and one that loosens nothing is a claim "+
+				"about the page that has stopped being true")
 	}
 	if len(bad) == 0 {
 		return res, nil

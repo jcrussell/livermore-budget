@@ -133,6 +133,21 @@ categories:
     parent: taxes
     kinds: [revenue]
     pages: [66, 127, 139]
+    aliases:
+      #@cite p0041 (ACFR) "Property taxes and special assessments   $ 60.42   $ 57.70"
+      - term: "Property taxes and special assessments"
+        pages: [41]
+        derived: true
+        rationale: >-
+          The ACFR line names special assessments alongside property taxes and
+          the Budget Book line does not, so binding the two is OUR reading
+          rather than the city's wording. It rests on position: this is the
+          first revenue line of ACFR p41's General Fund statement, where
+          pp.127-140 print Property Taxes. It cannot rest on arithmetic -- the
+          two documents cover different years on different bases, so they share
+          no cell to reconcile.
+        note: >-
+          ACFR p41, not a Budget Book page.
     # The p127 detail sums to the p66 figure only if the two parenthesized rows
     # are read as negative: 13 detail rows tie to 64,143,762 for FY 2025-26,
     # and to 98,114,440 — off by 33.97M — if the parentheses are ignored.
@@ -169,6 +184,15 @@ categories:
     parent: taxes
     kinds: [revenue]
     pages: [66, 128, 138]
+    aliases:
+      #@cite p0041 (ACFR) "Other taxes   24.77   21.80"
+      - term: "Other taxes"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page. The words are the document_term's
+          exactly and only the capitalisation differs, so the binding is the
+          words and needs no derivation -- the same case as `transfers/in`'s
+          "Transfers in" alias.
     note: >-
       Not a residual. p128 shows it carries the franchise taxes, the business
       license tax, the real property transfer tax, transient occupancy tax and
@@ -182,6 +206,14 @@ categories:
     document_term: "Licenses & Permits"
     kinds: [revenue]
     pages: [66, 128]
+    aliases:
+      #@cite p0041 (ACFR) "Licenses and permits   7.78   3.40"
+      - term: "Licenses and permits"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page. The ACFR spells the conjunction
+          "and" where the Budget Book prints "&"; same two nouns, same line, so
+          no derivation.
     note: >-
       Zero in all six non-General fund groups, which is why spine.yaml has to
       declare it in `omitted_rows` for p67 — extraction emits no row for it
@@ -195,6 +227,13 @@ categories:
     document_term: "Fines & Forfeitures"
     kinds: [revenue]
     pages: [66, 128, 131]
+    aliases:
+      #@cite p0041 (ACFR) "Fines and forfeitures   0.48   0.30"
+      - term: "Fines and forfeitures"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page. "and" for "&", and lower case; same
+          two nouns, so no derivation.
 
   #@cite p0066 "Intergovernmental 4,328,164 4,631,220"
   #@cite p0128 "Total Intergovernmental $4,522,641 $3,833,548 $4,328,164 $4,631,220"
@@ -216,6 +255,15 @@ categories:
     document_term: "Charges for Services"
     kinds: [revenue]
     pages: [66, 129, 131, 132, 133, 134, 136, 137, 138, 140]
+    aliases:
+      #@cite p0041 (ACFR) "Charges for current services   6.25   9.40"
+      - term: "Charges for current services"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page. "current services" is the GASB
+          phrasing of the line the Budget Book prints as "Charges for
+          Services"; the qualifier excludes nothing the Budget Book term
+          included, so no derivation.
 
   #@cite p0066 "Use of Money And Property 8,488,168 9,771,259 4,836,537 5,749,704"
   #@cite p0129 "Total Use of Money And Property $6,557,541 $7,237,501 $8,488,168 $9,771,259"
@@ -228,6 +276,11 @@ categories:
       #@cite p0131 "Use of Money & Prop 1,738,872 1,569,826 1,654,787 1,722,954"
       - term: "Use of Money & Prop"
         pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
+      #@cite p0041 (ACFR) "Use of money and property   12.81   10.40"
+      - term: "Use of money and property"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page. Capitalisation only.
     note: >-
       The capital A in "And" is the document's, on both p66 and p129. Do not
       normalize it in `document_term`; the mapping matches printed text.
@@ -246,6 +299,20 @@ categories:
       #@cite     own compression to fit the narrow fund-level column)
       - term: "ContributionsOutSrce"
         pages: [131, 132, 135, 136, 138, 139]
+      #@cite p0041 (ACFR) "Contributions from outside sources   -   0.10"
+      - term: "Contributions from outside sources"
+        pages: [41]
+        derived: true
+        rationale: >-
+          The Budget Book prints "Contributions Outsourced", which is not a
+          phrase the ACFR uses, and reading it as the ACFR's "Contributions
+          from outside sources" is our interpretation of an unusual term rather
+          than a spelling difference. It rests on position -- both sit between
+          Intergovernmental and Fines in a revenue list the two documents order
+          alike -- and on nothing arithmetic: the ACFR prints a dash here in
+          FY2025, so there is no figure to reconcile even in principle.
+        note: >-
+          ACFR p41, not a Budget Book page.
     note: >-
       Renamed from `contributions`. The short form is not a harmless
       abbreviation: this category has exactly one detail line, "Contribution
@@ -266,6 +333,13 @@ categories:
       #@cite p0131 "Miscellaneous Rev 5,191 1,300 1,400 1,400"
       - term: "Miscellaneous Rev"
         pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
+      #@cite p0041 (ACFR) "Miscellaneous   1.26   0.60"
+      - term: "Miscellaneous"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page. The ACFR drops the noun the Budget
+          Book carries; it is the last line of a revenue block in both, so the
+          shorter form names the same line and the binding is still the words.
     note: >-
       Renamed from `miscellaneous` for the same reason as
       `contributions-outsourced`: the printed term has two words and the slug
@@ -348,6 +422,64 @@ categories:
       `fund_group: debt-service`. Two axes, one string, would be exactly the
       near-miss this file exists to prevent. spine.yaml was migrated to the
       plural when this file landed.
+
+  # ==================================================================
+  # EXPENDITURE — the ACFR's function axis
+  #
+  # A THIRD EXPENDITURE AXIS, AND THE FIRST THAT IS NOT THE BUDGET
+  # BOOK'S. The four objects above answer "what was the money spent
+  # on"; department-funding-sources below answers "which fund paid";
+  # this answers "which function of government performed it", which is
+  # how the ACFR's MD&A cuts the same General Fund money.
+  #
+  # It exists for ACFR p41's "General Government:" block, whose five
+  # rows -- City Council, City Manager, City Attorney, Administrative
+  # Services, General Services -- are the divisions the function covers.
+  # They share this one category and are told apart by their row_label,
+  # which is this file's own doctrine for detail lines: p127 prints
+  # thirteen property-tax lines that all classify as taxes/property.
+  #
+  # SUMMING IT WITH THE FOUR OBJECT CATEGORIES WOULD DOUBLE-COUNT, and
+  # what prevents that is the SCOPE, not this note. These facts are
+  # published at acfr-general-fund-summary and the spine's are at
+  # all-funds-gross, so no projection nets them together. Here the
+  # separation is doubly safe and it is worth saying why, because the
+  # reason is not the one the funding-source note gives: this document
+  # is FY2025 audited and the Budget Book prints no audited column, so
+  # the two share no (kind, category, fund_group, fund, fiscal year,
+  # basis) key at all.
+  #
+  # AND THE FACTS CARRY NO `department:`, which is a constraint rather
+  # than a choice and a different one from the funding-source case
+  # below. Three of the five rows -- city-council, city-attorney,
+  # general-services -- are 1:1 with a division of data/departments.yaml
+  # and could carry one. Two are not: "Administrative Services" the
+  # DEPARTMENT covers the administrative-services, finance and
+  # human-resources divisions, and "City Manager" covers city-manager
+  # and city-clerk. p41 prints department-level aggregates, so typing
+  # the division slug would file a three-division figure under one
+  # division -- and fact-departments-resolve would PASS on it, because
+  # the strings coincide. Half the rows classified correctly and two
+  # silently wrong is worse than none, so none carry it, which is the
+  # answer fisc-xudn already recorded for this file.
+  # ==================================================================
+
+  #@cite p0041 (ACFR) "General Government:   18.45   16.00" over its five
+  #@cite     divisions, which sum to 18.44 -- one printed unit, and the
+  #@cite     tolerance consumer mappings/livermore-acfr-fy2025.yaml names.
+  - slug: general-government
+    label: "General Government"
+    document_term: "General Government"
+    kinds: [expenditure]
+    pages: [41]
+    note: >-
+      ACFR p41, not a Budget Book page — see the note on `pages` in this
+      file's header. The page prints the label with a trailing colon
+      ("General Government:") because it is a subtotal heading standing
+      over its own rows; the document_term drops the colon, which is
+      punctuation of the layout rather than part of the term. The rule
+      that reads it declares the colon form as its total_row, so the two
+      spellings are both written down and neither is inferred.
 
   # ==================================================================
   # EXPENDITURE — the funding-source axis

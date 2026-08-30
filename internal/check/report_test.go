@@ -146,8 +146,8 @@ func TestABrokenCheckCannotBeGreen(t *testing.T) {
 }
 
 // TestResultsAreStampedFromTheCheck keeps a result from claiming an identity its
-// check does not answer to, which matters because a future
-// data/reconciliations.yaml names checks by id.
+// check does not answer to, which matters because the id is what a reader greps
+// for and what a vacuity declaration names.
 func TestResultsAreStampedFromTheCheck(t *testing.T) {
 	liar := &fake{id: "honest", res: Result{
 		CheckID: "some-other-check", Tier: 4, Description: "not mine",
@@ -217,8 +217,8 @@ func TestAllIsNotAppendable(t *testing.T) {
 }
 
 // TestEveryCheckIsWellFormed guards the contract in Check.ID: the ids are what a
-// future data/reconciliations.yaml names, so they have to be unique and stable,
-// and every check has to be able to say what it claims.
+// vacuity declaration names and what a reader greps for, so they have to be
+// unique and stable, and every check has to be able to say what it claims.
 func TestEveryCheckIsWellFormed(t *testing.T) {
 	kebab := regexp.MustCompile(`^[a-z][a-z0-9-]*[a-z0-9]$`)
 	seen := map[string]bool{}
