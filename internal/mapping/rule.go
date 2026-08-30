@@ -301,15 +301,26 @@ type Rule struct {
 	// it.
 	//
 	// IT IS OPT-IN FOR THE SAME REASON Part.ColumnHeaders IS: declaring it is a
-	// claim about a specific schedule that someone has looked at, and the
-	// alternative — trying every row label in the corpus against
-	// registry.FundByLabel — is unsafe in a way a count does not show. Most
-	// labels would miss and be skipped; the hazard is the ones that
-	// ACCIDENTALLY resolve. p127 prints "Current Year - Secured", p167 prints
-	// object categories, the spine prints "Wages & Benefits", and the check
-	// would go from 78 subjects to thousands of which only 78 were ever
-	// intended. A rule author saying "these rows name funds" is a statement
-	// review can check; a resolver guessing it is not.
+	// claim about a specific schedule that someone has looked at, rather than
+	// something a resolver infers.
+	//
+	// AN EARLIER VERSION OF THIS COMMENT ARGUED IT FROM A NUMBER THAT IS FALSE,
+	// and the measurement is worth keeping because it is the opposite of what
+	// the argument assumed. It said a corpus-wide arm "would go from 78 subjects
+	// to thousands of which only 78 were ever intended". Measured over the
+	// committed corpus: 429 rows declared, 400 active and non-skipped, and
+	// exactly 78 of those 400 resolve through registry.FundByLabel — the 78 this
+	// declaration covers. ZERO accidental hits, and "thousands" is not reachable
+	// from a corpus of 429 rows at all. p127's "Current Year - Secured", p167's
+	// object categories and the spine's "Wages & Benefits" all miss, as that
+	// comment's own preceding clause said they would.
+	//
+	// SO THE ARGUMENT IS NOT ABOUT TODAY'S COUNT. It is that an inferred claim
+	// does not stay true: the next schedule mapped may print a row label that
+	// happens to be a fund name, and a resolver guessing would silently check it
+	// against a fund nobody declared, with no line in the rule file to review.
+	// A declaration is a statement whose author can be asked. That reasoning
+	// holds at 429 rows and at 4,290; the count never was the reason.
 	//
 	// WHY THE RULE AND NOT THE PART. Rule.Rows is one list shared by every part,
 	// and the check that reads this iterates Rule.ActiveRows unioned across

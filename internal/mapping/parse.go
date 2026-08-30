@@ -808,18 +808,36 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 	// clean, and row-funds-match-their-anchors drops skipped rows from every
 	// arm, so the declaration stood over zero checked rows and the rule was
 	// named nowhere in the summary. Found by the third /code-review pass.
+	// A ROW IS COVERED ONLY IF SOME PART READS IT, and there are TWO ways not to
+	// be: skip: true, and being omitted from every part that could carry it. The
+	// first version of this guard counted only the first, so a rule whose every
+	// row appears in each part's omitted_rows parsed clean and the check read
+	// none of them -- reproducing exactly the vacuous declaration the guard was
+	// added to refuse, one omission mechanism over. Found by the fifth review
+	// pass, in the fourth pass's own fix.
+	//
+	// ActiveRows is the same function row-funds-match-their-anchors reaches
+	// through activeInAnyPart, so this counts what the check will actually read
+	// rather than a second opinion about it.
 	covered := 0
-	for _, row := range r.Rows {
-		if !row.Skip {
+	seen := map[string]bool{}
+	for i := range r.Parts {
+		for _, row := range r.ActiveRows(&r.Parts[i]) {
+			if row.Skip || seen[row.Identity()] {
+				continue
+			}
+			seen[row.Identity()] = true
 			covered++
 		}
 	}
 	if covered == 0 {
 		return cmdutil.WithHint(
 			errf(r.ID, "row_labels_name_funds",
-				"every row of this rule is skipped, so the declaration covers none of them"),
-			"a skipped row is never read from the page, so nothing reads its "+
-				"label and nothing checks the fund typed on it")
+				"no part of this rule reads any of its rows, so the declaration "+
+					"covers none of them"),
+			"a row that is skipped, or omitted from every part, is never read "+
+				"from the page, so nothing reads its label and nothing checks "+
+				"the fund typed on it")
 	}
 	for _, row := range r.Rows {
 		if row.Skip {

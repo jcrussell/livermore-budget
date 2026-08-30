@@ -94,7 +94,7 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 //     per rule. pp.85-125's 78 rows all declare it (fisc-90fp).
 //
 //     THE DIRECTION HALF IS NOT RECOVERED BY THAT DECLARATION and must not be.
-//     A bare fund name says which fund, never which end, so the third arm
+//     A bare fund name says which fund, never which end, so the bare-label arm
 //     asserts the row's own fund and never the counterpart's. What the verb
 //     phrase buys over the declaration is exactly the `side` field above.
 type rowFundsMatchTheirAnchors struct{}
@@ -112,7 +112,7 @@ func (*rowFundsMatchTheirAnchors) Description() string {
 func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects, unanchored, unphrased := 0, 0, 0
-	// bare counts the subjects the third arm resolved, so the summary can keep
+	// bare counts the subjects the bare-label arm resolved, so the summary can keep
 	// the two claims apart rather than averaging them into one false sentence.
 	bare := 0
 	var unanchoredRows []string
