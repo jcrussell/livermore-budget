@@ -178,15 +178,24 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 	}
 
 	res := fundBalanceResult(t, cells)
+	// want fail and specifically NOT error: the store is wrong, the checker is
+	// not, and the report distinguishes them. Asserted as one comparison because
+	// a separate `if res.Status == StatusError` after this line is unreachable,
+	// which is what the first version of this test shipped -- dead code reading
+	// as the guard that carries the test's whole point.
 	if res.Status != StatusFail {
-		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
-	}
-	// Not StatusError: the store is wrong, the checker is not.
-	if res.Status == StatusError {
-		t.Fatal("a duplicated fund-balance line was reported as a harness error")
+		t.Fatalf("status = %s (%s), want fail; StatusError would mean a duplicated "+
+			"line in the store had been reported as a broken checker", res.Status, res.Summary)
 	}
 	if len(res.Findings) != 1 {
 		t.Fatalf("findings = %v, want exactly the general balance", res.Findings)
+	}
+	// The finding must address a FACT. A balance can be duplicated on a line
+	// other than its beginning, and an arm that reached for the beginning id
+	// would emit an empty subject there; see TestFundBalanceFindingsAlwaysName
+	// ASubject below.
+	if !strings.HasPrefix(res.Findings[0].Subject, "fisc-f-") {
+		t.Errorf("finding subject = %q, want a fact id", res.Findings[0].Subject)
 	}
 	got := res.Findings[0].Detail
 	for _, want := range []string{fundBalanceEnding, "twice", "excluded from it"} {
@@ -203,5 +212,43 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 	}
 	if !strings.Contains(res.Summary, "1 finding") {
 		t.Errorf("summary = %q, want one finding over both balances", res.Summary)
+	}
+}
+
+// TestFundBalanceFindingsAlwaysNameASubject is the test the second review pass
+// was owed, and it is written over BOTH arms because the defect it guards was
+// fixed in one arm and reintroduced in the other by the same commit.
+//
+// A finding whose Subject is "" addresses nothing. The missing-lines arm chose
+// its id by ranging a map (non-reproducible across runs); the fix walked the
+// three categories in order; the duplicate arm then hard-coded the BEGINNING
+// line's id, which is "" on a balance that has no beginning line. Both now go
+// through balance.subject, and this asserts the property rather than the
+// implementation.
+func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
+	// A balance with NO beginning line, whose ending line is duplicated: the
+	// exact shape that produced subject="".
+	var cells []testCell
+	for _, c := range fixtureCells {
+		if c.category == fundBalanceBeginning && c.group == "general" {
+			continue
+		}
+		cells = append(cells, c)
+		if c.category == fundBalanceEnding && c.group == "general" {
+			cells = append(cells, testCell{c.kind, c.category, c.group, c.cents + 999})
+		}
+	}
+
+	res := fundBalanceResult(t, cells)
+	if res.Status != StatusFail {
+		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+	}
+	if len(res.Findings) == 0 {
+		t.Fatal("no findings, so this test asserts nothing about their subjects")
+	}
+	for _, f := range res.Findings {
+		if f.Subject == "" {
+			t.Errorf("finding %q has an empty subject; it addresses nothing", f.Detail)
+		}
 	}
 }

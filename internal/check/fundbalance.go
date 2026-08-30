@@ -64,15 +64,25 @@ func (*fundBalanceIdentity) Description() string {
 	return "every published fund balance satisfies beginning + change == ending, exactly"
 }
 
-// fundBalanceKey is one balance: one fund group of one document, on one column.
+// fundBalanceKey is one balance: one fund of one fund group of one document, on
+// one (fiscal year, basis) column.
 //
 // The scope is in the key because two scopes may publish the same fund group's
 // balance from different schedules, and adding a Budget Book cell to an ACFR one
 // would be arithmetic across two documents that nothing licenses.
+//
+// THE FUND IS IN IT FOR A CASE THE CORPUS DOES NOT YET HAVE, and it is here now
+// because getting it wrong later would be silent. Every fund-balance fact today
+// carries fund 0 -- the spine and ACFR p41 both publish per fund GROUP -- but
+// pp.68-75 print a balance per FUND, and without this field funds 100 and 101 of
+// one group would collapse onto one key, be reported as a spurious duplicate,
+// and BOTH be excluded from the identity. A check that quietly stops examining
+// the rows a coverage lane just added is the failure this whole file is about.
 type fundBalanceKey struct {
 	docID      string
 	scope      string
 	fundGroup  string
+	fund       int
 	fiscalYear int
 	basis      string
 }
@@ -82,15 +92,42 @@ func (k fundBalanceKey) String() string {
 	if group == "" {
 		group = "(no fund group)"
 	}
+	if k.fund != 0 {
+		group = fmt.Sprintf("%s fund %d", group, k.fund)
+	}
 	return fmt.Sprintf("%s %s %s FY%d %s", k.docID, k.scope, group, k.fiscalYear, k.basis)
 }
 
-func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
-	type balance struct {
-		amounts    map[string]amount.Cents
-		ids        map[string]string
-		duplicates []string
+// balance is the three lines of one fund balance, as collected from the store.
+type balance struct {
+	amounts    map[string]amount.Cents
+	ids        map[string]string
+	duplicates []string
+}
+
+// subject names the fact a finding about this balance should address.
+//
+// IT IS ONE METHOD AND NOT A LOOP WRITTEN TWICE, which is the whole reason it
+// exists. Picking the id by ranging b.ids was a defect -- `fisc verify --json`
+// gave a different subject on different runs over one unchanged corpus -- and it
+// was fixed in the missing-lines arm; the duplicate arm added by the same review
+// pass then reintroduced it in a second form, hard-coding the BEGINNING line's
+// id, which is "" on a balance that has no beginning line. Two arms, two ways to
+// get one decision wrong, and the second was found only by a later pass.
+//
+// Falling back to the key's description rather than to "" matters: a finding
+// whose subject is empty addresses nothing, and the report is what a reader
+// greps.
+func (b *balance) subject(k fundBalanceKey) string {
+	for _, c := range []string{fundBalanceBeginning, fundBalanceChange, fundBalanceEnding} {
+		if id, ok := b.ids[c]; ok && id != "" {
+			return id
+		}
 	}
+	return k.String()
+}
+
+func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 	balances := map[fundBalanceKey]*balance{}
 	var order []fundBalanceKey
 
@@ -101,7 +138,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 			continue
 		}
 		k := fundBalanceKey{
-			docID: f.DocID, scope: f.Scope, fundGroup: f.FundGroup,
+			docID: f.DocID, scope: f.Scope, fundGroup: f.FundGroup, fund: f.Fund,
 			fiscalYear: f.FiscalYear, basis: string(f.Basis),
 		}
 		b := balances[k]
@@ -139,7 +176,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		b := balances[k]
 
 		if len(b.duplicates) > 0 {
-			findings = append(findings, finding(b.ids[fundBalanceBeginning],
+			findings = append(findings, finding(b.subject(k),
 				"%s publishes %s; the identity has no single value to check, so this "+
 					"balance is excluded from it",
 				k, strings.Join(b.duplicates, " and ")))
@@ -153,19 +190,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 			}
 		}
 		if len(missing) > 0 {
-			// Name a fact that IS present, so the finding points at a line of
-			// facts.jsonl rather than at nothing -- and pick it deterministically.
-			// Ranging a map here made `fisc verify --json` produce a different
-			// subject on different runs over one unchanged corpus, which is the
-			// opposite of what a content-addressed audit trail is for.
-			subject := k.String()
-			for _, c := range []string{fundBalanceBeginning, fundBalanceChange, fundBalanceEnding} {
-				if id, ok := b.ids[c]; ok {
-					subject = id
-					break
-				}
-			}
-			findings = append(findings, finding(subject,
+			findings = append(findings, finding(b.subject(k),
 				"%s publishes %d of the three fund-balance lines and is missing %s; "+
 					"a balance that publishes any of them must publish all three, or a "+
 					"dropped line would leave this identity with nothing to violate",

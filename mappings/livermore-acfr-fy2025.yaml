@@ -118,7 +118,9 @@
 # here exactly as printed, which is the invariant, but it means transfer_out
 # facts carry OPPOSITE SIGNS in the two documents. A consumer summing
 # transfer_out across scopes would get nonsense. Nothing in internal/check can
-# see this, because the two scopes share no key and no check compares them.
+# see this: the two scopes share no key and no check compares them, and
+# Fact.Sign -- the one field whose job is to say how a row relates to its
+# category -- reads `positive` under BOTH conventions. Filed as fisc-fdxx.
 schema_version: 1
 doc_id: livermore-acfr-fy2025
 

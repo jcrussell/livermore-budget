@@ -474,8 +474,9 @@ categories:
           (Uses); the Budget Book prints TRANSFER OUT as a positive magnitude
           in a uses column. Both are published exactly as printed, which is the
           invariant — but a consumer summing transfer_out across scopes would
-          get nonsense, and nothing in internal/check can see it, because the
-          two scopes share no key.
+          get nonsense, and nothing in internal/check can see it: the two scopes
+          share no key, and Fact.Sign reads `positive` under both conventions.
+          Filed as fisc-fdxx.
     note: >-
       Same line as the alias, proven: General Fund FY 2026-27 is 10,146,598
       both as p66 TRANSFER OUT and as the p75 Transfers Out column.
