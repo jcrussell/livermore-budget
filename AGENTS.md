@@ -357,6 +357,33 @@ decide whether to narrow the commit rather than keep patching it. Every boundary
 in the measured session hit its cap with findings still outstanding, and that is
 information the owner should have rather than something to absorb silently.
 
+**A third lane, measured 2026-08-30.** The ACFR tolerance lane
+(`6df0858..4cdcbd5` — `total_row_above`, `printed_decimals`, `unmapped_text` and
+ACFR p41) ran the full five and went **11, 8, 6, 6, 4**. Three things in that
+sequence are worth having:
+
+- **It never reached zero**, and the counts fell by less than half over five
+  passes. The cap did its job as a stopping rule, not as a promise.
+- **The fourth pass found a defect the SECOND pass's own fix had introduced**,
+  and the mechanism is new. The second-pass reviewer read two files that
+  disagreed about a figure and said to make them agree; the wrong one was
+  corrected, because an intermediate draft had quietly redefined the term both
+  were counting ("the page's four blocks" → "the four blocks this file maps").
+  A fix that propagates a NUMBER without its DEFINITION is a shape to look for.
+- **Exactly one of the 35 findings was fail-open** — an unguarded `abs(diff)*2`
+  in the new tolerance that wrapped negative and accepted any discrepancy. It
+  survived four passes. The other 34 were false text, missing tests, or refusals
+  that were too strict, which is to say: the passes that felt least productive
+  were the ones that found the only defect that could have published a wrong
+  figure.
+
+*(Correction, recorded here rather than by amending, because the log is the
+audit trail: `4cdcbd5`'s own message says "the other twenty-nine findings". It is
+thirty-four — 11+8+6+6+4 = 35, less the one fail-open. The number was written
+from memory of the pass counts rather than added up, in a commit message about
+review rigour, which is the defect
+[Before you quote a number](#before-you-quote-a-number) exists to name.)*
+
 ### Nothing leaves a pass unfiled
 
 **Every finding you do not fix becomes a bead, in the same session, before you
