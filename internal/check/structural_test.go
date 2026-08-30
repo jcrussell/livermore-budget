@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/corpus"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 )
 
@@ -35,10 +36,78 @@ import (
 // one that nothing maps. Both are extracted and both are swept, which is the
 // difference between Subject.Extractions and Subject.Docs; a test that wants a
 // mutation the fact checks cannot see uses the second.
+//
+// docWithout WAS THE ACFR AND IS NOW THE CIP, because the ACFR stopped being a
+// document nothing maps: mappings/livermore-acfr-fy2025.yaml landed and the
+// twenty-odd tests below started failing on "read manifest: no such file", which
+// says nothing about what they assert. A rule file demands its document's
+// extraction, so deleting or skewing that extraction is no longer an invisible
+// mutation -- it is a load error before any check runs.
+//
+// TestDocWithoutIsMappedByNothing turns that from a convention into a check, so
+// the next lane to map a document gets told which constant to move rather than
+// re-deriving it from a manifest error.
 const (
 	docWithFacts = testDoc
-	docWithout   = "livermore-acfr-fy2025"
+	docWithout   = "livermore-cip-fy2026-2030"
 )
+
+// pagesOfDocWithout is docWithout's page count, read off data/sources.yaml rather
+// than written down here.
+//
+// It used to be the literal 195 in five assertions, which is what made moving
+// docWithout from the ACFR to the CIP fail in five places with the right
+// behaviour and the wrong number. A page count is a property of whichever
+// document the constant names, so it is derived from the constant.
+func pagesOfDocWithout(t *testing.T) int {
+	t.Helper()
+	sources, err := registry.LoadSources(os.DirFS("../../data"))
+	if err != nil {
+		t.Fatalf("LoadSources: %v", err)
+	}
+	for _, src := range sources {
+		if src.ID == docWithout {
+			return src.Pages
+		}
+	}
+	t.Fatalf("data/sources.yaml lists no document %q", docWithout)
+	return 0
+}
+
+// TestDocWithoutIsMappedByNothing is the guard on the constant above.
+//
+// Every mutation test in this file that uses docWithout depends on nothing
+// mapping it. That dependency was silent until the ACFR was mapped, and what it
+// produced was a load failure in tests whose names are about manifests and
+// artifacts -- a diagnosis one step removed from the cause. This fails with the
+// cause instead.
+func TestDocWithoutIsMappedByNothing(t *testing.T) {
+	files, err := mapping.LoadDir(os.DirFS("../.."), "mappings")
+	if err != nil {
+		t.Fatalf("LoadDir: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("no rule files loaded, so this test asserts nothing")
+	}
+	mapped := false
+	for _, f := range files {
+		if f.DocID == docWithFacts {
+			mapped = true
+		}
+		if f.DocID == docWithout {
+			t.Errorf("%s maps %s, which docWithout names as a document nothing maps; "+
+				"point docWithout at a document with no rule file, or the mutation "+
+				"tests in this file will fail on a missing manifest instead of on "+
+				"what they assert", f.Path, docWithout)
+		}
+	}
+	// The other half: docWithFacts must actually be mapped, or the tests that
+	// contrast the two are contrasting nothing.
+	if !mapped {
+		t.Errorf("no rule file maps %s, which docWithFacts names as the document the "+
+			"committed rules read", docWithFacts)
+	}
+}
 
 // repoPath joins a repository-relative slash path onto a root.
 func repoPath(root, rel string) string { return filepath.Join(root, filepath.FromSlash(rel)) }
@@ -199,7 +268,7 @@ func dropArtifact(t *testing.T, root, docID, rel string) {
 // Delete every artifact of an extraction from the directory AND from its manifest,
 // and the hash sweep passes: the map and the directory agree, because both are
 // empty. Its subject count drops from 1,572 to 1,182 — a number nobody notices
-// without diffing two reports — and 195 pages of a published document are gone.
+// without diffing two reports — and every page of a published document is gone.
 // --strict does not help either, because it is a PASS and not a vacuous result.
 //
 // This is not a contrived state. It is the shape of the extractor's own documented
@@ -239,7 +308,11 @@ func TestAnEmptiedExtractionFails(t *testing.T) {
 	if len(res.Findings) != 1 || res.Findings[0].Subject != docWithout {
 		t.Fatalf("findings = %v, want exactly the emptied extraction", res.Findings)
 	}
-	for _, want := range []string{"counts 195 pages and lists 0 artifacts", "any of the 195 pages"} {
+	n := pagesOfDocWithout(t)
+	for _, want := range []string{
+		fmt.Sprintf("counts %d pages and lists 0 artifacts", n),
+		fmt.Sprintf("any of the %d pages", n),
+	} {
 		if !strings.Contains(res.Findings[0].Detail, want) {
 			t.Errorf("finding %q does not contain %q", res.Findings[0].Detail, want)
 		}
@@ -265,9 +338,9 @@ func TestAMissingPageFails(t *testing.T) {
 	for _, tt := range []struct {
 		name, rel, want string
 	}{
-		{"the page text", corpus.PagePath(5), "no page text for 1 of 195 pages (p5)"},
+		{"the page text", corpus.PagePath(5), "no page text for 1 of %d pages (p5)"},
 		{"the word geometry", corpus.GeometryPath(5),
-			"no word geometry for 1 of 195 pages (p5)"},
+			"no word geometry for 1 of %d pages (p5)"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			root := repoWithoutPDFs(t)
@@ -282,8 +355,9 @@ func TestAMissingPageFails(t *testing.T) {
 			if len(res.Findings) != 1 || res.Findings[0].Subject != docWithout {
 				t.Fatalf("findings = %v, want exactly the short extraction", res.Findings)
 			}
-			if !strings.Contains(res.Findings[0].Detail, tt.want) {
-				t.Errorf("finding %q does not contain %q", res.Findings[0].Detail, tt.want)
+			want := fmt.Sprintf(tt.want, pagesOfDocWithout(t))
+			if !strings.Contains(res.Findings[0].Detail, want) {
+				t.Errorf("finding %q does not contain %q", res.Findings[0].Detail, want)
 			}
 			if got := resultFor(t, rep, "artifacts-match-manifest").Status; got != StatusPass {
 				t.Errorf("artifacts-match-manifest = %s, want pass", got)
@@ -319,7 +393,8 @@ func TestAnArtifactForNoPageFails(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("extraction-emitted-every-page = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "1 artifact for no page of a 195-page document") {
+	if !strings.Contains(findingDetails(res),
+		fmt.Sprintf("1 artifact for no page of a %d-page document", pagesOfDocWithout(t))) {
 		t.Errorf("findings %v do not report the artifact as belonging to no page", res.Findings)
 	}
 	if !strings.Contains(findingDetails(res), stray) {
@@ -354,7 +429,8 @@ func TestZeroingThePageCountIsCaughtByTheRegistry(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("manifest-matches-source-registry = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if !strings.Contains(findingDetails(res), "the extractor found 0 pages and the registry records 195") {
+	if !strings.Contains(findingDetails(res), fmt.Sprintf(
+		"the extractor found 0 pages and the registry records %d", pagesOfDocWithout(t))) {
 		t.Errorf("findings %v do not report the page count disagreement", res.Findings)
 	}
 }

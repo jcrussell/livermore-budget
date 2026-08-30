@@ -52,6 +52,12 @@ import (
 // detailSums and never consulted this map, so it still reconciles the same 134
 // cells against the spine. Retiring a declaration here costs nothing, which is
 // what makes the automatic retirement safe.
+// acfrGeneralFundScope is the scope ACFR MD&A p41's General Fund statement is
+// mapped at. It is declared here rather than beside a reconciliation check
+// because there is no such check and there cannot be one: see the entry in
+// unprojectedScopes below.
+const acfrGeneralFundScope = "acfr-general-fund-summary"
+
 var unprojectedScopes = map[string]string{
 	transfersDetailScope: "Budget Book p76, Summary of Transfers: the per-fund decomposition " +
 		"of pp.66-67's TRANSFER IN and TRANSFER OUT rows, not additional money. Its 22 " +
@@ -82,6 +88,42 @@ var unprojectedScopes = map[string]string{
 		"\"Transfer From\" carries over from the row above, so they have no printed " +
 		"anchor on their own line. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; " +
 		"leg-level links carrying a transfer_id are fisc-9gh.",
+
+	acfrGeneralFundScope: "ACFR p41, the General Fund's Statement of Revenues, Expenditures " +
+		"and Changes in Fund Balances: five audited FY2024-25 figures, and the first facts in " +
+		"this store from a document other than the Budget Book. Two transfer legs -- 0.53 in " +
+		"and (25.72) out, tying to the block's own printed Total Other Financing Sources " +
+		"(Uses) of (25.19) at zero tolerance -- and the three fund-balance lines that close " +
+		"the statement: beginning 92.10, change (5.00), ending 87.10. All in millions to two " +
+		"decimals, so the least significant printed digit is $10,000. " +
+		"IT IS UNPROJECTED BECAUSE IT IS A DIFFERENT YEAR ON A DIFFERENT BASIS, not because " +
+		"it restates money some other scope already publishes -- which is the opposite of " +
+		"every other entry in this map. The Budget Book spine is FY2026 and FY2027 adopted; " +
+		"this is FY2025 audited, and the spine prints no audited column, so these facts share " +
+		"no (kind, category, fund_group, fund, fiscal year, basis) key with anything published " +
+		"and no doubling is possible. The site draws budget years; adding an audited prior " +
+		"year to a chart of adopted figures is a decision nobody has made (fisc-awe answered " +
+		"the adjacent question -- one schedule gets one published view -- and that is about " +
+		"two views of ONE schedule, not about drawing this one at all). " +
+		"AND SO THIS SCOPE CARRIES NO DETAIL-TIES-TO-SPINE CHECK, which breaks the rule every " +
+		"other non-spine scope here follows. There is nothing on the spine to tie it to. What " +
+		"asserts these facts instead is fund-balance-identity, which reaches three of the five " +
+		"-- beginning + change == ending, the same identity it asserts over the spine's twelve " +
+		"cells -- plus CheckTotals at build time on the other two. The remaining exposure is " +
+		"stated rather than absorbed: this page declares no column_headers, because its " +
+		"printed headers are the bare years 2025 and 2024 and the parser refuses a header " +
+		"amount.Parse accepts, and because the geometry line pairing fails on the page anyway " +
+		"(a stray \"0.0\" with no row label sits inside the line tolerance of the row above, " +
+		"giving 51 geometry lines against 52 text lines). So no geometry column guard stands " +
+		"over these five figures. " +
+		"The rest of the page is not mapped and mappings/livermore-acfr-fy2025.yaml says why: " +
+		"the revenue block cannot be read at all while that stray \"0.0\" has no honest " +
+		"declaration (fisc-hcus) -- and that orphan is the ONLY blocker, measured by " +
+		"running the rule rather than by reading the page. The expenditure block's " +
+		"rows are departments that " +
+		"fact-departments-resolve cannot accept (fisc-xudn). Its one discrepancy a " +
+		"document-derived tolerance could consume sits on a subtotal printed ABOVE its " +
+		"own rows, which no total_row can anchor (fisc-h96o).",
 
 	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
 		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +

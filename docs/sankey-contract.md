@@ -50,7 +50,7 @@ selects — so under the old rule a provenance link resolved to a record file
 sitting beside a 404. Worse, the set was unstable: a page entered and left the
 published extraction as views were added, with no event anyone could see. The
 pages `facts/index.json` publishes are cited, so the extraction covers every
-locator the site can resolve. It is still not the whole corpus: 35 pages of 786.
+locator the site can resolve. It is still not the whole corpus: 36 pages of 786.
 
 And `<output>/facts/` carries the record store itself — the shards, the CSV and
 the index. It has a contract of its own:

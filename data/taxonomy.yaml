@@ -4,6 +4,15 @@
 # there cannot both be true.
 #
 #@cite City of Livermore, "FY 2025-2027 Budget Book" (source id: livermore-budget-fy2026-2027)
+#
+# A `pages:` LIST CARRIES NO DOCUMENT, AND SINCE 2026-08-30 THIS FILE DESCRIBES
+# MORE THAN ONE. Every page number below is a Budget Book page UNLESS the entry
+# says otherwise, and the ACFR aliases added for `mappings/livermore-acfr-fy2025.yaml`
+# say so in a `note:`. That is a convention and not a check: all three
+# registered documents have a page 41, so `pages: [41]` is ambiguous to anything
+# that reads this file mechanically. Putting a document on the channel is filed
+# as a bead. Do not add an entry whose page could belong to two documents
+# without naming which.
 #@cite     "Citywide Revenues, Expenditures, and Fund Balance/Working Capital", PDF pp. 66-67
 #@cite     "Fund Balance by Major and Aggregate Non-Major Funds", PDF pp. 68-75
 #@cite     "Revenues Sources by Fund" / "Revenue Sources by Funds", PDF pp. 127-140
@@ -428,6 +437,18 @@ categories:
       #@cite p0066 "TRANSFER IN:" — the spine's singular, all-caps, colon form
       - term: "TRANSFER IN:"
         pages: [66]
+      #@cite p0041 (ACFR) "Transfers in    0.53    0.70"
+      - term: "Transfers in"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page — see the note on `pages` in this
+          file's header. The General Fund statement of revenues, expenditures
+          and changes in fund balances prints the row in lower case; the term
+          is otherwise the document_term exactly, so the binding is the words
+          and needs no derivation. Unlike the p66/p74 alias above it carries NO
+          arithmetic proof and cannot: the ACFR figure is FY2024-25 audited and
+          the Budget Book prints no audited column, so there is no shared cell
+          to reconcile.
     note: >-
       The alias is the same line, proven: General Fund FY 2026-27 is 486,735
       both as p66 TRANSFER IN and as p74 Transfers In.
@@ -443,6 +464,18 @@ categories:
     aliases:
       - term: "TRANSFER OUT:"
         pages: [66]
+      #@cite p0041 (ACFR) "Transfers (out)    (25.72)    (14.50)"
+      - term: "Transfers (out)"
+        pages: [41]
+        note: >-
+          ACFR p41, not a Budget Book page. AND THE SIGN IS THE OPPOSITE OF
+          EVERY OTHER TRANSFER-OUT FACT IN THIS STORE. The ACFR parenthesises
+          the row because its block sums to a net Other Financing Sources
+          (Uses); the Budget Book prints TRANSFER OUT as a positive magnitude
+          in a uses column. Both are published exactly as printed, which is the
+          invariant — but a consumer summing transfer_out across scopes would
+          get nonsense, and nothing in internal/check can see it, because the
+          two scopes share no key.
     note: >-
       Same line as the alias, proven: General Fund FY 2026-27 is 10,146,598
       both as p66 TRANSFER OUT and as the p75 Transfers Out column.
@@ -510,6 +543,25 @@ categories:
       #@cite p0074 "Est. Fund Balance / Working Capital 7/1/26"
       - term: "Fund Balance / Working Capital"
         pages: [68, 70, 72, 74]
+      #@cite p0041 (ACFR) "Fund Balances- Beginning, as restated    92.10    83.90"
+      - term: "Fund Balances- Beginning, as restated"
+        pages: [41]
+        derived: true
+        rationale: >-
+          Same merge as the alias above and on weaker evidence, which is why it
+          is flagged separately. "Fund balance" and "working capital" are the
+          city's two words for one column — the argument is on this category's
+          parent — but the p66/p74 alias is proven arithmetically and this one
+          cannot be: the ACFR figure is FY2024-25 audited and pp.66-67 print no
+          audited column, so no cell is shared. The binding rests on the words
+          and on the row's position as the opening balance of the statement.
+        note: >-
+          ACFR p41, not a Budget Book page. "AS RESTATED" IS A MATERIAL
+          QUALIFIER AND IS NOT PART OF THE BINDING: the ACFR footnotes that
+          prior-year amounts were not restated for GASB 101 (compensated
+          absences), so this is an opening balance the city has adjusted. The
+          category says which line it is; it does not say the figure is
+          comparable to an unrestated one.
     derived: true
     rationale: >-
       The merge is ours. p66 labels the row and pp. 68/70/72/74 label a column,
@@ -534,6 +586,20 @@ categories:
     aliases:
       - term: "Fund Balance / Working Capital"
         pages: [69, 71, 73, 75]
+      #@cite p0041 (ACFR) "Fund Balances- Ending    87.10    92.10"
+      - term: "Fund Balances- Ending"
+        pages: [41]
+        derived: true
+        rationale: >-
+          The closing balance of the ACFR's General Fund statement, bound to
+          this category by the same fund-balance/working-capital argument as
+          the alias above and, like it, with no shared cell to prove it. What
+          this one does have is an internal proof the others do not: on p41 the
+          three lines satisfy beginning + change == ending exactly (92.10 +
+          (5.00) = 87.10), so the three aliases are at least mutually
+          consistent about which line is which.
+        note: >-
+          ACFR p41, not a Budget Book page.
     derived: true
     rationale: >-
       Same merge as fund-balance/beginning and proven the same way: General
@@ -555,6 +621,20 @@ categories:
     parent: fund-balance
     kinds: [fund_balance]
     pages: [66]
+    aliases:
+      #@cite p0041 (ACFR) "Net Change in Fund Balances    (5.00)    8.10"
+      - term: "Net Change in Fund Balances"
+        pages: [41]
+        derived: true
+        rationale: >-
+          Same fund-balance/working-capital merge as this category's two
+          siblings, plus the ACFR's "Net" where the Budget Book writes none.
+          Both are the signed movement between the opening and closing balance
+          and both are printed rather than computed by us: on ACFR p41,
+          92.10 + (5.00) = 87.10. Signed the same way too — the ACFR
+          parenthesises a decrease exactly as p66 does.
+        note: >-
+          ACFR p41, not a Budget Book page.
     note: >-
       Printed, not computed by us, though it is the identity ending minus
       beginning — 3,083,557 - 732,459 = 2,351,098 for the General Fund in

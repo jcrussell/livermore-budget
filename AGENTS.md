@@ -664,7 +664,7 @@ correct in the diff and were wrong in the file.
 - **Go tests never require Python, the source PDFs, or the network.** Use the
   fixtures in `testdata/`, which are real artifacts copied from
   `data/extracted/`. They are *copies*, and `make extract` does not touch them:
-  the 26 page fixtures under `testdata/pages/` (24) and
+  the 27 page fixtures under `testdata/pages/` (25) and
   `pkg/cmd/build/testdata/pages/` (2) have to be re-copied by hand when the
   extraction changes, and their sha256s must equal the ones the source
   document's `manifest.json` records. A fixture that has drifted is the bad

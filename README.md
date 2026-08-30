@@ -19,9 +19,9 @@ plainly is part of the point.
 |---|---:|---:|---:|
 | FY 2025-2027 Budget Book | 268 | all | **35** (pp. 66–67, 76, 85–125 in part, 127–140, 167–170) |
 | 2025-2030 Capital Improvement Plan | 323 | all | 0 |
-| FY 2024-25 Annual Comprehensive Financial Report | 195 | all | 0 |
+| FY 2024-25 Annual Comprehensive Financial Report | 195 | all | **1** (p. 41 in part) |
 
-Those pages yield **1,760 facts** across five schedules, each of which reconciles
+Those pages yield **1,765 facts** across six schedules, each of which reconciles
 against something the city itself printed:
 
 | schedule | facts | what it is | fiscal years |
@@ -31,6 +31,7 @@ against something the city itself printed:
 | pp. 167–170 | 196 | General Fund department × object category | the same four |
 | p. 76 | 88 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
 | pp. 85–125 | 312 | which funds pay for each department | 2024 actual, 2025 revised, 2026 + 2027 adopted |
+| ACFR p. 41 | 5 | the General Fund's transfers and fund balances, audited | 2025 audited |
 
 The spine gives the all-funds picture the chart draws:
 
@@ -101,7 +102,7 @@ data/extracted/<doc>/              786 pages of -layout text + -bbox geometry,
   │  mappings/*.yaml               the judgment layer: which rows, which columns,
   │                                what they mean. Written to be read.
   ▼
-facts/facts.jsonl                  1,760 content-addressed facts, each carrying
+facts/facts.jsonl                  1,765 content-addressed facts, each carrying
                                    doc_id / page / offset / token
   │  internal/project              projections over (columns, scope): one column
   │                                 per Sankey year, four for the revenue trends

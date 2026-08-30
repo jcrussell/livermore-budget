@@ -86,7 +86,7 @@ One file per `(doc_id, page)`, JSONL, **byte-identical to the corresponding run
 of `facts.jsonl`**:
 
 ```
-LC_ALL=C cat dist/facts/*/pages/*.jsonl | cmp - facts/facts.jsonl
+LC_ALL=C bash -c 'cat dist/facts/*/pages/*.jsonl' | cmp - facts/facts.jsonl
 ```
 
 That equality is the whole reconciliation — no record lost, none invented, none
@@ -103,8 +103,18 @@ with the file it claims to be is the failure this project exists to refuse.
 
 `LC_ALL=C` in the command above is not decoration. With more than one document
 id, a UTF-8 locale's collation ignores punctuation on its first pass, so the
-shell could glob in an order `fact.less` does not produce. Today there is one
-document and 35 pages and the orders coincide.
+shell could glob in an order `fact.less` does not produce. **There are now two
+documents and 36 pages, and the orders still coincide** — `livermore-acfr-*`
+sorts before `livermore-budget-*` under C and under en_US.UTF-8 alike, and both
+forms of the command reconcile today. So this is a latent hazard rather than an
+active one, and the reason to keep the variable is the third document.
+
+NOTE THE `bash -c`, WHICH THIS COMMAND DID NOT HAVE UNTIL 2026-08-30 AND NEEDED
+FROM THE START. `LC_ALL=C cat ...` sets the variable for `cat`, which does not
+sort anything; the **shell** expands the glob, under its own locale, before
+`cat` is executed. The variable was decorating the wrong process. It went
+unnoticed because the store held one document, which is exactly the condition
+under which the sentence above says the ordering cannot matter.
 
 ## The CSV
 
@@ -152,8 +162,8 @@ index becoming load-bearing.
 
 ## What this does not promise
 
-**The store is what the mappings cover, not what the documents contain.** 35
-pages of 786 are mapped. A figure absent from the store is a page nobody has
+**The store is what the mappings cover, not what the documents contain.** 36
+pages of 786 are mapped, across two of the three registered documents. A figure absent from the store is a page nobody has
 mapped yet, not a figure the city did not print — the store is not a claim about
 the corpus.
 
