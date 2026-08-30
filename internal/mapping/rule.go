@@ -314,8 +314,12 @@ type Rule struct {
 	//     two mechanisms are disjoint by construction rather than by prose:
 	//     one names an exact figure and the other bounds an unnamed one, and a
 	//     rule reaching for both is asking for a declaration it can hide inside.
-	//   - It must describe the page. Every token the rule reads is checked
-	//     against it, and a declaration no token justifies is refused.
+	//   - It must describe the page. Every token that is SUMMED INTO A COMPARED
+	//     COLUMN is checked against it, and a declaration no such token
+	//     justifies is refused. Not every token the rule reads: a skipped
+	//     column's tokens and a row the total_row does not cover are outside the
+	//     comparison the tolerance applies to, so witnessing them could only
+	//     make a declaration pass on precision the compared figures do not have.
 	//   - It must be NEEDED. A rule whose columns all tie exactly is refused,
 	//     the same way a stated_total_delta that now ties exactly is refused --
 	//     because a declaration that has stopped doing anything is the one shape

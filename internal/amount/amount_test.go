@@ -2,6 +2,7 @@ package amount
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -327,5 +328,138 @@ func TestNormalizeUnifiesDashes(t *testing.T) {
 	// the corpus, so `\-` is an unrecognized token rather than a zero.
 	if _, err := Parse(`\-`, Dollars); err == nil {
 		t.Error(`Parse("\\-") = nil error; an unknown token must fail closed`)
+	}
+}
+
+// The three helpers a document-derived tolerance is built from (fisc-1wr.2).
+//
+// THEY ARE TESTED HERE AND NOT ONLY THROUGH internal/mapping, because review
+// found them at 0.0% coverage from this package: every assertion about them was
+// an assertion about one page of one document, so deleting Decimals' dash-skip
+// arms left the whole suite green. A helper whose only witness is one caller's
+// happy path is a helper nobody can change safely.
+
+func TestMaxDecimals(t *testing.T) {
+	for _, tc := range []struct {
+		u    Units
+		want int
+		ok   bool
+	}{
+		{Dollars, 2, true},
+		{Thousands, 5, true},
+		{Millions, 8, true},
+		{Units("furlongs"), 0, false},
+	} {
+		got, ok := MaxDecimals(tc.u)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("MaxDecimals(%q) = %d, %v; want %d, %v", string(tc.u), got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+// TestDigitCents is the unit a tolerance is sized from, and the ACFR case is
+// the one that matters: "(in Millions)" printed to two decimals is $10,000 and
+// not $1,000,000. Getting it wrong by reading the caption is a hundredfold
+// wider bound.
+func TestDigitCents(t *testing.T) {
+	for _, tc := range []struct {
+		u        Units
+		decimals int
+		want     Cents
+		ok       bool
+	}{
+		{Millions, 2, 1_000_000, true},   // $10,000 -- ACFR p41
+		{Millions, 0, 100_000_000, true}, // $1,000,000 -- the caption's reading
+		{Millions, 3, 100_000, true},     // $1,000 -- one decimal finer
+		{Millions, 8, 1, true},           // one cent, the finest millions can hold
+		{Thousands, 2, 1_000, true},
+		{Dollars, 2, 1, true},
+		{Millions, 9, 0, false},  // finer than the units can represent exactly
+		{Dollars, 3, 0, false},   // likewise
+		{Millions, -1, 0, false}, // not a count of decimal places
+		{Units("furlongs"), 2, 0, false},
+	} {
+		got, ok := DigitCents(tc.u, tc.decimals)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("DigitCents(%q, %d) = %v, %v; want %v, %v",
+				string(tc.u), tc.decimals, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+// TestDecimals covers the arms a tolerance rests on, and two of them are the
+// reason it is not just strings.Cut on a dot.
+//
+// THE DASH ARMS ARE THE LOAD-BEARING ONES. These documents spell a zero cell
+// "-", which says nothing about how finely the page prints. Counting one as
+// zero decimals would let a single dash in a column of hundredths claim the
+// page prints whole units, and at millions that is a hundredfold wider bound.
+func TestDecimals(t *testing.T) {
+	for _, tc := range []struct {
+		token string
+		u     Units
+		want  int
+		ok    bool
+	}{
+		{"0.22", Millions, 2, true},
+		{"18.45", Millions, 2, true},
+		{"157.20", Millions, 2, true},
+		{"1", Millions, 0, true},
+		{"(25.72)", Millions, 2, true},  // parenthesised negative
+		{"$ 60.42", Millions, 2, true},  // currency mark outside
+		{"$(95.83)", Millions, 2, true}, // and inside
+		{"1,234.5", Dollars, 1, true},   // grouped
+		{"", Millions, 0, false},        // absent cell
+		{"-", Millions, 0, false},       // the dash these documents spell zero with
+		{"--", Millions, 0, false},      // and its other length
+		{"(-)", Millions, 0, false},     // a dash inside parentheses
+		{"$", Millions, 0, false},       // a bare currency mark
+		{"()", Millions, 0, false},      // no digits at all
+		{"Miscellaneous", Millions, 0, false},
+		// A fraction finer than the units can hold. Parse REJECTS this token,
+		// so reporting a decimal count for it would put the two in
+		// disagreement about what the token is -- which Decimals' own doc
+		// comment promises cannot happen.
+		{"1.234", Dollars, 0, false},
+		{"1.23456789", Millions, 8, true},   // exactly what millions can hold
+		{"1.234567891", Millions, 0, false}, // one place finer
+		{"1.2.3", Millions, 0, false},       // not a fraction
+		{"0.22", Units("furlongs"), 0, false},
+	} {
+		got, ok := Decimals(tc.token, tc.u)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("Decimals(%q, %q) = %d, %v; want %d, %v",
+				tc.token, string(tc.u), got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+// TestDecimalsAgreesWithParseOnPrecision is the property the two share, asserted
+// as a property rather than case by case: whenever Parse accepts a token at some
+// units, Decimals reports a count no finer than those units can hold -- and
+// whenever Decimals reports one, Parse does not reject the token FOR ITS
+// PRECISION.
+func TestDecimalsAgreesWithParseOnPrecision(t *testing.T) {
+	tokens := []string{"0.22", "18.45", "1", "-", "--", "(25.72)", "$ 60.42",
+		"1,234.5", "1.234", "1.234567891", "", "$", "2.5%"}
+	for _, u := range []Units{Dollars, Thousands, Millions} {
+		max, _ := MaxDecimals(u)
+		for _, tok := range tokens {
+			d, ok := Decimals(tok, u)
+			if !ok {
+				continue
+			}
+			if d > max {
+				t.Errorf("Decimals(%q, %q) = %d, finer than %s can hold (%d)",
+					tok, string(u), d, string(u), max)
+			}
+			if _, err := Parse(tok, u); err != nil {
+				var pe *ParseError
+				if errors.As(err, &pe) && strings.Contains(pe.Reason, "decimal places cannot be represented") {
+					t.Errorf("Decimals(%q, %q) reported %d places but Parse rejects it for precision: %v",
+						tok, string(u), d, err)
+				}
+			}
+		}
 	}
 }

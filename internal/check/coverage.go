@@ -122,8 +122,9 @@ var unprojectedScopes = map[string]string{
 		"THE GENERAL GOVERNMENT BLOCK IS THE ONE PLACE IN THIS CORPUS THAT TIES ONLY WITHIN A " +
 		"TOLERANCE, and the build report says so on every run rather than counting it as a " +
 		"clean tie: its five divisions print 18.44 against a printed subtotal of 18.45, one " +
-		"printed unit over five terms, so the bound derived from the page (half a unit per " +
-		"row, $25,000) admits a $10,000 discrepancy and nothing wider (fisc-1wr.2). It is also " +
+		"printed unit over five terms, so the bound derived from the page is half a unit per " +
+		"row -- $25,000, which is what this column's $10,000 is admitted by and is also the " +
+		"most any column of this rule could be out by and still tie (fisc-1wr.2). It is also " +
 		"the only rule reading a total the document prints ABOVE its own rows, which is bounded " +
 		"by pinning that total to the section anchor's own line (fisc-h96o). " +
 		"The remaining exposure is stated rather than absorbed: this page declares no " +
@@ -140,8 +141,9 @@ var unprojectedScopes = map[string]string{
 		"the mapped block carries a department either, for a reason of its own -- two of the " +
 		"five name departments covering several divisions -- see data/taxonomy.yaml's " +
 		"general-government entry. The FY2024 column of every block is present and skipped: " +
-		"three of the four blocks miss in it by $200,000, $100,000 and $100,000, which is " +
-		"twenty, ten and ten printed units and nothing a tolerance should reach.",
+		"three of the four blocks miss in it by $200,000, $170,000 and $100,000 -- revenue, " +
+		"General Government and the fund balances -- which is twenty, seventeen and ten " +
+		"printed units and nothing a tolerance should reach.",
 
 	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
 		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +

@@ -387,3 +387,175 @@ rules:
 		t.Errorf("refused for some other reason: %v", got)
 	}
 }
+
+// TestToleranceIsSymmetric is the test abs() did not have, and review found it
+// by mutation: replacing abs's body with `return c` left the whole suite green
+// and facts.jsonl byte-identical, because every discrepancy in the corpus runs
+// the same way (the document prints MORE than the rows add to, so diff is
+// positive). Without abs a negative diff of any size compares <= the bound and
+// ties, so a page printing a total ten million short would have passed.
+//
+// The bound is symmetric on purpose: a document printing one unit LESS than its
+// rows add to is rounding exactly as one printing one more is. What must not be
+// symmetric is the SIZE.
+func TestToleranceIsSymmetric(t *testing.T) {
+	f := probeGG(t, "printed_decimals: 2", "printed_decimals: 2")
+	rule := &f.Rules[0]
+	r, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	part := &rule.Parts[0]
+	terms := []int{5, 5}
+	// The real page: stated 18.45 against a mapped 18.44, diff +$10,000.
+	stated := []amount.Cents{1_845_000_000, 1_600_000_000}
+	within := []amount.Cents{1_844_000_000, 0}
+	if _, err := r.compareTotals(rule, part, part, stated, within, terms); err != nil {
+		t.Fatalf("a +$10,000 discrepancy should tie within a $25,000 bound: %v", err)
+	}
+	// The same magnitude the other way: mapped 18.46, diff -$10,000. Also within.
+	over := []amount.Cents{1_846_000_000, 0}
+	if _, err := r.compareTotals(rule, part, part, stated, over, terms); err != nil {
+		t.Errorf("a -$10,000 discrepancy should tie too; the bound is symmetric: %v", err)
+	}
+	// And a NEGATIVE discrepancy far outside the bound must fail. This is the
+	// assertion abs() exists for: without it, -$10,000,000 compares <= the
+	// bound and passes.
+	wild := []amount.Cents{2_845_000_000, 0}
+	if _, err := r.compareTotals(rule, part, part, stated, wild, terms); err == nil {
+		t.Error("a -$10,000,000 discrepancy tied within a $25,000 bound; the " +
+			"comparison is not taking a magnitude")
+	}
+	// Symmetric in size as well as sign: +$10,000,000 must fail identically.
+	wildPositive := []amount.Cents{845_000_000, 0}
+	if _, err := r.compareTotals(rule, part, part, stated, wildPositive, terms); err == nil {
+		t.Error("a +$10,000,000 discrepancy tied within a $25,000 bound")
+	}
+}
+
+// TestToleranceScalesWithTheTermCount pins the other half of the bound. Half a
+// printed unit PER ROW is what makes it derived rather than chosen, and a
+// version that ignored the count would tie the same discrepancy whatever the
+// block's size.
+func TestToleranceScalesWithTheTermCount(t *testing.T) {
+	f := probeGG(t, "printed_decimals: 2", "printed_decimals: 2")
+	rule := &f.Rules[0]
+	r, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	part := &rule.Parts[0]
+	// A $30,000 discrepancy: three printed units. Six terms give a $30,000
+	// bound and it ties; five give $25,000 and it does not.
+	stated := []amount.Cents{1_847_000_000, 0}
+	sums := []amount.Cents{1_844_000_000, 0}
+	if _, err := r.compareTotals(rule, part, part, stated, sums, []int{6, 6}); err != nil {
+		t.Errorf("six terms give a $30,000 bound, which admits $30,000: %v", err)
+	}
+	if _, err := r.compareTotals(rule, part, part, stated, sums, []int{5, 5}); err == nil {
+		t.Error("five terms give a $25,000 bound and admitted $30,000; the bound " +
+			"does not scale with the term count")
+	}
+}
+
+// TestTotalRowAboveRefusesARowOnTheTotalsOwnLine is the arm the newline skip is
+// written with IndexByte rather than strings.Cut for.
+//
+// Cut returns an empty remainder when there is no newline, so a gap lying
+// entirely on the anchor's line would pass the digit refusal VACUOUSLY -- green
+// because nothing was examined, not because nothing was wrong. That gap is the
+// case where the first row's label was found on the same printed line as the
+// total, which means the anchors matched something other than the intended
+// block.
+//
+// The probe declares a first row of "18.45", which the page prints on the
+// anchor's own line, so the gap between anchor and row contains no newline.
+func TestTotalRowAboveRefusesARowOnTheTotalsOwnLine(t *testing.T) {
+	f := probeGG(t, `      - {label: "City Council", category: general-government}`,
+		`      - {label: "16.00", category: general-government}`)
+	rule := &f.Rules[0]
+	r, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	_, _, err = r.Values(rule, &rule.Parts[0])
+	if err == nil {
+		t.Fatal("a row on the total's own line resolved; the no-newline gap is " +
+			"passing the digit refusal vacuously")
+	}
+	if got := err.Error(); !strings.Contains(got, "is on the same printed line as the total") {
+		t.Errorf("refused for some other reason: %v", got)
+	}
+}
+
+// TestUnmappedTextIsHonouredBetweenRows covers the branch no page in the corpus
+// reaches yet.
+//
+// ACFR p41's orphan sits AFTER the last row, so only the trailing arm is
+// exercised by the committed rules; review found that deleting the between-rows
+// branch left the whole suite green. The two arms are not the same code and a
+// declaration that worked in one place and not the other would be a trap for
+// whoever meets the first mid-block orphan.
+//
+// The probe drops the Miscellaneous row, which puts the orphan "0.0" and that
+// row's own figures between two mapped rows.
+func TestUnmappedTextIsHonouredBetweenRows(t *testing.T) {
+	const yaml = `schema_version: 1
+doc_id: livermore-acfr-fy2025
+rules:
+  - id: probe-midblock
+    kind: revenue
+    basis: audited
+    scope: probe
+    units: millions
+    parts:
+      - page: 41
+        # Anchored on the WHOLE of the preceding printed line, figures and all,
+        # so the leading gap is whitespace and the orphan is reached by the
+        # between-rows arm rather than the leading one. The parser refuses an
+        # anchor amount.Parse accepts; it accepts this one, because a line of
+        # several tokens is not an amount.
+        section: "Use of money and property                                     12.81             10.40"
+        stop_at: "Expenditures"
+        unmapped_text:
+          - text: "0.0"
+            note: "the orphan, now sitting between two mapped rows"
+        columns:
+          - {fund_group: general, fiscal_year: 2025}
+          - {fiscal_year: 2024, skip: true}
+    rows:
+      - {label: "Miscellaneous", category: miscellaneous-revenue}
+      - {label: "Total Revenues", skip: true}
+`
+	f, err := Parse(strings.NewReader(yaml), "probe.yaml")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	rule := &f.Rules[0]
+	r, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	if _, _, verr := r.Values(rule, &rule.Parts[0]); verr != nil {
+		t.Fatalf("the declared orphan was not honoured between two rows: %v", verr)
+	}
+
+	// And without the declaration the same read is refused, so the assertion
+	// above is about the declaration rather than about the block.
+	bare, err := Parse(strings.NewReader(strings.Replace(yaml,
+		`        unmapped_text:
+          - text: "0.0"
+            note: "the orphan, now sitting between two mapped rows"
+`, "", 1)), "probe.yaml")
+	if err != nil {
+		t.Fatalf("parse without the declaration: %v", err)
+	}
+	r2, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), bare)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	if _, _, verr := r2.Values(&bare.Rules[0], &bare.Rules[0].Parts[0]); verr == nil {
+		t.Error("the block resolved with no declaration; the orphan is being " +
+			"admitted by something other than unmapped_text")
+	}
+}

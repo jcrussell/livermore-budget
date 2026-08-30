@@ -125,23 +125,36 @@ func DigitCents(u Units, decimals int) (Cents, bool) {
 // in a column of hundredths claim the page prints whole units.
 //
 // It follows Parse's normalization exactly (whitespace, dashes, currency marks,
-// parentheses) so the two cannot disagree about what a token is. It does NOT
-// re-validate the number: a caller has already parsed the token, or is about to.
+// parentheses) so the two cannot disagree about what a token is, and it reports
+// false for a fraction longer than u can represent exactly, which is the one
+// numeric rule Parse enforces that a decimal COUNT could otherwise contradict:
+// Decimals("1.234", Dollars) returning (3, true) beside a Parse that rejects the
+// same token was a real contradiction of the sentence above, caught by review.
+//
+// It does NOT otherwise re-validate the number -- a misplaced thousands
+// separator, a leading minus, split digits -- because a caller has already
+// parsed the token or is about to, and those say nothing about precision.
 func Decimals(s string, u Units) (int, bool) {
-	t := Normalize(s)
-	if t == "" {
+	_, maxDecimals, ok := u.centsPer()
+	if !ok {
 		return 0, false
 	}
-	if isZero, known := zeroTokens[t]; known && isZero {
-		return 0, false
-	}
-	t = stripCurrency(t)
+	t := stripCurrency(Normalize(s))
 	if strings.HasPrefix(t, "(") && strings.HasSuffix(t, ")") {
 		t = stripCurrency(strings.TrimSuffix(strings.TrimPrefix(t, "("), ")"))
 	}
-	if isZero, known := zeroTokens[t]; known && isZero {
-		return 0, false
-	}
+	// NO zeroTokens TEST, ALTHOUGH Parse RUNS TWO. The first draft here copied
+	// Parse's shape and carried both, and BOTH could be deleted with every test
+	// still green -- found by asking what a mutation would break rather than
+	// whether the suite passed. The reason is that Parse has to tell a dash
+	// (zero, a real value) from a digit-free token (an error), and this function
+	// does not: both mean "says nothing about precision", so the one arm below
+	// answers for both. "-" and "--" contain no digit, so it catches them.
+	//
+	// An absent cell, a bare "$" and a dash all reach it, and all must, because
+	// counting any of them as ZERO decimals would let one dash in a column of
+	// hundredths claim the page prints whole units -- at millions, a
+	// hundredfold wider tolerance. That is the arm's whole job.
 	if !strings.ContainsFunc(t, unicode.IsDigit) {
 		return 0, false
 	}
@@ -149,7 +162,7 @@ func Decimals(s string, u Units) (int, bool) {
 	if !hasDot {
 		return 0, true
 	}
-	if !fraction.MatchString(fracPart) {
+	if !fraction.MatchString(fracPart) || len(fracPart) > maxDecimals {
 		return 0, false
 	}
 	return len(fracPart), true

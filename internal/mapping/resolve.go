@@ -639,9 +639,10 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		Page: p.Page, Field: "rows", Err: ErrNotFound,
 		Msg: fmt.Sprintf("%q sits between rows %q and %q but is not mapped",
 			trimmed, rows[i-1].PrintedLabel(), rows[i].PrintedLabel())},
-		"add it to rows, with skip: true if it should not produce facts, or to "+
-			"wrapped_labels if the page wrapped a label onto its own line; "+
-			"leaving it out would publish a breakdown that does not add up")
+		"add it to rows, with skip: true if it should not produce facts, to "+
+			"wrapped_labels if the page wrapped a label onto its own line, or to "+
+			"unmapped_text if it is a figure belonging to no row; leaving it out "+
+			"would publish a breakdown that does not add up")
 }
 
 // declaresUnmapped reports whether the part declares this exact gap text as a
