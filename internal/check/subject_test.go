@@ -917,3 +917,61 @@ func TestAPublishedDocumentShortAColumnIsReported(t *testing.T) {
 			got)
 	}
 }
+
+// TestContestedTotalsAreStillContested is the arm that stops a contested-total
+// declaration going dead unnoticed (fisc-av0w).
+//
+// internal/project's caveat is conditional: it is printed only when the graph
+// actually draws the figure the entry declares, which is what makes it retire
+// itself the day that figure is corrected. THE COST OF THAT DESIGN IS THAT
+// SILENCE IS AMBIGUOUS -- a corrected corpus and a dead entry look identical
+// from the document, because both simply lack the sentence. This is the other
+// half: over the COMMITTED corpus, every declared entry must still describe a
+// column that is published and a figure that is drawn.
+//
+// So the day fisc-av0w is decided either way, this goes red and says which
+// entry to delete. It lives here rather than in internal/project because this
+// package is where the committed corpus is loadable, and it compares against
+// project.ContestedTotals() rather than a second copy of the figures -- two
+// copies agreeing is not the claim worth making.
+func TestContestedTotalsAreStillContested(t *testing.T) {
+	entries := project.ContestedTotals()
+	if len(entries) == 0 {
+		t.Skip("no contested totals are declared, so there is nothing to keep honest")
+	}
+
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	// One graph per published (fiscal year, basis) of the spine, keyed so a
+	// missing column is reported as a missing column rather than as a zero sum.
+	graphs := map[project.Column]*project.Graph{}
+	for _, p := range s.Graphs() {
+		for _, c := range p.Options.Columns {
+			graphs[c] = p.Graph
+		}
+	}
+
+	for _, e := range entries {
+		g, ok := graphs[e.Column]
+		if !ok {
+			t.Errorf("%s declares column %s, which this corpus publishes no graph for; "+
+				"the entry names a column that has gone away", e.Bead, e.Column)
+			continue
+		}
+		got := project.GroupExpenditure(g.Links, e.FundGroup)
+		if got != e.Published {
+			t.Errorf("%s declares %s %s expenditure of %d cents and the published graph "+
+				"draws %d; the figure has changed, so the caveat is no longer printed "+
+				"and this entry should be removed with whatever decided it",
+				e.Bead, e.Column, e.FundGroup, e.Published, got)
+		}
+		// A declaration whose two figures agree is not a contested total at
+		// all, and would print a caveat saying a figure differs from itself.
+		if e.Published == e.Elsewhere {
+			t.Errorf("%s declares the same figure as both published and elsewhere", e.Bead)
+		}
+	}
+}

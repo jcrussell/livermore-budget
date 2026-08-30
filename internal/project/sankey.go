@@ -914,13 +914,72 @@ const (
 		"city's own citywide totals."
 )
 
+// ContestedTotal is a fund group's total that the SPINE PAGE PRINTS and other
+// schedules of the same document contradict, together with what they print
+// instead.
+//
+// IT IS A DECLARATION, NOT A CORRECTION. This projection publishes what p66-67
+// print, because that is where the spine's facts are read from and "published
+// and derived are different things" is the invariant the whole project rests on.
+// What a reader is owed is not our arithmetic but the knowledge that the city's
+// own book disagrees with itself here.
+//
+// IT RETIRES ITSELF. The caveat is emitted only when the graph actually draws
+// Published; correct the fact and the condition stops matching and the sentence
+// stops being printed. What that alone would NOT catch is the entry going dead
+// while still sitting here, so TestContestedTotalsAreStillContested asserts over
+// the committed corpus that every entry still describes what is drawn. Between
+// them, neither a stale caveat nor a stale declaration can survive.
+type ContestedTotal struct {
+	Column    Column
+	FundGroup string
+	// Published is the spine's figure, in cents, and is what this chart draws.
+	// Elsewhere is what the other schedules print.
+	Published, Elsewhere int64
+	// Schedules names the pages that disagree, and Bead the work that owns the
+	// decision. A contested figure with no bead is one nobody is deciding.
+	Schedules, Bead string
+}
+
+// contestedTotals is the whole list. One entry, and it should stay short: an
+// entry here is a place the city's book contradicts itself that we publish
+// anyway, and a long list would mean the corpus had stopped being reconcilable
+// rather than that this mechanism had become useful.
+var contestedTotals = []ContestedTotal{{
+	Column:    Column{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	FundGroup: "internal-service",
+	Published: 2654451500,
+	Elsewhere: 2629451500,
+	Schedules: "pp.85-125 and the schedules printed at p0183, p0075, p0205, p0209 and p0061",
+	Bead:      "fisc-av0w",
+}}
+
+// ContestedTotals is the declared list, exported so a test over the COMMITTED
+// corpus can assert every entry still describes what that corpus draws.
+//
+// A fresh slice per call, as Registry does, so no caller can append to the
+// published set. Exported for the same reason ConstraintTierCaveat is: an
+// assertion should compare against THIS declaration rather than against a
+// second copy of the same figures, because two copies agreeing is not the claim
+// worth making.
+func ContestedTotals() []ContestedTotal { return slices.Clone(contestedTotals) }
+
+// GroupExpenditure is what a graph draws as one fund group's expenditure,
+// exported alongside ContestedTotals because an assertion about an entry needs
+// the same sum the caveat is conditional on -- computed once, here, rather than
+// re-derived in a test where it could drift.
+func GroupExpenditure(links []Link, fundGroup string) int64 {
+	return groupExpenditure(links, fundGroup)
+}
+
 // caveats states what the chart cannot show, in the chart's own file.
 //
-// Two of them are conditional on the data because a caveat about internal
-// service charges in a document that has none would be misdirection, and the
-// transfer caveat quotes figures it can only get from the graph.
+// Three of them are conditional on the data because a caveat about internal
+// service charges in a document that has none would be misdirection, the
+// transfer caveat quotes figures it can only get from the graph, and a contested
+// total that this document does not draw is not this document's problem.
 func caveats(h Headline, col Column, links []Link) []string {
-	out := make([]string, 0, 4)
+	out := make([]string, 0, 5)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
 		out = append(out, transferCaveat(h, col))
@@ -931,8 +990,60 @@ func caveats(h Headline, col Column, links []Link) []string {
 			break
 		}
 	}
+	for _, c := range contestedTotals {
+		if s := contestedCaveat(c, col, links); s != "" {
+			out = append(out, s)
+		}
+	}
 	out = append(out, caveatStocks, caveatPermanentFunds)
 	return out
+}
+
+// groupExpenditure is what this graph draws as one fund group's expenditure:
+// the links running from that group to an object category.
+//
+// It is summed from the LINKS rather than taken from the headline because the
+// headline is a citywide figure and the claim here is about one group.
+func groupExpenditure(links []Link, fundGroup string) int64 {
+	var total int64
+	source := prefixFundGroup + fundGroup
+	for _, l := range links {
+		if l.Source == source && strings.HasPrefix(l.Target, prefixExpenditure) {
+			total += l.ValueCents
+		}
+	}
+	return total
+}
+
+// contestedCaveat is the sentence for one contested total, or "" when this
+// document does not draw it.
+//
+// THE VALUE IS RE-READ FROM THE GRAPH AND COMPARED, rather than the entry's
+// column being trusted on its own. A caveat naming a figure the chart does not
+// draw is worse than no caveat: it tells a reader to distrust a number that is
+// not there, and it would go on saying so after the figure was corrected.
+func contestedCaveat(c ContestedTotal, col Column, links []Link) string {
+	if col != c.Column {
+		return ""
+	}
+	if groupExpenditure(links, c.FundGroup) != c.Published {
+		return ""
+	}
+	label := builtinLabels[prefixFundGroup+c.FundGroup]
+	if label == "" {
+		label = c.FundGroup
+	}
+	return fmt.Sprintf(
+		"THE CITY'S OWN BOOK DISAGREES WITH ITSELF ABOUT THIS ONE FIGURE. %s "+
+			"expenditure is drawn at %s, which is what pp.66-67 print for %s. Six "+
+			"other schedules in the same document print %s instead -- %s -- a "+
+			"difference of %s in a single Services & Supplies row. This chart draws "+
+			"the spine's figure because every figure here is one the city printed on "+
+			"the page it is cited from, and substituting a number from elsewhere "+
+			"would make this one an exception to that. Which figure the corpus should "+
+			"publish is open (%s).",
+		label, dollars(c.Published), col.String(), dollars(c.Elsewhere),
+		c.Schedules, dollars(c.Published-c.Elsewhere), c.Bead)
 }
 
 // transfersOutToCIP is the "Transfers Out to CIP" column the city prints on its

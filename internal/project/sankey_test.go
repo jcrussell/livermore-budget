@@ -781,3 +781,111 @@ func sortedStrings(s []string) bool {
 	}
 	return true
 }
+
+// The contested-total caveat (fisc-av0w).
+//
+// WHAT IT IS FOR. Budget Book p0067 prints an Internal Service Funds Services &
+// Supplies figure $250,000 higher than six other schedules of the same document,
+// so the FY2027 spine draws a total the city's own book contradicts. The chart
+// publishes p0067's figure, because every figure here is one the city printed on
+// the page it is cited from and substituting one from elsewhere would make this
+// an exception to that. What the reader is owed is the disclosure.
+//
+// EVERY TEST HERE MUTATES THE CONDITION rather than asserting the happy path.
+// The caveat is emitted only when the graph actually draws the declared figure,
+// which is what makes it retire itself; a test that only checked it appears
+// would pass against a version that always appended it.
+
+// contestedFY2027 is the one declared entry, fetched rather than respelled so a
+// change to the declaration reaches these tests.
+func contestedFY2027(t *testing.T) ContestedTotal {
+	t.Helper()
+	all := ContestedTotals()
+	if len(all) != 1 {
+		t.Fatalf("got %d contested totals, want 1; this file is written about the "+
+			"single fisc-av0w entry and a second one needs its own tests", len(all))
+	}
+	return all[0]
+}
+
+func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
+	c := contestedFY2027(t)
+	links := []Link{
+		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
+			ValueCents: c.Published},
+	}
+
+	got := contestedCaveat(c, c.Column, links)
+	if got == "" {
+		t.Fatal("no caveat for the column and figure the entry declares")
+	}
+	// The sentence must carry BOTH figures and the bead. A caveat naming only
+	// the drawn figure tells a reader nothing they could act on.
+	for _, want := range []string{dollars(c.Published), dollars(c.Elsewhere), c.Bead,
+		dollars(c.Published - c.Elsewhere)} {
+		if !strings.Contains(got, want) {
+			t.Errorf("caveat does not mention %q:\n%s", want, got)
+		}
+	}
+
+	// A different column draws a different year's figures and is not this
+	// entry's problem.
+	other := Column{FiscalYear: c.Column.FiscalYear - 1, Basis: c.Column.Basis}
+	if s := contestedCaveat(c, other, links); s != "" {
+		t.Errorf("caveat emitted for %s, which the entry does not name:\n%s", other, s)
+	}
+	// So is a different basis on the same year.
+	if s := contestedCaveat(c, Column{FiscalYear: c.Column.FiscalYear, Basis: mapping.BasisActual}, links); s != "" {
+		t.Errorf("caveat emitted for a basis the entry does not name:\n%s", s)
+	}
+}
+
+// TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected is the property that
+// makes this a declaration rather than a note.
+//
+// The day the corpus stops publishing p0067's figure -- whichever way fisc-av0w
+// is decided -- the graph stops drawing Published, the condition stops matching,
+// and the sentence stops being printed. Nobody has to remember to delete it.
+func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
+	c := contestedFY2027(t)
+	corrected := []Link{
+		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
+			ValueCents: c.Elsewhere},
+	}
+	if s := contestedCaveat(c, c.Column, corrected); s != "" {
+		t.Errorf("the caveat survived the figure being corrected to %s:\n%s",
+			dollars(c.Elsewhere), s)
+	}
+	// And a third value -- neither the spine's nor the other schedules' -- also
+	// silences it. That is correct and is why the corpus-level assertion in
+	// internal/check exists: silence here must not be the only signal, or an
+	// entry could go dead unnoticed.
+	third := []Link{
+		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
+			ValueCents: c.Published + 1},
+	}
+	if s := contestedCaveat(c, c.Column, third); s != "" {
+		t.Errorf("the caveat survived a figure that is neither declared value:\n%s", s)
+	}
+}
+
+// TestGroupExpenditureSumsOnlyThatGroupsObjectLinks is what the condition above
+// rests on, and it is the arm a wrong sum would break silently.
+func TestGroupExpenditureSumsOnlyThatGroupsObjectLinks(t *testing.T) {
+	links := []Link{
+		{Source: prefixFundGroup + "internal-service", Target: prefixExpenditure + "wages-and-benefits", ValueCents: 100},
+		{Source: prefixFundGroup + "internal-service", Target: prefixExpenditure + "services-and-supplies", ValueCents: 20},
+		// Another group's expenditure.
+		{Source: prefixFundGroup + "general", Target: prefixExpenditure + "wages-and-benefits", ValueCents: 7},
+		// The same group's non-expenditure flows.
+		{Source: prefixFundGroup + "internal-service", Target: "transfers/out", ValueCents: 5},
+		// And a link INTO the group, which is revenue rather than spending.
+		{Source: prefixRevenue + "intergovernmental", Target: prefixFundGroup + "internal-service", ValueCents: 900},
+	}
+	if got, want := GroupExpenditure(links, "internal-service"), int64(120); got != want {
+		t.Errorf("GroupExpenditure = %d, want %d", got, want)
+	}
+	if got, want := GroupExpenditure(links, "permanent"), int64(0); got != want {
+		t.Errorf("GroupExpenditure for a group with no links = %d, want %d", got, want)
+	}
+}
