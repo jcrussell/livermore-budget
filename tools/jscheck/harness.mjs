@@ -46,9 +46,9 @@ export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", ".."
  * smaller one: the alternative is parsing Go templates in JavaScript.
  */
 const TEMPLATE_IDS = new Set([
-  "caveats", "chart", "chart-desc", "chart-title", "counts-line", "derived-list",
-  "detail", "figures", "flow-table", "lede-year", "legend", "page-basis",
-  "table-view", "theme-toggle", "tooltip", "year-toggle",
+  "caveats", "caveats-count", "chart", "chart-desc", "chart-title", "counts-line",
+  "derived-list", "detail", "figures", "flow-table", "lede-year", "legend",
+  "page-basis", "table-view", "theme-toggle", "tooltip", "year-toggle",
 ]);
 
 /**

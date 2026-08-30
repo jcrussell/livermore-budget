@@ -142,34 +142,61 @@
   </noscript>
 </div>
 
-<h2>What we inferred</h2>
-<p class="lede">
-  A figure the city printed and a classification we made are different things, so they are
-  never drawn alike. Everything listed here is ours, with the reasoning and the row it came
-  from.
-</p>
-<ul class="derived-list" id="derived-list">
-  <li class="subtle">Loading from {{.DataPath}}…</li>
-</ul>
+<!-- THE APPARATUS IS DISCLOSED, NOT DELETED. Everything below this line was a
+     top-level <h2> on an open page, so a reader met four caveats -- one of them
+     250 words -- and a 58-row table before reaching the end of a page whose
+     subject is the chart above. It is all still here, still server-rendered,
+     and still in the DOM when the <details> is closed: TestPageRendersCaveats
+     WithoutJavaScript passes on a closed <details> for that reason, and that is
+     why this is markup rather than JavaScript. The <h2>s stay inside the
+     <summary>, so the document outline a screen reader walks is unchanged. -->
+<details class="apparatus" id="derived-view">
+  <summary>
+    <h2>What we inferred</h2>
+    <span class="apparatus-hint">the classifications that are ours, not the city's</span>
+  </summary>
+  <p class="lede">
+    A figure the city printed and a classification we made are different things, so they are
+    never drawn alike. Everything listed here is ours, with the reasoning and the row it came
+    from.
+  </p>
+  <ul class="derived-list" id="derived-list">
+    <li class="subtle">Loading from {{.DataPath}}…</li>
+  </ul>
+</details>
 
-<h2>Caveats</h2>
-<p class="lede">
-  These are the reasons this chart will not reconcile row-for-row against the printed
-  schedule. They ship with the data, not in a footnote.
-</p>
-<ul class="caveats" id="caveats">
-  {{- range .Caveats}}
-  <li>{{.}}</li>
-  {{- end}}
-</ul>
+{{- /* THE COUNT IN THIS SUMMARY IS PER-YEAR and paintYearWords repaints it.
+       FY2025-26 carries four caveats and FY2026-27 five -- the extra one is the
+       internal-service figure the city's own book contradicts -- so a count
+       rendered once would go stale the moment the reader switches year, which
+       is the fisc-kwq / fisc-yi4 / fisc-iyt defect in a new string. */}}
+<details class="apparatus" id="caveats-view">
+  <summary>
+    <h2>Caveats</h2>
+    <span class="apparatus-hint"><span id="caveats-count">{{len .Caveats}}</span> reasons this
+      chart will not reconcile row-for-row against the printed schedule</span>
+  </summary>
+  <p class="lede">
+    Every one of these ships with the data rather than in a footnote, so a reader who
+    downloads <a href="{{.DataPath}}">{{.DataPath}}</a> gets them too.
+  </p>
+  <ul class="caveats" id="caveats">
+    {{- range .Caveats}}
+    <li>{{.}}</li>
+    {{- end}}
+  </ul>
+</details>
 
-<h2>Every flow, as a table</h2>
-<p class="lede">
-  The chart's twin. Same numbers, no colour, no hovering — <span id="counts-line">{{.Links}} flows between
-  {{.Nodes}} nodes, from {{.Facts}} facts</span>.
-</p>
-<details id="table-view" open>
-  <summary>Show the table</summary>
+{{- /* #counts-line MOVED INTO THE SUMMARY and did not change what it says.
+       app.js reaches it by id and fold.mjs and year.mjs read its textContent,
+       none of which cares where it sits; a reader deciding whether to open the
+       table is exactly who the sentence was written for. */}}
+<details class="apparatus" id="table-view">
+  <summary>
+    <h2>Every flow, as a table</h2>
+    <span class="apparatus-hint">the chart's twin, same numbers —
+      <span id="counts-line">{{.Links}} flows between {{.Nodes}} nodes, from {{.Facts}} facts</span></span>
+  </summary>
   <div class="table-scroll">
     <table id="flow-table">
       <thead>

@@ -49,6 +49,7 @@ function painted(app, year) {
   return {
     tiles: el("figures") ? [...el("figures").children] : [],
     caveats: el("caveats") ? [...el("caveats").children] : [],
+    caveatsCount: el("caveats-count") ? el("caveats-count").textContent : "",
     lede: el("lede-year") ? el("lede-year").textContent : "",
     counts: el("counts-line") ? el("counts-line").textContent : "",
     basis: el("page-basis") ? el("page-basis").textContent : "",
@@ -209,6 +210,35 @@ export async function checks() {
       ok: got.caveats.length === year.caveats.length &&
           got.caveats.every((c, i) => c.textContent === year.caveats[i]),
       detail: `${got.caveats.length} caveats, matching the ${year.caveats.length} supplied`,
+    },
+    {
+      // THE COUNT IS IN THE <summary> A READER USES TO DECIDE WHETHER TO OPEN
+      // THE LIST, so a stale one is a disclosure that under-reports itself --
+      // "4 reasons" over a list of five. FY2025-26 really does carry four
+      // caveats and FY2026-27 five, so this is not a hypothetical.
+      //
+      // TWO PAINTS, NOT ONE, and that is the whole check. Asserting the count
+      // against a single paint passes on a write that runs once and never
+      // again, which is exactly the shape being guarded: the count is
+      // server-rendered correct for the OPENING year, so the defect only ever
+      // appears after a switch. The second paint supplies a different number of
+      // caveats and the count has to have followed it.
+      //
+      // It is also compared against the LIST BESIDE IT rather than against the
+      // fixture's length alone, so a summary and a list that disagree is a
+      // finding even if both are wrong in the same direction.
+      name: "the caveat count in the summary follows the year, and agrees with the list",
+      ok: (() => {
+        const five = fixtureYear({ caveats: ["a", "b", "c", "d", "e"] });
+        const after = painted(app, five);
+        return after.caveatsCount === "5" &&
+               after.caveatsCount === String(after.caveats.length);
+      })(),
+      detail: (() => {
+        const after = painted(app, fixtureYear({ caveats: ["a", "b", "c", "d", "e"] }));
+        return `after repainting with five caveats the summary reads "${after.caveatsCount}" ` +
+          `over a list of ${after.caveats.length}`;
+      })(),
     },
     {
       // THE TITLE IS COMPARED WHOLE. It was `got.title.includes(year.label)`,

@@ -1683,8 +1683,9 @@ async function showYear(year) {
 
 /**
  * Replaces every word on the page that belongs to a year: the tiles, the
- * caveats, the lede, the flow count, the chart's accessible title, the footer's
- * basis and its data-file citation, and the document title.
+ * caveats, the caveat count in their summary, the lede, the flow count, the
+ * chart's accessible title, the footer's basis and its data-file citation, and
+ * the document title.
  *
  * THE LIST IS EXHAUSTIVE ON PURPOSE. It read "the tiles, the caveats, the lede
  * and the flow count" while the function wrote four more, and a doc comment
@@ -1711,6 +1712,14 @@ function paintYearWords(year) {
 
   const caveats = maybeEl("caveats");
   if (caveats) caveats.replaceChildren(...year.caveats.map((c) => h("li", "", c)));
+
+  // THE CAVEAT COUNT IS PER-YEAR, and it is in a <summary> the reader uses to
+  // decide whether to open the list at all. FY2025-26 carries four and
+  // FY2026-27 five, so a count painted once says "4 reasons" over a list of
+  // five -- a disclosure that under-reports itself, which is worse than no
+  // count. maybeEl and not el: only index.html.tmpl renders this id.
+  const caveatCount = maybeEl("caveats-count");
+  if (caveatCount) caveatCount.textContent = String(year.caveats.length);
 
   const lede = maybeEl("lede-year");
   if (lede) lede.textContent = year.label + " " + year.basis;
