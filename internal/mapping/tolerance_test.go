@@ -725,3 +725,77 @@ func TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan(t *testing.T) {
 		t.Errorf("refused for some other reason: %v", got)
 	}
 }
+
+// TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared is the composition the
+// third review pass found open.
+//
+// unmapped_text takes a printed figure OUT of the read on the author's word
+// that it belongs to no row. If that word is wrong, the row it belonged to is
+// short -- and a tolerance beside it is precisely what would absorb the
+// shortfall, removing the arithmetic that would otherwise catch the
+// misdeclaration. It is the same shape as the stated_total_deltas refusal one
+// declaration further out.
+func TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared(t *testing.T) {
+	_, err := Parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
+		"        columns:", `        unmapped_text:
+          - {text: "0.0", note: "a figure declared out of a block that also rounds"}
+        columns:`, 1)), "probe.yaml")
+	if err == nil {
+		t.Fatal("a rule declaring both an unmapped figure and a tolerance was accepted")
+	}
+	if got := err.Error(); !strings.Contains(got, "unmapped_text: declared on a rule that also declares printed_decimals") {
+		t.Errorf("refused for some other reason: %v", got)
+	}
+}
+
+// TestTotalRowAboveRefusals covers the two arms of validateTotalRowAbove that
+// review measured as mutation-green -- deleting either left the whole suite
+// passing. They are the same class the second pass fixed in the sibling
+// validator, one file over, which is why a third pass found them: a fix applied
+// to one validator and not to its neighbour reads as done.
+func TestTotalRowAboveRefusals(t *testing.T) {
+	t.Run("with total_spans_parts", func(t *testing.T) {
+		// A second part as well, because validateTotalSpansParts requires two
+		// and would otherwise refuse first -- which would leave this passing on
+		// the wrong arm, the mistake this range already made once.
+		src := strings.Replace(acfrGeneralGovernmentProbe,
+			"    total_row_above: true", "    total_row_above: true\n    total_spans_parts: true", 1)
+		src = strings.Replace(src, `          - {fiscal_year: 2024, skip: true}`,
+			`          - {fiscal_year: 2024, skip: true}
+      - page: 42
+        section: "General Government:"
+        stop_at: "Fire"
+        columns:
+          - {fund_group: general, fiscal_year: 2025}
+          - {fiscal_year: 2024, skip: true}`, 1)
+		_, err := Parse(strings.NewReader(src), "probe.yaml")
+		if err == nil {
+			t.Fatal("total_row_above was accepted with total_spans_parts")
+		}
+		if got := err.Error(); !strings.Contains(got, "total_row_above: declared with total_spans_parts") {
+			t.Errorf("refused for some other reason: %v", got)
+		}
+	})
+
+	t.Run("with labels_from", func(t *testing.T) {
+		src := strings.Replace(acfrGeneralGovernmentProbe, `          - {fiscal_year: 2024, skip: true}`,
+			`          - {fiscal_year: 2024, skip: true}
+      - page: 42
+        labels_from: 41
+        section: "General Government:"
+        stop_at: "Fire"
+        columns:
+          - {fund_group: general, fiscal_year: 2025}
+          - {fiscal_year: 2024, skip: true}`, 1)
+		// printed_decimals refuses a multi-part rule of its own accord, so it
+		// comes off: without this the test would pass on that arm instead.
+		src = strings.Replace(src, "    printed_decimals: 2\n", "", 1)
+		_, err := Parse(strings.NewReader(src), "probe.yaml")
+		if err == nil {
+			t.Fatal("total_row_above was accepted on a rule with a labels_from part")
+		}
+		if got := err.Error(); !strings.Contains(got, "declared on a rule with total_row_above") {
+			t.Errorf("refused for some other reason: %v", got)
+		}
+	})
+}

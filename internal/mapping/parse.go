@@ -905,15 +905,38 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 				"or split the rule")
 	}
 	for i := range r.Parts {
-		if len(r.Parts[i].StatedTotalDeltas) == 0 {
-			continue
+		p := &r.Parts[i]
+		if len(p.StatedTotalDeltas) > 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, fmt.Sprintf("parts[page %d].stated_total_deltas", p.Page),
+					"declared on a rule that also declares printed_decimals"),
+				"the two are disjoint on purpose: a delta names one exact figure the "+
+					"document is out by, a tolerance bounds an unnamed one, and a rule "+
+					"holding both offers a place to hide the difference between them")
 		}
-		return cmdutil.WithHint(
-			errf(r.ID, fmt.Sprintf("parts[page %d].stated_total_deltas", r.Parts[i].Page),
-				"declared on a rule that also declares printed_decimals"),
-			"the two are disjoint on purpose: a delta names one exact figure the "+
-				"document is out by, a tolerance bounds an unnamed one, and a rule "+
-				"holding both offers a place to hide the difference between them")
+		// SAME COMPOSITION, ONE DECLARATION FURTHER OUT, and it took a third
+		// review pass to see it. unmapped_text takes a printed figure OUT of the
+		// read on the author's word that it belongs to no row. If that word is
+		// wrong the row it belonged to is short, and a tolerance beside it is
+		// exactly what would absorb the shortfall -- the arithmetic that would
+		// otherwise catch the misdeclaration, gone.
+		//
+		// unmapped_text is already the weakest declaration class here (see
+		// Part.UnmappedText); pairing it with the only mechanism that softens
+		// the check standing over it is the one combination to refuse outright.
+		// It costs the corpus nothing: p41's revenue rule declares the orphan
+		// and ties EXACTLY, and its General Government rule declares the
+		// tolerance and has no orphan.
+		if len(p.UnmappedText) > 0 {
+			return cmdutil.WithHint(
+				errf(r.ID, fmt.Sprintf("parts[page %d].unmapped_text", p.Page),
+					"declared on a rule that also declares printed_decimals"),
+				"a figure declared out of the read is checked by nothing but the "+
+					"arithmetic of the rows around it, and a tolerance is what "+
+					"would absorb the error if the declaration were wrong; split "+
+					"the rule so the block with the orphan and the block that "+
+					"rounds are checked separately")
+		}
 	}
 	return nil
 }

@@ -168,12 +168,20 @@ categories:
 
   #@cite p0066 "Sales Taxes 41,086,606 41,908,338"
   #@cite p0127 "Total Sales Taxes $40,280,986 $42,593,316 $41,086,606 $41,908,338"
+  #@cite p0041 (ACFR) "Sales Taxes   39.12   39.60"
   - slug: taxes/sales
     label: "Sales Taxes"
     document_term: "Sales Taxes"
     parent: taxes
     kinds: [revenue]
-    pages: [66, 127]
+    pages: [41, 66, 127]
+    note: >-
+      PAGE 41 IS THE ACFR, not a Budget Book page — see the note on `pages` in
+      this file's header. It is recorded on this list rather than as an alias
+      because the ACFR prints the document_term exactly, and the parser refuses
+      an alias repeating the term it is supposed to be an alternative to. The
+      eight other revenue lines of that ACFR block DO differ in spelling and
+      carry aliases; this one and `intergovernmental` are the two that do not.
 
   #@cite p0066 "Other Taxes 23,800,196 24,508,202"
   #@cite p0128 "Total Other Taxes $22,204,869 $24,054,312 $23,800,196 $24,508,202"
@@ -241,8 +249,12 @@ categories:
     label: "Intergovernmental"
     document_term: "Intergovernmental"
     kinds: [revenue]
-    pages: [66, 128, 131, 133, 134, 135, 136, 137, 138, 139, 140]
+    pages: [41, 66, 128, 131, 133, 134, 135, 136, 137, 138, 139, 140]
     note: >-
+      PAGE 41 IS THE ACFR, not a Budget Book page — see the note on `pages` in
+      this file's header, and `taxes/sales` for why it is on this list rather
+      than in an alias (the ACFR prints the document_term exactly).
+
       Printed identically at both levels — no abbreviation in the narrow
       fund-level column. p128 shows it holds federal and state grants, state
       motor-vehicle in-lieu, mandated-cost reimbursement, and Interdepartmental

@@ -105,7 +105,7 @@ data/extracted/<doc>/              786 pages of -layout text + -bbox geometry,
   │  mappings/*.yaml               the judgment layer: which rows, which columns,
   │                                what they mean. Written to be read.
   ▼
-facts/facts.jsonl                  1,765 content-addressed facts, each carrying
+facts/facts.jsonl                  1,780 content-addressed facts, each carrying
                                    doc_id / page / offset / token
   │  internal/project              projections over (columns, scope): one column
   │                                 per Sankey year, four for the revenue trends
