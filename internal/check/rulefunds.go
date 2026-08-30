@@ -157,10 +157,11 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// A rule's total is printed on ONE of its pages -- for a
 			// total_spans_parts rule, the one totalBearingPart finds -- and
 			// establishing which needs the pages, i.e. a resolver this function
-			// does not have. Narrowing it to the bearing page is filed
-			// separately; it is not folded in here because reaching for
-			// s.Resolvers to answer it would make a vocabulary check depend on
-			// the corpus being readable.
+			// does not have. Narrowing it to the bearing page is fisc-id8b; it
+			// is not folded in here because reaching for s.Resolvers to answer
+			// it would make a vocabulary check depend on the corpus being
+			// readable, so a mapping error would surface as a fund-registry
+			// finding.
 			for j := range ru.Parts {
 				set(claimed, f.DocID, ru.Parts[j].Page, ru.TotalRow)
 			}
