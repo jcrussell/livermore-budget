@@ -150,9 +150,22 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// assertion could not fail even with the whole bare-label arm deleted. A
 	// negative assertion over a string that no longer exists is the cheapest way
 	// to write a test that proves nothing.
-	if strings.Contains(res.Summary, "declared fund(s) sit at an end no printed label reaches") {
+	if strings.Contains(res.Summary, "declared fund(s) sit at an end this check does not read") {
 		t.Errorf("the summary still reports the bare-label rows as ones it makes no "+
 			"claim about:\n%s", res.Summary)
+	}
+	// heldLine's WIRING, not just its output. TestTheHeldLineNeverReportsAnEmptyArm
+	// calls heldLine directly, so passing it the wrong arguments -- heldLine(subjects, 0)
+	// -- left the whole suite green while restoring the exact false PASS line
+	// cf96ed2 removed. This is the assertion that reads what fisc verify prints.
+	for _, want := range []string{
+		"40 printed with a verb phrase",
+		"78 a bare fund name under row_labels_name_funds",
+	} {
+		if !strings.Contains(res.Summary, want) {
+			t.Errorf("the PASS line does not keep the two arms apart: no %q in\n%s",
+				want, res.Summary)
+		}
 	}
 	// AND NOT ONE BY ONE. Naming each row put this check's PASS line at 11 KB,
 	// against roughly 450 bytes before, which is detailtie.go's "a count is the
@@ -192,10 +205,26 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 		t.Errorf("with the declaration cleared the check resolves %d row anchors, "+
 			"want 40 -- the p76 anchors alone", res.Subjects)
 	}
-	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit at an end no "+
-		"printed label reaches") {
+	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit at an end this "+
+		"check does not read") {
 		t.Errorf("with the declaration cleared the summary does not report the 78 as "+
 			"rows it makes no claim about:\n%s", res.Summary)
+	}
+	// ELEVEN RULES, NOT SEVENTY-EIGHT ROWS, and both halves of that are asserted
+	// because the rewrite in an earlier review pass dropped them: replacing the
+	// seenRule dedup with a per-row append left the suite green, so the 11 KB
+	// PASS line this counter exists to prevent could come back unnoticed.
+	// detailtie.go's "a count is the honest middle" is the argument; this is
+	// what holds it.
+	for _, want := range []string{"funding-city-council", "funding-public-works"} {
+		if !strings.Contains(res.Summary, want) {
+			t.Errorf("the summary does not attribute the unread declarations to their "+
+				"rules: no %q in\n%s", want, res.Summary)
+		}
+	}
+	if n := strings.Count(res.Summary, "funding-"); n != 11 {
+		t.Errorf("the summary names funding-* %d times, want 11 -- one per rule. A "+
+			"per-row list is 78 and is what put this check's PASS line at 11 KB", n)
 	}
 }
 
@@ -686,20 +715,27 @@ func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
 	}
 }
 
-// TestAVerbPhrasedLabelIsReadByThePrefixArmEvenUnderTheDeclaration is the
-// defect the third review pass found in the original commit, after two passes
-// had read past it.
+// TestAVerbPhrasedLabelUnderTheDeclarationIsRefused is the third answer to a
+// question two earlier commits got wrong, and both wrong answers are worth
+// keeping because each read as correct.
 //
-// "Transfer From General Fund  to Horizons" is not the printed name of a fund,
-// so resolving it WHOLE finds nothing -- while the prefix arm resolves the same
-// row correctly by stripping the verb phrase first. Without the deferral the row
-// is counted twice in subjects and reported as a spurious finding, and the check
-// goes FAIL on a corpus where nothing is wrong.
+// The declaration says a rule's row labels are the printed names of funds.
+// "Transfer From General Fund  to Horizons" is not one: it names a movement.
 //
-// Measured before the fix: flagging p76-transfers-in-special-revenue took the
-// check to FAIL over 121 subjects with three findings of the form "... is not
-// one data/funds.yaml records".
-func TestAVerbPhrasedLabelIsReadByThePrefixArmEvenUnderTheDeclaration(t *testing.T) {
+// ATTEMPT ONE resolved it whole -- FundByLabel finds nothing, so the check went
+// FAIL over 121 subjects with three spurious findings and every such row counted
+// twice, because the prefix arm read it as well.
+//
+// ATTEMPT TWO deferred to the prefix arm, and turned a noisy defect into a
+// silent one. The parser forbids a counterpart on a declaring rule, so far == 0;
+// a row labelled "Transfer From X" resolves as the FAR end, want == far == 0,
+// and the arm compares nothing. Measured then: subjects 118 -> 117, PASS, and
+// the row reported under "no printed anchor on their own line" -- false, the
+// label is printed. Found by the fourth review pass, in the third pass's fix.
+//
+// ATTEMPT THREE is this: refuse. The author has said something untrue about
+// their own page, and saying so is what the declaration is for.
+func TestAVerbPhrasedLabelUnderTheDeclarationIsRefused(t *testing.T) {
 	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
@@ -730,16 +766,25 @@ func TestAVerbPhrasedLabelIsReadByThePrefixArmEvenUnderTheDeclaration(t *testing
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if got.Status != StatusPass {
-		t.Fatalf("declaring row_labels_name_funds over verb-phrased labels made the "+
-			"check %s: %s", got.Status, got.Summary)
+	if got.Status != StatusFail {
+		t.Fatalf("declaring row_labels_name_funds over verb-phrased labels reported "+
+			"%s: %s", got.Status, got.Summary)
 	}
-	// THE COUNT IS THE HALF THAT CATCHES DOUBLE-READING. A row read by both arms
-	// passes on the prefix arm and still inflates subjects, so a status-only
-	// assertion would go green on it.
+	var b strings.Builder
+	for _, f := range got.Findings {
+		b.WriteString(f.Subject + ": " + f.Detail + "\n")
+	}
+	for _, want := range []string{"opens with a verb phrase", "names a movement"} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("no finding says the label names a movement rather than a fund:\n%s",
+				b.String())
+		}
+	}
+	// THE SUBJECT COUNT MUST NOT MOVE, which is the half that catches both
+	// earlier attempts. Attempt one inflated it to 121 by reading each row
+	// twice; attempt two deflated it to 117 by reading one of them not at all.
 	if got.Subjects != before.Subjects {
-		t.Errorf("the declaration moved the subject count from %d to %d over rows the "+
-			"prefix arm already reads; each row is being counted twice",
-			before.Subjects, got.Subjects)
+		t.Errorf("the declaration moved the subject count from %d to %d; these rows "+
+			"are read by the anchor arm and by it alone", before.Subjects, got.Subjects)
 	}
 }

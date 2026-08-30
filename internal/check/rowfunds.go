@@ -180,28 +180,45 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				// in the omission counters below as a fund the page prints no
 				// anchor for. The page prints the anchor; that is what the
 				// declaration asserts.
-				// A VERB-PHRASED LABEL IS READ BY THE PREFIX ARM AND NOT HERE,
-				// even under the declaration. "Transfer From General Fund  to
-				// Horizons" is not the printed name of a fund, so resolving it
-				// whole finds nothing; and the prefix arm resolves the same row
-				// correctly, so without this the row is counted TWICE in
-				// subjects and reported as a spurious finding.
+				// A VERB-PHRASED LABEL UNDER THIS DECLARATION IS REFUSED, not
+				// deferred and not resolved whole. Three attempts, and the two
+				// that failed are worth recording because each looked right.
 				//
-				// Measured: flagging p76-transfers-in-special-revenue took the
-				// check to FAIL over 121 subjects with three findings of the
-				// form "... is not one data/funds.yaml records", while the
-				// prefix arm had already resolved every one of those rows. A
-				// defect in the original commit that two passes read past, found
-				// by the third.
+				// RESOLVING IT WHOLE was the original commit. "Transfer From
+				// General Fund  to Horizons" is not the printed name of a fund,
+				// so FundByLabel finds nothing: measured, flagging
+				// p76-transfers-in-special-revenue took the check to FAIL over
+				// 121 subjects with three spurious findings, each row also
+				// counted twice because the prefix arm read it as well.
 				//
-				// DEFERRING RATHER THAN REFUSING, because the prefix arm asserts
-				// strictly more -- fund AND direction -- so the row is better
-				// checked, not less. What is left is that such a declaration
-				// asserts nothing new, which the parser cannot see from here:
-				// rowAnchorPrefixes lives in this package and internal/mapping
-				// may not read it. Filed as fisc-mjdw rather than half-built.
+				// DEFERRING TO THE PREFIX ARM was the fix for that, and it left
+				// a hole. The parser forbids a counterpart on a declaring rule,
+				// so far == 0; a row labelled "Transfer From X" resolves as the
+				// FAR end, want == far == 0, and the arm skips it without
+				// comparing anything. Measured: injecting one drops subjects
+				// 118 -> 117, the check stays PASS, and the row is reported
+				// under "no printed anchor on their own line" -- false, the
+				// label is right there. So the deferral turned a noisy defect
+				// into a silent one.
+				//
+				// REFUSING IS WHAT BOTH OF THOSE WERE REACHING FOR. The
+				// declaration says the label IS a fund name; a label carrying a
+				// verb phrase is a different shape and the rule author has said
+				// something untrue about their own page. Failing closed here
+				// also does what fisc-mjdw was filed to do -- a declaration that
+				// asserts nothing can no longer be written -- so that bead is
+				// retired by this rather than left open on a wrong premise.
 				phrasedLabel := anchorHasVerbPhrase(row.Label) ||
 					anchorHasVerbPhrase(row.LabelTail)
+				if ru.RowLabelsNameFunds && phrasedLabel {
+					findings = append(findings, finding(
+						fmt.Sprintf("%s %q", ru.ID, row.PrintedLabel()),
+						"this rule declares that its row labels are printed fund names "+
+							"and %q opens with a verb phrase, which names a movement "+
+							"rather than a fund. A schedule whose rows name two ends is "+
+							"read by the anchor arm and must not declare this",
+						row.PrintedLabel()))
+				}
 				if ru.RowLabelsNameFunds && near != 0 && !phrasedLabel {
 					subjects++
 					bare++
@@ -328,12 +345,12 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		if unanchored > 0 {
 			lead = "a further "
 		}
-		clauses = append(clauses, fmt.Sprintf("%s%d declared fund(s) sit at an end no "+
-			"printed label reaches: the row's label carries no verb phrase, so "+
-			"rowAnchorPrefixes matches nothing in it, and no row_labels_name_funds "+
-			"declaration covers that end -- the declaration speaks for a row's OWN fund "+
-			"and never its counterpart's, because a bare fund name names no direction. "+
-			"So this check makes no claim about them either: %s",
+		clauses = append(clauses, fmt.Sprintf("%s%d declared fund(s) sit at an end this "+
+			"check does not read: the row's label carries no verb phrase, so "+
+			"rowAnchorPrefixes matches nothing in it, and its rule does not declare "+
+			"row_labels_name_funds. The label may well be printed -- pp.85-125's rows "+
+			"are bare fund names -- but nothing here reads it, so no claim is made "+
+			"about them: %s",
 			lead, unphrased, joinComma(unphrasedRules)))
 	}
 	unanchoredNote := ""
