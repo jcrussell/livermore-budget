@@ -427,10 +427,22 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 // store shards has its extracted text committed. The equality the p76 case was
 // really about is kept by pageIndex() seeding buildSite's cited set.
 //
-// Note what that leaves: with one document topping out at p170 against a
-// contiguous p0001..p0268 committed, this arm cannot currently go red, and
-// fact-offset-points-at-token already forecloses the case. It is a guard for a
-// second document, not a live check today -- fisc-73cq.
+// NOTE WHAT THAT LEAVES, AND NOTE THAT A SECOND DOCUMENT DID NOT CHANGE IT. This
+// arm still cannot go red. The store now spans two documents -- the Budget Book
+// topping out at p170 and ACFR p41 -- and BOTH are extracted contiguously and in
+// full, p0001..p0268 and p0001..p0195, so every page the store can shard has its
+// text by construction exactly as before. fisc-73cq was filed on the premise
+// that a second document would make this falsifiable; that premise was wrong,
+// measured at 0448a5b, and the bead is corrected rather than closed on it.
+// What would make it live is a PARTIALLY extracted document, not another one.
+// fact-offset-points-at-token forecloses the underlying case from the other
+// side in the meantime.
+//
+// The empty-store guard below is the half of fisc-73cq that was always worth
+// having, and it is a different failure: without it this test passes on a store
+// with no pages at all, which is the vacuity internal/check/vacuity.go exists
+// for, one package over and undeclared. Same shape as the guard in
+// TestTheSiteLinksEveryShardItShips.
 func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -440,6 +452,21 @@ func TestEveryShardedPageHasItsExtractedText(t *testing.T) {
 	assets, err := buildFactAssets(raw, facts, "fisc test")
 	if err != nil {
 		t.Fatalf("buildFactAssets: %v", err)
+	}
+	if len(assets.Pages) == 0 {
+		t.Fatal("the store shards no pages, so this test asserts nothing")
+	}
+	// Two documents are shipped, and the loop below must reach both: a guard
+	// that only counted pages would be satisfied by a store that had silently
+	// lost one of them.
+	docs := map[string]bool{}
+	for _, p := range assets.Pages {
+		docs[p.DocID] = true
+	}
+	if len(docs) < 2 {
+		t.Errorf("the store shards %d document(s), want at least 2; if a document was "+
+			"dropped from mappings/ say so here, because this test is the one that "+
+			"would otherwise keep passing over the remainder", len(docs))
 	}
 	for _, p := range assets.Pages {
 		rel := filepath.Join(root, filepath.FromSlash(cmdutil.ExtractedDir),

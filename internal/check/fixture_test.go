@@ -108,9 +108,22 @@ type testCell struct {
 	cents    int64
 }
 
-// fixtureCells is the whole fixture: 10 cells, of which 7 earn a link. Two are
+// fixtureCells is the whole fixture: 12 cells, of which 7 earn a link. Four are
 // the stock rows and one is a zero the document printed, which is what makes the
 // counts identity — cited + stock + zero = facts — worth asserting.
+//
+// THE FUND BALANCES SATISFY beginning + change == ending, AND THEY DID NOT USED
+// TO. This fixture published general as 500,000 beginning, (20,000) change and
+// 510,000 ending — a balance $30,000 short of its own arithmetic — and gave
+// enterprise a change with no beginning or ending at all. No document could
+// print either shape. Nothing noticed until fund-balance-identity landed and
+// went red on both, which is the check earning its place before it ever ran
+// against the real corpus: a fixture describing a corpus that cannot exist is
+// the substrate problem testdata/README.md is about, one layer in.
+//
+// So general is now 500,000 + (20,000) = 480,000, and enterprise carries the two
+// stock rows its change always implied: 200,000 + 40,000 = 240,000. The two
+// added cells are why the count above reads 12 and not 10.
 var fixtureCells = []testCell{
 	{mapping.KindRevenue, "taxes/property", "general", 100_000},
 	{mapping.KindRevenue, "taxes/property", "enterprise", 0},
@@ -123,7 +136,9 @@ var fixtureCells = []testCell{
 	{mapping.KindFundBalance, "fund-balance/change", "enterprise", 40_000},
 	// Stocks. Facts the city printed that carry no link.
 	{mapping.KindFundBalance, "fund-balance/beginning", "general", 500_000},
-	{mapping.KindFundBalance, "fund-balance/ending", "general", 510_000},
+	{mapping.KindFundBalance, "fund-balance/ending", "general", 480_000},
+	{mapping.KindFundBalance, "fund-balance/beginning", "enterprise", 200_000},
+	{mapping.KindFundBalance, "fund-balance/ending", "enterprise", 240_000},
 }
 
 // printed renders cents the way these schedules print the figure, so that the

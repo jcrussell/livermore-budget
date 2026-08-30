@@ -259,6 +259,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"trend-points-tie-to-facts":        StatusPass,
 		"trend-series-are-complete":        StatusPass,
 		"row-funds-match-their-anchors":    StatusPass,
+		"fund-balance-identity":            StatusPass,
 		"graph-acyclic":                    StatusPass,
 		"derived-nodes-justified":          StatusPass,
 		"link-locators-match-their-facts":  StatusPass,

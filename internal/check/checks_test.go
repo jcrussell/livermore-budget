@@ -19,7 +19,7 @@ import (
 )
 
 // TestFixtureVerdicts is the one test that states what every check concludes over
-// a corpus small enough to count by hand: 10 facts in 10 cells, of which 2 are
+// a corpus small enough to count by hand: 12 facts in 12 cells, of which 4 are
 // stocks and 1 is a zero, leaving 7 links over 9 nodes.
 //
 // The subject counts are asserted alongside the statuses because they are the
@@ -45,13 +45,17 @@ func TestFixtureVerdicts(t *testing.T) {
 		"extraction-toolchain-pinned":      "vacuous over 0",
 		"source-pdfs-match-both-records":   "skipped over 0",
 
-		"facts-sorted":                "pass over 10",
-		"fact-ids-unique":             "pass over 10",
-		"fact-ids-recompute":          "pass over 10",
-		"fact-token-reparses":         "pass over 10",
-		"fact-offset-points-at-token": "pass over 10",
-		"fact-vocabulary":             "pass over 20", // 10 categories + 10 fund groups
-		"fact-kind-matches-category":  "pass over 10",
+		"facts-sorted":                "pass over 12",
+		"fact-ids-unique":             "pass over 12",
+		"fact-ids-recompute":          "pass over 12",
+		"fact-token-reparses":         "pass over 12",
+		"fact-offset-points-at-token": "pass over 12",
+		"fact-vocabulary":             "pass over 24", // 12 categories + 12 fund groups
+		"fact-kind-matches-category":  "pass over 12",
+		// Two fund balances, general and enterprise, each with all three of its
+		// lines. Both satisfy beginning + change == ending; neither did before
+		// this check was written. See fixtureCells.
+		"fund-balance-identity": "pass over 2",
 		// Vacuous over the FIXTURE and passing over the committed corpus, and
 		// the difference is the fixture's own shape rather than a gap: the
 		// miniature spine carries one scope, so there is no pair of scopes for
@@ -64,7 +68,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		// SPINE and the trends projection is of nothing here, so one document is
 		// built and one document is examined.
 		"documents-are-checked":   "pass over 1",
-		"facts-are-projected":     "pass over 10",
+		"facts-are-projected":     "pass over 12",
 		"graph-acyclic":           "pass over 7",
 		"node-tiers-are-declared": "pass over 9",
 		// The drill-down's two checks are vacuous over the miniature spine,
@@ -111,7 +115,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 21, Vacuous: 20, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 22, Vacuous: 20, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -193,7 +197,7 @@ func TestUnsortedFactStoreFails(t *testing.T) {
 	// A failing check must not borrow the sentence written for the passing case.
 	// "FAIL facts-sorted: 240 facts, in canonical order" is a contradiction, and
 	// it is what the report said before conclusion.unit existed.
-	if want := "1 finding over 10 facts"; res.Summary != want {
+	if want := "1 finding over 12 facts"; res.Summary != want {
 		t.Errorf("summary = %q, want %q", res.Summary, want)
 	}
 }
@@ -213,7 +217,7 @@ func TestKindMatchesCategorySummariesArePinned(t *testing.T) {
 		if res.Status != StatusPass {
 			t.Fatalf("status = %s (%s), want pass", res.Status, res.Summary)
 		}
-		if want := "10 facts over 8 kind/category pairs, each kind one its category " +
+		if want := "12 facts over 8 kind/category pairs, each kind one its category " +
 			"declares in data/taxonomy.yaml"; res.Summary != want {
 			t.Errorf("summary = %q, want %q", res.Summary, want)
 		}
@@ -274,7 +278,7 @@ func TestAnUnassignableCategoryReddensOneVocabularyCheck(t *testing.T) {
 	}
 	// One fact left the denominator, and the summary says so rather than
 	// printing the old count over a smaller set.
-	if want := "9 facts"; !strings.Contains(res.Summary, want) {
+	if want := "11 facts"; !strings.Contains(res.Summary, want) {
 		t.Errorf("summary = %q, want it to contain %q; the excluded fact must leave "+
 			"the count as well as the findings", res.Summary, want)
 	}
@@ -415,8 +419,8 @@ func TestATransferCountedAsRevenueIsCaughtAtTheFact(t *testing.T) {
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if res.Subjects != 10 {
-		t.Errorf("subjects = %d, want all 10 facts", res.Subjects)
+	if res.Subjects != 12 {
+		t.Errorf("subjects = %d, want all 12 facts", res.Subjects)
 	}
 	if got := len(res.Findings); got != 1 {
 		t.Fatalf("findings = %d, want 1: %v", got, res.Findings)
@@ -891,12 +895,12 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 		tamper func(*project.Graph)
 		want   string
 	}{
-		{"facts", func(g *project.Graph) { g.Metadata.Counts.Facts++ }, "counts.facts is 11"},
+		{"facts", func(g *project.Graph) { g.Metadata.Counts.Facts++ }, "counts.facts is 13"},
 		{"cited", func(g *project.Graph) { g.Metadata.Counts.FactsCited++ }, "counts.facts_cited is 8"},
 		{"a stock row grew a link", func(g *project.Graph) {
 			g.Links[0].FactIDs = append(g.Links[0].FactIDs, stockFactID(g))
 			g.Metadata.Counts.FactsCited++
-		}, "accounts for 11"},
+		}, "accounts for 13"},
 		{"nodes", func(g *project.Graph) { g.Metadata.Counts.Nodes = 99 }, "counts.nodes is 99"},
 		{"links", func(g *project.Graph) { g.Metadata.Counts.Links = 99 }, "counts.links is 99"},
 	}
@@ -920,7 +924,7 @@ func TestCountsMustAccountForEveryFact(t *testing.T) {
 // value of publishing both counts is that a reader can see where the gap went.
 func TestCountsReconcileNamesTheArithmetic(t *testing.T) {
 	res := resultFor(t, runChecks(t, testSubject(t)), "counts-reconcile")
-	if want := "(10 = 7 cited + 2 stock + 1 zero-valued)"; !strings.Contains(res.Summary, want) {
+	if want := "(12 = 7 cited + 4 stock + 1 zero-valued)"; !strings.Contains(res.Summary, want) {
 		t.Errorf("summary %q does not contain %q", res.Summary, want)
 	}
 }
