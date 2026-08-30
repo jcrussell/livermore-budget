@@ -53,7 +53,23 @@ const constraintTierCaveat = "A fund's constraint tier is OUR reading of the " +
 // compares a document against THIS STRING rather than against prose written
 // twice. Two authors agreeing that a caveat says roughly the right thing is not
 // the same claim as the document carrying the sentence the contract requires.
-func ConstraintTierCaveat() string { return constraintTierCaveat }
+func ConstraintTierCaveat() Caveat {
+	return Caveat{
+		ID:      ConstraintTierCaveatID,
+		Summary: "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
+		Text:    constraintTierCaveat,
+		// DOCUMENT-WIDE, and not the 61 fund nodes it is about. Listing them
+		// would be true and useless: every fund in the column carries a tier,
+		// so marking all of them marks none of them.
+		AppliesTo: []string{},
+	}
+}
+
+// ConstraintTierCaveatID is the anchor, separate from the sentence, so
+// internal/check can say "this document does not carry the disclosure" and
+// "this document's disclosure is not the one the contract requires" as two
+// different findings.
+const ConstraintTierCaveatID = "constraint-tier-is-our-reading"
 
 // MultiScopeEnvelope is [Envelope] for a document of more than one schedule.
 //
@@ -136,7 +152,7 @@ type FundFlowsMetadata struct {
 	Basis           string          `json:"basis"`
 	Sources         []Source        `json:"sources"`
 	Counts          FundFlowsCounts `json:"counts"`
-	Caveats         []string        `json:"caveats"`
+	Caveats         []Caveat        `json:"caveats"`
 }
 
 // FundFlows draws the General Fund drill-down: where a fund's revenue comes from
@@ -410,6 +426,15 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		}
 	}
 
+	// Validated against this document's OWN nodes, for the reason spelled out
+	// in ValidateCaveats: an AppliesTo naming a node the document does not carry
+	// marks nothing, and marking nothing is indistinguishable from having
+	// nothing to mark.
+	cavs := fundFlowsCaveats(len(twice))
+	if err := ValidateCaveats(cavs, nodeIDs(out)); err != nil {
+		return nil, fmt.Errorf("%s: %w", col, err)
+	}
+
 	return &FundFlowsDocument{
 		SchemaVersion: SchemaVersion,
 		Projection:    f.Name(),
@@ -432,7 +457,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 				Nodes:           len(out),
 				Links:           len(links),
 			},
-			Caveats: fundFlowsCaveats(len(twice)),
+			Caveats: cavs,
 		},
 		Nodes: out,
 		Links: links,
@@ -441,17 +466,27 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 
 // fundFlowsCaveats are the three things a reader of this file has to be told,
 // each of which is a property of the document rather than a hedge about it.
-func fundFlowsCaveats(twice int) []string {
-	return []string{
-		constraintTierCaveat,
-		fmt.Sprintf("This document holds the same money at more than one grain, so summing "+
-			"every link double-counts: %d fact(s) are behind both a department's object "+
-			"rows and the fund-to-department link that totals them. Fold within one tier "+
-			"pair, never across the whole graph. It publishes no headline for this reason.",
-			twice),
-		"Only the General Fund has a spending side. Budget Book pp.167-170 decompose that " +
-			"fund alone, so the other six fund groups' revenue ends at their funds -- the " +
-			"money is not missing, the schedule that would break it down is not published.",
+func fundFlowsCaveats(twice int) []Caveat {
+	return []Caveat{
+		ConstraintTierCaveat(),
+		{
+			ID:      "mixed-grain-double-counts",
+			Summary: "This document holds the same money at two grains, so summing every link double-counts.",
+			Text: fmt.Sprintf("This document holds the same money at more than one grain, so summing "+
+				"every link double-counts: %d fact(s) are behind both a department's object "+
+				"rows and the fund-to-department link that totals them. Fold within one tier "+
+				"pair, never across the whole graph. It publishes no headline for this reason.",
+				twice),
+			AppliesTo: []string{},
+		},
+		{
+			ID:      "only-the-general-fund-is-decomposed",
+			Summary: "Only the General Fund has a spending side; the other six groups' revenue ends at their funds.",
+			Text: "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that " +
+				"fund alone, so the other six fund groups' revenue ends at their funds -- the " +
+				"money is not missing, the schedule that would break it down is not published.",
+			AppliesTo: []string{},
+		},
 	}
 }
 

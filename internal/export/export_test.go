@@ -212,7 +212,10 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 
 	var doc struct {
 		Metadata struct {
-			Caveats []string `json:"caveats"`
+			Caveats []struct {
+				ID   string `json:"id"`
+				Text string `json:"text"`
+			} `json:"caveats"`
 		} `json:"metadata"`
 	}
 	if err := json.Unmarshal(goldenSankey(t), &doc); err != nil {
@@ -222,14 +225,18 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 		t.Fatal("golden projection has no caveats to render")
 	}
 	for _, caveat := range doc.Metadata.Caveats {
+		// THE TEXT, NOT THE SUMMARY. The whole caveat is what has to survive a
+		// page rendered without JavaScript; asserting on the summary would pass
+		// over a page that had quietly dropped the paragraph it stands in for.
+		//
 		// html/template escapes as it renders, so compare against the escaped
 		// form rather than asserting on a prefix that happens to be plain.
-		head := caveat
+		head := caveat.Text
 		if i := strings.IndexAny(head, "&<>'\"$("); i > 20 {
 			head = head[:i]
 		}
 		if !strings.Contains(page, head) {
-			t.Errorf("caveat missing from the page: %q", head)
+			t.Errorf("caveat %q missing from the page: %q", caveat.ID, head)
 		}
 	}
 }
@@ -541,8 +548,19 @@ func TestConfigCannotCloseItsScriptElement(t *testing.T) {
 			"fiscal_year_label": "FY 2025-26",
 			"basis":             "adopted",
 			"headline":          map[string]any{"all_funds_gross_expenditure_cents": 25409541200},
-			"caveats":           []string{`</script><script>alert("pwned")</script>`},
-			"sources":           []any{},
+			// BOTH FIELDS CARRY THE MARKUP, because both now reach a page and
+			// they reach it by different routes: text is rendered into the
+			// caveat list by html/template, and summary rides in the
+			// FISC_CONFIG blob as JSON inside a <script>. A fixture that
+			// attacked only the field it used to have would leave the new one
+			// untested while looking like it covered the case.
+			"caveats": []map[string]any{{
+				"id":         `</script><script>alert("pwned")</script>`,
+				"summary":    `</script><script>alert("pwned")</script>`,
+				"text":       `</script><script>alert("pwned")</script>`,
+				"applies_to": []string{},
+			}},
+			"sources": []any{},
 		},
 		"nodes": []any{},
 		"links": []any{},

@@ -70,7 +70,9 @@ to ship travels the same channel (`export.Options.Files`).
     "sources": [{"doc_id": "livermore-budget-fy2026-2027", "pages": [66, 67]}],
     "headline": { /* see below */ },
     "counts": {"facts": 120, "facts_cited": 58, "nodes": 25, "links": 58},
-    "caveats": ["..."]
+    "caveats": [
+      {"id": "...", "summary": "...", "text": "...", "applies_to": ["..."]}
+    ]
   },
   "nodes": [{
     "id": "revenue/taxes/property", "label": "Property Taxes",
@@ -101,6 +103,32 @@ category that only the General Fund collects is a dash in the other five
 columns — and d3-sankey draws zero-height paths that churn node order. The
 *facts* still exist; a zero the city printed is a fact. Only the link is
 dropped.
+
+### A caveat is an object, not a string
+
+It carries an **`id`**, a one-line **`summary`**, the **`text`** that used to be
+the whole caveat, and **`applies_to`**: the node ids the caveat is about.
+
+The id is a **published URL fragment** — `caveats.html#<id>` — so it is stable
+across rewordings of the other two fields, and a document repeating one is
+refused at build time by `project.ValidateCaveats`. Two caveats under one anchor
+is a link that lands on the wrong paragraph and fails silently: the page
+renders, the anchor resolves, and the reader is shown a sentence about something
+else.
+
+`applies_to` is **empty for a caveat about the schedule rather than about a
+mark**, and empty means document-wide rather than not-yet-filled-in. Where it is
+non-empty, every id must name a node **this** document carries — `ValidateCaveats`
+is given the drawn node set and refuses otherwise, because a caveat pointing at a
+node that is not there marks nothing, and marking nothing is indistinguishable
+from having nothing to mark.
+
+**One id may carry more than one text.** `transfer-legs-unpaired` has three,
+picked by whether the legs balance and whether the residual meets the printed
+to-CIP column; which sentence a document gets is a fact about that document's
+own arithmetic, not three different caveats. A page listing more than one
+document's caveats must therefore key on `(id, document)` and must not assume
+one text per id.
 
 Determinism: nodes sorted by `(tier, id)`, links by `(source, target)`,
 `fact_ids` ascending, `locators` by `doc_id` with `pages` ascending inside each

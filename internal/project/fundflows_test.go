@@ -1,6 +1,7 @@
 package project
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -137,9 +138,19 @@ func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
 	if seen == 0 {
 		t.Fatal("no node carries a constraint tier, so this test asserts nothing")
 	}
-	if !containsString(doc.Metadata.Caveats, ConstraintTierCaveat()) {
+	// THE ID AND THE TEXT ARE BOTH ASSERTED, matching internal/check's arm.
+	// Finding the id and stopping would pass over a document whose disclosure
+	// had been reworded into something weaker while the anchor still resolved,
+	// which is the quieter of the two failures.
+	want := ConstraintTierCaveat()
+	i := slices.IndexFunc(doc.Metadata.Caveats, func(c Caveat) bool { return c.ID == want.ID })
+	switch {
+	case i < 0:
 		t.Error("the document publishes constraint tiers and its caveats do not disclose " +
 			"that they are our reading")
+	case doc.Metadata.Caveats[i].Text != want.Text:
+		t.Errorf("caveat %q is present and its text is not the declared disclosure:\ngot  %q\nwant %q",
+			want.ID, doc.Metadata.Caveats[i].Text, want.Text)
 	}
 }
 
@@ -309,15 +320,6 @@ func TestFundFlowsSlicesDeclareOnlyColumnsBothSchedulesCarry(t *testing.T) {
 	if got[0].Columns[0].FiscalYear != testYear {
 		t.Errorf("slice covers FY%d, want FY%d", got[0].Columns[0].FiscalYear, testYear)
 	}
-}
-
-func containsString(all []string, want string) bool {
-	for _, s := range all {
-		if s == want {
-			return true
-		}
-	}
-	return false
 }
 
 // TestATransferInLinkIsNotExternal is the regression this document shipped and

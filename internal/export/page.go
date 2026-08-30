@@ -139,7 +139,7 @@ type projectionMetadata struct {
 		Nodes int `json:"nodes"`
 		Links int `json:"links"`
 	} `json:"counts"`
-	Caveats []string `json:"caveats"`
+	Caveats []caveatMeta `json:"caveats"`
 }
 
 // drilldownMetadata is the decoded metadata block of a DRILL-DOWN document.
@@ -169,7 +169,21 @@ type drilldownMetadata struct {
 		Nodes int `json:"nodes"`
 		Links int `json:"links"`
 	} `json:"counts"`
-	Caveats []string `json:"caveats"`
+	Caveats []caveatMeta `json:"caveats"`
+}
+
+// caveatMeta is a decoded caveat.
+//
+// A SEPARATE TYPE FROM project.Caveat, like every other decode struct in this
+// file, because this package consumes projections as bytes and does not import
+// internal/project. The field set is the contract, and it is pinned by
+// TestCaveatMetaKeysAreTheOnesTheDocumentCarries rather than by the two
+// declarations happening to agree.
+type caveatMeta struct {
+	ID        string   `json:"id"`
+	Summary   string   `json:"summary"`
+	Text      string   `json:"text"`
+	AppliesTo []string `json:"applies_to"`
 }
 
 // headline is the projection's published totals, in cents.
@@ -246,11 +260,11 @@ type yearView struct {
 	// sankeyTitle below, which is the one string paintYearWords wrote that the
 	// packager had not built -- and it overwrote a caller's own Title without a
 	// word. See sankeyTitle for why the caller's words survive the switch.
-	Title   string    `json:"title"`
-	Hero    figure    `json:"hero"`
-	Figures []figure  `json:"figures"`
-	Caveats []string  `json:"caveats"`
-	Counts  countsRef `json:"counts"`
+	Title   string       `json:"title"`
+	Hero    figure       `json:"hero"`
+	Figures []figure     `json:"figures"`
+	Caveats []caveatMeta `json:"caveats"`
+	Counts  countsRef    `json:"counts"`
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
 	// and a different string from Title, which is the document's.
 	//
@@ -905,7 +919,7 @@ type chrome struct {
 	Projections  []projectionRef
 	DataPath     string
 	Scope        string
-	Caveats      []string
+	Caveats      []caveatMeta
 }
 
 // sourcesFor builds a view's own footer citations, and the client's copy of the
@@ -1338,7 +1352,7 @@ type trendsMetadata struct {
 		Series int `json:"series"`
 		Points int `json:"points"`
 	} `json:"counts"`
-	Caveats []string `json:"caveats"`
+	Caveats []caveatMeta `json:"caveats"`
 }
 
 // trendColumnMeta is one column as the document declares it.

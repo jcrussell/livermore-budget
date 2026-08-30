@@ -56,6 +56,91 @@ type Source struct {
 	Pages []int  `json:"pages"`
 }
 
+// Caveat is one thing a document cannot show, said in three registers.
+//
+// IT USED TO BE A BARE STRING, and the reason it is not any more is that a
+// reader met four of them at once -- one 250 words long -- at the same altitude
+// as the chart they qualify. A page can now show [Caveat.Summary] and link to
+// [Caveat.Text] somewhere a reader goes when they want it. Nothing was
+// shortened to achieve that: Text is the string that used to be the whole
+// caveat, verbatim.
+//
+// THE ID IS A PUBLISHED URL FRAGMENT, which is why [ValidateCaveats] refuses a
+// document that repeats one. Two caveats sharing an anchor is a link that lands
+// on the wrong paragraph, and it fails silently -- the page renders, the anchor
+// resolves, and the reader is shown a sentence about something else.
+type Caveat struct {
+	// ID is a stable slug. Stable is the load-bearing word: it outlives edits
+	// to Summary and Text, because a URL somebody has bookmarked or cited must
+	// not stop resolving because a sentence was reworded.
+	ID string `json:"id"`
+	// Summary is one line, written to be skimmed in a list of its peers. It is
+	// authored beside Text rather than derived from it -- a first sentence is
+	// not a summary, and truncating a paragraph produces neither.
+	Summary string `json:"summary"`
+	// Text is the caveat in full, and is the string this field replaced.
+	Text string `json:"text"`
+	// AppliesTo names the node ids this caveat is about, so a chart can mark
+	// them. EMPTY MEANS DOCUMENT-WIDE, not "not filled in yet" -- most of these
+	// are statements about what a schedule does not contain, which no single
+	// node is responsible for.
+	AppliesTo []string `json:"applies_to"`
+}
+
+// ValidateCaveats refuses a set no page could render honestly.
+//
+// IT RUNS AT BUILD TIME, in every document builder, because every failure below
+// is invisible downstream: a missing id publishes an anchor of "", a missing
+// summary publishes a blank line in a list, a repeated id publishes two
+// paragraphs under one anchor of which a reader sees whichever the browser finds
+// first, and an [Caveat.AppliesTo] entry naming nothing simply never marks
+// anything. None of them stops a page rendering, so none would be found by a
+// page that rendered.
+//
+// nodes IS THE DOCUMENT'S OWN NODE IDS, and passing it is what makes AppliesTo a
+// checkable claim rather than a hopeful one. A mistyped id is the worst of the
+// failures here precisely because it is the quietest: the chart draws, the
+// caveat lists, and the mark it was written to flag is simply never flagged --
+// a test asserting "this node carries no caveat" passes whether the id is wrong
+// or the caveat genuinely does not apply. A caller with no nodes to offer --
+// a document that is not a graph -- passes nil, and the arm is skipped rather
+// than being made to fail on every entry.
+func ValidateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
+	seen := make(map[string]struct{}, len(caveats))
+	for i, c := range caveats {
+		switch {
+		case c.ID == "":
+			return fmt.Errorf("caveat %d has no id, and an id is the anchor a page links to", i)
+		case c.Summary == "":
+			return fmt.Errorf("caveat %q has no summary, and a summary is what a page shows in place of the text", c.ID)
+		case c.Text == "":
+			return fmt.Errorf("caveat %q has no text, so its summary summarises nothing", c.ID)
+		}
+		if _, dup := seen[c.ID]; dup {
+			return fmt.Errorf("caveat id %q is used twice in one document; an id is a published URL fragment and two paragraphs cannot share one", c.ID)
+		}
+		seen[c.ID] = struct{}{}
+		if nodes == nil {
+			continue
+		}
+		for _, target := range c.AppliesTo {
+			if _, ok := nodes[target]; !ok {
+				return fmt.Errorf("caveat %q applies to node %q, which this document does not carry; a caveat that marks nothing is worse than one that marks the wrong thing, because nothing goes red", c.ID, target)
+			}
+		}
+	}
+	return nil
+}
+
+// nodeIDs is the set [ValidateCaveats] checks AppliesTo against.
+func nodeIDs(nodes []Node) map[string]struct{} {
+	out := make(map[string]struct{}, len(nodes))
+	for _, n := range nodes {
+		out[n.ID] = struct{}{}
+	}
+	return out
+}
+
 // locatorSet collects the (doc_id, page) pairs of a set of facts.
 //
 // IT IS THE ONE GROUPING RULE IN THIS PACKAGE. Both sourcesOf (a whole

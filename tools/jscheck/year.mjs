@@ -26,9 +26,24 @@ function fixtureYear(overrides) {
       { label: "Naive column total", value: "$325,241,780", note: "n", kind: "error" },
       { label: "Unmatched transfers", value: "$50,762,251", note: "n", kind: "" },
     ],
-    caveats: ["one", "two", "three"],
+    // A CAVEAT IS AN OBJECT, not a string, since it gained an id a page can
+    // link to. The fixture carries the whole shape rather than just `text`,
+    // because a stub that supplies only the field under test cannot catch a
+    // client reading the wrong one.
+    caveats: [
+      { id: "one", summary: "s-one", text: "one", applies_to: [] },
+      { id: "two", summary: "s-two", text: "two", applies_to: [] },
+      { id: "three", summary: "s-three", text: "three", applies_to: [] },
+    ],
     counts: { facts: 120, nodes: 25, links: 58 },
   }, overrides);
+}
+
+/** n distinct caveats, whose ids differ so ValidateCaveats' rule holds here too. */
+function fixtureCaveats(n) {
+  return Array.from({ length: n }, (_, i) => ({
+    id: "c" + i, summary: "summary " + i, text: "text " + i, applies_to: [],
+  }));
 }
 
 /**
@@ -208,7 +223,7 @@ export async function checks() {
     {
       name: "the caveats are the year's own, not the year the page opened on",
       ok: got.caveats.length === year.caveats.length &&
-          got.caveats.every((c, i) => c.textContent === year.caveats[i]),
+          got.caveats.every((c, i) => c.textContent === year.caveats[i].text),
       detail: `${got.caveats.length} caveats, matching the ${year.caveats.length} supplied`,
     },
     {
@@ -229,13 +244,13 @@ export async function checks() {
       // finding even if both are wrong in the same direction.
       name: "the caveat count in the summary follows the year, and agrees with the list",
       ok: (() => {
-        const five = fixtureYear({ caveats: ["a", "b", "c", "d", "e"] });
+        const five = fixtureYear({ caveats: fixtureCaveats(5) });
         const after = painted(app, five);
         return after.caveatsCount === "5" &&
                after.caveatsCount === String(after.caveats.length);
       })(),
       detail: (() => {
-        const after = painted(app, fixtureYear({ caveats: ["a", "b", "c", "d", "e"] }));
+        const after = painted(app, fixtureYear({ caveats: fixtureCaveats(5) }));
         return `after repainting with five caveats the summary reads "${after.caveatsCount}" ` +
           `over a list of ${after.caveats.length}`;
       })(),
@@ -329,7 +344,7 @@ export async function checks() {
       name: "painting a second year replaces the first year's words",
       ok: (() => {
         const first = painted(app, fixtureYear({
-          year: 2026, label: "FY 2025-26", caveats: ["only", "two"],
+          year: 2026, label: "FY 2025-26", caveats: fixtureCaveats(2),
         }));
         const second = painted(app, year);
         // THE CAVEATS ARE ASSERTED, not merely collected. painted() has always
@@ -341,7 +356,7 @@ export async function checks() {
         return second.tiles.length === first.tiles.length &&
                first.caveats.length === 2 &&
                second.caveats.length === year.caveats.length &&
-               second.caveats.map((c) => c.textContent).join("|") === year.caveats.join("|") &&
+               second.caveats.map((c) => c.textContent).join("|") === year.caveats.map((c) => c.text).join("|") &&
                second.lede === year.label + " " + year.basis &&
                second.title.includes(year.label);
       })(),

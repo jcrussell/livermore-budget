@@ -149,8 +149,12 @@ Every tier-3 fund node carries one, and the value is **ours**: our reading of th
 Description of Funds narrative, pp.258-261. `node.derived` stays `false` — the
 city prints the fund — and the disclosure rides on `source_note` and `rationale`
 beside it. The document also carries the disclosure sentence in
-`metadata.caveats`, and `constraint-tier-vocabulary` compares it against
-`project.ConstraintTierCaveat()` rather than against prose written twice.
+`metadata.caveats` under the id `constraint-tier-is-our-reading`, and
+`constraint-tier-vocabulary` finds it by that id and then compares its text
+against `project.ConstraintTierCaveat()` rather than against prose written
+twice. Both halves are asserted: an id present with drifted text is a finding of
+its own, because an anchor that still resolves over a weakened sentence is the
+quieter failure.
 
 See `docs/sankey-contract.md`'s `constraint_tier` section for the argument, and
 for why `""` and `unknown` are different claims.

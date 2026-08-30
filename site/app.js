@@ -60,7 +60,22 @@
  * @property {FiscSource[]} sources
  * @property {Record<string, number>} headline
  * @property {{facts:number, nodes:number, links:number}} counts
- * @property {string[]} caveats
+ * @property {FiscCaveat[]} caveats
+ */
+
+/**
+ * One thing the document cannot show.
+ *
+ * IT WAS A BARE STRING until the caveats got a page of their own. `text` is
+ * that string, unchanged; `summary` is the line a page shows in its place, and
+ * `id` is the anchor it links to. `applies_to` names the nodes the caveat is
+ * about, and is EMPTY for a caveat about the schedule rather than about any
+ * mark -- empty means document-wide, not "not filled in".
+ * @typedef {Object} FiscCaveat
+ * @property {string} id
+ * @property {string} summary
+ * @property {string} text
+ * @property {string[]} applies_to
  */
 
 /**
@@ -92,7 +107,7 @@
  * @property {string} title
  * @property {FiscFigure} hero
  * @property {FiscFigure[]} figures
- * @property {string[]} caveats
+ * @property {FiscCaveat[]} caveats
  * @property {{facts:number, nodes:number, links:number}} counts
  * @property {string} chart_title
  */
@@ -1711,7 +1726,7 @@ function paintYearWords(year) {
   }
 
   const caveats = maybeEl("caveats");
-  if (caveats) caveats.replaceChildren(...year.caveats.map((c) => h("li", "", c)));
+  if (caveats) caveats.replaceChildren(...year.caveats.map((c) => h("li", "", c.text)));
 
   // THE CAVEAT COUNT IS PER-YEAR, and it is in a <summary> the reader uses to
   // decide whether to open the list at all. FY2025-26 carries four and

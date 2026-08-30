@@ -1025,18 +1025,41 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 		// would be checked and its document would not, and the requirement that
 		// exists so "a reader of this file alone" is not misled would pass in
 		// silence over the one file most readers fetch.
-		var caveats []string
+		var caveats []project.Caveat
 		switch {
 		case p.FundFlows != nil:
 			caveats = p.FundFlows.Metadata.Caveats
 		case p.Graph != nil:
 			caveats = p.Graph.Metadata.Caveats
 		}
-		if !slices.Contains(caveats, project.ConstraintTierCaveat()) {
+		// TWO FINDINGS, NOT ONE, now that a caveat has an id as well as a
+		// sentence. A caveat is looked up by ID and then its TEXT is compared,
+		// and the pair is the whole point:
+		//
+		// Matching on the id alone would go green over a document whose
+		// disclosure had been reworded into something weaker -- a new fail-open
+		// in the exact place the comment above was written to close, and a
+		// quieter one, because the anchor would still resolve and the page
+		// would still render a paragraph under the right heading.
+		//
+		// Matching on the text alone works, and was the previous behaviour, but
+		// then the finding cannot tell "discloses nothing" from "discloses
+		// something else" -- and those have different fixes. The id is free.
+		i := slices.IndexFunc(caveats, func(c project.Caveat) bool {
+			return c.ID == project.ConstraintTierCaveatID
+		})
+		switch {
+		case i < 0:
 			findings = append(findings, finding(p.String(),
 				"nodes here carry constraint tiers and metadata.caveats does not carry the "+
 					"disclosure sentence. A reader of this file alone would take an "+
 					"editorial classification for something the city printed"))
+		case caveats[i].Text != project.ConstraintTierCaveat().Text:
+			findings = append(findings, finding(p.String(),
+				"nodes here carry constraint tiers and metadata.caveats carries %q with text "+
+					"that is not the disclosure internal/project declares. The document "+
+					"discloses something, under the right anchor, and it is not the sentence "+
+					"the contract requires", project.ConstraintTierCaveatID))
 		}
 	}
 

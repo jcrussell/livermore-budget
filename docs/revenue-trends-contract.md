@@ -51,7 +51,9 @@ which year it covers.
     "sources": [{"doc_id": "livermore-budget-fy2026-2027",
                  "pages": [127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140]}],
     "counts": {"facts": 924, "series": 231, "points": 924},
-    "caveats": ["..."]
+    "caveats": [
+      {"id": "...", "summary": "...", "text": "...", "applies_to": []}
+    ]
   },
   "series": [{
     "series_id": "fisc-s-ce9117881328",
@@ -212,6 +214,11 @@ them is a defect in this document:
   rounding. `totals-tie-exactly-only-on-the-spine`: eleven blocks are off by ≤ $5
   and every one is in the FY2023-24 Actual column, p131 and p135 among them.
   These are `stated_total_deltas` material (`fisc-2sd`), not tolerance material.
+
+`applies_to` is empty on every one of them, and by construction: this document
+publishes series rather than a graph, so there is no node for a caveat to name.
+`ValidateCaveats` is passed a nil node set here and skips that arm rather than
+failing every entry against an empty one.
 
 **So `metadata.caveats` states the capital FY2024-25 hole and the General Fund
 Transfers In gap, with figures.** Not because a *series* is wrong — none is —

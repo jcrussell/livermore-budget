@@ -46,9 +46,24 @@
       "links": 175
     },
     "caveats": [
-      "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
-      "This document holds the same money at more than one grain, so summing every link double-counts: 44 fact(s) are behind both a department's object rows and the fund-to-department link that totals them. Fold within one tier pair, never across the whole graph. It publishes no headline for this reason.",
-      "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that fund alone, so the other six fund groups' revenue ends at their funds -- the money is not missing, the schedule that would break it down is not published."
+      {
+        "id": "constraint-tier-is-our-reading",
+        "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
+        "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+        "applies_to": []
+      },
+      {
+        "id": "mixed-grain-double-counts",
+        "summary": "This document holds the same money at two grains, so summing every link double-counts.",
+        "text": "This document holds the same money at more than one grain, so summing every link double-counts: 44 fact(s) are behind both a department's object rows and the fund-to-department link that totals them. Fold within one tier pair, never across the whole graph. It publishes no headline for this reason.",
+        "applies_to": []
+      },
+      {
+        "id": "only-the-general-fund-is-decomposed",
+        "summary": "Only the General Fund has a spending side; the other six groups' revenue ends at their funds.",
+        "text": "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that fund alone, so the other six fund groups' revenue ends at their funds -- the money is not missing, the schedule that would break it down is not published.",
+        "applies_to": []
+      }
     ]
   },
   "nodes": [

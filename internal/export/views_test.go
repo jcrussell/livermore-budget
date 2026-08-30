@@ -64,7 +64,12 @@ func trendsDoc(pages ...int) []byte {
 			"columns":      columns,
 			"sources":      []map[string]any{{"doc_id": budgetDocID, "pages": pages}},
 			"counts":       map[string]any{"facts": len(points), "series": 1, "points": len(points)},
-			"caveats":      []string{"a caveat this document carries"},
+			"caveats": []map[string]any{{
+				"id":         "a-caveat-this-document-carries",
+				"summary":    "a caveat this document carries",
+				"text":       "a caveat this document carries, at length",
+				"applies_to": []string{},
+			}},
 		},
 		"series": []map[string]any{{
 			"series_id": "fisc-s-000000000000", "label": "Property Taxes",

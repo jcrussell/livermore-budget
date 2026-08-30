@@ -142,7 +142,7 @@ type TrendsMetadata struct {
 	Columns []TrendColumn `json:"columns"`
 	Sources []Source      `json:"sources"`
 	Counts  TrendCounts   `json:"counts"`
-	Caveats []string      `json:"caveats"`
+	Caveats []Caveat      `json:"caveats"`
 }
 
 // TrendCounts is how much of the corpus this document accounts for.
@@ -331,6 +331,15 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 		return nil, fmt.Errorf("revenue-trends: %w", err)
 	}
 
+	// nil NODES, BECAUSE THIS DOCUMENT HAS NONE. It publishes series rather
+	// than a graph, so there is nothing for an AppliesTo to name and every one
+	// of its caveats is document-wide by construction. ValidateCaveats skips
+	// that arm on nil rather than failing every entry against an empty set.
+	cavs := trendsCaveats()
+	if err := ValidateCaveats(cavs, nil); err != nil {
+		return nil, err
+	}
+
 	return &TrendsDocument{
 		SchemaVersion: SchemaVersion,
 		Projection:    t.Name(),
@@ -343,7 +352,7 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 				Series: len(series),
 				Points: points,
 			},
-			Caveats: trendsCaveats(),
+			Caveats: cavs,
 		},
 		Series: series,
 	}, nil
@@ -362,21 +371,36 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 // that distinction is what keeps a caveat a statement about the document rather
 // than a restatement of its own arithmetic. Full reconciliation, all 28 cells,
 // is in docs/revenue-trends-contract.md.
-const (
-	caveatGeneralFundTransfersIn = "Budget Book pp.127-130 print no General Fund " +
-		"Transfers In row, so this schedule's General Fund total is below the city's own " +
-		"summary in every column: by $480,400 in FY2025-26 and $486,735 in FY2026-27, which " +
-		"are the transfers pp.66-67 do print, itemised by payer on p76. No series here is " +
-		"short; the row is not in this schedule."
-	caveatCapitalReserves = "The Capital Funds column for FY2024-25 sums to $30,713,648 " +
-		"against the $34,839,275 the city prints on p63, because General Fund CIP Reserves " +
-		"has no section on pp.131-140. The $4,125,627 difference is a fund the schedule " +
-		"does not carry, not a figure it gets wrong."
-	caveatComparability = "The four columns are four different measurements: FY2023-24 is " +
-		"money that moved, FY2024-25 is a mid-year re-forecast, and the two later years are " +
-		"intentions adopted together. Each column carries the basis it was produced on and " +
-		"the group it may be compared within; growth across groups is not published, because " +
-		"it is not a quantity this document can compute."
+var (
+	caveatGeneralFundTransfersIn = Caveat{
+		ID:      "no-general-fund-transfers-in-row",
+		Summary: "pp.127-130 print no General Fund Transfers In row, so that total sits below the city's own summary.",
+		Text: "Budget Book pp.127-130 print no General Fund " +
+			"Transfers In row, so this schedule's General Fund total is below the city's own " +
+			"summary in every column: by $480,400 in FY2025-26 and $486,735 in FY2026-27, which " +
+			"are the transfers pp.66-67 do print, itemised by payer on p76. No series here is " +
+			"short; the row is not in this schedule.",
+		AppliesTo: []string{},
+	}
+	caveatCapitalReserves = Caveat{
+		ID:      "capital-reserves-are-not-in-this-schedule",
+		Summary: "General Fund CIP Reserves has no section on pp.131-140, so FY2024-25's Capital column is short by $4,125,627.",
+		Text: "The Capital Funds column for FY2024-25 sums to $30,713,648 " +
+			"against the $34,839,275 the city prints on p63, because General Fund CIP Reserves " +
+			"has no section on pp.131-140. The $4,125,627 difference is a fund the schedule " +
+			"does not carry, not a figure it gets wrong.",
+		AppliesTo: []string{},
+	}
+	caveatComparability = Caveat{
+		ID:      "four-columns-are-four-measurements",
+		Summary: "The four columns are four different measurements, so growth across them is not published.",
+		Text: "The four columns are four different measurements: FY2023-24 is " +
+			"money that moved, FY2024-25 is a mid-year re-forecast, and the two later years are " +
+			"intentions adopted together. Each column carries the basis it was produced on and " +
+			"the group it may be compared within; growth across groups is not published, because " +
+			"it is not a quantity this document can compute.",
+		AppliesTo: []string{},
+	}
 )
 
 // trendsCaveats is every caveat, unconditionally.
@@ -387,8 +411,8 @@ const (
 // schedule it was never given. Dropping one when the corpus changes would need
 // a check that the absence had ended, which is a thing to build when a page
 // makes it possible and not a condition to guess at here.
-func trendsCaveats() []string {
-	return []string{caveatGeneralFundTransfersIn, caveatCapitalReserves, caveatComparability}
+func trendsCaveats() []Caveat {
+	return []Caveat{caveatGeneralFundTransfersIn, caveatCapitalReserves, caveatComparability}
 }
 
 // trendColumns publishes the columns with their labels and comparable groups.

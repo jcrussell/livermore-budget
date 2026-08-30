@@ -44,6 +44,36 @@ func TestYearViewKeysAreTheOnesTheClientReads(t *testing.T) {
 	}
 }
 
+// TestCaveatMetaKeysAreTheOnesTheDocumentCarries pins the inner shape that
+// TestYearViewKeysAreTheOnesTheClientReads cannot see.
+//
+// THAT TEST DOES NOT FAIL WHEN THIS SHAPE DRIFTS, and the reason is worth
+// stating rather than rediscovering: it marshals yearView and compares TOP-LEVEL
+// keys, so "caveats" is one entry in its list whatever the elements turn out to
+// be. When a caveat was a string that was the whole contract; now it is four
+// fields, and three of them are load-bearing in different places -- id is the
+// anchor a page links to, summary is the line a page shows, text is the
+// paragraph a reader came for.
+//
+// caveatMeta is also the DECODE side: internal/export consumes projections as
+// bytes and does not import internal/project, so these tags are what couples the
+// two packages. A renamed tag on either side is a caveat that decodes to the
+// zero value and renders as a blank line, with no error anywhere.
+func TestCaveatMetaKeysAreTheOnesTheDocumentCarries(t *testing.T) {
+	blob, err := json.Marshal(caveatMeta{})
+	if err != nil {
+		t.Fatalf("marshal caveatMeta: %v", err)
+	}
+	var got map[string]any
+	if err = json.Unmarshal(blob, &got); err != nil {
+		t.Fatalf("decode caveatMeta: %v", err)
+	}
+	want := []string{"applies_to", "id", "summary", "text"}
+	if diff := cmp.Diff(want, keysOf(got)); diff != "" {
+		t.Errorf("caveat keys (-want +got):\n%s\ninternal/project.Caveat writes these and site/app.js reads them", diff)
+	}
+}
+
 // TestClientDocKeysAreTheOnesTheClientReads is the same pin one struct over,
 // and it was missing.
 //

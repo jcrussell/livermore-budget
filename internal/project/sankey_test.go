@@ -702,7 +702,7 @@ func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
 	col := Column{FiscalYear: testYear, Basis: testBasis}
 	h := Headline{InternalTransferInCents: 100000, InternalTransferOutCents: 500000}
 
-	if got := transferCaveat(h, col); strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(h, col).Text; strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("a $4,000.00 residual claimed the printed column:\n%s", got)
 	}
 
@@ -710,10 +710,10 @@ func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
 	// the arithmetic does: those pages carry one budget column per year.
 	revised := Column{FiscalYear: testYear, Basis: mapping.BasisRevised}
 	real := Headline{InternalTransferInCents: 2152599700, InternalTransferOutCents: 5961273400}
-	if got := transferCaveat(real, revised); strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(real, revised).Text; strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("a revised column claimed a schedule that prints only an adopted one:\n%s", got)
 	}
-	if got := transferCaveat(real, col); !strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(real, col).Text; !strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("the adopted column did not name the printed column:\n%s", got)
 	}
 
@@ -725,7 +725,7 @@ func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
 		InternalTransferInCents:  real.InternalTransferOutCents,
 		InternalTransferOutCents: real.InternalTransferInCents,
 	}
-	if got := transferCaveat(inverted, col); strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(inverted, col).Text; strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("transfers in exceeding out by the tabled figure claimed an OUT column:\n%s", got)
 	}
 }
@@ -757,7 +757,7 @@ func TestEveryPrintedToCIPColumnIsCited(t *testing.T) {
 		// Drive the real function rather than reading the field, so this fails
 		// if the citation stops reaching the prose as well as if it changes.
 		h := Headline{InternalTransferOutCents: int64(cip.Cents), InternalTransferInCents: 0}
-		got := transferCaveat(h, col)
+		got := transferCaveat(h, col).Text
 		if !strings.Contains(got, page) {
 			t.Errorf("%s cites no %s:\n%s", col, page, got)
 		}
@@ -769,8 +769,15 @@ func hasCaveat(g *Graph, substr string) bool {
 	return strings.Contains(caveatText(g), substr)
 }
 
+// caveatText joins the caveats' TEXT, which is the field that used to be the
+// whole caveat. Summaries are deliberately not searched: a substring assertion
+// that matched either would pass on a document whose text had been emptied.
 func caveatText(g *Graph) string {
-	return strings.Join(g.Metadata.Caveats, "\n")
+	texts := make([]string, 0, len(g.Metadata.Caveats))
+	for _, c := range g.Metadata.Caveats {
+		texts = append(texts, c.Text)
+	}
+	return strings.Join(texts, "\n")
 }
 
 func sortedStrings(s []string) bool {
@@ -815,28 +822,46 @@ func TestContestedCaveatIsEmittedOnlyForTheColumnThatDrawsIt(t *testing.T) {
 			ValueCents: c.Published},
 	}
 
-	got := contestedCaveat(c, c.Column, links)
-	if got == "" {
+	got, ok := contestedCaveat(c, c.Column, links)
+	if !ok {
 		t.Fatal("no caveat for the column and figure the entry declares")
 	}
 	// The sentence must carry BOTH figures and the bead. A caveat naming only
 	// the drawn figure tells a reader nothing they could act on.
 	for _, want := range []string{dollars(c.Published), dollars(c.Elsewhere), c.Bead,
 		dollars(c.Published - c.Elsewhere)} {
-		if !strings.Contains(got, want) {
-			t.Errorf("caveat does not mention %q:\n%s", want, got)
+		if !strings.Contains(got.Text, want) {
+			t.Errorf("caveat does not mention %q:\n%s", want, got.Text)
 		}
+	}
+	// THE ID CARRIES THE FUND GROUP, because contestedTotals is a list and two
+	// entries in one column would otherwise share an anchor -- which
+	// ValidateCaveats refuses, so the failure would arrive as a build error a
+	// long way from its cause.
+	if want := "contested-total-" + c.FundGroup; got.ID != want {
+		t.Errorf("caveat id is %q, want %q", got.ID, want)
+	}
+	// The summary is what a reader sees in a list of its peers, so it has to
+	// name the group and the size of the disagreement on its own.
+	for _, want := range []string{dollars(c.Published - c.Elsewhere)} {
+		if !strings.Contains(got.Summary, want) {
+			t.Errorf("summary does not mention %q:\n%s", want, got.Summary)
+		}
+	}
+	// And it marks the group it is about, so a chart can flag that node.
+	if len(got.AppliesTo) != 1 || got.AppliesTo[0] != prefixFundGroup+c.FundGroup {
+		t.Errorf("caveat applies to %v, want just the %s group", got.AppliesTo, c.FundGroup)
 	}
 
 	// A different column draws a different year's figures and is not this
 	// entry's problem.
 	other := Column{FiscalYear: c.Column.FiscalYear - 1, Basis: c.Column.Basis}
-	if s := contestedCaveat(c, other, links); s != "" {
-		t.Errorf("caveat emitted for %s, which the entry does not name:\n%s", other, s)
+	if cav, ok := contestedCaveat(c, other, links); ok {
+		t.Errorf("caveat emitted for %s, which the entry does not name:\n%s", other, cav.Text)
 	}
 	// So is a different basis on the same year.
-	if s := contestedCaveat(c, Column{FiscalYear: c.Column.FiscalYear, Basis: mapping.BasisActual}, links); s != "" {
-		t.Errorf("caveat emitted for a basis the entry does not name:\n%s", s)
+	if cav, ok := contestedCaveat(c, Column{FiscalYear: c.Column.FiscalYear, Basis: mapping.BasisActual}, links); ok {
+		t.Errorf("caveat emitted for a basis the entry does not name:\n%s", cav.Text)
 	}
 }
 
@@ -852,9 +877,9 @@ func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
 			ValueCents: c.Elsewhere},
 	}
-	if s := contestedCaveat(c, c.Column, corrected); s != "" {
+	if cav, ok := contestedCaveat(c, c.Column, corrected); ok {
 		t.Errorf("the caveat survived the figure being corrected to %s:\n%s",
-			dollars(c.Elsewhere), s)
+			dollars(c.Elsewhere), cav.Text)
 	}
 	// And a third value -- neither the spine's nor the other schedules' -- also
 	// silences it. That is correct and is why the corpus-level assertion in
@@ -864,8 +889,8 @@ func TestContestedCaveatRetiresItselfWhenTheFigureIsCorrected(t *testing.T) {
 		{Source: prefixFundGroup + c.FundGroup, Target: prefixExpenditure + "services-and-supplies",
 			ValueCents: c.Published + 1},
 	}
-	if s := contestedCaveat(c, c.Column, third); s != "" {
-		t.Errorf("the caveat survived a figure that is neither declared value:\n%s", s)
+	if cav, ok := contestedCaveat(c, c.Column, third); ok {
+		t.Errorf("the caveat survived a figure that is neither declared value:\n%s", cav.Text)
 	}
 }
 

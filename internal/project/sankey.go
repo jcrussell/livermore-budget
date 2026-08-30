@@ -89,6 +89,11 @@ const (
 // and carries tier 0 only so the diagram lays out left to right.
 const nodeTransfersIn = "transfers/in"
 
+// nodeTransfersOut is its mirror, and exists because [Caveat.AppliesTo] names
+// both legs. It was a bare literal in the label table while its twin was a
+// constant, which is the asymmetry that makes one of a pair get typo'd.
+const nodeTransfersOut = "transfers/out"
+
 // The slugs this projection has to recognize by name rather than by shape.
 const (
 	fundGroupInternalService = "internal-service"
@@ -269,7 +274,7 @@ type Metadata struct {
 	Counts          Counts   `json:"counts"`
 	// Caveats are the things this chart cannot show, in the chart's own file.
 	// A caveat that lives only in a design document is a caveat nobody reads.
-	Caveats []string `json:"caveats"`
+	Caveats []Caveat `json:"caveats"`
 }
 
 // Headline is the set of figures a reader quotes without reading the chart.
@@ -645,6 +650,18 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 		return nil, err
 	}
 
+	// THE CAVEATS ARE VALIDATED AGAINST THE NODES THIS DOCUMENT ACTUALLY DREW,
+	// which is the only place that pairing is available. caveats() is
+	// conditional on the graph -- the internal-service and contested-total
+	// entries are emitted only when the links justify them -- so a caveat can
+	// name a node a DIFFERENT column carries and this one does not, and that is
+	// exactly the mistake AppliesTo makes silent.
+	drawn := sortedNodes(nodes)
+	cavs := caveats(h, col, links)
+	if err := ValidateCaveats(cavs, nodeIDs(drawn)); err != nil {
+		return nil, fmt.Errorf("%s: %w", col, err)
+	}
+
 	return &Graph{
 		SchemaVersion: SchemaVersion,
 		Projection:    s.Name(),
@@ -664,9 +681,9 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 				Nodes:      len(nodes),
 				Links:      len(links),
 			},
-			Caveats: caveats(h, col, links),
+			Caveats: cavs,
 		},
-		Nodes: sortedNodes(nodes),
+		Nodes: drawn,
 		Links: links,
 	}, nil
 }
@@ -900,18 +917,44 @@ func fiscalYearLabel(year int) string {
 	return fmt.Sprintf("FY %d-%02d", year-1, year%100)
 }
 
-// Caveats that hold whatever the facts say. Both are statements about what the
-// model does, not about which numbers arrived, so neither is conditional.
-const (
-	caveatStocks = "The Sankey shows flows only. BEGINNING and ENDING WORKING CAPITAL are " +
-		"stocks and are recorded as facts but carry no link, so the chart will not " +
-		"reconcile row-for-row against pp.66-67."
-	caveatPermanentFunds = "Permanent Funds are a seventh fund type in data/funds.yaml " +
-		"(2 funds) with no column on this schedule."
-	caveatInternalService = "Internal Service Fund charges are billed to other City " +
-		"departments, so they are classified internal_service and excluded from the " +
-		"external headline. The all_funds_gross figures include them and match the " +
-		"city's own citywide totals."
+// Caveats that hold whatever the facts say. The first two are statements about
+// what the model does, not about which numbers arrived, so neither is
+// conditional; the third is emitted only by a document that draws such a link.
+//
+// THE TEXTS ARE UNCHANGED FROM WHEN THESE WERE BARE STRINGS. Only ids and
+// summaries were added, so the diff a reader of the golden file has to check is
+// "every text byte-identical, nothing else in the old field".
+//
+// AppliesTo IS EMPTY ON THE FIRST TWO AND NOT ON THE THIRD, and that is the
+// distinction the field exists for. A stock that carries no link and a fund type
+// with no column are properties of the SCHEDULE -- no node is responsible for
+// either, and naming one would be inventing a culprit. Internal service charges
+// are a property of one drawn node, so the chart can mark it.
+var (
+	caveatStocks = Caveat{
+		ID:      "working-capital-is-a-stock",
+		Summary: "Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.",
+		Text: "The Sankey shows flows only. BEGINNING and ENDING WORKING CAPITAL are " +
+			"stocks and are recorded as facts but carry no link, so the chart will not " +
+			"reconcile row-for-row against pp.66-67.",
+		AppliesTo: []string{},
+	}
+	caveatPermanentFunds = Caveat{
+		ID:      "permanent-funds-have-no-column",
+		Summary: "Permanent Funds are a seventh fund type, and this schedule prints no column for them.",
+		Text: "Permanent Funds are a seventh fund type in data/funds.yaml " +
+			"(2 funds) with no column on this schedule.",
+		AppliesTo: []string{},
+	}
+	caveatInternalService = Caveat{
+		ID:      "internal-service-is-outside-the-external-headline",
+		Summary: "Internal Service charges are billed between city departments, so they are outside the external headline.",
+		Text: "Internal Service Fund charges are billed to other City " +
+			"departments, so they are classified internal_service and excluded from the " +
+			"external headline. The all_funds_gross figures include them and match the " +
+			"city's own citywide totals.",
+		AppliesTo: []string{prefixFundGroup + "internal-service"},
+	}
 )
 
 // ContestedTotal is a fund group's total that the SPINE PAGE PRINTS and other
@@ -998,8 +1041,8 @@ func GroupExpenditure(links []Link, fundGroup string) int64 {
 // service charges in a document that has none would be misdirection, the
 // transfer caveat quotes figures it can only get from the graph, and a contested
 // total that this document does not draw is not this document's problem.
-func caveats(h Headline, col Column, links []Link) []string {
-	out := make([]string, 0, 5)
+func caveats(h Headline, col Column, links []Link) []Caveat {
+	out := make([]Caveat, 0, 5)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
 		out = append(out, transferCaveat(h, col))
@@ -1011,8 +1054,8 @@ func caveats(h Headline, col Column, links []Link) []string {
 		}
 	}
 	for _, c := range contestedTotals {
-		if s := contestedCaveat(c, col, links); s != "" {
-			out = append(out, s)
+		if cav, ok := contestedCaveat(c, col, links); ok {
+			out = append(out, cav)
 		}
 	}
 	out = append(out, caveatStocks, caveatPermanentFunds)
@@ -1042,28 +1085,41 @@ func groupExpenditure(links []Link, fundGroup string) int64 {
 // column being trusted on its own. A caveat naming a figure the chart does not
 // draw is worse than no caveat: it tells a reader to distrust a number that is
 // not there, and it would go on saying so after the figure was corrected.
-func contestedCaveat(c ContestedTotal, col Column, links []Link) string {
+func contestedCaveat(c ContestedTotal, col Column, links []Link) (Caveat, bool) {
 	if col != c.Column {
-		return ""
+		return Caveat{}, false
 	}
 	if groupExpenditure(links, c.FundGroup) != c.Published {
-		return ""
+		return Caveat{}, false
 	}
 	label := builtinLabels[prefixFundGroup+c.FundGroup]
 	if label == "" {
 		label = c.FundGroup
 	}
-	return fmt.Sprintf(
-		"THE CITY'S OWN BOOK DISAGREES WITH ITSELF ABOUT THIS ONE FIGURE. %s "+
-			"expenditure is drawn at %s, which is what %s print for %s. Other "+
-			"schedules in the same document make it %s: %s print that figure, and "+
-			"%s. The difference is %s, in a single %s row. This chart draws the "+
-			"spine's figure because every figure here is one the city printed on the "+
-			"page it is cited from, and substituting a number from elsewhere would "+
-			"make this one an exception to that. Which figure the corpus should "+
-			"publish is open (%s).",
-		label, dollars(c.Published), c.SpinePages, col.String(), dollars(c.Elsewhere),
-		c.PrintedBy, c.ImpliedBy, dollars(c.Published-c.Elsewhere), c.Row, c.Bead)
+	// THE ID EMBEDS THE FUND GROUP, and it is not decoration. contestedTotals
+	// is a list; two entries for two groups in one column would otherwise both
+	// publish the anchor "contested-total", ValidateCaveats would refuse the
+	// build, and the shortest way out of that refusal is the wrong one --
+	// dropping a caveat rather than naming it. One entry today; the list is
+	// meant to stay short, not to stay length one.
+	return Caveat{
+		ID: "contested-total-" + c.FundGroup,
+		Summary: fmt.Sprintf(
+			"The city's own book prints two different figures for %s expenditure, %s apart; this chart draws the one on %s.",
+			label, dollars(c.Published-c.Elsewhere), c.SpinePages),
+		Text: fmt.Sprintf(
+			"THE CITY'S OWN BOOK DISAGREES WITH ITSELF ABOUT THIS ONE FIGURE. %s "+
+				"expenditure is drawn at %s, which is what %s print for %s. Other "+
+				"schedules in the same document make it %s: %s print that figure, and "+
+				"%s. The difference is %s, in a single %s row. This chart draws the "+
+				"spine's figure because every figure here is one the city printed on the "+
+				"page it is cited from, and substituting a number from elsewhere would "+
+				"make this one an exception to that. Which figure the corpus should "+
+				"publish is open (%s).",
+			label, dollars(c.Published), c.SpinePages, col.String(), dollars(c.Elsewhere),
+			c.PrintedBy, c.ImpliedBy, dollars(c.Published-c.Elsewhere), c.Row, c.Bead),
+		AppliesTo: []string{prefixFundGroup + c.FundGroup},
+	}, true
 }
 
 // transfersOutToCIP is the "Transfers Out to CIP" column the city prints on its
@@ -1111,7 +1167,16 @@ var transfersOutToCIP = map[Column]struct {
 // because pp.72-75 print a to-CIP figure per major fund and one aggregate for
 // every non-major one -- this project's own published-is-not-derived rule, made
 // in full at internal/check/transfersdetail.go's collapseNonMajor.
-func transferCaveat(h Headline, col Column) string {
+func transferCaveat(h Headline, col Column) Caveat {
+	// ONE ID OVER THREE TEXTS, deliberately. Which of the three sentences a
+	// document gets is a fact about that document's own arithmetic -- whether
+	// the legs balance, and whether the residual meets the printed to-CIP
+	// column -- and not three different caveats. A reader following the anchor
+	// wants "the transfer legs do not pair"; the paragraph they land on is the
+	// one their document earned. What that costs is that a page listing more
+	// than one document's caveats has to key on (id, document) rather than on
+	// id alone, and cannot assume one text per id.
+	const id = "transfer-legs-unpaired"
 	const unpaired = "Transfer legs are unpaired: no link carries a transfer_id. Budget " +
 		"Book p76's transfer schedule is mapped and published, but at scope " +
 		"transfers-by-fund, and this document is of all-funds-gross -- so none of its " +
@@ -1121,13 +1186,37 @@ func transferCaveat(h Headline, col Column) string {
 		"of p76's own and a transfer_id derived from the two legs' shared page and " +
 		"offset (fisc-9gh). "
 	in, out := h.InternalTransferInCents, h.InternalTransferOutCents
+
+	// AppliesTo NAMES THE LEGS THIS DOCUMENT ACTUALLY HAS, and naming both
+	// unconditionally was wrong: caveats() emits this caveat when EITHER side is
+	// non-zero, so a document with transfers in and none out was publishing an
+	// applies_to pointing at a node it does not carry. ValidateCaveats caught it
+	// -- TestLabelFallback builds exactly that document -- which is the whole
+	// argument for validating the field against the graph rather than trusting
+	// the author of a list of ids. The gate is the same one that creates the
+	// link, so the two cannot disagree.
+	targets := make([]string, 0, 2)
+	if in != 0 {
+		targets = append(targets, nodeTransfersIn)
+	}
+	if out != 0 {
+		targets = append(targets, nodeTransfersOut)
+	}
+
 	if out == in {
 		// NO RESIDUAL, SO NO PRINTED COLUMN TO NAME. The city prints a to-CIP
 		// figure whatever the legs do, but a caveat that pointed at it here
 		// would be explaining a difference this document does not have.
-		return unpaired + fmt.Sprintf(
-			"That transfers out and transfers in both total %s is not evidence the "+
-				"legs pair up; nothing has checked them against each other.", dollars(out))
+		return Caveat{
+			ID: id,
+			Summary: fmt.Sprintf(
+				"No link pairs a transfer's two legs; that both sides total %s is not evidence they match.",
+				dollars(out)),
+			Text: unpaired + fmt.Sprintf(
+				"That transfers out and transfers in both total %s is not evidence the "+
+					"legs pair up; nothing has checked them against each other.", dollars(out)),
+			AppliesTo: targets,
+		}
 	}
 	verb := "exceed"
 	// signed is out - in, kept alongside the magnitude the prose prints,
@@ -1150,21 +1239,35 @@ func transferCaveat(h Headline, col Column) string {
 	// project exists to refuse, and the reader has no way to see the drift. So
 	// the stronger sentence is earned per build rather than asserted once.
 	if cip, ok := transfersOutToCIP[col]; ok && amount.Cents(signed) == cip.Cents {
-		return unpaired + fmt.Sprintf(
-			"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
-				"unexplained gap: the city prints it as a column of its own, \"Transfers "+
-				"Out to CIP\", on the sources-and-uses schedule at PDF p%d -- with p76's "+
-				"grand total printed beside it as the transfers-out figure that excludes "+
-				"the CIP. Only the citywide total is published: splitting it by fund group "+
-				"is our arithmetic, because that schedule prints one aggregate for every "+
-				"non-major fund.%s",
-			dollars(out), verb, dollars(in), dollars(residual), cip.Page, stated)
+		return Caveat{
+			ID: id,
+			Summary: fmt.Sprintf(
+				"No link pairs a transfer's two legs; transfers out %s transfers in by %s, which the city prints as its own column.",
+				verb, dollars(residual)),
+			Text: unpaired + fmt.Sprintf(
+				"Transfers out (%s) %s transfers in (%s), and the %s difference is not an "+
+					"unexplained gap: the city prints it as a column of its own, \"Transfers "+
+					"Out to CIP\", on the sources-and-uses schedule at PDF p%d -- with p76's "+
+					"grand total printed beside it as the transfers-out figure that excludes "+
+					"the CIP. Only the citywide total is published: splitting it by fund group "+
+					"is our arithmetic, because that schedule prints one aggregate for every "+
+					"non-major fund.%s",
+				dollars(out), verb, dollars(in), dollars(residual), cip.Page, stated),
+			AppliesTo: targets,
+		}
 	}
-	return unpaired + fmt.Sprintf(
-		"Transfers out (%s) %s transfers in (%s), and mapping p76 did not close the %s "+
-			"difference: that schedule's own grand total is the transfers-in side, so the "+
-			"gap is the city's rather than this project's.%s",
-		dollars(out), verb, dollars(in), dollars(residual), stated)
+	return Caveat{
+		ID: id,
+		Summary: fmt.Sprintf(
+			"No link pairs a transfer's two legs; transfers out %s transfers in by %s, and mapping p76 did not close it.",
+			verb, dollars(residual)),
+		Text: unpaired + fmt.Sprintf(
+			"Transfers out (%s) %s transfers in (%s), and mapping p76 did not close the %s "+
+				"difference: that schedule's own grand total is the transfers-in side, so the "+
+				"gap is the city's rather than this project's.%s",
+			dollars(out), verb, dollars(in), dollars(residual), stated),
+		AppliesTo: targets,
+	}
 }
 
 // dollars renders cents for prose. The exact ".00" is dropped because these

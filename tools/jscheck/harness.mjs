@@ -388,7 +388,7 @@ export function loadApp(opts = {}) {
       basis: "adopted",
       hero: { label: "l", value: "v", note: "n", kind: "hero" },
       figures: [{ label: "l", value: "v", note: "n", kind: "" }],
-      caveats: ["c"],
+      caveats: [{ id: "c", summary: "s", text: "c", applies_to: [] }],
       counts: { facts: 1, nodes: 1, links: 1 },
     }],
     docs: {},
@@ -582,7 +582,7 @@ export function twoYearConfig() {
     title: `City of Livermore budget flows \u2014 ${label}`,
     hero: { label: "h", value: "v", note: "n", kind: "hero" },
     figures: [{ label: "l", value: "v", note: "n", kind: "" }],
-    caveats: ["c"],
+    caveats: [{ id: "c", summary: "s", text: "c", applies_to: [] }],
     counts: { facts: 1, nodes: 1, links: 1 },
   });
   return {

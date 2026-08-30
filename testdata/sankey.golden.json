@@ -35,10 +35,35 @@
       "links": 58
     },
     "caveats": [
-      "Transfer legs are unpaired: no link carries a transfer_id. Budget Book p76's transfer schedule is mapped and published, but at scope transfers-by-fund, and this document is of all-funds-gross -- so none of its facts is in this graph. They cannot simply be added to it: transfers-by-fund and revenue-by-fund both publish transfer_in over the same money, which the projection-scopes-are-disjoint check refuses. Pairing the legs needs a document of p76's own and a transfer_id derived from the two legs' shared page and offset (fisc-9gh). Transfers out ($59,612,734) exceed transfers in ($21,525,997), and the $38,086,737 difference is not an unexplained gap: the city prints it as a column of its own, \"Transfers Out to CIP\", on the sources-and-uses schedule at PDF p73 -- with p76's grand total printed beside it as the transfers-out figure that excludes the CIP. Only the citywide total is published: splitting it by fund group is our arithmetic, because that schedule prints one aggregate for every non-major fund. It is stated as headline.transfer_residual_cents rather than netted away or padded with an invented link.",
-      "Internal Service Fund charges are billed to other City departments, so they are classified internal_service and excluded from the external headline. The all_funds_gross figures include them and match the city's own citywide totals.",
-      "The Sankey shows flows only. BEGINNING and ENDING WORKING CAPITAL are stocks and are recorded as facts but carry no link, so the chart will not reconcile row-for-row against pp.66-67.",
-      "Permanent Funds are a seventh fund type in data/funds.yaml (2 funds) with no column on this schedule."
+      {
+        "id": "transfer-legs-unpaired",
+        "summary": "No link pairs a transfer's two legs; transfers out exceed transfers in by $38,086,737, which the city prints as its own column.",
+        "text": "Transfer legs are unpaired: no link carries a transfer_id. Budget Book p76's transfer schedule is mapped and published, but at scope transfers-by-fund, and this document is of all-funds-gross -- so none of its facts is in this graph. They cannot simply be added to it: transfers-by-fund and revenue-by-fund both publish transfer_in over the same money, which the projection-scopes-are-disjoint check refuses. Pairing the legs needs a document of p76's own and a transfer_id derived from the two legs' shared page and offset (fisc-9gh). Transfers out ($59,612,734) exceed transfers in ($21,525,997), and the $38,086,737 difference is not an unexplained gap: the city prints it as a column of its own, \"Transfers Out to CIP\", on the sources-and-uses schedule at PDF p73 -- with p76's grand total printed beside it as the transfers-out figure that excludes the CIP. Only the citywide total is published: splitting it by fund group is our arithmetic, because that schedule prints one aggregate for every non-major fund. It is stated as headline.transfer_residual_cents rather than netted away or padded with an invented link.",
+        "applies_to": [
+          "transfers/in",
+          "transfers/out"
+        ]
+      },
+      {
+        "id": "internal-service-is-outside-the-external-headline",
+        "summary": "Internal Service charges are billed between city departments, so they are outside the external headline.",
+        "text": "Internal Service Fund charges are billed to other City departments, so they are classified internal_service and excluded from the external headline. The all_funds_gross figures include them and match the city's own citywide totals.",
+        "applies_to": [
+          "fund-group/internal-service"
+        ]
+      },
+      {
+        "id": "working-capital-is-a-stock",
+        "summary": "Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.",
+        "text": "The Sankey shows flows only. BEGINNING and ENDING WORKING CAPITAL are stocks and are recorded as facts but carry no link, so the chart will not reconcile row-for-row against pp.66-67.",
+        "applies_to": []
+      },
+      {
+        "id": "permanent-funds-have-no-column",
+        "summary": "Permanent Funds are a seventh fund type, and this schedule prints no column for them.",
+        "text": "Permanent Funds are a seventh fund type in data/funds.yaml (2 funds) with no column on this schedule.",
+        "applies_to": []
+      }
     ]
   },
   "nodes": [
