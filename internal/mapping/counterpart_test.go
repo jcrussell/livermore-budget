@@ -64,10 +64,10 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 			// THE RULE NEEDS A PART. checkCounterpart's collision arm walks the
 			// columns of every part, because a collision is per cell; a
 			// hand-built Rule{} with no parts has no cell for it to find.
-			// validateRule refuses a partless rule twenty lines before this is
-			// reached, so a no-part fixture here was testing a state the parser
-			// cannot produce -- and the row-only fallback that made it pass was
-			// itself a false refusal on omitted rows and skipped columns.
+			// validateRule refuses a partless rule before it ever calls this,
+			// so a no-part fixture was testing a state the parser cannot
+			// produce -- and the row-only fallback that made it pass was itself
+			// a false refusal on omitted rows and skipped columns.
 			rule := &Rule{ID: "r", Kind: KindTransferIn,
 				Parts: []Part{{Page: 76, Columns: []Column{{FiscalYear: 2026}}}}}
 			err := checkCounterpart(rule, row, errfLike)
@@ -434,8 +434,16 @@ rules:
 	// rather than on the second part existing at all.
 	present := strings.Replace(omitted,
 		"        omitted_rows: [{label: \"Transfer From Low Income Hsng\"}]\n", "", 1)
-	if _, err := Parse(strings.NewReader(present), "present.yaml"); err == nil {
-		t.Error("a counterpart duplicating a column of a part that PRINTS this row " +
+	_, presentErr := Parse(strings.NewReader(present), "present.yaml")
+	if presentErr == nil {
+		t.Fatal("a counterpart duplicating a column of a part that PRINTS this row " +
 			"was accepted")
+	}
+	// Pinned to the identical-legs message, not merely to "some error": without
+	// this the case stays green on any unrelated future parse failure, long
+	// after the arm it is named for has stopped firing.
+	if !strings.Contains(presentErr.Error(), "same fund as the row itself") ||
+		!strings.Contains(presentErr.Error(), "page 77") {
+		t.Errorf("error %q is not the identical-legs refusal on p77", presentErr)
 	}
 }

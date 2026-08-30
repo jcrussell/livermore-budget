@@ -1338,11 +1338,18 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	// column, was refused by the fallback after the loop had correctly passed
 	// over it. Reproduced through Parse.
 	//
-	// It was written for "a rule with no parts", which validateRule has already
-	// refused twenty lines earlier ("is empty; a rule must name at least one
-	// page") in this same function. So its only reachable effect was the false
-	// refusal. A guard for a state the caller has already excluded is not
-	// defensive; it is a second, worse copy of the check.
+	// It was written for "a rule with no parts", which cannot reach here:
+	// validateRule refuses one ("is empty; a rule must name at least one page")
+	// before the loop that calls this function. So its only reachable effect was
+	// the false refusal. A guard for a state the CALLER has already excluded is
+	// not defensive; it is a second, worse copy of the check, and this copy
+	// disagreed with the first.
+	//
+	// No line numbers here on purpose: an earlier version of this comment said
+	// "twenty lines earlier ... in this same function" and the commit message
+	// said "eighty", and both were wrong about where the guard is and which
+	// function this is. The relationship is caller-and-callee, which does not
+	// move when lines do.
 	return nil
 }
 
