@@ -90,6 +90,23 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		}
 	})
 
+	// EVERY ROW SKIPPED IS THE STRONGER VERSION OF "one row declares none", and
+	// it was accepted while that one was refused. A skipped row is never read
+	// from the page, so the check drops it from every arm -- not a subject, not
+	// in the omission counters -- and the declaration stood over zero checked
+	// rows with the rule named nowhere in the summary.
+	t.Run("every row is skipped", func(t *testing.T) {
+		rows := `      - {label: "General Fund", skip: true}
+      - {label: "General Liability", skip: true}`
+		err := parseRowLabelFunds(t, decl, rows)
+		if err == nil {
+			t.Fatal("accepted a declaration covering no row at all")
+		}
+		if !strings.Contains(err.Error(), "covers none of them") {
+			t.Errorf("error = %v, want it to say the declaration covers no row", err)
+		}
+	})
+
 	// A COUNTERPART IS AT THE FAR END AND NO BARE LABEL NAMES IT. The
 	// declaration speaks for the row's OWN fund; a counterpart's fund sits at
 	// the other end of the movement and a bare fund name carries no direction to

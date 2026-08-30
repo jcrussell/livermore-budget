@@ -87,9 +87,11 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 //     names no direction, so rowAnchorPrefixes matches nothing. Reporting it as
 //     "no printed anchor" would be false about the page: the label is right
 //     there. Such a row is read only where its rule declares
-//     row_labels_name_funds, which is what the third arm of Run is for; where it
-//     does not, this check still makes no claim and the summary says so per
-//     rule. pp.85-125's 78 rows all declare it (fisc-90fp).
+//     row_labels_name_funds, which is what the bare-label arm of Run is for --
+//     it runs FIRST, ahead of the prefix arm, and the ordering matters because
+//     each reads the same string for a different purpose. Where the rule does
+//     not declare it, this check still makes no claim and the summary says so
+//     per rule. pp.85-125's 78 rows all declare it (fisc-90fp).
 //
 //     THE DIRECTION HALF IS NOT RECOVERED BY THAT DECLARATION and must not be.
 //     A bare fund name says which fund, never which end, so the third arm
@@ -178,7 +180,29 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				// in the omission counters below as a fund the page prints no
 				// anchor for. The page prints the anchor; that is what the
 				// declaration asserts.
-				if ru.RowLabelsNameFunds && near != 0 {
+				// A VERB-PHRASED LABEL IS READ BY THE PREFIX ARM AND NOT HERE,
+				// even under the declaration. "Transfer From General Fund  to
+				// Horizons" is not the printed name of a fund, so resolving it
+				// whole finds nothing; and the prefix arm resolves the same row
+				// correctly, so without this the row is counted TWICE in
+				// subjects and reported as a spurious finding.
+				//
+				// Measured: flagging p76-transfers-in-special-revenue took the
+				// check to FAIL over 121 subjects with three findings of the
+				// form "... is not one data/funds.yaml records", while the
+				// prefix arm had already resolved every one of those rows. A
+				// defect in the original commit that two passes read past, found
+				// by the third.
+				//
+				// DEFERRING RATHER THAN REFUSING, because the prefix arm asserts
+				// strictly more -- fund AND direction -- so the row is better
+				// checked, not less. What is left is that such a declaration
+				// asserts nothing new, which the parser cannot see from here:
+				// rowAnchorPrefixes lives in this package and internal/mapping
+				// may not read it. Filed as fisc-mjdw rather than half-built.
+				phrasedLabel := anchorHasVerbPhrase(row.Label) ||
+					anchorHasVerbPhrase(row.LabelTail)
+				if ru.RowLabelsNameFunds && near != 0 && !phrasedLabel {
 					subjects++
 					bare++
 					namedNear = true

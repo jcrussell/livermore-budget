@@ -801,6 +801,26 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 	if !r.RowLabelsNameFunds {
 		return nil
 	}
+	// THE ALL-SKIPPED CASE IS THE STRONGER VERSION OF THE ROW GUARD BELOW, and
+	// it was missing while that one was present -- refusing a declaration that
+	// says nothing about ONE row while accepting one that says nothing about
+	// any. Measured when found: a rule whose rows are all skip: true parsed
+	// clean, and row-funds-match-their-anchors drops skipped rows from every
+	// arm, so the declaration stood over zero checked rows and the rule was
+	// named nowhere in the summary. Found by the third /code-review pass.
+	covered := 0
+	for _, row := range r.Rows {
+		if !row.Skip {
+			covered++
+		}
+	}
+	if covered == 0 {
+		return cmdutil.WithHint(
+			errf(r.ID, "row_labels_name_funds",
+				"every row of this rule is skipped, so the declaration covers none of them"),
+			"a skipped row is never read from the page, so nothing reads its "+
+				"label and nothing checks the fund typed on it")
+	}
 	for _, row := range r.Rows {
 		if row.Skip {
 			// A skipped row is not read, so the claim is not about it. This is

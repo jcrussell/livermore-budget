@@ -546,11 +546,15 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 	for _, f := range res.Findings {
 		b.WriteString(f.Subject + ": " + f.Detail + "\n")
 	}
-	if !strings.Contains(b.String(), "No Such Fund") ||
-		!strings.Contains(b.String(), "checked against\nnothing") &&
-			!strings.Contains(b.String(), "checked against nothing") {
-		t.Errorf("the finding does not say the typed fund is checked against "+
-			"nothing:\n%s", b.String())
+	// ONE SPELLING, NOT TWO. This used to OR in "checked against\nnothing",
+	// which the single-line format string cannot emit -- a dead disjunct that
+	// read as tolerance and was really unfalsifiable coverage, the third
+	// instance of that class in this file. The finding is one line; assert the
+	// line.
+	for _, want := range []string{"No Such Fund", "checked against nothing"} {
+		if !strings.Contains(b.String(), want) {
+			t.Errorf("the finding does not contain %q:\n%s", want, b.String())
+		}
 	}
 }
 
@@ -679,5 +683,63 @@ func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestAVerbPhrasedLabelIsReadByThePrefixArmEvenUnderTheDeclaration is the
+// defect the third review pass found in the original commit, after two passes
+// had read past it.
+//
+// "Transfer From General Fund  to Horizons" is not the printed name of a fund,
+// so resolving it WHOLE finds nothing -- while the prefix arm resolves the same
+// row correctly by stripping the verb phrase first. Without the deferral the row
+// is counted twice in subjects and reported as a spurious finding, and the check
+// goes FAIL on a corpus where nothing is wrong.
+//
+// Measured before the fix: flagging p76-transfers-in-special-revenue took the
+// check to FAIL over 121 subjects with three findings of the form "... is not
+// one data/funds.yaml records".
+func TestAVerbPhrasedLabelIsReadByThePrefixArmEvenUnderTheDeclaration(t *testing.T) {
+	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	before, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), base)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	flagged := 0
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			if f.Rules[i].ID == "p76-transfers-in-special-revenue" {
+				f.Rules[i].RowLabelsNameFunds = true
+				flagged++
+			}
+		}
+	}
+	if flagged != 1 {
+		t.Fatalf("flagged %d rules, want 1", flagged)
+	}
+
+	got, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got.Status != StatusPass {
+		t.Fatalf("declaring row_labels_name_funds over verb-phrased labels made the "+
+			"check %s: %s", got.Status, got.Summary)
+	}
+	// THE COUNT IS THE HALF THAT CATCHES DOUBLE-READING. A row read by both arms
+	// passes on the prefix arm and still inflates subjects, so a status-only
+	// assertion would go green on it.
+	if got.Subjects != before.Subjects {
+		t.Errorf("the declaration moved the subject count from %d to %d over rows the "+
+			"prefix arm already reads; each row is being counted twice",
+			before.Subjects, got.Subjects)
 	}
 }
