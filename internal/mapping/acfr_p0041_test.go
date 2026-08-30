@@ -213,10 +213,16 @@ func TestACFRp0041ExpendituresTieUnderTheTopLevelReading(t *testing.T) {
 //
 // data/sources.yaml declares this document carries fiscal_years: [2025], which
 // would be reason enough. This is the stronger reason: three of the page's four
-// blocks do not reconcile in that column, by $200,000, $270,000 and $100,000 on
-// a page printed to the nearest $10,000. Those are twenty, twenty-seven and ten
-// printed units -- nowhere near the document's own rounding, and nothing a
-// declared delta should absorb.
+// blocks do not reconcile in that column, by $200,000, $100,000 and $100,000 on
+// a page printed to the nearest $10,000. Those are twenty, ten and ten printed
+// units -- nowhere near the document's own rounding, and nothing a declared
+// delta should absorb.
+//
+// The expenditure figure is the TOP-LEVEL reading, the one that ties exactly in
+// FY2025, so FY2024 fails under either reading. An earlier version of this
+// comment said $270,000 and twenty-seven units, which is the LEAF reading and
+// matched neither the test below it nor the three other files that quote these
+// numbers.
 func TestACFRp0041PriorYearColumnDoesNotReconcile(t *testing.T) {
 	revenue := []string{
 		"Property taxes and special assessments", "Sales Taxes", "Other taxes",

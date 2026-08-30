@@ -11,6 +11,19 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
+// acfrGeneralFundScope is the scope ACFR MD&A p41's General Fund statement is
+// mapped at. It is declared here rather than beside a reconciliation check
+// because there is no such check and there cannot be one: see its entry in
+// unprojectedScopes below.
+//
+// IT SITS ABOVE unprojectedScopes' DOC COMMENT AND NOT BETWEEN IT AND THE var,
+// which is where it was first written. A declaration inserted into that gap
+// orphans the comment: go doc prints 45 lines about what an unprojected scope
+// means under a string constant, and the map itself documents nothing. AGENTS.md
+// names this defect class and it had already happened twice in one commit
+// elsewhere in this tree.
+const acfrGeneralFundScope = "acfr-general-fund-summary"
+
 // unprojectedScopes are the scopes deliberately not drawn by any projection, each
 // with the reason it is not.
 //
@@ -52,12 +65,6 @@ import (
 // detailSums and never consulted this map, so it still reconciles the same 134
 // cells against the spine. Retiring a declaration here costs nothing, which is
 // what makes the automatic retirement safe.
-// acfrGeneralFundScope is the scope ACFR MD&A p41's General Fund statement is
-// mapped at. It is declared here rather than beside a reconciliation check
-// because there is no such check and there cannot be one: see the entry in
-// unprojectedScopes below.
-const acfrGeneralFundScope = "acfr-general-fund-summary"
-
 var unprojectedScopes = map[string]string{
 	transfersDetailScope: "Budget Book p76, Summary of Transfers: the per-fund decomposition " +
 		"of pp.66-67's TRANSFER IN and TRANSFER OUT rows, not additional money. Its 22 " +

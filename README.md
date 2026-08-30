@@ -12,7 +12,8 @@ defect here regardless of how good the chart looks.
 
 ## What is covered today
 
-**Thirty-five pages of 786.** This is still a proof of concept, and saying so
+**Thirty-six pages of 786, across two of the three documents.** This is still a
+proof of concept, and saying so
 plainly is part of the point.
 
 | document | pages | extracted | mapped |

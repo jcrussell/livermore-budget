@@ -267,7 +267,7 @@ func dropArtifact(t *testing.T, root, docID, rel string) {
 //
 // Delete every artifact of an extraction from the directory AND from its manifest,
 // and the hash sweep passes: the map and the directory agree, because both are
-// empty. Its subject count drops from 1,572 to 1,182 — a number nobody notices
+// empty. Its subject count drops from 1,572 to 926 — a number nobody notices
 // without diffing two reports — and every page of a published document is gone.
 // --strict does not help either, because it is a PASS and not a vacuous result.
 //

@@ -14,9 +14,14 @@ import (
 //
 // There is a FOURTH fund_balance category -- fund-balance/reserve-increase, the
 // spine's ADDITION TO RESERVES -- and it is NOT a term of this identity. It is a
-// movement inside the change, not a fourth line beside beginning and ending, and
-// it is non-zero for the General Fund in both budget years. Summing it in would
-// make eleven of the twelve spine cells look broken.
+// movement inside the change, not a fourth line beside beginning and ending.
+//
+// Measured over the committed store: 12 facts carry it and only TWO are non-zero,
+// general FY2026 (4,699,425) and FY2027 (3,332,607) -- p66 prints a dash for
+// every other fund group. So summing it in breaks exactly those two of the
+// twelve spine balances, not all of them. Two is enough to redden the check and
+// enough to make the exclusion worth pinning; an earlier version of this comment
+// said "eleven of the twelve" and was simply wrong.
 const (
 	fundBalanceBeginning = "fund-balance/beginning"
 	fundBalanceChange    = "fund-balance/change"
@@ -82,8 +87,9 @@ func (k fundBalanceKey) String() string {
 
 func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 	type balance struct {
-		amounts map[string]amount.Cents
-		ids     map[string]string
+		amounts    map[string]amount.Cents
+		ids        map[string]string
+		duplicates []string
 	}
 	balances := map[fundBalanceKey]*balance{}
 	var order []fundBalanceKey
@@ -106,11 +112,20 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 		// Two facts of one category on one balance means the identity has no
 		// single answer, and silently keeping the last would pick whichever
-		// sorted last. Reported rather than resolved.
+		// sorted last.
+		//
+		// IT IS A FINDING AND NOT AN ERROR. Returning an error here would give
+		// the whole check StatusError, so ONE duplicated line anywhere in the
+		// corpus would leave all thirteen balances unexamined and would report a
+		// defect in the STORE as a failure of the harness -- two different
+		// things, and the report tells them apart on purpose. The duplicate is
+		// recorded, the balance it belongs to is excluded from the identity, and
+		// every other balance is still checked. This is also exactly the shape
+		// fisc-2x7y documents for ACFR p41, so it is not hypothetical.
 		if prev, dup := b.amounts[f.Category]; dup {
-			return Result{}, fmt.Errorf(
-				"%s publishes %s twice, as %s and %s; the identity has no single value to check",
-				k, f.Category, prev, amount.Cents(f.AmountCents))
+			b.duplicates = append(b.duplicates, fmt.Sprintf(
+				"%s twice, as %s and %s", f.Category, prev, amount.Cents(f.AmountCents)))
+			continue
 		}
 		b.amounts[f.Category] = amount.Cents(f.AmountCents)
 		b.ids[f.Category] = f.ID
@@ -123,6 +138,14 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 	for _, k := range order {
 		b := balances[k]
 
+		if len(b.duplicates) > 0 {
+			findings = append(findings, finding(b.ids[fundBalanceBeginning],
+				"%s publishes %s; the identity has no single value to check, so this "+
+					"balance is excluded from it",
+				k, strings.Join(b.duplicates, " and ")))
+			continue
+		}
+
 		var missing []string
 		for _, c := range []string{fundBalanceBeginning, fundBalanceChange, fundBalanceEnding} {
 			if _, ok := b.amounts[c]; !ok {
@@ -131,11 +154,16 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 		if len(missing) > 0 {
 			// Name a fact that IS present, so the finding points at a line of
-			// facts.jsonl rather than at nothing.
+			// facts.jsonl rather than at nothing -- and pick it deterministically.
+			// Ranging a map here made `fisc verify --json` produce a different
+			// subject on different runs over one unchanged corpus, which is the
+			// opposite of what a content-addressed audit trail is for.
 			subject := k.String()
-			for _, id := range b.ids {
-				subject = id
-				break
+			for _, c := range []string{fundBalanceBeginning, fundBalanceChange, fundBalanceEnding} {
+				if id, ok := b.ids[c]; ok {
+					subject = id
+					break
+				}
 			}
 			findings = append(findings, finding(subject,
 				"%s publishes %d of the three fund-balance lines and is missing %s; "+

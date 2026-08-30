@@ -9,13 +9,16 @@ import (
 )
 
 // fundBalanceResult runs the whole suite over a fixture whose cells have been
-// altered, and returns this check's verdict. The whole suite rather than the one
-// check, because a mutation that reddens four other checks as well is a mutation
-// that proves less than it looks — the tests below say which.
-func fundBalanceResult(t *testing.T, cells []testCell) (Result, *Report) {
+// altered and returns this check's verdict.
+//
+// It used to also return the *Report, on the stated grounds that the tests below
+// would say which OTHER checks a mutation reddened. None of them did — all three
+// callers discarded it — and the premise was wrong anyway: cellsSubject leaves
+// fact-offset-points-at-token and facts-are-projected red on the UNMUTATED
+// baseline, so "what else went red" says nothing about the mutation.
+func fundBalanceResult(t *testing.T, cells []testCell) Result {
 	t.Helper()
-	rep := runChecks(t, cellsSubject(t, cells))
-	return resultFor(t, rep, "fund-balance-identity"), rep
+	return resultFor(t, runChecks(t, cellsSubject(t, cells)), "fund-balance-identity")
 }
 
 // TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow is the mutation the
@@ -33,7 +36,7 @@ func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 		}
 	}
 
-	res, _ := fundBalanceResult(t, cells)
+	res := fundBalanceResult(t, cells)
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
 	}
@@ -73,7 +76,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 		cells = append(cells, c)
 	}
 
-	res, _ := fundBalanceResult(t, cells)
+	res := fundBalanceResult(t, cells)
 	if res.Status != StatusFail {
 		t.Fatalf("status = %s (%s), want fail; a balance missing a line must not "+
 			"pass by having nothing to violate", res.Status, res.Summary)
@@ -98,15 +101,20 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 //
 // fund-balance/reserve-increase is a FOURTH category carrying kind fund_balance
 // — the spine's ADDITION TO RESERVES — and it is a movement inside the change
-// rather than a fourth line beside beginning and ending. Sum it in and eleven of
-// the twelve committed spine cells go red at once, which reads as a broken
-// corpus rather than a broken check.
+// rather than a fourth line beside beginning and ending.
+//
+// Measured: 12 facts carry it and only TWO are non-zero, general FY2026 and
+// FY2027, because p66 prints a dash for every other fund group. So summing it in
+// reddens two of the twelve committed spine balances — enough to fail the check
+// against a corpus that is not wrong, which is what makes the exclusion worth a
+// test. An earlier version of this comment said "eleven of the twelve" and was
+// wrong; the mutation still reddens, but for a smaller reason than claimed.
 func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	cells := append(slices.Clone(fixtureCells), testCell{
 		mapping.KindFundBalance, "fund-balance/reserve-increase", "general", 33_000,
 	})
 
-	res, _ := fundBalanceResult(t, cells)
+	res := fundBalanceResult(t, cells)
 	if res.Status != StatusPass {
 		t.Fatalf("status = %s (%s), want pass: a reserve increase is not a term of "+
 			"beginning + change == ending", res.Status, res.Summary)
@@ -142,5 +150,58 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 	}
 	if !strings.Contains(res.Summary, "across 2 document(s)") {
 		t.Errorf("summary %q does not say how many documents it spans", res.Summary)
+	}
+}
+
+// TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest pins the
+// difference between a defect in the STORE and a failure of the harness.
+//
+// Two facts of one category on one balance leave the identity with no single
+// value to check. The first version of this check returned an error for that,
+// which gives the whole check StatusError -- so ONE duplicated line anywhere in
+// the corpus would have left all thirteen balances unexamined and reported a
+// corpus defect as a broken checker. The report tells those two apart on purpose
+// and a check must not conflate them.
+//
+// The shape is not hypothetical: fisc-2x7y is exactly this, measured on ACFR
+// p41, where two rules over one page section can publish one printed figure
+// twice.
+func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing.T) {
+	cells := slices.Clone(fixtureCells)
+	for _, c := range fixtureCells {
+		if c.category == fundBalanceEnding && c.group == "general" {
+			// The same balance's ending line a second time, at a different
+			// figure, which is what makes it unanswerable rather than merely
+			// repeated.
+			cells = append(cells, testCell{c.kind, c.category, c.group, c.cents + 999})
+		}
+	}
+
+	res := fundBalanceResult(t, cells)
+	if res.Status != StatusFail {
+		t.Fatalf("status = %s (%s), want fail", res.Status, res.Summary)
+	}
+	// Not StatusError: the store is wrong, the checker is not.
+	if res.Status == StatusError {
+		t.Fatal("a duplicated fund-balance line was reported as a harness error")
+	}
+	if len(res.Findings) != 1 {
+		t.Fatalf("findings = %v, want exactly the general balance", res.Findings)
+	}
+	got := res.Findings[0].Detail
+	for _, want := range []string{fundBalanceEnding, "twice", "excluded from it"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("finding %q does not contain %q", got, want)
+		}
+	}
+
+	// AND THE OTHER BALANCE IS STILL EXAMINED. This is the whole point: an
+	// error return would have made this 0.
+	if res.Subjects != 2 {
+		t.Errorf("subjects = %d, want 2: the enterprise balance is unaffected by "+
+			"general's duplicate and must still be checked", res.Subjects)
+	}
+	if !strings.Contains(res.Summary, "1 finding") {
+		t.Errorf("summary = %q, want one finding over both balances", res.Summary)
 	}
 }
