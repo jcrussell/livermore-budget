@@ -964,14 +964,61 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 		got := project.GroupExpenditure(g.Links, e.FundGroup)
 		if got != e.Published {
 			t.Errorf("%s declares %s %s expenditure of %d cents and the published graph "+
-				"draws %d; the figure has changed, so the caveat is no longer printed "+
-				"and this entry should be removed with whatever decided it",
+				"draws %d. The caveat is no longer printed; re-derive this entry against "+
+				"the pages and either update it or remove it with whatever decided it. "+
+				"Do NOT simply delete it -- the figure moving is not the same event as "+
+				"the contradiction being resolved",
 				e.Bead, e.Column, e.FundGroup, e.Published, got)
 		}
 		// A declaration whose two figures agree is not a contested total at
 		// all, and would print a caveat saying a figure differs from itself.
 		if e.Published == e.Elsewhere {
 			t.Errorf("%s declares the same figure as both published and elsewhere", e.Bead)
+		}
+	}
+}
+
+// TestContestedTotalsAgreeWithTheirCheckException is the cross-check that stops
+// the caveat's two figures being an unguarded second copy.
+//
+// internal/project declares Published and Elsewhere so it can write a sentence.
+// fundingSourcesExceptions declares the SAME PAIR as spineCents and
+// printedCents, and funding-sources-tie-to-spine verifies BOTH against the
+// corpus on every run -- the detail sum against printedCents and the spine sum
+// against spineCents. So the check's copy is corpus-verified and the
+// projection's was not.
+//
+// Tying them together is what makes the caveat's figures as good as the check's:
+// re-read the detail pages, update printedCents, and this goes red rather than
+// leaving the site publishing a stale "other schedules make it" figure and a
+// wrong difference with every other gate green. It also means the sibling
+// declarations cannot drift into disagreeing about which cell is contested.
+func TestContestedTotalsAgreeWithTheirCheckException(t *testing.T) {
+	for _, c := range project.ContestedTotals() {
+		var found bool
+		for _, e := range fundingSourcesExceptions {
+			if e.fundGroup != c.FundGroup || e.year != c.Column.FiscalYear ||
+				e.basis != c.Column.Basis {
+				continue
+			}
+			found = true
+			if int64(e.spineCents) != c.Published {
+				t.Errorf("%s: the caveat says the spine prints %d and the check says %d",
+					c.Bead, c.Published, int64(e.spineCents))
+			}
+			if int64(e.printedCents) != c.Elsewhere {
+				t.Errorf("%s: the caveat says the rest of the book makes it %d and the "+
+					"check says %d", c.Bead, c.Elsewhere, int64(e.printedCents))
+			}
+			if e.bead != c.Bead {
+				t.Errorf("the two declarations of %s %s name different beads: %q and %q",
+					c.Column, c.FundGroup, c.Bead, e.bead)
+			}
+		}
+		if !found {
+			t.Errorf("%s declares a contested %s %s total that no funding-sources "+
+				"exception covers, so neither of its figures is verified against the "+
+				"corpus by anything", c.Bead, c.Column, c.FundGroup)
 		}
 	}
 }

@@ -915,30 +915,46 @@ const (
 )
 
 // ContestedTotal is a fund group's total that the SPINE PAGE PRINTS and other
-// schedules of the same document contradict, together with what they print
+// schedules of the same document contradict, together with what they say
 // instead.
 //
-// IT IS A DECLARATION, NOT A CORRECTION. This projection publishes what p66-67
+// IT IS A DECLARATION, NOT A CORRECTION. This projection publishes what pp.66-67
 // print, because that is where the spine's facts are read from and "published
 // and derived are different things" is the invariant the whole project rests on.
 // What a reader is owed is not our arithmetic but the knowledge that the city's
 // own book disagrees with itself here.
 //
+// PrintedBy AND ImpliedBy ARE SEPARATE FIELDS AND THAT IS THE POINT. The first
+// draft of the caveat said "six other schedules PRINT" a figure that four of
+// them print and two of them imply -- p0061 prints that figure plus a transfer
+// it also prints, and pp.85-125 sum to it across 78 rows. A derived figure cited
+// as a printed one is the defect this project exists to refuse, and it had got
+// into reader-facing text.
+//
 // IT RETIRES ITSELF. The caveat is emitted only when the graph actually draws
 // Published; correct the fact and the condition stops matching and the sentence
 // stops being printed. What that alone would NOT catch is the entry going dead
 // while still sitting here, so TestContestedTotalsAreStillContested asserts over
-// the committed corpus that every entry still describes what is drawn. Between
-// them, neither a stale caveat nor a stale declaration can survive.
+// the committed corpus that every entry still describes what is drawn AND still
+// agrees with internal/check's fundingSourcesExceptions, which verifies both
+// figures against the corpus on every run. Between them, neither a stale caveat
+// nor a stale declaration can survive.
 type ContestedTotal struct {
 	Column    Column
 	FundGroup string
-	// Published is the spine's figure, in cents, and is what this chart draws.
-	// Elsewhere is what the other schedules print.
+	// Published is the spine's figure for the group, in cents, and is what this
+	// chart draws. Elsewhere is what the other schedules make it.
 	Published, Elsewhere int64
-	// Schedules names the pages that disagree, and Bead the work that owns the
-	// decision. A contested figure with no bead is one nobody is deciding.
-	Schedules, Bead string
+	// SpinePages is where Published is printed, and Row names the single line
+	// the difference sits in.
+	SpinePages, Row string
+	// PrintedBy names the schedules that PRINT Elsewhere. ImpliedBy names the
+	// ones that only imply it, and says how -- a schedule that sums to a figure
+	// has not printed it, and the sentence must not say it has.
+	PrintedBy, ImpliedBy string
+	// Bead is the work that owns the decision. A contested figure with no bead
+	// is one nobody is deciding.
+	Bead string
 }
 
 // contestedTotals is the whole list. One entry, and it should stay short: an
@@ -946,12 +962,16 @@ type ContestedTotal struct {
 // anyway, and a long list would mean the corpus had stopped being reconcilable
 // rather than that this mechanism had become useful.
 var contestedTotals = []ContestedTotal{{
-	Column:    Column{FiscalYear: 2027, Basis: mapping.BasisAdopted},
-	FundGroup: "internal-service",
-	Published: 2654451500,
-	Elsewhere: 2629451500,
-	Schedules: "pp.85-125 and the schedules printed at p0183, p0075, p0205, p0209 and p0061",
-	Bead:      "fisc-av0w",
+	Column:     Column{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	FundGroup:  "internal-service",
+	Published:  2654451500,
+	Elsewhere:  2629451500,
+	SpinePages: "pp.66-67",
+	Row:        "Services & Supplies",
+	PrintedBy:  "p0183, p0075, p0205 and p0209",
+	ImpliedBy: "p0061 prints $26,906,515, which is that figure plus the $612,000 " +
+		"transfer to the CIP it prints beside it, and the 78 rows of pp.85-125 sum to it",
+	Bead: "fisc-av0w",
 }}
 
 // ContestedTotals is the declared list, exported so a test over the COMMITTED
@@ -1035,15 +1055,15 @@ func contestedCaveat(c ContestedTotal, col Column, links []Link) string {
 	}
 	return fmt.Sprintf(
 		"THE CITY'S OWN BOOK DISAGREES WITH ITSELF ABOUT THIS ONE FIGURE. %s "+
-			"expenditure is drawn at %s, which is what pp.66-67 print for %s. Six "+
-			"other schedules in the same document print %s instead -- %s -- a "+
-			"difference of %s in a single Services & Supplies row. This chart draws "+
-			"the spine's figure because every figure here is one the city printed on "+
-			"the page it is cited from, and substituting a number from elsewhere "+
-			"would make this one an exception to that. Which figure the corpus should "+
+			"expenditure is drawn at %s, which is what %s print for %s. Other "+
+			"schedules in the same document make it %s: %s print that figure, and "+
+			"%s. The difference is %s, in a single %s row. This chart draws the "+
+			"spine's figure because every figure here is one the city printed on the "+
+			"page it is cited from, and substituting a number from elsewhere would "+
+			"make this one an exception to that. Which figure the corpus should "+
 			"publish is open (%s).",
-		label, dollars(c.Published), col.String(), dollars(c.Elsewhere),
-		c.Schedules, dollars(c.Published-c.Elsewhere), c.Bead)
+		label, dollars(c.Published), c.SpinePages, col.String(), dollars(c.Elsewhere),
+		c.PrintedBy, c.ImpliedBy, dollars(c.Published-c.Elsewhere), c.Row, c.Bead)
 }
 
 // transfersOutToCIP is the "Transfers Out to CIP" column the city prints on its
