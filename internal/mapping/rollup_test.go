@@ -702,3 +702,61 @@ func TestARollupCoveringNothingErrorsRatherThanPanicking(t *testing.T) {
 		t.Errorf("error does not name the rollup %q: %v", ro.ID, err)
 	}
 }
+
+// TestFirstDifferingColumnRefusesRunsOfDifferentWidth calls the helper directly,
+// which is the only way to reach the branch this test is about (fisc-oz4).
+//
+// CheckRollup's own width guard runs before it, so no rule file can produce a
+// length mismatch here. That is exactly why the branch was wrong for so long: it
+// was written to make the helper safe for its NEXT caller, and it made it
+// crash instead. The old code returned min(len(a), len(b)) and the caller
+// indexed BOTH slices at that value, so 3 columns against 5 returned 3 and
+// panicked on a[3] -- one past the last valid index of the shorter run.
+func TestFirstDifferingColumnRefusesRunsOfDifferentWidth(t *testing.T) {
+	three := []Column{
+		{FundGroup: "general", FiscalYear: 2026},
+		{FundGroup: "general", FiscalYear: 2027},
+		{FundGroup: "enterprise", FiscalYear: 2026},
+	}
+	five := append(append([]Column{}, three...),
+		Column{FundGroup: "enterprise", FiscalYear: 2027},
+		Column{FundGroup: "capital", FiscalYear: 2026})
+
+	for _, tt := range []struct {
+		name string
+		a, b []Column
+	}{
+		{"the shorter run first", three, five},
+		{"the longer run first", five, three},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			idx, comparable := firstDifferingColumn(tt.a, tt.b)
+			if comparable {
+				t.Fatalf("comparable = true for runs of %d and %d columns",
+					len(tt.a), len(tt.b))
+			}
+			if idx != 0 {
+				t.Errorf("idx = %d, want 0; an incomparable pair has no differing column", idx)
+			}
+			// AND THE OLD RETURN VALUE IS SHOWN TO BE UNUSABLE, which is the
+			// whole defect: min(len(a), len(b)) is a valid index into the LONGER
+			// run and exactly one past the end of the shorter, so the caller's
+			// first indexing operation succeeded and its second panicked.
+			old := min(len(tt.a), len(tt.b))
+			if old < len(tt.a) && old < len(tt.b) {
+				t.Errorf("min(%d, %d) = %d is in range for both runs, so this case "+
+					"does not reproduce the out-of-range index", len(tt.a), len(tt.b), old)
+			}
+		})
+	}
+
+	// And equal widths still answer the question the helper is named for.
+	if idx, comparable := firstDifferingColumn(three, three); !comparable || idx != -1 {
+		t.Errorf("identical runs = (%d, %v), want (-1, true)", idx, comparable)
+	}
+	differs := append([]Column{}, three...)
+	differs[1] = Column{FundGroup: "general", FiscalYear: 2028}
+	if idx, comparable := firstDifferingColumn(three, differs); !comparable || idx != 1 {
+		t.Errorf("runs differing at 1 = (%d, %v), want (1, true)", idx, comparable)
+	}
+}

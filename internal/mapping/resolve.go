@@ -1020,7 +1020,24 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 				"a rollup adds these totals column by column, so every covered "+
 					"rule must state the same number of them")
 		}
-		if i := firstDifferingColumn(effectiveColumns(first, bearers[0]), effectiveColumns(rule, bearer)); i >= 0 {
+		// The width guard above has already refused a length mismatch, so
+		// `comparable` is true here on every reachable path. It is checked
+		// rather than discarded because the alternative is indexing two slices
+		// on the strength of a comment: the same one-caller-away reasoning that
+		// put a panic in this helper in the first place.
+		i, comparable := firstDifferingColumn(
+			effectiveColumns(first, bearers[0]), effectiveColumns(rule, bearer))
+		if !comparable {
+			return nil, cmdutil.WithHint(
+				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+					Field: "covers", Err: ErrNotFound,
+					Msg: fmt.Sprintf("rule %q states %d columns on p%d and rule %q states %d on p%d",
+						first.ID, len(effectiveColumns(first, bearers[0])), bearers[0].Page,
+						rule.ID, len(effectiveColumns(rule, bearer)), bearer.Page)},
+				"a rollup adds these totals column by column, so every covered "+
+					"rule must state the same number of them")
+		}
+		if i >= 0 {
 			return nil, cmdutil.WithHint(
 				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
@@ -1405,26 +1422,38 @@ func dropCurrencyMarks(toks []token) ([]token, error) {
 // amount grammar happens to reject.
 func isCurrencyMark(s string) bool { return s == "$" }
 
-// firstDifferingColumn is the index where two column runs disagree, or -1.
+// firstDifferingColumn is the index where two column runs disagree, or -1, and
+// a second value saying whether the two were comparable at all.
 //
 // It reports the INDEX rather than a bool so the error can name the column that
 // differs. Comparing whole Column values is deliberate: every field of it
 // changes what a figure in that position MEANS, so there is no subset worth
 // exempting.
-func firstDifferingColumn(a, b []Column) int {
-	// Length first. Iterating only `a` would report agreement whenever `a` is a
-	// PREFIX of a longer `b` -- unreachable from CheckRollup, whose width guard
-	// runs before this, but the helper reads as general and the next caller
-	// would inherit the same one-caller-away hole fisc-t9h is about.
+//
+// THE SECOND RETURN IS WHY THIS SIGNATURE CHANGED (fisc-oz4). The length branch
+// used to return min(len(a), len(b)), and the only caller indexes BOTH slices at
+// the returned value to build its message -- so a=3 columns against b=5 returned
+// 3 and panicked on a[3]. A branch added to make the helper safe for its next
+// caller crashed instead.
+//
+// The bead preferred returning -1 there and leaving the width to the caller.
+// That is NOT what this does, and the reason is the comment the branch replaced:
+// -1 means "no differing column", which is the FALSE AGREEMENT the branch
+// existed to prevent -- a run that is a prefix of a longer one would report
+// agreement. Choosing between crashing and lying is not the choice; a caller
+// that cannot express "these are not comparable" is the defect. So the state is
+// returned instead of encoded in a sentinel, and a caller must handle it before
+// it can index anything.
+func firstDifferingColumn(a, b []Column) (idx int, comparable bool) {
 	if len(a) != len(b) {
-		return min(len(a), len(b))
+		return 0, false
 	}
 	for i := range a {
 		if a[i] != b[i] {
-			return i
+			return i, true
 		}
 	}
-	return -1
+	return -1, true
 }
 
 // effectiveColumns is a rule's bearer-part columns with the basis each figure

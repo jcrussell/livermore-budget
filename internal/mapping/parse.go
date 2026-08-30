@@ -1280,15 +1280,47 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	// category (the row path) and its fund (the column path). Equal on both,
 	// the ids collide.
 	//
-	// THIS ARM SEES ONLY THE ROW'S OWN FUND, not the column's, because a row
-	// is validated before any part is. So it catches the case where a row
-	// declares its fund and its counterpart repeats it -- which is the one an
-	// author writing a two-legged row actually makes -- and fact.CheckUniqueIDs
-	// remains the backstop for a counterpart that duplicates a fund the COLUMN
-	// declared. That is a build-time failure rather than a parse-time one, and
-	// the difference is which file the message names.
+	// IT COMPARES AGAINST EVERY COLUMN OF EVERY PART, and that is the fix for
+	// fisc-i38 rather than a generalisation. The arm used to compare
+	// row.EffectiveColumn(Column{}) -- the row's own fund and group with no
+	// printed column behind them. Two guards above require cp.FundGroup != "",
+	// so the group clause could only hold when the ROW also declared a group,
+	// and no published rule does: on Budget Book p76 a section IS the receiving
+	// group, so the group lives on the COLUMN and the row declares only a fund.
+	// The arm was therefore unreachable on every rule in the tree, while its own
+	// comment claimed it caught "the one an author writing a two-legged row
+	// actually makes". Measured: a counterpart duplicating its near leg parsed
+	// clean and failed much later in `fisc build` as "id ... claimed twice:
+	// rule X ... rule X", which does not read as "your counterpart duplicates
+	// its own near leg".
+	//
+	// A row applies to every column of every part, so "the row's effective fund
+	// group" is not one value here -- which is what made this look unfixable.
+	// The answer is that it does not have to be: a collision on ANY column is a
+	// collision, because that column's figure publishes both legs.
+	// fact.CheckUniqueIDs stays the backstop for whatever a parse-time check
+	// cannot see; it is no longer the only thing that sees this.
+	if cp.Category != row.Category {
+		return nil
+	}
+	for i := range r.Parts {
+		for j := range r.Parts[i].Columns {
+			near := row.EffectiveColumn(r.Parts[i].Columns[j])
+			if cp.Fund == near.Fund && cp.FundGroup == near.FundGroup {
+				return cmdutil.WithHint(
+					errf(r.ID, "rows", "row %q: counterpart is the same category and the "+
+						"same fund as the row itself in column %d of the part on page %d",
+						row.Label, j+1, r.Parts[i].Page),
+					"the two legs of one figure are told apart by their category and "+
+						"their fund; identical on both, they are one fact published twice")
+			}
+		}
+	}
+	// A rule with no parts cannot collide on a column, and the parser refuses
+	// one elsewhere -- but the row's own declaration is still checkable, and
+	// leaving it out would make this arm depend on a guard in another function.
 	near := row.EffectiveColumn(Column{})
-	if cp.Category == row.Category && cp.Fund == near.Fund && cp.FundGroup == near.FundGroup {
+	if cp.Fund == near.Fund && cp.FundGroup == near.FundGroup {
 		return cmdutil.WithHint(
 			errf(r.ID, "rows", "row %q: counterpart is the same category and the "+
 				"same fund as the row itself", row.Label),

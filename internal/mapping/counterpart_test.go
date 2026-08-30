@@ -79,6 +79,96 @@ func TestACounterpartIsRefusedWhenItCouldNotBeToldApart(t *testing.T) {
 	}
 }
 
+// TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses is fisc-i38, and
+// the reason it needed its own test is that the case above passes for the wrong
+// reason.
+//
+// base() declares FundGroup ON THE ROW. No published rule does: on Budget Book
+// p76 a SECTION is the receiving fund group, so the group lives on the COLUMN
+// and the row declares only a fund. The arm compared the counterpart against
+// row.EffectiveColumn(Column{}) -- the row's own fund and group with no printed
+// column behind them -- and two guards above require cp.FundGroup != "", so the
+// group clause could only hold when the row also declared a group. On all 22 of
+// p76's rows it was false, and the arm was unreachable while its own comment
+// claimed it caught "the one an author writing a two-legged row actually makes".
+//
+// The fixture here is the p76 shape. Under the old comparison it parsed clean
+// and failed much later in `fisc build` as "id ... claimed twice: rule X ...
+// rule X", which does not read as "your counterpart duplicates its own near
+// leg".
+func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) {
+	// Group on the COLUMN, fund on the ROW -- p76 exactly.
+	rule := &Rule{
+		ID: "p76-transfers-in-general", Kind: KindTransferIn,
+		Parts: []Part{{
+			Page: 76,
+			Columns: []Column{
+				{FundGroup: "general", FiscalYear: 2026},
+				{FundGroup: "general", FiscalYear: 2027},
+			},
+		}},
+	}
+	// The counterpart repeats the near leg on BOTH axes a fact's identity is
+	// built from: the category (its row path) and the fund (its column path).
+	// This is the mistake an author writing a two-legged row makes -- copying
+	// the row and changing only the kind, which is in neither path.
+	row := Row{
+		Label: "Transfer From Low Income Hsng", LabelTail: "to General Fund",
+		Category: "transfers/in", Fund: 100,
+		Counterpart: &Counterpart{
+			Category: "transfers/in", Kind: KindTransferOut,
+			Fund: 100, FundGroup: "general",
+		},
+	}
+
+	// The row declares NO fund group, which is the whole point: the old
+	// comparison had nothing to match cp.FundGroup against.
+	if row.FundGroup != "" {
+		t.Fatal("the fixture declares a fund group on the row, so it does not " +
+			"reproduce the shape this test is about")
+	}
+
+	err := checkCounterpart(rule, row, errfLike)
+	if err == nil {
+		t.Fatal("a counterpart duplicating its own near leg was accepted; the " +
+			"identical-legs arm is unreachable again")
+	}
+	for _, want := range []string{"same category and the same fund", "column 1", "page 76"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not mention %q; the message has to name the "+
+				"column, because the collision is per column", err, want)
+		}
+	}
+
+	// A counterpart that differs from every column is still accepted: the arm
+	// must reject the collision, not the shape.
+	ok := row
+	cp := *row.Counterpart
+	cp.Category = "transfers/out"
+	cp.Fund, cp.FundGroup = 200, "special-revenue"
+	ok.Counterpart = &cp
+	if err := checkCounterpart(rule, ok, errfLike); err != nil {
+		t.Errorf("a well-formed p76-shaped counterpart was refused: %v", err)
+	}
+
+	// AND THE COLLISION IS PER COLUMN, not per rule: a counterpart matching the
+	// group of only ONE of a rule's columns still collides on that column's
+	// figure, and a check that compared against the first column alone would
+	// miss it.
+	twoGroups := &Rule{
+		ID: "r", Kind: KindTransferIn,
+		Parts: []Part{{Page: 76, Columns: []Column{
+			{FundGroup: "enterprise", FiscalYear: 2026},
+			{FundGroup: "general", FiscalYear: 2026},
+		}}},
+	}
+	if err := checkCounterpart(twoGroups, row, errfLike); err == nil {
+		t.Error("a counterpart colliding on the second column only was accepted")
+	} else if !strings.Contains(err.Error(), "column 2") {
+		t.Errorf("error %q does not name column 2", err)
+	}
+}
+
 // TestTheDocumentCannotCheckACounterpart is the failability proof, and it is
 // written the way this project's evidence has to be written: by running the
 // real page and showing WHAT STILL PASSES.
