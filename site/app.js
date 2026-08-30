@@ -79,6 +79,22 @@
  */
 
 /**
+ * A caveat as the PAGE shows it: a line, and somewhere to go for the rest.
+ *
+ * NO `text`, on purpose. The client renders summaries and links to the caveats
+ * page; a client that had the paragraph in hand would eventually print it, and
+ * printing it under the chart is the thing this page stopped doing.
+ *
+ * `href` IS EMPTY WHEN THE SITE HAS NO CAVEATS PAGE -- a single-view export
+ * writes index.html and nothing else -- and the renderer falls back to plain
+ * text rather than shipping a link that 404s.
+ * @typedef {Object} FiscCaveatRef
+ * @property {string} id
+ * @property {string} summary
+ * @property {string} href
+ */
+
+/**
  * @typedef {Object} FiscDoc
  * @property {string} title
  * @property {string} publisher
@@ -107,7 +123,7 @@
  * @property {string} title
  * @property {FiscFigure} hero
  * @property {FiscFigure[]} figures
- * @property {FiscCaveat[]} caveats
+ * @property {FiscCaveatRef[]} caveats
  * @property {{facts:number, nodes:number, links:number}} counts
  * @property {string} chart_title
  */
@@ -1726,7 +1742,27 @@ function paintYearWords(year) {
   }
 
   const caveats = maybeEl("caveats");
-  if (caveats) caveats.replaceChildren(...year.caveats.map((c) => h("li", "", c.text)));
+  // THE SUMMARY, WRAPPED IN ITS LINK -- and the link is what makes showing a
+  // summary honest rather than a truncation. The paragraph still exists, on a
+  // page of its own, and c.href names THIS year's copy of it: a caveat id can
+  // carry different text in different documents, so a href built once for the
+  // opening year would send a reader who switched to FY2026-27 to FY2025-26's
+  // sentence. The packager composes it per year for that reason.
+  //
+  // NO LINK WHEN THERE IS NO PAGE. A single-view export has no caveats.html,
+  // and an anchor into a file that was never written is worse than a plain
+  // line: it looks like there is more to read.
+  if (caveats) {
+    caveats.replaceChildren(...year.caveats.map((c) => {
+      const li = h("li");
+      if (!c.href) {
+        li.textContent = c.summary;
+        return li;
+      }
+      li.appendChild(link(c.summary, c.href));
+      return li;
+    }));
+  }
 
   // THE CAVEAT COUNT IS PER-YEAR, and it is in a <summary> the reader uses to
   // decide whether to open the list at all. FY2025-26 carries four and

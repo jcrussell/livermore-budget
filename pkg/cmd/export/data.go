@@ -512,6 +512,38 @@ func views(built Result) []export.View {
 				"one grain and any total would quietly count part of it twice.",
 		})
 	}
+	// THE CAVEATS INDEX, THE SECOND VIEW THAT NAMES NO PROJECTION. It lists
+	// every published document's caveats in full, so the other pages can show
+	// one line and link here instead of reprinting a 250-word paragraph
+	// underneath a chart.
+	//
+	// UNCONDITIONAL, unlike every view above it, and the asymmetry is a claim
+	// worth stating rather than an oversight. Those are conditional because a
+	// nav entry pointing at a page that was not written is the failure views()
+	// exists to prevent -- and a document that was not built cannot be
+	// rendered. This page depends on no single document, and every builder in
+	// internal/project emits caveats unconditionally: caveats() always appends
+	// the stocks and permanent-funds pair, fundFlowsCaveats returns three, and
+	// trendsCaveats returns three. So the empty case cannot arise from this
+	// repository -- and buildCaveatsPage refuses it anyway, rather than
+	// publishing a nav entry to a blank page, because "cannot arise here" is a
+	// claim about today's corpus and the guard is about tomorrow's.
+	//
+	// It is appended BEFORE the provenance block so that the two indexes sit
+	// together at the end of the nav, after the pages that draw something.
+	out = append(out, export.View{
+		Path:     "caveats.html",
+		Nav:      "Caveats",
+		Template: export.CaveatsTemplate,
+		Title:    "What these figures do not say",
+		Lede: "Every page here shows figures the city printed, and every one of them has " +
+			"edges: a schedule that stops short, a total the city's own book contradicts, a " +
+			"classification that is ours rather than theirs. Those are collected here in " +
+			"full, so the pages that draw the money can say them in a line and point at " +
+			"this one. Nothing on this page is a hedge; each is a specific thing a " +
+			"specific document does not do.",
+	})
+
 	// THE PROVENANCE INDEX, WHICH NAMES NO PROJECTION. It is an index of the
 	// site's own record store, built from Result.PageIndex, and it is the one
 	// view whose template renders no document -- see

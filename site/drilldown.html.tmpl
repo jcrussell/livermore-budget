@@ -138,7 +138,7 @@
 </p>
 <ul class="caveats" id="caveats">
   {{- range .Caveats}}
-  <li>{{.Text}}</li>
+  <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
   {{- end}}
 </ul>
 

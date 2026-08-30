@@ -226,6 +226,75 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 	}
 }
 
+// TestEveryCaveatSummaryLinksToAnAnchorThatExists is the check that makes the
+// caveats page a feature rather than a hope.
+//
+// EVERY OTHER GUARD STOPS AT THE FILE. The asset walks stat "caveats.html" and
+// are satisfied; they cut the fragment off before asking, because the
+// filesystem has no opinion about it. So a summary linking to
+// #caveat-sankey--typo would pass every existing check, render as a working
+// link, and drop the reader at the top of a long page with no indication that
+// anything went wrong -- which is the quietest failure this change can produce
+// and the only one a reader would blame themselves for.
+//
+// IT WALKS THE RENDERED PAGES, not the view list or the Go structs, for the
+// reason the asset walk does: the failure is a string composed in one place and
+// consumed in another, and the page is where the two meet. The anchors are read
+// out of caveats.html's own markup rather than recomposed with caveatAnchor,
+// because recomposing them would assert that one function agrees with itself.
+func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
+	opts, _, _, _ := testOptions(t)
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	read := func(name string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(opts.OutputDir, name))
+		if err != nil {
+			t.Fatalf("read the exported %s: %v", name, err)
+		}
+		return string(raw)
+	}
+
+	ids := map[string]bool{}
+	for _, m := range regexp.MustCompile(`id="(caveat-[^"]+)"`).FindAllStringSubmatch(read("caveats.html"), -1) {
+		if ids[m[1]] {
+			t.Errorf("caveats.html carries the anchor %q twice; a link to it lands on "+
+				"whichever the browser finds first", m[1])
+		}
+		ids[m[1]] = true
+	}
+	if len(ids) == 0 {
+		t.Fatal("caveats.html carries no caveat anchors, so this test asserts nothing")
+	}
+
+	// Every page the site wrote, not a list: a page added without its links
+	// checked is exactly what this is for.
+	entries, err := os.ReadDir(opts.OutputDir)
+	if err != nil {
+		t.Fatalf("read the exported site: %v", err)
+	}
+	linked := 0
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".html") {
+			continue
+		}
+		for _, m := range regexp.MustCompile(`href="caveats\.html#([^"]+)"`).
+			FindAllStringSubmatch(read(e.Name()), -1) {
+			linked++
+			if !ids[m[1]] {
+				t.Errorf("%s links to caveats.html#%s, and caveats.html carries no such "+
+					"anchor; the link works and lands the reader nowhere in particular",
+					e.Name(), m[1])
+			}
+		}
+	}
+	if linked == 0 {
+		t.Error("no page links to a caveat anchor, so the summaries are truncations " +
+			"rather than pointers")
+	}
+}
+
 // TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped is a cross-package
 // guard, and it lives HERE because here is the only place the two copies of
 // that claim meet.
@@ -252,32 +321,74 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 // package over. The tile note IS live code on this path and this test is its
 // only guard: reverting internal/export/page.go's old wording reddens exactly
 // this test and nothing else. Proved both ways by mutation, 2026-08-27.
+//
+// WHICH PAGE IT READS CHANGED, AND IT HAD TO. The caveat's full text moved to
+// caveats.html when index.html started showing one-line summaries -- and this
+// test went on passing, because index.html still ships the whole document as
+// JSON inside window.FISC_CONFIG and "Transfers Out to CIP" was in that blob.
+// Measured: strip the config script from the exported index.html and neither
+// string is left anywhere a reader could see. So the test was green on a string
+// no reader reads, which is the exact "green because the gate fired" shape --
+// its own premise above says the page is where a reader MEETS the claim, and
+// that had silently stopped being index.html.
+//
+// The two halves are therefore read from two pages now, each where a reader
+// actually meets it: the correction on caveats.html, which carries the text,
+// and the stale wording refused on BOTH, since either could carry it.
 func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(opts); err != nil {
 		t.Fatalf("exportRun: %v", err)
 	}
-	raw, err := os.ReadFile(filepath.Join(opts.OutputDir, "index.html"))
-	if err != nil {
-		t.Fatalf("read the exported page: %v", err)
+	read := func(name string) string {
+		t.Helper()
+		raw, err := os.ReadFile(filepath.Join(opts.OutputDir, name))
+		if err != nil {
+			t.Fatalf("read the exported %s: %v", name, err)
+		}
+		return string(raw)
 	}
-	page := string(raw)
+	pages := map[string]string{
+		"index.html":   read("index.html"),
+		"caveats.html": read("caveats.html"),
+	}
 
 	// Both word orders, plus the bead that never published anything -- its own
 	// close reason reads "Not published: no facts, facts.jsonl byte-identical".
-	for _, stale := range []string{"not yet mapped", "not mapped yet", "fisc-5gk.3"} {
-		if strings.Contains(page, stale) {
-			t.Errorf("the exported page says %q; Budget Book p76 has been mapped and "+
-				"published at scope transfers-by-fund since ced45b4", stale)
+	// Refused on every page, because the claim could reappear on either.
+	for name, page := range pages {
+		for _, stale := range []string{"not yet mapped", "not mapped yet", "fisc-5gk.3"} {
+			if strings.Contains(page, stale) {
+				t.Errorf("the exported %s says %q; Budget Book p76 has been mapped and "+
+					"published at scope transfers-by-fund since ced45b4", name, stale)
+			}
 		}
 	}
+
 	// And the correction is present rather than merely the falsehood absent: a
 	// caveat that dropped the sentence entirely would pass the loop above.
+	//
+	// READ OFF caveats.html WITH ITS CONFIG BLOB ABSENT BY CONSTRUCTION -- that
+	// page ships no app.js and no FISC_CONFIG -- so this cannot go green on
+	// machine-readable bytes the way the index.html version had begun to.
+	caveats := pages["caveats.html"]
+	if strings.Contains(caveats, "FISC_CONFIG") {
+		t.Fatal("caveats.html now ships a config blob; this test's substring search would " +
+			"pass on JSON no reader reads, which is what it was rewritten to stop doing")
+	}
 	for _, want := range []string{"Transfers Out to CIP", "fisc-9gh"} {
-		if !strings.Contains(page, want) {
-			t.Errorf("the exported page does not say %q, so the residual is unexplained "+
-				"rather than cited", want)
+		if !strings.Contains(caveats, want) {
+			t.Errorf("the exported caveats.html does not say %q, so the residual is "+
+				"unexplained rather than cited", want)
 		}
+	}
+
+	// AND index.html STILL POINTS AT IT. Moving the text is only honest if the
+	// page a reader lands on offers a way to reach it; a summary with no link
+	// is a truncation.
+	if !strings.Contains(pages["index.html"], `href="caveats.html#caveat-`) {
+		t.Error("index.html links to no caveat anchor, so the paragraph it stopped " +
+			"printing is not reachable from the page that stopped printing it")
 	}
 }
 
@@ -309,7 +420,15 @@ func TestExportRunResolvesBothCitationClassesWithoutGitHub(t *testing.T) {
 		case strings.Contains(ref, "://"):
 			t.Errorf("the page reaches %q; every citation but the city's PDF has to resolve inside the site", ref)
 		default:
-			if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(ref))); err != nil {
+			// The anchor comes off before the filesystem is asked:
+			// "caveats.html#caveat-sankey--x" names a file plus a place in it,
+			// and only the file half is a question about what was written. The
+			// fragment half is TestEveryCaveatSummaryLinksToAnAnchorThatExists'.
+			target := ref
+			if before, _, ok := strings.Cut(target, "#"); ok {
+				target = before
+			}
+			if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(target))); err != nil {
 				t.Errorf("the page references %q, which the site does not carry: %v", ref, err)
 			}
 			if strings.HasSuffix(ref, ".txt") {
@@ -399,6 +518,13 @@ func pageRefs(page string) []string {
 			}
 			ref := rest[:j]
 			rest = rest[j:]
+			// FRAGMENTS ARE KEPT HERE. This function reports what the page
+			// says, and its caller needs the fragment on both classes of
+			// reference for opposite reasons: it COUNTS "#page=" on the city's
+			// PDF links, and it has to STRIP the anchor off a relative one
+			// before asking the filesystem about it. Cutting in this loop
+			// broke the first while fixing the second -- measured, "got 0 PDF
+			// citations, want one per cited page".
 			if ref == "" || strings.HasPrefix(ref, "#") {
 				continue
 			}
@@ -986,9 +1112,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	}
 	got := views(Result{Projections: built})
 
-	if len(got) != 3 {
-		t.Fatalf("got %d views over %v, want the spine, the revenue trends and the drill-down",
-			len(got), keys(built))
+	if len(got) != 4 {
+		t.Fatalf("got %d views over %v, want the spine, the revenue trends, the drill-down "+
+			"and the caveats index", len(got), keys(built))
 	}
 	if got[0].Path != export.IndexPath || got[0].Projection != export.PrimaryProjection {
 		t.Errorf("the site opens on %+v, want the spine at %s", got[0], export.IndexPath)
@@ -1042,11 +1168,37 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	only := map[string][]byte{export.PrimaryProjection: {}}
 	got := views(Result{Projections: only})
-	if len(got) != 1 {
-		t.Fatalf("got %d views with only the spine built, want 1: %+v", len(got), got)
+
+	// EVERY VIEW THAT NAMES A PROJECTION IS THE SPINE'S, and that is the
+	// assertion rather than a count. It used to be `len(got) != 1`, which was
+	// the same claim while every view named a document -- and stopped being it
+	// the moment the caveats index arrived, because a view naming NO
+	// projection has nothing that could fail to be built and so nothing to
+	// drop. Counting would have made this test fail for a reason it is not
+	// about, and the shortest way to green would have been to make the caveats
+	// page conditional on a document it does not have.
+	for _, v := range got {
+		if v.Projection == "" {
+			continue
+		}
+		if v.Projection != export.PrimaryProjection {
+			t.Errorf("view %q renders %q, which was not built", v.Path, v.Projection)
+		}
+		for _, stem := range v.YearStems {
+			if _, ok := only[stem]; !ok {
+				t.Errorf("view %q lists year stem %q, which was not built", v.Path, stem)
+			}
+		}
 	}
 	if got[0].Path != export.IndexPath {
-		t.Errorf("the surviving view is %q, want the one the site opens on", got[0].Path)
+		t.Errorf("the site opens on %q, want %q", got[0].Path, export.IndexPath)
+	}
+	// The trends and drill-down views really are gone: the whole point.
+	for _, v := range got {
+		if v.Path == "revenue.html" || v.Path == "drilldown.html" {
+			t.Errorf("view %q survived with its document unbuilt; a nav entry pointing at "+
+				"a page that was not written is a 404 a reader can click", v.Path)
+		}
 	}
 }
 

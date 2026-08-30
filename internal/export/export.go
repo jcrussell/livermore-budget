@@ -633,7 +633,7 @@ func (v View) validate(built map[string][]byte) error {
 // is louder than a page quietly not showing it.
 func templateRendersLede(name string) bool {
 	switch name {
-	case TrendsTemplate, DrilldownTemplate, ProvenanceTemplate:
+	case TrendsTemplate, DrilldownTemplate, ProvenanceTemplate, CaveatsTemplate:
 		return true
 	default:
 		return false
@@ -706,7 +706,8 @@ func templateRendersADocument(name string) bool {
 // ignored-projection guard and is still dispatched correctly, and one missing
 // there is refused by the dispatch.
 func templateIsKnown(name string) bool {
-	return templateRendersADocument(name) || name == ProvenanceTemplate
+	return templateRendersADocument(name) ||
+		name == ProvenanceTemplate || name == CaveatsTemplate
 }
 
 // templateRendersTiers answers whether a template publishes [View.RenderTiers]

@@ -228,6 +228,42 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	}
 }
 
+// TestASingleViewSiteShowsCaveatsWithNoLink is the configuration the caveat
+// summaries have to survive, and it is a real one rather than a hypothetical:
+// Options.views()'s default is a single view at IndexPath, and writeGolden
+// exports exactly that.
+//
+// THE FAILURE IT PREVENTS IS A LINK INTO A FILE THAT WAS NEVER WRITTEN. If
+// index.html linked unconditionally, this site would ship
+// href="caveats.html#..." with no caveats.html beside it --
+// TestEveryAssetThePageAsksForWasWritten would say so, but only because that
+// walk now strips the fragment before it stats, which is a fix landed in the
+// same commit. Asserting the intent directly means the guard does not depend on
+// another test's implementation detail staying the way it is.
+//
+// AND THE SUMMARIES ARE STILL THERE. A page that dropped them when it could not
+// link them would be quietly worse than the wall it replaced: the caveats would
+// simply be gone.
+func TestASingleViewSiteShowsCaveatsWithNoLink(t *testing.T) {
+	dir, _ := writeGolden(t)
+	page := readFile(t, dir, "index.html")
+
+	if _, err := os.Stat(filepath.Join(dir, "caveats.html")); err == nil {
+		t.Fatal("a single-view export wrote caveats.html; this test is about the site " +
+			"that has none, and no longer describes one")
+	}
+	if strings.Contains(page, `href="caveats.html`) {
+		t.Error("index.html links to caveats.html, which this site does not carry; a " +
+			"summary that points at a missing page reads as though there is more to read")
+	}
+	// The summary of the caveat the golden spine carries, so this fails if the
+	// list went empty rather than merely unlinked.
+	if !strings.Contains(page, "Permanent Funds are a seventh fund type") {
+		t.Error("index.html shows no caveat summaries; with no page to link to they are " +
+			"the whole of what a reader gets, and dropping them is worse than the wall")
+	}
+}
+
 // TestEveryViewsMarkupResolves extends the existing asset walk to every page
 // rather than only the one the site opens on.
 func TestEveryViewsMarkupResolves(t *testing.T) {
@@ -238,7 +274,13 @@ func TestEveryViewsMarkupResolves(t *testing.T) {
 		found := 0
 		for _, m := range ref.FindAllStringSubmatch(readFile(t, dir, page), -1) {
 			target := m[1]
-			if target == "" || strings.Contains(target, "://") || strings.HasPrefix(target, "#") {
+			// Fragment stripped rather than skipped, for the reason spelled
+			// out in export_test.go's walk: "caveats.html#x" names a file this
+			// check exists to stat, and only a bare "#x" is same-page.
+			if before, _, ok := strings.Cut(target, "#"); ok {
+				target = before
+			}
+			if target == "" || strings.Contains(target, "://") {
 				continue
 			}
 			found++

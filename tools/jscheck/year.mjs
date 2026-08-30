@@ -30,19 +30,23 @@ function fixtureYear(overrides) {
     // link to. The fixture carries the whole shape rather than just `text`,
     // because a stub that supplies only the field under test cannot catch a
     // client reading the wrong one.
+    // A YEAR'S CAVEATS ARE REFS, NOT WHOLE CAVEATS. The client is handed
+    // id/summary/href and never the text -- see FiscCaveatRef in app.js -- so a
+    // fixture carrying `text` would let a check pass on a client reading a
+    // field the packager does not send.
     caveats: [
-      { id: "one", summary: "s-one", text: "one", applies_to: [] },
-      { id: "two", summary: "s-two", text: "two", applies_to: [] },
-      { id: "three", summary: "s-three", text: "three", applies_to: [] },
+      { id: "one", summary: "s-one", href: "caveats.html#caveat-sankey-2027--one" },
+      { id: "two", summary: "s-two", href: "caveats.html#caveat-sankey-2027--two" },
+      { id: "three", summary: "s-three", href: "caveats.html#caveat-sankey-2027--three" },
     ],
     counts: { facts: 120, nodes: 25, links: 58 },
   }, overrides);
 }
 
-/** n distinct caveats, whose ids differ so ValidateCaveats' rule holds here too. */
+/** n distinct caveat refs, whose ids differ so the anchors do too. */
 function fixtureCaveats(n) {
   return Array.from({ length: n }, (_, i) => ({
-    id: "c" + i, summary: "summary " + i, text: "text " + i, applies_to: [],
+    id: "c" + i, summary: "summary " + i, href: "caveats.html#caveat-x--c" + i,
   }));
 }
 
@@ -63,7 +67,18 @@ function painted(app, year) {
   const el = (id) => app.dom.byId.get(id);
   return {
     tiles: el("figures") ? [...el("figures").children] : [],
-    caveats: el("caveats") ? [...el("caveats").children] : [],
+    // READ THROUGH THE ANCHOR, because a caveat is now <li><a>summary</a></li>
+    // and the stub does NOT derive textContent from children (harness.mjs's
+    // node()). Reading li.textContent here returns "" for every row, so a
+    // check comparing it against an expected string fails for the wrong reason
+    // -- and a check "corrected" to expect "" would pass whether the client
+    // rendered the summary, the wrong field, or nothing at all. The href comes
+    // out too: a link nobody asserts is a link that can silently stop being one.
+    caveats: el("caveats") ? [...el("caveats").children].map((li) => {
+      const a = li.children[0];
+      return a ? { text: a.textContent, href: a.href || "" }
+               : { text: li.textContent, href: "" };
+    }) : [],
     caveatsCount: el("caveats-count") ? el("caveats-count").textContent : "",
     lede: el("lede-year") ? el("lede-year").textContent : "",
     counts: el("counts-line") ? el("counts-line").textContent : "",
@@ -221,10 +236,18 @@ export async function checks() {
       detail: tileText.length ? tileText[0].split("|")[0] : "nothing",
     },
     {
-      name: "the caveats are the year's own, not the year the page opened on",
+      // THE SUMMARY IS SHOWN AND THE HREF IS THE YEAR'S OWN. Both halves
+      // matter and they fail differently: showing the wrong field puts a
+      // 250-word paragraph back under the chart, while a stale href sends a
+      // reader who switched to FY2026-27 to FY2025-26's copy of the sentence --
+      // which is possible because one caveat id carries different text in
+      // different documents, and is invisible unless the href is read.
+      name: "the caveats are the year's own summaries, linked to the year's own anchors",
       ok: got.caveats.length === year.caveats.length &&
-          got.caveats.every((c, i) => c.textContent === year.caveats[i].text),
-      detail: `${got.caveats.length} caveats, matching the ${year.caveats.length} supplied`,
+          got.caveats.every((c, i) => c.text === year.caveats[i].summary &&
+                                      c.href === year.caveats[i].href),
+      detail: `${got.caveats.length} caveats, matching the ${year.caveats.length} supplied` +
+        (got.caveats.length ? `; first links to "${got.caveats[0].href}"` : ""),
     },
     {
       // THE COUNT IS IN THE <summary> A READER USES TO DECIDE WHETHER TO OPEN
@@ -356,7 +379,7 @@ export async function checks() {
         return second.tiles.length === first.tiles.length &&
                first.caveats.length === 2 &&
                second.caveats.length === year.caveats.length &&
-               second.caveats.map((c) => c.textContent).join("|") === year.caveats.map((c) => c.text).join("|") &&
+               second.caveats.map((c) => c.text).join("|") === year.caveats.map((c) => c.summary).join("|") &&
                second.lede === year.label + " " + year.basis &&
                second.title.includes(year.label);
       })(),

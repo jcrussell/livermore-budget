@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="Every reason a figure on this site does not say what it looks like it says, in full, with the document each one belongs to.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint, the same way index.html does, so
+  // a reader who chose dark there does not get a white flash here. This page
+  // ships no app.js, so this is the whole of its scripting.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    <p class="lede">{{.Lede}}</p>
+  </div>
+</header>
+
+<main>
+
+<p class="lede">
+  {{.Count}} caveat{{if ne .Count 1}}s{{end}} across {{len .Documents}} published document{{if ne (len .Documents) 1}}s{{end}}.
+  Every other page on this site shows these one line at a time and links here for the rest;
+  this is the rest.
+</p>
+
+<!-- GROUPED BY DOCUMENT, and the reason is not tidiness. One caveat id can
+     carry different text in different documents: the transfer-legs caveat has
+     three sentences, chosen by whether that column's legs balance and whether
+     its residual meets the figure the city prints, and the FY2026-27 spine
+     carries a contested-total caveat FY2025-26 does not. A page keyed on the id
+     alone would have to pick one of those texts and would be wrong about the
+     others, so the anchor is per (document, caveat) and so is this heading. -->
+{{- range .Documents}}
+<section class="caveat-doc">
+  <h2>{{.Stem}}{{if .Label}} <span class="subtle">— {{.Label}}</span>{{end}}</h2>
+  <p class="subtle">
+    {{len .Entries}} caveat{{if ne (len .Entries) 1}}s{{end}}, shipped inside
+    <a href="{{.DataPath}}">{{.DataPath}}</a> rather than only stated here.
+  </p>
+  {{- range .Entries}}
+  <article class="caveat" id="{{.Anchor}}">
+    <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
+    <p>{{.Text}}</p>
+    {{- if .AppliesTo}}
+    <p class="subtle">
+      Marks
+      {{- range $i, $n := .AppliesTo}}{{if $i}},{{end}} <code>{{$n}}</code>{{end}}
+      on the chart.
+    </p>
+    {{- end}}
+  </article>
+  {{- end}}
+</section>
+{{- end}}
+
+</main>
+
+<footer>
+  <!-- NO SOURCES LIST, and that is deliberate rather than missing. Every other
+       page's footer cites the pages its figures were read from; this page shows
+       no figures, so the union of every document's pages would be the broadest
+       false provenance claim on the site. Each document links to itself above. -->
+  <p class="subtle">
+    Packaged by {{.ExportedBy}}. This page draws no projection and publishes no figure: it
+    is what the other pages' figures do not say, collected so a reader can hold the whole set
+    at once. Each caveat ships inside the document it belongs to, so it travels with the data
+    rather than only with the page.
+    Every data file the site publishes, each fetchable on its own:
+    {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
+  </p>
+</footer>
+
+</body>
+</html>

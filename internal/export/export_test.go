@@ -159,9 +159,21 @@ func TestEveryAssetThePageAsksForWasWritten(t *testing.T) {
 			}
 			ref := rest[:j]
 			rest = rest[j:]
+			// THE FRAGMENT IS STRIPPED, NOT SKIPPED, and the difference is the
+			// whole reason this walk can see the caveat links at all. A bare
+			// "#anchor" is same-page and rightly ignored; "caveats.html#x"
+			// names a FILE and this loop used to stat it verbatim, fragment
+			// and all, so the first cross-page anchor the site shipped would
+			// have been reported as a missing asset. Cutting first means the
+			// file half is checked and the fragment half is left to
+			// TestEveryCaveatSummaryLinksToAnAnchorThatExists, which is the
+			// only check that can resolve it.
+			if before, _, ok := strings.Cut(ref, "#"); ok {
+				ref = before
+			}
 			// Only the relative ones are this export's problem; the absolute
 			// ones are citations and are checked elsewhere.
-			if ref == "" || strings.Contains(ref, "://") || strings.HasPrefix(ref, "#") {
+			if ref == "" || strings.Contains(ref, "://") {
 				continue
 			}
 			refs = append(refs, ref)

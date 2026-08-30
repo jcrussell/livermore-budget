@@ -25,10 +25,17 @@ const (
 	SankeyTemplate    = "index.html.tmpl"
 	TrendsTemplate    = "revenue.html.tmpl"
 	DrilldownTemplate = "drilldown.html.tmpl"
-	// ProvenanceTemplate renders the fact store's index. It is the one
-	// template that renders no projection document -- see
-	// templateRendersADocument.
+	// ProvenanceTemplate renders the fact store's index, and CaveatsTemplate
+	// every document's caveats in one place. THEY ARE THE TWO TEMPLATES THAT
+	// RENDER NO PROJECTION DOCUMENT -- see templateRendersADocument, whose doc
+	// comment predicted a second one and is the reason that predicate is an
+	// allow-list rather than `name != ProvenanceTemplate`.
+	//
+	// The caveats page is an index ACROSS documents rather than of one, which
+	// is why it cannot name a projection: naming any single document would
+	// make the other five's caveats look like that document's.
 	ProvenanceTemplate = "provenance.html.tmpl"
+	CaveatsTemplate    = "caveats.html.tmpl"
 )
 
 // SchemaVersion is the projection schema this packager understands.
@@ -95,6 +102,23 @@ type projectionDoc struct {
 	SchemaVersion int             `json:"schema_version"`
 	Projection    string          `json:"projection"`
 	Metadata      json.RawMessage `json:"metadata"`
+}
+
+// documentCaveats is as much of ANY document as the caveats page needs.
+//
+// SHAPE-BLIND, for documentSources' reason and with the same payoff:
+// metadata.caveats is a block every projection carries whatever its body is, so
+// caveats.html can list a document this package has never been taught the shape
+// of. A fourth projection kind added tomorrow gets its caveats published
+// without an arm here -- which is the opposite of how the buildSite switch
+// works, deliberately, because that switch decides what a page LOOKS like and
+// this only reads a field.
+type documentCaveats struct {
+	Metadata struct {
+		FiscalYearLabel string       `json:"fiscal_year_label"`
+		Basis           string       `json:"basis"`
+		Caveats         []caveatMeta `json:"caveats"`
+	} `json:"metadata"`
 }
 
 // sourceMeta is one cited document in any projection's metadata.
@@ -186,6 +210,46 @@ type caveatMeta struct {
 	AppliesTo []string `json:"applies_to"`
 }
 
+// caveatRef is one caveat as a PAGE shows it: a line, and somewhere to go for
+// the rest. The text is deliberately absent -- a page carrying it would be the
+// wall this whole change exists to take down.
+//
+// Href IS EMPTY WHEN THERE IS NO CAVEATS PAGE, which is a real configuration
+// rather than a defect: Options.views()'s default and writeGolden both produce
+// a single-view site with no caveats.html, and an unconditional link there
+// would 404 and fail TestEveryAssetThePageAsksForWasWritten. The template
+// renders plain text in that case.
+type caveatRef struct {
+	ID      string `json:"id"`
+	Summary string `json:"summary"`
+	Href    string `json:"href"`
+}
+
+// caveatRefs composes the page-facing form. base is the caveats view's path, or
+// "" when the site has no such page.
+//
+// THE ANCHOR IS PER (CAVEAT, DOCUMENT), not per caveat. One id can carry
+// different text in different documents -- transfer-legs-unpaired has three
+// sentences, picked by each column's own arithmetic -- so a page linking to a
+// bare #<id> would land its reader on whichever document buildCaveatsPage
+// happened to list first. stem is what disambiguates, and it is required rather
+// than optional for that reason.
+func caveatRefs(metas []caveatMeta, stem, base string) []caveatRef {
+	out := make([]caveatRef, 0, len(metas))
+	for _, m := range metas {
+		ref := caveatRef{ID: m.ID, Summary: m.Summary}
+		if base != "" {
+			ref.Href = base + "#" + caveatAnchor(stem, m.ID)
+		}
+		out = append(out, ref)
+	}
+	return out
+}
+
+// caveatAnchor is the one spelling of the fragment, so the page that emits the
+// id and the pages that link to it cannot disagree about its form.
+func caveatAnchor(stem, id string) string { return "caveat-" + stem + "--" + id }
+
 // headline is the projection's published totals, in cents.
 type headline struct {
 	AllFundsGrossRevenueCents     int64 `json:"all_funds_gross_revenue_cents"`
@@ -260,11 +324,11 @@ type yearView struct {
 	// sankeyTitle below, which is the one string paintYearWords wrote that the
 	// packager had not built -- and it overwrote a caller's own Title without a
 	// word. See sankeyTitle for why the caller's words survive the switch.
-	Title   string       `json:"title"`
-	Hero    figure       `json:"hero"`
-	Figures []figure     `json:"figures"`
-	Caveats []caveatMeta `json:"caveats"`
-	Counts  countsRef    `json:"counts"`
+	Title   string      `json:"title"`
+	Hero    figure      `json:"hero"`
+	Figures []figure    `json:"figures"`
+	Caveats []caveatRef `json:"caveats"`
+	Counts  countsRef   `json:"counts"`
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
 	// and a different string from Title, which is the document's.
 	//
@@ -849,6 +913,8 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 			data, err = buildDrilldownPage(o, v, here, byID, pageTextBase)
 		case ProvenanceTemplate:
 			data, err = buildProvenancePage(o, v, here, byID, pageTextBase)
+		case CaveatsTemplate:
+			data, err = buildCaveatsPage(o, v, here, byID, pageTextBase)
 		default:
 			return nil, nil, cmdutil.WithHint(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
@@ -908,6 +974,22 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 	return pages, cited, nil
 }
 
+// caveatsPathOf is the caveats view's path, or "" when the site has none.
+//
+// DERIVED FROM THE VIEW SET rather than threaded through five builder
+// signatures, and rather than sat on Options: it IS a function of the views, so
+// a caller who adds or drops the caveats view cannot leave this out of step.
+// The empty case is real -- Options.views()'s default is one view -- and every
+// caller has to handle it, which is what the empty Href means.
+func caveatsPathOf(o *Options) string {
+	for _, v := range o.views() {
+		if v.Template == CaveatsTemplate {
+			return v.Path
+		}
+	}
+	return ""
+}
+
 // chrome is what every view renders whatever its document is.
 type chrome struct {
 	Title        string
@@ -919,7 +1001,11 @@ type chrome struct {
 	Projections  []projectionRef
 	DataPath     string
 	Scope        string
-	Caveats      []caveatMeta
+	Caveats      []caveatRef
+	// CaveatsPath is the caveats page, or "" when the site has none. Separate
+	// from each ref's Href because the templates use it for a "read them all"
+	// link that belongs to no single caveat.
+	CaveatsPath string
 }
 
 // sourcesFor builds a view's own footer citations, and the client's copy of the
@@ -1054,6 +1140,7 @@ func projectionRefs(projections map[string][]byte) []projectionRef {
 func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (pageData, error) {
+	caveatsPath := caveatsPathOf(o)
 	doc, meta, err := decodeSankey(v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return pageData{}, err
@@ -1123,7 +1210,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ChartTitle: "Sankey diagram of the " + m.FiscalYearLabel + " " + m.Basis + " budget",
 			Hero:       hero,
 			Figures:    figures,
-			Caveats:    m.Caveats,
+			Caveats:    caveatRefs(m.Caveats, stem, caveatsPath),
 			Counts: countsRef{
 				Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links,
 			},
@@ -1163,7 +1250,8 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  refs,
 			DataPath:     files[v.Projection],
 			Scope:        meta.Scope,
-			Caveats:      meta.Caveats,
+			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
+			CaveatsPath:  caveatsPath,
 		},
 		FiscalYearLabel: meta.FiscalYearLabel,
 		Basis:           meta.Basis,
@@ -1192,6 +1280,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (drilldownPageData, error) {
+	caveatsPath := caveatsPathOf(o)
 	doc, meta, err := decodeDrilldown(v.Projection, o.Projections[v.Projection])
 	if err != nil {
 		return drilldownPageData{}, err
@@ -1241,7 +1330,7 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			// than a gap: paintYearWords replaces the tile row from these on
 			// every year switch, so a page that renders none server-side must
 			// hand the client none either.
-			Caveats: m.Caveats,
+			Caveats: caveatRefs(m.Caveats, stem, caveatsPath),
 			Counts: countsRef{
 				Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links,
 			},
@@ -1279,7 +1368,8 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  refs,
 			DataPath:     files[v.Projection],
-			Caveats:      meta.Caveats,
+			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
+			CaveatsPath:  caveatsPath,
 		},
 		FiscalYearLabel: meta.FiscalYearLabel,
 		Basis:           meta.Basis,
@@ -1397,6 +1487,7 @@ type trendsBody struct {
 func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (trendsPageData, error) {
+	caveatsPath := caveatsPathOf(o)
 	raw := o.Projections[v.Projection]
 	doc, err := decodeDocument(v.Projection, raw)
 	if err != nil {
@@ -1513,7 +1604,8 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Projections:  refs,
 			DataPath:     path.Join(DataDir, v.Projection+".json"),
 			Scope:        meta.Scope,
-			Caveats:      meta.Caveats,
+			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
+			CaveatsPath:  caveatsPath,
 		},
 		Columns: columns,
 		Series:  series,
@@ -1530,6 +1622,39 @@ type provenancePageData struct {
 	Documents int
 	Pages     int
 	Records   int
+}
+
+// caveatsPageData is every published document's caveats, in full.
+//
+// GROUPED BY DOCUMENT AND NOT BY CAVEAT, which is forced rather than chosen.
+// One id can carry different text in different documents -- transfer-legs-
+// unpaired has three sentences and the FY2027 spine carries a contested-total
+// entry FY2026 does not -- so a page keyed on id alone would have to pick one
+// text and would be wrong about the others.
+type caveatsPageData struct {
+	chrome
+	Documents []caveatDocument
+	// Count is every caveat on the page, across documents, so the lede can say
+	// how many without the template summing a nested range.
+	Count int
+}
+
+// caveatDocument is one published document's section of the caveats page.
+type caveatDocument struct {
+	Stem     string
+	Label    string
+	DataPath string
+	Entries  []caveatEntry
+}
+
+// caveatEntry is one caveat, rendered whole. Anchor is what every other page's
+// summary links to.
+type caveatEntry struct {
+	ID        string
+	Anchor    string
+	Summary   string
+	Text      string
+	AppliesTo []string
 }
 
 // provenanceRow is one published locator, with both halves of its citation
@@ -1658,6 +1783,110 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Documents: len(order),
 		Pages:     len(rows),
 		Records:   records,
+	}, nil
+}
+
+// buildCaveatsPage lists every published document's caveats, in full, with an
+// anchor per (document, caveat) that every other page's summary links to.
+//
+// IT NAMES NO PROJECTION, and is the second view of which that is true. A
+// caveat belongs to a document, and this page is an index ACROSS them -- naming
+// any one would make the other five's caveats read as that document's. That is
+// why View.validate's "names no projection" arm is a weakening rather than a
+// rule, and why CaveatsTemplate has to be in templateIsKnown: without it, a
+// caveats view that DID name a projection would be refused with advice that is
+// right by accident.
+//
+// THREE REFUSALS, and each is a failure that renders. An empty page means
+// views() added a nav entry to nothing. A caveat with no id publishes an anchor
+// of "#caveat-<stem>--", which every summary on the site would then share. Two
+// entries claiming one anchor is a link that lands on the wrong paragraph, and
+// the reader has no way to tell. project.ValidateCaveats catches the first two
+// within a document at build time; this catches them again across the site,
+// because a document decoded from bytes has not been through that.
+func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
+	pageTextBase func(string) string,
+) (caveatsPageData, error) {
+	caveatsPath := caveatsPathOf(o)
+	anchors := map[string]string{}
+	docs := make([]caveatDocument, 0, len(o.Projections))
+	count := 0
+	for _, stem := range sortedKeys(o.Projections) {
+		var dc documentCaveats
+		if err := json.Unmarshal(o.Projections[stem], &dc); err != nil {
+			return caveatsPageData{}, fmt.Errorf("decode %s caveats: %w", stem, err)
+		}
+		if len(dc.Metadata.Caveats) == 0 {
+			continue
+		}
+		entries := make([]caveatEntry, 0, len(dc.Metadata.Caveats))
+		for _, c := range dc.Metadata.Caveats {
+			switch {
+			case c.ID == "":
+				return caveatsPageData{}, fmt.Errorf(
+					"%s carries a caveat with no id, and the id is the anchor every other page links to", stem)
+			case c.Summary == "":
+				return caveatsPageData{}, fmt.Errorf(
+					"%s caveat %q has no summary, and the summary is what the other pages show in its place", stem, c.ID)
+			case c.Text == "":
+				return caveatsPageData{}, fmt.Errorf(
+					"%s caveat %q has no text, so this page would publish a heading over nothing", stem, c.ID)
+			}
+			a := caveatAnchor(stem, c.ID)
+			if prev, dup := anchors[a]; dup {
+				return caveatsPageData{}, fmt.Errorf(
+					"caveat anchor %q is claimed by both %s and %s; an anchor is a published "+
+						"URL fragment and a link to a repeated one lands on whichever the browser finds first",
+					a, prev, stem)
+			}
+			anchors[a] = stem
+			entries = append(entries, caveatEntry{
+				ID: c.ID, Anchor: a, Summary: c.Summary, Text: c.Text, AppliesTo: c.AppliesTo,
+			})
+		}
+		count += len(entries)
+		label := dc.Metadata.FiscalYearLabel
+		if label != "" && dc.Metadata.Basis != "" {
+			label += " " + dc.Metadata.Basis
+		}
+		docs = append(docs, caveatDocument{
+			Stem:     stem,
+			Label:    label,
+			DataPath: path.Join(DataDir, stem+".json"),
+			Entries:  entries,
+		})
+	}
+	if count == 0 {
+		return caveatsPageData{}, fmt.Errorf(
+			"view %q renders the caveats index and no published document carries a caveat; "+
+				"views() adds this page only when there is something to list", v.Path)
+	}
+
+	title := v.Title
+	if title == "" {
+		title = "What this site's figures do not say"
+	}
+	return caveatsPageData{
+		chrome: chrome{
+			Title:       title,
+			Lede:        v.Lede,
+			Nav:         nav,
+			ExportedBy:  o.GeneratedBy,
+			Projections: projectionRefs(o.Projections),
+			CaveatsPath: caveatsPath,
+			// NO Sources, AND THAT IS THE POINT rather than an omission.
+			// TestEachViewsFooterCitesItsOwnSources enforces that a page must
+			// not advertise pages it never showed a figure from, and this page
+			// shows no figures at all -- it publishes sentences about
+			// documents, each of which links to the document itself. Naming
+			// the union of every document's pages here would be this site's
+			// broadest false provenance claim.
+			//
+			// NO DataPath either, for buildProvenancePage's reason: this page
+			// draws no projection.
+		},
+		Documents: docs,
+		Count:     count,
 	}, nil
 }
 

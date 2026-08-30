@@ -735,6 +735,19 @@ svg.sankey .node {
   font-size: 14px;
 }
 
+/* A summary is a link to its own paragraph on caveats.html. The whole row is
+   the target rather than a word in it, because the row IS the sentence. */
+.caveats li a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.caveats li a:hover,
+.caveats li a:focus {
+  color: var(--ink-1);
+  text-decoration: underline;
+}
+
 .derived-list {
   list-style: none;
   padding: 0;
@@ -807,6 +820,66 @@ details > summary {
   color: var(--ink-2);
   font-size: 14px;
   padding: 6px 0;
+}
+
+/* ---------- the caveats page ---------- */
+
+/* One document's section. The rule above each is what separates a schedule's
+   caveats from the next schedule's without a box around either. */
+.caveat-doc {
+  margin-top: 32px;
+  border-top: 1px solid var(--grid);
+}
+
+.caveat-doc > h2 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+/* The summary is the heading, and the text below it is the caveat. The left
+   rule is the same mark .caveats li carries on the chart pages, so a reader who
+   followed a link from one arrives at something that looks like what they
+   clicked. */
+.caveat {
+  border-left: 3px solid var(--rule);
+  padding: 2px 0 2px 14px;
+  margin: 16px 0;
+  max-width: 46em;
+}
+
+.caveat > h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+/* The heading links to its own anchor, which is how a reader copies a link to
+   one caveat. Undecorated until hovered, because every heading on the page
+   carrying an underline reads as a list of links rather than as prose. */
+.anchor-link {
+  color: var(--ink-1);
+  text-decoration: none;
+}
+
+.anchor-link:hover,
+.anchor-link:focus {
+  text-decoration: underline;
+}
+
+.caveat > p {
+  margin: 0 0 6px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+/* :target is the caveat a reader followed a link to. It is the only feedback
+   that the anchor did anything on a long page. */
+.caveat:target {
+  border-left-color: var(--critical);
+}
+
+.caveat:target > h3 {
+  color: var(--ink-1);
 }
 
 /* ---------- the disclosed apparatus ---------- */

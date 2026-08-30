@@ -45,13 +45,16 @@ one, because naively summing the expenditure column double-counts transfers by
 23%, and showing the error you are avoiding is more useful than quietly avoiding
 it.
 
-The site publishes **four pages**. `index.html` is the fund-group spine as a
+The site publishes **five pages**. `index.html` is the fund-group spine as a
 Sankey, with a toggle between the two adopted years. `revenue.html` draws all
 **924** of pp.127-140 — 231 printed rows across four columns, every figure a link
 to the extracted text of the page it was read from, and a per-row mark whose
 scale is that row's own. `drilldown.html` draws pp.127-140 and pp.167-170
 together, one document per printed column. `provenance.html` is the record store
-itself: every fact, its page, and the text it was read from.
+itself: every fact, its page, and the text it was read from. `caveats.html` is
+every published document's caveats in full — the other pages show each as one
+line and link here, so a reader meets the chart before the apparatus rather than
+scrolling past 250 words of it.
 
 Three schedules are published and checked but **not yet drawn**: pp.85-125 (312
 facts), p.76 (88) and ACFR p.41 (20). `fisc verify` declares each undrawn

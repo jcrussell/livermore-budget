@@ -179,10 +179,22 @@
   <p class="lede">
     Every one of these ships with the data rather than in a footnote, so a reader who
     downloads <a href="{{.DataPath}}">{{.DataPath}}</a> gets them too.
+    {{- if .CaveatsPath}} The full text of each is on
+    <a href="{{.CaveatsPath}}">the caveats page</a>, beside every other document's.{{end}}
   </p>
+  {{- /* SUMMARIES, NOT TEXTS, and the link is what makes that honest rather
+         than a truncation: the paragraph still exists, on a page of its own,
+         and the anchor names THIS document's copy of it. A caveat id can carry
+         different text in different documents, so a bare #<id> would land a
+         FY2026-27 reader on FY2025-26's sentence.
+
+         THE LINK IS CONDITIONAL ON THERE BEING A PAGE. A single-view export --
+         Options.views()'s default, and writeGolden -- writes index.html and
+         nothing else, so an unconditional href would ship a dead link and
+         TestEveryAssetThePageAsksForWasWritten would say so. */}}
   <ul class="caveats" id="caveats">
     {{- range .Caveats}}
-    <li>{{.Text}}</li>
+    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
     {{- end}}
   </ul>
 </details>
