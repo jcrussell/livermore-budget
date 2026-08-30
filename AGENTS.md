@@ -789,6 +789,7 @@ tokens against 8 columns, so `len(toks) < ncols` refuses first and geometry neve
 places anything — measured identically with `column_headers` declared and
 without. That guard is also load-bearing against more than a wrong read:
 neutering it panics on the `toks[:ncols]` two lines below.
+
 Three successive attempts in this file to summarise this function were wrong in
 three different ways; if you need the behaviour, read `labelledValues` and write
 a probe, and do not trust this paragraph over the code.

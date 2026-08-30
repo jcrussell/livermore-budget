@@ -1304,13 +1304,28 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 		return nil
 	}
 	for i := range r.Parts {
-		for j := range r.Parts[i].Columns {
-			near := row.EffectiveColumn(r.Parts[i].Columns[j])
+		p := &r.Parts[i]
+		// A PART THAT DOES NOT PRINT THIS ROW PUBLISHES NO FACT FROM IT, so it
+		// cannot collide. Refusing on one would be a false refusal against a
+		// cell the document does not have.
+		if omittedSet(p)[row.Identity()] {
+			continue
+		}
+		for j := range p.Columns {
+			// Same for a skipped column: it consumes its position and yields no
+			// fact, so there is nothing for the far leg to collide with. Both
+			// arms are latent on the committed corpus -- no skipped column
+			// carries a fund today -- and both were real false refusals,
+			// reproduced through Parse before being fixed.
+			if p.Columns[j].Skip {
+				continue
+			}
+			near := row.EffectiveColumn(p.Columns[j])
 			if cp.Fund == near.Fund && cp.FundGroup == near.FundGroup {
 				return cmdutil.WithHint(
 					errf(r.ID, "rows", "row %q: counterpart is the same category and the "+
 						"same fund as the row itself in column %d of the part on page %d",
-						row.Label, j+1, r.Parts[i].Page),
+						row.Label, j+1, p.Page),
 					"the two legs of one figure are told apart by their category and "+
 						"their fund; identical on both, they are one fact published twice")
 			}

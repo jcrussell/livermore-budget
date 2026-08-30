@@ -286,3 +286,113 @@ func errfLike(ruleID, field, format string, args ...any) error {
 	return &ParseError{Path: "counterpart_test", RuleID: ruleID, Field: field,
 		Msg: fmt.Sprintf(format, args...)}
 }
+
+// TestTheIdenticalLegsArmIgnoresCellsThatPublishNothing is the second review
+// pass over the guards lane, and it guards against a FALSE REFUSAL the fix for
+// fisc-i38 introduced.
+//
+// That fix made the arm compare the counterpart against every column of every
+// part. "Every" was too many: a skip: true column consumes its position and
+// yields no fact, and a part whose omitted_rows drop this row prints no cell for
+// it at all. Neither can collide with anything, because neither publishes
+// anything -- so refusing on one is a refusal against a cell the document does
+// not have.
+//
+// THE ROW DECLARES NO FUND HERE, and it has to be that way for the case to
+// exist: Row.EffectiveColumn lets a row's own fund override the column's, so a
+// row declaring fund 100 can never collide with a column declaring 200 whatever
+// the counterpart says. The collision this arm is for needs the fund to come
+// from the COLUMN -- which is the shape of every schedule that maps one fund per
+// column, pp.127-140 among them.
+//
+// Latent on the committed corpus, since no skipped column there carries a fund.
+// Reproduced through Parse before being fixed, which is why this goes through
+// Parse rather than calling checkCounterpart with a hand-built Rule.
+func TestTheIdenticalLegsArmIgnoresCellsThatPublishNothing(t *testing.T) {
+	rule := func(secondColumn string) string {
+		return `schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+rules:
+  - id: r
+    kind: transfer_in
+    basis: adopted
+    units: dollars
+    parts:
+      - page: 76
+        section: "S"
+        stop_at: "E"
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+          - ` + secondColumn + `
+    rows:
+      - label: "Transfer From Low Income Hsng"
+        category: transfers/in
+        counterpart: {category: transfers/in, kind: transfer_out, fund: 200, fund_group: special-revenue}
+`
+	}
+
+	// The counterpart names fund 200 in special-revenue, and so does the second
+	// column -- but that column is skipped, so it publishes nothing.
+	skipped := rule("{fund_group: special-revenue, fund: 200, fiscal_year: 2026, skip: true}")
+	if _, err := Parse(strings.NewReader(skipped), "skip.yaml"); err != nil {
+		t.Errorf("a counterpart colliding only with a SKIPPED column was refused: %v\n"+
+			"a skipped column publishes no fact, so there is nothing to collide with", err)
+	}
+
+	// The same collision on a column the rule actually reads is still refused,
+	// so the exemption above is about the CELL and not about the arm.
+	live := rule("{fund_group: special-revenue, fund: 200, fiscal_year: 2026}")
+	_, err := Parse(strings.NewReader(live), "live.yaml")
+	if err == nil {
+		t.Fatal("a counterpart duplicating a LIVE column was accepted")
+	}
+	if !strings.Contains(err.Error(), "column 2") {
+		t.Errorf("error %q does not name the colliding column", err)
+	}
+
+	// THE OTHER EXEMPTION: a part that does not print this row. Its columns are
+	// live, and the row has no cell under any of them, so a counterpart matching
+	// one of them collides with nothing. Written separately because the two arms
+	// are independent -- removing the omitted-rows arm left the whole package
+	// green until this case existed.
+	const omitted = `schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+rules:
+  - id: r
+    kind: transfer_in
+    basis: adopted
+    units: dollars
+    parts:
+      - page: 76
+        section: "S"
+        stop_at: "E"
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+      - page: 77
+        section: "S"
+        stop_at: "E"
+        omitted_rows: [{label: "Transfer From Low Income Hsng"}]
+        columns:
+          - {fund_group: special-revenue, fund: 200, fiscal_year: 2026}
+    rows:
+      - label: "Transfer From Low Income Hsng"
+        category: transfers/in
+        counterpart: {category: transfers/in, kind: transfer_out, fund: 200, fund_group: special-revenue}
+      - label: "Transfer From Water"
+        category: transfers/in
+`
+	if _, err := Parse(strings.NewReader(omitted), "omitted.yaml"); err != nil {
+		t.Errorf("a counterpart colliding only with a column of a part that OMITS "+
+			"this row was refused: %v\nthe row has no cell there to collide with", err)
+	}
+
+	// And with the omission removed, p77's column is live for this row and the
+	// same counterpart is refused -- so the exemption turns on the declaration
+	// rather than on the second part existing at all.
+	present := strings.Replace(omitted,
+		"        omitted_rows: [{label: \"Transfer From Low Income Hsng\"}]\n", "", 1)
+	if _, err := Parse(strings.NewReader(present), "present.yaml"); err == nil {
+		t.Error("a counterpart duplicating a column of a part that PRINTS this row " +
+			"was accepted")
+	}
+}
