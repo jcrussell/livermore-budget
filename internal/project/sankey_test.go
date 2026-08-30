@@ -702,7 +702,7 @@ func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
 	col := Column{FiscalYear: testYear, Basis: testBasis}
 	h := Headline{InternalTransferInCents: 100000, InternalTransferOutCents: 500000}
 
-	if got := transferCaveat(h, col).Text; strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(h, col, nil).Text; strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("a $4,000.00 residual claimed the printed column:\n%s", got)
 	}
 
@@ -710,10 +710,10 @@ func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
 	// the arithmetic does: those pages carry one budget column per year.
 	revised := Column{FiscalYear: testYear, Basis: mapping.BasisRevised}
 	real := Headline{InternalTransferInCents: 2152599700, InternalTransferOutCents: 5961273400}
-	if got := transferCaveat(real, revised).Text; strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(real, revised, nil).Text; strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("a revised column claimed a schedule that prints only an adopted one:\n%s", got)
 	}
-	if got := transferCaveat(real, col).Text; !strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(real, col, nil).Text; !strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("the adopted column did not name the printed column:\n%s", got)
 	}
 
@@ -725,8 +725,67 @@ func TestTransferCaveatDeclinesTheColumnItCannotVouchFor(t *testing.T) {
 		InternalTransferInCents:  real.InternalTransferOutCents,
 		InternalTransferOutCents: real.InternalTransferInCents,
 	}
-	if got := transferCaveat(inverted, col).Text; strings.Contains(got, "Transfers Out to CIP") {
+	if got := transferCaveat(inverted, col, nil).Text; strings.Contains(got, "Transfers Out to CIP") {
 		t.Errorf("transfers in exceeding out by the tabled figure claimed an OUT column:\n%s", got)
+	}
+}
+
+// TestTheTransferCaveatMarksTheLegsTheGraphDRAWS is the arm that stops
+// AppliesTo being a guess.
+//
+// TWO WRONG VERSIONS PRECEDED THE ONE THIS PINS. Naming both legs
+// unconditionally pointed at a node a transfers-in-only document does not
+// carry; gating each on its own headline total fixed that and was still a
+// PROXY, because a non-zero total says a transfer_out fact was summed, not that
+// the node it produced is spelled "transfers/out". This asserts the endpoints
+// come off the LINKS, which is the thing itself.
+//
+// The third case is the one no headline can answer: same totals, different
+// node id. It is not a shape the corpus produces today -- which is exactly why
+// it needs a test rather than a reader's confidence.
+func TestTheTransferCaveatMarksTheLegsTheGraphDRAWS(t *testing.T) {
+	col := Column{FiscalYear: testYear, Basis: testBasis}
+	h := Headline{InternalTransferInCents: 100, InternalTransferOutCents: 500}
+
+	both := []Link{
+		{Source: nodeTransfersIn, Target: prefixFundGroup + "general",
+			ValueCents: 100, Kind: KindInternalTransfer},
+		{Source: prefixFundGroup + "general", Target: nodeTransfersOut,
+			ValueCents: 500, Kind: KindInternalTransfer},
+	}
+	if diff := cmp.Diff([]string{nodeTransfersIn, nodeTransfersOut},
+		transferCaveat(h, col, both).AppliesTo); diff != "" {
+		t.Errorf("both legs drawn (-want +got):\n%s", diff)
+	}
+
+	// One leg drawn, the other only in the totals. The caveat still fires --
+	// caveats() gates on either side being non-zero -- and must mark only what
+	// is there, or ValidateCaveats aborts the build.
+	inOnly := both[:1]
+	if diff := cmp.Diff([]string{nodeTransfersIn},
+		transferCaveat(h, col, inOnly).AppliesTo); diff != "" {
+		t.Errorf("only the in leg drawn (-want +got):\n%s", diff)
+	}
+
+	// A transfer endpoint the corpus does not use today. The headline is
+	// identical to the first case and the answer must not be.
+	odd := []Link{
+		{Source: prefixFundGroup + "general", Target: prefixTransfers + "out-to-cip",
+			ValueCents: 500, Kind: KindInternalTransfer},
+	}
+	if diff := cmp.Diff([]string{prefixTransfers + "out-to-cip"},
+		transferCaveat(h, col, odd).AppliesTo); diff != "" {
+		t.Errorf("an endpoint named otherwise (-want +got):\n%s", diff)
+	}
+
+	// A link that is not a transfer contributes nothing, so a fund-balance
+	// endpoint at tier 0 is not mistaken for a leg.
+	none := []Link{
+		{Source: "fund-balance/draw", Target: prefixFundGroup + "general",
+			ValueCents: 100, Kind: KindFundBalance},
+	}
+	if got := transferCaveat(h, col, none).AppliesTo; len(got) != 0 {
+		t.Errorf("a graph with no transfer link marked %v", got)
 	}
 }
 
@@ -757,7 +816,7 @@ func TestEveryPrintedToCIPColumnIsCited(t *testing.T) {
 		// Drive the real function rather than reading the field, so this fails
 		// if the citation stops reaching the prose as well as if it changes.
 		h := Headline{InternalTransferOutCents: int64(cip.Cents), InternalTransferInCents: 0}
-		got := transferCaveat(h, col).Text
+		got := transferCaveat(h, col, nil).Text
 		if !strings.Contains(got, page) {
 			t.Errorf("%s cites no %s:\n%s", col, page, got)
 		}

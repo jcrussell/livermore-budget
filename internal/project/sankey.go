@@ -82,6 +82,10 @@ const (
 	prefixFundGroup   = "fund-group/"
 	prefixFund        = "fund/"
 	prefixDept        = "dept/"
+	// prefixTransfers is the flow endpoints outside the hierarchy. Nothing is
+	// parented to them; the prefix exists so transferEndpoints can recognise a
+	// transfer node without a list of ids to keep in step.
+	prefixTransfers = "transfers/"
 )
 
 // nodeTransfersIn is the flow endpoint every transfer arrives from. It sits
@@ -1045,7 +1049,7 @@ func caveats(h Headline, col Column, links []Link) []Caveat {
 	out := make([]Caveat, 0, 5)
 
 	if h.InternalTransferInCents != 0 || h.InternalTransferOutCents != 0 {
-		out = append(out, transferCaveat(h, col))
+		out = append(out, transferCaveat(h, col, links))
 	}
 	for _, l := range links {
 		if l.Kind == KindInternalService {
@@ -1076,6 +1080,35 @@ func groupExpenditure(links []Link, fundGroup string) int64 {
 		}
 	}
 	return total
+}
+
+// transferEndpoints is the transfer nodes this graph actually draws, in the
+// order the diagram reads: the source of every internal-transfer link, then the
+// target. Ids rather than a hard-coded pair, because the caveat has to name
+// what the document carries -- see transferCaveat.
+//
+// It returns [] and not nil for a document with no transfer links: the field is
+// published with no omitempty, and nil would write JSON null where every other
+// empty list writes [].
+func transferEndpoints(links []Link) []string {
+	seen := map[string]bool{}
+	var in, out []string
+	for _, l := range links {
+		if l.Kind != KindInternalTransfer {
+			continue
+		}
+		if strings.HasPrefix(l.Source, prefixTransfers) && !seen[l.Source] {
+			seen[l.Source] = true
+			in = append(in, l.Source)
+		}
+		if strings.HasPrefix(l.Target, prefixTransfers) && !seen[l.Target] {
+			seen[l.Target] = true
+			out = append(out, l.Target)
+		}
+	}
+	slices.Sort(in)
+	slices.Sort(out)
+	return append(append(make([]string, 0, len(in)+len(out)), in...), out...)
 }
 
 // contestedCaveat is the sentence for one contested total, or "" when this
@@ -1167,7 +1200,7 @@ var transfersOutToCIP = map[Column]struct {
 // because pp.72-75 print a to-CIP figure per major fund and one aggregate for
 // every non-major one -- this project's own published-is-not-derived rule, made
 // in full at internal/check/transfersdetail.go's collapseNonMajor.
-func transferCaveat(h Headline, col Column) Caveat {
+func transferCaveat(h Headline, col Column, links []Link) Caveat {
 	// ONE ID OVER THREE TEXTS, deliberately. Which of the three sentences a
 	// document gets is a fact about that document's own arithmetic -- whether
 	// the legs balance, and whether the residual meets the printed to-CIP
@@ -1187,21 +1220,25 @@ func transferCaveat(h Headline, col Column) Caveat {
 		"offset (fisc-9gh). "
 	in, out := h.InternalTransferInCents, h.InternalTransferOutCents
 
-	// AppliesTo NAMES THE LEGS THIS DOCUMENT ACTUALLY HAS, and naming both
-	// unconditionally was wrong: caveats() emits this caveat when EITHER side is
-	// non-zero, so a document with transfers in and none out was publishing an
-	// applies_to pointing at a node it does not carry. ValidateCaveats caught it
-	// -- TestLabelFallback builds exactly that document -- which is the whole
-	// argument for validating the field against the graph rather than trusting
-	// the author of a list of ids. The gate is the same one that creates the
-	// link, so the two cannot disagree.
-	targets := make([]string, 0, 2)
-	if in != 0 {
-		targets = append(targets, nodeTransfersIn)
-	}
-	if out != 0 {
-		targets = append(targets, nodeTransfersOut)
-	}
+	// AppliesTo IS READ OFF THE LINKS, not inferred from the totals above.
+	//
+	// Two wrong versions preceded this one and the second is the instructive
+	// one. Naming both legs unconditionally was plainly wrong -- caveats()
+	// emits this caveat when EITHER side is non-zero, so a transfers-in-only
+	// document pointed at a node it does not carry, and ValidateCaveats caught
+	// it via TestLabelFallback. Gating each leg on its own headline total fixed
+	// that case and was still a PROXY: a non-zero transfers-out total says some
+	// transfer_out fact was summed, not that the node it produced is spelled
+	// "transfers/out". data/taxonomy.yaml admits categories under that kind
+	// which would produce another id, and the failure mode is an aborted build
+	// naming a node nobody wrote -- fail-closed, but from a message that points
+	// at the wrong thing.
+	//
+	// The endpoints are in hand, so use them. A transfer link's own endpoint IS
+	// the node, which is exact rather than a proxy for it, and it degrades the
+	// right way: a document whose transfer endpoints are named something else
+	// marks those, instead of asserting about ids it guessed.
+	targets := transferEndpoints(links)
 
 	if out == in {
 		// NO RESIDUAL, SO NO PRINTED COLUMN TO NAME. The city prints a to-CIP

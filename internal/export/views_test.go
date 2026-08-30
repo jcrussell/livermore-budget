@@ -256,11 +256,22 @@ func TestASingleViewSiteShowsCaveatsWithNoLink(t *testing.T) {
 		t.Error("index.html links to caveats.html, which this site does not carry; a " +
 			"summary that points at a missing page reads as though there is more to read")
 	}
-	// The summary of the caveat the golden spine carries, so this fails if the
-	// list went empty rather than merely unlinked.
-	if !strings.Contains(page, "Permanent Funds are a seventh fund type") {
+	// THE WHOLE SUMMARY, OUTSIDE THE CONFIG BLOB, and both qualifiers are
+	// load-bearing. This asserted the prefix "Permanent Funds are a seventh
+	// fund type", which is (a) in window.FISC_CONFIG whatever the markup does
+	// and (b) a prefix of the caveat's full TEXT as well as of its summary --
+	// so it passed with the summaries deleted, and would equally have passed on
+	// a page that reprinted the 250-word paragraph this change removed.
+	visible := readerVisible(t, page)
+	const summary = "Permanent Funds are a seventh fund type, and this schedule prints no column for them."
+	if !strings.Contains(visible, summary) {
 		t.Error("index.html shows no caveat summaries; with no page to link to they are " +
 			"the whole of what a reader gets, and dropping them is worse than the wall")
+	}
+	const text = "Permanent Funds are a seventh fund type in data/funds.yaml"
+	if strings.Contains(visible, text) {
+		t.Error("index.html prints a caveat's full text; the summary stands in for it, and " +
+			"a site with no caveats page is not a reason to put the wall back")
 	}
 }
 

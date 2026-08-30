@@ -517,11 +517,14 @@ func views(built Result) []export.View {
 	// one line and link here instead of reprinting a 250-word paragraph
 	// underneath a chart.
 	//
-	// UNCONDITIONAL, unlike every view above it, and the asymmetry is a claim
-	// worth stating rather than an oversight. Those are conditional because a
-	// nav entry pointing at a page that was not written is the failure views()
-	// exists to prevent -- and a document that was not built cannot be
-	// rendered. This page depends on no single document, and every builder in
+	// UNCONDITIONAL, like the spine and unlike the three views between them,
+	// and the asymmetry is a claim worth stating rather than an oversight.
+	// Those three are conditional because a nav entry pointing at a page that
+	// was not written is the failure views() exists to prevent -- and a
+	// document that was not built cannot be rendered. The spine is
+	// unconditional because a site with no index.html is not a site, and
+	// Options.validate refuses one. This page is unconditional for a third
+	// reason: it depends on no single document. Every builder in
 	// internal/project emits caveats unconditionally: caveats() always appends
 	// the stocks and permanent-funds pair, fundFlowsCaveats returns three, and
 	// trendsCaveats returns three. So the empty case cannot arise from this
@@ -545,9 +548,10 @@ func views(built Result) []export.View {
 	})
 
 	// THE PROVENANCE INDEX, WHICH NAMES NO PROJECTION. It is an index of the
-	// site's own record store, built from Result.PageIndex, and it is the one
-	// view whose template renders no document -- see
-	// export.templateRendersADocument.
+	// site's own record store, built from Result.PageIndex. It was the one view
+	// whose template rendered no document -- see
+	// export.templateRendersADocument, whose own comment anticipated a second
+	// one -- and the caveats index above is now the other.
 	//
 	// Conditional on the index being non-empty for the same reason every other
 	// view is conditional on its document: a nav entry pointing at a page that

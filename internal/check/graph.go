@@ -1060,6 +1060,19 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 					"that is not the disclosure internal/project declares. The document "+
 					"discloses something, under the right anchor, and it is not the sentence "+
 					"the contract requires", project.ConstraintTierCaveatID))
+		// THE SUMMARY IS CHECKED TOO, because it is the string a reader
+		// actually meets. index.html and drilldown.html print summaries and
+		// link to the text; a document whose text was word-perfect and whose
+		// summary said something else would pass the arm above and still
+		// mislead every reader who did not follow the link -- which is most of
+		// them, since following it is the extra step the summary exists to
+		// save. Nothing else constrains this field beyond non-emptiness.
+		case caveats[i].Summary != project.ConstraintTierCaveat().Summary:
+			findings = append(findings, finding(p.String(),
+				"nodes here carry constraint tiers and metadata.caveats carries %q whose "+
+					"SUMMARY is not the one internal/project declares. The summary is what "+
+					"the chart pages print in place of the text, so a reader who does not "+
+					"follow the link meets this sentence and no other", project.ConstraintTierCaveatID))
 		}
 	}
 

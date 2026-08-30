@@ -225,8 +225,9 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 	var doc struct {
 		Metadata struct {
 			Caveats []struct {
-				ID   string `json:"id"`
-				Text string `json:"text"`
+				ID      string `json:"id"`
+				Summary string `json:"summary"`
+				Text    string `json:"text"`
 			} `json:"caveats"`
 		} `json:"metadata"`
 	}
@@ -236,19 +237,36 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 	if len(doc.Metadata.Caveats) == 0 {
 		t.Fatal("golden projection has no caveats to render")
 	}
+	// THE CONFIG BLOB IS REMOVED BEFORE ANYTHING IS SEARCHED, and without that
+	// this test is vacuous. index.html ships the whole projection as JSON in
+	// window.FISC_CONFIG, so every caveat's text is in the file whatever the
+	// markup does -- measured: replace the entire <ul class="caveats"> range
+	// with an empty <ul> and the substring form of this test still PASSED.
+	// That is the same defect as the p76 guard's, one file over, and it is why
+	// "is the string in the page" is never the right question here.
+	visible := readerVisible(t, page)
+
 	for _, caveat := range doc.Metadata.Caveats {
-		// THE TEXT, NOT THE SUMMARY. The whole caveat is what has to survive a
-		// page rendered without JavaScript; asserting on the summary would pass
-		// over a page that had quietly dropped the paragraph it stands in for.
+		// THE SUMMARY, because that is what this page renders without
+		// JavaScript. It used to be the text, which was right when the page
+		// printed the paragraph and became unfalsifiable when it stopped:
+		// the text is still in the file, in the blob just removed.
 		//
 		// html/template escapes as it renders, so compare against the escaped
 		// form rather than asserting on a prefix that happens to be plain.
-		head := caveat.Text
+		head := caveat.Summary
 		if i := strings.IndexAny(head, "&<>'\"$("); i > 20 {
 			head = head[:i]
 		}
-		if !strings.Contains(page, head) {
-			t.Errorf("caveat %q missing from the page: %q", caveat.ID, head)
+		if !strings.Contains(visible, head) {
+			t.Errorf("caveat %q's summary is missing from index.html: %q", caveat.ID, head)
+		}
+		// AND THE PARAGRAPH IS NOT PRINTED HERE. Showing a summary is only
+		// honest as a pointer; a page that showed both would be the wall this
+		// change removed, with a link added to it.
+		if len(caveat.Text) > 80 && strings.Contains(visible, caveat.Text) {
+			t.Errorf("caveat %q's full text is on index.html; the summary is meant to "+
+				"stand in for it, not to precede it", caveat.ID)
 		}
 	}
 }
@@ -832,6 +850,30 @@ func readPage(t *testing.T, dir string) string {
 		t.Fatalf("read index.html: %v", err)
 	}
 	return string(b)
+}
+
+// readerVisible is the page with the FISC_CONFIG script removed.
+//
+// EVERY "does the page say X" ASSERTION NEEDS IT. index.html ships the whole
+// projection as JSON in that one element, so every caveat's text, every
+// figure's note and every source's title is in the file whatever the markup
+// does. Two tests were measured passing on it -- one with the caveat list
+// emptied to <ul></ul>, and the p76 guard after its paragraph moved to another
+// page entirely -- so this is a live failure mode rather than a precaution.
+func readerVisible(t *testing.T, page string) string {
+	t.Helper()
+	const open = "<script>window.FISC_CONFIG"
+	i := strings.Index(page, open)
+	if i < 0 {
+		t.Fatal("page carries no window.FISC_CONFIG; if a page legitimately has none, " +
+			"say so at the call site rather than searching the whole file")
+	}
+	rest := page[i:]
+	j := strings.Index(rest, "</script>")
+	if j < 0 {
+		t.Fatal("the FISC_CONFIG script element is unterminated")
+	}
+	return page[:i] + rest[j+len("</script>"):]
 }
 
 // configBlob pulls the window.FISC_CONFIG assignment back out of the page.
