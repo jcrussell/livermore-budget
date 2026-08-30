@@ -31,7 +31,7 @@ func fundBalanceResult(t *testing.T, cells []testCell) Result {
 func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 	cells := slices.Clone(fixtureCells)
 	for i := range cells {
-		if cells[i].category == fundBalanceEnding && cells[i].group == "general" {
+		if cells[i].category == categoryFundBalanceEnding && cells[i].group == "general" {
 			cells[i].cents += 100
 		}
 	}
@@ -70,7 +70,7 @@ func TestFundBalanceIdentityCatchesAnEndingThatDoesNotFollow(t *testing.T) {
 func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 	var cells []testCell
 	for _, c := range fixtureCells {
-		if c.category == fundBalanceChange && c.group == "general" {
+		if c.category == categoryFundBalanceChange && c.group == "general" {
 			continue
 		}
 		cells = append(cells, c)
@@ -86,7 +86,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 	}
 	got := res.Findings[0].Detail
 	if !strings.Contains(got, "publishes 2 of the three fund-balance lines") ||
-		!strings.Contains(got, fundBalanceChange) {
+		!strings.Contains(got, categoryFundBalanceChange) {
 		t.Errorf("finding %q does not say which line is missing", got)
 	}
 	// The finding must name a FACT, so it points at a line of facts.jsonl. A
@@ -169,7 +169,7 @@ func TestFundBalanceIdentityIsNotVacuousOverTheCommittedCorpus(t *testing.T) {
 func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing.T) {
 	cells := slices.Clone(fixtureCells)
 	for _, c := range fixtureCells {
-		if c.category == fundBalanceEnding && c.group == "general" {
+		if c.category == categoryFundBalanceEnding && c.group == "general" {
 			// The same balance's ending line a second time, at a different
 			// figure, which is what makes it unanswerable rather than merely
 			// repeated.
@@ -198,7 +198,7 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 		t.Errorf("finding subject = %q, want a fact id", res.Findings[0].Subject)
 	}
 	got := res.Findings[0].Detail
-	for _, want := range []string{fundBalanceEnding, "twice", "excluded from it"} {
+	for _, want := range []string{categoryFundBalanceEnding, "twice", "excluded from it"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("finding %q does not contain %q", got, want)
 		}
@@ -230,11 +230,11 @@ func TestFundBalanceFindingsAlwaysNameASubject(t *testing.T) {
 	// exact shape that produced subject="".
 	var cells []testCell
 	for _, c := range fixtureCells {
-		if c.category == fundBalanceBeginning && c.group == "general" {
+		if c.category == categoryFundBalanceBeginning && c.group == "general" {
 			continue
 		}
 		cells = append(cells, c)
-		if c.category == fundBalanceEnding && c.group == "general" {
+		if c.category == categoryFundBalanceEnding && c.group == "general" {
 			cells = append(cells, testCell{c.kind, c.category, c.group, c.cents + 999})
 		}
 	}

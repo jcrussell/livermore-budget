@@ -75,13 +75,19 @@
 #     units, nowhere near the document's own rounding and nothing this file may
 #     absorb.
 #
-#     THE FOURTH BLOCK IS THE ONE THIS FILE MAPS, AND IT TIES IN BOTH COLUMNS:
+#     THE FOURTH BLOCK -- Other Financing Sources -- TIES IN BOTH COLUMNS:
 #     0.70 + (14.50) = (13.80) in FY2024 exactly as 0.53 + (25.72) = (25.19)
-#     does in FY2025. So the prior-year column is not simply broken, and the
-#     reason it is skipped here is the document's declared scope plus the three
-#     blocks above -- not a defect in the two rows this rule reads. Said out
-#     loud because an earlier draft of this comment claimed the page had three
-#     blocks and that FY2024 reconciled in none of them; both halves were false.
+#     does in FY2025. So the prior-year column is not simply broken.
+#
+#     BE PRECISE ABOUT WHICH BLOCKS THIS FILE MAPS, BECAUSE IT IS TWO AND NOT
+#     ONE: Other Financing Sources AND the fund balances. The fund-balance block
+#     is among the three that MISS in FY2024 -- it is the 92.00-against-92.10
+#     above. So the FY2024 skip is not "no defect in what this file reads": it is
+#     that this file reads one block that ties in both columns and one that does
+#     not, and the document's declared fiscal_years settles the rest. Two earlier
+#     drafts of this paragraph were wrong in two different ways -- the first said
+#     the page had three blocks and that FY2024 reconciled in none of them, the
+#     second said the block this file maps ties in both columns, singular.
 #
 #     It is declared skip: true so the column grid still lines up.
 #

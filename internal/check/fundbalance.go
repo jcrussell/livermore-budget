@@ -9,8 +9,12 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// fundBalanceCategories are the three lines the identity is over, and the set is
-// exhaustive on purpose.
+// The three lines this identity is over. The set is exhaustive on purpose, and
+// the names are the ones internal/check/graph.go already declares -- this file
+// shipped a second spelling of two of them (categoryFundBalanceBeginning,
+// categoryFundBalanceEnding) beside the existing categoryFundBalance* pair, which is one
+// concept with two names in one package. graph.go's comment explains why THOSE
+// restate internal/project's constants; there was no such reason for a third set.
 //
 // There is a FOURTH fund_balance category -- fund-balance/reserve-increase, the
 // spine's ADDITION TO RESERVES -- and it is NOT a term of this identity. It is a
@@ -22,11 +26,6 @@ import (
 // twelve spine balances, not all of them. Two is enough to redden the check and
 // enough to make the exclusion worth pinning; an earlier version of this comment
 // said "eleven of the twelve" and was simply wrong.
-const (
-	fundBalanceBeginning = "fund-balance/beginning"
-	fundBalanceChange    = "fund-balance/change"
-	fundBalanceEnding    = "fund-balance/ending"
-)
 
 // fundBalanceIdentity asserts that a fund balance's three published lines agree:
 // beginning + change == ending, at zero tolerance.
@@ -119,7 +118,7 @@ type balance struct {
 // whose subject is empty addresses nothing, and the report is what a reader
 // greps.
 func (b *balance) subject(k fundBalanceKey) string {
-	for _, c := range []string{fundBalanceBeginning, fundBalanceChange, fundBalanceEnding} {
+	for _, c := range []string{categoryFundBalanceBeginning, categoryFundBalanceChange, categoryFundBalanceEnding} {
 		if id, ok := b.ids[c]; ok && id != "" {
 			return id
 		}
@@ -133,7 +132,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 
 	for _, f := range s.Facts {
 		switch f.Category {
-		case fundBalanceBeginning, fundBalanceChange, fundBalanceEnding:
+		case categoryFundBalanceBeginning, categoryFundBalanceChange, categoryFundBalanceEnding:
 		default:
 			continue
 		}
@@ -184,7 +183,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 
 		var missing []string
-		for _, c := range []string{fundBalanceBeginning, fundBalanceChange, fundBalanceEnding} {
+		for _, c := range []string{categoryFundBalanceBeginning, categoryFundBalanceChange, categoryFundBalanceEnding} {
 			if _, ok := b.amounts[c]; !ok {
 				missing = append(missing, c)
 			}
@@ -199,10 +198,10 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 		}
 
 		complete++
-		beginning, change, ending := b.amounts[fundBalanceBeginning],
-			b.amounts[fundBalanceChange], b.amounts[fundBalanceEnding]
+		beginning, change, ending := b.amounts[categoryFundBalanceBeginning],
+			b.amounts[categoryFundBalanceChange], b.amounts[categoryFundBalanceEnding]
 		if got := beginning + change; got != ending {
-			findings = append(findings, finding(b.ids[fundBalanceEnding],
+			findings = append(findings, finding(b.ids[categoryFundBalanceEnding],
 				"%s: beginning %s + change %s = %s, but the document prints an ending "+
 					"balance of %s, a difference of %s",
 				k, beginning, change, got, ending, ending-got))

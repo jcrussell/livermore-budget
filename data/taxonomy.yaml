@@ -10,9 +10,12 @@
 # says otherwise, and the ACFR aliases added for `mappings/livermore-acfr-fy2025.yaml`
 # say so in a `note:`. That is a convention and not a check: all three
 # registered documents have a page 41, so `pages: [41]` is ambiguous to anything
-# that reads this file mechanically. Putting a document on the channel is filed
-# as a bead. Do not add an entry whose page could belong to two documents
-# without naming which.
+# that reads this file mechanically. Putting a document on the channel is
+# fisc-e0p8, which reaches the same problem from the other side -- nothing bounds
+# a `pages` entry to a page the document actually has, and that bead's own text
+# already says "a category also carries no doc_id, so even a page COUNT would not
+# say which document to bound against". Do not add an entry whose page could
+# belong to two documents without naming which.
 #@cite     "Citywide Revenues, Expenditures, and Fund Balance/Working Capital", PDF pp. 66-67
 #@cite     "Fund Balance by Major and Aggregate Non-Major Funds", PDF pp. 68-75
 #@cite     "Revenues Sources by Fund" / "Revenue Sources by Funds", PDF pp. 127-140
