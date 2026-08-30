@@ -200,6 +200,32 @@ type Rollup struct {
 	// it means "the rule declares none", which is a different claim.
 	Unassertable string `yaml:"unassertable"`
 
+	// Kinds names the kinds the covered rules span, and is declared ONLY where
+	// they span more than one.
+	//
+	// WHAT IT CANNOT DO, said first because the name invites the opposite
+	// reading: it cannot catch a wrong kind. It is required to equal the set the
+	// covered rules already carry, so it can only ever restate them. What it
+	// buys is that a mixed-kind rollup becomes a sentence someone wrote down —
+	// the difference between a statement and an accident.
+	//
+	// WHY MIXED IS NOT SIMPLY REFUSED. p140 prints "Total Sources", which is
+	// literally revenue plus transfers in — a real printed line over two kinds,
+	// declared Unassertable today for an unrelated reason (fisc-wev). Refusing
+	// mixed kinds outright would choose a rule the corpus has not asked for, and
+	// would have to be unpicked the first time such a total became assertable.
+	// Scope is the opposite case and IS refused: see validateRollups.
+	//
+	// It compares Rule.Kind and not the effective kinds of rows. A rule's kind
+	// is the schedule's own claim about what it maps; a Row.Kind override is
+	// about one printed line, and the eleven mixed fund blocks on pp.131-140
+	// carry a Transfers In row inside a revenue rule without making that rule a
+	// transfer schedule. No rollup covers such a rule today, so this is a
+	// statement of intent rather than a measurement of the corpus.
+	//
+	// Like Rule.TotalRowKinds, nothing in mappings/ declares it yet.
+	Kinds []Kind `yaml:"kinds"`
+
 	// Note records why this rollup looks the way it does.
 	Note string `yaml:"note"`
 }

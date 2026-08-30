@@ -315,6 +315,28 @@ func validateRollups(f *File, errf errFunc) error {
 					"rule %q states its figures in %s and rule %q in %s",
 					first.ID, first.Units, id, rule.Units)
 			}
+			// SCOPE IS REFUSED WHERE KIND IS DECLARED, and the asymmetry is the
+			// point rather than an oversight.
+			//
+			// A scope is a claim about WHICH MONEY a rule's facts are, and two
+			// scopes over one printed total is fisc-u2v's doubling mechanism
+			// raised to the rollup: pp.85-125 and pp.66-67 are the same
+			// expenditure counted two ways, so a rollup summing a detail-scope
+			// total into a spine-scope one produces a figure that adds up and
+			// means nothing. A tie there says the arithmetic worked, not that
+			// the claim is true, and no printed line in this corpus wants it.
+			//
+			// It needs no pages and no registry, so it is refused here rather
+			// than in CheckRollup.
+			if first.Scope != rule.Scope {
+				return cmdutil.WithHint(
+					errf("", field("covers"),
+						"rule %q is scope %q and rule %q is scope %q",
+						first.ID, first.Scope, id, rule.Scope),
+					"a rollup adds totals that are the same money counted once; "+
+						"two scopes over one printed total is the same money "+
+						"counted twice, which ties and still misstates the city")
+			}
 			if !slices.Equal(first.Parts[0].Columns, rule.Parts[0].Columns) {
 				return cmdutil.WithHint(
 					errf("", field("covers"),
@@ -323,8 +345,84 @@ func validateRollups(f *File, errf errFunc) error {
 						"only meaningful where the columns are the same")
 			}
 		}
+		if err := validateRollupKinds(ro, byID, field, errf); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// validateRollupKinds checks the declaration that a printed total covers more
+// than one kind.
+//
+// It is the mirror of the scope refusal above and deliberately the opposite
+// answer. Two scopes over one total is always wrong; two KINDS is sometimes what
+// the page prints -- p140's "Total Sources" is revenue plus transfers in -- so
+// this requires the author to say so rather than refusing them the shape.
+//
+// Both refusals here are of a declaration that asserts nothing, which is
+// validateTotalRowKinds' discipline: a list that restates what the rules already
+// agree on records a belief, and one that is absent where they disagree lets a
+// mixed-kind rollup pass as an accident.
+func validateRollupKinds(ro *Rollup, byID map[string]*Rule, field func(string) string,
+	errf errFunc) error {
+
+	span := map[Kind]bool{}
+	for _, id := range ro.Covers {
+		span[byID[id].Kind] = true
+	}
+	declared := map[Kind]bool{}
+	for _, k := range ro.Kinds {
+		if !k.valid() {
+			return errf("", field("kinds"), "%q is not one of the five kinds", k)
+		}
+		if declared[k] {
+			return errf("", field("kinds"), "%q is listed twice", k)
+		}
+		declared[k] = true
+	}
+	if len(span) == 1 {
+		if len(ro.Kinds) > 0 {
+			return cmdutil.WithHint(
+				errf("", field("kinds"), "is declared and every covered rule is kind %q",
+					sortedKinds(span)[0]),
+				"the list exists to say that a printed total spans more than one "+
+					"kind; where they agree it restates them and cannot fail")
+		}
+		return nil
+	}
+	if len(ro.Kinds) == 0 {
+		return cmdutil.WithHint(
+			errf("", field("kinds"),
+				"is required: the covered rules span %s", describeKinds(sortedKinds(span))),
+			"a printed total over two kinds is a real line -- p140's \"Total "+
+				"Sources\" is revenue plus transfers in -- but it must be a "+
+				"statement the rule file makes, not something the sum happens to "+
+				"allow")
+	}
+	if !slices.Equal(sortedKinds(declared), sortedKinds(span)) {
+		return errf("", field("kinds"),
+			"names %s and the covered rules span %s",
+			describeKinds(sortedKinds(declared)), describeKinds(sortedKinds(span)))
+	}
+	return nil
+}
+
+func sortedKinds(set map[Kind]bool) []Kind {
+	out := make([]Kind, 0, len(set))
+	for k := range set {
+		out = append(out, k)
+	}
+	slices.Sort(out)
+	return out
+}
+
+func describeKinds(ks []Kind) string {
+	parts := make([]string, len(ks))
+	for i, k := range ks {
+		parts[i] = fmt.Sprintf("%q", k)
+	}
+	return strings.Join(parts, ", ")
 }
 
 type errFunc func(ruleID, field, format string, args ...any) error
