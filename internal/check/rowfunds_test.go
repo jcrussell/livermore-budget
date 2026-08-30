@@ -1,6 +1,7 @@
 package check
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -142,7 +143,14 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 		t.Errorf("the check resolves %d row anchors, want 118: 40 printed on p76 plus "+
 			"the 78 bare fund labels on pp.85-125\n%s", res.Subjects, res.Summary)
 	}
-	if strings.Contains(res.Summary, "declared fund(s) sit on rows whose") {
+	// THE WORDING SEARCHED FOR HERE IS THE ONE THE CODE EMITS, checked against
+	// rowfunds.go rather than remembered. An earlier version of this assertion
+	// looked for "declared fund(s) sit on rows whose", which a review fix in this
+	// same range had already reworded -- so no code path could emit it and the
+	// assertion could not fail even with the whole bare-label arm deleted. A
+	// negative assertion over a string that no longer exists is the cheapest way
+	// to write a test that proves nothing.
+	if strings.Contains(res.Summary, "declared fund(s) sit at an end no printed label reaches") {
 		t.Errorf("the summary still reports the bare-label rows as ones it makes no "+
 			"claim about:\n%s", res.Summary)
 	}
@@ -150,10 +158,12 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 	// against roughly 450 bytes before, which is detailtie.go's "a count is the
 	// honest middle" argument arriving one check late. A row that HOLDS is
 	// counted; only a row that fails is named.
-	if strings.Contains(res.Summary, `funding-public-works "Water"`) {
-		t.Errorf("the summary names the rows it read one by one; 78 of them is a "+
-			"count, not a list:\n%s", res.Summary)
-	}
+	//
+	// THE LENGTH BOUND IS WHAT ENFORCES THAT, not a search for one row's name.
+	// This used to assert the summary did not contain `funding-public-works
+	// "Water"`, which no code path can emit: a bare label never sets `phrased`,
+	// so it never reaches unanchoredRows, the only per-row list in the summary.
+	// The assertion was unfalsifiable and read as coverage.
 	if n := len(res.Summary); n > 2000 {
 		t.Errorf("the summary is %d bytes; it is printed on every fisc verify run", n)
 	}
@@ -541,5 +551,133 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 			!strings.Contains(b.String(), "checked against nothing") {
 		t.Errorf("the finding does not say the typed fund is checked against "+
 			"nothing:\n%s", b.String())
+	}
+}
+
+// TestASkippedRowIsInvisibleToThisCheck makes the skip guard falsifiable, which
+// its first version was not.
+//
+// A skipped row is never read from the page, so this check -- which is entirely
+// about what the page prints on a row's line -- has nothing to say about it. It
+// must not be a subject, and it must not be counted as a fund the page prints no
+// anchor for either.
+//
+// THE FIRST ATTEMPT AT THIS GUARD FAILED BOTH TESTS OF A GUARD. It sat on the
+// bare-label arm alone, so a skipped funded row was excluded from being CHECKED
+// and left in the omission counters -- and the PASS line then said "no
+// row_labels_name_funds declaration covers that end" about a rule that declares
+// it, which is the same false sentence the counterpart refusal had closed at the
+// root one commit earlier. And no test reached it: deleting `&& !row.Skip` left
+// `go test ./...` fully green, so the commit message claiming each fix reddened
+// its own test was wrong about that one. Both found by the second /code-review
+// pass over this range, in the first pass's own fix.
+//
+// The corpus cannot exercise it: all 29 skip: true rows carry no fund, measured.
+// So the row is built here.
+func TestASkippedRowIsInvisibleToThisCheck(t *testing.T) {
+	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	before, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), base)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// A skipped row carrying a fund, inside a rule that declares
+	// row_labels_name_funds, with a label no fund in the registry answers to.
+	// If the guard is missing this is either a finding (the label resolves to
+	// nothing) or a subject; either way the numbers below move.
+	added := 0
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			if f.Rules[i].ID != "funding-city-attorney" {
+				continue
+			}
+			f.Rules[i].Rows = append(f.Rules[i].Rows, mapping.Row{
+				Label: "Not A Fund At All", Skip: true, Fund: 100, FundGroup: "general",
+			})
+			added++
+		}
+	}
+	if added != 1 {
+		t.Fatalf("added %d rows, want 1", added)
+	}
+
+	got, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got.Status != StatusPass {
+		t.Fatalf("a skipped row made the check %s: %s", got.Status, got.Summary)
+	}
+	if got.Subjects != before.Subjects {
+		t.Errorf("a skipped row moved the subject count from %d to %d; it is not read "+
+			"from the page and cannot be an anchor", before.Subjects, got.Subjects)
+	}
+	if got.Summary != before.Summary {
+		t.Errorf("a skipped row changed the summary:\nbefore: %s\nafter:  %s",
+			before.Summary, got.Summary)
+	}
+}
+
+// TestTheHeldLineNeverReportsAnEmptyArm covers all three shapes of the PASS
+// line, because two of them are corpora this repo does not have today and both
+// were wrong when they were first written.
+//
+// The line is printed by fisc verify on every run. A clause reading "0 printed
+// with a verb phrase, each the fund its row declares at that end of the
+// movement" reports the absence of a whole arm as though it were a result, and
+// the direction claim in it is about no row at all.
+func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
+	// wantNot ARE REGEXPS AND NOT SUBSTRINGS, and that is the third attempt at
+	// this test rather than a flourish. "0 " matches inside "40 printed", and so
+	// does "0 printed with a verb phrase" -- a substring test over a formatted
+	// number catches digits, not clauses, and both earlier drafts failed the
+	// committed-corpus case for that reason and not for the reason they were
+	// written. \b refuses the match inside 40 because 4 and 0 are both word
+	// characters, so there is no boundary between them.
+	zeroPhrased := regexp.MustCompile(`\b0 printed with a verb phrase`)
+	zeroBare := regexp.MustCompile(`\b0 a bare fund name`)
+
+	for _, tc := range []struct {
+		name           string
+		subjects, bare int
+		wantNot        []*regexp.Regexp
+		wantHas        []string
+	}{{
+		name:     "verb phrases only, as every corpus before pp.85-125",
+		subjects: 40, bare: 0,
+		wantNot: []*regexp.Regexp{regexp.MustCompile(`bare fund name`),
+			regexp.MustCompile(`row_labels_name_funds`)},
+		wantHas: []string{"40 row anchors", "at that end of the movement"},
+	}, {
+		name:     "bare labels only, as a corpus of nothing but funding-* rules",
+		subjects: 78, bare: 78,
+		wantNot: []*regexp.Regexp{regexp.MustCompile(`printed with a verb phrase`), zeroBare},
+		wantHas: []string{"78 row anchors", "names no direction"},
+	}, {
+		name:     "both, as the committed corpus",
+		subjects: 118, bare: 78,
+		wantNot: []*regexp.Regexp{zeroPhrased, zeroBare},
+		wantHas: []string{"118 row anchors", "40 printed with a verb phrase", "78 a bare"},
+	}} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := heldLine(tc.subjects, tc.bare)
+			for _, re := range tc.wantNot {
+				if re.MatchString(got) {
+					t.Errorf("held line matches %s, which is a clause about no row:\n%s", re, got)
+				}
+			}
+			for _, w := range tc.wantHas {
+				if !strings.Contains(got, w) {
+					t.Errorf("held line does not contain %q:\n%s", w, got)
+				}
+			}
+		})
 	}
 }

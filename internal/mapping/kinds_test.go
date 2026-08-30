@@ -1,6 +1,7 @@
 package mapping
 
 import (
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -46,14 +47,29 @@ func TestKindsIsACopy(t *testing.T) {
 	}
 }
 
-// TestTheMessagesThatSayFiveStillMeanFive pins the count three parse errors
-// state in prose. Adding a sixth kind must redden this rather than leave
-// "is not one of the five" quietly wrong on a page a reader is trying to fix.
+// TestTheMessagesThatSayFiveStillMeanFive pins the count parse errors state in
+// prose. Adding a sixth kind must redden this rather than leave "is not one of
+// the five" quietly wrong on a page a reader is trying to fix.
+//
+// THE NUMBER OF SUCH MESSAGES IS MEASURED RATHER THAN NAMED, and that is the
+// second version of this test. The first said "three messages (rows,
+// total_row_kinds, counterpart)"; rollups[].kinds made it four one commit after
+// it was written, and nothing went red -- a count in a failure message a reader
+// acts on, gone stale exactly the way the messages it is about would. Counting
+// them here cannot rot, and it costs one file read.
 func TestTheMessagesThatSayFiveStillMeanFive(t *testing.T) {
+	src, err := os.ReadFile("parse.go")
+	if err != nil {
+		t.Fatalf("read parse.go: %v", err)
+	}
+	n := strings.Count(string(src), "not one of the five")
+	if n == 0 {
+		t.Fatal("no parse error says \"not one of the five\"; either they were reworded " +
+			"or this test is reading the wrong file")
+	}
 	if len(Kinds()) != 5 {
 		t.Errorf("len(Kinds()) = %d, want 5; parse.go says \"not one of the five\" in "+
-			"three messages (rows, total_row_kinds, counterpart) and they are now wrong",
-			len(Kinds()))
+			"%d message(s) and they are now wrong", len(Kinds()), n)
 	}
 }
 

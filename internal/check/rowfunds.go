@@ -129,6 +129,25 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 			// twice and inflate the subject count with it. Omissions are still
 			// per part, so the union of what any part reads is the right set.
 			for _, row := range activeInAnyPart(ru) {
+				// A SKIPPED ROW IS NOT READ FROM THE PAGE, so this check has
+				// nothing to say about it in ANY arm -- not as a subject, not as
+				// a fund the page prints no anchor for. ActiveRows filters
+				// omitted rows and not skipped ones, so without this they arrive
+				// here.
+				//
+				// IT SITS AT THE TOP OF THE LOOP AND NOT INSIDE ONE ARM, which
+				// is the second attempt. The first put `!row.Skip` on the
+				// bare-label arm alone, which excluded such a row from being
+				// CHECKED and left it in the omission counters -- so the summary
+				// then said "no row_labels_name_funds declaration covers that
+				// end" about a rule that declares it. That is the same false
+				// sentence the counterpart refusal had just closed at the root,
+				// reintroduced one commit later by the fix for a different
+				// finding. Both passes found it; the second found it in the
+				// first's fix.
+				if row.Skip {
+					continue
+				}
 				near, far := row.Fund, 0
 				if row.Counterpart != nil {
 					far = row.Counterpart.Fund
@@ -159,14 +178,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				// in the omission counters below as a fund the page prints no
 				// anchor for. The page prints the anchor; that is what the
 				// declaration asserts.
-				// row.Skip IS EXCLUDED HERE AND NOWHERE ELSE IN THIS LOOP,
-				// because validateRowLabelFunds exempts a skipped row from the
-				// declaration's precondition: a row the resolver never reaches
-				// needs no fund typed on it. Reading one here would redden the
-				// gate over a declaration the parser said was fine -- two
-				// guards over one field disagreeing about which rows it covers.
-				// Found by /code-review over this range.
-				if ru.RowLabelsNameFunds && near != 0 && !row.Skip {
+				if ru.RowLabelsNameFunds && near != 0 {
 					subjects++
 					bare++
 					namedNear = true
@@ -346,14 +358,27 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 // summary announcing "and 0 a bare fund name" reports the absence of a feature
 // as though it were a result.
 func heldLine(subjects, bare int) string {
-	if bare == 0 {
+	phrased := subjects - bare
+	// BOTH SIDES ARE GUARDED, which is the second version. The first guarded
+	// only the bare side, so a corpus of nothing but declaring rules printed
+	// "0 printed with a verb phrase, each the fund its row declares at that end
+	// of the movement" -- the zero-clause-as-a-result shape this function's own
+	// comment says it exists to avoid, reintroduced on the other axis by the fix
+	// that introduced the comment. Found by the second /code-review pass.
+	switch {
+	case bare == 0:
 		return fmt.Sprintf("%d row anchors name a fund, each one the fund its row "+
 			"declares at that end of the movement", subjects)
+	case phrased == 0:
+		return fmt.Sprintf("%d row anchors name a fund, each a bare fund name under "+
+			"row_labels_name_funds and each the fund its row declares -- a bare label "+
+			"names no direction, so none is checked", subjects)
+	default:
+		return fmt.Sprintf("%d row anchors name a fund: %d printed with a verb phrase, "+
+			"each the fund its row declares at that end of the movement, and %d a bare "+
+			"fund name under row_labels_name_funds, each the fund its row declares -- a "+
+			"bare label names no direction, so none is checked", subjects, phrased, bare)
 	}
-	return fmt.Sprintf("%d row anchors name a fund: %d printed with a verb phrase, each "+
-		"the fund its row declares at that end of the movement, and %d a bare fund name "+
-		"under row_labels_name_funds, each the fund its row declares -- a bare label "+
-		"names no direction, so none is checked", subjects, subjects-bare, bare)
 }
 
 // anchorHasVerbPhrase reports whether a printed anchor opens with one of the
