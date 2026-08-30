@@ -242,6 +242,21 @@ func validateRollups(f *File, errf errFunc) error {
 			return errf("", field("unassertable"), "is whitespace; omit it or give the reason")
 		}
 		asserts, declines := len(ro.Covers) > 0, ro.Unassertable != ""
+		// CHECKED BEFORE THE `declines` SHORT-CIRCUIT BELOW, which is the whole
+		// reason it is here and not in validateRollupKinds. That function runs
+		// after `if declines { continue }`, so an unassertable rollup never
+		// reached it and `kinds:` on one was accepted in silence -- and the
+		// corpus's only unassertable rollup is p140's "Total Sources", the
+		// mixed-kind line Rollup.Kinds' own doc comment is built around. The
+		// most likely place for the field to be typed is the one place nothing
+		// read it. Found by /code-review over the range that added it.
+		if len(ro.Kinds) > 0 && declines {
+			return cmdutil.WithHint(
+				errf("", field("kinds"), "is declared alongside unassertable"),
+				"kinds says what a rollup's covered rules span, and an "+
+					"unassertable rollup covers none; the reason text is where "+
+					"a spanning total that cannot be checked gets described")
+		}
 		switch {
 		case asserts && declines:
 			return errf("", field("unassertable"),
@@ -800,6 +815,29 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 				"the declaration is what lets row-funds-match-their-anchors read "+
 					"a fund off the printed label and check the number typed "+
 					"beside it; a row with no number to check needs no label read")
+		}
+		// A COUNTERPART IS AT THE FAR END AND NO BARE LABEL NAMES IT. The
+		// declaration says the row's label is the printed name of the fund the
+		// row carries -- its OWN fund. A counterpart's fund sits at the other
+		// end of the movement, and a bare fund name carries no direction to
+		// reach it, which is the whole difference between this and p76's
+		// "Transfer From X to Y" anchors.
+		//
+		// REFUSED RATHER THAN LEFT UNCHECKED, because leaving it made
+		// row-funds-match-their-anchors print a false sentence: the counterpart
+		// fell into the unphrased counter, whose clause named the rule as one
+		// that does not declare row_labels_name_funds while it did. Latent --
+		// no rule declares both today -- and found by /code-review over the
+		// range that added the field, which is where the same clause's last
+		// false statement was found too.
+		if row.Counterpart != nil {
+			return cmdutil.WithHint(
+				errf(r.ID, "row_labels_name_funds",
+					"row %q declares a counterpart, whose fund the printed label "+
+						"cannot name", row.PrintedLabel()),
+				"a bare fund name says which fund and never which end, so this "+
+					"declaration speaks for the row's own fund only; a schedule "+
+					"with two ends per row needs the verb-phrase anchors p76 prints")
 		}
 	}
 	return nil

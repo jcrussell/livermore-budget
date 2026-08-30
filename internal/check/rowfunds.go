@@ -110,6 +110,9 @@ func (*rowFundsMatchTheirAnchors) Description() string {
 func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects, unanchored, unphrased := 0, 0, 0
+	// bare counts the subjects the third arm resolved, so the summary can keep
+	// the two claims apart rather than averaging them into one false sentence.
+	bare := 0
 	var unanchoredRows []string
 	// The rules an unphrased declaration belongs to, deduplicated: 78 rows over
 	// eleven rules is a list of eleven, not of 78. See the note where it is
@@ -156,8 +159,16 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 				// in the omission counters below as a fund the page prints no
 				// anchor for. The page prints the anchor; that is what the
 				// declaration asserts.
-				if ru.RowLabelsNameFunds && near != 0 {
+				// row.Skip IS EXCLUDED HERE AND NOWHERE ELSE IN THIS LOOP,
+				// because validateRowLabelFunds exempts a skipped row from the
+				// declaration's precondition: a row the resolver never reaches
+				// needs no fund typed on it. Reading one here would redden the
+				// gate over a declaration the parser said was fine -- two
+				// guards over one field disagreeing about which rows it covers.
+				// Found by /code-review over this range.
+				if ru.RowLabelsNameFunds && near != 0 && !row.Skip {
 					subjects++
+					bare++
 					namedNear = true
 					label := row.PrintedLabel()
 					switch entry, err := s.Vocabulary.FundByLabel(label); {
@@ -281,10 +292,12 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		if unanchored > 0 {
 			lead = "a further "
 		}
-		clauses = append(clauses, fmt.Sprintf("%s%d declared fund(s) sit on rows whose "+
-			"printed label names a fund but no direction, which rowAnchorPrefixes matches "+
-			"nothing in, and whose rule does not declare row_labels_name_funds, so this "+
-			"check makes no claim about them either: %s",
+		clauses = append(clauses, fmt.Sprintf("%s%d declared fund(s) sit at an end no "+
+			"printed label reaches: the row's label carries no verb phrase, so "+
+			"rowAnchorPrefixes matches nothing in it, and no row_labels_name_funds "+
+			"declaration covers that end -- the declaration speaks for a row's OWN fund "+
+			"and never its counterpart's, because a bare fund name names no direction. "+
+			"So this check makes no claim about them either: %s",
 			lead, unphrased, joinComma(unphrasedRules)))
 	}
 	unanchoredNote := ""
@@ -309,11 +322,38 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 	return conclusion{
 		subjects: subjects,
 		unit:     "row anchors",
-		held: fmt.Sprintf("%d row anchors name a fund, each one the fund its row declares "+
-			"at that end of the movement", subjects) + unanchoredNote,
+		// TWO CLAIMS AND NOT ONE, because the arms assert different things and a
+		// summary saying "at that end of the movement" about all of them was
+		// false for the bare-label rows the moment they became subjects. A verb
+		// phrase carries direction and this check reads it; a bare fund name
+		// carries none and it must not claim to. Found by /code-review over the
+		// range that added the second arm.
+		held:     heldLine(subjects, bare) + unanchoredNote,
 		nothing:  nothing,
 		findings: findings,
 	}.result(), nil
+}
+
+// heldLine states what the check resolved, keeping the two arms' claims apart.
+//
+// A verb phrase carries direction and this check reads it; a bare fund name
+// carries none and must not claim to. One sentence covering both was false for
+// the bare-label rows the moment they became subjects, in a string fisc verify
+// prints on every run -- found by /code-review over the range that added them.
+//
+// The second clause is omitted rather than printed as a zero, because a corpus
+// where no rule declares row_labels_name_funds is the ordinary case and a
+// summary announcing "and 0 a bare fund name" reports the absence of a feature
+// as though it were a result.
+func heldLine(subjects, bare int) string {
+	if bare == 0 {
+		return fmt.Sprintf("%d row anchors name a fund, each one the fund its row "+
+			"declares at that end of the movement", subjects)
+	}
+	return fmt.Sprintf("%d row anchors name a fund: %d printed with a verb phrase, each "+
+		"the fund its row declares at that end of the movement, and %d a bare fund name "+
+		"under row_labels_name_funds, each the fund its row declares -- a bare label "+
+		"names no direction, so none is checked", subjects, subjects-bare, bare)
 }
 
 // anchorHasVerbPhrase reports whether a printed anchor opens with one of the

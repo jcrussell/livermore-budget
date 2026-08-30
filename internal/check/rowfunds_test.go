@@ -182,8 +182,8 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 		t.Errorf("with the declaration cleared the check resolves %d row anchors, "+
 			"want 40 -- the p76 anchors alone", res.Subjects)
 	}
-	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit on rows whose "+
-		"printed label names a fund but no direction") {
+	if !strings.Contains(res.Summary, "a further 78 declared fund(s) sit at an end no "+
+		"printed label reaches") {
 		t.Errorf("with the declaration cleared the summary does not report the 78 as "+
 			"rows it makes no claim about:\n%s", res.Summary)
 	}
@@ -231,9 +231,10 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	// them resolvable by this check, and a reason that must not deny them.
 	// A corpus of rules that decline the declaration is also a real corpus; it
 	// is what every schedule mapped before this one looked like.
-	s := withoutRowLabelFunds(base)
+	cleared := withoutRowLabelFunds(base)
+	s := *cleared
 	s.Files = nil
-	for _, f := range withoutRowLabelFunds(base).Files {
+	for _, f := range cleared.Files {
 		cut := *f
 		cut.Rules = nil
 		for i := range f.Rules {
@@ -244,7 +245,7 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 		s.Files = append(s.Files, &cut)
 	}
 
-	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), s)
+	res, err := (&rowFundsMatchTheirAnchors{}).Run(t.Context(), &s)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -447,7 +448,33 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 
 	// THE GREEN HALF, and it is what makes the mutation worth guarding against
 	// rather than merely detectable. Both of the checks that catch the OTHER two
-	// twin-swap shapes report PASS over this same mutated subject.
+	// twin-swap shapes report PASS over the same swap.
+	//
+	// THE FACTS HAVE TO BE MUTATED TOO, and the first version of this did not do
+	// it. factFundsResolve and fundingSourcesTiesToSpine read s.Facts;
+	// everything above reads s.Files. Mutating only the rules left both of them
+	// looking at an unmutated store, so they passed because they never saw the
+	// swap -- green because the gate fired, in a block whose own comment says it
+	// exists to avoid exactly that. Measured when it was found: retyping all 21
+	// funding-public-works rows to a nonexistent fund 99999 still left both
+	// PASS. Found by /code-review over this range.
+	//
+	// Editing the facts in place is what `fisc build` would emit from the
+	// mutated rule: the fund number moves and nothing else does, because 640 and
+	// 641 are both enterprise so the fund_group is unchanged and no group sum
+	// moves. That is the property under test, stated as data rather than argued.
+	swappedFacts := 0
+	for i := range s.Facts {
+		f := &s.Facts[i]
+		if f.RuleID == "funding-public-works" && f.Fund == 640 {
+			f.Fund = 641
+			swappedFacts++
+		}
+	}
+	if swappedFacts == 0 {
+		t.Fatal("no fact carries funding-public-works fund 640; the green half would " +
+			"pass over an unmutated store, which is what it exists to refuse")
+	}
 	for _, c := range []Check{&factFundsResolve{}, &fundingSourcesTiesToSpine{}} {
 		got, err := c.Run(t.Context(), s)
 		if err != nil {

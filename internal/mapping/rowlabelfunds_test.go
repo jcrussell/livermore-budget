@@ -90,6 +90,32 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		}
 	})
 
+	// A COUNTERPART IS AT THE FAR END AND NO BARE LABEL NAMES IT. The
+	// declaration speaks for the row's OWN fund; a counterpart's fund sits at
+	// the other end of the movement and a bare fund name carries no direction to
+	// reach it. Leaving it unchecked was not neutral: the counterpart fell into
+	// row-funds-match-their-anchors' unphrased counter, whose clause then named
+	// the rule as one that does NOT declare row_labels_name_funds while it did.
+	// A false sentence in a string fisc verify prints every run.
+	t.Run("a row declares a counterpart", func(t *testing.T) {
+		rows := fundedRows + "\n      - {label: \"Transfers In\", category: \"transfers/in\", " +
+			"kind: transfer_in, fund: 100, fund_group: general, " +
+			"counterpart: {category: \"transfers/out\", kind: transfer_out, fund: 200, " +
+			"fund_group: special-revenue}}"
+		err := parseRowLabelFunds(t, decl, rows)
+		if err == nil {
+			t.Fatal("accepted a declaration over a row with two ends")
+		}
+		for _, want := range []string{
+			`row "Transfers In" declares a counterpart`,
+			"printed label cannot name",
+		} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("error = %v, want it to contain %q", err, want)
+			}
+		}
+	})
+
 	// AND WITHOUT THE DECLARATION THE SAME FILE IS FINE. Every schedule mapped
 	// before pp.85-125 has rows with no fund, so a guard that fired regardless
 	// of the declaration would refuse most of the corpus.

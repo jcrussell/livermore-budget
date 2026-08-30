@@ -171,6 +171,56 @@ func TestARollupSpanningTwoKindsMustSaySo(t *testing.T) {
 	}
 }
 
+// TestKindsOnAnUnassertableRollupIsRefused closes the one place the field could
+// be typed and read by nothing.
+//
+// validateRollups short-circuits on `if declines { continue }` before reaching
+// validateRollupKinds, so `kinds:` beside `unassertable:` was accepted in
+// silence. That is not a hypothetical corner: the corpus's only unassertable
+// rollup is p140's "Total Sources", which is revenue plus transfers in -- the
+// mixed-kind line Rollup.Kinds' own doc comment is built around. The most
+// likely place for someone to type the field was the one place nothing read it.
+//
+// Found by /code-review over the range that added the field.
+func TestKindsOnAnUnassertableRollupIsRefused(t *testing.T) {
+	const src = `schema_version: 1
+doc_id: livermore-budget-fy2026-2027
+rules:
+  - id: alpha
+    kind: expenditure
+    basis: adopted
+    scope: expenditure-by-department
+    units: dollars
+    total_row: "Total Alpha"
+    parts:
+      - page: 167
+        section: "ALPHA"
+        stop_at: "BUDGET FY"
+        columns:
+          - {fund_group: general, fund: 100, fiscal_year: 2026}
+    rows:
+      - {label: "Wages", category: wages-and-benefits, department: city-council}
+rollups:
+  - id: total-sources
+    page: 140
+    total_row: "Total Sources"
+    unassertable: >-
+      exceeds the pages it closes by ~$57M, differently per column (fisc-wev)
+    kinds: [expenditure, revenue]
+`
+	_, err := Parse(strings.NewReader(src), "unassertable.yaml")
+	if err == nil {
+		t.Fatal("accepted kinds: on a rollup that covers no rules")
+	}
+	if !strings.Contains(err.Error(), "is declared alongside unassertable") {
+		t.Errorf("error = %v, want it to name the pairing it refuses", err)
+	}
+	var h *cmdutil.ErrHint
+	if !errors.As(err, &h) || !strings.Contains(h.Hint, "covers none") {
+		t.Errorf("hint = %+v, want it to say an unassertable rollup covers no rules", h)
+	}
+}
+
 // TestTheCommittedRollupsSpanOneKindAndOneScope is the measurement the two
 // guards land green against, kept so that a rule file edit which quietly makes a
 // rollup mixed shows up here as well as at the parse.
