@@ -1415,8 +1415,15 @@ type decimalsWitness struct {
 }
 
 // observe records what one value's token says about the page's precision.
+//
+// IT DOES NOT TEST v.Column.Skip, and the first draft did. parseRow drops a
+// skipped row or column before it builds a Value at all, so no Value reaching
+// here can carry one and the test was dead -- deleting it left every test green
+// and facts.jsonl byte-identical, which is how review found it. Where skipped
+// columns are actually excluded from the witness is parseRow, one layer down,
+// and saying so here is worth more than a guard that cannot fire.
 func (w *decimalsWitness) observe(rule *Rule, v Value) error {
-	if rule.PrintedDecimals == nil || v.Column.Skip {
+	if rule.PrintedDecimals == nil {
 		return nil
 	}
 	d, ok := amount.Decimals(v.Token, rule.Units)

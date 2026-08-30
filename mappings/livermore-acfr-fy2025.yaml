@@ -158,11 +158,21 @@
 # AND THE GENERAL GOVERNMENT BLOCK IS THE WEAKEST POINT OF THAT, because it is
 # the one block whose printed total is reached through a TOLERANCE rather than
 # exactly: the widest bound in the corpus standing over the fewest guards. What
-# is left holding it is that the bound is half a printed unit per row, so a
-# single row misread by three units or more still fails. That is thinner than
-# every other block in this file and is the reason the bound is not the worst
-# case -- adding the printed total's own half unit, which the arithmetic would
-# justify, would buy slack this page cannot afford.
+# is left holding it is that the bound is half a printed unit per row -- 2.5
+# units over five rows -- and the MEASURED thresholds are that a row read two
+# units ($20,000) too LOW fails, and one read four units ($40,000) too HIGH
+# fails. Three units too high still ties.
+#
+# THE ASYMMETRY IS NOT A BUG AND IS WORTH UNDERSTANDING BEFORE ANYONE "FIXES"
+# IT. The bound is symmetric about zero; the page's own +1 unit sits off centre
+# inside it, so the room left is 1.5 units in one direction and 3.5 in the
+# other. An earlier version of this paragraph said "misread by three units or
+# more still fails", which was wrong in BOTH directions at once, and it was
+# wrong because it was reasoned about rather than computed. The window is
+# thinner than every other block in this file, and it is why the bound is not
+# the worst case: adding the printed total's own half unit, which the arithmetic
+# would justify, would widen it to 3 units and buy slack this page cannot
+# afford.
 #
 # A NOTE ON SIGN, because it differs from the Budget Book and nothing checks it.
 # The ACFR prints Transfers (out) parenthesised -- (25.72) -- because the block
@@ -372,13 +382,16 @@ rules:
       "Current:", and the leading-gap refusal still fires on this very subtotal.
       fisc-h96o.
 
-      THE EXPOSURE, SAID HERE RATHER THAN LEFT TO BE FOUND. At five terms the
-      tolerance would also absorb a single row misread by one or two printed
-      digits, and this is the one page in the corpus with NO geometry column
-      guard -- the widest tolerance standing over the fewest guards. What is
-      left is the printed subtotal itself: a misread row moves the sum off 18.45
-      by more than the page's own rounding only if it moves by three units or
-      more, so the bound is doing real work and is not a blanket.
+      THE EXPOSURE, MEASURED RATHER THAN REASONED ABOUT, because an earlier
+      version of this paragraph reasoned about it and got it wrong in both
+      directions. The bound is 2.5 units and the page's own discrepancy is +1,
+      so the room left is not symmetric: a single row read TWO units ($20,000)
+      too low fails, and one read FOUR units ($40,000) too high fails, while
+      three too high still ties. So the tolerance absorbs a misread of up to
+      three printed digits in one direction and one in the other -- on the one
+      page in the corpus with NO geometry column guard, which is the widest
+      tolerance standing over the fewest guards. It is doing real work and is
+      not a blanket, but the window is wider upward than a reader would guess.
 
       NO ROW CARRIES A `department:`, and see data/taxonomy.yaml's
       general-government entry for why: two of these five name DEPARTMENTS that

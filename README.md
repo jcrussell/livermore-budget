@@ -53,7 +53,7 @@ scale is that row's own. `drilldown.html` draws pp.127-140 and pp.167-170
 together, one document per printed column. `provenance.html` is the record store
 itself: every fact, its page, and the text it was read from.
 
-Two schedules are published and checked but **not yet drawn**: pp.85-125 (312
+Three schedules are published and checked but **not yet drawn**: pp.85-125 (312
 facts), p.76 (88) and ACFR p.41 (20). `fisc verify` declares each undrawn
 schedule with the reason it is undrawn rather than leaving it unsaid, and retires
 the declaration by itself the moment a projection starts drawing one — which is

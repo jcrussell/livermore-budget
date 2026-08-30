@@ -316,10 +316,12 @@ type Rule struct {
 	//     rule reaching for both is asking for a declaration it can hide inside.
 	//   - It must describe the page. Every token that is SUMMED INTO A COMPARED
 	//     COLUMN is checked against it, and a declaration no such token
-	//     justifies is refused. Not every token the rule reads: a skipped
-	//     column's tokens and a row the total_row does not cover are outside the
-	//     comparison the tolerance applies to, so witnessing them could only
-	//     make a declaration pass on precision the compared figures do not have.
+	//     justifies is refused. Not every token the rule reads: a skipped row or
+	//     column never becomes a Value (parseRow drops it), and a row the
+	//     total_row does not cover is filtered out of the sum by totalCovers.
+	//     Both are outside the comparison the tolerance applies to, so
+	//     witnessing them could only let a declaration pass on precision the
+	//     compared figures do not have.
 	//   - It must be NEEDED. A rule whose columns all tie exactly is refused,
 	//     the same way a stated_total_delta that now ties exactly is refused --
 	//     because a declaration that has stopped doing anything is the one shape

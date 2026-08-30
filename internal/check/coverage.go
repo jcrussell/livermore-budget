@@ -98,13 +98,14 @@ var unprojectedScopes = map[string]string{
 
 	acfrGeneralFundScope: "ACFR p41, the General Fund's Statement of Revenues, Expenditures " +
 		"and Changes in Fund Balances: 20 audited FY2024-25 figures, and the only facts in " +
-		"this store from a document other than the Budget Book. Three of the page's four " +
-		"blocks are mapped -- ten revenue rows tying to the printed Total Revenues of 157.20 " +
-		"exactly; two transfer legs, 0.53 in and (25.72) out, tying to the printed Total Other " +
-		"Financing Sources (Uses) of (25.19) exactly; and the five divisions of the General " +
-		"Government function -- plus the three fund-balance lines that close the statement, " +
-		"beginning 92.10, change (5.00), ending 87.10. All in millions to two decimals, so the " +
-		"least significant printed digit is $10,000. " +
+		"this store from a document other than the Budget Book. The page prints FOUR blocks " +
+		"and three of them are mapped WHOLE -- ten revenue rows tying to the printed Total " +
+		"Revenues of 157.20 exactly; two transfer legs, 0.53 in and (25.72) out, tying to the " +
+		"printed Total Other Financing Sources (Uses) of (25.19) exactly; and the three " +
+		"fund-balance lines that close the statement, beginning 92.10, change (5.00), ending " +
+		"87.10. The fourth, the expenditure block, is mapped IN PART: the five divisions of " +
+		"the General Government function and none of its other rows. All in millions to two " +
+		"decimals, so the least significant printed digit is $10,000. " +
 		"IT IS UNPROJECTED BECAUSE IT IS A DIFFERENT YEAR ON A DIFFERENT BASIS, not because " +
 		"it restates money some other scope already publishes -- which is the opposite of " +
 		"every other entry in this map. The Budget Book spine is FY2026 and FY2027 adopted; " +
@@ -135,9 +136,13 @@ var unprojectedScopes = map[string]string{
 		"geometry column guard stands over any of these figures -- the widest tolerance in the " +
 		"corpus over the fewest guards, which is why the bound is half a unit per row and not " +
 		"the worst case that would also add the printed total's own half unit. " +
-		"WHAT IS STILL NOT MAPPED is the rest of the expenditure block: its nine other rows " +
-		"are the ACFR's remaining functions, and unlike General Government's five divisions " +
-		"they are departments fact-departments-resolve cannot accept (fisc-xudn). No row of " +
+		"WHAT IS STILL NOT MAPPED is the rest of the expenditure block: SIX of its nine other " +
+		"top-level rows are the ACFR's remaining functions -- Fire, Police, Public Works, " +
+		"Community Development, Economic Development, Library -- and unlike General " +
+		"Government's five divisions they are departments fact-departments-resolve cannot " +
+		"accept (fisc-xudn). The other three, Capital Outlay, Principal and Interest and " +
+		"fiscal charges, are not departments at all and are blocked by nothing; they are " +
+		"simply unmapped. No row of " +
 		"the mapped block carries a department either, for a reason of its own -- two of the " +
 		"five name departments covering several divisions -- see data/taxonomy.yaml's " +
 		"general-government entry. The FY2024 column of every block is present and skipped: " +

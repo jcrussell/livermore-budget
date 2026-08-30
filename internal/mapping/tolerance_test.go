@@ -347,9 +347,9 @@ func TestUnmappedTextRefusesAStaleDeclaration(t *testing.T) {
 	}
 }
 
-// TestUnmappedTextRefusesADeclarationOnALabellessPart is the same refusal
-// wrapped_labels already carries (fisc-ekj): a positional part reads no gaps, so
-// the declaration would be accepted and never looked at.
+// TestUnmappedTextIsRefusedOnALabellessPart is the same refusal wrapped_labels
+// already carries (fisc-ekj): a positional part reads no gaps, so the
+// declaration would be accepted and never looked at.
 func TestUnmappedTextIsRefusedOnALabellessPart(t *testing.T) {
 	const yaml = `schema_version: 1
 doc_id: livermore-acfr-fy2025
@@ -557,5 +557,171 @@ rules:
 	if _, _, verr := r2.Values(&bare.Rules[0], &bare.Rules[0].Parts[0]); verr == nil {
 		t.Error("the block resolved with no declaration; the orphan is being " +
 			"admitted by something other than unmapped_text")
+	}
+}
+
+// The parse-time refusals on both new declarations, as a table.
+//
+// THEY ARE HERE BECAUSE REVIEW FOUND FIVE OF THEM MUTATION-GREEN: the
+// unmapped_text blank / whitespace / missing-note / duplicate arms and
+// printed_decimals' negative and multi-part arms could each be deleted with the
+// whole suite still passing. Each was written as "the mirror of the
+// wrapped_labels arm", and the wrapped_labels arms are themselves untested --
+// so the mirror was a claim about untested code. A refusal nothing exercises is
+// a refusal that will be deleted by whoever next tidies this function.
+func TestUnmappedTextParseRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		block string
+		want  string
+	}{
+		{
+			name:  "blank text",
+			block: "        unmapped_text:\n          - {text: \"  \", note: \"x\"}",
+			want:  "has an entry with no text",
+		},
+		{
+			name:  "untrimmed text",
+			block: "        unmapped_text:\n          - {text: \" 0.0\", note: \"x\"}",
+			want:  "has leading or trailing whitespace",
+		},
+		{
+			name:  "no note",
+			block: "        unmapped_text:\n          - {text: \"0.0\"}",
+			want:  "has no note",
+		},
+		{
+			name:  "whitespace note",
+			block: "        unmapped_text:\n          - {text: \"0.0\", note: \"   \"}",
+			want:  "has no note",
+		},
+		{
+			name:  "duplicate",
+			block: "        unmapped_text:\n          - {text: \"0.0\", note: \"x\"}\n          - {text: \"0.0\", note: \"y\"}",
+			want:  "is listed twice",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+				"        columns:", tc.block+"\n        columns:", 1)), "probe.yaml")
+			if err == nil {
+				t.Fatalf("accepted: %s", tc.block)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("refused for some other reason: %v", err)
+			}
+		})
+	}
+}
+
+// TestWrappedLabelsParseRefusals covers the arms unmapped_text's were written as
+// mirrors of, which review pointed out had never been exercised themselves.
+func TestWrappedLabelsParseRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		block string
+		want  string
+	}{
+		{"blank", `        wrapped_labels: ["  "]`, "has a blank entry"},
+		{"untrimmed", `        wrapped_labels: [" Devel"]`, "has leading or trailing whitespace"},
+		{"duplicate", `        wrapped_labels: ["Devel", "Devel"]`, "is listed twice"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+				"        columns:", tc.block+"\n        columns:", 1)), "probe.yaml")
+			if err == nil {
+				t.Fatalf("accepted: %s", tc.block)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("refused for some other reason: %v", err)
+			}
+		})
+	}
+}
+
+// TestPrintedDecimalsParseRefusals covers the two arms review found
+// mutation-green, plus the units bound.
+func TestPrintedDecimalsParseRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		name, from, to, want string
+	}{
+		{
+			name: "negative", from: "printed_decimals: 2", to: "printed_decimals: -1",
+			want: "a count of printed decimal places cannot be negative",
+		},
+		{
+			name: "finer than the units hold", from: "printed_decimals: 2", to: "printed_decimals: 9",
+			want: "can represent only 8 decimal places exactly",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if !strings.Contains(acfrGeneralGovernmentProbe, tc.from) {
+				t.Fatalf("the probe no longer contains %q", tc.from)
+			}
+			_, err := Parse(strings.NewReader(
+				strings.Replace(acfrGeneralGovernmentProbe, tc.from, tc.to, 1)), "probe.yaml")
+			if err == nil {
+				t.Fatalf("accepted %s -> %q", tc.from, tc.to)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("refused for some other reason: %v", err)
+			}
+			// The FIELD, not just the sentence. Two validators in this file
+			// refuse a missing total_row in the same words, and the first draft
+			// of the case below asserted only the sentence and passed on the
+			// wrong one.
+			if !strings.Contains(err.Error(), "printed_decimals:") {
+				t.Errorf("refused by some other validator: %v", err)
+			}
+		})
+	}
+}
+
+// TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm is split out of the
+// table above because getting it wrong is easy and was got wrong.
+//
+// validateTotalRowAbove and validatePrintedDecimals BOTH refuse a missing
+// total_row, in the same words -- "declared without a total_row" -- and the
+// first runs first. So dropping total_row from the probe tests the wrong arm
+// while reading as though it tested this one, and the field name is the only
+// thing in the message that tells them apart. This probe drops total_row_above
+// as well, and re-anchors the section, so only printed_decimals is left to
+// object.
+func TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm(t *testing.T) {
+	src := strings.Replace(acfrGeneralGovernmentProbe, `    total_row: "General Government:"`+"\n", "", 1)
+	src = strings.Replace(src, "    total_row_above: true\n", "", 1)
+	src = strings.Replace(src, `        section: "General Government:"`, `        section: "Current:"`, 1)
+	_, err := Parse(strings.NewReader(src), "probe.yaml")
+	if err == nil {
+		t.Fatal("printed_decimals was accepted on a rule with no total_row")
+	}
+	if got := err.Error(); !strings.Contains(got, "printed_decimals: declared without a total_row") {
+		t.Errorf("refused by some other arm: %v", got)
+	}
+}
+
+// TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan is the arm that
+// keeps the "tolerated no column" refusal exact.
+//
+// Such a rule is compared once PER PART, so a rule needing the tolerance on one
+// page and tying exactly on another would be refused as inert on the second --
+// a correct refusal of a correct rule. Declaring total_spans_parts makes it one
+// comparison; splitting the rule makes each part its own. Both are available,
+// and silently comparing per part is not.
+func TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan(t *testing.T) {
+	_, err := Parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
+		`          - {fiscal_year: 2024, skip: true}`,
+		`          - {fiscal_year: 2024, skip: true}
+      - page: 42
+        section: "General Government:"
+        stop_at: "Fire"
+        columns:
+          - {fund_group: general, fiscal_year: 2025}
+          - {fiscal_year: 2024, skip: true}`, 1)), "probe.yaml")
+	if err == nil {
+		t.Fatal("printed_decimals was accepted on a two-part rule whose total does not span")
+	}
+	if got := err.Error(); !strings.Contains(got, "whose total does not span its parts") {
+		t.Errorf("refused for some other reason: %v", got)
 	}
 }
