@@ -219,13 +219,38 @@ bd update <id> --claim             # claim before starting
 bd close <id> --reason "..."       # close with what actually happened
 ```
 
-The roadmap is ten epics. `E1 Foundations` through `E8 Further projections` are
-the plan as first written; `E0 Extraction replacement` (`fisc-yqv`) and `E9 The
-drill-down reaches a reader` (`fisc-5miz`) were added afterwards and are both
-closed, so a count of eight is a claim about the plan rather than about the
-tracker. Dependencies are wired so `bd ready` surfaces only genuinely unblocked
-work.
-Each task cites the byob decision it follows.
+The roadmap is eleven epics and **four of them are open**: `E5 Verification`
+(`fisc-1wr`), `E7 Coverage` (`fisc-5gk`), `E8 Further projections` (`fisc-4ua`)
+and `E10 The ACFR enters the corpus` (`fisc-1p4d`). `E1` through `E8` are the
+plan as first written; `E0 Extraction replacement` (`fisc-yqv`) and `E9 The
+drill-down reaches a reader` (`fisc-5miz`) were added afterwards, and `E10` was
+added later still. So a count of eight is a claim about the plan rather than
+about the tracker — and so is any count taken from this paragraph. Read it off
+`bd list --type=epic --status=all`.
+
+`E10` exists because the backlog had outgrown the roadmap. Measured 2026-08-30:
+47 of 69 live beads had no epic at all, `E4` and `E5` — both `P0` — contributed
+**zero** ready work between them and `E2` contributed one `P2` bead, and the
+beads that add up to "a second
+document enters the corpus" were scattered across `E5`, `E7`, `E8` and the flat backlog
+with nothing owning the milestone. That lane is also what unblocks `E5` — the
+whole remaining tier ladder is downstream of `fisc-9hf`, `E10`'s first child.
+
+`E2 Extraction` and `E4 Mapping engine` were closed in that review because each
+had **met its own stated end condition** — all three documents extracted, and
+`facts.jsonl` generated from the p66-67 spine — while still sitting at `P0`. `E4`
+had nothing claimable at all; `E2` had one `P2` determinism test, which is a guard
+on the artifacts rather than part of producing them. Their few remaining children
+are past those end conditions and are open at top level; the dotted ids still
+record where they came from. A closed epic here means *its end condition was met*,
+not that every bead filed under it is done.
+
+Dependencies are wired so `bd ready` surfaces only genuinely unblocked work, and
+that held when it was checked. **Priority is the part that drifts.** The failure
+mode to look for is a bead whose `P1` contradicts its own note — `fisc-bau` sat
+near the top of `bd ready` from 18 to 30 August while its own note said *"NOT ON
+THE CRITICAL PATH"*, and a memory had already recorded the contradiction. Each task cites the
+byob decision it follows.
 
 Use `bd remember` for cross-session knowledge rather than MEMORY.md files. When
 a finding is durable and specific — an arithmetic proof, a document quirk — put
