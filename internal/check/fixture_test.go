@@ -218,13 +218,25 @@ func testFacts(cells ...testCell) []fact.Fact {
 // printed line and the rule that reads it on the same screen.
 func inlinePageDoc(t *testing.T, docID string, page int, text string) *corpus.Doc {
 	t.Helper()
+	return inlinePagesDoc(t, docID, map[int]string{page: text})
+}
+
+// inlinePagesDoc is inlinePageDoc for a test that needs more than one page --
+// which is what it takes to show that a claim about one page does not reach
+// another (fisc-lkx).
+func inlinePagesDoc(t *testing.T, docID string, pages map[int]string) *corpus.Doc {
+	t.Helper()
 	fsys := fstest.MapFS{}
-	name := corpus.PagePath(page)
-	fsys[name] = &fstest.MapFile{Data: []byte(text)}
+	artifacts := map[string]corpus.Artifact{}
+	for page, text := range pages {
+		name := corpus.PagePath(page)
+		fsys[name] = &fstest.MapFile{Data: []byte(text)}
+		artifacts[name] = corpus.Artifact{Bytes: int64(len(text))}
+	}
 	man, err := json.Marshal(map[string]any{
 		"schema_version": corpus.SchemaVersion,
 		"doc_id":         docID,
-		"artifacts":      map[string]corpus.Artifact{name: {Bytes: int64(len(text))}},
+		"artifacts":      artifacts,
 	})
 	if err != nil {
 		t.Fatalf("marshal manifest: %v", err)

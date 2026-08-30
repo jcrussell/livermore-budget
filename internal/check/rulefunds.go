@@ -115,12 +115,26 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 	// spoken for. Both are per document: two documents may print the same
 	// heading and mean different funds.
 	pages := map[string]map[int]bool{}
-	claimed := map[string]map[string]bool{}
+	// CLAIMED IS KEYED ON THE PAGE AS WELL AS THE DOCUMENT (fisc-lkx). It used
+	// to be (doc_id, printed label), with no page dimension at all, while the
+	// claim this check makes is explicitly per page -- "on the pages a schedule
+	// maps, the schedule maps all of it". So one mapped total silenced an
+	// identically-worded total on every OTHER swept page of the same document,
+	// which is exactly the hole clause 2 exists to close.
+	//
+	// Measured before the fix: rollup gf-total-revenues claims "Total General
+	// Fund" from p130 for the whole document, and p0166 and p0172 print the same
+	// line. Neither is swept today, so nothing was wrong in the committed
+	// corpus -- but both adjoin pp.167-170, whose 23 division rules declare
+	// fund 100, so any rule whose parts reached p166 or p172 opened it.
+	claimed := map[string]map[claimKey]bool{}
 
 	for _, f := range s.Files {
 		for _, ro := range f.Rollups {
 			// A rollup's total is a printed line too, and p130's names a fund.
-			set(claimed, f.DocID, ro.TotalRow)
+			// A rollup declares exactly one page and its total is printed there,
+			// so this claim is exact rather than approximate.
+			set(claimed, f.DocID, ro.Page, ro.TotalRow)
 		}
 		for i := range f.Rules {
 			ru := &f.Rules[i]
@@ -138,7 +152,18 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// Latent on the committed corpus, which declares a fund on every
 			// column of every fund-bearing rule. It goes live the moment a
 			// schedule declares its fund per ROW, which is what p76 does.
-			set(claimed, f.DocID, ru.TotalRow)
+			// ON EVERY PAGE OF THE RULE'S PARTS, which is an OVER-claim and is
+			// still strictly narrower than the document-wide claim it replaces.
+			// A rule's total is printed on ONE of its pages -- for a
+			// total_spans_parts rule, the one totalBearingPart finds -- and
+			// establishing which needs the pages, i.e. a resolver this function
+			// does not have. Narrowing it to the bearing page is filed
+			// separately; it is not folded in here because reaching for
+			// s.Resolvers to answer it would make a vocabulary check depend on
+			// the corpus being readable.
+			for j := range ru.Parts {
+				set(claimed, f.DocID, ru.Parts[j].Page, ru.TotalRow)
+			}
 
 			fund, mixed := declaredFund(ru)
 			if mixed {
@@ -295,7 +320,7 @@ func declaredFund(ru *mapping.Rule) (fund int, mixed bool) {
 // The claim this makes is bounded and true: on the pages a schedule maps, the
 // schedule maps all of it.
 func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
-	claimed map[string]map[string]bool) []Finding {
+	claimed map[string]map[claimKey]bool) []Finding {
 
 	var findings []Finding
 	for _, docID := range sortedPageSets(pages) {
@@ -336,7 +361,7 @@ func unclaimedFundTotals(s *Subject, pages map[string]map[int]bool,
 				// total_row holds. Rebuilding "Total "+name would only ever
 				// match the leading shape and would report a claimed trailing
 				// one as unclaimed.
-				if claimed[docID][label] {
+				if claimed[docID][claimKey{page: n, label: label}] {
 					continue
 				}
 				findings = append(findings, finding(fmt.Sprintf("%s p%d", docID, n),
@@ -364,14 +389,20 @@ func describeAnchors(anchors []string) string {
 	return "the totals governing it are " + joinComma(out)
 }
 
-func set(m map[string]map[string]bool, doc, key string) {
+// claimKey is one printed total on one page.
+type claimKey struct {
+	page  int
+	label string
+}
+
+func set(m map[string]map[claimKey]bool, doc string, page int, key string) {
 	if key == "" {
 		return
 	}
 	if m[doc] == nil {
-		m[doc] = map[string]bool{}
+		m[doc] = map[claimKey]bool{}
 	}
-	m[doc][key] = true
+	m[doc][claimKey{page: page, label: key}] = true
 }
 
 func setPage(m map[string]map[int]bool, doc string, page int) {

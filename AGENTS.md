@@ -776,9 +776,19 @@ and that is the evidence — not a guard standing over committed facts.
 
 Which is why the honest statement is that **nobody has enumerated what is left**
 once all four are in play — a block-final row backed by an unlabelled total line
-is the obvious candidate. `fisc-8ln` owns that residue; `fisc-i0d9` owns the
-separate fact that `TestCIPp40SparseRowFailsClosedButDoesNotRead`, which is
-named for `fisc-8ln`'s row, never reaches the row read.
+is the obvious candidate. `fisc-8ln` owns that residue.
+
+`TestCIPp40SparseRowFailsClosedButDoesNotRead` DOES now reach the row read
+(`fisc-i0d9`, closed). It used to anchor its block on the column-header line, so
+`checkGap`'s leading-gap arm refused before any row was read and its one
+assertion passed on that unrelated message quoting the first row's anchor name.
+It now starts past the headers and asserts the value-count refusal by name.
+
+**And the guard that fires there is not the geometry one.** The row yields 2
+tokens against 8 columns, so `len(toks) < ncols` refuses first and geometry never
+places anything — measured identically with `column_headers` declared and
+without. That guard is also load-bearing against more than a wrong read:
+neutering it panics on the `toks[:ncols]` two lines below.
 Three successive attempts in this file to summarise this function were wrong in
 three different ways; if you need the behaviour, read `labelledValues` and write
 a probe, and do not trust this paragraph over the code.

@@ -711,25 +711,94 @@ func TestCIPp29SplitFigureFailsClosed(t *testing.T) {
 // cannot be read correctly by any amount of geometry, and this test does not
 // claim it can (fisc-8ln).
 //
-// What it means to claim is the half that matters here: the read fails, and it
-// fails naming the row rather than filing the second 550,000 under a year the
-// city never put it in.
+// What it claims is the half that matters here: the read fails, and it fails
+// NAMING THE ROW rather than filing the second 550,000 under a year the city
+// never put it in.
 //
-// IT DOES NOT CURRENTLY PROVE THAT -- see fisc-i0d9. Measured: this fails on
-// checkGap's leading-gap arm ("figures appear before the first row"), because
-// the block starts at the column headers, and never reaches the row read. The
-// Contains assertion below passes on the row's ANCHOR NAME appearing in that
-// unrelated message. Do not cite this test as evidence for the row-read
-// behaviour until the section anchor is moved past the headers.
+// IT NOW ACTUALLY REACHES THE ROW READ, which is fisc-i0d9. It used to anchor
+// the section on "PROJECT NAME" -- the column-header line's own label -- so the
+// block began at the headers, and checkGap's LEADING-GAP arm refused before any
+// row was read: "figures appear before the first row". The single assertion was
+// Contains("PB200654"), and that message quotes the first row's ANCHOR NAME, so
+// it passed on an error with nothing to do with the sparse row. The test was
+// cited as evidence for row-read behaviour it never executed.
+//
+// The anchor now starts the block past the header line -- on its trailing
+// "TOTAL", ordinal 1, since "TOTAL - PARKS & BEAUTIFICATION" below is the second
+// -- and the rule declares the two rows above PB200654 so their figures are
+// consumed rather than sitting in the leading gap. PB200654's wrapped label
+// needs a wrapped_labels entry, which is the third thing this page demands
+// before a read gets through at all.
+//
+// AND THE GUARD THAT FIRES IS NOT THE ONE THE BEAD EXPECTED. fisc-i0d9 predicted
+// that reverting the geometry column guard would change the outcome. It does
+// not: the value count refuses first, because the row yields 2 tokens against 8
+// columns, and geometry never gets a chance to place them. Measured both ways --
+// with column_headers declared and without, the error is identical. So on THIS
+// row the value count is the whole defence, and it is load-bearing in a way
+// worth stating: neutering it does not produce a wrong read, it panics on the
+// `toks[:ncols]` two lines below ("slice bounds out of range [:8] with capacity
+// 2").
 func TestCIPp40SparseRowFailsClosedButDoesNotRead(t *testing.T) {
-	res, rule, part := cipRule(t, 40, "PROJECT NAME", "TOTAL - PARKS", "PB200654")
+	src := `schema_version: 1
+doc_id: livermore-cip-fy2026-2030
+rules:
+  - id: cip
+    kind: expenditure
+    basis: adopted
+    units: dollars
+    parts:
+      - page: 40
+        # The header line's trailing "TOTAL". Ordinal 1 because the page's
+        # closing "TOTAL - PARKS & BEAUTIFICATION" row carries the word again.
+        section: "TOTAL"
+        section_ordinal: 1
+        stop_at: "Hagemann"
+        column_headers: ["FY 2024-25", "FY 2025-26", "FY 2026-27", "FY 2027-28",
+                         "FY 2028-29", "FY 2029-30", "FY 2030-45", "TOTAL"]
+        wrapped_labels: ["Decorative Wall Replacement -"]
+        columns: [{fund_group: cip, fiscal_year: 2025}, {fund_group: cip, fiscal_year: 2026},
+                  {fund_group: cip, fiscal_year: 2027}, {fund_group: cip, fiscal_year: 2028},
+                  {fund_group: cip, fiscal_year: 2029}, {fund_group: cip, fiscal_year: 2030},
+                  {fund_group: cip, fiscal_year: 2031},
+                  {fund_group: cip, fiscal_year: 2045, skip: true}]
+    rows:
+      - {label: "PB200429 Rehabilitation", category: c}
+      - {label: "PB200646 LARPD Pa rk Expans ion Projects", category: c}
+      - {label: "PB200654 Holmes Street", category: c}
+`
+	f, err := Parse(strings.NewReader(src), "cip.yaml")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	rule := &f.Rules[0]
+	res, err := NewResolver(cipDoc(t, 40), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
 
-	values, _, err := res.Values(rule, part)
+	values, _, err := res.Values(rule, &rule.Parts[0])
 	if err == nil {
 		t.Fatalf("Values returned %d values for a row six of whose cells are in no "+
 			"substrate; it cannot have read the row", len(values))
 	}
-	if got := diagnosis(t, err); !strings.Contains(got, "PB200654") {
+
+	got := diagnosis(t, err)
+	if !strings.Contains(got, "PB200654") {
 		t.Errorf("error = %s\nwant it to name the row", got)
+	}
+	// THE ASSERTION THE OLD TEST WAS MISSING. Naming the row is not enough:
+	// checkGap's leading-gap message quotes the first row's anchor too, which is
+	// how this test passed for a month on an error about the column headers.
+	if !strings.Contains(got, "is followed by 2 values, want 8") {
+		t.Errorf("error = %s\nwant the ROW READ to refuse, reporting the value count", got)
+	}
+	if strings.Contains(got, "figures appear before the first row") {
+		t.Errorf("error = %s\nthe block still starts at the column headers, so the "+
+			"row read is not reached; this is fisc-i0d9 again", got)
+	}
+	// And the figure is not filed anywhere: no value survives a refused read.
+	if len(values) != 0 {
+		t.Errorf("got %d values from a refused read, want 0", len(values))
 	}
 }

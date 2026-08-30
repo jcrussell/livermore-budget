@@ -98,7 +98,7 @@ func TestUnclaimedFundTotalsSeesBothPrintedShapes(t *testing.T) {
 
 	t.Run("an unclaimed trailing-shape total is reported", func(t *testing.T) {
 		// "Total General Fund" is claimed; the trailing one is not.
-		claimed := map[string]map[string]bool{docID: {"Total General Fund": true}}
+		claimed := map[string]map[claimKey]bool{docID: {{page: 170, label: "Total General Fund"}: true}}
 		got := unclaimedFundTotals(s, pages, claimed)
 		if len(got) != 1 {
 			t.Fatalf("findings = %d, want exactly the unclaimed trailing total: %v",
@@ -110,9 +110,9 @@ func TestUnclaimedFundTotalsSeesBothPrintedShapes(t *testing.T) {
 	})
 
 	t.Run("a claimed trailing-shape total is not a finding", func(t *testing.T) {
-		claimed := map[string]map[string]bool{docID: {
-			"Total General Fund":          true,
-			"General Fund Total Expenses": true,
+		claimed := map[string]map[claimKey]bool{docID: {
+			{page: 170, label: "Total General Fund"}:          true,
+			{page: 170, label: "General Fund Total Expenses"}: true,
 		}}
 		if got := unclaimedFundTotals(s, pages, claimed); len(got) != 0 {
 			t.Errorf("findings = %v, want none: both printed totals are claimed", got)
@@ -156,5 +156,55 @@ func TestPrintedTotalLabelSplitsOnTheColumnGrid(t *testing.T) {
 			t.Errorf("printedTotalLabel(%q) = %q, %v; want %q, %v",
 				c.line, got, ok, c.want, c.ok)
 		}
+	}
+}
+
+// TestAClaimOnOnePageDoesNotSilenceAnotherPage is fisc-lkx.
+//
+// The `claimed` set was keyed on (doc_id, printed label) with NO page dimension,
+// while this check's own stated claim is per page: "on the pages a schedule
+// maps, the schedule maps all of it". So a total mapped on one page silenced an
+// identically-worded total on every other swept page of the same document -- an
+// entirely unmapped fund section on a swept page went invisible, which is the
+// hole clause 2 exists to close.
+//
+// The corpus had no collision when the bead was filed and still has none, so
+// this cannot be shown against committed pages: it is shown against two inline
+// pages printing the same line, one of them claimed.
+func TestAClaimOnOnePageDoesNotSilenceAnotherPage(t *testing.T) {
+	const docID = "livermore-budget-fy2026-2027"
+	const printed = "Total General Fund                  $1,000         $2,000\n"
+
+	s := &Subject{
+		Vocabulary: testVocabulary(t),
+		Docs: map[string]*corpus.Doc{docID: inlinePagesDoc(t, docID, map[int]string{
+			130: printed,
+			166: printed,
+		})},
+	}
+	pages := map[string]map[int]bool{docID: {130: true, 166: true}}
+
+	// Claimed on p130 only -- which is where the real gf-total-revenues rollup
+	// claims it.
+	claimed := map[string]map[claimKey]bool{docID: {
+		{page: 130, label: "Total General Fund"}: true,
+	}}
+
+	got := unclaimedFundTotals(s, pages, claimed)
+	if len(got) != 1 {
+		t.Fatalf("findings = %d, want exactly the unclaimed p166 total: %v", len(got), got)
+	}
+	if !strings.Contains(got[0].Subject, "p166") {
+		t.Errorf("finding names %q, want the page the claim does not cover", got[0].Subject)
+	}
+	if strings.Contains(got[0].Subject, "p130") {
+		t.Errorf("finding names p130, which IS claimed: %q", got[0].Subject)
+	}
+
+	// And claiming it on both pages silences both, so the fix rejects the
+	// unclaimed page rather than the shared label.
+	claimed[docID][claimKey{page: 166, label: "Total General Fund"}] = true
+	if got := unclaimedFundTotals(s, pages, claimed); len(got) != 0 {
+		t.Errorf("findings = %v, want none once both pages claim the total", got)
 	}
 }
