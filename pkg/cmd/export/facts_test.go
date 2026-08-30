@@ -433,7 +433,8 @@ func TestTheFactIndexEnumeratesEveryShardAndIsNotOnTheResolutionPath(t *testing.
 // full, p0001..p0268 and p0001..p0195, so every page the store can shard has its
 // text by construction exactly as before. fisc-73cq was filed on the premise
 // that a second document would make this falsifiable; that premise was wrong,
-// measured at 0448a5b, and the bead is corrected rather than closed on it.
+// measured at 0448a5b. The bead is CLOSED -- on the guard below, not on the
+// falsifiability -- and its close reason records the correction.
 // What would make it live is a PARTIALLY extracted document, not another one.
 // fact-offset-points-at-token forecloses the underlying case from the other
 // side in the meantime.

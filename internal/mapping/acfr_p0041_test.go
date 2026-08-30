@@ -351,19 +351,30 @@ rules:
 }
 
 // acfrLine returns the one page line whose label begins with want.
+//
+// "The one" is enforced rather than assumed, for the reason acfrRow enforces it:
+// a prefix matching two lines would make every assertion about it a claim about
+// whichever line came first, which nobody chose. This helper returned the first
+// match until the fifth review pass, while its own doc comment said "the one
+// line" and its sibling fatalled on exactly this.
 func acfrLine(t *testing.T, want string) string {
 	t.Helper()
 	b, err := os.ReadFile(acfrStatementText)
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
+	var found string
+	hits := 0
 	for _, line := range strings.Split(string(b), "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), want) {
-			return line
+			hits++
+			found = line
 		}
 	}
-	t.Fatalf("the fixture has no line beginning %q", want)
-	return ""
+	if hits != 1 {
+		t.Fatalf("label %q matches %d lines of the fixture, want exactly 1", want, hits)
+	}
+	return found
 }
 
 // TestACFRp0041HasNoGeometryColumnGuard pins the claim that
