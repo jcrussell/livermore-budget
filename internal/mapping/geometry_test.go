@@ -797,8 +797,9 @@ rules:
 		t.Errorf("error = %s\nthe block still starts at the column headers, so the "+
 			"row read is not reached; this is fisc-i0d9 again", got)
 	}
-	// And the figure is not filed anywhere: no value survives a refused read.
-	if len(values) != 0 {
-		t.Errorf("got %d values from a refused read, want 0", len(values))
-	}
+	// The figure is not filed anywhere either, but that is true BY CONSTRUCTION
+	// rather than by assertion: Values and readPart both return (nil, nil, err)
+	// on every error path, so `if len(values) != 0` here could not fail and
+	// would read as a guard. What the Fatalf above already establishes is the
+	// checkable half -- that the read did not succeed.
 }

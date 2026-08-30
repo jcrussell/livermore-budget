@@ -742,10 +742,24 @@ func TestFirstDifferingColumnRefusesRunsOfDifferentWidth(t *testing.T) {
 			// whole defect: min(len(a), len(b)) is a valid index into the LONGER
 			// run and exactly one past the end of the shorter, so the caller's
 			// first indexing operation succeeded and its second panicked.
+			//
+			// Both halves are asserted. An earlier version wrote the condition
+			// as `old < len(a) && old < len(b)`, which is tautologically false --
+			// old IS the smaller length -- so the line billed as demonstrating
+			// the defect could never fire.
 			old := min(len(tt.a), len(tt.b))
-			if old < len(tt.a) && old < len(tt.b) {
-				t.Errorf("min(%d, %d) = %d is in range for both runs, so this case "+
-					"does not reproduce the out-of-range index", len(tt.a), len(tt.b), old)
+			shorter, longer := min(len(tt.a), len(tt.b)), max(len(tt.a), len(tt.b))
+			if old != shorter {
+				t.Errorf("min(%d, %d) = %d, want %d", len(tt.a), len(tt.b), old, shorter)
+			}
+			if old < shorter {
+				t.Errorf("%d is a valid index into the shorter run of %d, so this case "+
+					"does not reproduce the out-of-range index", old, shorter)
+			}
+			if old >= longer {
+				t.Errorf("%d is out of range for the longer run of %d too, so the "+
+					"caller's FIRST indexing operation would have panicked and the "+
+					"defect would not have been the subtle one it was", old, longer)
 			}
 		})
 	}

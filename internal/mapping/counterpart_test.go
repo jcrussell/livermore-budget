@@ -140,15 +140,37 @@ func TestTheIdenticalLegsArmFiresOnTheShapeEveryPublishedRuleUses(t *testing.T) 
 		}
 	}
 
-	// A counterpart that differs from every column is still accepted: the arm
-	// must reject the collision, not the shape.
-	ok := row
-	cp := *row.Counterpart
-	cp.Category = "transfers/out"
-	cp.Fund, cp.FundGroup = 200, "special-revenue"
-	ok.Counterpart = &cp
-	if err := checkCounterpart(rule, ok, errfLike); err != nil {
-		t.Errorf("a well-formed p76-shaped counterpart was refused: %v", err)
+	// THE ACCEPTED CASES CONSTRAIN ONE CLAUSE EACH, and they have to, because a
+	// counterpart differing on all three axes exits at the category
+	// short-circuit and never reaches the per-column loop at all. Measured: with
+	// only such a case here, dropping `cp.Fund == near.Fund` from the loop left
+	// the whole package green while the arm would have started refusing a
+	// legitimate same-group, different-fund counterpart.
+	for _, tt := range []struct {
+		name string
+		mut  func(*Counterpart)
+	}{
+		// Reaches the loop (same category) and must be accepted on the FUND.
+		{"same category and group, a different fund", func(cp *Counterpart) { cp.Fund = 200 }},
+		// Reaches the loop and must be accepted on the GROUP.
+		{"same category and fund, a different group", func(cp *Counterpart) {
+			cp.FundGroup = "special-revenue"
+		}},
+		// Exits at the short-circuit: the ordinary two-legged shape.
+		{"a different category entirely", func(cp *Counterpart) {
+			cp.Category = "transfers/out"
+			cp.Fund, cp.FundGroup = 200, "special-revenue"
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			accepted := row
+			cp := *row.Counterpart
+			tt.mut(&cp)
+			accepted.Counterpart = &cp
+			if err := checkCounterpart(rule, accepted, errfLike); err != nil {
+				t.Errorf("a well-formed p76-shaped counterpart was refused: %v", err)
+			}
+		})
 	}
 
 	// AND THE COLLISION IS PER COLUMN, not per rule: a counterpart matching the

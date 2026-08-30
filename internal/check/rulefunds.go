@@ -152,7 +152,8 @@ func (*ruleFundsMatchTheirHeadings) Run(_ context.Context, s *Subject) (Result, 
 			// Latent on the committed corpus, which declares a fund on every
 			// column of every fund-bearing rule. It goes live the moment a
 			// schedule declares its fund per ROW, which is what p76 does.
-			// ON EVERY PAGE OF THE RULE'S PARTS, which is an OVER-claim and is
+			//
+			// THE CLAIM IS RECORDED ON EVERY PAGE OF THE RULE'S PARTS, which is an OVER-claim and is
 			// still strictly narrower than the document-wide claim it replaces.
 			// A rule's total is printed on ONE of its pages -- for a
 			// total_spans_parts rule, the one totalBearingPart finds -- and
