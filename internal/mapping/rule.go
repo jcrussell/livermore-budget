@@ -597,6 +597,15 @@ type Part struct {
 	// requires this to parse as one, and the two declarations cannot be
 	// substituted for each other in either direction.
 	//
+	// THAT SYMMETRY HAS A COST AND IT IS FILED, NOT HIDDEN. A page that wraps a
+	// row LABEL which happens to be a bare number -- a fund number, a year, a
+	// footnote index -- can now declare it as neither: wrapped_labels refuses it
+	// as an amount, and this would accept it under a claim that is false of a
+	// wrapped label. That is fisc-2jk's shape, reopened one case wide. No page
+	// in the corpus has it (all five committed wrapped_labels entries are
+	// words), and the parser cannot tell the two apart by looking, so it needs a
+	// decision rather than a patch: fisc-xmsk.
+	//
 	// THIS IS THE WEAKEST DECLARATION CLASS IN THIS REPOSITORY, and a reader
 	// should know it before reaching for it. A stated_total_delta is ratified
 	// by exact arithmetic -- get the figure wrong and the column fails. A

@@ -471,7 +471,7 @@ categories:
   # and city-clerk. p41 prints department-level aggregates, so typing
   # the division slug would file a three-division figure under one
   # division -- and fact-departments-resolve would PASS on it, because
-  # the strings coincide. Half the rows classified correctly and two
+  # the strings coincide. Three rows classified correctly and two
   # silently wrong is worse than none, so none carry it, which is the
   # answer fisc-xudn already recorded for this file.
   # ==================================================================

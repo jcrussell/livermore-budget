@@ -3,6 +3,7 @@ package mapping
 import (
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"sync"
@@ -1392,14 +1393,56 @@ func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *Block, text string) (in
 // answer the same here name one printed line, whatever strings they are.
 func lineAt(text string, off int) int { return strings.Count(text[:off], "\n") }
 
-// abs is |c|. amount.Cents is an int64 and a tolerance is symmetric: a document
-// that prints one unit LESS than its rows add to is rounding just as one that
-// prints one more is.
+// abs is |c|.
+//
+// A tolerance is symmetric: a document that prints one unit LESS than its rows
+// add to is rounding just as one that prints one more is.
+//
+// IT CAN RETURN A NEGATIVE, and every caller must say what it does about that.
+// amount.Cents is an int64 and -math.MinInt64 is math.MinInt64, so the one input
+// this cannot answer for is the one input that would make a naive comparison
+// fail open. withinTolerance is the only caller and handles it.
 func abs(c amount.Cents) amount.Cents {
 	if c < 0 {
 		return -c
 	}
 	return c
+}
+
+// withinTolerance reports whether a column's discrepancy is inside half a
+// printed unit per row summed.
+//
+// THE COMPARISON IS DOUBLED RATHER THAN THE BOUND HALVED so the arithmetic stays
+// in whole cents: an odd term count would otherwise round the tolerance, and
+// which way it rounded would be the difference between a page passing and not.
+//
+// THE OVERFLOW GUARDS ARE THE POINT OF THE FUNCTION and are why this is not an
+// inline expression any more. It was one, and it could wrap: amount.Parse admits
+// a millions token up to roughly 9.2e18 cents, and `abs(diff)*2` on a diff that
+// size is NEGATIVE, which compares <= any bound and ties. `diff` at exactly
+// math.MinInt64 gives abs() == math.MinInt64 and a doubled value of 0, which
+// also ties. Both are fail-OPEN in the one arm that decides whether a column may
+// miss the total the document prints for it -- in a package that bounds its
+// products explicitly everywhere else (see amount.Parse's own MaxInt64 checks).
+//
+// Every guard below refuses rather than accepts, because a discrepancy too large
+// to compare against a bound built from a printed unit is, self-evidently, not
+// within it.
+func withinTolerance(diff, unit amount.Cents, terms int) bool {
+	if unit <= 0 || terms <= 0 {
+		return false
+	}
+	// The bound itself. unit is a power of ten no larger than 10^8 cents and
+	// terms is a row count, so this cannot realistically wrap -- but "cannot
+	// realistically" is what the guard above this one was relying on.
+	if amount.Cents(terms) > math.MaxInt64/unit {
+		return false
+	}
+	d := abs(diff)
+	if d < 0 || d > math.MaxInt64/2 {
+		return false
+	}
+	return d*2 <= unit*amount.Cents(terms)
 }
 
 // decimalsWitness checks a printed_decimals declaration against the tokens the
@@ -1456,8 +1499,14 @@ func (w *decimalsWitness) settle(rule *Rule) error {
 	if rule.PrintedDecimals == nil || w.exact {
 		return nil
 	}
-	return fmt.Errorf("declares %d printed decimal place(s), but no token this rule reads prints that many",
-		*rule.PrintedDecimals)
+	// "SUMMED INTO A COMPARED COLUMN", not "reads". parseRow drops a skipped
+	// row or column before a Value exists, so the witness never sees those
+	// tokens -- and a rule whose compared column prints integers while its
+	// SKIPPED column prints "16.00" would otherwise be told, falsely, that no
+	// token it reads prints two decimals. Rule.PrintedDecimals draws exactly
+	// this distinction and the message used to ignore it.
+	return fmt.Errorf("declares %d printed decimal place(s), but no token summed into a "+
+		"compared column prints that many", *rule.PrintedDecimals)
 }
 
 // decimalsError wraps a witness complaint as a resolve error.
@@ -1524,15 +1573,10 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 		if diff == want {
 			continue
 		}
-		// Half a printed unit per row summed. Written as a doubled comparison
-		// rather than a halved bound so the arithmetic stays in whole cents:
-		// an odd term count would otherwise round the tolerance, and which way
-		// it rounded would be the difference between a page passing and not.
-		//
 		// It is tried only on an UNDECLARED column. A declared delta names an
 		// exact figure and must still match exactly, or the two mechanisms
 		// would compose into a declaration with slack around it.
-		if !isDeclared && unit > 0 && abs(diff)*2 <= unit*amount.Cents(terms[c]) {
+		if !isDeclared && withinTolerance(diff, unit, terms[c]) {
 			res.Tolerated++
 			res.Slack = append(res.Slack, diff)
 			continue

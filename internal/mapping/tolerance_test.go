@@ -1,6 +1,7 @@
 package mapping
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -140,7 +141,7 @@ func TestPrintedDecimalsRefusesADeclarationNoTokenBearsOut(t *testing.T) {
 	if err == nil {
 		t.Fatal("a declaration of three decimals was accepted over a page printing two")
 	}
-	if got := err.Error(); !strings.Contains(got, "no token this rule reads prints that many") {
+	if got := err.Error(); !strings.Contains(got, "no token summed into a compared column prints that many") {
 		t.Errorf("refused for some other reason: %v", got)
 	}
 }
@@ -844,5 +845,51 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 		"   157.20   145.50\n      18.45\n", rows, 0, map[string]bool{}); err == nil {
 		t.Error("figures on the line AFTER the total's were accepted; the skip is " +
 			"clearing more than one line")
+	}
+}
+
+// TestWithinToleranceRefusesRatherThanWrapping is the fifth review pass's
+// finding, and it is the only fail-OPEN one this lane produced.
+//
+// The bound used to be an inline `abs(diff)*2 <= unit*terms`. amount.Parse
+// admits a millions token up to roughly 9.2e18 cents, and doubling a diff that
+// size wraps NEGATIVE, which compares <= any bound and ties; a diff at exactly
+// math.MinInt64 doubles to 0 and also ties. Either would have let a column miss
+// the total the document prints for it by an arbitrary amount, silently, in the
+// one arm that decides whether it may.
+//
+// Every case here is refused, which is the fail-closed direction: a discrepancy
+// too large to compare against a bound built from a printed unit is not within
+// it.
+func TestWithinToleranceRefusesRatherThanWrapping(t *testing.T) {
+	const unit = amount.Cents(1_000_000) // $10,000, ACFR p41's printed digit
+	for _, tc := range []struct {
+		name  string
+		diff  amount.Cents
+		unit  amount.Cents
+		terms int
+		want  bool
+	}{
+		{"the real page", 1_000_000, unit, 5, true},
+		{"the real page, other sign", -1_000_000, unit, 5, true},
+		{"exactly on the bound", 2_500_000, unit, 5, true},
+		{"one cent past it", 2_500_001, unit, 5, false},
+		{"one cent past it, other sign", -2_500_001, unit, 5, false},
+		// The wrapping cases.
+		{"a diff that doubles past MaxInt64", math.MaxInt64 - 1, unit, 5, false},
+		{"MinInt64, whose abs is itself", amount.Cents(math.MinInt64), unit, 5, false},
+		{"MaxInt64", amount.Cents(math.MaxInt64), unit, 5, false},
+		// A bound that would itself wrap.
+		{"a term count that overflows the bound", 1_000_000, math.MaxInt64, 3, false},
+		// Degenerate inputs: no declaration, or nothing summed.
+		{"no unit", 1_000_000, 0, 5, false},
+		{"no terms", 0, unit, 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := withinTolerance(tc.diff, tc.unit, tc.terms); got != tc.want {
+				t.Errorf("withinTolerance(%d, %d, %d) = %v, want %v",
+					tc.diff, tc.unit, tc.terms, got, tc.want)
+			}
+		})
 	}
 }
