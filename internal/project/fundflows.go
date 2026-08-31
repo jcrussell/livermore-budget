@@ -474,8 +474,17 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 // fundFlowsCaveats are the three things a reader of this file has to be told,
 // each of which is a property of the document rather than a hedge about it.
 func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
-	truncated := groupsWithNoSpendingSide(nodes)
-	return []Caveat{
+	truncated := len(truncatedGroups(nodes))
+	// THE THIRD CAVEAT IS CONDITIONAL ON THERE BEING A DECOMPOSITION AT ALL.
+	// It opens "Only the General Fund has a spending side", and a column with
+	// no department rows has none -- every group would be counted as truncated
+	// and the sentence would read "the other 6 groups' revenue ends at their
+	// funds" out of six, over a document that decomposes nothing. Latent: all
+	// four published columns carry pp.167-170. A caveat that describes a
+	// distinction the document does not draw is worse than a missing one,
+	// because it reads as though the distinction was checked.
+	decomposed := len(spendingSides(nodes)) > 0
+	out := []Caveat{
 		ConstraintTierCaveat(),
 		{
 			ID:      "mixed-grain-double-counts",
@@ -518,58 +527,78 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			AppliesTo: appliesToTruncatedGroups(nodes),
 		},
 	}
+	if !decomposed {
+		return out[:2]
+	}
+	return out
 }
 
-// groupsWithNoSpendingSide counts the fund groups whose money ends at their
-// funds, which is every group this document carries but the one pp.167-170
-// decompose.
+// spendingSides is the fund groups this document decomposes: the ones with a
+// division beneath one of their funds.
 //
-// COUNTED RATHER THAN WRITTEN DOWN. The published columns do not agree on it:
-// fund-flows-2024-actual carries a seventh fund group, permanent, so six of its
-// seven stop short, while the other three carry six and five stop. A literal is
-// right about one column and wrong on the page the site actually draws.
-func groupsWithNoSpendingSide(nodes []Node) int {
-	spending := map[string]bool{}
+// ONE COMPUTATION FOR BOTH THE COUNT AND THE MARKS, which is what the caveat
+// needs. It said "the other 5 groups" while marking six of them, general
+// included -- a list that contradicted the sentence it sat under, because the
+// count excluded the exception and the marks did not.
+func spendingSides(nodes []Node) map[string]bool {
 	parent := map[string]string{}
 	for _, n := range nodes {
 		if n.Tier == tierFund {
 			parent[n.ID] = n.Parent
 		}
 	}
+	out := map[string]bool{}
 	for _, n := range nodes {
 		if n.Tier == tierDepartment {
 			if g := parent[n.Parent]; g != "" {
-				spending[g] = true
+				out[g] = true
 			}
 		}
 	}
-	groups := 0
+	return out
+}
+
+// truncatedGroups is the fund groups whose money ends at their funds, sorted.
+//
+// COUNTED RATHER THAN WRITTEN DOWN, because the published columns do not agree:
+// fund-flows-2024-actual carries a seventh fund group, permanent, so six of its
+// seven stop short, while the other three carry six and five stop. A literal is
+// right about one column and wrong on the page the site actually draws -- which
+// is how "the other six fund groups" shipped on a chart where five stop.
+func truncatedGroups(nodes []Node) []string {
+	decomposed := spendingSides(nodes)
+	out := []string{}
 	for _, n := range nodes {
-		if strings.HasPrefix(n.ID, prefixFundGroup) && !spending[n.ID] {
-			groups++
+		if strings.HasPrefix(n.ID, prefixFundGroup) && !decomposed[n.ID] {
+			out = append(out, n.ID)
 		}
 	}
-	return groups
+	slices.Sort(out)
+	return out
 }
 
 // appliesToTruncatedGroups names the marks the only-the-general-fund caveat is
-// about: every fund group this document carries, and the General Fund itself,
-// which is the exception that makes the others exceptions.
+// about: the groups whose money ends at their funds, and the fund that is the
+// exception to them.
 //
-// DERIVED FROM THE DOCUMENT RATHER THAN SPELLED OUT, and a hard-coded list is
-// what taught me why. ValidateCaveats refuses an id the document does not
-// carry -- correctly -- and the smaller fixtures in fundflows_test.go build
-// documents with one or two groups, so a fixed list of six made every one of
-// them fail the build. A caveat's targets have to be a property of the
-// document it ships in.
+// THE EXCEPTION IS NAMED AS A FUND, NOT AS A GROUP, and that is what keeps the
+// list and the sentence in step. fund-group/general was in here, so a caveat
+// saying "the other 5 groups' revenue ends at their funds" printed an About
+// list of six groups with the exception among them. fund/100 marks the same
+// thing without being counted as one of the five -- and on revenue.html, where
+// that fund is folded away, caveatsFor resolves it to fund-group/general
+// anyway, so the exception is still marked where a reader can see it.
 //
-// fund/100 IS INCLUDED WHEREVER IT EXISTS, because spending.html draws that
-// node and no fund group at all: the two pages between them mark one list.
+// DERIVED FROM THE DOCUMENT, and a hard-coded list is what taught me why.
+// ValidateCaveats refuses an id the document does not carry, and the smaller
+// fixtures in fundflows_test.go build documents with one or two groups, so a
+// fixed list of six failed every one of them at build time.
 func appliesToTruncatedGroups(nodes []Node) []string {
-	out := make([]string, 0, len(nodes))
+	out := truncatedGroups(nodes)
 	for _, n := range nodes {
-		if n.ID == prefixFund+"100" || strings.HasPrefix(n.ID, prefixFundGroup) {
+		if n.ID == prefixFund+"100" {
 			out = append(out, n.ID)
+			break
 		}
 	}
 	slices.Sort(out)

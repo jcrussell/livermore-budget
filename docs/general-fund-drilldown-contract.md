@@ -183,10 +183,16 @@ Tier 1 does not exist; see `docs/sankey-contract.md`.
   eleven departments, and the $13,222,668 difference is transfers out plus the
   change in working capital, printed on pp.66-67 and not carried here. There is
   **no invented sink node** — the caveat says so instead.
-- **What the other six fund groups spend.** pp.167-170 decompose the General
-  Fund alone. The money is not missing; the schedule that would break it down is
-  not published. pp.72-75 give a per-fund expenses column and are the schedule a
-  wider key would be for.
+- **What the fund groups other than the General Fund spend.** pp.167-170
+  decompose that fund alone. The money is not missing; the schedule that would
+  break it down is not published. pp.72-75 give a per-fund expenses column and
+  are the schedule a wider key would be for.
+
+  **No count is given here on purpose.** It is not six and it is not fixed: the
+  published columns carry six fund groups, of which five stop short, except
+  FY2023-24, which carries a seventh — permanent — and stops six. The caveat in
+  each document computes its own, and this is the third place that literal was
+  found, after the caveat itself and spending.html's lede.
 - **Transfers between funds.** p76's legs are scope `transfers-by-fund` and no
   projection selects it, because it overlaps `revenue-by-fund` on `transfer_in`.
   It needs a document of its own (fisc-9gh).

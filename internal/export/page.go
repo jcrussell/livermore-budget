@@ -1693,14 +1693,20 @@ type caveatDocument struct {
 	Label    string
 	DataPath string
 	Entries  []caveatEntry
-	// Drawn is whether any view renders this document, so the page can promise
-	// a chart flag only where there is a chart.
+	// Drawn is whether a view that DRAWS A CHART renders this document, so the
+	// page can promise a chart flag only where there is a chart.
 	//
-	// THREE OF THE SEVEN PUBLISHED DOCUMENTS HAVE NO PAGE -- the fund-flows
-	// columns unviewedDocuments declares -- and this page lists their caveats
-	// anyway, because a caveat is owed to whoever fetches the file. What it
-	// must not do is tell that reader the charts flag these marks: there are no
-	// charts.
+	// NOT "any view renders it", which is what this said and what
+	// templateDrawsAChart exists to correct: trends.html renders revenue-trends
+	// and ships no app.js, so a caveat on that document can be listed and never
+	// chipped on a mark.
+	//
+	// FOUR OF THE SEVEN PUBLISHED DOCUMENTS ARE FALSE HERE: the three
+	// fund-flows columns unviewedDocuments declares, which no view renders at
+	// all, and revenue-trends, which one renders as a table. This page lists
+	// all of their caveats anyway, because a caveat is owed to whoever fetches
+	// the file. What it must not do is tell that reader the charts flag these
+	// marks.
 	Drawn bool
 }
 

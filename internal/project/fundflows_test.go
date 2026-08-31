@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
@@ -190,10 +192,66 @@ func TestTheTruncatedGroupCountIsTheDocumentsOwn(t *testing.T) {
 			for _, g := range tc.groups {
 				nodes = append(nodes, Node{ID: prefixFundGroup + g, Tier: tierFundGroup})
 			}
-			if got := groupsWithNoSpendingSide(nodes); got != tc.want {
-				t.Errorf("groupsWithNoSpendingSide = %d, want %d", got, tc.want)
+			got := truncatedGroups(nodes)
+			if len(got) != tc.want {
+				t.Errorf("truncatedGroups = %v (%d), want %d", got, len(got), tc.want)
+			}
+			// AND THE MARKS ARE THE SAME SET PLUS THE EXCEPTION. The count and
+			// the applies_to list came from two computations and disagreed: the
+			// caveat said "the other 5 groups" and marked six, general among
+			// them. One function feeds both now, and this is what says so.
+			marks := appliesToTruncatedGroups(nodes)
+			want := append(append([]string{}, got...), prefixFund+"100")
+			slices.Sort(want)
+			if diff := cmp.Diff(want, marks); diff != "" {
+				t.Errorf("applies_to (-want +got):\n%s", diff)
+			}
+			for _, m := range marks {
+				if m == prefixFundGroup+"general" {
+					t.Error("the marks include fund-group/general, which is the exception " +
+						"the sentence excludes from its count; fund/100 is how it is named")
+				}
 			}
 		})
+	}
+}
+
+// TestAColumnThatDecomposesNothingDoesNotClaimTheGeneralFundIsSpecial is the
+// latent arm of the caveat above.
+//
+// It opens "Only the General Fund has a spending side", and a column with no
+// department rows has none -- so every group counts as truncated and the
+// sentence would read "the other 6 groups' revenue ends at their funds" out of
+// six, over a document that decomposes nothing at all. All four published
+// columns carry pp.167-170 today, so this shape reaches no reader; it also
+// reaches no test unless one builds it, and a caveat describing a distinction
+// the document does not draw is worse than a missing one, because it reads as
+// though the distinction was checked.
+func TestAColumnThatDecomposesNothingDoesNotClaimTheGeneralFundIsSpecial(t *testing.T) {
+	groups := []Node{
+		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
+		{ID: prefixFundGroup + "capital", Tier: tierFundGroup},
+		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
+	}
+	has := func(cs []Caveat, id string) bool {
+		for _, c := range cs {
+			if c.ID == id {
+				return true
+			}
+		}
+		return false
+	}
+	const id = "only-the-general-fund-is-decomposed"
+
+	if got := fundFlowsCaveats(0, groups); has(got, id) {
+		t.Errorf("a column with no division rows still carries %q; it says only the "+
+			"General Fund has a spending side, and nothing here has one", id)
+	}
+	// And with one division it comes back, so the condition is not simply off.
+	withDivision := append(append([]Node{}, groups...),
+		Node{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"})
+	if got := fundFlowsCaveats(0, withDivision); !has(got, id) {
+		t.Errorf("a column that DOES decompose the General Fund carries no %q", id)
 	}
 }
 
