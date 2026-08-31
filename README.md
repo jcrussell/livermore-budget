@@ -46,7 +46,7 @@ one, because naively summing the expenditure column double-counts transfers by
 it.
 
 The site publishes **five pages**. `index.html` is the fund-group spine as a
-Sankey, with a toggle between the two adopted years. `revenue.html` draws all
+Sankey, with a toggle between the two adopted years. `trends.html` draws all
 **924** of pp.127-140 — 231 printed rows across four columns, every figure a link
 to the extracted text of the page it was read from, and a per-row mark whose
 scale is that row's own. `drilldown.html` draws pp.127-140 and pp.167-170

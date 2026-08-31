@@ -104,9 +104,9 @@ func twoViews(t *testing.T, trendsPages ...int) string {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Nav: "Revenue by fund",
+			{Path: "trends.html", Nav: "Revenue tables",
 				Template: export.TrendsTemplate, Projection: "revenue-trends",
-				Title: "Revenue by fund", Lede: "A lede."},
+				Title: "Revenue tables", Lede: "A lede."},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -161,13 +161,13 @@ func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 
 	spine := readFile(t, dir, "index.html")
-	revenue := readFile(t, dir, "revenue.html")
+	trends := readFile(t, dir, "trends.html")
 
 	if !strings.Contains(spine, "p66 (PDF)") || strings.Contains(spine, "p127 (PDF)") {
 		t.Error("the spine page's Sources list is not its own")
 	}
-	if !strings.Contains(revenue, "p127 (PDF)") || strings.Contains(revenue, "p66 (PDF)") {
-		t.Error("the revenue page's Sources list is not its own")
+	if !strings.Contains(trends, "p127 (PDF)") || strings.Contains(trends, "p66 (PDF)") {
+		t.Error("the trends page's Sources list is not its own")
 	}
 }
 
@@ -384,7 +384,7 @@ func TestEveryViewsMarkupResolves(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	ref := regexp.MustCompile(`(?:src|href)="([^"]+)"`)
 
-	for _, page := range []string{"index.html", "revenue.html"} {
+	for _, page := range []string{"index.html", "trends.html"} {
 		found := 0
 		for _, m := range ref.FindAllStringSubmatch(readFile(t, dir, page), -1) {
 			target := m[1]
@@ -415,8 +415,8 @@ func TestEveryViewsMarkupResolves(t *testing.T) {
 func TestTheNavIsOnEveryPageAndMarksTheCurrentOne(t *testing.T) {
 	dir := twoViews(t, 127)
 	for _, c := range []struct{ page, current, other string }{
-		{"index.html", "Budget flows", "revenue.html"},
-		{"revenue.html", "Revenue by fund", export.IndexPath},
+		{"index.html", "Budget flows", "trends.html"},
+		{"trends.html", "Revenue tables", export.IndexPath},
 	} {
 		html := readFile(t, dir, c.page)
 		if !strings.Contains(html, `<a href="`+c.other+`"`) {
@@ -436,7 +436,7 @@ func TestASingleViewSiteRendersNoNav(t *testing.T) {
 	if strings.Contains(readPage(t, dir), "site-nav") {
 		t.Error("a one-view site rendered a nav")
 	}
-	if _, err := os.Stat(filepath.Join(dir, "revenue.html")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "trends.html")); err == nil {
 		t.Error("a one-view site wrote a second page")
 	}
 }
@@ -452,12 +452,12 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		views []export.View
 		want  string
 	}{
-		{"no index", []export.View{{Path: "revenue.html",
+		{"no index", []export.View{{Path: "trends.html",
 			Template: export.SankeyTemplate, Projection: "sankey"}}, "opens on exactly one"},
 		{"two indexes", []export.View{ok, ok}, "two views claim the output path"},
 		{"a path that is not html", []export.View{ok, {Path: "revenue.txt",
 			Template: export.SankeyTemplate, Projection: "sankey"}}, "not an .html file"},
-		{"a path in a subdirectory", []export.View{ok, {Path: "views/revenue.html",
+		{"a path in a subdirectory", []export.View{ok, {Path: "views/trends.html",
 			Template: export.SankeyTemplate, Projection: "sankey"}}, "not at the site root"},
 		// THE SHADOWING MESSAGE, not "not an .html file". This case is named for
 		// the fixed-layout guard and used to assert the suffix check, which is to
@@ -479,9 +479,9 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
 				Lede: "a sentence that would go nowhere"}},
 			"has no {{.Lede}}"},
-		{"a projection that was not built", []export.View{ok, {Path: "revenue.html",
+		{"a projection that was not built", []export.View{ok, {Path: "trends.html",
 			Template: export.SankeyTemplate, Projection: "nope"}}, "which was not built"},
-		{"no template", []export.View{ok, {Path: "revenue.html", Projection: "sankey"}},
+		{"no template", []export.View{ok, {Path: "trends.html", Projection: "sankey"}},
 			"names no template"},
 		{"a year stem that was not built", []export.View{{Path: export.IndexPath,
 			Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey",
@@ -491,13 +491,13 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// documents. Only the two chart templates render a year control, and
 		// nothing anywhere told a caller that.
 		{"year stems a template cannot render", []export.View{ok,
-			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate,
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey", YearStems: []string{"sankey"}}},
 			"has no year control"},
 		// buildSite falls back Nav -> Title and has nothing after that, so this
-		// set shipped <a href="revenue.html"></a> on every page of the site.
+		// set shipped <a href="trends.html"></a> on every page of the site.
 		{"a view with neither a nav label nor a title", []export.View{ok,
-			{Path: "revenue.html", Template: export.SankeyTemplate, Projection: "sankey"}},
+			{Path: "trends.html", Template: export.SankeyTemplate, Projection: "sankey"}},
 			"empty link"},
 		// THE THIRD FIELD OF THE SAME FAMILY, found by review of the commit
 		// that closed the first two. Only the drill-down publishes render_tiers
@@ -531,7 +531,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 
 // TestAnAssetCannotShadowAView is the reason reservedPaths became a property of
 // Options rather than a package variable. It knew about index.html because that
-// was the only page; an asset at revenue.html would have replaced a view in
+// was the only page; an asset at trends.html would have replaced a view in
 // silence, and the site would have exported cleanly.
 func TestAnAssetCannotShadowAView(t *testing.T) {
 	_, err := export.Write(export.Options{
@@ -539,9 +539,9 @@ func TestAnAssetCannotShadowAView(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(127)},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
-		Files:       map[string][]byte{"revenue.html": []byte("not the view")},
+		Files:       map[string][]byte{"trends.html": []byte("not the view")},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	})
@@ -561,7 +561,7 @@ func TestAnAssetCannotShadowAView(t *testing.T) {
 // that the figures on the page are the document's own and that no total appears.
 func TestTheTrendsViewRendersWhatTheDocumentPublishes(t *testing.T) {
 	dir := twoViews(t, 127, 128)
-	html := readFile(t, dir, "revenue.html")
+	html := readFile(t, dir, "trends.html")
 
 	for _, want := range []string{
 		"Property Taxes", // the row label and the category label
@@ -593,7 +593,7 @@ func TestTheTrendsViewRefusesADocumentWithNoColumns(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc()},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -707,7 +707,7 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 		},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -716,7 +716,7 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 		t.Fatalf("Write: %v", err)
 	}
 
-	html := readFile(t, dir, "revenue.html")
+	html := readFile(t, dir, "trends.html")
 	row := between(t, html, `<tr data-fund-group=`, "</tr>")
 	cells := strings.Count(row, "<td class=\"num")
 	if cells != 2 {
@@ -782,7 +782,7 @@ func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(pages...)},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		PageText:    twoViewPageText(pages...),
@@ -790,9 +790,9 @@ func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
-	page, err := os.ReadFile(filepath.Join(dir, "revenue.html"))
+	page, err := os.ReadFile(filepath.Join(dir, "trends.html"))
 	if err != nil {
-		t.Fatalf("read revenue.html: %v", err)
+		t.Fatalf("read trends.html: %v", err)
 	}
 	got := string(page)
 
@@ -838,7 +838,7 @@ func writeTrends(t *testing.T, raw []byte, pages ...int) error {
 		},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate, Projection: "sankey"},
-			{Path: "revenue.html", Nav: "Revenue by fund", Template: export.TrendsTemplate, Projection: "revenue-trends"},
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate, Projection: "revenue-trends"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -898,7 +898,7 @@ func TestADocumentThatLosesAFigureBetweenProjectionAndPageIsRefused(t *testing.T
 //
 // The guard beside this one reconciles the rendered cells against
 // counts.points, and the sentence it exists to protect prints a DIFFERENT
-// number -- revenue.html.tmpl renders {{.Facts}}, "N figures in all", from
+// number -- trends.html.tmpl renders {{.Facts}}, "N figures in all", from
 // counts.facts. project.TrendCounts' doc comment states the two are computed
 // independently, facts off the selection and points off the series actually
 // built, so they are free to disagree.
@@ -1403,8 +1403,8 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 	// worthless the moment its template is handled.
 	const orphan = "unclaimed.html.tmpl"
 	assets := fstest.MapFS{
-		"index.html.tmpl":   {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
-		"revenue.html.tmpl": {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		"index.html.tmpl":  {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
+		"trends.html.tmpl": {Data: []byte(`<!doctype html><title>{{.Title}}</title>`)},
 		// Reads nothing. That is the point: it is what a page of blanks is.
 		orphan:             {Data: []byte(`<!doctype html><title>unclaimed</title>`)},
 		"app.js":           {Data: []byte(`/* app */`)},

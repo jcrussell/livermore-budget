@@ -473,8 +473,13 @@ func views(built Result) []export.View {
 	}}
 	if _, ok := projections[project.TrendsProjection]; ok {
 		out = append(out, export.View{
-			Path:       "revenue.html",
-			Nav:        "Revenue by fund",
+			Path: "trends.html",
+			// "Revenue tables" AND NOT "Revenue by fund", because a Revenue
+			// page that draws a chart is coming and two nav entries both
+			// beginning "Revenue" would leave a reader guessing which is
+			// which. This one is the tables; that is the distinction worth
+			// putting in the label.
+			Nav:        "Revenue tables",
 			Template:   export.TrendsTemplate,
 			Projection: project.TrendsProjection,
 			Title:      "Where Livermore's revenue comes from, fund by fund",

@@ -23,7 +23,7 @@ import (
 // which, by name.
 const (
 	SankeyTemplate    = "index.html.tmpl"
-	TrendsTemplate    = "revenue.html.tmpl"
+	TrendsTemplate    = "trends.html.tmpl"
 	DrilldownTemplate = "drilldown.html.tmpl"
 	// ProvenanceTemplate renders the fact store's index, and CaveatsTemplate
 	// every document's caveats in one place. THEY ARE THE TWO TEMPLATES THAT
@@ -1562,7 +1562,7 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			v.Projection, meta.Counts.Points, rendered)
 	}
 	// AND AGAINST facts, WHICH IS THE NUMBER THE LEDE ACTUALLY PRINTS.
-	// revenue.html.tmpl renders {{.Facts}} -- "N figures in all" -- fed from
+	// trends.html.tmpl renders {{.Facts}} -- "N figures in all" -- fed from
 	// counts.facts, while the arm above reconciles against counts.points, and
 	// project.TrendCounts' doc comment says in so many words that the two are
 	// computed independently: facts off the selection, points off the series

@@ -1217,9 +1217,13 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	if got[0].Path != export.IndexPath {
 		t.Errorf("the site opens on %q, want %q", got[0].Path, export.IndexPath)
 	}
-	// The trends and drill-down views really are gone: the whole point.
+	// The trends and drill-down views really are gone: the whole point. Named
+	// by their CURRENT paths, because a path that no longer exists is an arm
+	// that can never match -- this said "revenue.html" for one commit after
+	// that view became trends.html, which is a guard quietly retired by a
+	// rename rather than by a decision.
 	for _, v := range got {
-		if v.Path == "revenue.html" || v.Path == "drilldown.html" {
+		if v.Path == "trends.html" || v.Path == "drilldown.html" {
 			t.Errorf("view %q survived with its document unbuilt; a nav entry pointing at "+
 				"a page that was not written is a 404 a reader can click", v.Path)
 		}

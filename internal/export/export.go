@@ -393,7 +393,7 @@ func (o *Options) validate() error {
 	// are. Every template guards its nav with {{if gt (len .Nav) 1}}, so a
 	// single-view site draws none and a view with neither field loses nothing.
 	// From two views up, buildSite falls back Nav -> Title and has nothing
-	// after that, so the nav ships <a href="revenue.html"></a> -- a link a
+	// after that, so the nav ships <a href="trends.html"></a> -- a link a
 	// reader can see, cannot read, and can still click.
 	//
 	// Refused rather than defaulted to path.Base(v.Path). A filename is not a
@@ -497,7 +497,7 @@ func (o *Options) validate() error {
 // IT NO LONGER CONTAINS index.html, and that is the point of the split. The
 // pages are now a property of Options -- one per View -- so which paths are
 // reserved is too, and a package-level set could only ever know about the one
-// page that used to exist. An asset at revenue.html would have shadowed a view
+// page that used to exist. An asset at trends.html would have shadowed a view
 // silently.
 var fixedPaths = func() map[string]bool {
 	m := map[string]bool{MarkerName: true}
@@ -645,9 +645,10 @@ func templateRendersLede(name string) bool {
 //
 // The same shape as templateRendersLede above and for the same reason, but the
 // trap it closes is a step worse: a lede dropped in silence loses a sentence,
-// and year stems dropped in silence lose whole documents. revenue.html took a
-// four-stem list and rendered one year, with every check green, because the
-// only thing that reads YearStems is a template arm that page does not have.
+// and year stems dropped in silence lose whole documents. The trends page --
+// trends.html, and revenue.html when the defect was found -- took a four-stem
+// list and rendered one year, with every check green, because the only thing
+// that reads YearStems is a template arm that page does not have.
 //
 // TWO TEMPLATES, NOT ONE. The drill-down grew a year control after the bead
 // that named this defect was filed, so a guard spelled
