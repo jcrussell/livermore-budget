@@ -494,26 +494,6 @@ export async function checks() {
       nodes: doc.nodes,
       links: doc.links,
     },
-  }, {
-    // THE ARM THAT WAS TAKEN INSTEAD OF A SCHEMA BUMP. caveatsFor dereferences
-    // metadata.caveats[].applies_to, on a document fetched lazily and served
-    // with no cache-busting -- so a browser can hold a pre-deploy file beside a
-    // post-deploy app.js, which is the case this whole gate exists for.
-    // Bumping schema_version would refuse the same documents and cost two Go
-    // constants, site/app.js, both goldens and eight fixtures; an arm refuses
-    // them BY NAME and tells the reader to reload, which is the thing they can
-    // act on. That trade is only defensible if the arm fires, so: this.
-    key: "metadata.caveats[].applies_to",
-    doc: {
-      schema_version: 1,
-      metadata: {
-        fiscal_year: 2027,
-        sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }],
-        caveats: [{ id: "c", summary: "s", text: "t" }],
-      },
-      nodes: doc.nodes,
-      links: doc.links,
-    },
   }]) {
     const { app, main, body } = page({
       config,

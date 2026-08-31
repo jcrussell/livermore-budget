@@ -73,20 +73,18 @@
     <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
     <p>{{.Text}}</p>
     {{- if .AppliesTo}}
-    {{- /* "IS ABOUT", NOT "MARKS". This said the caveat marks these nodes on
-           the chart, and nothing does: site/app.js never reads applies_to, so
-           no mark on any chart is flagged by any caveat. A published sentence
-           describing behaviour the tree does not have is the defect this
-           project exists to refuse, arrived at through page copy. The field is
-           real and the node ids are checked against the document that carries
-           them -- project.ValidateCaveats refuses one naming a node the
-           document does not have -- so what is true today is that these are
-           the marks the caveat concerns. Making the chart show it is
-           fisc-yj4w.8. */}}
+    {{- /* THE CHARTS DO MARK THESE NOW (fisc-yj4w.8), which this comment said
+           they did not: app.js's caveatsFor resolves each id through the
+           hierarchy, so a caveat about fund/100 chips that node where it is
+           drawn and fund-group/general where it folds. The wording stays "is
+           about" rather than "marks", because it is true of a reader who never
+           opens a chart -- and because the ids are checked against the document
+           by project.ValidateCaveats, which is what makes the sentence
+           trustworthy whether or not any page draws them. */}}
     <p class="subtle">
       About
       {{- range $i, $n := .AppliesTo}}{{if $i}},{{end}} <code>{{$n}}</code>{{end}}
-      in this document.
+      in this document — the charts flag these marks where they draw them.
     </p>
     {{- end}}
   </article>

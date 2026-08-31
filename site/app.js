@@ -1283,6 +1283,13 @@ function capColumn(doc, tier, cap) {
     // the tooltip and the detail panel: a box with nothing in it, beside chips
     // that say something.
     role: "aggregate",
+    // THE IDS IT SWALLOWED, so a caveat about one of them still reaches the
+    // mark that now stands for it. caveatsFor walks the tier hierarchy, which
+    // covers foldDocument's fold and NOT this one -- the tail is folded by
+    // value, not by ancestry, so nothing in the parent chain records it.
+    // Latent today, since the one caveat naming nodes names fund groups and
+    // fund/100, none of which is ever in a tail; latent is how it would ship.
+    folds: folded.map((n) => n.id),
     derived: true,
     rationale: "Our grouping, not a line the city printed: the " + folded.length +
       " smallest " + ((DRILL && DRILL.tail) || "items") + " in this column are drawn as one " +
@@ -1920,7 +1927,13 @@ function caveatsFor(id) {
   if (!projection || !projection.metadata || !Array.isArray(projection.metadata.caveats)) {
     return [];
   }
+  // THE AGGREGATE STANDS FOR THE IDS IT SWALLOWED. capColumn folds by VALUE,
+  // not by ancestry, so the walk below cannot see that relationship -- the
+  // node it folded has no parent pointing at the aggregate and never will.
+  const drawnNode = projection.nodes.find((n) => n.id === id);
+  const swallowed = drawnNode && Array.isArray(drawnNode.folds) ? drawnNode.folds : [];
   const reaches = (/** @type {string} */ target) => {
+    if (swallowed.indexOf(target) >= 0) return true;
     let at = groupIndex.get(target);
     for (let hops = 0; at && hops < 9; hops++) {
       if (at.id === id) return true;
@@ -1953,7 +1966,10 @@ function columnShare(d) {
   }
   if (!total) return "";
   const pct = (100 * d.value) / total;
-  return (pct < 0.1 ? "<0.1" : pct.toFixed(1)) + "% of this column";
+  // "◇" AND "our" BOTH, because the chip is small and a reader skims it. The
+  // diamond is this site's mark for an inference everywhere else; the word is
+  // what survives being read aloud.
+  return "\u25c7 our " + (pct < 0.1 ? "<0.1" : pct.toFixed(1)) + "% of this column";
 }
 
 /**
@@ -2010,7 +2026,11 @@ function showTip(event, d) {
     const share = columnShare(n);
     if (share) {
       meta.append(document.createTextNode(" "));
-      meta.append(h("span", "chip", share));
+      // chip derived, LIKE EVERY OTHER FIGURE ON THIS SITE THAT WE COMPUTED. It
+      // sat in a plain .chip beside "printed by the city", which is the one
+      // adjacency this project's whole premise is about. A share is arithmetic
+      // over two printed figures and is not itself printed anywhere.
+      meta.append(h("span", "chip derived", share));
     }
     // A CAVEAT ABOUT THIS MARK, SAID AT THE MARK. The caveats page carries all
     // of them and every page links to it, which is right for the ones about a
@@ -2084,7 +2104,7 @@ function pin(d) {
     if (n.constraint_tier) chips.append(h("span", "chip", "constraint: " + n.constraint_tier));
     chips.append(h("span", n.derived ? "chip derived" : "chip", n.derived ? "◇ our inference" : "printed by the city"));
     const share = columnShare(n);
-    if (share) chips.append(h("span", "chip", share));
+    if (share) chips.append(h("span", "chip derived", share));
     panel.append(chips);
     if (n.rationale) panel.append(h("p", "why", n.rationale));
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
@@ -2471,18 +2491,20 @@ function drawableSankey(doc, what) {
   else if (!Array.isArray(doc.metadata.sources)) missing.push("metadata.sources");
   else if (doc.metadata.sources.some((s) => !Array.isArray(s.pages))) {
     missing.push("metadata.sources[].pages");
-  } else if (!Array.isArray(doc.metadata.caveats)) missing.push("metadata.caveats");
-  else if (doc.metadata.caveats.some((c) => !Array.isArray(c.applies_to))) {
-    // AN ARM RATHER THAN A SCHEMA BUMP, which is the choice this key forced.
-    // caveatsFor dereferences metadata.caveats[].applies_to on a document
-    // fetched lazily and served with no cache-busting, so a browser can hold a
-    // pre-deploy file beside a post-deploy app.js -- the exact case this gate
-    // exists for. Bumping schema_version would refuse the same documents and
-    // cost two Go constants, this file, both goldens and eight fixtures; an arm
-    // refuses them by name and tells the reader to reload, which is what they
-    // can act on.
-    missing.push("metadata.caveats[].applies_to");
   }
+  // NO ARM FOR metadata.caveats, AND THE REASON IS THIS GATE'S OWN RULE. It
+  // refuses a document over every key the draw DEREFERENCES, because a missing
+  // one throws mid-repaint and leaves a half-painted page. caveatsFor
+  // dereferences neither: it tests Array.isArray on the block and on each
+  // applies_to and returns [] otherwise.
+  //
+  // So an arm here would refuse a whole chart over a key whose absence costs a
+  // BADGE. A reader holding a cached pre-caveats document -- the case this gate
+  // exists for, since the year files are fetched lazily with no cache-busting --
+  // would get a banner instead of a chart that draws perfectly minus one chip.
+  // That is a worse outcome than the one being prevented, and it was shipped
+  // for one commit on a justification that read "caveatsFor dereferences
+  // applies_to", which the guarded code makes false.
   if (!missing.length) return true;
   // THE THIRD CAUSE IS NAMED BECAUSE IT IS THE LIKELIEST AND THE ONLY ONE THE
   // READER CAN FIX. The site publishes no cache-busting on data/<stem>.json and

@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -436,7 +437,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	// in ValidateCaveats: an AppliesTo naming a node the document does not carry
 	// marks nothing, and marking nothing is indistinguishable from having
 	// nothing to mark.
-	cavs := fundFlowsCaveats(len(twice))
+	cavs := fundFlowsCaveats(len(twice), out)
 	if err := ValidateCaveats(cavs, nodeIDs(out)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
@@ -472,7 +473,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 
 // fundFlowsCaveats are the three things a reader of this file has to be told,
 // each of which is a property of the document rather than a hedge about it.
-func fundFlowsCaveats(twice int) []Caveat {
+func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 	return []Caveat{
 		ConstraintTierCaveat(),
 		{
@@ -491,19 +492,46 @@ func fundFlowsCaveats(twice int) []Caveat {
 			Text: "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that " +
 				"fund alone, so the other six fund groups' revenue ends at their funds -- the " +
 				"money is not missing, the schedule that would break it down is not published.",
-			// THE ONE FUND IT IS ABOUT. This is not a statement about the
-			// schedule as a whole -- it is about why fund/100 has divisions
-			// beneath it and no other fund does -- so it marks that node, and a
-			// reader pointing at the General Fund is told there why the rest of
-			// the chart stops where it does.
+			// THE GROUPS THAT STOP, AND THE ONE THAT DOES NOT. Marking fund/100
+			// alone was half the sentence: this caveat is about the six fund
+			// groups whose money ends at their funds, and the badge landed on
+			// the one group that continues. A reader wondering why five columns
+			// stop short is pointing at one of the five, and found nothing.
+			//
+			// Both halves are named, so each page marks what it draws:
+			// spending.html draws fund/100 and revenue.html the six groups.
 			//
 			// The other two caveats here stay document-wide and correctly carry
 			// an empty list: a constraint tier is on every fund in the column,
 			// so marking all 61 marks none, and the mixed-grain warning is
 			// about summing the graph rather than about any node in it.
-			AppliesTo: []string{prefixFund + "100"},
+			AppliesTo: appliesToTruncatedGroups(nodes),
 		},
 	}
+}
+
+// appliesToTruncatedGroups names the marks the only-the-general-fund caveat is
+// about: every fund group this document carries, and the General Fund itself,
+// which is the exception that makes the others exceptions.
+//
+// DERIVED FROM THE DOCUMENT RATHER THAN SPELLED OUT, and a hard-coded list is
+// what taught me why. ValidateCaveats refuses an id the document does not
+// carry -- correctly -- and the smaller fixtures in fundflows_test.go build
+// documents with one or two groups, so a fixed list of six made every one of
+// them fail the build. A caveat's targets have to be a property of the
+// document it ships in.
+//
+// fund/100 IS INCLUDED WHEREVER IT EXISTS, because spending.html draws that
+// node and no fund group at all: the two pages between them mark one list.
+func appliesToTruncatedGroups(nodes []Node) []string {
+	out := make([]string, 0, len(nodes))
+	for _, n := range nodes {
+		if n.ID == prefixFund+"100" || strings.HasPrefix(n.ID, prefixFundGroup) {
+			out = append(out, n.ID)
+		}
+	}
+	slices.Sort(out)
+	return out
 }
 
 // cellSum is a netted figure and the facts behind it.

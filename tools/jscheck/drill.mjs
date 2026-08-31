@@ -83,7 +83,17 @@ function appFor(page, overrides) {
         year: 2026, label: "FY 2025-26", stem: "fund-flows",
         path: "data/fund-flows.json", basis: "adopted",
         hero: { label: "l", value: "v", note: "n", kind: "hero" },
-        figures: [], caveats: [],
+        figures: [],
+        // THE YEAR'S CAVEAT REFS, which is what caveatHref looks an id up in --
+        // the anchor is per (document, caveat) and the packager is the only
+        // party that knows which stem the year came from, so the client
+        // composes nothing. Ids taken from testdata/fund-flows.golden.json, the
+        // document these checks fetch.
+        caveats: [
+          { id: "constraint-tier-is-our-reading", summary: "s", href: "caveats.html#caveat-fund-flows--constraint-tier-is-our-reading" },
+          { id: "mixed-grain-double-counts", summary: "s", href: "caveats.html#caveat-fund-flows--mixed-grain-double-counts" },
+          { id: "only-the-general-fund-is-decomposed", summary: "s", href: "caveats.html#caveat-fund-flows--only-the-general-fund-is-decomposed" },
+        ],
         counts: { facts: 280, nodes: 145, links: 175 },
         chart_title: "Sankey diagram of the FY 2025-26 adopted budget",
       }],
@@ -343,6 +353,57 @@ export async function checks() {
     detail: `revenue marks ${JSON.stringify(revenueMarks)}; ` +
             `spending marks ${JSON.stringify(spendingMarks)}`,
   });
+
+  // THE BADGE HAS TO REACH THE READER, not merely be computable. caveatsFor
+  // resolving correctly and showTip/pin never calling it are indistinguishable
+  // from every other check here -- proved by stubbing caveatsFor out of both,
+  // which left make js at 77 of 77. So these drive the two renderers and read
+  // back what the DOM was told to show.
+  for (const page of PAGES) {
+    const { app } = await opened(page);
+    app.layOut(app.projection);
+    const marked = app.projection.nodes.find((n) => app.caveatsFor(n.id).length > 0);
+    if (!marked) {
+      out.push({
+        name: `${page.name}: a marked node reaches the tooltip and the panel`,
+        ok: false,
+        detail: "no node on this page carries a caveat, so this asserts nothing",
+      });
+      continue;
+    }
+    // showTip needs a laid node -- it reads .value and positions from a box --
+    // so it gets the one layOut produced rather than the folded one.
+    const laid = app.layOut(app.projection).nodes.find((n) => n.id === marked.id);
+    const text = (/** @type {any} */ el) => {
+      const parts = [];
+      const walk = (/** @type {any} */ n) => {
+        if (n.textContent) parts.push(n.textContent);
+        for (const c of n.children || []) walk(c);
+      };
+      walk(el);
+      return parts.join(" ");
+    };
+    app.showTip({ target: app.dom.byId.get("chart"), clientX: 0, clientY: 0 }, laid);
+    const tip = text(app.dom.byId.get("tooltip"));
+    app.pin(laid);
+    const panel = text(app.dom.byId.get("detail"));
+    const href = app.caveatHref(app.caveatsFor(marked.id)[0].id);
+    out.push({
+      name: `${page.name}: a marked node reaches the tooltip and the panel`,
+      // THE SHARE IS ASSERTED WITH ITS DERIVED MARKING, not merely present. A
+      // share is arithmetic over two printed figures and sits in a chip row
+      // beside "printed by the city", which is the one adjacency this project's
+      // premise is about -- so "of this column" alone would pass on a chip that
+      // had quietly lost the thing that says whose number it is.
+      ok: tip.includes("caveat") && tip.includes("\u25c7 our ") &&
+          tip.includes("of this column") &&
+          panel.includes("Read it in full") && href.startsWith("caveats.html#caveat-"),
+      detail: `tooltip mentions ${tip.includes("caveat") ? "a caveat" : "NO caveat"} and ` +
+              `${tip.includes("\u25c7 our ") ? "a share marked as ours" : "an UNMARKED share"}; panel ` +
+              `${panel.includes("Read it in full") ? "links to the full text" : "does NOT link"}; ` +
+              `href "${href}"`,
+    });
+  }
 
   // THE ROOT, WHICH IS NOT A NARROWING BUT THE THING THAT DRAWS AT ALL. Spending
   // draws tiers {3,4} of a document carrying eleven tier-0 revenue nodes, and
