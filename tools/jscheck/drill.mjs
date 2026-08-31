@@ -530,6 +530,74 @@ export async function checks() {
     });
   }
 
+  // NO SHARE EVER READS 100%. columnShare is suppressed for a column of one --
+  // where 100% is true and says nothing -- and toFixed(1) can still round to it
+  // on a column that IS divided: reproduced on committed data, where
+  // fund-flows-2024-actual opened on debt-service puts transfers/in at 99.9943%
+  // of a two-node column. A chip asserting a whole that the sibling beside it
+  // denies is the shape the suppression exists to prevent, reached by
+  // arithmetic instead of by topology.
+  //
+  // EVERY OPENED VIEW OF BOTH PAGES, and both overviews, because the shape
+  // occurs on one column of one year and a sample would miss it.
+  {
+    const hundreds = [];
+    for (const page of PAGES) {
+      const { app } = await opened(page);
+      const scan = (/** @type {string} */ where) => {
+        for (const n of app.layOut(app.projection).nodes) {
+          const share = app.columnShare(n);
+          if (share.includes("100.0%") || share.includes("100%")) {
+            hundreds.push(where + " " + n.id + ": " + share);
+          }
+        }
+      };
+      scan(page.name + " overview");
+      for (const n of raw.nodes.filter((x) => x.tier === page.drill.from)) {
+        app.drillTo(n.id);
+        if (app.drilledInto !== n.id) continue;
+        scan(page.name + " opened " + n.id);
+      }
+      app.drillTo("");
+    }
+    // AND THE CASE THE SHIPPED FIXTURE CANNOT REACH. The rounding happens on
+    // fund-flows-2024-actual, opened on debt-service, and these checks fetch the
+    // FY2025-26 golden -- the only fund-flows document committed. Removing the
+    // ceiling left the scan above green for that reason alone, which is a check
+    // passing because its fixture is the wrong year. So the split is built:
+    // 99.9943% of a two-node column, the real proportion, laid out by the real
+    // layOut.
+    const app = appFor(PAGES[0]);
+    const near = {
+      nodes: [
+        { id: "a", label: "a", tier: 0, parent: "", constraint_tier: "", role: "",
+          derived: false, rationale: "", source_note: "" },
+        { id: "big", label: "big", tier: 2, parent: "", constraint_tier: "", role: "",
+          derived: false, rationale: "", source_note: "" },
+        { id: "tiny", label: "tiny", tier: 2, parent: "", constraint_tier: "", role: "",
+          derived: false, rationale: "", source_note: "" },
+      ],
+      links: [
+        { source: "a", target: "big", value_cents: 999943, kind: "external",
+          transfer_id: "", fact_ids: [], locators: [], derived: false },
+        { source: "a", target: "tiny", value_cents: 57, kind: "external",
+          transfer_id: "", fact_ids: [], locators: [], derived: false },
+      ],
+    };
+    const laid = app.layOut(near);
+    const big = laid.nodes.find((n) => n.id === "big");
+    const rounded = app.columnShare(big);
+
+    out.push({
+      name: "no share on any view claims 100% of a column that has more than one mark",
+      ok: hundreds.length === 0 && !rounded.includes("100"),
+      detail: hundreds.length
+        ? hundreds.slice(0, 3).join("; ")
+        : `every share across both overviews and all 29 opened views is under 100%; ` +
+          `a 99.9943% mark of a two-node column reads "${rounded}"`,
+    });
+  }
+
   // THE ROOT, WHICH IS NOT A NARROWING BUT THE THING THAT DRAWS AT ALL. Spending
   // draws tiers {3,4} of a document carrying eleven tier-0 revenue nodes, and
   // foldDocument refuses a node it cannot place. Without a root the page is a

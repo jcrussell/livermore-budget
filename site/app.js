@@ -2001,10 +2001,20 @@ function columnShare(d) {
   // and an undivided one has nothing to say.
   if (!total || siblings < 2) return "";
   const pct = (100 * d.value) / total;
+  // A CEILING AS WELL AS A FLOOR. toFixed(1) rounds, so a mark that is 99.9943%
+  // of a divided column renders "100.0" -- the exact chip the siblings guard
+  // above exists to prevent, reached by arithmetic instead of by topology.
+  // Reproduced on committed data: fund-flows-2024-actual, revenue opened on
+  // debt-service, where transfers/in is that share of a two-node column.
+  //
+  // ">99.9" AND "<0.1" ARE BOTH HONEST and "100.0" is not: the first two say a
+  // figure is outside what one decimal can carry, and the third asserts a whole
+  // that the presence of a sibling denies.
+  const shown = pct < 0.1 ? "<0.1" : pct > 99.9 ? ">99.9" : pct.toFixed(1);
   // "◇" AND "our" BOTH, because the chip is small and a reader skims it. The
   // diamond is this site's mark for an inference everywhere else; the word is
   // what survives being read aloud.
-  return "\u25c7 our " + (pct < 0.1 ? "<0.1" : pct.toFixed(1)) + "% of this column";
+  return "\u25c7 our " + shown + "% of this column";
 }
 
 /**

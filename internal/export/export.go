@@ -801,7 +801,18 @@ func templateRendersLede(name string) bool {
 // `v.Template == SankeyTemplate` would have been born stale -- which is the
 // exact failure templateRendersLede exists to document.
 func templateRendersAYearControl(name string) bool {
-	return templateDrawsAChart(name)
+	// ITS OWN SWITCH, NOT templateDrawsAChart'S. The two agree on every template
+	// that exists, and delegating made them one predicate wearing two names --
+	// which is what the fourteen lines above argue against: a template could
+	// gain a chart without a year control, or a control without a chart, and
+	// the failure each of them guards is different. A lede dropped in silence
+	// loses a sentence; year stems dropped in silence lose whole documents.
+	switch name {
+	case SankeyTemplate, ChartTemplate:
+		return true
+	default:
+		return false
+	}
 }
 
 // templateDrawsAChart answers whether a template ships app.js and an SVG for it

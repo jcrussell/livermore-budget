@@ -247,11 +247,64 @@ func TestAColumnThatDecomposesNothingDoesNotClaimTheGeneralFundIsSpecial(t *test
 		t.Errorf("a column with no division rows still carries %q; it says only the "+
 			"General Fund has a spending side, and nothing here has one", id)
 	}
+
+	// AND A COLUMN THAT DECOMPOSES SOMETHING ELSE. "Anything is decomposed" was
+	// the first guard and it is not what the sentence claims: a column with
+	// divisions under a capital fund and none under the General Fund satisfies
+	// it and makes "Only the General Fund has a spending side" false -- while
+	// the applies_to beside it would list fund-group/general among the groups
+	// the sentence counts as stopping, which is the contradiction this lane
+	// removed.
+	elsewhere := []Node{
+		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
+		{ID: prefixFundGroup + "capital", Tier: tierFundGroup},
+		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
+		{ID: prefixFund + "510", Tier: tierFund, Parent: prefixFundGroup + "capital"},
+		{ID: prefixDept + "parks", Tier: tierDepartment, Parent: prefixFund + "510"},
+	}
+	if got := fundFlowsCaveats(0, elsewhere); has(got, id) {
+		t.Errorf("a column decomposing capital and not the General Fund carries %q, "+
+			"which says the opposite", id)
+	}
 	// And with one division it comes back, so the condition is not simply off.
 	withDivision := append(append([]Node{}, groups...),
 		Node{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"})
 	if got := fundFlowsCaveats(0, withDivision); !has(got, id) {
 		t.Errorf("a column that DOES decompose the General Fund carries no %q", id)
+	}
+}
+
+// TestTheTruncatedCountIsPluralised is the one-group column.
+//
+// Every number in these caveats was a literal until this lane, and every
+// literal was written for one column. The moment they became computed, a column
+// with exactly one truncated group would publish "the other 1 groups' revenue
+// ends at their funds" -- in the caveat, on the caveats page, and in every
+// tooltip badge that shows the summary. No published column has that shape, so
+// nothing but this reaches it.
+func TestTheTruncatedCountIsPluralised(t *testing.T) {
+	// Two groups, one decomposed: exactly one stops.
+	nodes := []Node{
+		{ID: prefixFundGroup + "general", Tier: tierFundGroup},
+		{ID: prefixFundGroup + "capital", Tier: tierFundGroup},
+		{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
+		{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
+	}
+	if n := len(truncatedGroups(nodes)); n != 1 {
+		t.Fatalf("%d groups stop short, want 1; this test is about the singular", n)
+	}
+	for _, c := range fundFlowsCaveats(0, nodes) {
+		if c.ID != "only-the-general-fund-is-decomposed" {
+			continue
+		}
+		for _, bad := range []string{"1 groups", "1 fund groups"} {
+			if strings.Contains(c.Summary, bad) || strings.Contains(c.Text, bad) {
+				t.Errorf("the caveat says %q:\n  %s\n  %s", bad, c.Summary, c.Text)
+			}
+		}
+		if !strings.Contains(c.Summary, "1 group's") {
+			t.Errorf("the summary does not read \"1 group's\": %s", c.Summary)
+		}
 	}
 }
 

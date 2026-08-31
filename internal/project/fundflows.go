@@ -475,15 +475,21 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 // each of which is a property of the document rather than a hedge about it.
 func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 	truncated := len(truncatedGroups(nodes))
-	// THE THIRD CAVEAT IS CONDITIONAL ON THERE BEING A DECOMPOSITION AT ALL.
-	// It opens "Only the General Fund has a spending side", and a column with
-	// no department rows has none -- every group would be counted as truncated
-	// and the sentence would read "the other 6 groups' revenue ends at their
-	// funds" out of six, over a document that decomposes nothing. Latent: all
-	// four published columns carry pp.167-170. A caveat that describes a
-	// distinction the document does not draw is worse than a missing one,
-	// because it reads as though the distinction was checked.
-	decomposed := len(spendingSides(nodes)) > 0
+	// THE THIRD CAVEAT IS CONDITIONAL ON THE SENTENCE BEING TRUE, which is a
+	// narrower test than the one it first got. It opens "ONLY the General Fund
+	// has a spending side", and `len(spendingSides) > 0` asserts something else
+	// -- that SOMETHING is decomposed. A column decomposing capital and not
+	// general satisfies that and makes the sentence false, and the applies_to
+	// built beside it would then list fund-group/general among the groups the
+	// sentence counts as stopping: the exact contradiction this lane removed,
+	// re-entered through the guard.
+	//
+	// Latent either way -- all four published columns decompose the General
+	// Fund and nothing else -- and a caveat describing a distinction the
+	// document does not draw is worse than a missing one, because it reads as
+	// though the distinction was checked.
+	sides := spendingSides(nodes)
+	decomposed := len(sides) == 1 && sides[prefixFundGroup+"general"]
 	out := []Caveat{
 		ConstraintTierCaveat(),
 		{
@@ -505,12 +511,16 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			// other three -- including FY2025-26, the one the site draws --
 			// carry six groups, so FIVE stop. The page shipped a figure that
 			// was wrong on the column a reader was looking at.
-			Summary: fmt.Sprintf("Only the General Fund has a spending side; the other %d "+
-				"groups' revenue ends at their funds.", truncated),
+			// PLURALISED, because the count is the document's and a document
+			// can have one. "The other 1 groups' revenue ends at their funds"
+			// would have gone into the caveat, the caveats page and every
+			// tooltip badge on a column with a single truncated group.
+			Summary: fmt.Sprintf("Only the General Fund has a spending side; the other %s "+
+				"revenue ends at their funds.", plural(truncated, "group")),
 			Text: fmt.Sprintf("Only the General Fund has a spending side. Budget Book "+
-				"pp.167-170 decompose that fund alone, so the other %d fund groups' revenue "+
-				"ends at their funds -- the money is not missing, the schedule that would "+
-				"break it down is not published.", truncated),
+				"pp.167-170 decompose that fund alone, so the other %s revenue ends at "+
+				"their funds -- the money is not missing, the schedule that would break it "+
+				"down is not published.", plural(truncated, "fund group")),
 			// THE GROUPS THAT STOP, AND THE ONE THAT DOES NOT. Marking fund/100
 			// alone was half the sentence: this caveat is about the six fund
 			// groups whose money ends at their funds, and the badge landed on
@@ -531,6 +541,21 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		return out[:2]
 	}
 	return out
+}
+
+// plural writes "1 group's" and "5 groups'".
+//
+// A HELPER BECAUSE THE COUNT IS THE DOCUMENT'S. Every number in these caveats
+// used to be a literal and every literal was written for one column; the moment
+// they became computed, a column with exactly one truncated group would have
+// published "the other 1 groups' revenue ends at their funds" wherever the
+// caveat is shown. site/app.js learned the same lesson in paintCounts when a
+// drilled division drew one ribbon.
+func plural(n int, noun string) string {
+	if n == 1 {
+		return fmt.Sprintf("%d %s's", n, noun)
+	}
+	return fmt.Sprintf("%d %ss'", n, noun)
 }
 
 // spendingSides is the fund groups this document decomposes: the ones with a
@@ -578,16 +603,17 @@ func truncatedGroups(nodes []Node) []string {
 }
 
 // appliesToTruncatedGroups names the marks the only-the-general-fund caveat is
-// about: the groups whose money ends at their funds, and the fund that is the
-// exception to them.
+// about: every group whose money ends at its funds, and the fund that is the
+// exception to them. How many that is depends on the column and is not written
+// down anywhere -- see truncatedGroups.
 //
 // THE EXCEPTION IS NAMED AS A FUND, NOT AS A GROUP, and that is what keeps the
 // list and the sentence in step. fund-group/general was in here, so a caveat
-// saying "the other 5 groups' revenue ends at their funds" printed an About
-// list of six groups with the exception among them. fund/100 marks the same
-// thing without being counted as one of the five -- and on revenue.html, where
-// that fund is folded away, caveatsFor resolves it to fund-group/general
-// anyway, so the exception is still marked where a reader can see it.
+// counting the groups that stop printed an About list with the exception among
+// them. fund/100 marks the same thing without being counted -- and on
+// revenue.html, where that fund is folded away, caveatsFor resolves it to
+// fund-group/general anyway, so the exception is still marked where a reader
+// can see it.
 //
 // DERIVED FROM THE DOCUMENT, and a hard-coded list is what taught me why.
 // ValidateCaveats refuses an id the document does not carry, and the smaller
