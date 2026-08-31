@@ -1287,9 +1287,13 @@ function capColumn(doc, tier, cap) {
     // mark that now stands for it. caveatsFor walks the tier hierarchy, which
     // covers foldDocument's fold and NOT this one -- the tail is folded by
     // value, not by ancestry, so nothing in the parent chain records it.
-    // Latent today, since the one caveat naming nodes names fund groups and
-    // fund/100, none of which is ever in a tail; latent is how it would ship.
-    folds: folded.map((n) => n.id),
+    // IT RECORDS THE DESCENDANTS TOO, not only the tail. orphaned() below
+    // removes anything parented beneath a folded node, and recording only the
+    // tail left a caveat naming one of those descendants losing its badge for
+    // the same reason the tail nodes would have. Latent today, since the one
+    // caveat naming nodes names fund groups and fund/100, none of which is ever
+    // in a tail; latent is how it would ship.
+    folds: [],
     derived: true,
     rationale: "Our grouping, not a line the city printed: the " + folded.length +
       " smallest " + ((DRILL && DRILL.tail) || "items") + " in this column are drawn as one " +
@@ -1317,6 +1321,13 @@ function capColumn(doc, tier, cap) {
     }
     return false;
   };
+
+  // FILLED HERE AND NOT AT THE LITERAL, because orphaned() is declared below it
+  // -- a const in the temporal dead zone, which throws rather than reading as
+  // undefined. Both halves of what the aggregate swallowed are known by this
+  // point: the tail itself, and everything parented beneath it.
+  const dropped = doc.nodes.filter(orphaned).map((n) => n.id);
+  aggregate.folds = folded.map((n) => n.id).concat(dropped);
 
   const nodes = doc.nodes
     .filter((n) => (n.tier !== tier || kept.has(n.id)) && !orphaned(n))
@@ -1961,10 +1972,19 @@ function caveatsFor(id) {
 function columnShare(d) {
   if (!d.value) return "";
   let total = 0;
+  let siblings = 0;
   for (const other of laidNodes) {
-    if (other.layer === d.layer) total += other.value;
+    if (other.layer === d.layer) {
+      total += other.value;
+      siblings++;
+    }
   }
-  if (!total) return "";
+  // NO SHARE OF A COLUMN OF ONE. spending.html's left column is the General
+  // Fund alone, so this printed "our 100.0% of this column" on the page's
+  // headline mark -- a derived chip carrying a figure that is 100% by
+  // construction rather than by measurement. A share says how a column divides,
+  // and an undivided one has nothing to say.
+  if (!total || siblings < 2) return "";
   const pct = (100 * d.value) / total;
   // "◇" AND "our" BOTH, because the chip is small and a reader skims it. The
   // diamond is this site's mark for an inference everywhere else; the word is

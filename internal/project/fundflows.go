@@ -474,6 +474,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 // fundFlowsCaveats are the three things a reader of this file has to be told,
 // each of which is a property of the document rather than a hedge about it.
 func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
+	truncated := groupsWithNoSpendingSide(nodes)
 	return []Caveat{
 		ConstraintTierCaveat(),
 		{
@@ -487,11 +488,20 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID:      "only-the-general-fund-is-decomposed",
-			Summary: "Only the General Fund has a spending side; the other six groups' revenue ends at their funds.",
-			Text: "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that " +
-				"fund alone, so the other six fund groups' revenue ends at their funds -- the " +
-				"money is not missing, the schedule that would break it down is not published.",
+			ID: "only-the-general-fund-is-decomposed",
+			// THE COUNT IS THE DOCUMENT'S, NOT A LITERAL. This said "the other
+			// six fund groups" in both sentences, and six is true of exactly
+			// one of the four published columns: fund-flows-2024-actual carries
+			// a seventh group, permanent, so six of its seven stop short. The
+			// other three -- including FY2025-26, the one the site draws --
+			// carry six groups, so FIVE stop. The page shipped a figure that
+			// was wrong on the column a reader was looking at.
+			Summary: fmt.Sprintf("Only the General Fund has a spending side; the other %d "+
+				"groups' revenue ends at their funds.", truncated),
+			Text: fmt.Sprintf("Only the General Fund has a spending side. Budget Book "+
+				"pp.167-170 decompose that fund alone, so the other %d fund groups' revenue "+
+				"ends at their funds -- the money is not missing, the schedule that would "+
+				"break it down is not published.", truncated),
 			// THE GROUPS THAT STOP, AND THE ONE THAT DOES NOT. Marking fund/100
 			// alone was half the sentence: this caveat is about the six fund
 			// groups whose money ends at their funds, and the badge landed on
@@ -508,6 +518,38 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			AppliesTo: appliesToTruncatedGroups(nodes),
 		},
 	}
+}
+
+// groupsWithNoSpendingSide counts the fund groups whose money ends at their
+// funds, which is every group this document carries but the one pp.167-170
+// decompose.
+//
+// COUNTED RATHER THAN WRITTEN DOWN. The published columns do not agree on it:
+// fund-flows-2024-actual carries a seventh fund group, permanent, so six of its
+// seven stop short, while the other three carry six and five stop. A literal is
+// right about one column and wrong on the page the site actually draws.
+func groupsWithNoSpendingSide(nodes []Node) int {
+	spending := map[string]bool{}
+	parent := map[string]string{}
+	for _, n := range nodes {
+		if n.Tier == tierFund {
+			parent[n.ID] = n.Parent
+		}
+	}
+	for _, n := range nodes {
+		if n.Tier == tierDepartment {
+			if g := parent[n.Parent]; g != "" {
+				spending[g] = true
+			}
+		}
+	}
+	groups := 0
+	for _, n := range nodes {
+		if strings.HasPrefix(n.ID, prefixFundGroup) && !spending[n.ID] {
+			groups++
+		}
+	}
+	return groups
 }
 
 // appliesToTruncatedGroups names the marks the only-the-general-fund caveat is

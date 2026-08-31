@@ -52,6 +52,9 @@ const PAGES = [
     // fisc-ppkq said rescaling would fix and measurement said it would not.
     worst: "fund-group/special-revenue",
     capEngages: true,
+    // Its marked node is one of six fund groups, so a share of the column is
+    // a real quantity.
+    sharesColumn: true,
   },
   {
     name: "spending",
@@ -65,6 +68,9 @@ const PAGES = [
     // cap never fires here. Pinned so that stops being true loudly.
     worst: "dept/patrol",
     capEngages: false,
+    // Its marked node is fund/100, alone in its column: a share there is 100%
+    // by construction and is suppressed.
+    sharesColumn: false,
   },
 ];
 
@@ -395,13 +401,132 @@ export async function checks() {
       // beside "printed by the city", which is the one adjacency this project's
       // premise is about -- so "of this column" alone would pass on a chip that
       // had quietly lost the thing that says whose number it is.
-      ok: tip.includes("caveat") && tip.includes("\u25c7 our ") &&
-          tip.includes("of this column") &&
+      // THE SHARE IS EXPECTED WHERE THE COLUMN DIVIDES AND NOWHERE ELSE.
+      // revenue.html's marked node is one of six fund groups, so it gets one;
+      // spending.html's is fund/100, alone in its column, where a share would
+      // read "our 100.0% of this column" -- a derived chip carrying a figure
+      // that is 100% by construction. Asserting "a share appears" would have
+      // demanded the second, and asserting nothing would have missed the first.
+      //
+      // WHERE IT DOES APPEAR IT CARRIES ITS DERIVED MARKING, not merely the
+      // words "of this column": a share is arithmetic over two printed figures
+      // and sits beside "printed by the city", which is the one adjacency this
+      // project's premise is about.
+      ok: tip.includes("caveat") &&
+          (page.sharesColumn
+            ? tip.includes("\u25c7 our ") && tip.includes("of this column")
+            : !tip.includes("of this column")) &&
           panel.includes("Read it in full") && href.startsWith("caveats.html#caveat-"),
       detail: `tooltip mentions ${tip.includes("caveat") ? "a caveat" : "NO caveat"} and ` +
-              `${tip.includes("\u25c7 our ") ? "a share marked as ours" : "an UNMARKED share"}; panel ` +
+              `${tip.includes("of this column")
+                ? (tip.includes("\u25c7 our ") ? "a share marked as ours" : "an UNMARKED share")
+                : "no share, which is right for a column of one"}; panel ` +
               `${panel.includes("Read it in full") ? "links to the full text" : "does NOT link"}; ` +
               `href "${href}"`,
+    });
+  }
+
+  // THE VALUE-FOLD ESCAPE HATCH IS DRIVEN, and it was not. capColumn folds a
+  // column's tail by VALUE, and nothing in the parent chain records that -- so
+  // caveatsFor's ancestor walk cannot see it and a caveat naming a swallowed
+  // node would lose its badge silently. The `folds` field exists for exactly
+  // that, and deleting it left make js at 78 of 78: the same
+  // computed-but-never-driven shape the commit that added it reports fixing for
+  // the renderers, committed in the same hunk.
+  //
+  // NO CAVEAT IN THE CORPUS NAMES A NODE THAT ENDS UP IN A TAIL, so this drives
+  // it directly rather than through a caveat: it asks whether the aggregate
+  // claims the nodes it removed, which is the property caveatsFor depends on.
+  {
+    const page = PAGES[0];
+    const { app } = await opened(page);
+    app.drillTo(page.worst);
+    const agg = app.projection.nodes.find((n) => n.id === "aggregate/tail");
+    const drawn = new Set(app.projection.nodes.map((n) => n.id));
+    // Every id the aggregate claims is one the drawn document does NOT carry --
+    // that is what "swallowed" means -- and caveatsFor resolves each to the
+    // aggregate.
+    const claimed = agg ? agg.folds : [];
+    const stillDrawn = claimed.filter((id) => drawn.has(id));
+
+    // THE PROPERTY ITSELF, driven rather than inferred: a caveat naming a
+    // swallowed id must resolve to the aggregate. No caveat in the corpus names
+    // one, so the check supplies its own and puts the document back -- which is
+    // the only way to exercise a path the data does not currently reach, and
+    // better than asserting the field's shape and calling it covered.
+    const before = app.projection.metadata.caveats;
+    app.projection.metadata.caveats = [{
+      id: "probe", summary: "s", text: "t", applies_to: [claimed[0]],
+    }];
+    const found = app.caveatsFor("aggregate/tail").map((c) => c.id);
+    // And a node the aggregate did NOT swallow must not match, or "resolves"
+    // would mean "matches everything".
+    app.projection.metadata.caveats = [{
+      id: "probe", summary: "s", text: "t", applies_to: ["revenue/taxes/property"],
+    }];
+    const spurious = app.caveatsFor("aggregate/tail").map((c) => c.id);
+    app.projection.metadata.caveats = before;
+
+    app.drillTo("");
+    out.push({
+      name: "the capped tail records what it swallowed, so a caveat naming one can find it",
+      ok: Boolean(agg) && claimed.length >= 2 && stillDrawn.length === 0 &&
+          found.length === 1 && spurious.length === 0,
+      detail: agg
+        ? `${claimed.length} id(s) folded in, ${stillDrawn.length} still drawn separately ` +
+          `(want 0); a caveat naming ${claimed[0]} resolves to the aggregate ` +
+          `${found.length === 1 ? "yes" : "NO"}, and one naming an unrelated node ` +
+          `${spurious.length === 0 ? "does not" : "WRONGLY DOES"}`        : "no aggregate on the page whose column the cap is for",
+    });
+  }
+
+  // THE DESCENDANTS HALF, WHICH THE CORPUS CANNOT EXERCISE. capColumn removes
+  // the tail AND anything parented beneath it, and records both in `folds`.
+  // Only the first half is reachable through the shipped documents: fund/100 is
+  // the sole tier-3 node with children and it is never in a tail, so deleting
+  // the second half leaves every other check in this file green. Rather than
+  // record that as a known gap, this hands capColumn a document that has the
+  // shape -- which is what the harness is for.
+  {
+    const { app } = await opened(PAGES[0]);
+    const node = (/** @type {string} */ id, /** @type {number} */ tier,
+      /** @type {string} */ parent) =>
+      ({ id, label: id, tier, parent, constraint_tier: "", role: "", derived: false,
+        rationale: "", source_note: "" });
+    const link = (/** @type {string} */ a, /** @type {string} */ b,
+      /** @type {number} */ v) =>
+      ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
+        fact_ids: [], locators: [], derived: false });
+    // Three funds against a cap of 1, so two are folded -- and the smallest
+    // carries a child, which is the shape the shipped columns never produce.
+    const doc = {
+      projection: "probe",
+      metadata: { sources: [], caveats: [] },
+      nodes: [
+        node("revenue/x", 0, ""),
+        node("fund/1", 3, ""), node("fund/2", 3, ""), node("fund/3", 3, ""),
+        node("dept/beneath-a-folded-fund", 4, "fund/3"),
+      ],
+      links: [
+        link("revenue/x", "fund/1", 900), link("revenue/x", "fund/2", 90),
+        link("revenue/x", "fund/3", 9), link("fund/3", "dept/beneath-a-folded-fund", 9),
+      ],
+    };
+    const capped = app.capColumn(doc, 3, 1);
+    const agg = capped.nodes.find((n) => n.id === "aggregate/tail");
+    const ids = capped.nodes.map((n) => n.id);
+    out.push({
+      name: "the capped tail records the descendants it removed, not only the tail itself",
+      ok: Boolean(agg) &&
+          agg.folds.indexOf("dept/beneath-a-folded-fund") >= 0 &&
+          ids.indexOf("dept/beneath-a-folded-fund") < 0 &&
+          !capped.links.some((l) => l.target === "dept/beneath-a-folded-fund"),
+      detail: agg
+        ? `aggregate claims ${JSON.stringify(agg.folds)}; the descendant is ` +
+          `${ids.indexOf("dept/beneath-a-folded-fund") < 0 ? "removed" : "STILL DRAWN"} and ` +
+          `its link is ${capped.links.some((l) => l.target === "dept/beneath-a-folded-fund")
+            ? "STILL PRESENT" : "gone"}`
+        : "capColumn folded nothing at cap 1 over three nodes",
     });
   }
 

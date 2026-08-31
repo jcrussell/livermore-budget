@@ -1693,6 +1693,15 @@ type caveatDocument struct {
 	Label    string
 	DataPath string
 	Entries  []caveatEntry
+	// Drawn is whether any view renders this document, so the page can promise
+	// a chart flag only where there is a chart.
+	//
+	// THREE OF THE SEVEN PUBLISHED DOCUMENTS HAVE NO PAGE -- the fund-flows
+	// columns unviewedDocuments declares -- and this page lists their caveats
+	// anyway, because a caveat is owed to whoever fetches the file. What it
+	// must not do is tell that reader the charts flag these marks: there are no
+	// charts.
+	Drawn bool
 }
 
 // caveatEntry is one caveat, rendered whole. Anchor is what every other page's
@@ -1872,6 +1881,20 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (caveatsPageData, error) {
 	caveatsPath := caveatsPathOf(o)
+	// WHICH DOCUMENTS A VIEW ACTUALLY RENDERS, by the same rule
+	// assertPublishedReachable uses one package up: a document is reached
+	// through a view's projection or through its year stems. This page is not
+	// one of them -- it names no projection, and listing a document is not
+	// drawing it.
+	drawn := map[string]bool{}
+	for _, v := range o.views() {
+		if v.Projection != "" {
+			drawn[v.Projection] = true
+		}
+		for _, stem := range v.YearStems {
+			drawn[stem] = true
+		}
+	}
 	anchors := map[string]string{}
 	docs := make([]caveatDocument, 0, len(o.Projections))
 	count := 0
@@ -1918,6 +1941,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Label:    label,
 			DataPath: path.Join(DataDir, stem+".json"),
 			Entries:  entries,
+			Drawn:    drawn[stem],
 		})
 	}
 	if count == 0 {

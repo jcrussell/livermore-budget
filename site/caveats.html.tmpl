@@ -61,7 +61,7 @@
      carries a contested-total caveat FY2025-26 does not. A page keyed on the id
      alone would have to pick one of those texts and would be wrong about the
      others, so the anchor is per (document, caveat) and so is this heading. -->
-{{- range .Documents}}
+{{- range $doc := .Documents}}
 <section class="caveat-doc">
   <h2>{{.Stem}}{{if .Label}} <span class="subtle">— {{.Label}}</span>{{end}}</h2>
   <p class="subtle">
@@ -73,18 +73,26 @@
     <h3><a href="#{{.Anchor}}" class="anchor-link">{{.Summary}}</a></h3>
     <p>{{.Text}}</p>
     {{- if .AppliesTo}}
-    {{- /* THE CHARTS DO MARK THESE NOW (fisc-yj4w.8), which this comment said
-           they did not: app.js's caveatsFor resolves each id through the
-           hierarchy, so a caveat about fund/100 chips that node where it is
-           drawn and fund-group/general where it folds. The wording stays "is
-           about" rather than "marks", because it is true of a reader who never
-           opens a chart -- and because the ids are checked against the document
-           by project.ValidateCaveats, which is what makes the sentence
-           trustworthy whether or not any page draws them. */}}
+    {{- /* THE CHARTS DO MARK THESE NOW (fisc-yj4w.8), which an earlier version
+           of this comment said they did not: app.js's caveatsFor resolves each
+           id through the hierarchy, so a caveat about fund/100 chips that node
+           where it is drawn and fund-group/general where it folds.
+
+           CONDITIONAL ON THE DOCUMENT HAVING A PAGE, because three of the four
+           fund-flows columns do not -- unviewedDocuments declares them as data
+           no page draws, and this page's own lede says so twelve lines above.
+           Promising a flag on a chart that does not exist is the same class as
+           the sentence this hunk replaced.
+
+           The wording stays "is about" rather than "marks" either way, because
+           it is true of a reader who never opens a chart -- and because the ids
+           are checked against the document by project.ValidateCaveats, which is
+           what makes the sentence trustworthy whether or not any page draws
+           them. */}}
     <p class="subtle">
       About
       {{- range $i, $n := .AppliesTo}}{{if $i}},{{end}} <code>{{$n}}</code>{{end}}
-      in this document — the charts flag these marks where they draw them.
+      in this document{{if $doc.Drawn}} — the charts flag these marks where they draw them{{end}}.
     </p>
     {{- end}}
   </article>
