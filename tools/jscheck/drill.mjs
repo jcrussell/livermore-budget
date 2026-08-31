@@ -145,7 +145,17 @@ export async function checks() {
         // driving it exercises the repaint as well as the shaping -- and a
         // test-only setter in app.js would be behaviour the reader never runs.
         app.drillTo(n.id);
-        if (!app.drilledInto) throw new Error("drillTo left the chart closed");
+        // === app.drilledInto === n.id, NOT merely truthy. drillTo swallows its
+        // own throw and restores drilledInto to the PREVIOUS node id, so a
+        // truthiness test passes from the second node onward and measure()
+        // silently records the chart that was already there. Proved: injecting
+        // a throw for one fund group into filterToNode left the whole make js
+        // run PASS. A loop over 23 nodes whose guard only works on the first is
+        // worse than a loop over one.
+        if (app.drilledInto !== n.id) {
+          throw new Error("drillTo refused and left the chart on " +
+            (app.drilledInto || "the overview"));
+        }
         drawn.push(Object.assign({ id: n.id }, measure(app, app.projection)));
       } catch (e) {
         refused = n.id + ": " + (e && e.message ? e.message : String(e));
@@ -195,6 +205,47 @@ export async function checks() {
           `uncapped: ${uncapped.links} ribbons, ${uncapped.hairlines} under 1px; the cap ` +
           `${engaged ? "folded a tail" : "folded nothing"}`
         : `${page.worst} is not a node this page opens`,
+    });
+  }
+
+  // EVERY MARK KNOWS ITS FUND GROUP, which is what colours it. Built from the
+  // DRAWN nodes alone this returned "" for every node on Spending's overview
+  // and on all six opened Revenue views -- filterToNode keeps only what the
+  // drawn tiers need, so a fund's fund-group ancestor is absent and the walk
+  // stops at the first parent it cannot resolve. The whole of spending.html and
+  // every drilled chart rendered in --muted, and nothing caught it: fold.mjs's
+  // palette check runs at {0,2,4,5}, a tier set no view declares.
+  // A REVENUE SOURCE BELONGS TO NO FUND GROUP and correctly resolves to "" --
+  // it is money arriving, not money held. What must resolve is anything on the
+  // fund side of the hierarchy, which is what carries a hue.
+  const onTheFundSide = (/** @type {{id: string}} */ n) =>
+    ["fund-group/", "fund/", "dept/", "expenditure/", "aggregate/"]
+      .some((p) => n.id.startsWith(p));
+
+  for (const page of PAGES) {
+    const { app } = await opened(page);
+    const unresolved = (/** @type {{nodes: any[]}} */ d) => {
+      // layOut assigns the index fundGroupOf walks, so it has to have run over
+      // this document before the question can be asked at all.
+      app.layOut(d);
+      return d.nodes.filter((n) => onTheFundSide(n) && app.fundGroupOf(n) === "");
+    };
+    const bad = unresolved(app.projection).map((n) => n.id);
+    const openable = raw.nodes.filter((n) => n.tier === page.drill.from);
+    for (const n of openable) {
+      app.drillTo(n.id);
+      bad.push(...unresolved(app.projection).map((x) => n.id + ">" + x.id));
+    }
+    app.drillTo("");
+    const groups = [...new Set(app.projection.nodes.map((n) => app.fundGroupOf(n)))]
+      .filter(Boolean).sort();
+    out.push({
+      name: `${page.name}: every mark on the fund side knows its group, opened or not`,
+      ok: bad.length === 0 && groups.length > 0,
+      detail: bad.length
+        ? `${bad.length} mark(s) resolve to no group: ${bad.slice(0, 4).join(", ")}`
+        : `overview draws ${JSON.stringify(groups)}, and all ${openable.length} opened ` +
+          "views resolve every fund-side mark",
     });
   }
 

@@ -726,6 +726,11 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q declares root %q and renders template %q, which publishes none; the "+
 				"chart would draw the whole document", v.Path, v.Root, v.Template)
+	case v.Drill != nil && len(v.RenderTiers) > 0 && !slices.Contains(v.RenderTiers, v.Drill.From):
+		return fmt.Errorf(
+			"view %q drills from tier %d and draws tiers %v, which do not include it; the "+
+				"page would ship the breadcrumb and the words about opening a node while no "+
+				"node on it is ever openable", v.Path, v.Drill.From, v.RenderTiers)
 	case v.Drill != nil && v.Drill.Cap < 1:
 		return fmt.Errorf(
 			"view %q declares a drill with cap %d; the cap is what keeps a fine column "+

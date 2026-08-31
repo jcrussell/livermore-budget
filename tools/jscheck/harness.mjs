@@ -521,7 +521,11 @@ export const KNOWN_SELECTORS = {
     how: "planted",
     note: "year.mjs sets selectable.tbody on #flow-table; the stub's flow-table node has no children, so no grammar could find one",
   },
-  "#legend button .key": {
+  // restoreFocus asks the chart for a node to put focus on after a drill has
+  // replaced it. The stub answers with whatever a check planted; nothing here
+  // depends on WHICH node, only that the lookup is a declared one.
+  "g.node": [],
+    "#legend button .key": {
     how: "planted",
     note: "year.mjs plants the swatches buildLegend created, then calls paint()",
   },

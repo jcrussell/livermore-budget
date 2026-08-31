@@ -387,7 +387,17 @@ function isFundGroup(node) {
  * @returns {string}
  */
 function fundGroupOf(node) {
-  let at = node;
+  // STARTED FROM THE HIERARCHY, NOT FROM THE COPY IT WAS HANDED. layOut passes
+  // a LAID node -- a shallow copy of a FOLDED node -- whose parent foldDocument
+  // sets to "" when the ancestor it folded to was filtered away. That is right
+  // for the folded document, whose well-formedness is about nodes it carries,
+  // and it stops this walk dead: `if (!at.parent) return ""` on the first hop.
+  //
+  // Measured before the fix: every fund on every opened view and every division
+  // on spending.html resolved to "", so both rendered entirely in --muted and
+  // buildLegend drew no swatches. groupIndex prefers the FETCHED document, so
+  // what is walked here is where the node really sits.
+  let at = groupIndex.get(node.id) || node;
   // Bounded by the hierarchy's depth; the guard is against a parent cycle in a
   // malformed document, which node-hierarchy-well-formed rejects Go-side but
   // this file cannot assume it ran.
@@ -941,6 +951,36 @@ function drillTo(id) {
   buildDerivedList();
   buildTable();
   render(laid);
+  restoreFocus();
+}
+
+/**
+ * Puts focus somewhere real after a drill has replaced the chart.
+ *
+ * A KEYBOARD DRILL DESTROYS THE ELEMENT THAT WAS FOCUSED. The node a reader
+ * tabbed to and pressed Enter on is exactly the node opening removes, and
+ * paintBreadcrumb's replaceChildren does the same to the button on the way back
+ * -- so focus fell to <body> in both directions, on a page whose own lede says
+ * "tab to one and press Enter". A reader would have to tab in from the top of
+ * the document again after every gesture the page invites.
+ *
+ * IT MOVES FOCUS ONLY IF IT WAS ALREADY IN THE CHART. Stealing it from a reader
+ * who opened a node by mouse -- or who is somewhere else entirely on the page --
+ * would be its own defect, so activeElement decides.
+ */
+function restoreFocus() {
+  const active = document.activeElement;
+  const inChart = Boolean(active) && active !== document.body;
+  if (!inChart) return;
+  const bar = maybeEl("breadcrumb");
+  const back = bar ? bar.children[0] : null;
+  if (drilledInto && back && typeof back.focus === "function") {
+    back.focus();
+    return;
+  }
+  const chart = maybeEl("chart");
+  const first = chart ? chart.querySelector("g.node") : null;
+  if (first && typeof first.focus === "function") first.focus();
 }
 
 /**
@@ -1043,8 +1083,24 @@ function shapeFor(doc) {
     return foldDocument(ROOT ? filterToNode(doc, ROOT, RENDER_TIERS) : doc);
   }
   const fine = DRILL.tiers[DRILL.tiers.length - 1];
-  return foldDocument(capColumn(filterToNode(doc, drilledInto, DRILL.tiers), fine, DRILL.cap),
-    DRILL.tiers);
+  const drawn = foldDocument(
+    capColumn(filterToNode(doc, drilledInto, DRILL.tiers), fine, DRILL.cap), DRILL.tiers);
+
+  // THE AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, and it has to be here
+  // rather than in capColumn. capColumn runs first and parents the aggregate at
+  // the node being opened, which is true; foldDocument then re-points every
+  // retained node's parent at its folded ancestor and blanks the ones whose
+  // ancestor is not in the document -- which the opened node never is, since
+  // opening it is what filtered it away. So the aggregate came out of the fold
+  // parentless and drew in --muted among its coloured siblings.
+  //
+  // It is restored rather than exempted from the fold, because the fold's rule
+  // is about the document's own well-formedness and this is a claim about the
+  // FILE's hierarchy, which is what fundGroupOf walks.
+  return Object.assign({}, drawn, {
+    nodes: drawn.nodes.map((n) =>
+      (n.id === AGGREGATE_ID ? Object.assign({}, n, { parent: drilledInto }) : n)),
+  });
 }
 
 /**
@@ -1117,8 +1173,16 @@ function capColumn(doc, tier, cap) {
   // sums a merged ribbon. What is inferred is the GROUPING, and that is what
   // the rationale says.
   const aggregate = {
-    id: AGGREGATE_ID, label: label, tier: tier, parent: "", constraint_tier: "",
-    role: "",
+    id: AGGREGATE_ID, label: label, tier: tier,
+    // PARENTED TO THE NODE BEING OPENED, which is true -- every item folded
+    // into it is inside that node -- and is what gives the mark its group's
+    // hue instead of --muted. It was "" and drew grey among coloured siblings.
+    parent: drilledInto,
+    constraint_tier: "",
+    // A ROLE, because an empty one renders as a bordered empty .chip in both
+    // the tooltip and the detail panel: a box with nothing in it, beside chips
+    // that say something.
+    role: "aggregate",
     derived: true,
     rationale: "Our grouping, not a line the city printed: the " + folded.length +
       " smallest " + ((DRILL && DRILL.tail) || "items") + " in this column are drawn as one " +
@@ -1147,12 +1211,21 @@ function capColumn(doc, tier, cap) {
     return false;
   };
 
+  const nodes = doc.nodes
+    .filter((n) => (n.tier !== tier || kept.has(n.id)) && !orphaned(n))
+    .concat([aggregate]);
+  // AND THE LINKS THAT NAMED THEM GO TOO. Dropping the descendants without
+  // dropping their links leaves foldDocument refusing "link aggregate/tail ->
+  // dept/x names a node the document does not carry" -- which is the outcome
+  // the filter above was added to prevent, reached one field over. Both halves
+  // are latent on the shipped corpus, and latent is the state the comment above
+  // claims not to leave things in.
+  const present = new Set(nodes.map((n) => n.id));
   return Object.assign({}, doc, {
-    nodes: doc.nodes
-      .filter((n) => (n.tier !== tier || kept.has(n.id)) && !orphaned(n))
-      .concat([aggregate]),
-    links: doc.links.map((l) =>
-      Object.assign({}, l, { source: remap(l.source), target: remap(l.target) })),
+    nodes: nodes,
+    links: doc.links
+      .map((l) => Object.assign({}, l, { source: remap(l.source), target: remap(l.target) }))
+      .filter((l) => present.has(l.source) && present.has(l.target)),
   });
 }
 
@@ -1399,7 +1472,28 @@ function restackLinks(graph) {
 function layOut(doc) {
   // Assigned from the document being laid out, before anything that can throw,
   // so fundGroupOf never walks a parent chain belonging to another document.
+  // BUILT FROM THE FETCHED DOCUMENT AS WELL AS THE DRAWN ONE, because a colour
+  // is a property of where a node sits in the real hierarchy and not of what
+  // this page happens to draw. Built from the drawn nodes alone, every drilled
+  // view and the whole of spending.html rendered in --muted: filterToNode keeps
+  // only what the drawn tiers need, so a fund's fund-group ancestor is absent
+  // and fundGroupOf's walk stops at the first parent it cannot resolve.
+  // Measured before the fix: fundGroupOf returned "" for every node on
+  // Spending's overview and on all six opened Revenue views, and buildLegend
+  // drew no swatches at all.
+  //
+  // THE FETCHED HIERARCHY WINS, and the drawn nodes only fill ids it does not
+  // have. foldDocument RE-POINTS a retained node's parent at its folded
+  // ancestor and sets it to "" when that ancestor was filtered away -- which is
+  // right for the folded document, whose own well-formedness is about nodes it
+  // carries, and useless for a colour, which is about where the node really
+  // sits. Taking the drawn parent leaves the walk stopping at the first "".
+  // The aggregate is the node the drawn set contributes: the file has never
+  // heard of it.
   groupIndex = new Map(doc.nodes.map((n) => [n.id, n]));
+  if (fetched) {
+    for (const n of fetched.nodes) groupIndex.set(n.id, n);
+  }
 
   // WHICH COLUMN A NODE IS DRAWN IN IS A PROPERTY OF ITS TIER ONCE THIS PAGE
   // FOLDS. sankeyJustify aligns link-less sinks to the LAST column, which is
@@ -1667,8 +1761,16 @@ function linkDescription(d) {
  * @returns {string}
  */
 function nodeDescription(d) {
+  // WHAT ACTIVATING IT DOES, for a reader who cannot see that some marks open
+  // and others dim. aria-pressed was correctly removed from a node that opens
+  // -- there is no state to return to -- and removing it left a node announcing
+  // NOTHING about the difference: the same words for a mark that replaces the
+  // whole chart and one that dims the rest of it.
+  const what = drillable(d) ? ", opens into its parts"
+    : DRILL ? ""
+    : ", follow this money";
   return d.label + ", total " + fmt(d.value) +
-    (d.derived ? ", inferred by us" : ", printed by the city");
+    (d.derived ? ", inferred by us" : ", printed by the city") + what;
 }
 
 /**
