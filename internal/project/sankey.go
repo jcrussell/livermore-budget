@@ -93,14 +93,22 @@ const (
 // and carries tier 0 only so the diagram lays out left to right.
 const nodeTransfersIn = "transfers/in"
 
-// nodeTransfersOut is its mirror.
+// nodeTransfersOut is its mirror, and the two are not symmetric in use.
 //
-// IT IS USED BY TESTS AND NOT BY THE PRODUCER, which is worth saying because an
-// earlier version of this comment claimed the opposite. It was added to spell
-// [Caveat.AppliesTo]'s two legs; that field is now built by transferEndpoints
-// from the links a graph actually draws, so neither constant is read on the
-// production path. What they are for is letting a test name the endpoint it
-// expects without retyping the string the taxonomy produces.
+// nodeTransfersIn IS ON THE PRODUCTION PATH -- fundflows.go's revenueEndpoint
+// returns it for every KindTransferIn cell -- while nodeTransfersOut is read
+// only by tests. That asymmetry is the document's, not an oversight: the
+// drill-down has a revenue side and no transfers-out end to name.
+//
+// This constant was added to spell [Caveat.AppliesTo]'s two legs, and that is
+// no longer what reads it: the field is built by transferEndpoints from the
+// links a graph actually draws. What it is for now is letting a test name the
+// endpoint it expects without retyping the string the taxonomy produces.
+//
+// (Two earlier versions of this comment were wrong in opposite directions --
+// one said this constant was on the production path, the next said neither was.
+// The second was written in the commit that fixed the first, which is the shape
+// AGENTS.md's review-loop table collects.)
 //
 // builtinLabels below still spells both as bare literals. That is deliberate
 // rather than an oversight left standing: those keys are a table of what the
@@ -1122,7 +1130,7 @@ func transferEndpoints(links []Link) []string {
 	return append(append(make([]string, 0, len(in)+len(out)), in...), out...)
 }
 
-// contestedCaveat is the sentence for one contested total, or "" when this
+// contestedCaveat is the caveat for one contested total, and false when this
 // document does not draw it.
 //
 // THE VALUE IS RE-READ FROM THE GRAPH AND COMPARED, rather than the entry's

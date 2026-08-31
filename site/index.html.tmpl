@@ -147,12 +147,19 @@
      250 words -- and a 58-row table before reaching the end of a page whose
      subject is the chart above.
 
-     WHAT IS STILL HERE IS SERVER-RENDERED AND IN THE DOM when the <details> is
-     closed, which is why this is markup rather than JavaScript: a closed
-     <details> still renders its content, so nothing here depends on a script
-     running. What is NOT still here is the caveats' full text -- that moved to
-     caveats.html and this page shows one-line summaries linking to it, which is
-     a smaller claim than an earlier version of this comment made.
+     THE DISCLOSURE ITSELF NEEDS NO SCRIPT, which is why it is markup: a closed
+     <details> still renders its content, so what is server-rendered stays
+     readable with JavaScript off and stays findable to in-page search.
+
+     THAT IS A CLAIM ABOUT THE DISCLOSURE, NOT ABOUT EVERY PANEL BEHIND IT, and
+     an earlier version of this comment did not distinguish them. The caveat
+     summaries below really are server-rendered. #derived-list ships a
+     "Loading..." placeholder and #flow-table an empty <tbody>; both are filled
+     by app.js, and both were like that before this section was folded. The
+     <noscript> block above the fold is what tells a reader so.
+
+     What is NOT here at all is the caveats' full text -- that moved to
+     caveats.html, and this page shows one-line summaries linking to it.
 
      The <h2>s stay inside the <summary>, so the document outline a screen
      reader walks is unchanged. -->

@@ -1797,13 +1797,21 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 // caveats view that DID name a projection would be refused with advice that is
 // right by accident.
 //
-// THREE REFUSALS, and each is a failure that renders. An empty page means
-// views() added a nav entry to nothing. A caveat with no id publishes an anchor
-// of "#caveat-<stem>--", which every summary on the site would then share. Two
-// entries claiming one anchor is a link that lands on the wrong paragraph, and
-// the reader has no way to tell. project.ValidateCaveats catches the first two
-// within a document at build time; this catches them again across the site,
-// because a document decoded from bytes has not been through that.
+// FIVE REFUSALS, and each is a failure that renders. An empty page means a nav
+// entry pointing at nothing. A caveat with no id publishes an anchor of
+// "#caveat-<stem>--", which every summary on the site would then share; one
+// with no summary a blank line in every list; one with no text a heading over
+// nothing. Two entries claiming one anchor is a link that lands on the wrong
+// paragraph, and the reader has no way to tell.
+//
+// WHAT project.ValidateCaveats DOES AND DOES NOT COVER. It refuses the three
+// empty-field cases and a repeated id WITHIN one document, at build time. It
+// does NOT cover either of the two that matter most here: it returns nil for an
+// empty caveat slice, since a document with no caveats is legal and only a
+// caveats PAGE with nothing to list is not; and it cannot see across documents,
+// which is precisely what this page renders. So the overlap is partial and the
+// duplicated arms are the cheap half of it -- a document decoded from bytes has
+// not been through that function at all.
 func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (caveatsPageData, error) {
@@ -1858,8 +1866,8 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 	if count == 0 {
 		return caveatsPageData{}, fmt.Errorf(
-			"view %q renders the caveats index and no published document carries a caveat; "+
-				"views() adds this page only when there is something to list", v.Path)
+			"view %q renders the caveats index and no published document carries a caveat, "+
+				"so the site would ship a nav entry to a page with nothing on it", v.Path)
 	}
 
 	title := v.Title

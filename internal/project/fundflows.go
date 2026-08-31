@@ -49,10 +49,16 @@ const constraintTierCaveat = "A fund's constraint tier is OUR reading of the " +
 	"printed. Each fund node carries the note it was read from. \"unknown\" means the " +
 	"document does not establish a restriction; it is a classification, not a gap."
 
-// ConstraintTierCaveat is the disclosure sentence, exported so internal/check
-// compares a document against THIS STRING rather than against prose written
-// twice. Two authors agreeing that a caveat says roughly the right thing is not
-// the same claim as the document carrying the sentence the contract requires.
+// ConstraintTierCaveat is the disclosure, exported so internal/check compares a
+// document against THIS DECLARATION rather than against prose written twice.
+// Two authors agreeing that a caveat says roughly the right thing is not the
+// same claim as the document carrying the sentence the contract requires.
+//
+// THE CHECK MAKES THREE COMPARISONS, NOT ONE, and it is worth knowing which
+// before editing any field here: it finds the caveat by ConstraintTierCaveatID,
+// then compares Text and Summary separately, reporting each as its own finding.
+// Changing the id retires a document's disclosure; changing either sentence
+// without changing the document's is a finding naming which of the two drifted.
 func ConstraintTierCaveat() Caveat {
 	return Caveat{
 		ID:      ConstraintTierCaveatID,

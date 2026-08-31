@@ -109,12 +109,19 @@ dropped.
 It carries an **`id`**, a one-line **`summary`**, the **`text`** that used to be
 the whole caveat, and **`applies_to`**: the node ids the caveat is about.
 
-The id is a **published URL fragment** — `caveats.html#<id>` — so it is stable
-across rewordings of the other two fields, and a document repeating one is
-refused at build time by `project.ValidateCaveats`. Two caveats under one anchor
-is a link that lands on the wrong paragraph and fails silently: the page
-renders, the anchor resolves, and the reader is shown a sentence about something
-else.
+The id goes into a **published URL fragment** and is stable across rewordings of
+the other two fields, so a bookmark or a citation survives an edit to a
+sentence. A document repeating an id is refused at build time by
+`project.ValidateCaveats`.
+
+**The fragment is `caveats.html#caveat-<stem>--<id>`, not `#<id>`**, because the
+id alone does not identify a caveat: it identifies a caveat *in a document*, and
+the same id carries different text in different documents (see below). The site
+has one spelling of that composition, `caveatAnchor` in
+`internal/export/page.go`, and `buildCaveatsPage` refuses two entries claiming
+one anchor — across documents, which is the case `ValidateCaveats` cannot see.
+An anchor collision fails silently: the page renders, the anchor resolves, and
+the reader is shown a sentence about something else.
 
 `applies_to` is **empty for a caveat about the schedule rather than about a
 mark**, and empty means document-wide rather than not-yet-filled-in. Where it is
