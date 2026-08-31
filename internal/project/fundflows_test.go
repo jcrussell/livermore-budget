@@ -154,6 +154,49 @@ func TestEveryFundNodeDisclosesItsConstraintTier(t *testing.T) {
 	}
 }
 
+// TestTheTruncatedGroupCountIsTheDocumentsOwn is the seven-group column that
+// justifies computing this rather than writing it down.
+//
+// THE CAVEAT SAID "the other six fund groups" AND SIX IS TRUE OF ONE COLUMN.
+// fund-flows-2024-actual carries a seventh fund group, permanent, so six of its
+// seven stop short; the other three published columns carry six and FIVE stop --
+// including FY2025-26, which is the one the site draws. The page shipped a
+// figure that was wrong about the chart beside it.
+//
+// AND THE FIX WAS ASSERTED BY NOTHING. Replacing groupsWithNoSpendingSide's
+// body with `return 5` -- the literal the correction was about -- left every Go
+// test passing, which is the same shape as the defect: a number nobody checks.
+func TestTheTruncatedGroupCountIsTheDocumentsOwn(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		groups []string
+		want   int
+	}{
+		// Six groups, one of which (general) has divisions beneath it.
+		{"six groups, five stop", []string{"general", "capital", "enterprise",
+			"special-revenue", "debt-service", "internal-service"}, 5},
+		// The FY2023-24 shape: a seventh group, permanent, and six stop.
+		{"seven groups, six stop", []string{"general", "capital", "enterprise",
+			"special-revenue", "debt-service", "internal-service", "permanent"}, 6},
+		{"one group, none stop", []string{"general"}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			nodes := []Node{
+				// The General Fund alone is decomposed: a fund with a division
+				// beneath it is what "has a spending side" means here.
+				{ID: prefixFund + "100", Tier: tierFund, Parent: prefixFundGroup + "general"},
+				{ID: prefixDept + "patrol", Tier: tierDepartment, Parent: prefixFund + "100"},
+			}
+			for _, g := range tc.groups {
+				nodes = append(nodes, Node{ID: prefixFundGroup + g, Tier: tierFundGroup})
+			}
+			if got := groupsWithNoSpendingSide(nodes); got != tc.want {
+				t.Errorf("groupsWithNoSpendingSide = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestTheCountsIdentityHolds is the arithmetic the document publishes.
 func TestTheCountsIdentityHolds(t *testing.T) {
 	doc := buildFundFlows(t, fundFlowsFacts(), fundFlowsLabels())

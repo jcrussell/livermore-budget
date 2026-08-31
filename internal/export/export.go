@@ -801,6 +801,18 @@ func templateRendersLede(name string) bool {
 // `v.Template == SankeyTemplate` would have been born stale -- which is the
 // exact failure templateRendersLede exists to document.
 func templateRendersAYearControl(name string) bool {
+	return templateDrawsAChart(name)
+}
+
+// templateDrawsAChart answers whether a template ships app.js and an SVG for it
+// to draw into.
+//
+// IT IS NOT "renders a document". trends.html renders revenue-trends and ships
+// no app.js at all -- its figures are a server-rendered table -- so a caveat on
+// that document can be listed and can never be flagged on a mark. The caveats
+// page promises a chart flag per document, and "some view names this stem" was
+// the wrong test for it.
+func templateDrawsAChart(name string) bool {
 	switch name {
 	case SankeyTemplate, ChartTemplate:
 		return true

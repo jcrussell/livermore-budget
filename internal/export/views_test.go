@@ -64,11 +64,19 @@ func trendsDoc(pages ...int) []byte {
 			"columns":      columns,
 			"sources":      []map[string]any{{"doc_id": budgetDocID, "pages": pages}},
 			"counts":       map[string]any{"facts": len(points), "series": 1, "points": len(points)},
+			// applies_to IS NON-EMPTY, and that is what makes
+			// TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart able
+			// to fail. caveats.html prints its chart-flag promise inside
+			// {{if .AppliesTo}}, so a document whose caveats all carry an empty
+			// one never reaches that branch -- and the check asserting the
+			// promise is absent from the trends section passed whether the
+			// predicate behind it worked or not. No real revenue-trends caveat
+			// names a node today; this fixture is where that case lives.
 			"caveats": []map[string]any{{
 				"id":         "a-caveat-this-document-carries",
 				"summary":    "a caveat this document carries",
 				"text":       "a caveat this document carries, at length",
-				"applies_to": []string{},
+				"applies_to": []string{"fund/100"},
 			}},
 		},
 		"series": []map[string]any{{
@@ -346,6 +354,70 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 				t.Errorf("Write = %q, want it to name %q", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+// TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart pins caveatDocument
+// .Drawn, which had no test at all.
+//
+// THE PAGE SAYS "the charts flag these marks where they draw them" under each
+// document, and three of the seven the site publishes have no page -- the
+// fund-flows columns unviewedDocuments declares. Flipping Drawn to !drawn[stem]
+// publishes that promise on exactly those three and left `go test ./...`
+// entirely green.
+//
+// "A VIEW NAMES THIS STEM" IS ALSO THE WRONG TEST, and this pins the right one.
+// trends.html names revenue-trends as its projection and ships no app.js: its
+// figures are a server-rendered table, so a caveat on that document can be
+// listed and can never be chipped on a mark.
+func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
+	dir := t.TempDir()
+	_, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			export.PrimaryProjection: goldenSankey(t),
+			"revenue-trends":         trendsDoc(127),
+			"unviewed":               goldenSankey(t),
+		},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: export.PrimaryProjection},
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
+				Projection: "revenue-trends", Title: "Trends", Lede: "A lede."},
+			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
+				Title: "Caveats", Lede: "A lede."},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		PageText:    twoViewPageText(127),
+	})
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readFile(t, dir, "caveats.html")
+
+	const promise = "the charts flag these marks"
+	section := func(stem string) string {
+		t.Helper()
+		i := strings.Index(page, "<h2>"+stem)
+		if i < 0 {
+			t.Fatalf("caveats.html carries no section for %q", stem)
+		}
+		rest := page[i+1:]
+		if j := strings.Index(rest, "<section"); j >= 0 {
+			return rest[:j]
+		}
+		return rest
+	}
+	if !strings.Contains(section(export.PrimaryProjection), promise) {
+		t.Errorf("the spine's section does not promise a chart flag, and index.html draws it")
+	}
+	if strings.Contains(section("revenue-trends"), promise) {
+		t.Error("the revenue-trends section promises a chart flag; trends.html renders that " +
+			"document as a table and ships no app.js, so nothing on it can be flagged")
+	}
+	if strings.Contains(section("unviewed"), promise) {
+		t.Error("a document no view renders promises a chart flag; there is no chart")
 	}
 }
 

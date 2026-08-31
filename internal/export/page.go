@@ -1888,6 +1888,15 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	// drawing it.
 	drawn := map[string]bool{}
 	for _, v := range o.views() {
+		// A VIEW THAT DRAWS NO CHART FLAGS NOTHING, whatever it renders.
+		// trends.html names revenue-trends as its projection and ships no
+		// app.js -- its figures are a server-rendered table -- so a caveat on
+		// that document can be listed here and can never be chipped on a mark.
+		// "Some view names this stem" was the wrong test, and it was latent
+		// only because no revenue-trends caveat carries a non-empty applies_to.
+		if !templateDrawsAChart(v.Template) {
+			continue
+		}
 		if v.Projection != "" {
 			drawn[v.Projection] = true
 		}

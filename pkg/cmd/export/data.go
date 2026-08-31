@@ -570,11 +570,19 @@ func views(built Result) []export.View {
 				"that spend it, on the right. Opening a division replaces the right-hand " +
 				"column with the object categories it spends on.",
 			Title: "Which division spends Livermore's General Fund, and on what",
+			// NO COUNT OF THE OTHER GROUPS. This said "the other six fund
+			// groups", the exact literal 75814db corrected inside the document
+			// -- so the page contradicted the caveat it draws. The count is not
+			// six and it is not fixed either: fund-flows carries six groups and
+			// five stop short, while fund-flows-2024-actual carries seven and
+			// six do. A lede is composed here, where no document is in hand, so
+			// the honest thing is to name none. The caveat carries the number,
+			// computed per column.
 			Lede: "The General Fund, and the 23 divisions it pays for. Open a division " +
 				"to see what it spends on. ONLY THE GENERAL FUND IS HERE: Budget Book " +
-				"pp.167-170 decompose that fund alone, so the other six fund groups " +
-				"have no spending side in this corpus \u2014 the money is not missing, " +
-				"the schedule that would break it down is not published.",
+				"pp.167-170 decompose that fund alone, so every other fund group's money " +
+				"ends at its funds \u2014 the money is not missing, the schedule that " +
+				"would break it down is not published.",
 		})
 	}
 

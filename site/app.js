@@ -28,6 +28,11 @@
  * @property {boolean} derived
  * @property {string} rationale
  * @property {string} source_note
+ * @property {string[]} [folds] the ids a synthetic aggregate stands for.
+ *   PRESENT ONLY ON capColumn'S AGGREGATE and on no node any document
+ *   publishes: the cap folds a column's tail by VALUE, which nothing in the
+ *   parent chain records, so caveatsFor cannot reach those ids by walking. It
+ *   is optional because every real node lacks it.
  */
 
 /**
@@ -154,8 +159,12 @@
 /**
  * A node after d3-sankey has laid it out. d3 mutates the objects it is given,
  * so this extends FiscNode rather than replacing it.
+ * layer is the COLUMN d3-sankey put the node in, which is not depth: depth is
+ * the longest path to the node, and layer is what the align function returned
+ * after clamping. columnShare totals a column and needs the second.
  * @typedef {FiscNode & {x0:number, x1:number, y0:number, y1:number, value:number,
- *   sourceLinks:LaidLink[], targetLinks:LaidLink[], depth:number}} LaidNode
+ *   sourceLinks:LaidLink[], targetLinks:LaidLink[], depth:number,
+ *   layer:number}} LaidNode
  */
 
 /**
@@ -1024,15 +1033,21 @@ function drillTo(id) {
  */
 function restoreFocus(hadFocus) {
   if (!hadFocus) return;
+  // focus() IS ON HTMLElement AND SVGElement, NOT ON Element, so the runtime
+  // test stays and the cast is what tells tsc --checkJs the same thing. The
+  // test is not redundant with the cast: the SVG marks are <g> elements and the
+  // jscheck stub's nodes are plain objects, neither of which is obliged to have
+  // it.
+  const focus = (/** @type {Element | null} */ target) => {
+    const el = /** @type {any} */ (target);
+    if (!el || typeof el.focus !== "function") return false;
+    el.focus();
+    return true;
+  };
   const bar = maybeEl("breadcrumb");
-  const back = bar ? bar.children[0] : null;
-  if (drilledInto && back && typeof back.focus === "function") {
-    back.focus();
-    return;
-  }
+  if (drilledInto && bar && focus(bar.children[0])) return;
   const chart = maybeEl("chart");
-  const first = chart ? chart.querySelector("g.node") : null;
-  if (first && typeof first.focus === "function") first.focus();
+  focus(chart ? chart.querySelector("g.node") : null);
 }
 
 /**
