@@ -736,16 +736,21 @@ svg.sankey .node {
 }
 
 /* A summary is a link to its own paragraph on caveats.html. The whole row is
-   the target rather than a word in it, because the row IS the sentence. */
+   the target rather than a word in it, because the row IS the sentence.
+
+   IT IS UNDERLINED AT REST, and the first version of this rule was not.
+   `text-decoration: none` over the same --ink-2 the <li> already uses made a
+   caveat summary pixel-identical to plain text, so a reader had no way to learn
+   that the paragraph had moved rather than been deleted -- which is exactly the
+   truncation the link exists to prevent. Every other link on this site is
+   underlined; these had been made the exception. */
 .caveats li a {
-  color: var(--ink-2);
-  text-decoration: none;
+  color: inherit;
 }
 
 .caveats li a:hover,
 .caveats li a:focus {
   color: var(--ink-1);
-  text-decoration: underline;
 }
 
 .derived-list {
@@ -884,21 +889,22 @@ details > summary {
 
 /* ---------- the disclosed apparatus ---------- */
 
-/* A <summary> is a flex container here so the <h2> inside it sits on the
-   marker's line rather than starting a block below it. The heading is kept
-   because the outline is what a screen reader navigates by; the sizes below
-   are the only thing that makes it read as a disclosure rather than as a
-   section that happens to be foldable. */
+/* The <h2> is kept inside the <summary> because the outline is what a screen
+   reader navigates by; the sizes below are the only thing that makes it read as
+   a disclosure rather than as a section that happens to be foldable. */
 .apparatus {
   margin-top: 20px;
   border-top: 1px solid var(--grid);
 }
 
+/* NO display: flex HERE, AND THAT IS THE WHOLE RULE. A <summary> is
+   display: list-item by default and the list marker IS the disclosure triangle;
+   setting flex (or block, or grid) removes it in Chrome and Safari, and with
+   all three panels shipping closed the reader is left with three bare headings
+   and nothing that says they open. The heading and the hint are made inline
+   instead, which puts them on the marker's line without taking the marker
+   away. */
 .apparatus > summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 10px;
   padding: 12px 0;
 }
 
@@ -910,6 +916,8 @@ details > summary {
 }
 
 .apparatus-hint {
+  display: inline;
+  margin-left: 8px;
   color: var(--ink-2);
   font-size: 14px;
 }

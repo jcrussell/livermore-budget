@@ -268,30 +268,54 @@ func TestEveryCaveatSummaryLinksToAnAnchorThatExists(t *testing.T) {
 		t.Fatal("caveats.html carries no caveat anchors, so this test asserts nothing")
 	}
 
+	// TWO SPELLINGS, AND THE SECOND ONE IS THE LARGER SET. A page carries its
+	// opening year's links as markup, href="caveats.html#...", and every OTHER
+	// year's inside the FISC_CONFIG blob as JSON, "href":"caveats.html#...",
+	// which app.js injects on a year switch. Matching markup alone left the
+	// blob unchecked -- and the blob is where the anchors that differ live,
+	// since FY2026-27 carries a contested-total caveat FY2025-26 does not.
+	// Mutation-proved: appending "-typo" to the stem in buildSankeyPage's years
+	// loop leaves every other test in both packages green while breaking every
+	// caveat link a reader reaches by switching year.
+	spellings := []*regexp.Regexp{
+		regexp.MustCompile(`href="caveats\.html#([^"]+)"`),
+		regexp.MustCompile(`"href":"caveats\.html#([^"]+)"`),
+	}
+
 	// Every page the site wrote, not a list: a page added without its links
 	// checked is exactly what this is for.
 	entries, err := os.ReadDir(opts.OutputDir)
 	if err != nil {
 		t.Fatalf("read the exported site: %v", err)
 	}
-	linked := 0
+	linked, injected := 0, 0
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".html") {
 			continue
 		}
-		for _, m := range regexp.MustCompile(`href="caveats\.html#([^"]+)"`).
-			FindAllStringSubmatch(read(e.Name()), -1) {
-			linked++
-			if !ids[m[1]] {
-				t.Errorf("%s links to caveats.html#%s, and caveats.html carries no such "+
-					"anchor; the link works and lands the reader nowhere in particular",
-					e.Name(), m[1])
+		page := read(e.Name())
+		for i, re := range spellings {
+			for _, m := range re.FindAllStringSubmatch(page, -1) {
+				if i == 0 {
+					linked++
+				} else {
+					injected++
+				}
+				if !ids[m[1]] {
+					t.Errorf("%s links to caveats.html#%s, and caveats.html carries no such "+
+						"anchor; the link works and lands the reader nowhere in particular",
+						e.Name(), m[1])
+				}
 			}
 		}
 	}
 	if linked == 0 {
-		t.Error("no page links to a caveat anchor, so the summaries are truncations " +
-			"rather than pointers")
+		t.Error("no page links to a caveat anchor in its markup, so the summaries are " +
+			"truncations rather than pointers")
+	}
+	if injected == 0 {
+		t.Error("no page carries a caveat anchor in its FISC_CONFIG blob, so the year " +
+			"switch has none to inject and this test's second spelling checks nothing")
 	}
 }
 

@@ -119,9 +119,14 @@ id alone does not identify a caveat: it identifies a caveat *in a document*, and
 the same id carries different text in different documents (see below). The site
 has one spelling of that composition, `caveatAnchor` in
 `internal/export/page.go`, and `buildCaveatsPage` refuses two entries claiming
-one anchor — across documents, which is the case `ValidateCaveats` cannot see.
-An anchor collision fails silently: the page renders, the anchor resolves, and
-the reader is shown a sentence about something else.
+one anchor. An anchor collision fails silently — the page renders, the anchor
+resolves, and the reader is shown a sentence about something else — which is why
+it is refused rather than left to a reader to notice.
+
+Note what that arm can and cannot reach: stems are map keys, so **two different
+documents cannot collide on one**. It catches a repeated id inside a document,
+and a stem/id pair whose `--` composes ambiguously (`a--b` + `c` against `a` +
+`b--c`), because the separator is not an escape. Neither shape occurs today.
 
 `applies_to` is **empty for a caveat about the schedule rather than about a
 mark**, and empty means document-wide rather than not-yet-filled-in. Where it is

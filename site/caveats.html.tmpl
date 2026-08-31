@@ -40,10 +40,18 @@
 
 <main>
 
+<!-- "THE DOCUMENTS THAT HAVE A PAGE" IS NOT ALL OF THEM, and the lede used to
+     imply it was: it said every other page links here for the rest, while three
+     of the seven documents listed below ship as data no page draws and so have
+     no inbound link at all. Their caveats are still owed to anyone who fetches
+     those files, which is why they are here; saying so is cheaper than a
+     reader noticing the asymmetry and wondering what else is unstated. -->
 <p class="lede">
   {{.Count}} caveat{{if ne .Count 1}}s{{end}} across {{len .Documents}} published document{{if ne (len .Documents) 1}}s{{end}}.
-  Every other page on this site shows these one line at a time and links here for the rest;
-  this is the rest.
+  The pages that draw a document show its caveats one line at a time and link here for the
+  rest; this is the rest. Documents the site publishes as data but does not yet draw are
+  listed too, with no page pointing at them — their caveats are owed to whoever fetches the
+  file, and repeat what a drawn year of the same schedule says.
 </p>
 
 <!-- GROUPED BY DOCUMENT, and the reason is not tidiness. One caveat id can

@@ -1806,12 +1806,20 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 //
 // WHAT project.ValidateCaveats DOES AND DOES NOT COVER. It refuses the three
 // empty-field cases and a repeated id WITHIN one document, at build time. It
-// does NOT cover either of the two that matter most here: it returns nil for an
-// empty caveat slice, since a document with no caveats is legal and only a
-// caveats PAGE with nothing to list is not; and it cannot see across documents,
-// which is precisely what this page renders. So the overlap is partial and the
-// duplicated arms are the cheap half of it -- a document decoded from bytes has
-// not been through that function at all.
+// does NOT cover the empty-page case: it returns nil for an empty caveat slice,
+// since a document with no caveats is legal and only a caveats PAGE with
+// nothing to list is not. And it never sees a document decoded from bytes,
+// which is every document here.
+//
+// THE ANCHOR ARM IS NARROWER THAN "ACROSS DOCUMENTS", which is what an earlier
+// version of this comment claimed. Anchors are caveat-<stem>--<id> and stems
+// are the keys of a map, so two DIFFERENT documents cannot collide on a stem.
+// What the arm reaches is a repeated id inside one document -- which is the
+// case it is tested for -- and the composition being ambiguous, since "--" is a
+// separator and not an escape: a stem "a--b" with id "c" and a stem "a" with id
+// "b--c" compose the same fragment. Neither shape occurs today. The arm is kept
+// because it is three lines and the failure it prevents is one a reader cannot
+// detect, not because it is load-bearing over the current corpus.
 func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (caveatsPageData, error) {
