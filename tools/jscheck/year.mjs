@@ -238,7 +238,7 @@ export async function checks() {
     {
       // THE SUMMARY IS SHOWN AND THE HREF IS THE YEAR'S OWN. Both halves
       // matter and they fail differently: showing the wrong field puts a
-      // 250-word paragraph back under the chart, while a stale href sends a
+      // full paragraph back under the chart, while a stale href sends a
       // reader who switched to FY2026-27 to FY2025-26's copy of the sentence --
       // which is possible because one caveat id carries different text in
       // different documents, and is invisible unless the href is read.

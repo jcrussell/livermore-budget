@@ -54,7 +54,7 @@ together, one document per printed column. `provenance.html` is the record store
 itself: every fact, its page, and the text it was read from. `caveats.html` is
 every published document's caveats in full — the other pages show each as one
 line and link here, so a reader meets the chart before the apparatus rather than
-scrolling past 250 words of it.
+scrolling past 254 words of it.
 
 Three schedules are published and checked but **not yet drawn**: pp.85-125 (312
 facts), p.76 (88) and ACFR p.41 (20). `fisc verify` declares each undrawn

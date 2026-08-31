@@ -364,7 +364,7 @@ func TestASingleViewSiteShowsCaveatsWithNoLink(t *testing.T) {
 	// fund type", which is (a) in window.FISC_CONFIG whatever the markup does
 	// and (b) a prefix of the caveat's full TEXT as well as of its summary --
 	// so it passed with the summaries deleted, and would equally have passed on
-	// a page that reprinted the 250-word paragraph this change removed.
+	// a page that reprinted the full paragraph this change removed.
 	visible := readerVisible(t, page)
 	const summary = "Permanent Funds are a seventh fund type, and this schedule prints no column for them."
 	if !strings.Contains(visible, summary) {

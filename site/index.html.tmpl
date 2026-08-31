@@ -123,9 +123,15 @@
          "tab to a flow" instruction below would then be lying about. -->
     <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
       <title id="chart-title">Sankey diagram of the {{.FiscalYearLabel}} {{.Basis}} budget</title>
+      {{- /* "OPENS FROM" AND NOT "IS LISTED BELOW". The flow table used to ship
+             open and now ships inside a closed <details>, which takes it out of
+             the accessibility tree until the reader expands it -- so a
+             screen-reader user told the figures were "listed below" would go
+             looking for a table that is not, from their position, there. */}}
       <desc id="chart-desc">
         Revenue categories flow into six fund groups, which flow into object categories,
-        transfers out and fund balance. The same figures are listed in the table below.
+        transfers out and fund balance. The same figures are in the flow table below, which
+        opens from the "Every flow, as a table" heading.
       </desc>
     </svg>
     <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
@@ -143,13 +149,20 @@
 </div>
 
 <!-- THE APPARATUS IS DISCLOSED, NOT DELETED. Everything below this line was a
-     top-level <h2> on an open page, so a reader met four caveats -- one of them
-     250 words -- and a 58-row table before reaching the end of a page whose
-     subject is the chart above.
+     top-level <h2> on an open page, so a reader met four caveats -- 254 words
+     between them, the longest 174 -- and a 58-row table before reaching the end
+     of a page whose subject is the chart above.
 
-     THE DISCLOSURE ITSELF NEEDS NO SCRIPT, which is why it is markup: a closed
-     <details> still renders its content, so what is server-rendered stays
-     readable with JavaScript off and stays findable to in-page search.
+     THE DISCLOSURE ITSELF NEEDS NO SCRIPT, which is why it is markup rather
+     than JavaScript: a closed <details> keeps its content in the DOM, so what
+     is server-rendered survives with JavaScript off and is there to be opened.
+
+     "IN THE DOM" IS NOT "AVAILABLE", and an earlier version of this comment
+     ran the two together. A closed <details> is collapsed for assistive
+     technology as well as visually -- its content is out of the accessibility
+     tree and out of in-page find -- until the reader opens it. That is the
+     trade this section makes on purpose, and it is why the chart's <desc>
+     above no longer says the figures are simply "listed below".
 
      THAT IS A CLAIM ABOUT THE DISCLOSURE, NOT ABOUT EVERY PANEL BEHIND IT, and
      an earlier version of this comment did not distinguish them. The caveat

@@ -110,11 +110,13 @@ const nodeTransfersIn = "transfers/in"
 // The second was written in the commit that fixed the first, which is the shape
 // AGENTS.md's review-loop table collects.)
 //
-// builtinLabels below still spells both as bare literals. That is deliberate
-// rather than an oversight left standing: those keys are a table of what the
-// city's own words are, keyed by id, and rewriting two of its rows as
-// constants while the other eleven stay literal would make the table look like
-// it distinguished them.
+// builtinLabels below spells both keys as bare literals, and an earlier version
+// of this comment defended that with two wrong facts -- that the table has
+// eleven other rows and that they are literal. Measured: twelve rows, of which
+// nine already key off a constant and three do not. So the table is mostly
+// constants, and these two are part of the minority rather than the norm.
+// Converting them is a tidy-up nothing here needs; it is not a decision this
+// comment should keep pretending was made.
 const nodeTransfersOut = "transfers/out"
 
 // The slugs this projection has to recognize by name rather than by shape.

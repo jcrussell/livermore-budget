@@ -514,7 +514,7 @@ func views(built Result) []export.View {
 	}
 	// THE CAVEATS INDEX, THE SECOND VIEW THAT NAMES NO PROJECTION. It lists
 	// every published document's caveats in full, so the other pages can show
-	// one line and link here instead of reprinting a 250-word paragraph
+	// one line and link here instead of reprinting the whole paragraph
 	// underneath a chart.
 	//
 	// UNCONDITIONAL, like the spine and unlike the three views between them,

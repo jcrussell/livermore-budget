@@ -253,14 +253,17 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 		// printed the paragraph and became unfalsifiable when it stopped:
 		// the text is still in the file, in the blob just removed.
 		//
-		// html/template escapes as it renders, so compare against the escaped
-		// form rather than asserting on a prefix that happens to be plain.
-		head := caveat.Summary
-		if i := strings.IndexAny(head, "&<>'\"$("); i > 20 {
-			head = head[:i]
-		}
-		if !strings.Contains(visible, head) {
-			t.Errorf("caveat %q's summary is missing from index.html: %q", caveat.ID, head)
+		// ESCAPED AND COMPARED WHOLE. This inherited a truncate-at-the-first-
+		// escapable-character rule written when the subject was the text, and
+		// over summaries it was doing two wrong things: cutting
+		// transfer-legs-unpaired's assertion down to a 24-character prefix, and
+		// -- for any summary whose first such character falls before index 21 --
+		// comparing an unescaped string against escaped HTML, which fails for a
+		// reason that has nothing to do with the page. Escaping instead of
+		// truncating removes both, and asserts the whole sentence.
+		want := template.HTMLEscapeString(caveat.Summary)
+		if !strings.Contains(visible, want) {
+			t.Errorf("caveat %q's summary is missing from index.html: %q", caveat.ID, want)
 		}
 		// AND THE PARAGRAPH IS NOT PRINTED HERE. Showing a summary is only
 		// honest as a pointer; a page that showed both would be the wall this

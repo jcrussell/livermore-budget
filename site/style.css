@@ -738,16 +738,18 @@ svg.sankey .node {
 /* A summary is a link to its own paragraph on caveats.html. The whole row is
    the target rather than a word in it, because the row IS the sentence.
 
-   IT IS UNDERLINED AT REST, and the first version of this rule was not.
-   `text-decoration: none` over the same --ink-2 the <li> already uses made a
-   caveat summary pixel-identical to plain text, so a reader had no way to learn
-   that the paragraph had moved rather than been deleted -- which is exactly the
-   truncation the link exists to prevent. Every other link on this site is
-   underlined; these had been made the exception. */
-.caveats li a {
-  color: inherit;
-}
+   THE REST OF THE STYLING IS THE DEFAULT ON PURPOSE. The first version of this
+   rule set `text-decoration: none` over the same --ink-2 the <li> already uses,
+   making a caveat summary pixel-identical to plain text -- so a reader had no
+   way to learn that the paragraph had moved rather than been deleted, which is
+   the truncation the link exists to prevent. The fix was to stop overriding:
+   `a { color: inherit }` at the top of this file and the UA's underline already
+   do the right thing, so a `color: inherit` here would be a duplicate of that
+   rule pretending to be a decision. Only the hover state is stated.
 
+   SCOPED TO .caveats li, WHICH IS index.html AND drilldown.html.
+   revenue.html.tmpl's caveat list is a <section class="caveats"> of plain <li>s
+   with no links in it, so these rules do not reach it and are not meant to. */
 .caveats li a:hover,
 .caveats li a:focus {
   color: var(--ink-1);

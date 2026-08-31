@@ -59,8 +59,8 @@ type Source struct {
 // Caveat is one thing a document cannot show, said in three registers.
 //
 // IT USED TO BE A BARE STRING, and the reason it is not any more is that a
-// reader met four of them at once -- one 250 words long -- at the same altitude
-// as the chart they qualify. A page can now show [Caveat.Summary] and link to
+// reader met four of them at once -- 254 words between them on the FY2025-26
+// spine, the longest 174 -- at the same altitude as the chart they qualify. A page can now show [Caveat.Summary] and link to
 // [Caveat.Text] somewhere a reader goes when they want it. Nothing was
 // shortened to achieve that: Text is the string that used to be the whole
 // caveat, verbatim.

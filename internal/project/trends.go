@@ -331,12 +331,23 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 		return nil, fmt.Errorf("revenue-trends: %w", err)
 	}
 
-	// nil NODES, BECAUSE THIS DOCUMENT HAS NONE. It publishes series rather
-	// than a graph, so there is nothing for an AppliesTo to name and every one
-	// of its caveats is document-wide by construction. ValidateCaveats skips
-	// that arm on nil rather than failing every entry against an empty set.
+	// AN EMPTY NODE SET, NOT nil, AND THE DIFFERENCE IS A FAIL-OPEN.
+	//
+	// This document publishes series rather than a graph, so there is nothing
+	// for an AppliesTo to name and every one of its caveats is document-wide by
+	// construction. Passing nil said that by skipping the check -- and made
+	// this the one builder whose AppliesTo was never validated at all.
+	// Measured: a bogus node id in trendsCaveats left every Go test and
+	// `fisc verify` green, and published "About <code>revenue/typo</code>" on
+	// caveats.html.
+	//
+	// The comment that justified nil claimed it avoided "failing every entry
+	// against an empty set", and that cost does not exist: every entry here has
+	// an empty AppliesTo, so an empty node set refuses exactly the ids that
+	// should be refused and passes the rest. nil is for a caller that genuinely
+	// cannot supply nodes; this one can, and the answer is none.
 	cavs := trendsCaveats()
-	if err := ValidateCaveats(cavs, nil); err != nil {
+	if err := ValidateCaveats(cavs, map[string]struct{}{}); err != nil {
 		return nil, err
 	}
 

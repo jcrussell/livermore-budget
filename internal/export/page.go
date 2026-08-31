@@ -33,7 +33,7 @@ const (
 	//
 	// The caveats page is an index ACROSS documents rather than of one, which
 	// is why it cannot name a projection: naming any single document would
-	// make the other five's caveats look like that document's.
+	// make the other six's caveats look like that document's.
 	ProvenanceTemplate = "provenance.html.tmpl"
 	CaveatsTemplate    = "caveats.html.tmpl"
 )
@@ -1791,7 +1791,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 //
 // IT NAMES NO PROJECTION, and is the second view of which that is true. A
 // caveat belongs to a document, and this page is an index ACROSS them -- naming
-// any one would make the other five's caveats read as that document's. That is
+// any one would make the other six's caveats read as that document's. That is
 // why View.validate's "names no projection" arm is a weakening rather than a
 // rule, and why CaveatsTemplate has to be in templateIsKnown: without it, a
 // caveats view that DID name a projection would be refused with advice that is
