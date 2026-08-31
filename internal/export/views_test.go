@@ -540,6 +540,13 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill from a tier the page does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Drill.From = 5 })},
 			"no node on it is ever openable"},
+		// THE SAME ARM WITH NO TIER SET AT ALL, which is the configuration it
+		// most needs to refuse and the one a `len(RenderTiers) > 0` guard let
+		// through: a chart that folds nothing, drawing a 61-node column at zero
+		// height, under a breadcrumb offering to open it.
+		{"a drill on a page that declares no tiers", []export.View{ok,
+			chartView(func(v *export.View) { v.RenderTiers = nil })},
+			"no node on it is ever openable"},
 		{"a drill with no cap", []export.View{ok,
 			chartView(func(v *export.View) { v.Drill.Cap = 0 })},
 			"a column of one node is not a chart"},

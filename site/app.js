@@ -936,8 +936,15 @@ function drillTo(id) {
   const was = drilledInto;
   // ASKED BEFORE ANYTHING IS REPAINTED. The element focus is on is one the
   // repaint below removes, so after it there is nothing left to ask about.
+  // IN THE CHART, not merely "not the body". Escape pressed from the flow
+  // table's <summary> or from the footer while drilled would otherwise yank
+  // focus into the chart -- which is the outcome restoreFocus's own comment
+  // calls a defect, produced by the test that was supposed to prevent it.
   const active = document.activeElement;
-  const hadFocus = Boolean(active) && active !== document.body;
+  const chart = maybeEl("chart");
+  const hadFocus = Boolean(active) && Boolean(chart) &&
+    (active === chart || (typeof chart.contains === "function" && chart.contains(active)) ||
+      (typeof active.closest === "function" && active.closest(".breadcrumb") !== null));
   drilledInto = id;
 
   // SHAPE AND LAY OUT BEFORE MUTATING ANYTHING, which is showYear's contract
@@ -1212,7 +1219,17 @@ const AGGREGATE_ID = "aggregate/tail";
  */
 function capColumn(doc, tier, cap) {
   const atTier = doc.nodes.filter((n) => n.tier === tier);
-  if (atTier.length <= cap) return doc;
+  // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE. This engaged at cap + 1, so
+  // a column of 9 against a cap of 8 folded a single fund into a node labelled
+  // "1 smaller funds" -- one figure the city printed, erased from the chart,
+  // the table and the tooltip, relabelled ungrammatically, and listed under
+  // "What we inferred" as though the grouping of one thing were an inference.
+  // fund-group/enterprise has exactly 9, so this was shipping.
+  //
+  // The threshold is cap + 1 rather than cap, which means a column of exactly
+  // cap + 1 is drawn WHOLE: one more mark than the cap asks for is a better
+  // answer than one fewer plus a box saying "1 smaller".
+  if (atTier.length <= cap + 1) return doc;
 
   /** @type {Map<string, number>} */
   const size = new Map();
@@ -1228,7 +1245,12 @@ function capColumn(doc, tier, cap) {
   // THE NOUN IS THE VIEW'S. It read `tier === 3 ? "funds" : "categories"`,
   // which is the same tier-number-to-word mapping paintBreadcrumb refuses two
   // functions below, written by the same hand in the same commit.
-  const label = folded.length + " smaller " + ((DRILL && DRILL.tail) || "items");
+  // Pluralised even though the threshold above now guarantees at least two,
+  // because the two rules are in different functions and only one of them is
+  // about grammar. paintCounts learned the same lesson one function away.
+  const noun = (DRILL && DRILL.tail) || "items";
+  const label = folded.length + " smaller " +
+    (folded.length === 1 ? noun.replace(/s$/, "") : noun);
   // derived: true, AND IT IS THE INVARIANT RATHER THAN A FLAG. The city printed
   // no line item called "24 smaller funds"; this node is ours, and shipping it
   // as printed made the page state the opposite in four places at once -- a
@@ -1834,9 +1856,12 @@ function nodeDescription(d) {
   // -- there is no state to return to -- and removing it left a node announcing
   // NOTHING about the difference: the same words for a mark that replaces the
   // whole chart and one that dims the rest of it.
-  const what = drillable(d) ? ", opens into its parts"
-    : DRILL ? ""
-    : ", follow this money";
+  // EVERY NODE SAYS WHAT ACTIVATING IT DOES. This gave the opening sentence to
+  // drillable nodes and nothing at all to the others on the same page -- so
+  // revenue.html's eleven revenue categories, which still isolate and still
+  // carry a toggling aria-pressed, announced no action whatever while the mark
+  // beside them announced one.
+  const what = drillable(d) ? ", opens into its parts" : ", follow this money";
   return d.label + ", total " + fmt(d.value) +
     (d.derived ? ", inferred by us" : ", printed by the city") + what;
 }

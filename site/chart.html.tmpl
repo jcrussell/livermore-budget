@@ -197,13 +197,21 @@
 
 <h2>Every flow the chart draws, as a table</h2>
 <!-- THE TABLE IS THE CHART'S TWIN AND NOT THE FILE'S. app.js builds it from the
-     FOLDED document, so it holds one row per ribbon: the 44 division-to-object
-     links the fold merges away are not rows here, and their fact ids ride on the
-     rows that absorbed them. The count below is server-rendered from the FILE
-     and repainted by paintYearWords to what was drawn, so a reader with
-     JavaScript off is told what the file holds and a reader with a chart in
-     front of them is told what the chart shows. Both sentences are true of what
-     that reader can see. -->
+     FOLDED document, so it holds one row per ribbon.
+
+     WHAT THE FOLD DOES WITH THE REST IS NOT "their fact ids ride on the rows
+     that absorbed them", which is what this said. That held at the
+     three-column tier set, where a link folding into another carried its facts
+     along. At both tier sets shipped here the OTHER side of the document folds
+     to self-loops, which foldDocument drops -- so those facts are cited on the
+     other page rather than on a row here, 190 and 49 of the document's 239.
+     The paragraph below says so; this comment was still saying the opposite.
+
+     The count is server-rendered from the FILE and repainted to what was drawn,
+     so a reader with JavaScript off is told what the file holds and a reader
+     with a chart in front of them is told what the chart shows -- and since
+     that repaint, both numbers, so the gap between them is stated rather than
+     inferred. -->
 <p class="lede">
   The chart's twin. Same numbers, no colour, no hovering — <span id="counts-line">{{.Links}} flows between
   {{.Nodes}} nodes, from {{.Facts}} facts</span>.

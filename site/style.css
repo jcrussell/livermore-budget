@@ -747,9 +747,12 @@ svg.sankey .node {
    do the right thing, so a `color: inherit` here would be a duplicate of that
    rule pretending to be a decision. Only the hover state is stated.
 
-   SCOPED TO .caveats li, WHICH IS index.html AND drilldown.html.
-   revenue.html.tmpl's caveat list is a <section class="caveats"> of plain <li>s
-   with no links in it, so these rules do not reach it and are not meant to. */
+   SCOPED TO .caveats li, WHICH IS index.html AND THE TWO CHART PAGES --
+   revenue.html and spending.html, both from chart.html.tmpl. This named
+   drilldown.html, which no longer exists, and said revenue.html's list has no
+   links in it: revenue.html is now a chart page and its caveats ARE links. The
+   list this rule does not reach is trends.html's, which is a
+   <section class="caveats"> of plain <li>s. */
 .caveats li a:hover,
 .caveats li a:focus {
   color: var(--ink-1);

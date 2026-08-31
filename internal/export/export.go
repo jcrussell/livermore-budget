@@ -726,7 +726,13 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q declares root %q and renders template %q, which publishes none; the "+
 				"chart would draw the whole document", v.Path, v.Root, v.Template)
-	case v.Drill != nil && len(v.RenderTiers) > 0 && !slices.Contains(v.RenderTiers, v.Drill.From):
+	// NO `len(v.RenderTiers) > 0 &&` GUARD. It was there, and it made this arm
+	// skippable by the one configuration it most needs to refuse: a
+	// ChartTemplate view with a drill and NO tier set passes outright, shipping
+	// the breadcrumb and the "click to open" hint over an unfolded 61-node
+	// column that lays every node out at zero height. An empty RenderTiers
+	// contains no tier, so the plain test is the right one.
+	case v.Drill != nil && !slices.Contains(v.RenderTiers, v.Drill.From):
 		return fmt.Errorf(
 			"view %q drills from tier %d and draws tiers %v, which do not include it; the "+
 				"page would ship the breadcrumb and the words about opening a node while no "+

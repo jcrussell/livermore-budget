@@ -26,8 +26,15 @@ import { loadApp, goldenFundFlows, plannedFetch, settle } from "./harness.mjs";
  *
  * COPIED RATHER THAN IMPORTED because there is no seam: views() is Go and this
  * is node. So the copy is a claim, and TestViewsOpensOnTheSpineAndGivesYears
- * ToItAlone is what keeps it honest from the other side -- it asserts the same
- * fields off the real view list.
+ * ToItAlone is what keeps it honest from the other side -- it asserts these
+ * exact tier sets and these exact Drill values off the real view list, field by
+ * field.
+ *
+ * IT DID NOT USED TO. That test asserted only that RenderTiers was non-empty
+ * and Drill non-nil, which left this file free to measure a configuration no
+ * page ships: change a cap or a tier set in data.go and every gate stayed green
+ * while these checks went on pinning the old one. If you change either, both
+ * sides go red and that is the point.
  */
 const PAGES = [
   {
@@ -195,6 +202,14 @@ export async function checks() {
       });
       const { app: noCap } = await opened(wide, { drill: wide.drill });
       noCap.drillTo(page.worst);
+      // THE SAME GUARD THE MAIN LOOP HAS, and it was missing here. drillTo
+      // swallows its own throw, so a refusal would leave this measuring the
+      // OVERVIEW -- and Revenue's engaged test would still pass, because 22
+      // sub-pixel ribbons is fewer than 29 links. A baseline that can silently
+      // become a different chart is not a baseline.
+      if (noCap.drilledInto !== page.worst) {
+        throw new Error("the uncapped baseline could not open " + page.worst);
+      }
       return measure(noCap, noCap.projection);
     })();
     const engaged = Boolean(worst) && worst.links < uncapped.links;
@@ -267,8 +282,13 @@ export async function checks() {
   const agg = capApp.projection.nodes.find((n) => n.id === "aggregate/tail");
   out.push({
     name: "revenue: the capped tail is marked as ours, not as something the city printed",
+    // THE COUNT IS ASSERTED AT TWO OR MORE, not just matched as digits.
+    // capColumn engaged at cap + 1, so a column of 9 against a cap of 8 folded
+    // ONE city-printed fund into a derived node labelled "1 smaller funds" --
+    // and this regex accepted it. fund-group/enterprise has exactly 9.
     ok: Boolean(agg) && agg.derived === true && agg.rationale !== "" &&
-        agg.source_note !== "" && /^\d+ smaller funds$/.test(agg.label),
+        agg.source_note !== "" && /^(\d+) smaller funds$/.test(agg.label) &&
+        Number(agg.label.split(" ")[0]) >= 2,
     detail: agg
       ? `"${agg.label}" derived=${agg.derived}, rationale ` +
         (agg.rationale ? `"${agg.rationale.slice(0, 48)}..."` : "MISSING") +
@@ -276,6 +296,29 @@ export async function checks() {
       : "no aggregate node: the cap folded nothing on the page it is needed for",
   });
   capApp.drillTo("");
+
+  // NO AGGREGATE ANYWHERE COVERS FEWER THAN TWO. The check above looks at one
+  // group on one page; this looks at every opened view on both, because the
+  // shape that shipped -- a column of exactly cap + 1 -- occurs on precisely
+  // one of the 29 and would be invisible to a sample.
+  const ones = [];
+  for (const page of PAGES) {
+    const { app } = await opened(page);
+    for (const n of raw.nodes.filter((x) => x.tier === page.drill.from)) {
+      app.drillTo(n.id);
+      if (app.drilledInto !== n.id) continue;
+      const a = app.projection.nodes.find((x) => x.id === "aggregate/tail");
+      if (a && Number(a.label.split(" ")[0]) < 2) ones.push(n.id + ": " + a.label);
+    }
+    app.drillTo("");
+  }
+  out.push({
+    name: "no opened view folds a single printed figure into an aggregate of one",
+    ok: ones.length === 0,
+    detail: ones.length
+      ? ones.join("; ")
+      : "every aggregate across all 29 opened views covers two or more",
+  });
 
   // THE ROOT, WHICH IS NOT A NARROWING BUT THE THING THAT DRAWS AT ALL. Spending
   // draws tiers {3,4} of a document carrying eleven tier-0 revenue nodes, and
