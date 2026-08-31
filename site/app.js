@@ -256,6 +256,7 @@ const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.rende
  * @property {number} from  the tier whose nodes open, and no other
  * @property {number[]} tiers  the tier set drawn once one has
  * @property {string} back  what the breadcrumb's return control says
+ * @property {string} tail  the plural noun a capped aggregate is counted in
  * @property {number} cap  how many nodes the fine column may hold before the
  *   tail is folded into one aggregate; see capColumn for why a cap is needed at
  *   all.
@@ -827,8 +828,14 @@ function paintCounts() {
   if (!counts || !shownYear) return;
   const links = projection ? projection.links.length : shownYear.counts.links;
   const nodes = projection ? projection.nodes.length : shownYear.counts.nodes;
-  counts.textContent = links + " flows between " + nodes +
-    " nodes, from " + shownYear.counts.facts + " facts";
+  // PLURALS, because a drilled division can draw one ribbon. Fire
+  // Administration and General Services each spend on a single object category,
+  // so opening either used to read "1 flows between 2 nodes" -- a sentence that
+  // was unreachable while the smallest chart on the site had 29 marks.
+  const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
+    n + " " + word + (n === 1 ? "" : "s");
+  counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") +
+    ", from " + plural(shownYear.counts.facts, "fact");
 }
 
 /**
@@ -989,7 +996,12 @@ const AGGREGATE_ID = "aggregate/tail";
  * it and the bottom two are 0.034%. Rescaling cannot fix a distribution.
  *
  * At cap 8 the same graph comes to 2 sub-pixel ribbons, and the capital group
- * goes from 4 to 0. For comparison the drill-down this page replaces ships 7.
+ * from 4 to 1. For comparison the drill-down page these replace ships 7.
+ *
+ * (That read "capital goes from 4 to 0" for one commit. The 0 was measured at
+ * cap 6 during the search for a cap and quoted against cap 8, which is the
+ * defect AGENTS.md's "Before you quote a number" exists to name, committed in a
+ * comment about measurement.)
  *
  * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
  * sum, fact ids and locators union, so the aggregate ribbon cites every page
@@ -1016,7 +1028,10 @@ function capColumn(doc, tier, cap) {
   const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
   const folded = ranked.slice(cap);
 
-  const label = folded.length + " smaller " + (tier === 3 ? "funds" : "categories");
+  // THE NOUN IS THE VIEW'S. It read `tier === 3 ? "funds" : "categories"`,
+  // which is the same tier-number-to-word mapping paintBreadcrumb refuses two
+  // functions below, written by the same hand in the same commit.
+  const label = folded.length + " smaller " + ((DRILL && DRILL.tail) || "items");
   const aggregate = {
     id: AGGREGATE_ID, label: label, tier: tier, parent: "", constraint_tier: "",
     role: "", derived: false, rationale: "", source_note: "",
@@ -1366,9 +1381,14 @@ function render(laid) {
     .attr("class", /** @param {LaidNode} d */ (d) => "node" + (d.derived ? " derived" : ""))
     .attr("tabindex", 0)
     .attr("role", "button")
-    // The isolation is a toggle, and the legend announces its copy of it the
-    // same way. applyEmphasis keeps this in step.
-    .attr("aria-pressed", "false")
+    // aria-pressed ONLY WHERE ACTIVATION IS A TOGGLE. The isolation is one, and
+    // the legend announces its copy of it the same way; applyEmphasis keeps
+    // this in step. Opening a node is NOT: it replaces the chart and the node
+    // itself is gone from the result, so there is no pressed state to return
+    // to and nothing the attribute could ever be true of. Announcing a toggle
+    // that never toggles is worse than announcing nothing, because a reader who
+    // hears "not pressed" is told there is a state to change.
+    .attr("aria-pressed", /** @param {LaidNode} d */ (d) => (drillable(d) ? null : "false"))
     .attr("aria-label", /** @param {LaidNode} d */ (d) => nodeDescription(d))
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
@@ -1512,8 +1532,10 @@ function applyEmphasis() {
     return !d.sourceLinks.concat(d.targetLinks).some((l) =>
       l.source.id === isolated || l.target.id === isolated);
   });
+  // Left alone on a node that opens rather than toggles; see render(), which
+  // does not give it the attribute at all.
   svg.selectAll("g.node").attr("aria-pressed", /** @param {LaidNode} d */ (d) =>
-    String(d.id === isolated && isolated !== ""));
+    (drillable(d) ? null : String(d.id === isolated && isolated !== "")));
 }
 
 /* ------------------------------------------------------------------ *
@@ -2398,19 +2420,31 @@ async function main() {
   // to sequence and no reason to wait.
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
+      // ESCAPE UNDOES ONE THING, AND THE INNERMOST ONE FIRST. A pin or an
+      // isolation is a selection inside the chart; an opened node is the chart.
+      // Doing both on one press meant a reader dismissing a provenance panel
+      // also lost the group they had opened -- and the comment beside it
+      // claimed the opposite, which is how it got written. Two presses close
+      // both, in the order a reader made them.
+      if (pinned || isolated) {
+        hideTip();
+        pinned = null;
+        // The panel is the pin made visible, so clearing one without the other
+        // leaves provenance on screen for a flow that is no longer selected.
+        resetDetail();
+        setIsolated("");
+        return;
+      }
+      if (drilledInto) {
+        drillTo("");
+        return;
+      }
       hideTip();
       pinned = null;
       // The panel is the pin made visible, so clearing one without the other
       // leaves provenance on screen for a flow that is no longer selected.
       resetDetail();
       setIsolated("");
-      // AND IT CLOSES A DRILL, which is the outermost thing Escape can undo, so
-      // it is done last: a reader pressing Escape once to dismiss a pin should
-      // not also lose the group they opened. drillTo repaints everything and
-      // clears the pin and the isolation itself, so the two calls above are
-      // redundant on this path and harmless -- and they are what runs on every
-      // other page, where there is nothing to close.
-      if (drilledInto) drillTo("");
     }
   });
   if (typeof window.matchMedia === "function") {

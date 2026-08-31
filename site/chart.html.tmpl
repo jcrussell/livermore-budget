@@ -75,8 +75,8 @@
        it goes in the view, which is the only place that knows. */}}
 <p class="lede">
   <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span>.
-  {{- if .Drill}} Click a node in the left-hand column to open it, or tab to one and press
-  Enter. Escape closes it again.{{end}}
+  {{- if .Drill}} Click a node in the <strong>right-hand column</strong> to open it into its
+  parts, or tab to one and press Enter. Escape closes it again.{{end}}
 </p>
 <p class="lede">
   <strong>Read one pair of columns at a time.</strong> The same money appears at more than
@@ -98,9 +98,15 @@
            so the old wording would have been an instruction that does nothing
            on two of the site's six pages. */}}
     <span class="subtle">Hover, tap or tab to a flow for its amount, fact ids and sources.
-      {{if .Drill}}Click a node to open it into its parts; the fund swatches still follow one
-      group's money, and Escape closes an open node and puts the rest back.{{else}}Click a
-      node or a fund swatch to follow only that money; Escape puts the rest back.{{end}}</span>
+      {{- /* NO PROMISE ABOUT THE SWATCHES ON A PAGE THAT DRILLS. This said the
+             fund swatches still follow one group's money, and on spending.html
+             the legend is empty -- buildLegend draws a button per fund group
+             that the chart TOUCHES, and that page's two columns are one fund
+             and its divisions. Measured: 6 buttons on revenue.html's overview,
+             0 on spending.html and 0 on all 29 opened views. */}}
+      {{if .Drill}}Click a node in the right-hand column to open it into its parts; Escape
+      closes it again.{{else}}Click a node or a fund swatch to follow only that money;
+      Escape puts the rest back.{{end}}</span>
   </div>
   {{- if .Drill}}
   {{- /* SHIPPED EMPTY AND hidden, filled by app.js. A breadcrumb rendered
@@ -113,11 +119,14 @@
   {{- end}}
   <div class="chart-wrap">
     <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
-      <title id="chart-title">Sankey diagram of the {{.FiscalYearLabel}} {{.Basis}} budget by fund and division</title>
+      {{- /* THE VIEW'S WORDS, SERVER-RENDERED. Both were literals here,
+             describing the three-column page this template used to render, and
+             app.js rewrites only the <title> and only on its first paint -- so
+             with JavaScript off both pages announced a chart neither draws, to
+             exactly the readers who cannot see the marks and check. */}}
+      <title id="chart-title">Sankey diagram of the {{.FiscalYearLabel}} {{.Basis}} budget {{.ChartSubject}}</title>
       <desc id="chart-desc">
-        Revenue sources flow into fund groups, and the General Fund flows on into the
-        divisions that spend it. Only the General Fund has a spending side. The same
-        figures are listed in the table below.
+        {{.ChartDescription}} The same figures are listed in the table below.
       </desc>
     </svg>
     <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>

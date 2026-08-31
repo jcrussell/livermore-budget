@@ -400,6 +400,15 @@ type chartPageData struct {
 	// ConfigJSON is window.FISC_CONFIG, as on the spine page: this view draws a
 	// chart, so it ships app.js and the config app.js reads.
 	ConfigJSON template.JS
+	// ChartSubject is what the chart is OF, and ChartDescription how it reads.
+	//
+	// SERVER-RENDERED AND NOT ONLY IN THE CONFIG BLOB. ChartSubject reached the
+	// client and stopped there, so <title id="chart-title"> shipped a literal --
+	// "by fund and division" -- that app.js only overwrote on the first paint.
+	// With JavaScript off both pages announced a chart neither draws, to the
+	// readers least able to tell.
+	ChartSubject     string
+	ChartDescription string
 	// Drill is whether this page's chart opens a node, so the template can say
 	// what a click does and render the breadcrumb that comes back out of one.
 	//
@@ -1407,14 +1416,16 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
 			CaveatsPath:  caveatsPath,
 		},
-		FiscalYearLabel: meta.FiscalYearLabel,
-		Basis:           meta.Basis,
-		Scopes:          meta.Scopes,
-		Years:           years,
-		Facts:           meta.Counts.Facts,
-		Nodes:           meta.Counts.Nodes,
-		Links:           meta.Counts.Links,
-		Drill:           v.Drill != nil,
+		FiscalYearLabel:  meta.FiscalYearLabel,
+		Basis:            meta.Basis,
+		Scopes:           meta.Scopes,
+		Years:            years,
+		Facts:            meta.Counts.Facts,
+		Nodes:            meta.Counts.Nodes,
+		Links:            meta.Counts.Links,
+		ChartSubject:     v.ChartSubject,
+		ChartDescription: v.ChartDescription,
+		Drill:            v.Drill != nil,
 		// #nosec G203 -- see buildSankeyPage; blob is encoding/json's output.
 		ConfigJSON: template.JS(blob),
 	}, nil

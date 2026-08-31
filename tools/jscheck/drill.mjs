@@ -1,0 +1,244 @@
+// drill.mjs — the chart opening one node, measured rather than assumed.
+//
+// WHY THIS FILE EXISTS. The drill shipped with `go build`, `go test ./...`,
+// `make js` and `fisc verify` all green and NOT ONE CHECK touching it: not
+// drillTo, not filterToNode, not capColumn, not drillable, not paintBreadcrumb,
+// and neither of the two tier sets the site actually declares. A review pass
+// found that by grepping for the names, which is the cheapest way and the one
+// that should not have been necessary.
+//
+// It also found two defects in the same range that only measurement could
+// reach: layOut aligned columns on RENDER_TIERS while a drilled document is
+// folded to DRILL.tiers, so d3-sankey died inside its own ordering pass; and
+// Spending's {3,4} could not draw at all, because the document's tier-0 revenue
+// nodes have no ancestor at tier 3 or 4. Both are shapes a Go test cannot see
+// and a reader meets on the first click.
+//
+// EVERY FIGURE HERE IS PINNED, NOT BOUNDED, for layout.mjs's reason: a bound
+// that holds is not evidence a number is still the number, and these are the
+// numbers pkg/cmd/export/data.go's comments quote to justify the tier sets and
+// the cap.
+
+import { loadApp, goldenFundFlows, plannedFetch, settle } from "./harness.mjs";
+
+/**
+ * The two views the site ships, verbatim from pkg/cmd/export/data.go's views().
+ *
+ * COPIED RATHER THAN IMPORTED because there is no seam: views() is Go and this
+ * is node. So the copy is a claim, and TestViewsOpensOnTheSpineAndGivesYears
+ * ToItAlone is what keeps it honest from the other side -- it asserts the same
+ * fields off the real view list.
+ */
+const PAGES = [
+  {
+    name: "revenue",
+    render_tiers: [0, 2],
+    root: "",
+    drill: { from: 2, tiers: [0, 3], back: "All fund groups", tail: "funds", cap: 8 },
+    // Measured: 11 revenue categories into 6 fund groups.
+    overview: { nodes: 17, links: 29 },
+    // The node whose open view the cap is FOR. Its 32 funds are the shape
+    // fisc-ppkq said rescaling would fix and measurement said it would not.
+    worst: "fund-group/special-revenue",
+    capEngages: true,
+  },
+  {
+    name: "spending",
+    render_tiers: [3, 4],
+    // WITHOUT THIS THE PAGE DRAWS NOTHING. See the root check below.
+    root: "fund/100",
+    drill: { from: 4, tiers: [4, 5], back: "All divisions", tail: "categories", cap: 8 },
+    // Measured: the General Fund into its 23 divisions.
+    overview: { nodes: 24, links: 23 },
+    // NO DIVISION SPENDS ON MORE THAN A HANDFUL OF OBJECT CATEGORIES, so the
+    // cap never fires here. Pinned so that stops being true loudly.
+    worst: "dept/patrol",
+    capEngages: false,
+  },
+];
+
+/** An app configured as one of those pages, with the committed document to fetch. */
+function appFor(page, overrides) {
+  return loadApp({
+    fetch: plannedFetch({ "data/fund-flows.json": { doc: goldenFundFlows() } }),
+    config: Object.assign({
+      schema_version: 1,
+      primary: "fund-flows",
+      projections: { "fund-flows": "data/fund-flows.json" },
+      render_tiers: page.render_tiers,
+      root: page.root,
+      drill: page.drill,
+      years: [{
+        year: 2026, label: "FY 2025-26", stem: "fund-flows",
+        path: "data/fund-flows.json", basis: "adopted",
+        hero: { label: "l", value: "v", note: "n", kind: "hero" },
+        figures: [], caveats: [],
+        counts: { facts: 280, nodes: 145, links: 175 },
+        chart_title: "Sankey diagram of the FY 2025-26 adopted budget",
+      }],
+      docs: {},
+    }, overrides || {}),
+  });
+}
+
+/** A page opened through main(), with the DOM seams the repaint needs. */
+async function opened(page, overrides) {
+  const app = appFor(page, overrides);
+  const body = app.dom.document.node();
+  app.dom.document.getElementById("flow-table").selectable = { tbody: body };
+  const main = app.dom.document.node();
+  app.dom.document.plant("main", main);
+  await settle();
+  return { app, body, main };
+}
+
+/** What the DOM was told to show. */
+function shown(app, body) {
+  const el = (id) => app.dom.byId.get(id);
+  const crumb = el("breadcrumb");
+  return {
+    counts: el("counts-line") ? el("counts-line").textContent : "",
+    rows: body.children.length,
+    crumbHidden: crumb ? crumb.getAttribute("hidden") !== null : true,
+    crumbText: crumb ? crumb.children.map((c) => c.textContent).join(" | ") : "",
+  };
+}
+
+/** The smallest ribbon and how many lay out under a pixel. */
+function measure(app, doc) {
+  const laid = app.layOut(doc);
+  const widths = laid.links.map((l) => l.width);
+  return {
+    links: laid.links.length,
+    nodes: laid.nodes.length,
+    smallest: Math.min(...widths),
+    hairlines: widths.filter((w) => w < 1).length,
+  };
+}
+
+export async function checks() {
+  const out = [];
+  const raw = goldenFundFlows();
+
+  for (const page of PAGES) {
+    const { app, body } = await opened(page);
+    const before = shown(app, body);
+
+    out.push({
+      name: `${page.name}: the overview draws, and its counts line describes it`,
+      ok: before.counts === `${page.overview.links} flows between ${page.overview.nodes} nodes, from 280 facts` &&
+          before.rows === page.overview.links &&
+          before.crumbHidden,
+      detail: `counts "${before.counts}", ${before.rows} table rows, breadcrumb ` +
+              (before.crumbHidden ? "hidden" : "SHOWING with nothing opened"),
+    });
+
+    // EVERY DRILLABLE NODE, not a sample. The reason is the two defects above:
+    // one showed up on every drill and one on none of them, and a sample would
+    // have caught the first and missed the second.
+    const openable = raw.nodes.filter((n) => n.tier === page.drill.from);
+    const drawn = [];
+    let refused = "";
+    for (const n of openable) {
+      try {
+        // THE REAL ENTRY POINT, not a hook. drillTo is what a click calls, so
+        // driving it exercises the repaint as well as the shaping -- and a
+        // test-only setter in app.js would be behaviour the reader never runs.
+        app.drillTo(n.id);
+        if (!app.drilledInto) throw new Error("drillTo left the chart closed");
+        drawn.push(Object.assign({ id: n.id }, measure(app, app.projection)));
+      } catch (e) {
+        refused = n.id + ": " + (e && e.message ? e.message : String(e));
+        break;
+      }
+    }
+    app.drillTo("");
+
+    out.push({
+      name: `${page.name}: every node the page offers to open draws when opened`,
+      ok: refused === "" && drawn.length === openable.length && drawn.length > 0,
+      detail: refused
+        ? `refused ${refused}`
+        : `${drawn.length} of ${openable.length} opened; smallest ribbon over all of them ` +
+          `${Math.min(...drawn.map((d) => d.smallest)).toFixed(3)}px`,
+    });
+
+    // THE CAP IS THE POINT OF THIS FILE, and it does not engage on both pages.
+    // fisc-ppkq says rescaling to a group's own total is what makes its funds
+    // legible; measured, it is not, and the cap is what is -- but only where a
+    // column is wide enough to need one. Revenue's special-revenue group has 32
+    // funds and the cap folds 24 of them; Spending's widest division spends on
+    // two object categories and the cap never fires at all.
+    //
+    // BOTH FACTS ARE PINNED, not just the first. A check that asserted the cap
+    // engages everywhere would fail on Spending for being right, and one that
+    // asserted it nowhere would go quiet the day a division gains a ninth
+    // category and the column starts folding without anyone deciding to.
+    const worst = drawn.find((d) => d.id === page.worst);
+    const uncapped = await (async () => {
+      const wide = Object.assign({}, page, {
+        drill: Object.assign({}, page.drill, { cap: 1000 }),
+      });
+      const { app: noCap } = await opened(wide, { drill: wide.drill });
+      noCap.drillTo(page.worst);
+      return measure(noCap, noCap.projection);
+    })();
+    const engaged = Boolean(worst) && worst.links < uncapped.links;
+    out.push({
+      name: `${page.name}: the cap ${page.capEngages ? "is what makes the worst column drawable" : "is inert, because no column is wide enough to need it"}`,
+      ok: Boolean(worst) && engaged === page.capEngages &&
+          (page.capEngages
+            ? worst.hairlines < uncapped.hairlines && worst.hairlines <= 2
+            : worst.hairlines === uncapped.hairlines),
+      detail: worst
+        ? `${page.worst} capped: ${worst.links} ribbons, ${worst.hairlines} under 1px; ` +
+          `uncapped: ${uncapped.links} ribbons, ${uncapped.hairlines} under 1px; the cap ` +
+          `${engaged ? "folded a tail" : "folded nothing"}`
+        : `${page.worst} is not a node this page opens`,
+    });
+  }
+
+  // THE ROOT, WHICH IS NOT A NARROWING BUT THE THING THAT DRAWS AT ALL. Spending
+  // draws tiers {3,4} of a document carrying eleven tier-0 revenue nodes, and
+  // foldDocument refuses a node it cannot place. Without a root the page is a
+  // banner, not a smaller chart.
+  const spending = PAGES[1];
+  const rootless = appFor(Object.assign({}, spending, { root: "" }), { root: "" });
+  let rootlessErr = "";
+  try {
+    rootless.shapeFor(raw);
+  } catch (e) {
+    rootlessErr = e && e.message ? e.message : String(e);
+  }
+  out.push({
+    name: "spending: without its root the page refuses rather than drawing half a chart",
+    ok: rootlessErr.includes("no ancestor of it is a tier this page draws"),
+    detail: rootlessErr || "NO REFUSAL: {3,4} over the whole document drew something",
+  });
+
+  // THE BREADCRUMB IS THE ONLY ALWAYS-VISIBLE WAY BACK, because opening a node
+  // removes it from the chart -- there is nothing left to click again.
+  const { app: revApp, body: revBody } = await opened(PAGES[0]);
+  revApp.drillTo("fund-group/general");
+  const opened1 = shown(revApp, revBody);
+  const stillThere = revApp.projection.nodes.some((n) => n.id === "fund-group/general");
+  revApp.drillTo("");
+  const closed = shown(revApp, revBody);
+  out.push({
+    name: "revenue: opening a node shows the way back, and closing it puts the overview back",
+    ok: !opened1.crumbHidden && opened1.crumbText.includes("All fund groups") &&
+        opened1.crumbText.includes("General Fund") &&
+        !stillThere &&
+        closed.crumbHidden && closed.counts === before0(PAGES[0]),
+    detail: `opened: breadcrumb "${opened1.crumbText}", counts "${opened1.counts}", ` +
+            `the opened node is ${stillThere ? "STILL DRAWN" : "gone from the chart"}; ` +
+            `closed: counts "${closed.counts}"`,
+  });
+
+  return out;
+}
+
+/** The counts line a page's overview shows, composed the way paintCounts does. */
+function before0(page) {
+  return `${page.overview.links} flows between ${page.overview.nodes} nodes, from 280 facts`;
+}

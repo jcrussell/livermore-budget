@@ -364,19 +364,22 @@ func yearStems(name string, projections map[string][]byte) []string {
 //
 // WHY THE THREE REMAINING ENTRIES ARE NOT A CHART PROBLEM ANY MORE. They were:
 // the drill-down's 61-node fund column laid every node and every ribbon out at
-// zero height, and c3a337d landed the fold that fixes it. drilldown.html renders
-// fund-flows now. What the other three columns still lack is a YEAR CONTROL, and
-// that is a different piece of work with a trap of its own (fisc-zojk) -- see
-// the const.
+// zero height, and c3a337d landed the fold that fixes it. revenue.html and
+// spending.html render fund-flows now, between them. What the other three
+// columns still lack is a YEAR CONTROL, and that is a different piece of work
+// with a trap of its own (fisc-zojk) -- see the const.
 var unviewedDocuments = map[string]string{
 	project.FundFlowsProjection + "-2024-actual":  fundFlowsUnviewed,
 	project.FundFlowsProjection + "-2025-revised": fundFlowsUnviewed,
 	project.FundFlowsProjection + "-2027":         fundFlowsUnviewed,
 }
 
-const fundFlowsUnviewed = "a published column of the General Fund drill-down that its page " +
-	"cannot yet reach. drilldown.html renders fund-flows (FY2025-26) and lists no year " +
-	"control, so these three ship as data no reader can open. Giving them one is not a " +
+const fundFlowsUnviewed = "a published column of the General Fund drill-down that no page " +
+	"can yet reach. revenue.html and spending.html render fund-flows (FY2025-26) and " +
+	"neither lists a year control, so these three ship as data no reader can open. Note " +
+	"that caveats.html DOES list their caveats -- it indexes every published document " +
+	"rather than drawing one -- which is not the same as rendering them and does not " +
+	"retire this entry. Giving them a year control is not a " +
 	"line in views(): yearStems walks PublishedDocuments() in declared order, which puts " +
 	"2024-actual first, and View.validate refuses a view whose first stem is not its own " +
 	"projection -- so the opening year has to be hoisted deliberately. FY2023-24 also " +
@@ -484,27 +487,40 @@ func views(built Result) []export.View {
 	//
 	// EVERY TIER SET AND EVERY CAP BELOW IS MEASURED, laying the graph out with
 	// the shipped vendor/d3-sankey at app.js's own constants against
-	// dist/data/fund-flows.json. tools/jscheck/fold.mjs re-measures on each run.
+	// dist/data/fund-flows.json. tools/jscheck/fold.mjs re-measures both
+	// OVERVIEWS on each run, and drill.mjs both DRILLS -- the figures in these
+	// comments and the ones those checks pin are the same measurements.
 	if _, ok := projections[project.FundFlowsProjection]; ok {
 		// REVENUE opens at {0,2}: 11 revenue categories into 6 fund groups, 29
 		// links, 5 ribbons under a pixel. Opening a group redraws at {0,3} --
 		// that group's own funds, rescaled to its own total.
 		//
-		// A citywide {0,3} overview was measured too and declined. It names the
-		// General Fund at 49.18%, Wastewater at 10.61% and Water at 6.46%,
-		// which is more informative on its face, and it lays out worse -- 8
-		// sub-pixel ribbons against 5 -- while flattening the hierarchy the
-		// drill navigates, leaving the fund-group legend describing nothing on
-		// screen.
+		// A CITYWIDE {0,3} OVERVIEW -- revenue categories straight into named
+		// funds -- is the obvious alternative and is DECLINED AS UNBUILT rather
+		// than on a measurement, because the measurement it was declined on was
+		// wrong. An early probe used a hand-written fold that silently skipped
+		// nodes it could not place and reported 8 sub-pixel ribbons; the real
+		// foldDocument REFUSES that set, because the document's six tier-2
+		// fund-group nodes have no ancestor at tier 0 or 3. So the option does
+		// not draw at all without a cap and something to say about those nodes,
+		// and what it would cost is not known. Filed rather than guessed at.
+		//
+		// What is true and reproducible: fund/100 is 49.18% of citywide revenue,
+		// fund/620 10.61% and fund/640 6.46%, so a column of 61 named funds is
+		// the same concentration problem one level down from the one that made
+		// this document need a fold in the first place.
 		out = append(out, export.View{
 			Path:         "revenue.html",
 			Nav:          "Revenue",
 			Template:     export.ChartTemplate,
 			Projection:   project.FundFlowsProjection,
 			RenderTiers:  []int{0, 2},
-			Drill:        &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "All fund groups", Cap: 8},
+			Drill:        &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "All fund groups", Tail: "funds", Cap: 8},
 			ChartSubject: "by revenue category and the fund group it lands in",
-			Title:        "Where Livermore's money comes from, and which fund it lands in",
+			ChartDescription: "Eleven revenue categories on the left flow into the six " +
+				"fund groups on the right. Opening a fund group replaces the right-hand " +
+				"column with that group's own funds, rescaled to its total.",
+			Title: "Where Livermore's money comes from, and which fund it lands in",
 			Lede: "Eleven revenue categories, and the six fund groups they land in. " +
 				"Open a fund group to see its own funds, rescaled to that group's " +
 				"total \u2014 the citywide chart cannot show them, because the General " +
@@ -540,9 +556,12 @@ func views(built Result) []export.View {
 			// only the General Fund has a spending side, and this is the line
 			// that says so to the client.
 			Root:         "fund/100",
-			Drill:        &export.Drill{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Cap: 8},
+			Drill:        &export.Drill{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Tail: "categories", Cap: 8},
 			ChartSubject: "by General Fund division",
-			Title:        "Which division spends Livermore's General Fund, and on what",
+			ChartDescription: "The General Fund on the left flows into the 23 divisions " +
+				"that spend it, on the right. Opening a division replaces the right-hand " +
+				"column with the object categories it spends on.",
+			Title: "Which division spends Livermore's General Fund, and on what",
 			Lede: "The General Fund, and the 23 divisions it pays for. Open a division " +
 				"to see what it spends on. ONLY THE GENERAL FUND IS HERE: Budget Book " +
 				"pp.167-170 decompose that fund alone, so the other six fund groups " +

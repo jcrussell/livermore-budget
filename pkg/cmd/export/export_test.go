@@ -1253,13 +1253,28 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	if got[0].Path != export.IndexPath {
 		t.Errorf("the site opens on %q, want %q", got[0].Path, export.IndexPath)
 	}
-	// The trends and drill-down views really are gone: the whole point. Named
-	// by their CURRENT paths, because a path that no longer exists is an arm
-	// that can never match -- this said "revenue.html" for one commit after
-	// that view became trends.html, which is a guard quietly retired by a
-	// rename rather than by a decision.
+	// The views whose documents were not built really are gone: the whole
+	// point. Named by their CURRENT paths, because a path that no longer exists
+	// is an arm that can never match -- and this comment made exactly that
+	// claim while the line below still named drilldown.html, a page views()
+	// stopped emitting in the same commit. Twice in two commits, which is why
+	// the list is now derived from the views the full set produces rather than
+	// typed out.
+	dropped := map[string]bool{}
+	for _, v := range views(Result{Projections: map[string][]byte{
+		export.PrimaryProjection:    {},
+		project.TrendsProjection:    {},
+		project.FundFlowsProjection: {},
+	}}) {
+		if v.Projection != "" && v.Projection != export.PrimaryProjection {
+			dropped[v.Path] = true
+		}
+	}
+	if len(dropped) == 0 {
+		t.Fatal("no view names a projection other than the spine, so this test asserts nothing")
+	}
 	for _, v := range got {
-		if v.Path == "trends.html" || v.Path == "drilldown.html" {
+		if dropped[v.Path] {
 			t.Errorf("view %q survived with its document unbuilt; a nav entry pointing at "+
 				"a page that was not written is a 404 a reader can click", v.Path)
 		}

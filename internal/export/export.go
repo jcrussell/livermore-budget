@@ -202,6 +202,13 @@ type View struct {
 	// cannot know that, and guessing it silently is worse than asking.
 	ChartSubject string
 
+	// ChartDescription is the chart's long description -- <desc>, which a screen
+	// reader reads after the name. The caller's words for the same reason
+	// ChartSubject is: the <desc> shipped in this template described the
+	// three-column page it was written for and nothing ever rewrote it, so both
+	// pages that replaced it described a chart neither draws.
+	ChartDescription string
+
 	// Root restricts this view's chart to one node's own money, or "" for a
 	// view that draws its whole document. Shipped as FISC_CONFIG.root.
 	//
@@ -406,6 +413,15 @@ type Drill struct {
 	// groups". Declared rather than derived from From, because a tier number
 	// does not know what the reader calls the things in it.
 	Back string `json:"back"`
+	// Tail is the plural noun the capped aggregate is counted in -- "funds",
+	// "categories" -- so its label reads "24 smaller funds".
+	//
+	// DECLARED FOR Back's REASON, and it was derived for one commit: app.js
+	// read `tier === 3 ? "funds" : "categories"`, which is the exact construct
+	// the comment on paintBreadcrumb refuses two functions away. A third page
+	// drilling into a third tier would have been given "categories" and nothing
+	// would have said so.
+	Tail string `json:"tail"`
 	// Cap is how many nodes the fine column may hold before the tail is folded
 	// into one aggregate node.
 	//
@@ -690,6 +706,18 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q renders a chart and names no subject, so its diagram would announce "+
 				"itself to a screen reader as a chart of nothing in particular", v.Path)
+	case v.Template == ChartTemplate && v.ChartDescription == "":
+		return fmt.Errorf(
+			"view %q renders a chart and gives it no description, so a screen reader "+
+				"reaches its <desc> and is told nothing about what the marks mean", v.Path)
+	case v.ChartDescription != "" && !templateRendersDrill(v.Template):
+		return fmt.Errorf(
+			"view %q describes a chart and renders template %q, which has no <desc> of "+
+				"its own to fill; the sentence would be dropped in silence", v.Path, v.Template)
+	case v.Drill != nil && v.Drill.Tail == "":
+		return fmt.Errorf(
+			"view %q declares a drill with no tail noun, so a capped column would be "+
+				"labelled \"24 smaller\" and stop there", v.Path)
 	case v.Drill != nil && v.Drill.Back == "":
 		return fmt.Errorf(
 			"view %q declares a drill with no back label, so the breadcrumb out of an "+

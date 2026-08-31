@@ -303,6 +303,19 @@ const NAMES = [
   // reimplementation is now pinned to the shipped function rather than trusted
   // to match it.
   "layOut", "foldDocument", "fundGroupOf", "RENDER_TIERS",
+  // THE DRILL, WHICH SHIPPED WITH NO CHECK TOUCHING IT AT ALL. Not drillTo, not
+  // shapeFor, not filterToNode, not capColumn, not drillable -- a review pass
+  // found that by grepping for the names. Two defects in the same commit were
+  // reachable only by driving them: layOut aligning on the wrong tier set, and
+  // a page whose tier set could not place the document's revenue nodes.
+  // drill.mjs drives drillTo and shapeFor, which are the real entry points; the
+  // rest are here so a check can measure one stage without the repaint.
+  "shapeFor", "filterToNode", "capColumn", "drillable", "drillTo", "DRILL", "ROOT",
+  // projection IS A let, AND A CHECK HAS TO READ IT to ask what is on screen
+  // rather than what a function returned. Exported through a getter for that
+  // reason: assigning the binding itself would hand back the value at load
+  // time, which is null.
+  "paintBreadcrumb",
   // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
   // "#legend button .key", and the swatches that selector finds do not exist
   // until buildLegend has run -- so a check cannot plant them before the draw
@@ -439,12 +452,25 @@ export function loadApp(opts = {}) {
   }
 
   const src = readFileSync(join(repoRoot, "site", "app.js"), "utf8");
-  const exported = `\n;globalThis.__harness = { ${NAMES.join(", ")} };\n`;
+  // projection AND drilledInto ARE `let` BINDINGS, and a check has to be able to
+  // ask what is on SCREEN rather than what a function returned. They are
+  // exported through getters, because assigning the binding into an object
+  // literal captures the value at load time -- which for both of them is the
+  // empty state, so every check reading them would have been reading a
+  // constant. That is the shape this directory exists to refuse.
+  const exported = `\n;globalThis.__harness = { ${NAMES.join(", ")},` +
+    ` get projection() { return projection; },` +
+    ` get drilledInto() { return drilledInto; } };\n`;
   runInContext(src + exported, ctx, { filename: "app.js" });
 
   const app = sandbox.__harness;
   for (const n of NAMES) {
     if (app[n] === undefined) throw new Error(`app.js no longer defines ${n}`);
+  }
+  // The getters answer undefined only if the binding vanished; null and "" are
+  // their legitimate empty states, so they are checked for presence separately.
+  for (const n of ["projection", "drilledInto"]) {
+    if (!(n in app)) throw new Error(`app.js no longer defines ${n}`);
   }
   app.d3 = sandbox.d3;
   // The file's own text, so a check can pin the figures app.js QUOTES against

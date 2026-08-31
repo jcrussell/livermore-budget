@@ -1169,7 +1169,8 @@ func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 				// Every ChartTemplate view names what its diagram is OF: the
 				// template renders two pages now, and a literal composed in the
 				// packager announced both as a chart of neither.
-				ChartSubject: "by fund and division"},
+				ChartSubject:     "by fund and division",
+				ChartDescription: "A description."},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
