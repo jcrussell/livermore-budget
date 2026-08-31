@@ -1164,8 +1164,12 @@ func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"}},
 			{Path: "drilldown.html", Nav: "Fund and division",
-				Template: export.DrilldownTemplate, Projection: "fund-flows",
-				YearStems: []string{"fund-flows"}, RenderTiers: []int{0, 2, 4}},
+				Template: export.ChartTemplate, Projection: "fund-flows",
+				YearStems: []string{"fund-flows"}, RenderTiers: []int{0, 2, 4},
+				// Every ChartTemplate view names what its diagram is OF: the
+				// template renders two pages now, and a literal composed in the
+				// packager announced both as a chart of neither.
+				ChartSubject: "by fund and division"},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",

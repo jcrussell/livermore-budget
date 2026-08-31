@@ -22,9 +22,13 @@ import (
 // into a directory it does not own. What the caller chooses is which view uses
 // which, by name.
 const (
-	SankeyTemplate    = "index.html.tmpl"
-	TrendsTemplate    = "trends.html.tmpl"
-	DrilldownTemplate = "drilldown.html.tmpl"
+	SankeyTemplate = "index.html.tmpl"
+	TrendsTemplate = "trends.html.tmpl"
+	// ChartTemplate is a chart page with no stat tiles: a lede, a Sankey, the
+	// apparatus, and nothing that claims a headline. It was ChartTemplate
+	// and named one page; it now renders Revenue and Spending, which are that
+	// page split at the seam between where money comes from and where it goes.
+	ChartTemplate = "chart.html.tmpl"
 	// ProvenanceTemplate renders the fact store's index, and CaveatsTemplate
 	// every document's caveats in one place. THEY ARE THE TWO TEMPLATES THAT
 	// RENDER NO PROJECTION DOCUMENT -- see templateRendersADocument, whose doc
@@ -367,7 +371,12 @@ type pageData struct {
 	ConfigJSON template.JS
 }
 
-// drilldownPageData is the drill-down template's input.
+// chartPageData is ChartTemplate's input: a chart page with no stat tiles.
+//
+// THE decode* AND *Metadata NAMES AROUND IT STILL SAY "drilldown", and that is
+// right rather than stale. They describe the DOCUMENT -- fund-flows, which is
+// still the drill-down: multi-scope, no headline, five tiers. What stopped
+// being one page is the PAGE, which is now Revenue and Spending.
 //
 // IT CARRIES Scopes RATHER THAN WIDENING chrome.Scope. chrome is embedded in
 // both other page types and its Scope is rendered in both their footers, so
@@ -377,7 +386,7 @@ type pageData struct {
 //
 // IT CARRIES NO Hero AND NO Figures, and that is the page's design rather than
 // an omission. See the template.
-type drilldownPageData struct {
+type chartPageData struct {
 	chrome
 	FiscalYearLabel string
 	Basis           string
@@ -391,6 +400,15 @@ type drilldownPageData struct {
 	// ConfigJSON is window.FISC_CONFIG, as on the spine page: this view draws a
 	// chart, so it ships app.js and the config app.js reads.
 	ConfigJSON template.JS
+	// Drill is whether this page's chart opens a node, so the template can say
+	// what a click does and render the breadcrumb that comes back out of one.
+	//
+	// A BOOL AND NOT THE DECLARATION. The template needs to know THAT the page
+	// drills, never which tiers into which -- that is app.js's, off the config
+	// blob. Handing the template the struct would let a future edit render a
+	// tier number into prose, which is the shape of claim that goes stale
+	// silently.
+	Drill bool
 }
 
 // trendsPageData is the revenue-trends template's input.
@@ -626,6 +644,17 @@ type clientConfig struct {
 	// declares nothing is laid out by exactly the code that laid it out before
 	// the fold existed, and the spine's config blob is unchanged byte for byte.
 	RenderTiers []int `json:"render_tiers,omitempty"`
+	// Drill is how the page opens one node, omitted on a page that does not.
+	//
+	// OMITTED AND NOT A ZERO VALUE, for RenderTiers' reason and with a sharper
+	// consequence: app.js reads `CONFIG.drill && Array.isArray(CONFIG.drill.tiers)`,
+	// so a present-but-empty object would leave DRILL null anyway -- but the
+	// spine's config blob has to stay byte-identical, and a "drill":null key
+	// would move it.
+	Drill *Drill `json:"drill,omitempty"`
+	// Root is the node whose subtree the page draws, omitted when it draws the
+	// whole document.
+	Root string `json:"root,omitempty"`
 }
 
 // buildPage decodes the primary projection and assembles everything the
@@ -909,8 +938,8 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 			data, err = buildTrendsPage(o, v, here, byID, pageTextBase)
 		case SankeyTemplate:
 			data, err = buildSankeyPage(o, v, here, byID, pageTextBase)
-		case DrilldownTemplate:
-			data, err = buildDrilldownPage(o, v, here, byID, pageTextBase)
+		case ChartTemplate:
+			data, err = buildChartPage(o, v, here, byID, pageTextBase)
 		case ProvenanceTemplate:
 			data, err = buildProvenancePage(o, v, here, byID, pageTextBase)
 		case CaveatsTemplate:
@@ -1269,7 +1298,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}, nil
 }
 
-// buildDrilldownPage assembles the drill-down view.
+// buildChartPage assembles the drill-down view.
 //
 // IT IS A THIRD ARM AND NOT A RELAXED buildSankeyPage. The two pages differ in
 // what they are allowed to say, not only in which keys they read: this one has
@@ -1277,13 +1306,13 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 // money at more than one grain and any figure that invites a reader to add a
 // column up would be wrong QUIETLY -- every number on it tying to a fact. See
 // the template and docs/general-fund-drilldown-contract.md.
-func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
+func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
-) (drilldownPageData, error) {
+) (chartPageData, error) {
 	caveatsPath := caveatsPathOf(o)
 	doc, meta, err := decodeDrilldown(v.Projection, o.Projections[v.Projection])
 	if err != nil {
-		return drilldownPageData{}, err
+		return chartPageData{}, err
 	}
 
 	stems := v.YearStems
@@ -1296,7 +1325,7 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		m := meta
 		if stem != v.Projection {
 			if _, m, err = decodeDrilldown(stem, o.Projections[stem]); err != nil {
-				return drilldownPageData{}, err
+				return chartPageData{}, err
 			}
 		}
 		// The spine's two cross-stem refusals, restated for a plural scope.
@@ -1305,13 +1334,13 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// disagreeing about either would have the footer describe a document
 		// other than the one on screen.
 		if !slices.Equal(m.Scopes, meta.Scopes) {
-			return drilldownPageData{}, fmt.Errorf(
+			return chartPageData{}, fmt.Errorf(
 				"view %q opens on %q with scopes %v but its year stem %q has scopes %v; "+
 					"one page cannot state two scope lists",
 				v.Path, v.Projection, meta.Scopes, stem, m.Scopes)
 		}
 		if m.GeneratedBy != meta.GeneratedBy {
-			return drilldownPageData{}, fmt.Errorf(
+			return chartPageData{}, fmt.Errorf(
 				"view %q opens on %q built by %q but its year stem %q was built by %q; "+
 					"the footer credits one projection for figures drawn from both",
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
@@ -1324,8 +1353,13 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Path:  path.Join(DataDir, stem+".json"),
 			Basis: m.Basis,
 			Title: v.Title,
+			// THE SUBJECT IS THE VIEW'S AND THE REST IS COMPOSED, which keeps
+			// the year and the basis a fact about the document while leaving
+			// what the chart is OF to the only party that knows. The literal
+			// that used to sit here said "by fund and division" for every page
+			// this template renders, and it renders two now.
 			ChartTitle: "Sankey diagram of the " + m.FiscalYearLabel + " " + m.Basis +
-				" budget by fund and division",
+				" budget " + v.ChartSubject,
 			// NO HERO AND NO FIGURES, and the empty slices are the point rather
 			// than a gap: paintYearWords replaces the tile row from these on
 			// every year switch, so a page that renders none server-side must
@@ -1352,13 +1386,15 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Years:         years,
 		Docs:          clientDocs,
 		RenderTiers:   v.RenderTiers,
+		Drill:         v.Drill,
+		Root:          v.Root,
 	}
 	blob, err := json.Marshal(cfg)
 	if err != nil {
-		return drilldownPageData{}, fmt.Errorf("encode page config: %w", err)
+		return chartPageData{}, fmt.Errorf("encode page config: %w", err)
 	}
 
-	return drilldownPageData{
+	return chartPageData{
 		chrome: chrome{
 			Title:        v.Title,
 			Lede:         v.Lede,
@@ -1378,6 +1414,7 @@ func buildDrilldownPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Facts:           meta.Counts.Facts,
 		Nodes:           meta.Counts.Nodes,
 		Links:           meta.Counts.Links,
+		Drill:           v.Drill != nil,
 		// #nosec G203 -- see buildSankeyPage; blob is encoding/json's output.
 		ConfigJSON: template.JS(blob),
 	}, nil

@@ -829,6 +829,50 @@ details > summary {
   padding: 6px 0;
 }
 
+/* ---------- the breadcrumb out of an opened node ---------- */
+
+/* Above the chart rather than beside it, because it is the only always-visible
+   way back: the node a reader clicked is gone from the chart -- opening a fund
+   group removes the group -- so there is nothing left to click again. Escape
+   also closes one, but a reader who arrived by clicking has no reason to expect
+   a keystroke. */
+.breadcrumb {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.breadcrumb[hidden] {
+  display: none;
+}
+
+/* A real <button>: it does something on this page rather than going somewhere,
+   and it has to be reachable by keyboard without any of the tabindex and
+   role work the SVG marks need. */
+.crumb-back {
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+}
+
+.crumb-back:hover,
+.crumb-back:focus {
+  color: var(--ink-1);
+  border-color: var(--rule);
+}
+
+.crumb-here {
+  color: var(--ink-1);
+  font-weight: 600;
+}
+
 /* ---------- the caveats page ---------- */
 
 /* One document's section. The rule above each is what separates a schedule's

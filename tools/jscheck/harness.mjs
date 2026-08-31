@@ -46,10 +46,10 @@ export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", ".."
  * smaller one: the alternative is parsing Go templates in JavaScript.
  */
 const TEMPLATE_IDS = new Set([
-  "caveats", "caveats-count", "caveats-view", "chart", "chart-desc", "chart-title",
-  "counts-line", "derived-list", "derived-view", "detail", "figures", "flow-table",
-  "lede-year", "legend", "page-basis", "table-view", "theme-toggle", "tooltip",
-  "year-toggle",
+  "breadcrumb", "caveats", "caveats-count", "caveats-view", "chart", "chart-desc",
+  "chart-title", "counts-line", "derived-list", "derived-view", "detail", "figures",
+  "flow-table", "lede-year", "legend", "page-basis", "table-view", "theme-toggle",
+  "tooltip", "year-toggle",
 ]);
 
 /**
@@ -73,6 +73,10 @@ const TEMPLATE_IDS = new Set([
 const TEMPLATE_ATTRIBUTES = {
   // site/index.html.tmpl: <fieldset id="year-toggle" ... disabled>
   "year-toggle": { disabled: "" },
+  // site/chart.html.tmpl: <nav id="breadcrumb" ... hidden>. Shipped hidden for
+  // the year toggle's reason -- there is no drill to come back from until the
+  // reader opens one, and with JavaScript off there never is.
+  "breadcrumb": { hidden: "" },
 };
 
 /**

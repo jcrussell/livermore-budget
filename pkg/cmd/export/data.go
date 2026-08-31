@@ -471,6 +471,91 @@ func views(built Result) []export.View {
 		Projection: export.PrimaryProjection,
 		YearStems:  yearStems(export.PrimaryProjection, projections),
 	}}
+	// REVENUE AND SPENDING ARE ONE DOCUMENT SPLIT AT ITS SEAM, and they replace
+	// the single drilldown.html that drew tiers {0,2,4} across both sides at
+	// once. The owner's report was that the detail was buried; two pages, each
+	// answering one question and each able to open a node, is what that asked
+	// for.
+	//
+	// NOTHING REFUSES TWO VIEWS OVER ONE PROJECTION. Options.validate refuses
+	// duplicate PATHS, assertPublishedReachable builds a SET, and buildSite's
+	// collect says in as many words that two views citing one page is the
+	// ordinary case.
+	//
+	// EVERY TIER SET AND EVERY CAP BELOW IS MEASURED, laying the graph out with
+	// the shipped vendor/d3-sankey at app.js's own constants against
+	// dist/data/fund-flows.json. tools/jscheck/fold.mjs re-measures on each run.
+	if _, ok := projections[project.FundFlowsProjection]; ok {
+		// REVENUE opens at {0,2}: 11 revenue categories into 6 fund groups, 29
+		// links, 5 ribbons under a pixel. Opening a group redraws at {0,3} --
+		// that group's own funds, rescaled to its own total.
+		//
+		// A citywide {0,3} overview was measured too and declined. It names the
+		// General Fund at 49.18%, Wastewater at 10.61% and Water at 6.46%,
+		// which is more informative on its face, and it lays out worse -- 8
+		// sub-pixel ribbons against 5 -- while flattening the hierarchy the
+		// drill navigates, leaving the fund-group legend describing nothing on
+		// screen.
+		out = append(out, export.View{
+			Path:         "revenue.html",
+			Nav:          "Revenue",
+			Template:     export.ChartTemplate,
+			Projection:   project.FundFlowsProjection,
+			RenderTiers:  []int{0, 2},
+			Drill:        &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "All fund groups", Cap: 8},
+			ChartSubject: "by revenue category and the fund group it lands in",
+			Title:        "Where Livermore's money comes from, and which fund it lands in",
+			Lede: "Eleven revenue categories, and the six fund groups they land in. " +
+				"Open a fund group to see its own funds, rescaled to that group's " +
+				"total \u2014 the citywide chart cannot show them, because the General " +
+				"Fund alone is half the column and the smallest fund is a " +
+				"thirty-thousandth of it.",
+		})
+		// SPENDING opens at {3,4}: the General Fund into its 23 divisions, one
+		// ribbon under a pixel. Opening a division redraws at {4,5}, its object
+		// categories -- where the worst case measures a 51px smallest ribbon,
+		// because a division spends on two or three things.
+		//
+		// {3,4,5} UNDRILLED IS THE ONE THAT DOES NOT WORK: 68 nodes, 11 ribbons
+		// under a pixel, and a column whose labels are two strings repeated.
+		// That is what the drill is for.
+		//
+		// {0,3,4} -- revenue category into the General Fund into its divisions
+		// -- lays out nearly as well (33 links, 2 sub-pixel) and is declined
+		// rather than impossible: a revenue column on the SPENDING page is the
+		// conflation this split exists to undo.
+		out = append(out, export.View{
+			Path:        "spending.html",
+			Nav:         "Spending",
+			Template:    export.ChartTemplate,
+			Projection:  project.FundFlowsProjection,
+			RenderTiers: []int{3, 4},
+			// ROOT IS WHAT MAKES THIS PAGE DRAW AT ALL, not a narrowing of one
+			// that already did. fund-flows carries eleven tier-0 revenue nodes
+			// with no ancestor at tier 3 or 4, and foldDocument refuses a node
+			// it cannot place -- so {3,4} over the whole document produces no
+			// chart and a banner reading "node revenue/charges-for-services is
+			// tier 0 and no ancestor of it is a tier this page draws (3, 4)".
+			// It is also where this page's central claim stops being prose:
+			// only the General Fund has a spending side, and this is the line
+			// that says so to the client.
+			Root:         "fund/100",
+			Drill:        &export.Drill{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Cap: 8},
+			ChartSubject: "by General Fund division",
+			Title:        "Which division spends Livermore's General Fund, and on what",
+			Lede: "The General Fund, and the 23 divisions it pays for. Open a division " +
+				"to see what it spends on. ONLY THE GENERAL FUND IS HERE: Budget Book " +
+				"pp.167-170 decompose that fund alone, so the other six fund groups " +
+				"have no spending side in this corpus \u2014 the money is not missing, " +
+				"the schedule that would break it down is not published.",
+		})
+	}
+
+	// THE TABLES COME AFTER THE CHARTS THEY BELONG TO. Listed before them the
+	// nav read "Revenue tables" and then "Revenue" -- two entries beginning
+	// with the same word, in an order that made the fuller answer look like the
+	// footnote. The charts are what a reader came for; this is where they go
+	// when a chart is not enough.
 	if _, ok := projections[project.TrendsProjection]; ok {
 		out = append(out, export.View{
 			Path: "trends.html",
@@ -494,29 +579,6 @@ func views(built Result) []export.View {
 	// deliberate. See unviewedDocuments for the two things a year control here
 	// has to solve first.
 	//
-	// RenderTiers is what makes this view drawable at all: 0 is the revenue
-	// source, 2 the fund group, 4 the division. Tier 3 -- the 61 individual
-	// funds -- folds into tier 2 in the client, because a 61-node column lays
-	// every node and every ribbon out at zero height. Tier 5, the object
-	// categories, folds into tier 4, because drawing it puts 29 of its 44 nodes
-	// under one pixel and its labels are two strings repeated 44 times.
-	// docs/general-fund-drilldown-contract.md's "Drawing it" section carries the
-	// measurements; tools/jscheck/fold.mjs re-measures them on every run.
-	if _, ok := projections[project.FundFlowsProjection]; ok {
-		out = append(out, export.View{
-			Path:        "drilldown.html",
-			Nav:         "Fund and division",
-			Template:    export.DrilldownTemplate,
-			Projection:  project.FundFlowsProjection,
-			RenderTiers: []int{0, 2, 4},
-			Title:       "Which fund Livermore's money lands in, and which division spends it",
-			Lede: "The citywide picture answers how big the budget is. This one answers " +
-				"which fund a revenue source lands in, and which General Fund division " +
-				"is given it \u2014 two schedules the city prints separately, over 18 pages. " +
-				"It publishes no total, because the same money appears here at more than " +
-				"one grain and any total would quietly count part of it twice.",
-		})
-	}
 	// THE CAVEATS INDEX, THE SECOND VIEW THAT NAMES NO PROJECTION. It lists
 	// every published document's caveats in full, so the other pages can show
 	// one line and link here instead of reprinting the whole paragraph

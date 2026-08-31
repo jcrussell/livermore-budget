@@ -138,6 +138,8 @@
  * @property {FiscMetadata} metadata
  * @property {Record<string, FiscDoc>} docs
  * @property {number[]} [render_tiers]
+ * @property {FiscDrill} [drill]
+ * @property {string} [root]
  */
 
 /**
@@ -241,6 +243,37 @@ const FUND_COLOR_VAR = {
  * @type {number[]}
  */
 const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.render_tiers : [];
+
+/**
+ * How this page drills, or null for a page that does not.
+ *
+ * PER VIEW AND NEVER A CONSTANT HERE, for render_tiers' reason: the spine and
+ * the two fund-flows pages are drawn by the same script from different
+ * hierarchies, and a page that declares nothing keeps the isolate-on-click
+ * behaviour it has always had.
+ *
+ * @typedef {Object} FiscDrill
+ * @property {number} from  the tier whose nodes open, and no other
+ * @property {number[]} tiers  the tier set drawn once one has
+ * @property {string} back  what the breadcrumb's return control says
+ * @property {number} cap  how many nodes the fine column may hold before the
+ *   tail is folded into one aggregate; see capColumn for why a cap is needed at
+ *   all.
+ */
+/** @type {FiscDrill | null} */
+const DRILL = CONFIG && CONFIG.drill && Array.isArray(CONFIG.drill.tiers) ? CONFIG.drill : null;
+
+/**
+ * The node whose subtree this page draws, or "" for the whole document.
+ *
+ * A REFUSAL AVOIDED RATHER THAN A PREFERENCE EXPRESSED. Spending draws tiers
+ * {3,4} of a document that also carries eleven tier-0 revenue nodes, and
+ * foldDocument refuses a node it cannot place -- so without this the page draws
+ * nothing at all rather than drawing half of something. Measured before it
+ * existed: "cannot draw fund-flows: node revenue/charges-for-services is tier 0
+ * and no ancestor of it is a tier this page draws (3, 4)".
+ */
+const ROOT = CONFIG && typeof CONFIG.root === "string" ? CONFIG.root : "";
 
 /** Human wording for link.kind. The JSON's vocabulary is not English. */
 const KIND_LABEL = {
@@ -554,6 +587,30 @@ function link(label, href) {
 let projection = null;
 /** Node id whose flows are isolated, or "" for all of them. */
 let isolated = "";
+/**
+ * The node the chart is opened into, or "" for the overview.
+ *
+ * ONE LEVEL, NOT A STACK, because the drill is one hop by construction:
+ * DRILL.from names a single tier, so a node in the drilled view is never itself
+ * drillable. A stack would model a depth this chart cannot reach and would need
+ * a breadcrumb with more than two rungs to show it.
+ */
+let drilledInto = "";
+/**
+ * The document as fetched, before any fold.
+ *
+ * A DRILL RESHAPES FROM THE FILE, not from what is on screen. Folding a folded
+ * document would ask for tier 3 in a document whose tier 3 has already been
+ * collapsed into tier 2 -- the nodes are gone, and the fold would throw or, if
+ * it did not, draw the overview again with a breadcrumb over it.
+ * @type {FiscProjection | null}
+ */
+let fetched = null;
+/**
+ * The year on screen, so paintCounts can be called without one in hand.
+ * @type {FiscYear | null}
+ */
+let shownYear = null;
 /** @type {LaidNode | LaidLink | null} */
 let pinned = null;
 /**
@@ -610,6 +667,371 @@ function regroupLocators(keys) {
 }
 
 /**
+ * The tier a node folds to under a tier set, or "" when it has no drawn
+ * ancestor.
+ *
+ * THE NON-THROWING HALF OF foldDocument'S FIRST LOOP. The fold refuses a node it
+ * cannot place, because there the tier set is meant to describe the whole
+ * document and a node outside it is a fault. filterToNode asks the same
+ * question for the opposite purpose: which links are IN this drill's scope at
+ * all, where an unplaceable end is an ordinary answer rather than an error.
+ *
+ * @param {Map<string,FiscNode>} byID
+ * @param {FiscNode} n
+ * @param {Set<number>} drawn
+ * @returns {string}
+ */
+function foldTarget(byID, n, drawn) {
+  let at = n;
+  for (let hops = 0; !drawn.has(at.tier); hops++) {
+    const up = at.parent ? byID.get(at.parent) : undefined;
+    if (!up || hops > 8) return "";
+    at = up;
+  }
+  return at.id;
+}
+
+/**
+ * The document restricted to one node's own money.
+ *
+ * WHY A FILTER AND NOT AN EXPANSION. fisc-ppkq measured that expanding one node
+ * in place does not draw on the vendored d3-sankey: it takes the column count
+ * from topology and clamps the align into it, so an expanded group's funds land
+ * in the same column as the divisions while the unexpanded ribbons span two --
+ * which tools/jscheck/layout.mjs's bands() refuses. Filtering keeps every tier
+ * set uniform, which is the only shape this build lays out.
+ *
+ * THE RULE IS "TARGET IN THE SUBTREE, BOTH ENDS PLACEABLE", and both halves are
+ * needed because the two pages that drill want opposite things from the same
+ * function:
+ *
+ *   - Revenue opens a fund group into its funds at tiers {0,3}. The context
+ *     column, the revenue sources, sits OUTSIDE the subtree and must be kept.
+ *     Requiring both ends inside would delete it and draw a column of funds fed
+ *     by nothing.
+ *   - Spending opens a division into its object categories at tiers {4,5}. The
+ *     fund-to-division link pointing INTO the subtree must be dropped, because
+ *     fund/100 has no ancestor at tier 4 or 5 and foldDocument would refuse the
+ *     whole document over it.
+ *
+ * Keying on the target says which end is the fine one; the placeability test
+ * says what this drill's tier set has room for. Neither is a silent loss: a
+ * link dropped here is one the declared tier set has no column for, which is a
+ * statement the view made when it declared them.
+ *
+ * @param {FiscProjection} doc
+ * @param {string} id
+ * @param {number[]} tiers
+ * @returns {FiscProjection}
+ */
+function filterToNode(doc, id, tiers) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const drawn = new Set(tiers);
+
+  // The subtree: the node and everything whose parent chain reaches it. Walked
+  // upward per node rather than downward from the root, because a node names
+  // its parent and nothing names its children.
+  const inside = new Set();
+  for (const n of doc.nodes) {
+    let at = n;
+    for (let hops = 0; at && hops < 9; hops++) {
+      if (at.id === id) {
+        inside.add(n.id);
+        break;
+      }
+      at = at.parent ? byID.get(at.parent) : undefined;
+    }
+  }
+
+  const links = doc.links.filter((l) => {
+    if (!inside.has(l.target)) return false;
+    const src = byID.get(l.source);
+    const dst = byID.get(l.target);
+    if (!src || !dst) return false;
+    return foldTarget(byID, src, drawn) !== "" && foldTarget(byID, dst, drawn) !== "";
+  });
+
+  // Only the nodes those links touch, and their ancestors up to the drawn
+  // tiers. Handing foldDocument a node it cannot place would make it refuse the
+  // document, and the nodes it cannot place here are precisely the ones this
+  // drill is not about.
+  const keep = new Set();
+  for (const l of links) {
+    for (const end of [l.source, l.target]) {
+      let at = byID.get(end);
+      for (let hops = 0; at && hops < 9; hops++) {
+        keep.add(at.id);
+        if (drawn.has(at.tier)) break;
+        at = at.parent ? byID.get(at.parent) : undefined;
+      }
+    }
+  }
+  return Object.assign({}, doc, {
+    nodes: doc.nodes.filter((n) => keep.has(n.id)),
+    links: links,
+  });
+}
+
+/**
+ * The tier set the document on screen was shaped by.
+ *
+ * ONE READER FOR TWO DECLARATIONS. Everything downstream of the shaping -- the
+ * column alignment, and anything else that has to know which tier is which
+ * column -- needs the set the document was actually folded to, and that is
+ * RENDER_TIERS on an overview and DRILL.tiers on an opened node. Asking for
+ * RENDER_TIERS directly is right in exactly one of those two states, which is
+ * how the drill first shipped a chart that could not be laid out at all.
+ *
+ * @returns {number[]}
+ */
+function activeTiers() {
+  return DRILL && drilledInto ? DRILL.tiers : RENDER_TIERS;
+}
+
+/**
+ * Writes the flow count.
+ *
+ * THE FLOW COUNT IS A CLAIM ABOUT THE CHART, so it counts the marks that were
+ * drawn rather than the rows the file holds. On a page drawn whole the two are
+ * the same number and this is the packager's figure verbatim. On a page that
+ * folds they are not: fund-flows.json holds 175 links over 145 nodes and the
+ * Revenue chart draws 29 over 17, and printing the file's figures there would
+ * have the page miscount what the reader can see.
+ *
+ * THE FACT TOTAL IS THE DOCUMENT'S, AND STAYS SO, but not for the reason this
+ * comment used to give. It said "the fact total stays the document's, because
+ * folding cites nothing away" -- and that is true only at tiers {0,2,4}, where
+ * the fund-to-division link that survives carries the same facts as the object
+ * rows folding into it. Neither shipped page folds that way. Measured: Revenue
+ * at {0,2} folds the whole spending side into self-loops and drops them, so 190
+ * of the document's 239 cited facts are behind what it draws; Spending at {3,4}
+ * carries the other 49. They partition it exactly, which is what two pages
+ * splitting one document should do.
+ *
+ * The number is still the document's because THE GAP IS THE POINT, which is a
+ * different claim and the one project.Counts.Facts is built on: "the gap
+ * between Facts and Links is the part of the schedule the chart cannot show,
+ * and stating both is what makes it visible". Replacing it with a count of the
+ * facts actually cited would close that gap and quietly stop saying so -- and
+ * on the spine, where 120 facts sit behind 58 flows because 50 are printed
+ * zeros and 12 are stocks, it would delete the sentence's whole subject.
+ *
+ * SEPARATE FROM paintYearWords BECAUSE A DRILL CHANGES IT TOO. It was inline
+ * there while a year switch was the only thing that could change what is drawn;
+ * opening a fund group changes it just as completely, and a counts line left
+ * describing the overview under a drilled chart is the same false statement one
+ * gesture over.
+ */
+function paintCounts() {
+  const counts = maybeEl("counts-line");
+  if (!counts || !shownYear) return;
+  const links = projection ? projection.links.length : shownYear.counts.links;
+  const nodes = projection ? projection.nodes.length : shownYear.counts.nodes;
+  counts.textContent = links + " flows between " + nodes +
+    " nodes, from " + shownYear.counts.facts + " facts";
+}
+
+/**
+ * Whether activating this node opens it.
+ *
+ * ONE TIER AND NO OTHER. A node at DRILL.from opens; everything else on the
+ * page is an endpoint of the flow rather than a container of it, and offering
+ * to open a revenue category would promise a decomposition the document does
+ * not carry. The aggregate is excluded by construction -- it sits in the fine
+ * column, never at DRILL.from -- and would have nothing to open into anyway,
+ * being several documents' worth of small funds rather than one thing.
+ *
+ * @param {{id: string, tier: number}} d
+ * @returns {boolean}
+ */
+function drillable(d) {
+  return Boolean(DRILL) && !drilledInto && d.tier === DRILL.from && d.id !== AGGREGATE_ID;
+}
+
+/**
+ * Opens one node, or returns to the overview when id is "".
+ *
+ * IT RESHAPES FROM THE FETCHED FILE and repaints everything the shape decides,
+ * which is the same set showYear repaints on a year switch and for the same
+ * reason: the legend, the flow table, the inferred list and the counts line are
+ * all statements about what the reader is looking at, and a drill changes what
+ * that is as completely as a year does.
+ *
+ * THE PIN AND THE ISOLATION ARE CLEARED, because both hold a node id and a
+ * drill can remove the node they name -- opening a fund group deletes the group
+ * itself from the drawn set. showYear clears them for exactly this reason on a
+ * year switch; this is the same hazard one gesture over.
+ *
+ * @param {string} id
+ */
+function drillTo(id) {
+  if (!fetched || !DRILL) return;
+  const was = drilledInto;
+  drilledInto = id;
+  let drawn;
+  try {
+    drawn = shapeFor(fetched);
+  } catch (e) {
+    // BACK TO WHERE THE READER WAS, not to a blank page. shapeFor throws on a
+    // document its tier set cannot describe, which is a fault in this view's
+    // declaration rather than in the reader's click, and leaving the chart
+    // drawn as it was is the only outcome that does not punish them for it.
+    drilledInto = was;
+    fail("That group could not be opened: " + (e instanceof Error ? e.message : String(e)));
+    return;
+  }
+  clearRefusal();
+  projection = drawn;
+  pinned = null;
+  isolated = "";
+  resetDetail();
+  hideTip();
+  paintBreadcrumb();
+  paintCounts();
+  buildLegend();
+  buildDerivedList();
+  buildTable();
+  render(layOut(drawn));
+}
+
+/**
+ * Draws the trail back out of a drill.
+ *
+ * THE ONLY WAY BACK THAT IS ALWAYS VISIBLE. Escape also pops -- see main() --
+ * but a reader who arrived by clicking has no reason to expect a keystroke, and
+ * the node they clicked is no longer on the chart to click again: opening a
+ * fund group removes the group. Without this the drill is a trapdoor.
+ */
+function paintBreadcrumb() {
+  const bar = maybeEl("breadcrumb");
+  if (!bar) return;
+  if (!drilledInto) {
+    bar.replaceChildren();
+    bar.setAttribute("hidden", "");
+    return;
+  }
+  bar.removeAttribute("hidden");
+  const back = h("button", "crumb-back");
+  // THE WORDS ARE THE VIEW'S, not derived from the tier number. A first draft
+  // read `DRILL.from === 2 ? "fund groups" : "divisions"`, which is a mapping
+  // this file has no way to keep true: a third page drilling from a third tier
+  // would get "divisions" and nobody would find out from a test.
+  back.textContent = "\u2190 " + ((DRILL && DRILL.back) || "Back");
+  back.setAttribute("type", "button");
+  back.addEventListener("click", () => drillTo(""));
+  const here = h("span", "crumb-here", labelOf(drilledInto));
+  bar.replaceChildren(back, here);
+}
+
+/**
+ * A node's printed label, from the FETCHED document.
+ *
+ * NOT FROM THE DRAWN ONE, which is the point: the breadcrumb names the node the
+ * reader opened, and opening it is what removes it from the drawn set.
+ * @param {string} id
+ * @returns {string}
+ */
+function labelOf(id) {
+  const n = fetched ? fetched.nodes.find((x) => x.id === id) : null;
+  return n ? n.label : id;
+}
+
+/**
+ * The document as this page draws it: the overview, or one node opened.
+ *
+ * THE ORDER IS filter, cap, fold, AND IT IS NOT INTERCHANGEABLE.
+ *
+ *   - filter first, because the cap ranks a column by size and the sizes that
+ *     matter are the ones inside the node being opened. Capping the citywide
+ *     column and then filtering would keep the eight biggest funds in the CITY
+ *     and show a group most of whose funds had already been discarded.
+ *   - cap before fold, because the cap produces several ribbons from one source
+ *     to the aggregate and the fold is what merges them -- summing the values
+ *     and unioning the fact ids and locators. Capping afterwards would leave
+ *     parallel ribbons between one pair of nodes, and an aggregate that cited a
+ *     strict subset of the pages its figure was read from.
+ *
+ * @param {FiscProjection} doc
+ * @returns {FiscProjection}
+ */
+function shapeFor(doc) {
+  if (!DRILL || !drilledInto) {
+    // THE ROOT IS A FILTER TOO, and the same one: a page that draws one node's
+    // subtree is a page permanently opened into it. Composing them would be
+    // wrong -- the node a reader opens is already inside the root -- so a drill
+    // filters to what was clicked and an overview to what was declared.
+    return foldDocument(ROOT ? filterToNode(doc, ROOT, RENDER_TIERS) : doc);
+  }
+  const fine = DRILL.tiers[DRILL.tiers.length - 1];
+  return foldDocument(capColumn(filterToNode(doc, drilledInto, DRILL.tiers), fine, DRILL.cap),
+    DRILL.tiers);
+}
+
+/**
+ * The id of the node a capped tail is folded into.
+ *
+ * NOT A FIGURE THE CITY PRINTED, and the label says so in words rather than
+ * relying on this comment: it reads "N smaller funds", which is a count of rows
+ * and not a line item. The amount on its ribbons is a sum of printed figures,
+ * exactly as every folded ribbon's is.
+ */
+const AGGREGATE_ID = "aggregate/tail";
+
+/**
+ * Folds all but the largest `cap` nodes of one tier into a single node.
+ *
+ * WHY A CAP IS NEEDED AT ALL, and it is the half of fisc-ppkq that bead got
+ * wrong. It says "rescaling is what makes special-revenue's 32 funds legible".
+ * Measured against dist/data/fund-flows.json at 7ded1c6, laying the drilled
+ * graph out with the shipped d3 at this file's own constants: rescaled to its
+ * own total, that group still puts 22 of its 49 ribbons under one pixel,
+ * because the concentration is WITHIN the group -- fund/200 alone is 34.9% of
+ * it and the bottom two are 0.034%. Rescaling cannot fix a distribution.
+ *
+ * At cap 8 the same graph comes to 2 sub-pixel ribbons, and the capital group
+ * goes from 4 to 0. For comparison the drill-down this page replaces ships 7.
+ *
+ * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
+ * sum, fact ids and locators union, so the aggregate ribbon cites every page
+ * its figure was read from. What it is not is a node of the document's own
+ * hierarchy, so it carries no parent and inherits no hue.
+ *
+ * @param {FiscProjection} doc
+ * @param {number} tier
+ * @param {number} cap
+ * @returns {FiscProjection}
+ */
+function capColumn(doc, tier, cap) {
+  const atTier = doc.nodes.filter((n) => n.tier === tier);
+  if (atTier.length <= cap) return doc;
+
+  /** @type {Map<string, number>} */
+  const size = new Map();
+  for (const l of doc.links) size.set(l.target, (size.get(l.target) || 0) + l.value_cents);
+  // Ties broken by id, so the set kept is the same on every build of the same
+  // document. A cap that reordered under an unstable sort would move which
+  // funds a reader sees between two identical exports.
+  const ranked = atTier.slice().sort((a, b) =>
+    (size.get(b.id) || 0) - (size.get(a.id) || 0) || (a.id < b.id ? -1 : 1));
+  const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
+  const folded = ranked.slice(cap);
+
+  const label = folded.length + " smaller " + (tier === 3 ? "funds" : "categories");
+  const aggregate = {
+    id: AGGREGATE_ID, label: label, tier: tier, parent: "", constraint_tier: "",
+    role: "", derived: false, rationale: "", source_note: "",
+  };
+  const tail = new Set(folded.map((n) => n.id));
+  const remap = (/** @type {string} */ id) => (tail.has(id) ? AGGREGATE_ID : id);
+
+  return Object.assign({}, doc, {
+    nodes: doc.nodes.filter((n) => n.tier !== tier || kept.has(n.id)).concat([aggregate]),
+    links: doc.links.map((l) =>
+      Object.assign({}, l, { source: remap(l.source), target: remap(l.target) })),
+  });
+}
+
+/**
  * Folds a document to the tiers this page draws.
  *
  * WHY A DOCUMENT IS FOLDED AT ALL, because it is the whole reason the
@@ -641,27 +1063,27 @@ function regroupLocators(keys) {
  * consistent, which is the same contract layOut has.
  *
  * @param {FiscProjection} doc
- * @returns {FiscProjection} doc itself when this page draws every tier.
+ * @param {number[]} [tiers] the tier set to fold to, defaulting to the page's own
+ *   RENDER_TIERS. A drill passes its own: the tier set a page OPENS ON and the
+ *   one it opens INTO are two declarations, not one.
+ * @returns {FiscProjection} doc itself when the tier set draws every tier.
  */
-function foldDocument(doc) {
-  if (!RENDER_TIERS.length) return doc;
+function foldDocument(doc, tiers) {
+  const wanted = tiers || RENDER_TIERS;
+  if (!wanted.length) return doc;
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  const drawn = new Set(RENDER_TIERS);
+  const drawn = new Set(wanted);
 
   /** @type {Map<string,string>} */
   const foldsTo = new Map();
   for (const n of doc.nodes) {
-    let at = n;
-    for (let hops = 0; !drawn.has(at.tier); hops++) {
-      const up = at.parent ? byID.get(at.parent) : undefined;
-      if (!up || hops > 8) {
-        throw new Error("cannot draw " + doc.projection + ": node " + n.id +
-          " is tier " + n.tier + " and no ancestor of it is a tier this page draws (" +
-          RENDER_TIERS.join(", ") + ")");
-      }
-      at = up;
+    const to = foldTarget(byID, n, drawn);
+    if (!to) {
+      throw new Error("cannot draw " + doc.projection + ": node " + n.id +
+        " is tier " + n.tier + " and no ancestor of it is a tier this page draws (" +
+        wanted.join(", ") + ")");
     }
-    foldsTo.set(n.id, at.id);
+    foldsTo.set(n.id, to);
   }
 
   /** @type {Map<string, FiscLink>} */
@@ -861,8 +1283,19 @@ function layOut(doc) {
   // shares nothing with. The spine is drawn whole and keeps sankeyJustify
   // exactly, which is why the crossing figures pinned in tools/jscheck do not
   // move.
-  const align = RENDER_TIERS.length
-    ? /** @param {LaidNode} d */ (d) => RENDER_TIERS.indexOf(d.tier)
+  //
+  // THE TIER SET IS THE ONE THE DOCUMENT WAS SHAPED BY, not the page's own, and
+  // that distinction only exists because a page can open a node. A drilled
+  // document is folded to DRILL.tiers -- {0,3} on Revenue against the page's
+  // {0,2} -- so aligning on RENDER_TIERS gives every tier-3 fund
+  // indexOf === -1, which d3 clamps to column 0. Measured: that leaves the
+  // layer array with a hole and d3-sankey dies inside its own ordering pass
+  // with "Cannot read properties of undefined (reading 'sort')" -- a blank
+  // chart under a banner, on the first click of a feature whose whole point is
+  // the click.
+  const tiers = activeTiers();
+  const align = tiers.length
+    ? /** @param {LaidNode} d */ (d) => tiers.indexOf(d.tier)
     : D3.sankeyJustify;
 
   const sankey = D3.sankey()
@@ -962,11 +1395,29 @@ function render(laid) {
     //
     // Focus itself must not isolate. Tabbing the columns would strobe the
     // whole chart, which is also why a held key is ignored.
+    // ACTIVATION MEANS DIFFERENT THINGS ON DIFFERENT PAGES, declared per view
+    // rather than decided here, and that is the answer to fisc-ppkq's third
+    // objection: the click and the keydown are already spoken for by
+    // setIsolated, and a second meaning on the same activation of the same
+    // element is a new interaction contract rather than a reuse.
+    //
+    // It is declared and not overloaded. A page with a drill has TWO drawn
+    // tiers, and isolating a node on a two-column graph says almost nothing --
+    // every link a node has is already adjacent to it, so dimming the rest
+    // dims a column the reader was not looking at. A page without one has
+    // three, where following one fund group through the middle is the whole
+    // point. So the pages that drill are exactly the pages that do not need to
+    // isolate, and no page has to do both from one gesture.
     .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
       e.stopPropagation();
       pin(d);
       const echo = d.id === keyActivation.id && e.timeStamp - keyActivation.at < 500;
-      if (!echo) setIsolated(isolated === d.id ? "" : d.id);
+      if (echo) return;
+      if (drillable(d)) {
+        drillTo(d.id);
+        return;
+      }
+      setIsolated(isolated === d.id ? "" : d.id);
     })
     .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
       if (e.key !== "Enter" && e.key !== " ") return;
@@ -976,6 +1427,10 @@ function render(laid) {
       // Escape unpins while leaving focus where it was, so the panel can be
       // empty here even though focus already pinned this node once.
       pin(d);
+      if (drillable(d)) {
+        drillTo(d.id);
+        return;
+      }
       setIsolated(isolated === d.id ? "" : d.id);
     });
 
@@ -1680,7 +2135,16 @@ async function showYear(year) {
   // throws on a node it cannot place, which is a fault in this page's tier set
   // rather than in the document, and it must throw here -- before the repaint --
   // for the same reason layOut does.
-  const drawn = foldDocument(doc);
+  fetched = doc;
+  // A DRILL BELONGS TO THE YEAR IT WAS MADE IN, and this reset has to happen
+  // BEFORE the shaping rather than with the pin and the isolation below it. A
+  // fund group opened in FY2025-26 may not exist in FY2023-24 -- that column
+  // carries a seventh, permanent (fisc-zojk) -- and shapeFor would filter the
+  // new document to a subtree of nothing and hand d3-sankey an empty graph.
+  // The pin and the isolation are cleared after the draw because they only
+  // decorate it; this decides what is drawn.
+  drilledInto = "";
+  const drawn = shapeFor(doc);
   const laid = layOut(drawn);
 
   // THE FOLDED DOCUMENT IS THE ONE THE PAGE DESCRIBES, not the one it fetched.
@@ -1705,6 +2169,7 @@ async function showYear(year) {
   hideTip();
 
   paintYearWords(year);
+  paintBreadcrumb();
   buildLegend();
   buildDerivedList();
   buildTable();
@@ -1775,20 +2240,8 @@ function paintYearWords(year) {
   const lede = maybeEl("lede-year");
   if (lede) lede.textContent = year.label + " " + year.basis;
 
-  // THE FLOW COUNT IS A CLAIM ABOUT THE CHART, so it counts the marks that were
-  // drawn rather than the rows the file holds. On a page drawn whole the two
-  // are the same number and this is the packager's figure verbatim. On a page
-  // that folds they are not: fund-flows.json holds 175 links over 145 nodes and
-  // the chart beside this sentence draws 52 over 40, and printing the file's
-  // figures there would have the page miscount what the reader can see. The
-  // fact total stays the document's, because folding cites nothing away.
-  const counts = maybeEl("counts-line");
-  if (counts) {
-    const links = projection ? projection.links.length : year.counts.links;
-    const nodes = projection ? projection.nodes.length : year.counts.nodes;
-    counts.textContent = links + " flows between " + nodes +
-      " nodes, from " + year.counts.facts + " facts";
-  }
+  shownYear = year;
+  paintCounts();
 
   // THE CHART'S ACCESSIBLE NAME IS BUILT IN GO, like every other string this
   // function writes. It was composed here from a literal, and the moment a
@@ -1951,6 +2404,13 @@ async function main() {
       // leaves provenance on screen for a flow that is no longer selected.
       resetDetail();
       setIsolated("");
+      // AND IT CLOSES A DRILL, which is the outermost thing Escape can undo, so
+      // it is done last: a reader pressing Escape once to dismiss a pin should
+      // not also lose the group they opened. drillTo repaints everything and
+      // clears the pin and the isolation itself, so the two calls above are
+      // redundant on this path and harmless -- and they are what runs on every
+      // other page, where there is nothing to close.
+      if (drilledInto) drillTo("");
     }
   });
   if (typeof window.matchMedia === "function") {

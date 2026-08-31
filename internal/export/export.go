@@ -187,6 +187,51 @@ type View struct {
 	// package ships the declaration and never applies it, which is the same
 	// division of labour as every other figure on the page.
 	RenderTiers []int
+
+	// ChartSubject is what this view's chart is OF, in a phrase that completes
+	// "Sankey diagram of the FY 2025-26 adopted budget ...". It is the chart's
+	// accessible name, which is what a screen reader announces and a different
+	// string from Title, which is the document's.
+	//
+	// THE CALLER'S WORDS, LIKE Title AND Lede, and it became one when this
+	// template stopped rendering a single page. It was the literal "by fund and
+	// division", composed here, which was true of the one page that used it --
+	// and the moment Revenue and Spending shared the template both announced
+	// themselves as a chart of neither. Revenue draws revenue categories into
+	// fund groups; Spending draws one fund into its divisions. A packager
+	// cannot know that, and guessing it silently is worse than asking.
+	ChartSubject string
+
+	// Root restricts this view's chart to one node's own money, or "" for a
+	// view that draws its whole document. Shipped as FISC_CONFIG.root.
+	//
+	// IT IS WHAT MAKES A ONE-SIDED PAGE POSSIBLE AT ALL, and it is a refusal
+	// rather than a preference. Spending draws tiers {3,4} of fund-flows -- the
+	// General Fund into its divisions -- and that document also carries eleven
+	// tier-0 revenue nodes with no ancestor at tier 3 or 4. foldDocument
+	// refuses a node it cannot place, so without a root the page does not draw
+	// a partial chart, it draws none: "node revenue/charges-for-services is
+	// tier 0 and no ancestor of it is a tier this page draws (3, 4)".
+	//
+	// It also makes the page's central claim a declaration the code keeps
+	// rather than a sentence in its lede. Spending says only the General Fund
+	// has a spending side; Root is where it says so to the client.
+	Root string
+
+	// Drill is how this view's chart opens one node, or nil for a view whose
+	// chart does not open at all. Shipped to the client as FISC_CONFIG.drill.
+	//
+	// PER VIEW FOR RenderTiers' REASON, AND THEN SOME: it declares what
+	// activating a node MEANS on this page. Without it a node click isolates,
+	// which is what the spine has always done and wants to keep; with it a node
+	// at Drill.From opens into Drill.Tiers instead. Those are two interaction
+	// contracts and no page has both, because a page that drills has two drawn
+	// columns and isolating on two columns dims a column the reader was not
+	// looking at (fisc-ppkq).
+	//
+	// The behaviour is entirely the client's, like the fold. This package ships
+	// the declaration.
+	Drill *Drill
 }
 
 // Doc describes one source document the page cites. The caller supplies these
@@ -338,6 +383,39 @@ type PageIndexEntry struct {
 	Bytes int
 	// Note is the caller's sentence about this page, rendered verbatim.
 	Note string
+}
+
+// Drill is a view's chart opening one node into its parts.
+//
+// WHY FILTER-AND-RESCALE AND NOT EXPAND-IN-PLACE. Measured, and recorded on
+// fisc-ppkq: the vendored d3-sankey derives its column count from topology and
+// clamps the align function into it, so expanding one node in place draws that
+// node's children in the same column as the next tier while the unexpanded
+// ribbons span two -- which tools/jscheck/layout.mjs's bands() refuses outright.
+// Filtering to one node keeps every tier set uniform, which is the only shape
+// this build lays out.
+type Drill struct {
+	// From is the tier whose nodes open, and no other. One tier rather than a
+	// set, because a drill is one hop by construction: a node in the drilled
+	// view is never itself drillable, so there is no depth to model.
+	From int `json:"from"`
+	// Tiers is the tier set drawn once a node has opened -- the drilled view's
+	// RenderTiers, and a different declaration from the overview's.
+	Tiers []int `json:"tiers"`
+	// Back is what the breadcrumb's return control says, e.g. "All fund
+	// groups". Declared rather than derived from From, because a tier number
+	// does not know what the reader calls the things in it.
+	Back string `json:"back"`
+	// Cap is how many nodes the fine column may hold before the tail is folded
+	// into one aggregate node.
+	//
+	// IT IS NOT A TIDINESS SETTING. fisc-ppkq claims rescaling to a group's own
+	// total is what makes its funds legible, and that is measured false: the
+	// special-revenue group rescaled to itself still puts 22 of its 49 ribbons
+	// under one pixel, because the concentration is WITHIN the group -- one fund
+	// is 34.9% of it and the smallest two are 0.034%. Rescaling cannot fix a
+	// distribution. At cap 8 the same graph draws 2 sub-pixel ribbons.
+	Cap int `json:"cap"`
 }
 
 // Download is one whole-store artifact a page offers.
@@ -595,6 +673,35 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q asks for render tiers %v and renders template %q, which publishes "+
 				"none; the chart would draw every tier", v.Path, v.RenderTiers, v.Template)
+	case v.Drill != nil && !templateRendersDrill(v.Template):
+		return fmt.Errorf(
+			"view %q declares a drill and renders template %q, which publishes none; "+
+				"the chart would isolate on a click while this view believes it opens",
+			v.Path, v.Template)
+	case v.Drill != nil && len(v.Drill.Tiers) == 0:
+		return fmt.Errorf(
+			"view %q declares a drill with no tiers, so a node opened on it would be "+
+				"drawn by the same tier set it was closed under", v.Path)
+	case v.ChartSubject != "" && !templateRendersDrill(v.Template):
+		return fmt.Errorf(
+			"view %q names a chart subject and renders template %q, which composes its "+
+				"own; the phrase would be dropped in silence", v.Path, v.Template)
+	case v.Template == ChartTemplate && v.ChartSubject == "":
+		return fmt.Errorf(
+			"view %q renders a chart and names no subject, so its diagram would announce "+
+				"itself to a screen reader as a chart of nothing in particular", v.Path)
+	case v.Drill != nil && v.Drill.Back == "":
+		return fmt.Errorf(
+			"view %q declares a drill with no back label, so the breadcrumb out of an "+
+				"opened node would be a button with no words in it", v.Path)
+	case v.Root != "" && !templateRendersDrill(v.Template):
+		return fmt.Errorf(
+			"view %q declares root %q and renders template %q, which publishes none; the "+
+				"chart would draw the whole document", v.Path, v.Root, v.Template)
+	case v.Drill != nil && v.Drill.Cap < 1:
+		return fmt.Errorf(
+			"view %q declares a drill with cap %d; the cap is what keeps a fine column "+
+				"drawable and a column of one node is not a chart", v.Path, v.Drill.Cap)
 	}
 	if _, ok := built[v.Projection]; !ok && v.Projection != "" {
 		// Named rather than "a projection is missing": the fix differs by which
@@ -633,7 +740,7 @@ func (v View) validate(built map[string][]byte) error {
 // is louder than a page quietly not showing it.
 func templateRendersLede(name string) bool {
 	switch name {
-	case TrendsTemplate, DrilldownTemplate, ProvenanceTemplate, CaveatsTemplate:
+	case TrendsTemplate, ChartTemplate, ProvenanceTemplate, CaveatsTemplate:
 		return true
 	default:
 		return false
@@ -656,7 +763,7 @@ func templateRendersLede(name string) bool {
 // exact failure templateRendersLede exists to document.
 func templateRendersAYearControl(name string) bool {
 	switch name {
-	case SankeyTemplate, DrilldownTemplate:
+	case SankeyTemplate, ChartTemplate:
 		return true
 	default:
 		return false
@@ -678,7 +785,7 @@ func templateRendersAYearControl(name string) bool {
 // template needs an arm in buildSite's exhaustive switch regardless.
 func templateRendersADocument(name string) bool {
 	switch name {
-	case SankeyTemplate, TrendsTemplate, DrilldownTemplate:
+	case SankeyTemplate, TrendsTemplate, ChartTemplate:
 		return true
 	default:
 		return false
@@ -716,13 +823,30 @@ func templateIsKnown(name string) bool {
 //
 // The third field of this family, found by review of the commit that closed the
 // first two -- which is the argument for writing them as a family rather than as
-// three guards. Only buildDrilldownPage puts RenderTiers in the config blob;
+// three guards. Only buildChartPage puts RenderTiers in the config blob;
 // buildSankeyPage omits the key entirely, and app.js reads
 // `CONFIG.render_tiers ?? []`, so a fold asked for on the spine is not refused,
 // not reported, and not applied: the chart draws every tier and looks like a
 // chart rather than like a defect.
 func templateRendersTiers(name string) bool {
-	return name == DrilldownTemplate
+	return name == ChartTemplate
+}
+
+// templateRendersDrill answers whether a template publishes [View.Drill] to the
+// client.
+//
+// THE FOURTH FIELD OF THE FAMILY, and it exists for the same reason as the
+// third. Only buildChartPage puts Drill in the config blob; buildSankeyPage
+// omits the key, and app.js reads `CONFIG.drill && ...`, so a drill asked for on
+// the spine is not refused, not reported, and not applied. The page would then
+// isolate on a click while its view believed it opened -- which looks like a
+// chart rather than like a defect.
+//
+// It is also the arm that keeps the two interaction contracts apart. A view
+// that sets Drill is declaring that activating a node OPENS it; a template with
+// no breadcrumb and no way back would make that a trapdoor.
+func templateRendersDrill(name string) bool {
+	return name == ChartTemplate
 }
 
 // assetPath screens one [Options.Files] key. The output tree is a web root

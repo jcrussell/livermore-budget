@@ -67,24 +67,22 @@
      back either. -->
 
 <h2>The flow</h2>
+{{- /* THE PAGE-SPECIFIC WORDS ARE {{.Lede}} IN THE HEADER, and this block is
+       what is true of BOTH pages this template renders. Three paragraphs here
+       used to describe a three-column chart -- revenue, fund group, division --
+       which is the shape neither Revenue nor Spending draws. Prose that
+       describes one page's columns cannot live in a template two pages share;
+       it goes in the view, which is the only place that knows. */}}
 <p class="lede">
-  <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span>. Revenue sources on the left,
-  the fund group each lands in through its individual funds in the middle, and the General
-  Fund divisions that spend it on the right.
+  <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span>.
+  {{- if .Drill}} Click a node in the left-hand column to open it, or tab to one and press
+  Enter. Escape closes it again.{{end}}
 </p>
 <p class="lede">
   <strong>Read one pair of columns at a time.</strong> The same money appears at more than
-  one grain here, so adding every flow up counts part of it twice — and unlike a missing
-  figure, that total would look right. Read left-to-middle for where a revenue source lands,
-  middle-to-right for what a division is given. Neither column is a budget total, and this
-  page publishes none.
-</p>
-<p class="lede">
-  <strong>The right-hand column is smaller than the middle one, and no money went missing.</strong>
-  Budget Book pp.167-170 decompose the General Fund alone, so every other fund group's money
-  ends at its fund group: the schedule that would break those down is not published. The
-  General Fund's own difference between what it takes in and what these divisions spend is
-  transfers out and the change in working capital, printed on pp.66-67 and not carried here.
+  one grain in this document, so adding every flow up counts part of it twice — and unlike a
+  missing figure, that total would look right. This page publishes no total for that reason,
+  and neither does the file it is drawn from.
 </p>
 
 <div class="card">
@@ -94,9 +92,25 @@
   <div class="legend" aria-label="How to read the marks">
     <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
     <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
+    {{- /* WHAT A CLICK DOES IS PER VIEW, so what this sentence promises has to
+           be too. On a page that drills, activating a node OPENS it and does
+           not isolate -- see site/app.js's node handlers and export.Drill --
+           so the old wording would have been an instruction that does nothing
+           on two of the site's six pages. */}}
     <span class="subtle">Hover, tap or tab to a flow for its amount, fact ids and sources.
-      Click a node or a fund swatch to follow only that money; Escape puts the rest back.</span>
+      {{if .Drill}}Click a node to open it into its parts; the fund swatches still follow one
+      group's money, and Escape closes an open node and puts the rest back.{{else}}Click a
+      node or a fund swatch to follow only that money; Escape puts the rest back.{{end}}</span>
   </div>
+  {{- if .Drill}}
+  {{- /* SHIPPED EMPTY AND hidden, filled by app.js. A breadcrumb rendered
+         server-side would name a node nobody has opened yet, and with
+         JavaScript off there is no drill to come back from -- the chart draws
+         its overview and never changes. Same reasoning as the year toggle
+         shipping disabled: a control that cannot do anything must not look as
+         though it can. */}}
+  <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
+  {{- end}}
   <div class="chart-wrap">
     <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
       <title id="chart-title">Sankey diagram of the {{.FiscalYearLabel}} {{.Basis}} budget by fund and division</title>

@@ -1136,52 +1136,88 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	}
 	got := views(Result{Projections: built})
 
-	if len(got) != 4 {
-		t.Fatalf("got %d views over %v, want the spine, the revenue trends, the drill-down "+
-			"and the caveats index", len(got), keys(built))
+	if len(got) != 5 {
+		t.Fatalf("got %d views over %v, want the spine, Revenue, Spending, the revenue "+
+			"trends and the caveats index", len(got), keys(built))
 	}
 	if got[0].Path != export.IndexPath || got[0].Projection != export.PrimaryProjection {
 		t.Errorf("the site opens on %+v, want the spine at %s", got[0], export.IndexPath)
 	}
-	// The YEARS belong to the spine view and to no other. A site-wide year list
-	// could not say that: the revenue trends are one document over four columns
-	// and have no year to switch between.
-	if len(got[0].YearStems) != len(project.PublishedFiscalYears()) {
-		t.Errorf("the spine view lists %d year stems, want %d",
-			len(got[0].YearStems), len(project.PublishedFiscalYears()))
-	}
-	if len(got[1].YearStems) != 0 {
-		t.Errorf("the revenue view lists year stems %v; it is one document over four columns",
-			got[1].YearStems)
-	}
-	if got[1].Projection != project.TrendsProjection {
-		t.Errorf("the second view renders %q, want %q", got[1].Projection, project.TrendsProjection)
-	}
-	// Titles and ledes are the caller's words. A packager composing prose about
-	// a document would be making a claim about figures it may not recompute.
-	if got[1].Title == "" || got[1].Lede == "" {
-		t.Error("the revenue view ships no title or lede, so the page would head itself")
+	if len(got[0].YearStems) != 2 {
+		t.Errorf("the spine view lists %d year stems, want both adopted years", len(got[0].YearStems))
 	}
 
-	// THE DRILL-DOWN LISTS NO YEAR STEMS EITHER, and for a different reason from
-	// the trends view: it has four published columns and reaches one. That is
-	// what the three surviving unviewedDocuments entries declare, and pinning it
-	// here is what makes the day it changes a decision rather than a diff.
-	if got[2].Projection != project.FundFlowsProjection {
-		t.Errorf("the third view renders %q, want %q", got[2].Projection, project.FundFlowsProjection)
+	// ASSERTED BY PATH RATHER THAN BY INDEX from here down. The nav order is a
+	// design decision that has already moved once in this lane -- the trends
+	// page was second and is now fourth -- and a test that fails when it moves
+	// again is a test about the order rather than about the views.
+	byPath := map[string]export.View{}
+	for _, v := range got {
+		byPath[v.Path] = v
 	}
-	if len(got[2].YearStems) != 0 {
-		t.Errorf("the drill-down view lists year stems %v; giving it a year control is "+
-			"the work unviewedDocuments still declares", got[2].YearStems)
+
+	// EVERY VIEW THAT DRAWS SOMETHING SHIPS THE WORDS FOR IT. Titles and ledes
+	// are the caller's: a packager composing prose about a document would be
+	// making a claim about figures it may not recompute.
+	for _, path := range []string{"revenue.html", "spending.html", "trends.html"} {
+		v, ok := byPath[path]
+		if !ok {
+			paths := make([]string, 0, len(got))
+			for _, x := range got {
+				paths = append(paths, x.Path)
+			}
+			t.Fatalf("no view at %s; the nav is %v", path, paths)
+		}
+		if v.Title == "" || v.Lede == "" {
+			t.Errorf("the %s view ships no title or lede, so the page would head itself", path)
+		}
 	}
-	// The tier set is what makes the view drawable, so an empty one is not a
-	// smaller page -- it is a blank chart. See tools/jscheck/fold.mjs.
-	if len(got[2].RenderTiers) == 0 {
-		t.Error("the drill-down view declares no render tiers, so app.js would draw its " +
-			"61-node fund column whole and every node at zero height")
+
+	// NEITHER FUND-FLOWS VIEW LISTS YEAR STEMS, and for a different reason from
+	// the trends view's: that document has four published columns and these
+	// reach one. That is what the three surviving unviewedDocuments entries
+	// declare, and pinning it here is what makes the day it changes a decision
+	// rather than a diff.
+	for _, path := range []string{"revenue.html", "spending.html"} {
+		v := byPath[path]
+		if v.Projection != project.FundFlowsProjection {
+			t.Errorf("%s renders %q, want %q", path, v.Projection, project.FundFlowsProjection)
+		}
+		if len(v.YearStems) != 0 {
+			t.Errorf("%s lists year stems %v; giving it a year control is the work "+
+				"unviewedDocuments still declares", path, v.YearStems)
+		}
+		// The tier set is what makes the view drawable, so an empty one is not
+		// a smaller page -- it is a blank chart. See tools/jscheck/fold.mjs.
+		if len(v.RenderTiers) == 0 {
+			t.Errorf("%s declares no render tiers, so app.js would draw the 61-node fund "+
+				"column whole and every node at zero height", path)
+		}
+		// AND BOTH DRILL. That is the whole reason there are two of them: a
+		// two-column overview that could not be opened would publish less than
+		// the drilldown page they replace, not more.
+		if v.Drill == nil {
+			t.Errorf("%s declares no drill, so its detail column is unreachable", path)
+		}
 	}
-	if got[2].Title == "" || got[2].Lede == "" {
-		t.Error("the drill-down view ships no title or lede, so the page would head itself")
+
+	// SPENDING DECLARES A ROOT AND REVENUE DOES NOT, which is not a stylistic
+	// difference. fund-flows carries eleven tier-0 revenue nodes with no
+	// ancestor at tier 3 or 4, and foldDocument refuses a node it cannot place,
+	// so Spending's {3,4} over the whole document draws NOTHING. Revenue's
+	// {0,2} places every node and needs no root.
+	if byPath["spending.html"].Root == "" {
+		t.Error("the spending view declares no root; its tier set cannot place the " +
+			"document's revenue nodes, so the page would refuse to draw at all")
+	}
+	if byPath["revenue.html"].Root != "" {
+		t.Errorf("the revenue view declares root %q; its tier set places every node and "+
+			"a root would silently narrow the page", byPath["revenue.html"].Root)
+	}
+	if _, ok := byPath["drilldown.html"]; ok {
+		t.Error("drilldown.html is still in the nav; Revenue and Spending are that page " +
+			"split at its seam, and shipping all three would publish the same document " +
+			"three times")
 	}
 }
 
