@@ -320,6 +320,30 @@ export async function checks() {
       : "every aggregate across all 29 opened views covers two or more",
   });
 
+  // A CAVEAT ABOUT A NODE REACHES THAT NODE, THROUGH THE FOLD. applies_to names
+  // ids in the FILE and a drawn mark is often a fold of several of them, so a
+  // direct id match would leave the badge silent on every page that folds --
+  // and a check asserting "no badge" would pass whether the caveat does not
+  // apply or the resolution is broken. fund-flows' only-the-general-fund
+  // caveat names fund/100, which spending.html draws directly and revenue.html
+  // folds into fund-group/general.
+  const seen = [];
+  for (const page of PAGES) {
+    const { app } = await opened(page);
+    app.layOut(app.projection);
+    const marked = app.projection.nodes.filter((n) => app.caveatsFor(n.id).length > 0);
+    seen.push({ page: page.name, ids: marked.map((n) => n.id) });
+  }
+  const revenueMarks = seen[0].ids;
+  const spendingMarks = seen[1].ids;
+  out.push({
+    name: "a caveat about one node reaches that node on both pages, folded or not",
+    ok: revenueMarks.includes("fund-group/general") && spendingMarks.includes("fund/100") &&
+        revenueMarks.length > 0 && spendingMarks.length > 0,
+    detail: `revenue marks ${JSON.stringify(revenueMarks)}; ` +
+            `spending marks ${JSON.stringify(spendingMarks)}`,
+  });
+
   // THE ROOT, WHICH IS NOT A NARROWING BUT THE THING THAT DRAWS AT ALL. Spending
   // draws tiers {3,4} of a document carrying eleven tier-0 revenue nodes, and
   // foldDocument refuses a node it cannot place. Without a root the page is a

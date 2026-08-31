@@ -695,6 +695,16 @@ svg.sankey .node {
   border-style: dashed;
 }
 
+/* A caveat about the mark under the pointer. --warn rather than --critical:
+   this is something a reader has to know about a figure, not something wrong
+   with it, and the two must not look alike on a site whose whole subject is
+   which figures can be trusted. */
+.chip.caveat {
+  color: var(--warn-fg);
+  background: var(--warn-bg);
+  border-color: var(--warn-edge);
+}
+
 /* ---------- detail panel, caveats, tables ---------- */
 
 .detail {

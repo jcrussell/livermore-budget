@@ -491,7 +491,17 @@ func fundFlowsCaveats(twice int) []Caveat {
 			Text: "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that " +
 				"fund alone, so the other six fund groups' revenue ends at their funds -- the " +
 				"money is not missing, the schedule that would break it down is not published.",
-			AppliesTo: []string{},
+			// THE ONE FUND IT IS ABOUT. This is not a statement about the
+			// schedule as a whole -- it is about why fund/100 has divisions
+			// beneath it and no other fund does -- so it marks that node, and a
+			// reader pointing at the General Fund is told there why the rest of
+			// the chart stops where it does.
+			//
+			// The other two caveats here stay document-wide and correctly carry
+			// an empty list: a constraint tier is on every fund in the column,
+			// so marking all 61 marks none, and the mixed-grain warning is
+			// about summing the graph rather than about any node in it.
+			AppliesTo: []string{prefixFund + "100"},
 		},
 	}
 }

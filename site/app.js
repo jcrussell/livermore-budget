@@ -630,6 +630,16 @@ let shownYear = null;
  * @type {string}
  */
 let baseDescription = "";
+/**
+ * The nodes as laid out, so columnShare can total the column a mark is in.
+ *
+ * SEPARATE FROM projection, which holds the FOLDED document and carries no
+ * geometry: which column a node is in is d3-sankey's answer, not the file's,
+ * and two nodes of one tier can land in one column while a tier the page skips
+ * lands in none.
+ * @type {LaidNode[]}
+ */
+let laidNodes = [];
 /** @type {LaidNode | LaidLink | null} */
 let pinned = null;
 /**
@@ -1627,6 +1637,9 @@ function layOut(doc) {
     links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
   });
   restackLinks(graph);
+  // Held for columnShare, which needs the LAID nodes: a share is of the column
+  // d3-sankey put a mark in, and only this graph knows which that is.
+  laidNodes = graph.nodes;
   return graph;
 }
 
@@ -1867,6 +1880,83 @@ function nodeDescription(d) {
 }
 
 /**
+ * Where a caveat's full text is, or "" when this site has no caveats page.
+ *
+ * COMPOSED FROM THE YEAR'S OWN SUMMARIES rather than from the id, because the
+ * anchor is per (document, caveat) -- one id carries different text in
+ * different documents -- and the packager is the only party that knows which
+ * stem the year on screen came from. Looking the id up in what the page was
+ * handed is exact; rebuilding the fragment here would be a second speller of a
+ * rule internal/export owns.
+ *
+ * @param {string} id
+ * @returns {string}
+ */
+function caveatHref(id) {
+  if (!shownYear || !Array.isArray(shownYear.caveats)) return "";
+  const ref = shownYear.caveats.find((c) => c.id === id);
+  return ref && ref.href ? ref.href : "";
+}
+
+/**
+ * The caveats that are about one drawn mark.
+ *
+ * RESOLVED THROUGH THE HIERARCHY, because applies_to names ids in the FILE and
+ * a drawn node is often a fold of several of them. A caveat about
+ * fund-group/internal-service should mark that group on the spine, where it is
+ * drawn -- and on a page that folds its funds into it, where the id the caveat
+ * names is a node the reader can see. So a caveat applies to a drawn node when
+ * one of its targets IS that node or has it as an ancestor.
+ *
+ * THIS IS THE FOLD HAZARD fisc-yj4w.8 WAS FILED FOR, and it is the reason the
+ * badge is not a map lookup: matching ids directly would leave the mark silent
+ * on every page that folds, which is a test that passes whether the caveat
+ * applies or the resolution is broken.
+ *
+ * @param {string} id
+ * @returns {FiscCaveat[]}
+ */
+function caveatsFor(id) {
+  if (!projection || !projection.metadata || !Array.isArray(projection.metadata.caveats)) {
+    return [];
+  }
+  const reaches = (/** @type {string} */ target) => {
+    let at = groupIndex.get(target);
+    for (let hops = 0; at && hops < 9; hops++) {
+      if (at.id === id) return true;
+      at = at.parent ? groupIndex.get(at.parent) : undefined;
+    }
+    return false;
+  };
+  return projection.metadata.caveats.filter((c) =>
+    Array.isArray(c.applies_to) && c.applies_to.some(reaches));
+}
+
+/**
+ * The share one mark is of the money in its column, as a percentage.
+ *
+ * IT IS ARITHMETIC AND SAYS SO. Every figure this site publishes is one the
+ * city printed; a share is not, and the word "of" carries that -- "8.4% of this
+ * column" is self-evidently a ratio rather than a line item, in a way that a
+ * bare "8.4%" beside a dollar figure would not be. It is computed from the
+ * DRAWN values, so on an opened node it is a share of that node's own total,
+ * which is what the reader is looking at.
+ *
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+function columnShare(d) {
+  if (!d.value) return "";
+  let total = 0;
+  for (const other of laidNodes) {
+    if (other.layer === d.layer) total += other.value;
+  }
+  if (!total) return "";
+  const pct = (100 * d.value) / total;
+  return (pct < 0.1 ? "<0.1" : pct.toFixed(1)) + "% of this column";
+}
+
+/**
  * @param {LaidLink | LaidNode} d
  * @returns {boolean}
  */
@@ -1917,8 +2007,24 @@ function showTip(event, d) {
     }
     meta.append(document.createTextNode(" "));
     meta.append(h("span", n.derived ? "chip derived" : "chip", n.derived ? "◇ inferred" : "printed"));
+    const share = columnShare(n);
+    if (share) {
+      meta.append(document.createTextNode(" "));
+      meta.append(h("span", "chip", share));
+    }
+    // A CAVEAT ABOUT THIS MARK, SAID AT THE MARK. The caveats page carries all
+    // of them and every page links to it, which is right for the ones about a
+    // schedule -- and wrong for the ones about a single node, which a reader
+    // meets while looking at that node and not while reading a list.
+    const cavs = caveatsFor(n.id);
+    if (cavs.length) {
+      meta.append(document.createTextNode(" "));
+      meta.append(h("span", "chip caveat", cavs.length === 1
+        ? "\u26a0 1 caveat" : "\u26a0 " + cavs.length + " caveats"));
+    }
     tip.append(meta);
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
+    for (const c of cavs) tip.append(h("div", "tip-meta", "\u26a0 " + c.summary));
   }
   tip.append(h("div", "tip-meta", "Select for sources."));
 
@@ -1977,9 +2083,23 @@ function pin(d) {
     chips.append(h("span", "chip", n.role.replace(/_/g, " ")));
     if (n.constraint_tier) chips.append(h("span", "chip", "constraint: " + n.constraint_tier));
     chips.append(h("span", n.derived ? "chip derived" : "chip", n.derived ? "◇ our inference" : "printed by the city"));
+    const share = columnShare(n);
+    if (share) chips.append(h("span", "chip", share));
     panel.append(chips);
     if (n.rationale) panel.append(h("p", "why", n.rationale));
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
+    // THE CAVEAT IN FULL IS ONE CLICK AWAY, and the summary is here. The
+    // tooltip can only afford the line; this panel is where a reader has asked
+    // for the detail, so it is where the link belongs. The href is the same
+    // anchor every caveat summary on the page uses -- composed by the packager
+    // per (document, caveat), so it lands on THIS year's copy of the sentence.
+    for (const c of caveatsFor(n.id)) {
+      const why = h("p", "why");
+      why.append(document.createTextNode("\u26a0 " + c.summary + " "));
+      const href = caveatHref(c.id);
+      if (href) why.append(link("Read it in full", href));
+      panel.append(why);
+    }
   }
 
   // THE CITATIONS ARE THE MARK'S OWN WHEN THE MARK HAS ANY, and the whole
@@ -2351,6 +2471,17 @@ function drawableSankey(doc, what) {
   else if (!Array.isArray(doc.metadata.sources)) missing.push("metadata.sources");
   else if (doc.metadata.sources.some((s) => !Array.isArray(s.pages))) {
     missing.push("metadata.sources[].pages");
+  } else if (!Array.isArray(doc.metadata.caveats)) missing.push("metadata.caveats");
+  else if (doc.metadata.caveats.some((c) => !Array.isArray(c.applies_to))) {
+    // AN ARM RATHER THAN A SCHEMA BUMP, which is the choice this key forced.
+    // caveatsFor dereferences metadata.caveats[].applies_to on a document
+    // fetched lazily and served with no cache-busting, so a browser can hold a
+    // pre-deploy file beside a post-deploy app.js -- the exact case this gate
+    // exists for. Bumping schema_version would refuse the same documents and
+    // cost two Go constants, this file, both goldens and eight fixtures; an arm
+    // refuses them by name and tells the reader to reload, which is what they
+    // can act on.
+    missing.push("metadata.caveats[].applies_to");
   }
   if (!missing.length) return true;
   // THE THIRD CAUSE IS NAMED BECAUSE IT IS THE LIKELIEST AND THE ONLY ONE THE

@@ -311,6 +311,7 @@ const NAMES = [
   // drill.mjs drives drillTo and shapeFor, which are the real entry points; the
   // rest are here so a check can measure one stage without the repaint.
   "shapeFor", "filterToNode", "capColumn", "drillable", "drillTo", "DRILL", "ROOT",
+  "caveatsFor", "columnShare",
   "paintBreadcrumb",
   // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
   // "#legend button .key", and the swatches that selector finds do not exist

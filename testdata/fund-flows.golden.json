@@ -62,7 +62,9 @@
         "id": "only-the-general-fund-is-decomposed",
         "summary": "Only the General Fund has a spending side; the other six groups' revenue ends at their funds.",
         "text": "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that fund alone, so the other six fund groups' revenue ends at their funds -- the money is not missing, the schedule that would break it down is not published.",
-        "applies_to": []
+        "applies_to": [
+          "fund/100"
+        ]
       }
     ]
   },
