@@ -46,7 +46,7 @@ export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", ".."
  * smaller one: the alternative is parsing Go templates in JavaScript.
  */
 const TEMPLATE_IDS = new Set([
-  "breadcrumb", "caveats", "caveats-count", "caveats-view", "chart", "chart-desc",
+  "breadcrumb", "caveats", "chart-hint", "caveats-count", "caveats-view", "chart", "chart-desc",
   "chart-title", "counts-line", "derived-list", "derived-view", "detail", "figures",
   "flow-table", "lede-year", "legend", "page-basis", "table-view", "theme-toggle",
   "tooltip", "year-toggle",
@@ -524,8 +524,11 @@ export const KNOWN_SELECTORS = {
   // restoreFocus asks the chart for a node to put focus on after a drill has
   // replaced it. The stub answers with whatever a check planted; nothing here
   // depends on WHICH node, only that the lookup is a declared one.
-  "g.node": [],
-    "#legend button .key": {
+  "g.node": {
+    how: "unanswered",
+    note: "restoreFocus asks the chart for a mark to put focus on after a drill has replaced it. Nothing plants one, so the lookup returns null and restoreFocus falls through -- declared rather than answered so the gap is printed, not implied. Answering it would need the stub to model the <g> elements render() appends to the SVG, which no check needs yet",
+  },
+  "#legend button .key": {
     how: "planted",
     note: "year.mjs plants the swatches buildLegend created, then calls paint()",
   },

@@ -1061,7 +1061,8 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 					"discloses something, under the right anchor, and it is not the sentence "+
 					"the contract requires", project.ConstraintTierCaveatID))
 		// THE SUMMARY IS CHECKED TOO, because it is the string a reader
-		// actually meets. index.html and drilldown.html print summaries and
+		// actually meets. index.html, revenue.html and spending.html print
+		// summaries and
 		// link to the text; a document whose text was word-perfect and whose
 		// summary said something else would pass the arm above and still
 		// mislead every reader who did not follow the link -- which is most of

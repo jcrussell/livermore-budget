@@ -36,7 +36,11 @@ const PAGES = [
     root: "",
     drill: { from: 2, tiers: [0, 3], back: "All fund groups", tail: "funds", cap: 8 },
     // Measured: 11 revenue categories into 6 fund groups.
-    overview: { nodes: 17, links: 29 },
+    // facts IS THE COUNT ITS OWN RIBBONS CITE, not the document's 280. The two
+    // pages partition the document's 239 cited facts exactly, 190 and 49, which
+    // is what two pages splitting one document should do -- and the counts line
+    // says both numbers so a reader can see the gap rather than infer it.
+    overview: { nodes: 17, links: 29, facts: 190 },
     // The node whose open view the cap is FOR. Its 32 funds are the shape
     // fisc-ppkq said rescaling would fix and measurement said it would not.
     worst: "fund-group/special-revenue",
@@ -49,7 +53,7 @@ const PAGES = [
     root: "fund/100",
     drill: { from: 4, tiers: [4, 5], back: "All divisions", tail: "categories", cap: 8 },
     // Measured: the General Fund into its 23 divisions.
-    overview: { nodes: 24, links: 23 },
+    overview: { nodes: 24, links: 23, facts: 49 },
     // NO DIVISION SPENDS ON MORE THAN A HANDFUL OF OBJECT CATEGORIES, so the
     // cap never fires here. Pinned so that stops being true loudly.
     worst: "dept/patrol",
@@ -126,7 +130,7 @@ export async function checks() {
 
     out.push({
       name: `${page.name}: the overview draws, and its counts line describes it`,
-      ok: before.counts === `${page.overview.links} flows between ${page.overview.nodes} nodes, from 280 facts` &&
+      ok: before.counts === `${page.overview.links} flows between ${page.overview.nodes} nodes, from ${page.overview.facts} of the document's 280 facts` &&
           before.rows === page.overview.links &&
           before.crumbHidden,
       detail: `counts "${before.counts}", ${before.rows} table rows, breadcrumb ` +
@@ -315,5 +319,6 @@ export async function checks() {
 
 /** The counts line a page's overview shows, composed the way paintCounts does. */
 function before0(page) {
-  return `${page.overview.links} flows between ${page.overview.nodes} nodes, from 280 facts`;
+  return `${page.overview.links} flows between ${page.overview.nodes} nodes, ` +
+    `from ${page.overview.facts} of the document's 280 facts`;
 }

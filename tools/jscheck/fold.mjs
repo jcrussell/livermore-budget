@@ -498,13 +498,13 @@ export async function checks() {
       ok: revenuePage.banners === 0 && spendingPage.banners === 0 &&
           revenuePage.lede === "FY 2025-26 adopted" &&
           spendingPage.lede === "FY 2025-26 adopted" &&
-          revenuePage.counts === "29 flows between 17 nodes, from 280 facts" &&
+          revenuePage.counts === "29 flows between 17 nodes, from 190 of the document's 280 facts" &&
           revenuePage.rows === 29 &&
           // SPENDING'S ROOT IS DOING THE WORK HERE. Without it this page draws
           // nothing: foldDocument refuses the document's eleven tier-0 revenue
           // nodes, which have no ancestor at tier 3 or 4, and the reader gets a
           // banner instead of a chart.
-          spendingPage.counts === "23 flows between 24 nodes, from 280 facts" &&
+          spendingPage.counts === "23 flows between 24 nodes, from 49 of the document's 280 facts" &&
           spendingPage.rows === 23 &&
           // THE CHART'S ACCESSIBLE NAME IS THIS CHART'S. paintYearWords composed
           // it from a literal naming a Sankey "of the <year> <basis> budget",

@@ -745,6 +745,16 @@ function foldTarget(byID, n, drawn) {
  */
 function filterToNode(doc, id, tiers) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  // A NAME THIS DOCUMENT DOES NOT CARRY IS A FAULT IN THE VIEW, and it must say
+  // so. Unchecked, an unknown id gives an empty subtree, no links, and
+  // d3-sankey dying on the empty graph with "RangeError: Invalid array
+  // length" -- a stack trace where a sentence belongs. Live the day these pages
+  // get the year control unviewedDocuments still declares as pending: a root or
+  // an opened node valid in one column need not exist in another.
+  if (!byID.has(id)) {
+    throw new Error("cannot draw " + doc.projection + ": this page asks for node " + id +
+      ", which the document does not carry");
+  }
   const drawn = new Set(tiers);
 
   // The subtree: the node and everything whose parent chain reaches it. Walked
@@ -859,18 +869,31 @@ function paintCounts() {
   // was unreachable while the smallest chart on the site had 29 marks.
   const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
     n + " " + word + (n === 1 ? "" : "s");
-  // THE UNDRILLED WORDING IS UNCHANGED, deliberately. On a page showing the
-  // whole document the two readings coincide, and the established sentence is
-  // the one the counts contract is written about. Only the drilled state needs
-  // to say which quantity it is naming, because there the two differ by a
-  // factor of six and neither is obvious.
+  // BOTH NUMBERS, ALWAYS, and the gap between them stated rather than implied.
+  //
+  // This printed the document's fact total on every undrilled page, justified
+  // by "a page showing the whole document" -- a condition that is false for
+  // both pages this lane shipped. spending.html read "23 flows between 24
+  // nodes, from 280 facts" over ribbons citing 49, and revenue.html the same
+  // over 190. Naming one number and meaning the other is the failure; naming
+  // one when there are two is what let it happen twice.
+  //
+  // Saying both keeps what project.Counts.Facts is built on -- "the gap between
+  // Facts and Links is the part of the schedule the chart cannot show, and
+  // stating both is what makes it visible" -- and makes it visible on a page
+  // that draws a slice as well as on one that draws the lot. The spine reads
+  // "58 flows between 25 nodes, from 58 of the document's 120 facts", where the
+  // 62 it does not draw are the printed zeros and the stocks.
   let from = ", from " + plural(shownYear.counts.facts, "fact");
-  if (drilledInto && projection) {
+  if (projection) {
     const cited = new Set();
     for (const l of projection.links) {
       for (const id of l.fact_ids) cited.add(id);
     }
-    from = ", from " + plural(cited.size, "fact") + " behind these flows";
+    from = cited.size === shownYear.counts.facts
+      ? ", from " + plural(cited.size, "fact")
+      : ", from " + cited.size + " of the document's " +
+        plural(shownYear.counts.facts, "fact");
   }
   counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") + from;
 }
@@ -911,6 +934,10 @@ function drillable(d) {
 function drillTo(id) {
   if (!fetched || !DRILL) return;
   const was = drilledInto;
+  // ASKED BEFORE ANYTHING IS REPAINTED. The element focus is on is one the
+  // repaint below removes, so after it there is nothing left to ask about.
+  const active = document.activeElement;
+  const hadFocus = Boolean(active) && active !== document.body;
   drilledInto = id;
 
   // SHAPE AND LAY OUT BEFORE MUTATING ANYTHING, which is showYear's contract
@@ -948,10 +975,11 @@ function drillTo(id) {
   paintChartName();
   paintCounts();
   buildLegend();
+  paintChartHint();
   buildDerivedList();
   buildTable();
   render(laid);
-  restoreFocus();
+  restoreFocus(hadFocus);
 }
 
 /**
@@ -964,14 +992,21 @@ function drillTo(id) {
  * "tab to one and press Enter". A reader would have to tab in from the top of
  * the document again after every gesture the page invites.
  *
- * IT MOVES FOCUS ONLY IF IT WAS ALREADY IN THE CHART. Stealing it from a reader
- * who opened a node by mouse -- or who is somewhere else entirely on the page --
- * would be its own defect, so activeElement decides.
+ * IT MOVES FOCUS ONLY IF IT WAS ALREADY IN THE CHART, because stealing it from
+ * a reader who clicked with a mouse, or who is somewhere else on the page
+ * entirely, would be its own defect.
+ *
+ * THE CALLER DECIDES THAT, AND HAS TO. This read document.activeElement itself,
+ * and read it AFTER paintBreadcrumb and render had already detached the focused
+ * element -- so it early-returned in exactly the two directions it was written
+ * for and fired only in the case its own comment says must not happen. The
+ * question has to be asked while the answer still exists.
+ *
+ * @param {boolean} hadFocus whether focus was inside the chart before the
+ *   repaint that just replaced it.
  */
-function restoreFocus() {
-  const active = document.activeElement;
-  const inChart = Boolean(active) && active !== document.body;
-  if (!inChart) return;
+function restoreFocus(hadFocus) {
+  if (!hadFocus) return;
   const bar = maybeEl("breadcrumb");
   const back = bar ? bar.children[0] : null;
   if (drilledInto && back && typeof back.focus === "function") {
@@ -1012,6 +1047,39 @@ function paintChartName() {
     ? labelOf(drilledInto) + " on the left, and what it is made of on the right. " +
       "Use the breadcrumb above the chart, or press Escape, to go back."
     : baseDescription;
+}
+
+/**
+ * Says what a click does, for the state the chart is actually in.
+ *
+ * THE INSTRUCTION GOES FALSE THE MOMENT A READER FOLLOWS IT. The drill is one
+ * hop -- DRILL.from names a single tier, so no node in an opened view is itself
+ * openable -- and the page went on saying "click a node in the right-hand
+ * column to open it" over a chart where nothing opened. The swatch sentence was
+ * worse: conditional on the OPENING state's legend, and buildLegend draws no
+ * swatches in any opened view.
+ *
+ * Server-rendered for the opening state, so it survives with JavaScript off --
+ * where it is also true, because without a script nothing can be opened at all.
+ */
+function paintChartHint() {
+  const hint = maybeEl("chart-hint");
+  if (!hint || !DRILL) return;
+  if (drilledInto) {
+    hint.textContent = "This is " + labelOf(drilledInto) +
+      ", broken into its parts. Nothing here opens further; go back to open another.";
+    return;
+  }
+  const swatches = buildLegendCount();
+  hint.textContent = "Click a node in the right-hand column to open it into its parts, " +
+    "or tab to one and press Enter." +
+    (swatches ? " A fund swatch follows one group's money without opening anything." : "");
+}
+
+/** How many fund-group swatches the legend is showing. */
+function buildLegendCount() {
+  const legend = maybeEl("legend");
+  return legend ? legend.children.length : 0;
 }
 
 /**
@@ -2405,6 +2473,7 @@ async function showYear(year) {
   paintYearWords(year);
   paintBreadcrumb();
   buildLegend();
+  paintChartHint();
   buildDerivedList();
   buildTable();
   render(laid);
@@ -2640,16 +2709,10 @@ async function main() {
       // also lost the group they had opened -- and the comment beside it
       // claimed the opposite, which is how it got written. Two presses close
       // both, in the order a reader made them.
-      if (pinned || isolated) {
-        hideTip();
-        pinned = null;
-        // The panel is the pin made visible, so clearing one without the other
-        // leaves provenance on screen for a flow that is no longer selected.
-        resetDetail();
-        setIsolated("");
-        return;
-      }
-      if (drilledInto) {
+      // AN OPENED NODE IS CLOSED ONLY WHEN THERE IS NOTHING INSIDE IT TO
+      // CLEAR. drillTo repaints everything and clears the pin and the isolation
+      // itself, so this branch does nothing else.
+      if (!pinned && !isolated && drilledInto) {
         drillTo("");
         return;
       }

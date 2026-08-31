@@ -78,10 +78,17 @@
        which is the shape neither Revenue nor Spending draws. Prose that
        describes one page's columns cannot live in a template two pages share;
        it goes in the view, which is the only place that knows. */}}
+{{- /* THE INSTRUCTION IS REPAINTED, because it stops being true the moment a
+       reader follows it. In an opened view nothing is drillable -- the drill is
+       one hop, so a node in the opened chart is not itself openable -- and the
+       sentence would go on inviting a click that does nothing. app.js's
+       paintChartHint owns the span; this is the opening state, server-rendered
+       so it survives with JavaScript off, where it is also true because nothing
+       can be opened at all. */}}
 <p class="lede">
   <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span>.
-  {{- if .Drill}} Click a node in the <strong>right-hand column</strong> to open it into its
-  parts, or tab to one and press Enter. Escape closes it again.{{end}}
+  {{- if .Drill}} <span id="chart-hint">Click a node in the right-hand column to open it into
+  its parts, or tab to one and press Enter.</span>{{end}}
 </p>
 {{- /* THIS USED TO WARN THAT ADDING THE FLOWS UP DOUBLE-COUNTS, which was
        true of the three-column page and is false of both pages that replaced
@@ -124,10 +131,12 @@
              swatches nothing then explained. buildLegend draws one per fund
              group the chart touches, which is a property of the tier set, so
              the condition is the tier set. */}}
-      {{if .Drill}}Click a node in the right-hand column to open it into its parts; Escape
-      closes it again.{{if .HasLegend}} A fund swatch follows one group's money without
-      opening anything.{{end}}{{else}}Click a node or a fund swatch to follow only that
-      money; Escape puts the rest back.{{end}}</span>
+      {{- /* THE SWATCH SENTENCE MOVED INTO #chart-hint TOO. It was conditional
+             on the OPENING state's legend and never repainted, so it went on
+             offering swatches in every opened view, where buildLegend draws
+             none. What is left here is true whatever the chart is showing. */}}
+      {{if .Drill}}Escape closes an opened node and clears a selection.{{else}}Click a
+      node or a fund swatch to follow only that money; Escape puts the rest back.{{end}}</span>
   </div>
   {{- if .Drill}}
   {{- /* SHIPPED EMPTY AND hidden, filled by app.js. A breadcrumb rendered
