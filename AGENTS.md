@@ -323,20 +323,42 @@ commit message about review rather than about the corpus.)*
    its check, its export seam and its client are one claim; reviewing the first
    commit alone cannot see whether the client renders what the projection
    publishes.
-2. **Fix the findings.** Each fix lands with the test that would have caught it
-   — see [Prove it can fail](#prove-it-can-fail) — and the code and its review
-   land together rather than as a fix-up commit.
-3. **`make pre-commit` and the lane's mutation proofs green** before
-   re-reviewing. A red gate means step 2 is not finished.
-4. **Re-review the range including the fixes.** This is the step that matters:
+2. **Triage before you fix, and fix only two of the five classes.** Every
+   finding is one of: **WRONG-OUTPUT** (a wrong number, a wrong link or a
+   broken page could reach a reader), **FAIL-OPEN** (a guard or a check that
+   cannot fail, or that accepts what it should reject), **FALSE-CLAIM**
+   (committed text saying something untrue about the code), **DESIGN** (built
+   the wrong shape), **HYGIENE**. **Fix the first two in the pass; file the
+   rest**, unless the fix is a single line in a file the pass is already
+   touching. The reason is measured and it is the whole of
+   [What fifteen passes measured](#what-fifteen-passes-measured): a pass that
+   fixes everything it finds writes 150-450 unreviewed lines, and those lines
+   are where the next pass's findings come from.
+3. **Fix the findings you kept.** Each fix lands with the test that would have
+   caught it — see [Prove it can fail](#prove-it-can-fail) — and the code and
+   its review land together rather than as a fix-up commit.
+4. **`make pre-commit` and the lane's mutation proofs green** before
+   re-reviewing. A red gate means step 3 is not finished.
+5. **Re-review the range including the fixes.** This is the step that matters:
    it is where the table above comes from.
-5. **Stop** when a pass returns nothing, or when the only findings left are
-   ones you can state a reason for declining. **File the declines as beads** —
-   `fisc-i38`, `fisc-oz4` and `fisc-8fr` all exist because a review pass
-   surfaced something real that was not worth taking then.
-6. **File whatever is still open when you stop**, whether you are stopping
+6. **Stop when a pass returns no WRONG-OUTPUT and no FAIL-OPEN finding** — not
+   when it returns nothing. It will not return nothing. Across 61 recorded
+   passes the smallest yield is **two** and zero has never once occurred, so
+   the rule this replaces named an outcome the project has never observed and
+   the cap was doing all the stopping. Findings you decline for a stated reason
+   count as stopped too — `fisc-i38`, `fisc-oz4` and `fisc-8fr` all exist
+   because a review pass surfaced something real that was not worth taking
+   then.
+7. **File whatever is still open when you stop**, whether you are stopping
    because you declined it or because you hit the cap. See
    [Nothing leaves a pass unfiled](#nothing-leaves-a-pass-unfiled).
+8. **The last pass's own fix ships unreviewed unless you do something about
+   it.** Nothing in steps 1-7 reads it: it is committed after the final review
+   and the lane closes. Either give that diff alone a narrow extra pass, or
+   keep it small enough that you can say why it needs none. On 2026-08-31 the
+   three lanes' fifth-pass fixes were 191, 135 and 74 insertions — 400 lines,
+   43 of them in `site/app.js`, which readers are served verbatim — and nothing
+   read any of them. `fisc-i92i`.
 
 ### Three passes at least, five at most
 
@@ -348,8 +370,15 @@ introduced ones.
 
 **Five is the ceiling**, raised from three because three was demonstrably too
 low on a lane whose third pass found five real defects, all of them in the
-original commit. The ceiling is not a target — stop the moment a pass returns
-clean, which is often the third.
+original commit. The ceiling is not a target — stop the moment step 6's
+condition is met.
+
+*(That sentence used to read "stop the moment a pass returns clean, which is
+often the third". Both halves were false and nothing in the tree contradicted
+them, which is why they survived. A pass has never returned clean here — the
+smallest yield in 61 recorded passes is two. And the third pass is not where
+lanes end: `git log --format=%s | grep -ci fifth` counts nine lanes that ran the
+full five, and no lane has ever stopped because a pass came back clean.)*
 
 **A late pass still finding real defects is a signal about the change, not about
 the review.** At the cap, report what the last pass found and let the owner
@@ -383,6 +412,116 @@ thirty-four — 11+8+6+6+4 = 35, less the one fail-open. The number was written
 from memory of the pass counts rather than added up, in a commit message about
 review rigour, which is the defect
 [Before you quote a number](#before-you-quote-a-number) exists to name.)*
+
+### What fifteen passes measured
+
+Everything above is anecdote sharpened by re-reading. This is the one place the
+findings were counted rather than remembered: all **115** findings of the three
+2026-08-31 lanes, classified one at a time from the commit bodies, with
+provenance settled by `git log -S` wherever a message does not say where a
+defect came from.
+
+**Start with the number the session got wrong about itself.** `fisc-yj4w`'s
+notes report *"DEFECTS INTRODUCED BY AN EARLIER PASS'S OWN FIX, by lane: caveats
+2 of 33, drill 3 of 48, badge 3 of 29"* — eight. Per finding it is **27**:
+
+| lane | as recorded | measured per finding |
+|---|---|---|
+| caveats | 2 of 33 | **6** of 37 |
+| drill | 3 of 48 | **12** of 49 |
+| badge | 3 of 29 | **9** of 29 |
+
+The recorded figures count *passes that contained* such a finding. And the
+undercount was not fixable by reading harder: **only one of the caveats lane's
+six is labelled as introduced-by-fix in its own commit message**; the rest are
+recoverable only from the diffs. That is
+[Before you quote a number](#before-you-quote-a-number) applied to the
+attribution field, and it matters more than the other instances of that defect
+because this is the number the loop is judged by.
+
+**Where the 115 lived**
+
+| | count | share |
+|---|---|---|
+| NEW-CODE — the lane's own feature commits | 39 | 34% |
+| **INTRODUCED-BY-FIX — an earlier pass in the same lane** | **27** | **23%** |
+| PROSE-NEW — a false claim in text this lane wrote | 20 | 17% |
+| TEST-GAP — no guard, or a guard that could not fail | 15 | 13% |
+| PROSE-PRE-EXISTING — older text the lane silently falsified | 12 | 10% |
+| **PRE-EXISTING code** | **1** | **<1%** |
+| classified in two rows at once | 1 | |
+
+**What kind they were**
+
+| | caveats | drill | badge | total |
+|---|---|---|---|---|
+| WRONG-OUTPUT | 4 | 22 | 14 | 40 |
+| FAIL-OPEN | 11 | 12 | 6 | 29 |
+| FALSE-CLAIM | 19 | 8 | 5 | 32 |
+| DESIGN | 2 | 4 | 3 | 9 |
+| HYGIENE | 1 | 3 | 1 | 5 |
+
+Five things follow. Three are the reason for steps 2, 6 and 8 above; the other
+two are `fisc-rx1d` and `fisc-xbd4`.
+
+**The loop is its own second-largest defect source.** 27 against 39 from the
+feature commits, and against **one** pre-existing code defect in 115. Whatever
+else these passes were doing, auditing the tree was not it — they reviewed the
+change, and then reviewed themselves. The share also **rises with pass number**:
+in the drill lane, findings attributed to an earlier pass's own fix run 1, 3, 3,
+**5** across passes two to five; three of the badge lane's fifth-pass five are
+the loop's own work. By the fourth pass the review is mostly reading its own
+output, which is what a non-decaying count looks like from the inside.
+
+**A pass has never returned nothing.** `git log --format='%s' | grep -oiE
+'[a-z]+ findings'` over the whole log — 61 passes, ~323 findings:
+
+| yield | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11 | 12 | 13 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| passes | 7 | 5 | 16 | 10 | 4 | 10 | 4 | 2 | 1 | 1 | 1 |
+
+Zero has never occurred and neither has one. Yield is also close to independent
+of how much code the pass is reading: the caveats lane's first pass read 1,812
+insertions and returned 9, its fourth read a 69-line fix and returned 5. A rule
+that waits for silence from a detector with a floor of two is a rule that always
+defers to the cap.
+
+**The fixes are the size of the feature.** Insertions, `.beads` excluded:
+
+| lane | feature | five fix passes | ratio | yields |
+|---|---|---|---|---|
+| caveats | 1,812 | 729 | 40% | 9, 5, 7, 5, 7 |
+| drill | 1,069 | 1,246 | **117%** | 12, 13, 7, 7, 9 |
+| badge | **200** | 896 | **448%** | 8, 7, 5, 4, 5 |
+
+Against the lanes that *did* decay, whose late fixes shrank to nothing:
+fund-balance's fifth was 16 insertions and yielded 2, the guards lane's fourth
+was 26 and yielded 2. The three lanes above never shrank — their fifth-pass
+fixes were 74, 135 and 191. **Decay is what a shrinking fix commit looks like**,
+which is why step 2 files rather than fixes the three classes that are not the
+stopping condition.
+
+**Planning is not where any of this comes from.** DESIGN is 9 of 115. `fisc-yj4w.7`
+declines two alternative tier sets with measured layout numbers, names the file
+and line of every seam it will touch, and records in its close reason the two
+premises that turned out wrong — both of which were caught while implementing,
+not by any review pass. What the passes found instead was code shipped without
+its guard: `bd0a098` added 492 lines of `site/app.js` and 86 lines of
+`tools/jscheck`, **none of them covering the drill it had just written**, and the
+drill's whole check module was written *inside* the review passes
+(`git log --diff-filter=A -- tools/jscheck/drill.mjs` → `a3fe8e8`). Across the
+session's sixteen review-fix commits `drill.mjs` took **633** insertions against
+`app.js`'s 503 — the largest single sink of fix churn there was. A finding that
+reads *"this has no test"* is the test-writing step, deferred, relabelled, and
+paid for at the price of a whole pass. `fisc-rx1d`.
+
+**One fact in three files is three findings.** The badge lane found the same wrong
+count — *"the other six fund groups"* — three times, in `fundflows.go`, then
+`data.go`'s lede, then `docs/general-fund-drilldown-contract.md`, across three
+consecutive passes. The caveats lane's *"250 words"* was false in six places at
+once. So: correcting a fact in prose means grepping for its copies in the same
+commit. `fisc-xbd4`, and see
+[Before you quote a number](#before-you-quote-a-number).
 
 ### Nothing leaves a pass unfiled
 
@@ -524,6 +663,20 @@ project treats an unchecked one as a defect. Three traps:
   way: the claim reads as *done*, or
   as *tracked*, so nobody goes looking. The invented id is the worst of the
   three, because the work really is tracked and only the pointer is dead.
+
+- **When you correct a figure in prose, grep the tree for its copies in the
+  same commit.** A fact restated in four files is not one defect; it is four
+  findings arriving one per review pass. Measured on the badge lane: *"the
+  other six fund groups"* was wrong in `internal/project/fundflows.go`, in
+  `pkg/cmd/export/data.go`'s lede and in
+  `docs/general-fund-drilldown-contract.md`, and was found and half-fixed in
+  three *consecutive* passes, each of which believed it had finished. The
+  caveats lane's *"250 words"* was false in six places at once.
+
+  It is grep-then-**read**, not grep-then-replace: `grep -rn "six fund groups"`
+  also returns ten hits that encode a different and largely true proposition —
+  how many groups the spine prints, not how many stop at their funds. The same
+  numeral standing for two claims is why this cannot be a check. `fisc-xbd4`.
 
 The gate line most commits here end with is those two together: *"facts.jsonl
 unmoved; fisc verify 40 passed, 0 failed."*
@@ -730,6 +883,32 @@ and the number could not be reproduced from anything in the tree. Those
 before-figures were corrected to what does reproduce, and every one of them is
 now pinned rather than bounded, so a comment edited without re-measuring fails
 `make js`. Quote what the current code does.
+
+### A change to `app.js` ships its check in the same commit
+
+`site/app.js` has no compiler, no types and no test framework. `tools/jscheck`
+is the only thing standing behind 2,972 lines that readers are served verbatim,
+and it is hand-written per feature, so a client change with no jscheck beside it
+is a change nothing can see go wrong. **Do not open review on one.**
+
+Measured, because the cost is not obvious: `bd0a098` added 492 lines of
+`site/app.js` and 86 lines of `tools/jscheck` — all of it in `fold.mjs` and
+`harness.mjs`, none of it reaching `drillTo`, `filterToNode`, `capColumn` or
+either declared tier set. `tools/jscheck/drill.mjs` was created by that lane's
+*first review pass* and reached 375 insertions across the five; over the
+session's sixteen review-fix commits it took 633, against `app.js`'s 503, which
+made it the largest single sink of fix churn there was. Worse, checks written
+under review pressure to close the previous pass's finding were the weakest ones
+in the lane: a drill guard that measured the chart already on screen from the
+second node on, a baseline that never asserted the drill happened, a share check
+that fetched the wrong fiscal year's golden, and a selector entry malformed so
+that it *"printed as declared and could not fail"*.
+Four checks written to close findings, four that could not fail — which is
+[green because the gate fired](#the-failure-mode-to-look-for-green-because-the-gate-fired)
+arriving through the review loop rather than through a fixture.
+
+State the mutation, per [Prove it can fail](#prove-it-can-fail). `fisc-rx1d`
+carries the audit of which of `app.js`'s current paths no module drives.
 
 ## The extraction boundary
 
