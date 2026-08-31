@@ -230,13 +230,17 @@ So the client folds. The rule, in full:
   pages its figure was read from, and a reader clicking through would land on a
   shard holding part of the number they were shown. It de-duplicates on
   `(doc_id, page)`, which is something the fact-id union cannot express: two
-  facts on one page are two ids and one locator. Measured on FY2025-26: 52
-  folded rows carry 79 locators, at most 5 on any one row.
+  facts on one page are two ids and one locator. Measured on FY2025-26 at the
+  `{0,2,4}` set the page then drew: 52 folded rows carried 79 locators, at most
+  5 on any one row.
 
   This is what makes the flow table's `Source` column true. It used to print
-  the document's own 18 pages identically on all 52 rows — 1,872 anchors saying
-  nothing about the row they sat in. It is now 237, each naming the pages that
-  row's figure came from.
+  the document's own 18 pages identically on every row — 1,872 anchors saying
+  nothing about the row they sat in — and became 237, each naming the pages that
+  row's figure came from. Those figures are kept as the measurement that
+  justified the union; the two pages that now draw this document fold it
+  differently and carry their own row counts, which `tools/jscheck/drill.mjs`
+  pins.
 - **A link whose ends fold to the same node is dropped.** It was a flow inside
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
@@ -254,27 +258,83 @@ So the client folds. The rule, in full:
   loses a column silently, keeping it leaves a node with no column to be drawn
   in.
 
-**The page draws tiers 0, 2 and 4** — revenue source, fund group, division —
-giving 52 links over columns of 11 / 6 / 23.
+### Two pages draw it, and neither draws tiers 0, 2 and 4
 
-**Expanding a fund group back into its funds is not a per-node interaction on
-this d3-sankey** (`fisc-ppkq`). The vendored build takes the column count from
-topology and clamps the align into it, so expanding one group draws the funds
-and the divisions in the same column while the unexpanded ribbons span two —
-which `tools/jscheck/layout.mjs`'s `bands()` refuses. The shape that works is
-filtering to one group and rescaling to its own total.
+**That set was `drilldown.html`, which no longer exists.** It drew revenue
+source, fund group and division in one chart — 52 links over columns of
+11 / 6 / 23 — and it is now two pages, split where the money changes hands:
+
+| page | draws | opening a node draws | root |
+|---|---|---|---|
+| `revenue.html` | `{0,2}` — 11 categories into 6 fund groups, 29 links | `{0,3}` — that group's own funds | — |
+| `spending.html` | `{3,4}` — the General Fund into 23 divisions, 23 links | `{4,5}` — that division's object categories | `fund/100` |
+
+**Spending needs a root and Revenue does not**, and that is a refusal rather
+than a preference. This document carries eleven tier-0 revenue nodes with no
+ancestor at tier 3 or 4, and the fold refuses a node it cannot place — so
+`{3,4}` over the whole document draws *nothing*, not a partial chart. `{0,2}`
+places every node.
+
+**Neither page has the property that the old tier set had**, and it is worth
+saying which one: at `{0,2,4}` the fold cites nothing away, because the
+surviving fund-to-division link carries the same facts as the object rows that
+fold into it. At `{0,2}` the whole spending side folds to self-loops and is
+dropped — Revenue's ribbons cite 190 of the document's 239 facts and Spending's
+the other 49. They partition it exactly; neither page can claim to carry it all,
+and both say so.
+
+### Opening a node: filter, cap, fold
+
+**Expanding a node in place is not a per-node interaction on this d3-sankey**
+(`fisc-ppkq`). The vendored build takes the column count from topology and
+clamps the align into it, so expanding one group draws the funds and the
+divisions in the same column while the unexpanded ribbons span two — which
+`tools/jscheck/layout.mjs`'s `bands()` refuses. The shape that works is
+filtering to one node and rescaling to its own total.
+
+**Rescaling alone is not enough, and `fisc-ppkq` says it is.** Measured:
+filtered to special revenue and rescaled to that group's own total, 22 of its 49
+ribbons still lay out under one pixel, because the concentration is *within* the
+group — `fund/200` alone is 34.9% of it and the smallest two are 0.034%.
+Rescaling cannot fix a distribution.
+
+**So a drill also caps its fine column.** Above `Drill.Cap` nodes, the tail by
+value folds into one aggregate. At cap 8 special revenue draws 2 sub-pixel
+ribbons instead of 22, and capital 1 instead of 4. The cap is inert on Spending,
+whose widest division spends on two object categories.
+
+**The aggregate node is `derived: true`**, with a rationale and a source note.
+Its *value* is every cent a printed figure, summed exactly as the fold sums a
+merged ribbon; what is inferred is the *grouping*, and the published-is-not-
+derived rule is about which of those the page claims. It shipped for one commit
+as `derived: false` — drawn solid, chipped "printed by the city", and absent
+from "what we inferred".
+
+**The order is filter, cap, fold, and it is not interchangeable.** Filter first,
+because the cap ranks a column by size and the sizes that matter are the ones
+inside the node being opened. Cap before fold, because the cap produces several
+ribbons from one source to the aggregate and the fold is what merges them,
+summing the values and unioning the fact ids and locators.
+
+`tools/jscheck/drill.mjs` re-measures all of this on every `make js`, opening
+every node both pages offer — 6 fund groups and 23 divisions — rather than a
+sample.
 
 **Tier 5 is not a one-constant alternative.** Drawing `{0,2,4,5}` puts 29 of the
 44 object nodes under one pixel (smallest 0.030px), and that column's labels are
 23× "Services & Supplies" and 21× "Wages & Benefits". The object grain is not
 *hidden* by the fold; it is unrenderable at this canvas, and offering it needs a
-view that rescales to one division rather than a fourth column.
+view that rescales to one division rather than a fourth column — which is what
+Spending's drill is. Measured over all 23 divisions, the smallest ribbon in any
+opened view is 51.4px.
 
-**What the fold does not fix.** Seven of the 52 ribbons lay out under 1px and
-four of the 40 node rects under 2px, and `render()` floors both — `Math.max(1,
-width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those marks do not encode
-their values. `tools/jscheck/fold.mjs` pins **both** counts, so neither can grow
-unnoticed.
+**What the fold does not fix.** At the `{0,2,4}` set, seven of the 52 ribbons
+laid out under 1px and four of the 40 node rects under 2px, and `render()` floors
+both — `Math.max(1, width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those
+marks do not encode their values. `tools/jscheck/fold.mjs` pins **both** counts,
+so neither can grow unnoticed. The shipped pages are better on this and not
+free of it: Revenue's overview draws 5 sub-pixel ribbons of 29 and Spending's
+1 of 23.
 
 **The page describes the folded document, not the fetched one.** The legend, the
 flow table, the inferred list and the flow count are all statements about what

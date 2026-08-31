@@ -198,6 +198,30 @@ export async function checks() {
     });
   }
 
+  // THE AGGREGATE IS OURS AND SAYS SO. The city printed no line item called
+  // "24 smaller funds", and this node shipped for one commit with
+  // derived: false -- drawn solid rather than dashed, chipped "printed by the
+  // city" in the tooltip and the detail panel, announced as printed in its
+  // aria-label, and absent from "What we inferred", which is the list that
+  // exists to be complete. That is the published-is-not-derived invariant
+  // broken in output, and stated most plainly to the readers who cannot see the
+  // mark.
+  const revenue = PAGES[0];
+  const { app: capApp } = await opened(revenue);
+  capApp.drillTo(revenue.worst);
+  const agg = capApp.projection.nodes.find((n) => n.id === "aggregate/tail");
+  out.push({
+    name: "revenue: the capped tail is marked as ours, not as something the city printed",
+    ok: Boolean(agg) && agg.derived === true && agg.rationale !== "" &&
+        agg.source_note !== "" && /^\d+ smaller funds$/.test(agg.label),
+    detail: agg
+      ? `"${agg.label}" derived=${agg.derived}, rationale ` +
+        (agg.rationale ? `"${agg.rationale.slice(0, 48)}..."` : "MISSING") +
+        (agg.source_note ? ", source note present" : ", SOURCE NOTE MISSING")
+      : "no aggregate node: the cap folded nothing on the page it is needed for",
+  });
+  capApp.drillTo("");
+
   // THE ROOT, WHICH IS NOT A NARROWING BUT THE THING THAT DRAWS AT ALL. Spending
   // draws tiers {3,4} of a document carrying eleven tier-0 revenue nodes, and
   // foldDocument refuses a node it cannot place. Without a root the page is a

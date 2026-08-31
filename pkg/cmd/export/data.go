@@ -490,6 +490,14 @@ func views(built Result) []export.View {
 	// dist/data/fund-flows.json. tools/jscheck/fold.mjs re-measures both
 	// OVERVIEWS on each run, and drill.mjs both DRILLS -- the figures in these
 	// comments and the ones those checks pin are the same measurements.
+	// NEITHER OPENS ON ANYTHING BUT FY2025-26, AND NEITHER LISTS YEAR STEMS,
+	// which is a smaller pair of views than the four published columns could
+	// support and is deliberate. See unviewedDocuments for the two things a
+	// year control here has to solve first.
+	//
+	// (This paragraph was left behind by the reordering that moved the trends
+	// view below these two: it ended up above the caveats index, describing a
+	// drill-down that no longer had a view there at all.)
 	if _, ok := projections[project.FundFlowsProjection]; ok {
 		// REVENUE opens at {0,2}: 11 revenue categories into 6 fund groups, 29
 		// links, 5 ribbons under a pixel. Opening a group redraws at {0,3} --
@@ -593,11 +601,6 @@ func views(built Result) []export.View {
 				"are intentions adopted together.",
 		})
 	}
-	// THE DRILL-DOWN OPENS ON FY2025-26 AND LISTS NO YEAR STEMS, which is a
-	// smaller view than the four published columns could support and is
-	// deliberate. See unviewedDocuments for the two things a year control here
-	// has to solve first.
-	//
 	// THE CAVEATS INDEX, THE SECOND VIEW THAT NAMES NO PROJECTION. It lists
 	// every published document's caveats in full, so the other pages can show
 	// one line and link here instead of reprinting the whole paragraph

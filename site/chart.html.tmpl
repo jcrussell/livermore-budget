@@ -4,7 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.Title}}</title>
-<meta name="description" content="Which fund each of the city's revenue sources lands in, and which General Fund division spends it — traced to the city's published schedules.">
+{{- /* THE VIEW'S WORDS, like the <title> and the chart's <desc>. This was the
+       literal written for the single page this template used to render, so
+       spending.html shipped a description of revenue and revenue.html one of
+       divisions -- one line above the two elements that had just been made
+       per-view. */}}
+<meta name="description" content="{{.ChartDescription}}">
 <meta name="color-scheme" content="light dark">
 <link rel="stylesheet" href="style.css">
 <script>
@@ -78,11 +83,19 @@
   {{- if .Drill}} Click a node in the <strong>right-hand column</strong> to open it into its
   parts, or tab to one and press Enter. Escape closes it again.{{end}}
 </p>
+{{- /* THIS USED TO WARN THAT ADDING THE FLOWS UP DOUBLE-COUNTS, which was
+       true of the three-column page and is false of both pages that replaced
+       it: {0,2} and {3,4} are one grain each, and their ribbons sum. The
+       document still holds two grains -- that is why it publishes no headline
+       -- but a reader looking at either of these charts cannot reach the
+       second one from it. Warning about a trap the page does not have teaches
+       a reader to distrust a figure that is fine. */}}
 <p class="lede">
-  <strong>Read one pair of columns at a time.</strong> The same money appears at more than
-  one grain in this document, so adding every flow up counts part of it twice — and unlike a
-  missing figure, that total would look right. This page publishes no total for that reason,
-  and neither does the file it is drawn from.
+  <strong>This page publishes no total.</strong> The document behind it holds the same money
+  at more than one grain — fund totals and the object rows beneath them — so no single number
+  covers it without counting part of it twice. Each chart here draws one pair of columns,
+  which do sum; the totals the city itself publishes are on
+  <a href="index.html">the budget flows page</a>.
 </p>
 
 <div class="card">
@@ -104,9 +117,17 @@
              that the chart TOUCHES, and that page's two columns are one fund
              and its divisions. Measured: 6 buttons on revenue.html's overview,
              0 on spending.html and 0 on all 29 opened views. */}}
+      {{- /* THE SWATCH SENTENCE IS BACK, CONDITIONALLY. It was dropped for every
+             drilling page on a measurement -- "0 legend buttons" -- that holds
+             for spending.html and for every OPENED view, and not for
+             revenue.html's overview, which draws six clickable fund-group
+             swatches nothing then explained. buildLegend draws one per fund
+             group the chart touches, which is a property of the tier set, so
+             the condition is the tier set. */}}
       {{if .Drill}}Click a node in the right-hand column to open it into its parts; Escape
-      closes it again.{{else}}Click a node or a fund swatch to follow only that money;
-      Escape puts the rest back.{{end}}</span>
+      closes it again.{{if .HasLegend}} A fund swatch follows one group's money without
+      opening anything.{{end}}{{else}}Click a node or a fund swatch to follow only that
+      money; Escape puts the rest back.{{end}}</span>
   </div>
   {{- if .Drill}}
   {{- /* SHIPPED EMPTY AND hidden, filled by app.js. A breadcrumb rendered
@@ -176,8 +197,19 @@
      that reader can see. -->
 <p class="lede">
   The chart's twin. Same numbers, no colour, no hovering — <span id="counts-line">{{.Links}} flows between
-  {{.Nodes}} nodes, from {{.Facts}} facts</span>. Every fact behind a merged flow is listed on
-  the row that carries it, so nothing here is cited less precisely than the file cites it.
+  {{.Nodes}} nodes, from {{.Facts}} facts</span>.
+  {{- /* THE OLD SENTENCE PROMISED that every fact behind a merged flow is
+         listed on the row that carries it, "so nothing here is cited less
+         precisely than the file cites it". True at the three-column tier set,
+         where the surviving fund-to-division link carries the object rows'
+         facts. False at both shipped ones: each folds the OTHER side into
+         self-loops and drops them, so this page's rows cite 190 of the
+         document's 239 facts and the other page's the remaining 49. Nothing is
+         lost -- the two pages partition it -- but this page cannot claim to
+         carry it all. */}}
+  Every fact behind a flow drawn here is listed on its row. This page draws one side of the
+  document, so the facts behind the other side are cited on the page that draws it, and both
+  are in <a href="{{.DataPath}}">{{.DataPath}}</a>.
 </p>
 <details id="table-view" open>
   <summary>Show the table</summary>

@@ -228,6 +228,24 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	}
 }
 
+// chartView is a well-formed ChartTemplate view with one thing broken.
+//
+// A CONSTRUCTOR RATHER THAN TEN LITERALS, because the point of each case is the
+// ONE field it breaks: written out in full, a case that stopped breaking
+// anything -- a field renamed, a default filled in -- would still name a
+// message and still pass, and nothing would say which arm had gone quiet.
+func chartView(breaks func(*export.View)) export.View {
+	v := export.View{
+		Path: "extra.html", Template: export.ChartTemplate, Projection: "sankey",
+		RenderTiers: []int{0, 2}, ChartSubject: "by something",
+		ChartDescription: "A description.",
+		Drill: &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "All groups",
+			Tail: "funds", Cap: 8},
+	}
+	breaks(&v)
+	return v
+}
+
 // TestTheCaveatsPageRefusesWhatWouldRender covers buildCaveatsPage's five
 // refusals, none of which any test reached.
 //
@@ -479,6 +497,49 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
 				Lede: "a sentence that would go nowhere"}},
 			"has no {{.Lede}}"},
+		// THE DRILL FAMILY, AND EVERY ARM OF IT. Eight refusals landed with the
+		// Revenue/Spending split and not one had a case, while every earlier arm
+		// of this same switch does -- so the guards that keep the two
+		// interaction contracts apart were themselves unguarded. A refusal
+		// nobody has tried to trip is a refusal that may already not fire.
+		//
+		// `chart` below is a well-formed ChartTemplate view; each case breaks
+		// exactly one thing about it, so the message named is the one that arm
+		// produces rather than whichever fires first.
+		{"a drill on a template that publishes none", []export.View{ok,
+			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
+				Drill: &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t", Cap: 8}}},
+			"the chart would isolate on a click while this view believes it opens"},
+		{"a root on a template that publishes none", []export.View{ok,
+			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
+				Root: "fund/100"}},
+			"the chart would draw the whole document"},
+		{"a chart subject on a template that composes its own", []export.View{ok,
+			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
+				ChartSubject: "by something"}},
+			"the phrase would be dropped in silence"},
+		{"a chart description on a template with no desc", []export.View{ok,
+			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
+				ChartDescription: "a sentence"}},
+			"the sentence would be dropped in silence"},
+		{"a chart that names no subject", []export.View{ok,
+			chartView(func(v *export.View) { v.ChartSubject = "" })},
+			"a chart of nothing in particular"},
+		{"a chart that gives itself no description", []export.View{ok,
+			chartView(func(v *export.View) { v.ChartDescription = "" })},
+			"is told nothing about what the marks mean"},
+		{"a drill with no tiers", []export.View{ok,
+			chartView(func(v *export.View) { v.Drill.Tiers = nil })},
+			"drawn by the same tier set it was closed under"},
+		{"a drill with no tail noun", []export.View{ok,
+			chartView(func(v *export.View) { v.Drill.Tail = "" })},
+			"labelled \"24 smaller\" and stop there"},
+		{"a drill with no back label", []export.View{ok,
+			chartView(func(v *export.View) { v.Drill.Back = "" })},
+			"a button with no words in it"},
+		{"a drill with no cap", []export.View{ok,
+			chartView(func(v *export.View) { v.Drill.Cap = 0 })},
+			"a column of one node is not a chart"},
 		{"a projection that was not built", []export.View{ok, {Path: "trends.html",
 			Template: export.SankeyTemplate, Projection: "nope"}}, "which was not built"},
 		{"no template", []export.View{ok, {Path: "trends.html", Projection: "sankey"}},

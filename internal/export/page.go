@@ -200,6 +200,14 @@ type drilldownMetadata struct {
 	Caveats []caveatMeta `json:"caveats"`
 }
 
+// tierFundGroup is the tier the fund-group swatches come from.
+//
+// A LITERAL HERE AND A CONSTANT IN internal/project, which cannot be imported
+// from this package by design -- it consumes projections as bytes. The number
+// is published in docs/sankey-contract.md's tier table and is the same one
+// site/app.js's isFundGroup recognises by id prefix.
+const tierFundGroup = 2
+
 // caveatMeta is a decoded caveat.
 //
 // A SEPARATE TYPE FROM project.Caveat, like every other decode struct in this
@@ -409,6 +417,14 @@ type chartPageData struct {
 	// readers least able to tell.
 	ChartSubject     string
 	ChartDescription string
+	// HasLegend is whether this page's chart draws any fund-group swatches, so
+	// the template can explain them where they exist and not where they do not.
+	//
+	// DERIVED FROM THE TIER SET, because that is what decides it: buildLegend
+	// draws a button per fund group the chart TOUCHES, so revenue.html's {0,2}
+	// gives six and spending.html's {3,4} -- one fund and its divisions --
+	// gives none. Measured, both overviews and all 29 opened views.
+	HasLegend bool
 	// Drill is whether this page's chart opens a node, so the template can say
 	// what a click does and render the breadcrumb that comes back out of one.
 	//
@@ -1425,6 +1441,7 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Links:            meta.Counts.Links,
 		ChartSubject:     v.ChartSubject,
 		ChartDescription: v.ChartDescription,
+		HasLegend:        slices.Contains(v.RenderTiers, tierFundGroup),
 		Drill:            v.Drill != nil,
 		// #nosec G203 -- see buildSankeyPage; blob is encoding/json's output.
 		ConfigJSON: template.JS(blob),

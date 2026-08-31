@@ -612,6 +612,14 @@ let fetched = null;
  * @type {FiscYear | null}
  */
 let shownYear = null;
+/**
+ * The chart description the page shipped, so returning from a drill can restore
+ * it. Captured on first paint rather than read from the config, because it is
+ * the TEMPLATE's string -- the packager sends the subject to the client and the
+ * description only into the markup.
+ * @type {string}
+ */
+let baseDescription = "";
 /** @type {LaidNode | LaidLink | null} */
 let pinned = null;
 /**
@@ -809,13 +817,20 @@ function activeTiers() {
  * carries the other 49. They partition it exactly, which is what two pages
  * splitting one document should do.
  *
- * The number is still the document's because THE GAP IS THE POINT, which is a
- * different claim and the one project.Counts.Facts is built on: "the gap
- * between Facts and Links is the part of the schedule the chart cannot show,
- * and stating both is what makes it visible". Replacing it with a count of the
- * facts actually cited would close that gap and quietly stop saying so -- and
+ * The number is still the document's ON A PAGE SHOWING THE WHOLE DOCUMENT,
+ * because THE GAP IS THE POINT -- the claim project.Counts.Facts is built on:
+ * "the gap between Facts and Links is the part of the schedule the chart cannot
+ * show, and stating both is what makes it visible". Replacing it with a count
+ * of the facts actually cited would close that gap and quietly stop saying so;
  * on the spine, where 120 facts sit behind 58 flows because 50 are printed
  * zeros and 12 are stocks, it would delete the sentence's whole subject.
+ *
+ * AN OPENED NODE IS NOT THAT PAGE. Drilled into one of six fund groups, the
+ * document's 280 facts are not what the reader is being shown the gap to --
+ * "21 flows between 13 nodes, from 280 facts" invites them to weigh a sixth of
+ * a chart against the whole file, which is not a gap that means anything. So a
+ * drilled chart counts the facts its own ribbons cite, and the sentence gains
+ * the words that say which of the two it is doing.
  *
  * SEPARATE FROM paintYearWords BECAUSE A DRILL CHANGES IT TOO. It was inline
  * there while a year switch was the only thing that could change what is drawn;
@@ -834,8 +849,20 @@ function paintCounts() {
   // was unreachable while the smallest chart on the site had 29 marks.
   const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
     n + " " + word + (n === 1 ? "" : "s");
-  counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") +
-    ", from " + plural(shownYear.counts.facts, "fact");
+  // THE UNDRILLED WORDING IS UNCHANGED, deliberately. On a page showing the
+  // whole document the two readings coincide, and the established sentence is
+  // the one the counts contract is written about. Only the drilled state needs
+  // to say which quantity it is naming, because there the two differ by a
+  // factor of six and neither is obvious.
+  let from = ", from " + plural(shownYear.counts.facts, "fact");
+  if (drilledInto && projection) {
+    const cited = new Set();
+    for (const l of projection.links) {
+      for (const id of l.fact_ids) cited.add(id);
+    }
+    from = ", from " + plural(cited.size, "fact") + " behind these flows";
+  }
+  counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") + from;
 }
 
 /**
@@ -875,16 +902,30 @@ function drillTo(id) {
   if (!fetched || !DRILL) return;
   const was = drilledInto;
   drilledInto = id;
+
+  // SHAPE AND LAY OUT BEFORE MUTATING ANYTHING, which is showYear's contract
+  // (fisc-bsg) and was not this function's. layOut ran LAST here, inside the
+  // render call, after the counts line, the breadcrumb, the legend, the
+  // inferred list and the table had all been rewritten -- so a throw from it
+  // left the page describing a chart it had not drawn: counts reading "0 flows
+  // between 0 nodes", an empty table, and a breadcrumb naming the node the
+  // reader had opened, over the previous chart. And because drillTo is called
+  // straight from a click handler, the exception escaped with no banner at all.
+  //
+  // Everything that can throw is in these two lines, and both run while the
+  // page is still wholly the one the reader was looking at.
   let drawn;
+  let laid;
   try {
     drawn = shapeFor(fetched);
+    laid = layOut(drawn);
   } catch (e) {
     // BACK TO WHERE THE READER WAS, not to a blank page. shapeFor throws on a
     // document its tier set cannot describe, which is a fault in this view's
     // declaration rather than in the reader's click, and leaving the chart
     // drawn as it was is the only outcome that does not punish them for it.
     drilledInto = was;
-    fail("That group could not be opened: " + (e instanceof Error ? e.message : String(e)));
+    fail("That could not be opened: " + (e instanceof Error ? e.message : String(e)));
     return;
   }
   clearRefusal();
@@ -894,11 +935,43 @@ function drillTo(id) {
   resetDetail();
   hideTip();
   paintBreadcrumb();
+  paintChartName();
   paintCounts();
   buildLegend();
   buildDerivedList();
   buildTable();
-  render(layOut(drawn));
+  render(laid);
+}
+
+/**
+ * Names the chart for a screen reader, for the state it is actually in.
+ *
+ * A DRILL CHANGES WHAT THE CHART IS OF as completely as a year switch changes
+ * which document it is, and nothing rewrote these two elements on one. After
+ * opening a fund group, revenue.html still announced itself as a chart "by
+ * revenue category and the fund group it lands in" and described "six fund
+ * groups on the right" that were no longer drawn -- which is the defect the
+ * page split had just been fixed for, one gesture over, and only to the readers
+ * who cannot see the marks disagree.
+ *
+ * IT APPENDS RATHER THAN REPLACES the name, so the page's own words survive:
+ * the subject is the view's, built in Go, and this says which part of it is on
+ * screen. Returning to the overview puts both back.
+ */
+function paintChartName() {
+  const title = maybeEl("chart-title");
+  if (title && shownYear && shownYear.chart_title) {
+    title.textContent = drilledInto
+      ? shownYear.chart_title + ", opened into " + labelOf(drilledInto)
+      : shownYear.chart_title;
+  }
+  const desc = maybeEl("chart-desc");
+  if (!desc) return;
+  if (!baseDescription) baseDescription = desc.textContent;
+  desc.textContent = drilledInto
+    ? labelOf(drilledInto) + " on the left, and what it is made of on the right. " +
+      "Use the breadcrumb above the chart, or press Escape, to go back."
+    : baseDescription;
 }
 
 /**
@@ -1032,15 +1105,52 @@ function capColumn(doc, tier, cap) {
   // which is the same tier-number-to-word mapping paintBreadcrumb refuses two
   // functions below, written by the same hand in the same commit.
   const label = folded.length + " smaller " + ((DRILL && DRILL.tail) || "items");
+  // derived: true, AND IT IS THE INVARIANT RATHER THAN A FLAG. The city printed
+  // no line item called "24 smaller funds"; this node is ours, and shipping it
+  // as printed made the page state the opposite in four places at once -- a
+  // solid rather than dashed mark, a "printed by the city" chip in the tooltip
+  // and the detail panel, an aria-label ending "printed by the city", and an
+  // absence from "What we inferred", which is the list that exists to be
+  // complete. The screen-reader path is the one that stated it most plainly.
+  //
+  // Its VALUE is still every cent a printed figure, summed exactly as the fold
+  // sums a merged ribbon. What is inferred is the GROUPING, and that is what
+  // the rationale says.
   const aggregate = {
     id: AGGREGATE_ID, label: label, tier: tier, parent: "", constraint_tier: "",
-    role: "", derived: false, rationale: "", source_note: "",
+    role: "",
+    derived: true,
+    rationale: "Our grouping, not a line the city printed: the " + folded.length +
+      " smallest " + ((DRILL && DRILL.tail) || "items") + " in this column are drawn as one " +
+      "mark because they cannot be drawn separately. Every figure inside it is printed; " +
+      "the box around them is ours.",
+    source_note: "The " + folded.length + " smallest of " + atTier.length +
+      " by value, at this page's cap of " + cap + ".",
   };
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? AGGREGATE_ID : id);
 
+  // A FOLDED NODE'S DESCENDANTS GO WITH IT. Removing a tail node while leaving
+  // anything parented to it produces a document whose child names a parent it
+  // does not carry, and foldDocument then refuses the whole drill -- so the
+  // reader gets a banner on a click that worked a moment ago. Latent today,
+  // because fund/100 is the only tier-3 node with children and it is never in
+  // any tail, and left latent is exactly how it would ship.
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const orphaned = (/** @type {{parent: string}} */ n) => {
+    let up = n.parent;
+    for (let hops = 0; up && hops < 9; hops++) {
+      if (tail.has(up)) return true;
+      const above = byID.get(up);
+      up = above ? above.parent : "";
+    }
+    return false;
+  };
+
   return Object.assign({}, doc, {
-    nodes: doc.nodes.filter((n) => n.tier !== tier || kept.has(n.id)).concat([aggregate]),
+    nodes: doc.nodes
+      .filter((n) => (n.tier !== tier || kept.has(n.id)) && !orphaned(n))
+      .concat([aggregate]),
     links: doc.links.map((l) =>
       Object.assign({}, l, { source: remap(l.source), target: remap(l.target) })),
   });
@@ -2202,8 +2312,8 @@ async function showYear(year) {
 /**
  * Replaces every word on the page that belongs to a year: the tiles, the
  * caveats, the caveat count in their summary, the lede, the flow count, the
- * chart's accessible title, the footer's basis and its data-file citation, and
- * the document title.
+ * chart's accessible name and description (through paintChartName), the
+ * footer's basis and its data-file citation, and the document title.
  *
  * THE LIST IS EXHAUSTIVE ON PURPOSE. It read "the tiles, the caveats, the lede
  * and the flow count" while the function wrote four more, and a doc comment
@@ -2273,8 +2383,10 @@ function paintYearWords(year) {
   // themselves identically to a screen reader. Same defect as fisc-rn0, which
   // is why sankeyTitle exists, reached through the one string that had not been
   // moved yet. Found by /code-review, 2026-08-28.
-  const title = maybeEl("chart-title");
-  if (title && year.chart_title) title.textContent = year.chart_title;
+  // DELEGATED, so a year switch and a drill cannot write this element
+  // differently. paintChartName also restores the <desc>, which paintYearWords
+  // never touched and which a drill rewrites.
+  paintChartName();
 
   // The footer's "Scope X, basis Y" sentence is a claim about the document ON
   // SCREEN -- the comment beside it in the template says so in as many words --

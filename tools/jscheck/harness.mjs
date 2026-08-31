@@ -311,10 +311,6 @@ const NAMES = [
   // drill.mjs drives drillTo and shapeFor, which are the real entry points; the
   // rest are here so a check can measure one stage without the repaint.
   "shapeFor", "filterToNode", "capColumn", "drillable", "drillTo", "DRILL", "ROOT",
-  // projection IS A let, AND A CHECK HAS TO READ IT to ask what is on screen
-  // rather than what a function returned. Exported through a getter for that
-  // reason: assigning the binding itself would hand back the value at load
-  // time, which is null.
   "paintBreadcrumb",
   // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
   // "#legend button .key", and the swatches that selector finds do not exist
@@ -453,7 +449,9 @@ export function loadApp(opts = {}) {
 
   const src = readFileSync(join(repoRoot, "site", "app.js"), "utf8");
   // projection AND drilledInto ARE `let` BINDINGS, and a check has to be able to
-  // ask what is on SCREEN rather than what a function returned. They are
+  // ask what is on SCREEN rather than what a function returned. They are not in
+  // NAMES above for that reason -- a name in that list is copied into an object
+  // literal, which captures the value at load time. They are
   // exported through getters, because assigning the binding into an object
   // literal captures the value at load time -- which for both of them is the
   // empty state, so every check reading them would have been reading a
