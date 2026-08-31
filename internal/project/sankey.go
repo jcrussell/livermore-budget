@@ -93,9 +93,20 @@ const (
 // and carries tier 0 only so the diagram lays out left to right.
 const nodeTransfersIn = "transfers/in"
 
-// nodeTransfersOut is its mirror, and exists because [Caveat.AppliesTo] names
-// both legs. It was a bare literal in the label table while its twin was a
-// constant, which is the asymmetry that makes one of a pair get typo'd.
+// nodeTransfersOut is its mirror.
+//
+// IT IS USED BY TESTS AND NOT BY THE PRODUCER, which is worth saying because an
+// earlier version of this comment claimed the opposite. It was added to spell
+// [Caveat.AppliesTo]'s two legs; that field is now built by transferEndpoints
+// from the links a graph actually draws, so neither constant is read on the
+// production path. What they are for is letting a test name the endpoint it
+// expects without retyping the string the taxonomy produces.
+//
+// builtinLabels below still spells both as bare literals. That is deliberate
+// rather than an oversight left standing: those keys are a table of what the
+// city's own words are, keyed by id, and rewriting two of its rows as
+// constants while the other eleven stay literal would make the table look like
+// it distinguished them.
 const nodeTransfersOut = "transfers/out"
 
 // The slugs this projection has to recognize by name rather than by shape.

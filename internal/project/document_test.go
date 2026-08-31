@@ -28,6 +28,80 @@ func jsonTags(t *testing.T, v any) []string {
 	return out
 }
 
+// TestValidateCaveatsRefusesEveryShapeThatWouldRenderIsThePointOfIt.
+//
+// THE GUARD HAD NO TEST AT ALL, which a review pass found by adding
+// `if true { return nil }` as its first statement and watching `go test ./...`
+// stay entirely green. All five refusals were unverified in a function three
+// builders call.
+//
+// EVERY CASE HERE IS A FAILURE THAT RENDERS, which is why the guard exists at
+// build time rather than being left to a page to notice. An empty id publishes
+// an anchor of "#caveat-<stem>--", which every summary on the site would then
+// share; an empty summary a blank line in a list; a repeated id two paragraphs
+// under one anchor, of which the reader sees whichever the browser finds first;
+// and an AppliesTo naming an absent node marks nothing, which is
+// indistinguishable from having nothing to mark.
+func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
+	ok := Caveat{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{}}
+	nodes := map[string]struct{}{"fund-group/general": {}}
+
+	for _, tc := range []struct {
+		name    string
+		in      []Caveat
+		nodes   map[string]struct{}
+		wantErr string
+	}{
+		{"a well-formed set passes", []Caveat{ok}, nodes, ""},
+		{"no id", []Caveat{{Summary: "s", Text: "t"}}, nodes, "has no id"},
+		{"no summary", []Caveat{{ID: "a", Text: "t"}}, nodes, "has no summary"},
+		{"no text", []Caveat{{ID: "a", Summary: "s"}}, nodes, "has no text"},
+		{
+			"two caveats under one anchor",
+			[]Caveat{ok, {ID: "a", Summary: "s2", Text: "t2"}},
+			nodes, "used twice in one document",
+		},
+		{
+			"applies to a node the document does not carry",
+			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"fund-group/nope"}}},
+			nodes, "which this document does not carry",
+		},
+		{
+			"applies to a node the document does carry",
+			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"fund-group/general"}}},
+			nodes, "",
+		},
+		// nil NODES IS THE not-a-graph CALLER, and the arm has to be skipped
+		// rather than made to fail against an empty set: internal/project's
+		// trends document publishes series and has no node for an AppliesTo to
+		// name. Passing an EMPTY map instead is the other case, and it must
+		// still refuse -- a graph that drew nothing is not a document exempt
+		// from the rule.
+		{
+			"a document with no nodes to check against",
+			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"anything"}}},
+			nil, "",
+		},
+		{
+			"a graph that drew no nodes still refuses",
+			[]Caveat{{ID: "a", Summary: "s", Text: "t", AppliesTo: []string{"anything"}}},
+			map[string]struct{}{}, "which this document does not carry",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateCaveats(tc.in, tc.nodes)
+			switch {
+			case tc.wantErr == "" && err != nil:
+				t.Errorf("ValidateCaveats = %v, want no error", err)
+			case tc.wantErr != "" && err == nil:
+				t.Errorf("ValidateCaveats = nil, want an error naming %q", tc.wantErr)
+			case tc.wantErr != "" && !strings.Contains(err.Error(), tc.wantErr):
+				t.Errorf("ValidateCaveats = %q, want it to name %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 // TestSharedMetadataTagsHaveNotDrifted is what couples the two metadata structs,
 // because nothing else does.
 //

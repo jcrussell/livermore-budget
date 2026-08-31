@@ -228,6 +228,109 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	}
 }
 
+// TestTheCaveatsPageRefusesWhatWouldRender covers buildCaveatsPage's five
+// refusals, none of which any test reached.
+//
+// A REVIEW PASS FOUND THEM UNFALSIFIABLE by neutering all five and watching
+// both ./internal/export and ./pkg/cmd/export stay green -- against a doc
+// comment that says "THREE REFUSALS, and each is a failure that renders". No
+// test in this package had ever constructed a CaveatsTemplate view at all, so
+// the page's whole error path was reachable only by a real export.
+//
+// THE DUPLICATE-ANCHOR CASE IS THE ONE WORTH HAVING. project.ValidateCaveats
+// catches a repeated id WITHIN one document at build time; this catches it
+// ACROSS the site, which is a different claim and the one caveats.html actually
+// needs, because that page renders every document at once. It is also the only
+// refusal here whose failure a reader could not see: the page renders, the
+// anchor resolves, and they are shown a paragraph about something else.
+func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
+	// THE CAVEATS VIEW IS THE INDEX HERE, which is not how the site is
+	// configured and is the smallest thing that reaches the builder. Options
+	// requires exactly one view at IndexPath, and pairing this with a spine
+	// view means the spine's own "no sankey projection to build the page from"
+	// fires first and the caveats page is never built -- which is how the first
+	// draft of this test passed five refusals without reaching any of them.
+	caveatsView := export.View{
+		Path: export.IndexPath, Nav: "Caveats", Template: export.CaveatsTemplate,
+		Title: "What these figures do not say", Lede: "A lede.",
+	}
+	// A minimal document of a shape this package has never been taught -- no
+	// nodes, no links, no series. The aggregator is shape-blind and building
+	// the fixture that way is what asserts it.
+	//
+	// STEMMED "sankey" BECAUSE Options.validate REQUIRES THAT ONE to be among
+	// the projections, whatever the views are. It is not the spine document and
+	// nothing here treats it as one; it is the stem the packager insists exists.
+	doc := func(caveats string) map[string][]byte {
+		return map[string][]byte{export.PrimaryProjection: []byte(
+			`{"schema_version":1,"projection":"sankey","metadata":{` +
+				`"fiscal_year_label":"FY 2025-26","basis":"adopted","sources":[],` +
+				`"caveats":` + caveats + `}}`)}
+	}
+	const good = `[{"id":"a","summary":"s","text":"t","applies_to":[]}]`
+
+	for _, tc := range []struct {
+		name        string
+		projections map[string][]byte
+		wantErr     string
+	}{
+		{"a well-formed document renders", doc(good), ""},
+		{
+			"no document carries a caveat",
+			doc(`[]`),
+			"no published document carries a caveat",
+		},
+		{
+			"a caveat with no id",
+			doc(`[{"id":"","summary":"s","text":"t","applies_to":[]}]`),
+			"carries a caveat with no id",
+		},
+		{
+			"a caveat with no summary",
+			doc(`[{"id":"a","summary":"","text":"t","applies_to":[]}]`),
+			"has no summary",
+		},
+		{
+			"a caveat with no text",
+			doc(`[{"id":"a","summary":"s","text":"","applies_to":[]}]`),
+			"has no text",
+		},
+		{
+			// TWO DOCUMENTS, ONE ANCHOR. Not two entries in one document --
+			// that is ValidateCaveats' case, one package over, and it cannot
+			// see across documents at all. The anchor embeds the stem, so this
+			// needs two documents whose stems collide, which the map cannot
+			// express; what it CAN express is the same document twice under
+			// one stem, so the collision is forced by giving one document two
+			// entries the decoder will hand over as-is.
+			"two caveats claiming one anchor",
+			doc(`[{"id":"a","summary":"s","text":"t","applies_to":[]},` +
+				`{"id":"a","summary":"s2","text":"t2","applies_to":[]}]`),
+			"is claimed by both",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := export.Write(export.Options{
+				Dir:         t.TempDir(),
+				Projections: tc.projections,
+				Views:       []export.View{caveatsView},
+				Docs:        budgetDocs(),
+				GeneratedBy: "fisc test",
+			})
+			switch {
+			case tc.wantErr == "":
+				if err != nil {
+					t.Errorf("Write = %v, want a page", err)
+				}
+			case err == nil:
+				t.Fatalf("Write = nil, want a refusal naming %q", tc.wantErr)
+			case !strings.Contains(err.Error(), tc.wantErr):
+				t.Errorf("Write = %q, want it to name %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 // TestASingleViewSiteShowsCaveatsWithNoLink is the configuration the caveat
 // summaries have to survive, and it is a real one rather than a hypothetical:
 // Options.views()'s default is a single view at IndexPath, and writeGolden

@@ -1218,6 +1218,34 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 		{"the document does not disclose", func(_ *testing.T, s *Subject) {
 			s.Projections[0].Graph.Metadata.Caveats = nil
 		}, "does not carry the disclosure sentence"},
+		// THE TWO ARMS BELOW WERE ADDED WITH NO CASE, and a review pass found
+		// them unfalsifiable: rewriting both as `case false:` left
+		// ./internal/check green, because only the missing-caveat arm above was
+		// ever exercised. They are the reason the check looks the caveat up by
+		// ID rather than comparing whole values, so leaving them unproved would
+		// have made that whole design unverified.
+		//
+		// TEXT DRIFT WITH THE ID INTACT is the quieter failure of the two: the
+		// anchor still resolves, the page still renders a paragraph under the
+		// right heading, and the paragraph says something the contract does not
+		// require. Matching on the id alone -- the obvious simplification --
+		// goes green over exactly this.
+		{"the disclosure is present under the right id and says something else",
+			func(_ *testing.T, s *Subject) {
+				c := project.ConstraintTierCaveat()
+				c.Text = "Constraint tiers come from the budget book."
+				s.Projections[0].Graph.Metadata.Caveats = []project.Caveat{c}
+			}, "not the disclosure internal/project declares"},
+		// AND SUMMARY DRIFT, which is the one a reader is most likely to meet:
+		// index.html and drilldown.html print the summary and link to the text,
+		// so a document whose text is word-perfect and whose summary says
+		// something else misleads everyone who does not follow the link.
+		{"the summary is not the one internal/project declares",
+			func(_ *testing.T, s *Subject) {
+				c := project.ConstraintTierCaveat()
+				c.Summary = "Fund restrictions, as printed by the city."
+				s.Projections[0].Graph.Metadata.Caveats = []project.Caveat{c}
+			}, "whose SUMMARY is not the one"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

@@ -74,6 +74,36 @@ func TestCaveatMetaKeysAreTheOnesTheDocumentCarries(t *testing.T) {
 	}
 }
 
+// TestCaveatRefKeysAreTheOnesTheClientReads pins what a PAGE is given about a
+// caveat, and the load-bearing part is what is absent.
+//
+// caveatRef is deliberately id, summary and href -- no text. The whole point of
+// this lane is that a chart page shows a line and links to the paragraph, and
+// the cheapest way to undo it is to put the paragraph back within reach of the
+// template. A field here is an invitation; this fails the moment one exists,
+// rather than when some template gets round to rendering it.
+//
+// It is also the client contract: site/app.js reads c.summary and c.href off
+// CONFIG.years[].caveats when repainting a year switch, and a dropped tag is
+// silent in exactly yearView's way -- the server-rendered opening year is fine
+// and only the caveats after a switch go blank.
+func TestCaveatRefKeysAreTheOnesTheClientReads(t *testing.T) {
+	blob, err := json.Marshal(caveatRef{})
+	if err != nil {
+		t.Fatalf("marshal caveatRef: %v", err)
+	}
+	var got map[string]any
+	if err = json.Unmarshal(blob, &got); err != nil {
+		t.Fatalf("decode caveatRef: %v", err)
+	}
+	want := []string{"href", "id", "summary"}
+	if diff := cmp.Diff(want, keysOf(got)); diff != "" {
+		t.Errorf("caveat ref keys (-want +got):\n%s\n"+
+			"site/app.js reads summary and href; a \"text\" key here would put the "+
+			"paragraph back within a template's reach, which is the thing this lane removed", diff)
+	}
+}
+
 // TestClientDocKeysAreTheOnesTheClientReads is the same pin one struct over,
 // and it was missing.
 //

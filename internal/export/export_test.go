@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -264,7 +265,21 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 		// AND THE PARAGRAPH IS NOT PRINTED HERE. Showing a summary is only
 		// honest as a pointer; a page that showed both would be the wall this
 		// change removed, with a link added to it.
-		if len(caveat.Text) > 80 && strings.Contains(visible, caveat.Text) {
+		//
+		// ESCAPED BEFORE COMPARING. html/template rewrites ' " & < > as it
+		// renders, so a raw comparison cannot fire for most of the corpus.
+		// Measured against the real export: on caveats.html, which DOES print
+		// every text, a raw Contains is False for transfer-legs-unpaired and
+		// internal-service-is-outside-the-external-headline and True only for
+		// the two texts with no escapable character.
+		//
+		// THIS ARM IS THE SECOND LINE AND NOT THE FIRST. index.html cannot
+		// print the text today whatever the template does, because caveatRef
+		// carries no such field -- so what it really guards is somebody putting
+		// one back. The structural form of that claim is
+		// TestCaveatRefKeysAreTheOnesTheClientReads, which fails the moment the
+		// field exists rather than when a template happens to render it.
+		if len(caveat.Text) > 80 && strings.Contains(visible, template.HTMLEscapeString(caveat.Text)) {
 			t.Errorf("caveat %q's full text is on index.html; the summary is meant to "+
 				"stand in for it, not to precede it", caveat.ID)
 		}
