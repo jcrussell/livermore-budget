@@ -864,12 +864,11 @@ func templateRendersADocument(name string) bool {
 // reader to drop the projection. Following that advice slips the view past
 // validate and into a decode of an empty stem.
 //
-// Found by review, which measured the cost: restoring the historical
-// `default: buildSankeyPage` bug -- the one that rendered any unknown template
-// as a page of blanks -- left TestATemplateWithNoArmIsRefusedRatherThanRendered
-// AsASpine PASSING, because the new message happened to contain both strings it
-// asserted. A guard that passes over the defect it is named for is worse than
-// no guard.
+// Measured: restoring the historical `default: buildSankeyPage` bug -- the one
+// that rendered any unknown template as a page of blanks -- left
+// TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine PASSING, because
+// the new message happened to contain both strings it asserted. A guard that
+// passes over the defect it is named for is worse than no guard.
 //
 // Drift against buildSite's switch is benign in both directions, which is why
 // there is no test pairing them: a template missing here loses the
@@ -883,8 +882,8 @@ func templateIsKnown(name string) bool {
 // templateRendersTiers answers whether a template publishes [View.RenderTiers]
 // to the client.
 //
-// The third field of this family, found by review of the commit that closed the
-// first two -- which is the argument for writing them as a family rather than as
+// The third field of this family, and it was missing when the first two were
+// closed -- which is the argument for writing them as a family rather than as
 // three guards. Only buildChartPage puts RenderTiers in the config blob;
 // buildSankeyPage omits the key entirely, and app.js reads
 // `CONFIG.render_tiers ?? []`, so a fold asked for on the spine is not refused,

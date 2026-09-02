@@ -151,8 +151,7 @@ func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
 		}
 	}
 
-	// A run that simply did not include the check is NOT stale. This is the
-	// distinction the first version of this file got wrong.
+	// A run that simply did not include the check is NOT stale.
 	rep := run(t, nil, ReportOptions{Strict: true}, passed("a"))
 	if len(rep.StaleDeclarations()) != 0 {
 		t.Errorf("StaleDeclarations() = %v for a run that held none of the declared "+

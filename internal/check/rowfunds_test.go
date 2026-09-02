@@ -144,12 +144,9 @@ func TestTheCommittedCorpusRowAnchorsHold(t *testing.T) {
 			"the 78 bare fund labels on pp.85-125\n%s", res.Subjects, res.Summary)
 	}
 	// THE WORDING SEARCHED FOR HERE IS THE ONE THE CODE EMITS, checked against
-	// rowfunds.go rather than remembered. An earlier version of this assertion
-	// looked for "declared fund(s) sit on rows whose", which a review fix in this
-	// same range had already reworded -- so no code path could emit it and the
-	// assertion could not fail even with the whole bare-label arm deleted. A
-	// negative assertion over a string that no longer exists is the cheapest way
-	// to write a test that proves nothing.
+	// rowfunds.go rather than remembered. A negative assertion over a string no
+	// code path can emit cannot fail -- it stays green with the whole bare-label
+	// arm deleted -- and is the cheapest way to write a test that proves nothing.
 	if strings.Contains(res.Summary, "declared fund(s) sit at an end this check does not read") {
 		t.Errorf("the summary still reports the bare-label rows as ones it makes no "+
 			"claim about:\n%s", res.Summary)
@@ -211,7 +208,7 @@ func TestTheBareLabelArmIsWhatTheDeclarationTurnsOn(t *testing.T) {
 			"rows it makes no claim about:\n%s", res.Summary)
 	}
 	// ELEVEN RULES, NOT SEVENTY-EIGHT ROWS, and both halves of that are asserted
-	// because the rewrite in an earlier review pass dropped them: replacing the
+	// because a rewrite once dropped them: replacing the
 	// seenRule dedup with a per-row append left the suite green, so the 11 KB
 	// PASS line this counter exists to prevent could come back unnoticed.
 	// detailtie.go's "a count is the honest middle" is the argument; this is
@@ -245,8 +242,8 @@ func withoutRowLabelFunds(base *Subject) *Subject {
 	return &s
 }
 
-// TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw is the arm the first pass of
-// /code-review over this lane found missing.
+// TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw is the arm that was
+// missing.
 //
 // The vacuous reason is printed by --strict as the justification for a check
 // having nothing to look at, so a false one is worse than no reason at all --
@@ -303,13 +300,10 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	// declared fund(s)..." -- a clause with no antecedent, because the note was
 	// seeded in the unanchored arm and appended to in the unphrased one.
 	//
-	// TWO THINGS WENT WRONG AND THEY HAVE DIFFERENT AUTHORS, which is worth
-	// keeping straight because the shape recurs. The malformed clause was in
-	// the ORIGINAL commit. What a review pass's fix introduced was the
-	// assertion above it: Contains("78 declared fund(s)") is satisfied by the
-	// malformed string, so the test written for this defect passed on it. The
-	// third pass found both. AGENTS.md tabulates the fix-introduced-a-defect
-	// row under "Review is a loop, not a pass".
+	// AN EARLIER ASSERTION HERE PASSED ON THE BUG: Contains("78 declared
+	// fund(s)") is satisfied by the malformed string, so a test written for this
+	// defect could not fail on it. That is why the two assertions below pin the
+	// antecedent and the adjacency rather than a substring.
 	if strings.Contains(res.Summary, "a further") {
 		t.Errorf("the summary says \"a further\" with nothing before it:\n%s", res.Summary)
 	}
@@ -496,7 +490,7 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	// swap -- green because the gate fired, in a block whose own comment says it
 	// exists to avoid exactly that. Measured when it was found: retyping all 21
 	// funding-public-works rows to a nonexistent fund 99999 still left both
-	// PASS. Found by /code-review over this range.
+	// PASS.
 	//
 	// Editing the facts in place is what `fisc build` would emit from the
 	// mutated rule: the fund number moves and nothing else does, because 640 and
@@ -602,8 +596,7 @@ func TestABareLabelThatResolvesToNoFundIsAFinding(t *testing.T) {
 // it, which is the same false sentence the counterpart refusal had closed at the
 // root one commit earlier. And no test reached it: deleting `&& !row.Skip` left
 // `go test ./...` fully green, so the commit message claiming each fix reddened
-// its own test was wrong about that one. Both found by the second /code-review
-// pass over this range, in the first pass's own fix.
+// its own test was wrong about that one.
 //
 // The corpus cannot exercise it: all 29 skip: true rows carry no fund, measured.
 // So the row is built here.
@@ -731,7 +724,7 @@ func TestTheHeldLineNeverReportsAnEmptyArm(t *testing.T) {
 // a row labelled "Transfer From X" resolves as the FAR end, want == far == 0,
 // and the arm compares nothing. Measured then: subjects 118 -> 117, PASS, and
 // the row reported under "no printed anchor on their own line" -- false, the
-// label is printed. Found by the fourth review pass, in the third pass's fix.
+// label is printed.
 //
 // ATTEMPT THREE is this: refuse. The author has said something untrue about
 // their own page, and saying so is what the declaration is for.

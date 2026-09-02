@@ -727,8 +727,8 @@ func TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan(t *testing.T) {
 	}
 }
 
-// TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared is the composition the
-// third review pass found open.
+// TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared is the composition that
+// was left open.
 //
 // unmapped_text takes a printed figure OUT of the read on the author's word
 // that it belongs to no row. If that word is wrong, the row it belonged to is
@@ -750,10 +750,9 @@ func TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared(t *testing.T) {
 }
 
 // TestTotalRowAboveRefusals covers the two arms of validateTotalRowAbove that
-// review measured as mutation-green -- deleting either left the whole suite
-// passing. They are the same class the second pass fixed in the sibling
-// validator, one file over, which is why a third pass found them: a fix applied
-// to one validator and not to its neighbour reads as done.
+// were mutation-green -- deleting either left the whole suite passing. They are
+// the same class as the sibling validator's, one file over: a fix applied to one
+// validator and not to its neighbour reads as done.
 func TestTotalRowAboveRefusals(t *testing.T) {
 	t.Run("with total_spans_parts", func(t *testing.T) {
 		// A second part as well, because validateTotalSpansParts requires two
@@ -801,9 +800,9 @@ func TestTotalRowAboveRefusals(t *testing.T) {
 	})
 }
 
-// TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine covers the latent bug
-// the fourth review pass found: the wrapped_labels test ran against the WHOLE
-// leading gap, before the total's line was skipped.
+// TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine covers a latent bug:
+// the wrapped_labels test ran against the WHOLE leading gap, before the total's
+// line was skipped.
 //
 // Under total_row_above that meant a wrapped label between the total's line and
 // the first row could only be declared with the total's own figures glued to
@@ -848,8 +847,7 @@ func TestTotalRowAboveAllowsAWrappedLabelAfterTheTotalsLine(t *testing.T) {
 	}
 }
 
-// TestWithinToleranceRefusesRatherThanWrapping is the fifth review pass's
-// finding, and it is the only fail-OPEN one this lane produced.
+// TestWithinToleranceRefusesRatherThanWrapping covers a fail-OPEN bound.
 //
 // The bound used to be an inline `abs(diff)*2 <= unit*terms`. amount.Parse
 // admits a millions token up to roughly 9.2e18 cents, and doubling a diff that

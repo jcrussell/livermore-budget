@@ -1218,8 +1218,8 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 		{"the document does not disclose", func(_ *testing.T, s *Subject) {
 			s.Projections[0].Graph.Metadata.Caveats = nil
 		}, "does not carry the disclosure sentence"},
-		// THE TWO ARMS BELOW WERE ADDED WITH NO CASE, and a review pass found
-		// them unfalsifiable: rewriting both as `case false:` left
+		// THE TWO ARMS BELOW WERE ADDED WITH NO CASE, and were unfalsifiable:
+		// rewriting both as `case false:` left
 		// ./internal/check green, because only the missing-caveat arm above was
 		// ever exercised. They are the reason the check looks the caveat up by
 		// ID rather than comparing whole values, so leaving them unproved would
@@ -1842,11 +1842,11 @@ func TestUnprojectedScopesAreDeclarations(t *testing.T) {
 	}
 }
 
-// It uses transfersDetailScope because that is the only entry left in the map:
-// expenditure-by-department's declaration retired for real when the drill-down
-// began drawing it, which is this very mechanism firing over the committed
-// corpus rather than over a fixture.
-// A declaration that has stopped being true goes red rather than going quiet.
+// It uses transfersDetailScope, whose facts no projection selects today. A
+// declaration that has stopped being true goes red rather than going quiet:
+// expenditure-by-department's retired for real when the drill-down began drawing
+// it, which is this very mechanism firing over the committed corpus rather than
+// over a fixture.
 //
 // factsAreProjected consults the map only for UNPROJECTED facts, so the moment
 // something projects a declared scope the entry falls silent while remaining a

@@ -291,8 +291,8 @@ func exportRun(o *Options) error {
 	// withPageText inside Write, so an export whose fact store covers a page
 	// the extraction does not still destroyed the output and then refused --
 	// and this command's own PageIndex seeding widened that class, because it
-	// makes pages cited that no projection names. Found by review, reproduced
-	// by moving one committed page text aside. Resolving everything is the only
+	// makes pages cited that no projection names. Reproduced by moving one
+	// committed page text aside. Resolving everything is the only
 	// version of this that stays true as more is added to Write.
 	plan, err := export.Prepare(site)
 	if err != nil {

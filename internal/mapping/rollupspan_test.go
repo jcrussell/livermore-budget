@@ -180,8 +180,6 @@ func TestARollupSpanningTwoKindsMustSaySo(t *testing.T) {
 // rollup is p140's "Total Sources", which is revenue plus transfers in -- the
 // mixed-kind line Rollup.Kinds' own doc comment is built around. The most
 // likely place for someone to type the field was the one place nothing read it.
-//
-// Found by /code-review over the range that added the field.
 func TestKindsOnAnUnassertableRollupIsRefused(t *testing.T) {
 	const src = `schema_version: 1
 doc_id: livermore-budget-fy2026-2027

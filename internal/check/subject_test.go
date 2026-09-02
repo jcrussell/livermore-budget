@@ -432,8 +432,8 @@ func TestProjectionsCoverEveryYearTheFactsCarry(t *testing.T) {
 }
 
 // The tests below are the ones that matter most in this package, and they are the
-// only shape that would have caught what peer review caught: they change an INPUT
-// and assert a check fails.
+// only shape that catches what the in-memory mutations cannot: they change an
+// INPUT and assert a check fails.
 //
 // Every other failure test here mutates a *project.Graph in memory. Those prove the
 // logic, but Load is the only production path to a graph and it always derives one

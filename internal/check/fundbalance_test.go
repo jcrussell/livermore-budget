@@ -107,8 +107,7 @@ func TestFundBalanceIdentityCatchesADroppedLine(t *testing.T) {
 // FY2027, because p66 prints a dash for every other fund group. So summing it in
 // reddens two of the twelve committed spine balances — enough to fail the check
 // against a corpus that is not wrong, which is what makes the exclusion worth a
-// test. An earlier version of this comment said "eleven of the twelve" and was
-// wrong; the mutation still reddens, but for a smaller reason than claimed.
+// test.
 func TestFundBalanceIdentityIgnoresReserveIncrease(t *testing.T) {
 	cells := append(slices.Clone(fixtureCells), testCell{
 		mapping.KindFundBalance, "fund-balance/reserve-increase", "general", 33_000,
@@ -222,8 +221,8 @@ func TestFundBalanceIdentityReportsADuplicateWithoutAbandoningTheRest(t *testing
 // line, and asserted no finding had an empty subject. It looked like it covered
 // both arms. It covered one: the duplicate arm runs first and `continue`s, so
 // the missing-lines arm was never reached. MEASURED -- reverting that arm to
-// finding(b.ids[categoryFundBalanceBeginning], ...), which is the exact defect
-// the first review pass fixed there, left the whole internal/check suite GREEN.
+// finding(b.ids[categoryFundBalanceBeginning], ...), left the whole
+// internal/check suite GREEN.
 // A test named for a property, passing on the bug it was written for.
 //
 // So the two shapes are separate cases now, and each is reachable only through

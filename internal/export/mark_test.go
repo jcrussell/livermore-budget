@@ -155,11 +155,9 @@ func TestATinyFigureStillGetsAMark(t *testing.T) {
 	if tiny.Zero {
 		t.Error("a one-cent figure is marked as a published zero; it is neither zero nor absent")
 	}
-	// THE SHAPES DIFFER, not just the sizes. /code-review measured ten real
-	// figures on the shipped page rendering at exactly the height of a
-	// published-zero tick -- $500,000 drawn as "no money", indistinguishable
-	// from the $0 two slots over. A rectangle against a dot cannot collapse
-	// like that at any scale.
+	// THE SHAPES DIFFER, not just the sizes, and markZeroRadius carries the
+	// measurement that says why. A rectangle against a dot cannot collapse the
+	// way a real figure and a published-zero tick did.
 	if tiny.R != 0 || tiny.Height < markMinBar {
 		t.Errorf("the smallest real figure is %+v, want a rectangle at least %d high and "+
 			"no dot", tiny, markMinBar)
@@ -221,8 +219,7 @@ func TestTheMarkIsDeterministic(t *testing.T) {
 // It was claimed and not drawn: buildMark never read columnRef.New, every gap
 // was uniform, and a reader looking for the boundary inside the mark found four
 // evenly spaced bars and read them as one series — which is the cross-measurement
-// comparison this document's whole design exists to block. Found by
-// /code-review before it shipped.
+// comparison this document's whole design exists to block.
 func TestTheGroupBoundaryIsDrawnInsideTheMark(t *testing.T) {
 	cols := fourColumns() // New on columns 1 and 2, as the real document has it
 	m := buildMark(cells(cents(1_00), cents(2_00), cents(3_00), cents(4_00)), cols)

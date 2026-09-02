@@ -290,8 +290,7 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 		// `fiscal_year: 2023` typo on the first column would satisfy the very
 		// test written to catch a wrong-column read -- and nothing else catches
 		// it either: parse.go rejects only year 0, and the tie check leaves an
-		// unmatched (year, basis) pair unfailed by design. Found by the third
-		// review pass over this range.
+		// unmatched (year, basis) pair unfailed by design.
 		col, ok := column[f.FiscalYear]
 		if !ok {
 			t.Errorf("%s: p%d %q publishes FY%d and these pages print four columns, "+
@@ -538,7 +537,7 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 	t.Run("the entry is removed", func(t *testing.T) {
 		// The third way the exception can go wrong, and the one the commit
 		// message claimed was covered while the sub-test below mutated a
-		// different group. Found by /code-review over this range. Without the
+		// different group. Without the
 		// entry the cell is compared against the spine like any other and the
 		// 250,000 is a plain difference.
 		saved := fundingSourcesExceptions
@@ -566,8 +565,8 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 	t.Run("an entry naming a cell neither scope produces is a finding", func(t *testing.T) {
 		// An exception is consulted only from inside the union loop, so a key
 		// nothing produces would reconcile nothing while the summary went on
-		// advertising it. Found by /code-review over cd1192c; deleting the
-		// applied[] arm in fundingsources.go makes this pass silently.
+		// advertising it. Deleting the applied[] arm in fundingsources.go makes
+		// this pass silently.
 		saved := fundingSourcesExceptions
 		t.Cleanup(func() { fundingSourcesExceptions = saved })
 		stale := saved[0]
@@ -596,7 +595,7 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 		// `held` says every counted cell equals the spine to the cent, and the
 		// exception deliberately does not, so counting it made the PASS line
 		// claim 14 where 13 hold. Moving subjects++ back above the exception
-		// arm makes this red. Found by the fourth review pass over this range.
+		// arm makes this red.
 		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), base)
 		if err != nil {
 			t.Fatalf("Run: %v", err)
@@ -645,8 +644,8 @@ func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
 		// `held` used to loop over every declared entry, so this subject
 		// reported "FY2027 adopted internal-service is reconciled against
 		// $26,294,515.00" beside an exempt count of zero -- coverage claimed
-		// and not provided. Found by the fifth review pass; dropping the
-		// applied[] guard in the held loop makes this red.
+		// and not provided. Dropping the applied[] guard in the held loop makes
+		// this red.
 		if strings.Contains(res.Summary, "is reconciled against") {
 			t.Errorf("the summary still advertises an exception the loop never applied:\n%s",
 				res.Summary)

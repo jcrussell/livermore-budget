@@ -600,8 +600,6 @@ func TestExportRunCleanRefusesSomebodyElsesDirectory(t *testing.T) {
 // destroying a working site to report a fault that was detectable before
 // anything was touched. A validation that runs after a destructive step is a
 // validation in the wrong place, however correct its verdict.
-//
-// Found by /code-review of this range, 2026-08-28.
 func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	opts, _, _, _ := testOptions(t)
 	if err := exportRun(opts); err != nil {
@@ -725,10 +723,10 @@ func TestExportRunShipsTheBuildersFiles(t *testing.T) {
 // IT RUNS BOTH WITH AND WITHOUT --clean, and the second case is the one that
 // matters. The first version of this test ran only without, and stayed green
 // while `fisc export --clean` emptied the reader's site and THEN refused: Write
-// validates, but Write runs after SafeCleanDir. Found by /code-review of the
-// commit that introduced the channel. The fix hoisted Options.Validate above
-// the clean, which is the same ordering assertPublishedReachable argues for one
-// screen up; this is what would have caught it.
+// validates, but Write runs after SafeCleanDir. The fix hoisted
+// Options.Validate above the clean, which is the same ordering
+// assertPublishedReachable argues for one screen up; this is what would have
+// caught it.
 func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
 	for _, clean := range []bool{false, true} {
 		name := "without --clean"

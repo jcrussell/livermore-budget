@@ -296,20 +296,17 @@ const NAMES = [
   // FIRST OF THEM. Its layout() builds its own d3.sankey from the constants
   // above, which was fine while the only thing to get wrong was a constant --
   // and it meant every figure that file pins (195 crossings, $457,434,169, the
-  // 14 stale pairs) stayed green NO MATTER WHAT layOut DID. Found by peer
-  // review, 2026-08-28. layout() still exists, because the alternative sorts it
-  // measures cannot be reached through layOut, which hard-codes its nodeSort;
+  // 14 stale pairs) stayed green NO MATTER WHAT layOut DID. layout() still
+  // exists, because the alternative sorts it measures cannot be reached through
+  // layOut, which hard-codes its nodeSort;
   // what is new is a check that the two agree on the golden graph, so the
   // reimplementation is now pinned to the shipped function rather than trusted
   // to match it.
   "layOut", "foldDocument", "fundGroupOf", "RENDER_TIERS",
-  // THE DRILL, WHICH SHIPPED WITH NO CHECK TOUCHING IT AT ALL. Not drillTo, not
-  // shapeFor, not filterToNode, not capColumn, not drillable -- a review pass
-  // found that by grepping for the names. Two defects in the same commit were
-  // reachable only by driving them: layOut aligning on the wrong tier set, and
-  // a page whose tier set could not place the document's revenue nodes.
-  // drill.mjs drives drillTo and shapeFor, which are the real entry points; the
-  // rest are here so a check can measure one stage without the repaint.
+  // THE DRILL, WHICH SHIPPED WITH NO CHECK TOUCHING IT AT ALL; drill.mjs's
+  // header says how that happened and what it cost. drill.mjs drives drillTo and
+  // shapeFor, which are the real entry points; the rest are here so a check can
+  // measure one stage without the repaint.
   "shapeFor", "filterToNode", "capColumn", "drillable", "drillTo", "DRILL", "ROOT",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
   "paintBreadcrumb",

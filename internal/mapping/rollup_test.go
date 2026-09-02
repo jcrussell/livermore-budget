@@ -419,8 +419,7 @@ func TestARollupAnchorMustNameOnePrintedLine(t *testing.T) {
 //
 // It has to fail, and it has to fail CLOSED. An earlier draft took the column
 // width from Parts[0] and indexed the sum with it, which read off the end and
-// panicked; a crash is not a closed failure, whatever it stops. Found by
-// /code-review.
+// panicked; a crash is not a closed failure, whatever it stops.
 func TestARollupWhoseRulesStateDifferentWidthsFailsClosed(t *testing.T) {
 	pages := map[int]string{
 		1: "Division One\nWages 100\nTotal $100\nDEPARTMENT TOTAL $400\n",
@@ -497,7 +496,6 @@ rollups:
 // `unassertable: " "` alongside covers validated as "no reason given" and then
 // suppressed the check as "a reason given". A rollup that asserts nothing while
 // reporting an empty reason is the silence this field exists to prevent.
-// Found by /code-review.
 func TestAWhitespaceUnassertableIsRefused(t *testing.T) {
 	src := strings.Replace(adminServicesRules, "    #COVERS",
 		adminCovers+"\n    unassertable: \" \"", 1)

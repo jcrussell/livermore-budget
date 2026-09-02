@@ -206,9 +206,7 @@ func declaresKind(c registry.Category, k mapping.Kind) bool {
 // lowercase, single-segment kebab-case data/taxonomy.yaml's slug rule produces.
 //
 // One segment, and NOT because the axis is flat — it is not. pp.167-170 print 23
-// divisions under 11 departments, and an earlier version of this comment cited
-// pp.165-166 as a flat list, which they are not either: p165 prints 7 headings
-// over 10 division rows. The hierarchy is real and it is recorded in
+// divisions under 11 departments. The hierarchy is real and it is recorded in
 // data/departments.yaml as a `department:` FIELD on each division. It stays out
 // of the slug because a fact's row_path is `<division>/<category>`
 // (internal/fact.RowPath), so a two-segment slug here would emit a two-slash

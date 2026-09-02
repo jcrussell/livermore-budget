@@ -3,12 +3,12 @@
 // WHY THIS FILE EXISTS. The drill shipped with `go build`, `go test ./...`,
 // `make js` and `fisc verify` all green and NOT ONE CHECK touching it: not
 // drillTo, not filterToNode, not capColumn, not drillable, not paintBreadcrumb,
-// and neither of the two tier sets the site actually declares. A review pass
-// found that by grepping for the names, which is the cheapest way and the one
-// that should not have been necessary.
+// and neither of the two tier sets the site actually declares. Grepping for the
+// names is what turned that up, which is the cheapest way and the one that
+// should not have been necessary.
 //
-// It also found two defects in the same range that only measurement could
-// reach: layOut aligned columns on RENDER_TIERS while a drilled document is
+// Two defects in the same range were reachable only by measurement: layOut
+// aligned columns on RENDER_TIERS while a drilled document is
 // folded to DRILL.tiers, so d3-sankey died inside its own ordering pass; and
 // Spending's {3,4} could not draw at all, because the document's tier-0 revenue
 // nodes have no ancestor at tier 3 or 4. Both are shapes a Go test cannot see

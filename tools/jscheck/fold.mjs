@@ -238,7 +238,6 @@ export async function checks() {
   // y0)), and the first version of this pin counted only ribbons -- so four
   // node rects were being drawn at a size that does not encode their value,
   // under a check whose whole claim is that such marks "cannot grow unnoticed".
-  // Found by /code-review, 2026-08-28.
   const hairlines = laid.ok ? laid.value.links.filter((l) => l.width < 1).length : -1;
   const slivers = laid.ok ? laid.value.nodes.filter((n) => n.y1 - n.y0 < 2).length : -1;
   const flat = unfolded.ok ? unfolded.value : null;
@@ -375,7 +374,7 @@ export async function checks() {
           // but its own fund group takes in nothing and is dropped, so a
           // one-step re-point would name a node the folded document does not
           // carry -- the exact dead-inheritance failure the re-pointing exists
-          // to prevent, reached from the other side. Found by /code-review.
+          // to prevent, reached from the other side.
           (mini.nodes.find((n) => n.id === "dept/parks") || {}).parent === "",
       detail: mini.nodes.map((n) => n.id + "<-" + (n.parent || "root")).join(", "),
     },
@@ -422,7 +421,7 @@ export async function checks() {
       // lists its WHOLE amount under "what we inferred" -- a false statement
       // about a figure the city printed most of. Latent today (all four
       // published columns carry zero derived links) and refused rather than
-      // left to the day one does. Found by /code-review, 2026-08-28.
+      // left to the day one does.
       name: "a printed flow and an inferred one are not folded into one mark",
       ok: (() => {
         const mixed = miniature();

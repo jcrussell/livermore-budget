@@ -316,8 +316,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 	// the second left a corpus of nothing but bare-label rows announcing "a
 	// further 78" with no prior count -- and the test written for that corpus
 	// asserted Contains("78 declared fund(s)"), which the malformed string
-	// satisfies. Found by the third review pass over this range; it was
-	// introduced by the second pass's own fix.
+	// satisfies.
 	var clauses []string
 	if unanchored > 0 {
 		clauses = append(clauses, fmt.Sprintf("%d declared fund(s) have no printed anchor "+
@@ -379,8 +378,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 		// summary saying "at that end of the movement" about all of them was
 		// false for the bare-label rows the moment they became subjects. A verb
 		// phrase carries direction and this check reads it; a bare fund name
-		// carries none and it must not claim to. Found by /code-review over the
-		// range that added the second arm.
+		// carries none and it must not claim to.
 		held:     heldLine(subjects, bare) + unanchoredNote,
 		nothing:  nothing,
 		findings: findings,
@@ -392,7 +390,7 @@ func (*rowFundsMatchTheirAnchors) Run(_ context.Context, s *Subject) (Result, er
 // A verb phrase carries direction and this check reads it; a bare fund name
 // carries none and must not claim to. One sentence covering both was false for
 // the bare-label rows the moment they became subjects, in a string fisc verify
-// prints on every run -- found by /code-review over the range that added them.
+// prints on every run.
 //
 // The second clause is omitted rather than printed as a zero, because a corpus
 // where no rule declares row_labels_name_funds is the ordinary case and a
@@ -405,7 +403,7 @@ func heldLine(subjects, bare int) string {
 	// "0 printed with a verb phrase, each the fund its row declares at that end
 	// of the movement" -- the zero-clause-as-a-result shape this function's own
 	// comment says it exists to avoid, reintroduced on the other axis by the fix
-	// that introduced the comment. Found by the second /code-review pass.
+	// that introduced the comment.
 	switch {
 	case bare == 0:
 		return fmt.Sprintf("%d row anchors name a fund, each one the fund its row "+

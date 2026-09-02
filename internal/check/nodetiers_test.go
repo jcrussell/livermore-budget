@@ -94,7 +94,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "coarser tier to a finer one",
 		},
 		{
-			// The gap /code-review found: this was a `continue` blamed on
+			// THE GAP: this was a `continue` blamed on
 			// graph-acyclic and link-values-tie-to-facts, and neither reports
 			// it. findCycle only looks for cycles and a dangling end is a leaf;
 			// linkValuesTieToFacts never reads Graph.Nodes. So a typo'd

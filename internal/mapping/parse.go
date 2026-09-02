@@ -249,7 +249,7 @@ func validateRollups(f *File, errf errFunc) error {
 		// corpus's only unassertable rollup is p140's "Total Sources", the
 		// mixed-kind line Rollup.Kinds' own doc comment is built around. The
 		// most likely place for the field to be typed is the one place nothing
-		// read it. Found by /code-review over the range that added it.
+		// read it.
 		if len(ro.Kinds) > 0 && declines {
 			return cmdutil.WithHint(
 				errf("", field("kinds"), "is declared alongside unassertable"),
@@ -914,8 +914,8 @@ func validatePrintedDecimals(r *Rule, errf errFunc) error {
 					"document is out by, a tolerance bounds an unnamed one, and a rule "+
 					"holding both offers a place to hide the difference between them")
 		}
-		// SAME COMPOSITION, ONE DECLARATION FURTHER OUT, and it took a third
-		// review pass to see it. unmapped_text takes a printed figure OUT of the
+		// SAME COMPOSITION, ONE DECLARATION FURTHER OUT.
+		// unmapped_text takes a printed figure OUT of the
 		// read on the author's word that it belongs to no row. If that word is
 		// wrong the row it belonged to is short, and a tolerance beside it is
 		// exactly what would absorb the shortfall -- the arithmetic that would
@@ -1018,14 +1018,13 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 	// any. Measured when found: a rule whose rows are all skip: true parsed
 	// clean, and row-funds-match-their-anchors drops skipped rows from every
 	// arm, so the declaration stood over zero checked rows and the rule was
-	// named nowhere in the summary. Found by the third /code-review pass.
+	// named nowhere in the summary.
 	// A ROW IS COVERED ONLY IF SOME PART READS IT, and there are TWO ways not to
 	// be: skip: true, and being omitted from every part that could carry it. The
 	// first version of this guard counted only the first, so a rule whose every
 	// row appears in each part's omitted_rows parsed clean and the check read
 	// none of them -- reproducing exactly the vacuous declaration the guard was
-	// added to refuse, one omission mechanism over. Found by the fifth review
-	// pass, in the fourth pass's own fix.
+	// added to refuse, one omission mechanism over.
 	//
 	// ActiveRows is the same function row-funds-match-their-anchors reaches
 	// through activeInAnyPart, so this counts what the check will actually read
@@ -1076,9 +1075,7 @@ func validateRowLabelFunds(r *Rule, errf errFunc) error {
 		// row-funds-match-their-anchors print a false sentence: the counterpart
 		// fell into the unphrased counter, whose clause named the rule as one
 		// that does not declare row_labels_name_funds while it did. Latent --
-		// no rule declares both today -- and found by /code-review over the
-		// range that added the field, which is where the same clause's last
-		// false statement was found too.
+		// no rule declares both today.
 		if row.Counterpart != nil {
 			return cmdutil.WithHint(
 				errf(r.ID, "row_labels_name_funds",
@@ -1556,11 +1553,8 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 	// not defensive; it is a second, worse copy of the check, and this copy
 	// disagreed with the first.
 	//
-	// No line numbers here on purpose: an earlier version of this comment said
-	// "twenty lines earlier ... in this same function" and the commit message
-	// said "eighty", and both were wrong about where the guard is and which
-	// function this is. The relationship is caller-and-callee, which does not
-	// move when lines do.
+	// No line numbers here on purpose: the relationship is caller-and-callee,
+	// which does not move when lines do.
 	return nil
 }
 

@@ -1469,7 +1469,7 @@ function foldDocument(doc, tiers) {
     // WHOLE amount under "what we inferred", which is a false statement about a
     // figure the city printed most of. Latent -- all four published columns
     // carry zero derived links -- and refused rather than left to the day one
-    // does. Found by /code-review, 2026-08-28.
+    // does.
     if (at.derived !== l.derived) {
       throw new Error("cannot draw " + doc.projection + ": " + source + " -> " + target +
         " folds together a printed flow and an inferred one, which cannot be drawn as one mark");
@@ -1526,7 +1526,7 @@ function foldDocument(doc, tiers) {
   // whose fund group takes in nothing but which is itself paid by another
   // group -- and re-pointing at it would leave the folded document naming a
   // node it does not carry, which is exactly the dead-inheritance failure this
-  // re-pointing exists to prevent. Found by /code-review, 2026-08-28.
+  // re-pointing exists to prevent.
   const nodes = doc.nodes.filter((n) => touched.has(n.id)).map((n) => {
     let up = n.parent ? foldsTo.get(n.parent) : "";
     for (let hops = 0; up && up !== n.id && !touched.has(up); hops++) {
@@ -2776,7 +2776,7 @@ function paintYearWords(year) {
   // replaced that with the spine's wording -- so two different charts announced
   // themselves identically to a screen reader. Same defect as fisc-rn0, which
   // is why sankeyTitle exists, reached through the one string that had not been
-  // moved yet. Found by /code-review, 2026-08-28.
+  // moved yet.
   // DELEGATED, so a year switch and a drill cannot write this element
   // differently. paintChartName also restores the <desc>, which paintYearWords
   // never touched and which a drill rewrites.

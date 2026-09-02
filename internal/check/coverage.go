@@ -150,9 +150,8 @@ var unprojectedScopes = map[string]string{
 		"$100,000 and the fund balances by $100,000, twenty, ten and ten printed units, with " +
 		"only Other Financing Sources tying. The General Government sub-block misses by " +
 		"$170,000 on top of that, seventeen units, which is why the tolerance that admits its " +
-		"$10,000 in FY2025 comes nowhere near admitting FY2024. A review pass corrected these " +
-		"figures to the sub-block's and a later one corrected them back: the four blocks are " +
-		"the ones the PAGE prints, and General Government is inside one of them.",
+		"$10,000 in FY2025 comes nowhere near admitting FY2024. The four blocks are the ones the " +
+		"PAGE prints, and General Government is inside one of them.",
 
 	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
 		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +

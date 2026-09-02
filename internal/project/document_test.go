@@ -30,9 +30,9 @@ func jsonTags(t *testing.T, v any) []string {
 
 // TestValidateCaveatsRefusesEveryShapeThatWouldRenderIsThePointOfIt.
 //
-// THE GUARD HAD NO TEST AT ALL, which a review pass found by adding
-// `if true { return nil }` as its first statement and watching `go test ./...`
-// stay entirely green. All five refusals were unverified in a function three
+// THE GUARD HAD NO TEST AT ALL: adding `if true { return nil }` as its first
+// statement left `go test ./...` entirely green.
+// All five refusals were unverified in a function three
 // builders call.
 //
 // EVERY CASE HERE IS A FAILURE THAT RENDERS, which is why the guard exists at

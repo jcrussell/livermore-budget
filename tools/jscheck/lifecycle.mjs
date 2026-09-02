@@ -381,11 +381,10 @@ export async function checks() {
   // repaint -- calls citations(projection.metadata.sources) and throws on
   // `for (const source of undefined)`.
   //
-  // FOUND BY /code-review ONE COMMIT AFTER fisc-bsg WAS CLOSED, and it is the
-  // same defect: paintYearWords, buildLegend and buildDerivedList have already
-  // run, so the page is left reading FY 2026-27 over FY2025-26's chart. The fix
-  // claimed "everything in the draw that can throw is in layOut" and this was
-  // the counter-example.
+  // IT IS THE SAME DEFECT AS fisc-bsg: paintYearWords, buildLegend and
+  // buildDerivedList have already run, so the page is left reading FY 2026-27
+  // over FY2025-26's chart. The fix that closed fisc-bsg claimed "everything in
+  // the draw that can throw is in layOut" and this is the counter-example.
   //
   // It hid because page() planted no <tbody>, so buildTable returned at its
   // first line in every check here. A gate is only worth what the checks behind

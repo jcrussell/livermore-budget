@@ -264,9 +264,7 @@ func TestP76AccountsForTheInSideAndNoneOfTheResidual(t *testing.T) {
 		// capital-sourced payers (Traffic Impact Fee, County Measure D, State
 		// - Gas Tax), 211,150 in FY2026. This bound is therefore loose on
 		// purpose, and TestP76SourcesDecomposeTheResidualByFundType below is
-		// the exact statement. An earlier version of this comment said the
-		// WHOLE of both groups was unexplained; docs/sankey-contract.md
-		// carried the same error into a shipped table.
+		// the exact statement.
 		unexplained := spine.out[groupYear{"capital", tc.year}] +
 			spine.out[groupYear{"internal-service", tc.year}]
 		if unexplained == 0 {

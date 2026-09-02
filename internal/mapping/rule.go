@@ -383,16 +383,16 @@ type Rule struct {
 	// claim about a specific schedule that someone has looked at, rather than
 	// something a resolver infers.
 	//
-	// AN EARLIER VERSION OF THIS COMMENT ARGUED IT FROM A NUMBER THAT IS FALSE,
-	// and the measurement is worth keeping because it is the opposite of what
-	// the argument assumed. It said a corpus-wide arm "would go from 78 subjects
-	// to thousands of which only 78 were ever intended". Measured over the
-	// committed corpus: 429 rows declared, 400 active and non-skipped, and
-	// exactly 78 of those 400 resolve through registry.FundByLabel — the 78 this
-	// declaration covers. ZERO accidental hits, and "thousands" is not reachable
-	// from a corpus of 429 rows at all. p127's "Current Year - Secured", p167's
-	// object categories and the spine's "Wages & Benefits" all miss, as that
-	// comment's own preceding clause said they would.
+	// THE OBVIOUS ARGUMENT FOR OPT-IN IS FALSE, and the measurement is kept
+	// because it is the opposite of what that argument assumes. The argument runs
+	// that a corpus-wide arm "would go from 78 subjects to thousands of which
+	// only 78 were ever intended". Measured over the committed corpus: 429 rows
+	// declared, 400 active and non-skipped, and exactly 78 of those 400 resolve
+	// through registry.FundByLabel — the 78 this declaration covers. ZERO
+	// accidental hits, and "thousands" is not reachable from a corpus of 429 rows
+	// at all. p127's "Current Year - Secured", p167's object categories and the
+	// spine's "Wages & Benefits" all miss, as the preceding clause said they
+	// would.
 	//
 	// SO THE ARGUMENT IS NOT ABOUT TODAY'S COUNT. It is that an inferred claim
 	// does not stay true: the next schedule mapped may print a row label that

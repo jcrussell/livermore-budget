@@ -34,8 +34,7 @@ const categoryFundBalanceChange = "fund-balance/change"
 // general FY2026 (4,699,425) and FY2027 (3,332,607) -- p66 prints a dash for
 // every other fund group. So summing it in breaks exactly those two of the
 // twelve spine balances, not all of them. Two is enough to redden the check and
-// enough to make the exclusion worth pinning; an earlier version of this comment
-// said "eleven of the twelve" and was simply wrong.
+// enough to make the exclusion worth pinning.
 
 // fundBalanceIdentity asserts that a fund balance's three published lines agree:
 // beginning + change == ending, at zero tolerance.

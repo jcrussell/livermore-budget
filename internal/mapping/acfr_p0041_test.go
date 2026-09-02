@@ -43,21 +43,10 @@ var (
 // Bare "$" tokens are dropped rather than parsed, because this helper reads the
 // page with strings.Fields and the resolver's dropCurrencyMarks is not in play.
 //
-// THE COMMENT HERE USED TO SAY SOMETHING ELSE AND IT WAS FALSE. It read: the
-// standalone "$" on the first revenue row "is fisc-yun ... one of the two
-// reasons the revenue block is unmapped". fisc-yun is CLOSED, dropCurrencyMarks
-// reads a lone mark in the labelled path, and the revenue block is now MAPPED --
-// the orphan "0.0" was the only blocker and it has an honest declaration
-// (fisc-hcus). This was one of TWO surviving copies of a claim already corrected
-// in the mapping file, internal/check/coverage.go and testdata/README.md -- the
-// other is acfr_p177_test.go's header, about p177 rather than this page, and it
-// was corrected in the same commit. An earlier draft of this paragraph called
-// this "the last surviving copy", which was false as written and is the same
-// habit it is describing: a claim about the tree made without grepping it. Both
-// survived because nothing reads a helper's doc comment. The assertion
-// that the marks are not a blocker is in
-// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared, where running the rule
-// settles it.
+// The marks are not a blocker: dropCurrencyMarks reads a lone mark in the
+// labelled path, and the revenue block is mapped, the orphan "0.0" carrying an
+// honest declaration (fisc-hcus). The assertion that settles it is
+// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared, where running the rule does.
 func acfrRow(t *testing.T, want string) []amount.Cents {
 	t.Helper()
 
@@ -239,16 +228,11 @@ func TestACFRp0041ExpendituresTieUnderTheTopLevelReading(t *testing.T) {
 //
 // THE GENERAL GOVERNMENT SUB-BLOCK IS NOT ONE OF THOSE FOUR and misses by
 // $170,000 of its own, seventeen units. Keeping the two counts apart matters
-// here more than anywhere: a review pass "corrected" internal/check's $100,000
-// to that $170,000 and a later pass corrected it back, because an intermediate
-// draft of the mapping file had quietly redefined "four blocks" to mean the four
-// this file MAPS. Four means the four the PAGE prints.
+// here more than anywhere: FOUR MEANS THE FOUR THE PAGE PRINTS, never the four
+// this file maps, and the two readings differ by exactly this sub-block.
 //
 // The expenditure figure is the TOP-LEVEL reading, the one that ties exactly in
-// FY2025, so FY2024 fails under either reading. An earlier version of this
-// comment said $270,000 and twenty-seven units, which is the LEAF reading and
-// matched neither the test below it nor the three other files that quote these
-// numbers.
+// FY2025, so FY2024 fails under either reading.
 func TestACFRp0041PriorYearColumnDoesNotReconcile(t *testing.T) {
 	revenue := []string{
 		"Property taxes and special assessments", "Sales Taxes", "Other taxes",
@@ -534,8 +518,8 @@ func TestACFRp0041GeneralGovernmentStopsAtFire(t *testing.T) {
 // "The one" is enforced rather than assumed, for the reason acfrRow enforces it:
 // a prefix matching two lines would make every assertion about it a claim about
 // whichever line came first, which nobody chose. This helper returned the first
-// match until the fifth review pass, while its own doc comment said "the one
-// line" and its sibling fatalled on exactly this.
+// match while its own doc comment said "the one line" and its sibling fatalled
+// on exactly this.
 func acfrLine(t *testing.T, want string) string {
 	t.Helper()
 	b, err := os.ReadFile(acfrStatementText)

@@ -258,7 +258,7 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 			// not. Counting it made the PASS line claim 14 cells tie where 13
 			// do, which is the overstatement revenuedetail.go avoids by saying
 			// its exceptions are "NOT among the 134". Reported separately
-			// below. Found by the fourth review pass over this range.
+			// below.
 			exempt++
 			applied[k] = true
 			// Both sides are asserted against a figure the book prints. Neither
@@ -314,8 +314,6 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 	// staleDeclarations refuses for unprojectedScopes and declaredToCIPGroups
 	// for transfersdetail.go's table, and it is a finding rather than a note
 	// because a reader of the summary would have no way to tell.
-	//
-	// Found by /code-review over cd1192c.
 	for _, e := range fundingSourcesExceptions {
 		if applied[e.key()] {
 			continue
@@ -325,7 +323,6 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 		// exception arm, so without this the check would tell a reader to delete
 		// a still-valid entry the day pp.66-67 stopped printing an FY2027
 		// column -- a change in the document, not a declaration going stale.
-		// Found by the fourth review pass over this range.
 		if !reconcile[e.key().yb()] {
 			continue
 		}
@@ -348,7 +345,7 @@ func (*fundingSourcesTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 	// as a live reconciliation beside an `exempt` of zero and no holding-apart
 	// clause, which is the check advertising coverage it did not provide. The
 	// stale-entry arm above reports the other case, where the pair IS reconciled
-	// and the cell is not produced. Found by the fifth review pass.
+	// and the cell is not produced.
 	for _, e := range fundingSourcesExceptions {
 		if !applied[e.key()] {
 			continue

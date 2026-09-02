@@ -257,8 +257,8 @@ func chartView(breaks func(*export.View)) export.View {
 // TestTheCaveatsPageRefusesWhatWouldRender covers buildCaveatsPage's five
 // refusals, none of which any test reached.
 //
-// A REVIEW PASS FOUND THEM UNFALSIFIABLE by neutering all five and watching
-// both ./internal/export and ./pkg/cmd/export stay green -- against a doc
+// THEY WERE UNFALSIFIABLE: neutering all five left both ./internal/export and
+// ./pkg/cmd/export green -- against a doc
 // comment that says "THREE REFUSALS, and each is a failure that renders". No
 // test in this package had ever constructed a CaveatsTemplate view at all, so
 // the page's whole error path was reachable only by a real export.
@@ -642,8 +642,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a view with neither a nav label nor a title", []export.View{ok,
 			{Path: "trends.html", Template: export.SankeyTemplate, Projection: "sankey"}},
 			"empty link"},
-		// THE THIRD FIELD OF THE SAME FAMILY, found by review of the commit
-		// that closed the first two. Only the drill-down publishes render_tiers
+		// THE THIRD FIELD OF THE SAME FAMILY, missing when the first two were
+		// closed. Only the drill-down publishes render_tiers
 		// to the client; buildSankeyPage omits the key and app.js reads
 		// `CONFIG.render_tiers ?? []`, so a fold asked for here was not
 		// refused, not reported and not applied -- the chart drew every tier
@@ -1475,9 +1475,8 @@ func TestAYearStemOnAnotherScopeIsRefused(t *testing.T) {
 // crediting one builder for figures drawn from two is not a wording problem a
 // repaint fixes, because the documents disagree about their own provenance.
 //
-// Added because /code-review of the basis fix found its two sentence-mates
-// unguarded: fixing one value of three and leaving the others is how the
-// original defect got in.
+// The basis fix left its two sentence-mates unguarded, and fixing one value of
+// three while leaving the others is how the original defect got in.
 func TestAYearStemBuiltByAnotherProjectionIsRefused(t *testing.T) {
 	_, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
 		meta["generated_by"] = "fisc some-other-build"
@@ -1500,8 +1499,7 @@ func TestAYearStemBuiltByAnotherProjectionIsRefused(t *testing.T) {
 // footer prints "Scope {{.Scope}}", the slug, three screens down. Neither is
 // repainted and the scope guard in buildSankeyPage only makes a view's YEARS
 // agree with each other -- so a view built entirely on some other scope ships a
-// lede contradicting its own footer, with every guard green. Found by
-// /code-review of the fisc-iyt landing.
+// lede contradicting its own footer, with every guard green.
 //
 // A PIN RATHER THAN A GUARD, deliberately. Refusing a scope in internal/export
 // would mean this package holding an opinion about which scopes exist, which is

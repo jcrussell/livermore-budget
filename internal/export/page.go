@@ -481,7 +481,7 @@ const (
 	// which is a figure and is therefore drawn.
 	//
 	// A DOT AND NOT A SHORT BAR, because a size difference is not a difference
-	// at this scale. /code-review measured the shipped page: ten real figures
+	// at this scale. Measured on the shipped page: ten real figures
 	// ($500,000, $74,748, $55,380…) rendered at exactly the height of the 165
 	// published-zero ticks, and at 1.6em over 13px type one viewBox unit was
 	// 0.69 CSS px — so the two were sub-pixel and told apart only by fill. A
@@ -495,13 +495,9 @@ const (
 	// $47,000.
 	//
 	// IT IS TWO AND NOT ONE, so that a tiny figure and a published zero are
-	// never the same rectangle. At one unit they were: /code-review measured
-	// ten shipped bars that are real money ($500,000, $74,748, $55,380,
-	// $15,708…) rendering at exactly the height of the 165 published-zero
-	// ticks, told apart only by fill — and at 1.6em over 13px type one unit is
-	// 0.69 CSS px, so both were sub-pixel and the fill was carrying a
-	// distinction the geometry had thrown away. Absent is not zero, and a
-	// rounding-error figure is neither.
+	// never the same rectangle. At one unit they were, for the reason
+	// markZeroRadius records. Absent is not zero, and a rounding-error figure is
+	// neither.
 	markMinBar = 2
 )
 
@@ -1222,8 +1218,8 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// one builder and drawing FY2027's from another is not a wording problem
 		// a repaint fixes; the two documents disagree about their own
 		// provenance, and this project's answer to ambiguity is to refuse it.
-		// Found by /code-review of this change: the basis fix left its two
-		// sentence-mates unguarded, which is how the original defect got in.
+		// All three sentence-mates are guarded, not just the basis: guarding one
+		// is how the original defect got in.
 		if m.Scope != meta.Scope {
 			return pageData{}, fmt.Errorf(
 				"view %q opens on %q with scope %q but its year stem %q has scope %q; "+

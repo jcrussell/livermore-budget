@@ -58,9 +58,8 @@ function fixtureCaveats(n) {
  * function against an APPENDING paintYearWords return the same array object
  * twice and `second.tiles.length === first.tiles.length` is `n === n` -- green
  * against the exact defect the check below is named for (fisc-kwq: FY2026's
- * residual left on screen beside FY2027's chart). Found by /code-review,
- * 2026-08-26, and mutation-verified: reverting paintYearWords to append() left
- * every check in this file passing.
+ * residual left on screen beside FY2027's chart). Mutation-verified: reverting
+ * paintYearWords to append() left every check in this file passing.
  */
 function painted(app, year) {
   app.paintYearWords(year);

@@ -362,10 +362,9 @@ type Link struct {
 	ValueCents int64    `json:"value_cents"`
 	Kind       LinkKind `json:"kind"`
 	// TransferID pairs the two legs of one transfer. It is "" on every link
-	// today -- NOT because the p76 transfer schedule is unmapped, which an
-	// earlier version of this comment said and which stopped being true at
-	// ced45b4. p76 is mapped and published at scope transfers-by-fund, and no
-	// projection selects that scope, so its legs are in no graph. Populating
+	// today -- NOT because the p76 transfer schedule is unmapped. p76 is mapped
+	// and published at scope transfers-by-fund, and no projection selects that
+	// scope, so its legs are in no graph. Populating
 	// this needs a document of p76's own plus an id derived from the two legs'
 	// shared (doc_id, page, offset): fisc-9gh, not fisc-5gk.3. Until then any
 	// check of the form "every transfer_id has two equal legs" is vacuous and
