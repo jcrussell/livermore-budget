@@ -391,8 +391,7 @@ type Rule struct {
 	// through registry.FundByLabel — the 78 this declaration covers. ZERO
 	// accidental hits, and "thousands" is not reachable from a corpus of 429 rows
 	// at all. p127's "Current Year - Secured", p167's object categories and the
-	// spine's "Wages & Benefits" all miss, as the preceding clause said they
-	// would.
+	// spine's "Wages & Benefits" all miss.
 	//
 	// SO THE ARGUMENT IS NOT ABOUT TODAY'S COUNT. It is that an inferred claim
 	// does not stay true: the next schedule mapped may print a row label that

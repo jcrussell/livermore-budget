@@ -299,11 +299,10 @@ func TestAVacuousRowFundsSummaryCannotDenyTheRowsItSaw(t *testing.T) {
 	// AND IT HAS TO READ. The assertion above passed on "; a further 78
 	// declared fund(s)..." -- a clause with no antecedent, because the note was
 	// seeded in the unanchored arm and appended to in the unphrased one.
-	//
-	// AN EARLIER ASSERTION HERE PASSED ON THE BUG: Contains("78 declared
-	// fund(s)") is satisfied by the malformed string, so a test written for this
-	// defect could not fail on it. That is why the two assertions below pin the
-	// antecedent and the adjacency rather than a substring.
+	// Contains("78 declared fund(s)") is satisfied by that malformed string, so a
+	// test written for this defect could not fail on it, which is why the two
+	// assertions below pin the antecedent and the adjacency rather than a
+	// substring.
 	if strings.Contains(res.Summary, "a further") {
 		t.Errorf("the summary says \"a further\" with nothing before it:\n%s", res.Summary)
 	}

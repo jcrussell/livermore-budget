@@ -258,10 +258,9 @@ func chartView(breaks func(*export.View)) export.View {
 // refusals, none of which any test reached.
 //
 // THEY WERE UNFALSIFIABLE: neutering all five left both ./internal/export and
-// ./pkg/cmd/export green -- against a doc
-// comment that says "THREE REFUSALS, and each is a failure that renders". No
-// test in this package had ever constructed a CaveatsTemplate view at all, so
-// the page's whole error path was reachable only by a real export.
+// ./pkg/cmd/export green. No test in this package had ever constructed a
+// CaveatsTemplate view at all, so the page's whole error path was reachable only
+// by a real export.
 //
 // THE DUPLICATE-ANCHOR CASE IS THE ONE WORTH HAVING. project.ValidateCaveats
 // catches a repeated id WITHIN one document at build time; this catches it

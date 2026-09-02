@@ -1218,8 +1218,9 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// one builder and drawing FY2027's from another is not a wording problem
 		// a repaint fixes; the two documents disagree about their own
 		// provenance, and this project's answer to ambiguity is to refuse it.
-		// All three sentence-mates are guarded, not just the basis: guarding one
-		// is how the original defect got in.
+		// BOTH OF THE BASIS'S SENTENCE-MATES ARE GUARDED, not just one of them:
+		// fixing one value of three and leaving the others is how the original
+		// defect got in.
 		if m.Scope != meta.Scope {
 			return pageData{}, fmt.Errorf(
 				"view %q opens on %q with scope %q but its year stem %q has scope %q; "+
