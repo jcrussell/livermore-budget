@@ -42,9 +42,9 @@ const (
 //
 // EVERY FIGURE HERE IS READ OFF A PAGE, AND NONE IS DERIVED AS spine MINUS
 // detail. That distinction is the difference between a check and a tautology.
-// TestP76SourcesDecomposeTheResidualByFundType computes exactly that difference
-// and asserts these same numbers; copying its arithmetic into the comparand would
-// make this check assert 0 == 0 forever.
+// internal/mapping's TestP76SourcesDecomposeTheResidualByFundType computes
+// exactly that difference and asserts these same numbers; copying its arithmetic
+// into the comparand would make this check assert 0 == 0 forever.
 //
 //   - internal-service and the non-major aggregate are printed verbatim:
 //     p0073.txt:53 and :56 for FY2026, p0075.txt:53 and :56 for FY2027. (The

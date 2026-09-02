@@ -1198,8 +1198,9 @@ func tierNodeWithDisclosure(t *testing.T, s *Subject, tier string) {
 // A FUND NODE IS THE INVERSE OF A DERIVED ONE: the node is published -- the city
 // prints the fund and its revenue -- while the constraint tier is our reading of
 // the Description of Funds narrative, pp.258-261. So node.derived stays FALSE,
-// which means derived-nodes-justified skips a node that is not derived, and
-// the disclosure has nowhere else to be asserted. Without these three arms the
+// which means derived-nodes-justified skips it -- that check reads only nodes
+// that are derived or named in its inferred list, and a fund node is neither --
+// so the disclosure has nowhere else to be asserted. Without these three arms the
 // site would publish an editorial classification unmarked, which is the single
 // thing this project's premise refuses.
 func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {

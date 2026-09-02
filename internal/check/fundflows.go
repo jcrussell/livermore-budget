@@ -16,7 +16,7 @@ import (
 //
 // THE DERIVATION IS INDEPENDENT, which is the whole reason a count is worth
 // checking. counts-reconcile earns that by carrying a second copy of
-// internal/project's cell netting (cellKey and netCells) and
+// internal/project's cell netting (this package's own cellKey and netCells) and
 // re-netting the facts; this earns it a different and stronger way, by deriving
 // every figure from the PUBLISHED LINKS rather than from any netting at all. A
 // citation the projection got wrong changes the answer here; a check that

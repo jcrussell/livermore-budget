@@ -1219,7 +1219,7 @@ var transfersOutToCIP = map[Column]struct {
 // the citywide figure, and only that. Splitting it by fund group is derived,
 // because pp.72-75 print a to-CIP figure per major fund and one aggregate for
 // every non-major one -- this project's own published-is-not-derived rule, made
-// in full at collapseNonMajor.
+// in full at internal/check's collapseNonMajor.
 func transferCaveat(h Headline, col Column, links []Link) Caveat {
 	// ONE ID OVER THREE TEXTS, deliberately. Which of the three sentences a
 	// document gets is a fact about that document's own arithmetic -- whether

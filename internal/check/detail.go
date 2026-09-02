@@ -16,8 +16,8 @@ const expenditureDetailScope = "expenditure-by-department"
 // The restriction. Both halves are load-bearing and neither is cosmetic.
 //
 // WITHOUT THE KIND HALF the union meets the spine's revenue, transfer and
-// fund-balance keys, against a schedule that prints none of them, and fails at a quarter of a billion dollars
-// before reaching an expenditure.
+// fund-balance keys, against a schedule that prints none of them, and fails at a
+// quarter of a billion dollars before reaching an expenditure.
 //
 // WITHOUT THE FUND-GROUP HALF it meets the other five fund groups' expenditure,
 // about $109M in FY2026, because pp.167-170 are a GENERAL FUND schedule.
