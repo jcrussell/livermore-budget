@@ -1198,8 +1198,8 @@ func tierNodeWithDisclosure(t *testing.T, s *Subject, tier string) {
 // A FUND NODE IS THE INVERSE OF A DERIVED ONE: the node is published -- the city
 // prints the fund and its revenue -- while the constraint tier is our reading of
 // the Description of Funds narrative, pp.258-261. The tier is the editorial half
-// and this check is what asserts its disclosure. Without these three arms the
-// site would publish an editorial classification unmarked, which is the single
+// and this check is what asserts its disclosure. Without these arms the site
+// would publish an editorial classification unmarked, which is the single
 // thing this project's premise refuses.
 func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 	const id = "constraint-tier-vocabulary"

@@ -176,12 +176,12 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 //
 // WHAT IT DOES NOT COVER, said here because the summary says it on every run:
 //
-//   - pp.66-67 print no actual or revised column, so the schedule's FY2024 and
-//     FY2025 halves tie to each department's own
-//     printed Total Department Funding Sources at build time and to nothing on
-//     the spine. Five of the eleven departments miss that printed total by
-//     exactly one dollar, every one of them in the FY2023-24 Actual column and
-//     nowhere else; those are declared as stated_total_deltas.
+//   - pp.66-67 print no actual or revised column, so the schedule's FY2024
+//     and FY2025 halves tie to each department's own printed Total
+//     Department Funding Sources at build time and to nothing on the spine.
+//     Five of the eleven departments miss that printed total by exactly one
+//     dollar, every one of them in the FY2023-24 Actual column and nowhere
+//     else; those are declared as stated_total_deltas.
 //
 //   - The `permanent` group. Doolan Canyon Preserve Endow (470) pays 620,581 of
 //     Community Development in FY2023-24 and nothing thereafter, and pp.66-67

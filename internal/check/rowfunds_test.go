@@ -429,8 +429,9 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // row-funds-match-their-anchors alone, with 1 finding over 118 row anchors,
 // while fact-funds-resolve and funding-sources-tie-to-spine both stay PASS --
 // 640 and 641 are both `enterprise` in data/funds.yaml, so no money leaves its
-// group and no sum moves. Deleting the ru.RowLabelsNameFunds arm from Run
-// returns it to green.
+// group and no sum moves. Deleting the BARE-LABEL arm from Run -- the second of
+// the two gated on ru.RowLabelsNameFunds, not the phrased-label refusal above it
+// -- returns it to green.
 func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

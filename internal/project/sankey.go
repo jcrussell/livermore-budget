@@ -95,9 +95,8 @@ const nodeTransfersIn = "transfers/in"
 
 // nodeTransfersOut is its mirror, and the two are not symmetric in use.
 //
-// nodeTransfersIn IS ON THE PRODUCTION PATH -- revenueEndpoint
-// returns it for every KindTransferIn cell -- while nodeTransfersOut is read
-// only by tests. That asymmetry is the document's, not an oversight: the
+// nodeTransfersIn IS ON THE PRODUCTION PATH -- revenueEndpoint returns it for
+// every KindTransferIn cell -- while nodeTransfersOut is read only by tests. That asymmetry is the document's, not an oversight: the
 // drill-down has a revenue side and no transfers-out end to name.
 //
 // This constant was added to spell [Caveat.AppliesTo]'s two legs, and that is

@@ -567,8 +567,8 @@ func validateCategory(c Category, catf errFunc) error {
 	}
 	// AND A MEMBER MUST BE A REAL KIND. Until this landed, `kinds: [banana]`
 	// loaded clean and left `fisc verify` fully green, because
-	// fact-kind-matches-category compares a fact's
-	// kind against this list and a category no fact has reached is never
+	// fact-kind-matches-category compares a fact's kind against this list and a
+	// category no fact has reached is never
 	// consulted. Four of the twenty-five categories are in that state today,
 	// including an assignable one, so the typo would surface years later as a
 	// mass failure instead of now as a one-line file error. It is the shape
@@ -671,8 +671,8 @@ func validateCategory(c Category, catf errFunc) error {
 		// printed on AND the way to defeat this check: pages: [..., 9999]
 		// with a contra row on 9999 loads clean. Load reads three YAML files
 		// and has no corpus to ask, so the bound cannot be taken here --
-		// TestFundAliasesArePrintedOnTheirPages is the
-		// shape that can, against the extracted text. Filed as fisc-e0p8.
+		// TestFundAliasesArePrintedOnTheirPages is the shape that can, against
+		// the extracted text. Filed as fisc-e0p8.
 		//
 		// It must NOT be copied onto aliases -- see validateAlias.
 		if !slices.Contains(c.Pages, cr.Page) {
