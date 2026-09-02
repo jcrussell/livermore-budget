@@ -577,10 +577,10 @@ func (r *Registry) Departments() []Department {
 	return out
 }
 
-// Error reports a problem in one registry file, naming the entry at fault.
-// The files are long — 112 funds, 25 categories, both hand-written — so an
-// error that says only "duplicate slug" costs the reader a search through a
-// file whose whole point is that its entries are hard to tell apart.
+// Error reports a problem in one registry file, naming the entry at fault. The
+// files are long and hand-written, so an error that says only "duplicate slug"
+// costs the reader a search through a file whose whole point is that its entries
+// are hard to tell apart.
 type Error struct {
 	// File is FundsFile, TaxonomyFile, DepartmentsFile or SourcesFile.
 	File string

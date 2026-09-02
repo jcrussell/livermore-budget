@@ -447,13 +447,12 @@ func validatePages(pages []int, slug string, ef errFunc) error {
 // validatePagesShape is validatePages WITHOUT the presence rule: 1-based,
 // ascending, each page once.
 //
-// The split exists because a taxonomy category's `pages` is optional and its
-// shape is not. Three of the twenty-five categories carry none, and they are
-// exactly the three `assignable: false` rollups -- so "required when
-// assignable" is defensible on today's data and is filed as fisc-3did
-// rather than taken here, because it would churn forty inline fixtures for a
-// rule with no live violation. What is NOT defensible is the state this
-// replaces, where a category could claim page 0 or list a page twice and load
+// The split exists because a taxonomy category's `pages` is optional and its shape
+// is not. The categories that carry none are exactly the `assignable: false`
+// rollups -- so "required when assignable" is defensible on today's data and is
+// filed as fisc-3did rather than taken here, because it would churn forty inline
+// fixtures for a rule with no live violation. What is NOT defensible is the state
+// this replaces, where a category could claim page 0 or list a page twice and load
 // clean.
 func validatePagesShape(pages []int, slug string, ef errFunc) error {
 	const field = "pages"
