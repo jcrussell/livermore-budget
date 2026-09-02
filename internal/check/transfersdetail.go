@@ -42,8 +42,8 @@ const (
 //
 // EVERY FIGURE HERE IS READ OFF A PAGE, AND NONE IS DERIVED AS spine MINUS
 // detail. That distinction is the difference between a check and a tautology.
-// internal/mapping/transfers_p76_test.go computes exactly that difference and
-// asserts these same numbers; copying its arithmetic into the comparand would
+// TestP76SourcesDecomposeTheResidualByFundType computes exactly that difference
+// and asserts these same numbers; copying its arithmetic into the comparand would
 // make this check assert 0 == 0 forever.
 //
 //   - internal-service and the non-major aggregate are printed verbatim:

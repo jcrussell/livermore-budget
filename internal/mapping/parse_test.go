@@ -316,8 +316,8 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 			// A DEPARTMENT IS NOT A SUBSTITUTE FOR A CATEGORY, and until
 			// 2026-08-29 it was accepted as one. A fact with no category is in
 			// no graph unless its scope is projected, so in an unprojected
-			// scope it was named by nothing at all -- fisc verify stayed at 38
-			// passed, 0 failed with two such facts in the store.
+			// scope it was named by nothing at all -- fisc verify stayed fully
+			// green with two such facts in the store.
 			name: "row that declares a department and no category",
 			yaml: strings.Replace(base(""), `{label: "A", category: a}`,
 				`{label: "A", department: city-manager}`, 1),

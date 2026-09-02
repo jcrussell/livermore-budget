@@ -1762,7 +1762,7 @@ func effectiveColumns(rule *Rule, p *Part) []Column {
 }
 
 // columnIdentity renders a column as the thing it IDENTIFIES, which is not what
-// geometry.go's describeColumn renders.
+// describeColumn renders.
 //
 // The two answer different questions and neither generalises. describeColumn
 // answers "which column is this token in", a positional question where basis and

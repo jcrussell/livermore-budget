@@ -413,11 +413,11 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // mutation it runs is the one the bead was filed for.
 //
 // WHAT WAS ALREADY TRUE, said first so this test is not read as closing a hole
-// it did not close. TestEveryFundingSourceFactMatchesThePrintedRow
-// (fundingsources_test.go) has resolved every funding-source fact's RowLabel
-// through FundByLabel since cd1192c, so `go test` was already red on Water
-// 640 -> 641. What was NOT red was the GATE: measured at 02156a7, that mutation
-// leaves `fisc verify` at 40 passed, 0 failed. A guarantee that lives only
+// it did not close. TestEveryFundingSourceFactMatchesThePrintedRow has resolved
+// every funding-source fact's RowLabel through FundByLabel since cd1192c, so
+// `go test` was already red on Water 640 -> 641. What was NOT red was the GATE:
+// measured at 02156a7, that mutation left `fisc verify` fully green. A
+// guarantee that lives only
 // inside one lane's test is not one the fact store carries, and the acceptance
 // criterion on fisc-90fp is "makes fisc verify fail".
 //
@@ -426,12 +426,13 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // tell the new arm from the old test is green because the other gate fired --
 // which is the shape AGENTS.md names and which this repo has shipped four times.
 //
-// Measured with the arm in place: `fisc verify` reports 39 passed, 1 failed,
-// row-funds-match-their-anchors with 1 finding over 118 row anchors, while
+// Measured with the arm in place: `fisc verify` goes red on
+// row-funds-match-their-anchors alone, with 1 finding over 118 row anchors,
+// while
 // fact-funds-resolve and funding-sources-tie-to-spine both stay PASS -- 640 and
 // 641 are both `enterprise` in data/funds.yaml, so no money leaves its group and
 // no sum moves. Deleting the ru.RowLabelsNameFunds arm from Run returns it to
-// 40 passed, 0 failed.
+// green.
 func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

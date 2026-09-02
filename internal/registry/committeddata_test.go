@@ -23,8 +23,7 @@ import (
 // a filename check.Result's doc comment named as a future one when this was
 // written, and which that comment now records will never exist, tier 2 having
 // landed in internal/mapping at build time instead -- plus a malformed
-// data/junk.yaml leaves fisc verify at 38 passed, 0 failed and
-// go test ./... green. Committed data that nothing reads and nothing validates
+// data/junk.yaml leaves fisc verify fully green and go test ./... green too. Committed data that nothing reads and nothing validates
 // is the same failure this package exists to refuse, one level up: an
 // unvalidated thing agreeing with nothing at all, reported as a pass.
 //

@@ -95,7 +95,7 @@ const nodeTransfersIn = "transfers/in"
 
 // nodeTransfersOut is its mirror, and the two are not symmetric in use.
 //
-// nodeTransfersIn IS ON THE PRODUCTION PATH -- fundflows.go's revenueEndpoint
+// nodeTransfersIn IS ON THE PRODUCTION PATH -- revenueEndpoint
 // returns it for every KindTransferIn cell -- while nodeTransfersOut is read
 // only by tests. That asymmetry is the document's, not an oversight: the
 // drill-down has a revenue side and no transfers-out end to name.
@@ -1219,7 +1219,7 @@ var transfersOutToCIP = map[Column]struct {
 // the citywide figure, and only that. Splitting it by fund group is derived,
 // because pp.72-75 print a to-CIP figure per major fund and one aggregate for
 // every non-major one -- this project's own published-is-not-derived rule, made
-// in full at internal/check/transfersdetail.go's collapseNonMajor.
+// in full at collapseNonMajor.
 func transferCaveat(h Headline, col Column, links []Link) Caveat {
 	// ONE ID OVER THREE TEXTS, deliberately. Which of the three sentences a
 	// document gets is a fact about that document's own arithmetic -- whether

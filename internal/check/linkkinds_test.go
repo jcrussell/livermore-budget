@@ -87,8 +87,8 @@ func TestAnExternalLinkIsNotAssertedToBeExternal(t *testing.T) {
 }
 
 // linkWithPrefix is the first link whose source starts with prefix, which is
-// what a test damaging "some transfer link" needs; linkFrom in checks_test.go
-// takes an exact node id and is the right tool when the test names one.
+// what a test damaging "some transfer link" needs; linkFrom takes an exact
+// node id and is the right tool when the test names one.
 func linkWithPrefix(t *testing.T, g *project.Graph, prefix string) *project.Link {
 	t.Helper()
 	for i := range g.Links {

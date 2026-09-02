@@ -1521,7 +1521,7 @@ func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
 //
 // THAT FIXTURE IS A CAPTURE, NOT A DERIVATION, and this test is what makes the
 // difference bearable. testdata/sankey.golden.json is hand-derived from
-// fixture_test.go's spineRows, so reproducing it proves the projection reads
+// internal/project's spineRows fixture, so reproducing it proves it reads
 // those rows correctly. Nothing comparable is affordable here: the drill-down
 // is 280 facts over 18 pages, and a hand-authored table of them would be a
 // transcription of the same schedules the mapping rules already read.

@@ -16,8 +16,7 @@ const expenditureDetailScope = "expenditure-by-department"
 // The restriction. Both halves are load-bearing and neither is cosmetic.
 //
 // WITHOUT THE KIND HALF the union meets the spine's revenue, transfer and
-// fund-balance keys — 120, 24 and 48 facts on the committed corpus — against a
-// schedule that prints none of them, and fails at a quarter of a billion dollars
+// fund-balance keys, against a schedule that prints none of them, and fails at a quarter of a billion dollars
 // before reaching an expenditure.
 //
 // WITHOUT THE FUND-GROUP HALF it meets the other five fund groups' expenditure,

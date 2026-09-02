@@ -208,7 +208,7 @@ categories:
 			want: `taxonomy.yaml: category "taxes/property": parent: is "transfers", but the slug's head noun is "taxes"`,
 		}, {
 			// The defect this whole arm exists for. Before it landed this
-			// file loaded clean and `fisc verify` was 38 passed, 0 failed.
+			// file loaded clean and `fisc verify` was fully green.
 			name: "category kind that mapping.Kind has never defined",
 			taxonomy: `
 schema_version: 1

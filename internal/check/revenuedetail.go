@@ -25,7 +25,7 @@ const transfersDetailScope = "transfers-by-fund"
 // pp.127-140 span all six fund groups — pp.127-130 are the General Fund and
 // pp.131-140 are the other five — so pinning one would silently drop the
 // schedule's larger half. Copying the department lane's restriction here would
-// do exactly that; detail.go:29-30 says so from the other side.
+// do exactly that; expenditureDetailRestriction says so from the other side.
 //
 // TRANSFER_IN IS IN THE RESTRICTION because the schedule prints it. Eleven fund
 // blocks on pp.131-140 carry a Transfers In row inside one printed

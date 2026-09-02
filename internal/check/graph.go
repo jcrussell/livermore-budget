@@ -1109,7 +1109,7 @@ func factsFor(facts []fact.Fact, o project.Options) []fact.Fact {
 }
 
 // The netting below — cell, cellKey and netCells — is a second implementation of
-// internal/project's own cell netting (sankey.go's cellKey, cell and netCells).
+// internal/project's own cell netting (its cellKey, cell and netCells).
 // That is deliberate and it is what the counts identity rests on: this package has
 // to know which cells the projection SHOULD have drawn a link for in order to say
 // whether the ones it did draw account for every fact. Asking the projection would

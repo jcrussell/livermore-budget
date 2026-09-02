@@ -42,8 +42,8 @@ var hierarchyTiers = map[string]int{
 // prefix and two tiers, so a prefix rule could not express them and a reader
 // deriving one from the other would be wrong half the time.
 // SPELLED OUT RATHER THAN IMPORTED, which is this package's habit where the
-// point is an independent second reading (fundGroupInternalService in graph.go
-// says the same about itself). internal/project exports two of these five as
+// point is an independent second reading (fundGroupInternalService says the
+// same about itself). internal/project exports two of these five as
 // constants; taking them from there and the other three from the contract would
 // make half the table agree with the producer by construction and the other half
 // by assertion, which is the worst of both.
@@ -58,7 +58,7 @@ var endpointTiers = map[string]int{
 // nodeTiersAreDeclared asserts every node sits at the tier its id form declares
 // and every link runs from a coarser tier to a finer one.
 //
-// THE FIELD WAS PUBLISHED AND READ BY NOTHING. node.tier ships on all 50 nodes
+// THE FIELD WAS PUBLISHED AND READ BY NOTHING. node.tier ships on every node
 // of the two spine documents and no check in this package looked at it:
 // aggregation-invariance reads only Parent, constraint-tier-vocabulary only
 // ConstraintTier, graph-acyclic only links. That was nearly harmless while the
