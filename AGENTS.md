@@ -632,8 +632,37 @@ hiding, and what would have to break for this to go red?"**
 
 ## Before you quote a number
 
-Every claim in a comment, a commit message or a bead is checkable, and this
-project treats an unchecked one as a defect. Three traps:
+**First ask whether to write it at all. Do not report a count of the tree's own
+contents.** How many facts, nodes, links, subjects, checks or rules there are
+goes stale on the next commit and tells a reader nothing they could not get by
+looking. A count earns its place only when it is **extrinsic** — when it says
+something about a world outside the code that the code cannot report. *"We
+handle 18 of the 20 status codes"* is worth writing; *"this map holds nine entries"*
+is not.
+
+Two kinds qualify and nothing else does:
+
+- **A count against the documents.** *"pp.85-125's 78 rows"*, *"23 divisions
+  under 11 departments"*, *"the corpus is 786 pages"*. The
+  city printed those, or they are our coverage of what the city printed. This is
+  the project's whole subject and it stays.
+- **A count that is the evidence for a decision** — the reconciliation
+  arithmetic, and `site/app.js`'s crossings against every other ordering still
+  reachable. The number *is* the argument. It stays, and it must be pinned by
+  something that re-measures it, which is what `tools/jscheck/layout.mjs` exists
+  for; where nothing can, name the commit it was measured at, as this file does.
+
+**The tests here already apply this and the prose never got the memo.**
+`TestTheCommittedCorpusVacuitySplit` says *"It asserts the words and not the
+subject counts. The counts move with every page that gets mapped, and pinning
+them here would make this a test of the mapping's size."*
+`TestUnprojectedScopesAreDeclarations` says *"The count is deliberately NOT
+pinned."* Both refuse a count that comment phrases and printed strings elsewhere
+in the same packages go on to state anyway. `fisc-pm8f`.
+
+Everything below is for the numbers that survive that question. Every claim in a
+comment, a commit message or a bead is checkable, and this project treats an
+unchecked one as a defect. Three traps:
 
 - **`make pre-commit` does not run `fisc verify`.** Rebuild `bin/fisc` before
   quoting a check count. One session reported "38 passed" after landing a check
@@ -829,6 +858,41 @@ dereferenced, a parse error reading "row %q has neither category nor
 department" that would fire on a row which *had* a department, a guard message
 describing a check its condition could not perform, and a summary sentence that
 went false one commit after it was pinned.
+
+**A comment names a symbol. It does not say what the symbol does, and it does
+not say where the symbol lives.** Both are second sources that nothing keeps in
+step: the edit that falsifies a restatement is in the other file, so its author
+never sees the comment, and a path goes stale the moment the symbol moves. Go
+tooling finds a symbol from its bare name — qualify with a package only where
+the name is ambiguous.
+
+**The exception is surprise.** Document another API only where it does not make
+sense on its face, or has to be used oddly for this code to work — and then
+write down *what surprised you*, not what the API does. That is the one thing
+the other file cannot tell the reader, and the one thing a reader loses by
+looking it up.
+
+**Data and artifact paths are not symbols and stay.** `data/funds.yaml`,
+`testdata/pages/p0067.txt`, `mappings/*.yaml`, `site/app.js` — there is nothing
+to look up by name, so the path is the reference rather than a second copy of
+one. It is only a symbol's `.go` path that goes.
+
+**History's home is git.** No `Found by /code-review` credit line in source:
+[Commits](#commits) already puts that credit in the commit body, where it tells
+the next reader whether a fix was designed or discovered. No errata either —
+*"an earlier version of this comment said X"* adds a second claim, about the
+past, that nothing can check. Where an erratum carries a **rule**, keep the rule
+and drop the history that argued for it. This governs source comments and not
+this file, whose own *(Correction, recorded here rather than by amending)*
+blocks are argued for where they stand.
+
+The evidence is `fisc-pm8f`, over the findings counted in
+[What fifteen passes measured](#what-fifteen-passes-measured). Reclassifying the
+false-text ones by *cause* gives restating-a-rule-that-changed-elsewhere 35%,
+never-true-when-written 23%, quoted-number-drifted 22%, history 15% — so the
+narrative register is the carrier and not the cause, and the hypothesis that
+prompted the audit came back mostly wrong: measured at `823de73`, history-marker
+comment lines are 247 of 18,746.
 
 **Do not insert code between a doc comment and its declaration.** It happened
 twice in one commit: a new helper orphaned `foldDocument`'s JSDoc, costing that
