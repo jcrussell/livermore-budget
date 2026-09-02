@@ -19,20 +19,20 @@ import (
 // five structural checks that fisc verify --strict runs over the real tree.
 // What NOTHING catches is a file appearing that no loader knows about.
 //
-// MEASURED, and it is not hypothetical: dropping data/reconciliations.yaml --
-// a filename check.Result's doc comment named as a future one when this was
-// written, and which that comment now records will never exist, tier 2 having
-// landed in internal/mapping at build time instead -- plus a malformed
-// data/junk.yaml leaves fisc verify fully green, and go test ./... green too.
-// Committed data that nothing reads and nothing validates is the same failure
-// this package exists to refuse, one level up: an
-// unvalidated thing agreeing with nothing at all, reported as a pass.
+// MEASURED, and it is not hypothetical: dropping data/reconciliations.yaml -- a
+// filename check.Result's doc comment named as a future one when this was written,
+// and which that comment now records will never exist, tier 2 having landed in
+// internal/mapping at build time instead -- plus a malformed data/junk.yaml leaves
+// fisc verify fully green, and go test ./... green too. Committed data that nothing
+// reads and nothing validates is the same failure this package exists to refuse,
+// one level up: an unvalidated thing agreeing with nothing at all, reported as a
+// pass.
 //
 // IT WALKS TWO LEVELS, NOT ONE, because the boundary is not where it looks.
-// artifacts-match-manifest hashes every file its manifest lists and reports
-// every file it does not, so a stray under data/extracted/<doc>/ IS caught.
-// A stray at data/extracted/ itself, or at data/pdf/, is NOT -- measured, both
-// leave fisc verify at 38/0. So the two known directories get their own arm.
+// artifacts-match-manifest hashes every file its manifest lists and reports every
+// file it does not, so a stray under data/extracted/<doc>/ IS caught. A stray at
+// data/extracted/ itself, or at data/pdf/, is NOT -- measured, both leave fisc
+// verify fully green. So the two known directories get their own arm.
 //
 // This is a hand-maintained list that fails closed, the same trade
 // tools/jscheck's TEMPLATE_IDS and KNOWN_SELECTORS make: adding data is meant

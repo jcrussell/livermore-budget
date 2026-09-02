@@ -565,15 +565,14 @@ func validateCategory(c Category, catf errFunc) error {
 	if len(c.Kinds) == 0 {
 		return catf(c.Slug, "kinds", "is required")
 	}
-	// AND A MEMBER MUST BE A REAL KIND. Until this landed, `kinds: [banana]`
-	// loaded clean and left `fisc verify` fully green, because
-	// fact-kind-matches-category compares a fact's kind against this list and a
-	// category no fact has reached is never
-	// consulted. Four of the twenty-five categories are in that state today,
-	// including an assignable one, so the typo would surface years later as a
-	// mass failure instead of now as a one-line file error. It is the shape
-	// fisc-ttq already cost this repo once, when all four transfer categories
-	// declared a `transfer` kind that mapping.Kind has never defined.
+	// AND A MEMBER MUST BE A REAL KIND. Until this landed, `kinds: [banana]` loaded
+	// clean and left `fisc verify` fully green, because fact-kind-matches-category
+	// compares a fact's kind against this list and a category no fact has reached is
+	// never consulted. Some are in that state today, including an assignable one, so
+	// the typo would surface years later as a mass failure instead of now as a
+	// one-line file error. It is the shape fisc-ttq already cost this repo once,
+	// when all four transfer categories declared a `transfer` kind that
+	// mapping.Kind has never defined.
 	seen := make(map[string]bool, len(c.Kinds))
 	for _, k := range c.Kinds {
 		if !slices.Contains(factKinds, k) {
