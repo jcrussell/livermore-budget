@@ -659,9 +659,9 @@ type expKey struct {
 // netFundFlows sums the selected facts into the two cell maps, refusing anything
 // it cannot address.
 //
-// EVERY GUARD IS A REFUSAL AND NOT A SKIP, netCells' rule: a fact
-// this document cannot place is a mapping defect, and dropping it publishes a
-// smaller city with no error anywhere.
+// EVERY GUARD IS A REFUSAL AND NOT A SKIP, this package's own netCells' rule: a
+// fact this document cannot place is a mapping defect, and dropping it publishes
+// a smaller city with no error anywhere.
 func (*FundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum, error) {
 	rev := map[revKey]*cellSum{}
 	exp := map[expKey]*cellSum{}

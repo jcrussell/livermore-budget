@@ -418,8 +418,7 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // `go test` was already red on Water 640 -> 641. What was NOT red was the GATE:
 // measured at 02156a7, that mutation left `fisc verify` fully green. A guarantee
 // that lives only inside one lane's test is not one the fact store carries, and
-// the acceptance
-// criterion on fisc-90fp is "makes fisc verify fail".
+// the acceptance criterion on fisc-90fp is "makes fisc verify fail".
 //
 // SO THIS ASSERTS ON THE Result AND NOT ON THE SUITE, deliberately. Running the
 // whole suite over this mutation goes red either way, and a proof that cannot
@@ -429,10 +428,9 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 // Measured with the arm in place: `fisc verify` goes red on
 // row-funds-match-their-anchors alone, with 1 finding over 118 row anchors,
 // while fact-funds-resolve and funding-sources-tie-to-spine both stay PASS --
-// 640 and
-// 641 are both `enterprise` in data/funds.yaml, so no money leaves its group and
-// no sum moves. Deleting the ru.RowLabelsNameFunds arm from Run returns it to
-// green.
+// 640 and 641 are both `enterprise` in data/funds.yaml, so no money leaves its
+// group and no sum moves. Deleting the ru.RowLabelsNameFunds arm from Run
+// returns it to green.
 func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
