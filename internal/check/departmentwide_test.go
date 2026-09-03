@@ -88,7 +88,7 @@ func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T)
 	// byCategory is the FY2025-26 and FY2026-27 columns per object category;
 	// divisions counts the printed Division Total rows.
 	byCat := map[string][2]amount.Cents{}
-	divisions, transfers := 0, 0
+	divisions, transfers, rounded := 0, 0, 0
 	for _, page := range departmentwidePages {
 		text, err := doc.Page(page)
 		if err != nil {
@@ -111,19 +111,26 @@ func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T)
 			if m[2] == "Division Total" {
 				divisions++
 				// Five divisions miss their own printed total by exactly one
-				// dollar, every one in the FY2023-24 Actual column, and they are
-				// declared as stated_total_deltas in the rule file. Asserted
-				// with that tolerance in column 0 and at zero everywhere else,
-				// so a sixth -- or one in another column -- goes red.
+				// dollar, every one in the FY2023-24 Actual column, and those
+				// five are declared as stated_total_deltas in the rule file.
+				//
+				// THE TOLERATED CELLS ARE COUNTED, NOT WAIVED. An earlier draft
+				// allowed a $1 difference in column 0 of every division and said
+				// in its comment that "a sixth goes red". It did not: a sixth
+				// rounding division would have passed silently in the lane's one
+				// independent witness. The count is asserted against the five
+				// declarations below.
 				for c := 0; c < 4; c++ {
 					d := v[c] - running[c]
-					if c == 0 && (d == 0 || d == amount.Cents(100)) {
+					if d == 0 {
 						continue
 					}
-					if d != 0 {
-						t.Errorf("p%d Division Total column %d: rows sum to %s, the page "+
-							"prints %s, a difference of %s", page, c, running[c], v[c], d)
+					if c == 0 && d == amount.Cents(100) {
+						rounded++
+						continue
 					}
+					t.Errorf("p%d Division Total column %d: rows sum to %s, the page "+
+						"prints %s, a difference of %s", page, c, running[c], v[c], d)
 				}
 				running = [4]amount.Cents{}
 				continue
@@ -152,6 +159,14 @@ func TestThePrintedDepartmentwideRowsSumToTheSpineByObjectCategory(t *testing.T)
 		t.Fatalf("read %d division blocks and %d Transfers Out rows, want 29 and 1; the "+
 			"schedule's shape changed and every figure below is about different rows",
 			divisions, transfers)
+	}
+	// EXACTLY the five the rule file declares, and no more. A sixth is either a
+	// mis-read column or a rounding the rules have not declared, and both must
+	// be seen rather than absorbed.
+	if rounded != 5 {
+		t.Errorf("%d division columns miss their printed total by $1, want 5; the rule file "+
+			"declares five stated_total_deltas and a sixth would be tolerated here while "+
+			"failing the build", rounded)
 	}
 
 	// Typed off pp.66-67, summed over the six fund groups. The FY2026-27
@@ -217,20 +232,24 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 		t.Fatal("no departmentwide exception is declared, so this test asserts nothing")
 	}
 
+	// THE SCAN COUNTS THE PAGES IT READ. An earlier draft looped to a hardcoded
+	// 268 and skipped a page it could not open, so the absence assertion below
+	// was vacuously true against an unreadable corpus -- and would have gone
+	// quietly weaker, not red, if the document ever grew. The floor is the
+	// budget book's own length, which the manifest carries.
+	scanned := 0
 	for _, e := range departmentwideExceptions {
 		for _, c := range []amount.Cents{e.spineCents, e.detailCents} {
 			// %s renders cents as a grouped dollar figure, which is how the
 			// pages print money.
-			needle := strings.TrimPrefix(c.String(), "$")
-			needle = strings.TrimSuffix(needle, ".00")
-			found := ""
-			for page := 1; page <= 268; page++ {
+			needle := strings.TrimSuffix(strings.TrimPrefix(c.String(), "$"), ".00")
+			for page := 1; page <= doc.PageCount(); page++ {
 				text, err := doc.Page(page)
 				if err != nil {
-					continue
+					t.Fatalf("page %d of %s: %v", page, budgetDoc, err)
 				}
+				scanned++
 				if strings.Contains(text, needle) {
-					found = needle
 					t.Errorf("exception %s carries %s and p%04d PRINTS it; if a page really "+
 						"does publish this figure the entry should assert it directly, and "+
 						"the type comment saying no page does is now wrong",
@@ -238,7 +257,6 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 					break
 				}
 			}
-			_ = found
 		}
 
 		want, ok := printedDiscrepancy(e.year, e.basis)
@@ -252,6 +270,11 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 				"they are the same discrepancy on two axes and must agree",
 				e.key(), e.discrepancy(), want)
 		}
+	}
+
+	if scanned < 268 {
+		t.Errorf("the absence scan read %d pages, want at least 268; a scan that read "+
+			"nothing proves nothing about what the corpus prints", scanned)
 	}
 }
 
@@ -268,6 +291,27 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 // Pinning the one missing pair would not have caught the next one. Reading the
 // scopes off the committed facts does: a scope enters the store and this goes
 // red until someone says which of the two things it is.
+//
+// ONE SCOPE IS NAMED AS AN OPEN GAP RATHER THAN DECLARED, and how that came
+// about is the reason it is written this way. This test first reported
+// acfr-general-fund-summary as undeclared, correctly, and the fix was to declare
+// the pair disjoint because the two share no cell key. Measured with sharedKeys
+// that is true -- zero shared (kind, category, fund_group, fund, fiscal year,
+// basis) addresses. Measured with the key internal/project's netCells actually
+// merges on, (kind, category, fund_group), they share FIFTEEN. So the
+// declaration asserted a safety that does not hold, and it was WORSE than the
+// gap it replaced: ARM 3 stops reporting a pair once it is declared. It is
+// reverted, the pair is listed here, and fisc-tlbp owns the mismatch.
+//
+// The list is a declaration in the sense internal/check/vacuity.go means: an
+// entry costs a bead and a reason, and an entry that stops being needed goes red
+// rather than sitting inert.
+var undeclaredScopePairs = map[string]string{
+	acfrGeneralFundScope: "fisc-tlbp: the two disagree under one key and agree under the " +
+		"other, so neither `reconciled` nor `disjoint` is honestly assertable until that " +
+		"bead decides which claim disjointScopes makes",
+}
+
 func TestEveryCommittedScopeIsPairedWithTheSpine(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -288,16 +332,36 @@ func TestEveryCommittedScopeIsPairedWithTheSpine(t *testing.T) {
 		pair := pairOf(project.PublishedScope, sc)
 		_, reconciled := reconciledScopes[pair]
 		_, disjoint := disjointScopes[pair]
+		reason, known := undeclaredScopePairs[sc]
+
+		if known && (reconciled || disjoint) {
+			t.Errorf("scope %q is listed in undeclaredScopePairs (%s) AND declared against "+
+				"the spine; delete the entry now that the pair is settled", sc, reason)
+			continue
+		}
 		switch {
 		case reconciled && disjoint:
 			t.Errorf("scope %q is declared BOTH reconciled with the spine and disjoint from "+
 				"it; those are opposite claims about the same money", sc)
+		case known:
+			// A named gap, not a pass. Nothing to assert beyond the entry
+			// existing, which the arm above holds to being still needed.
 		case !reconciled && !disjoint:
 			t.Errorf("scope %q is in the committed store and is paired with the spine in "+
-				"neither reconciledScopes nor disjointScopes. A projection selecting both "+
-				"falls to projection-scopes-are-disjoint's undeclared branch, whose advice "+
-				"is to declare them disjoint -- which is the doubling every detail scope "+
-				"here exists to prevent", sc)
+				"neither reconciledScopes nor disjointScopes, and is not a named gap. A "+
+				"projection selecting both falls to projection-scopes-are-disjoint's "+
+				"undeclared branch, whose advice is to declare them disjoint -- which is "+
+				"the doubling every detail scope here exists to prevent. Declare it, or "+
+				"add it to undeclaredScopePairs with the bead that will", sc)
+		}
+	}
+
+	// An entry naming a scope the store no longer carries reconciles nothing
+	// while looking like a tracked gap.
+	for sc := range undeclaredScopePairs {
+		if !scopes[sc] {
+			t.Errorf("undeclaredScopePairs names %q and the committed store has no such "+
+				"scope; delete the entry", sc)
 		}
 	}
 }

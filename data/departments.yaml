@@ -173,11 +173,14 @@ divisions:
     department: city-attorney
     pages: [93]
     note: >-
-      Printed on p93 and on no other page. pp.167-170 give CITY ATTORNEY one
-      division; the departmentwide schedule gives it two, and this is the
-      second. Its money is in the department's p167 total either way — the
-      General Fund slice of it — but the axis pp.167-170 print has no row for
-      it.
+      Printed on p93 and on no other page, and none of its money reaches
+      pp.167-170 at all. p93 funds it entirely from General Liability and
+      Workers Comp Insurance — two internal service funds — so its General Fund
+      slice is zero: p93's General Fund row is 2,325,429, which is the City
+      Attorney division's own Division Total to the dollar in all four columns,
+      and p167:41's CITY ATTORNEY TOTAL prints that same figure. So the
+      department has one division on a General Fund schedule and two here, and
+      the second is invisible to the first rather than folded into it.
 
   - slug: library
     label: Library
@@ -199,10 +202,12 @@ divisions:
     department: innovation-and-economic-development
     pages: [111]
     note: >-
-      Printed on p111 and on no other page. Almost entirely enterprise money —
-      funds 600/601 — which is why a General Fund schedule prints no row for
-      it, and it carries a Debt Services line that INNOVATION & ECONOMIC
-      DEVELOPMENT's p167 block does not.
+      Printed on p111 and on no other page, and funded by ONE fund: p111's
+      Airport row is 3,000,829, which is this division's whole Division Total in
+      all four columns, and data/funds.yaml resolves that label to fund 600
+      (enterprise). 601, CIP Airport, pays none of it. That is why a General
+      Fund schedule prints no row for it, and it carries a Debt Services line
+      INNOVATION & ECONOMIC DEVELOPMENT's p167 block does not.
 
   - slug: general-services
     label: General Services

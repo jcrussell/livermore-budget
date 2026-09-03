@@ -118,16 +118,29 @@ func (e departmentwideException) discrepancy() amount.Cents {
 // printedDiscrepancy is the same quantity taken from the check whose figures ARE
 // printed, and is what grounds every entry above.
 //
-// It returns ok=false rather than zero when no funding-sources exception names
-// the year: zero is a legitimate difference and would let a missing ground pass
-// as agreement.
+// IT REFUSES AN AMBIGUOUS COLUMN RATHER THAN PICKING ONE. The match is on
+// (year, basis) and cannot be narrower: a funding-sources exception names a FUND
+// GROUP and a departmentwide one names an OBJECT CATEGORY, and no fact here
+// carries both, which is the whole reason the two checks exist separately. So
+// with two funding-sources exceptions in one column there is no way to say which
+// grounds this entry, and the first-match answer would be an arbitrary one that
+// looks measured. Today there is exactly one and this returns it.
+//
+// ok=false rather than zero when there is no single match: zero is a legitimate
+// difference and would let a missing ground pass as agreement.
 func printedDiscrepancy(year int, basis mapping.Basis) (amount.Cents, bool) {
+	var found amount.Cents
+	n := 0
 	for _, e := range fundingSourcesExceptions {
 		if e.year == year && e.basis == basis {
-			return e.spineCents - e.printedCents, true
+			found = e.spineCents - e.printedCents
+			n++
 		}
 	}
-	return 0, false
+	if n != 1 {
+		return 0, false
+	}
+	return found, true
 }
 
 func (e departmentwideException) key() categoryKey {

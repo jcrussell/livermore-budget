@@ -62,16 +62,6 @@ var disjointScopes = map[scopePair]string{
 		"pp.167-170 publish expenditure, and every cell key internal/project builds carries " +
 		"kind, so a revenue cell and an expenditure cell cannot land on one address however " +
 		"the rest of the key is spelled",
-
-	pairOf(project.PublishedScope, acfrGeneralFundScope): "disjoint by YEAR AND BASIS, and " +
-		"this is the one entry here whose disjointness is CIRCUMSTANTIAL rather than " +
-		"structural. ACFR p41 is FY2025 audited; the Budget Book spine is FY2026 and FY2027 " +
-		"adopted, and pp.66-67 print no audited column, so the two share no cell key and " +
-		"nothing could be published twice. Nothing about the SCHEDULES makes that so -- " +
-		"they are both a statement of the General Fund's money -- and the day an audited " +
-		"column is mapped onto a year the spine also publishes, the measured arm above goes " +
-		"red on this entry rather than letting the pair through. That is the intended " +
-		"failure and this reason is written so a reader meets it as one",
 }
 
 // projectionScopesAreDisjoint asserts no projection selects two scopes that
