@@ -671,24 +671,33 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 		}
 	}
 
-	// EXACT, NOT A FLOOR, AND COMPUTED FROM THE REGISTRY. The 29 divisions make
-	// 55 page claims between them, so a floor of 29 -- which is what two earlier
-	// drafts of this line asserted -- leaves 26 of them free to vanish with the
-	// guard still green. Twenty-six is most of the second schedule.
+	// THE FLOOR IS A COUNT AGAINST THE DOCUMENTS, and it has to be, because the
+	// two obvious alternatives are both defective and both were tried.
 	//
-	// The count is derived rather than typed for the same reason: 55 moves the
-	// day a division is added or a page is mapped, and a typed 55 would then be
-	// a second claim nothing keeps in step. What this asserts is that the loop
-	// above examined every claim the registry makes -- which is the reachable
-	// failure, r.Divisions() coming back empty or short, since Load's
-	// validatePages already refuses a division with no pages at all.
-	want := 0
-	for _, d := range r.Divisions() {
-		want += len(d.Pages)
+	// A floor of 29 -- one claim per division -- lets 26 of the 55 vanish with
+	// the guard green, which is most of the second schedule.
+	//
+	// Recomputing the expected total from r.Divisions() is WORSE: `claims` is
+	// accumulated by a loop over r.Divisions() and the total would be summed
+	// from the same call in the same run, so the two move together and the
+	// comparison can never fire. Measured -- with Divisions() truncated to 3 of
+	// 29 that version still reported ok, where even the too-low floor failed.
+	// It is check.go's own doctrine, that two functions over identical input
+	// inside one process cannot witness a wrong amount, in the package next
+	// door.
+	//
+	// So the number is extrinsic: pp.85-125 print all 29 divisions and
+	// pp.167-170 print 23 of them, which is 52 page claims the CITY's pages
+	// require before any entry cites a third page. It goes stale loudly when a
+	// division is added, which is the intended cost.
+	if got := len(r.Divisions()); got != 29 {
+		t.Errorf("the registry holds %d divisions, want 29; the floor below is a count "+
+			"against the pages and means nothing if the axis changed", got)
 	}
-	if claims != want || want == 0 {
-		t.Errorf("the loop examined %d page claims and the registry makes %d; every claim "+
-			"must be checked, and zero means it examined nothing", claims, want)
+	if claims < 52 {
+		t.Errorf("the loop examined %d page claims, want at least 52: pp.85-125 print all "+
+			"29 divisions and pp.167-170 print 23 of them, so that many citations are "+
+			"required before any entry names a further page", claims)
 	}
 }
 

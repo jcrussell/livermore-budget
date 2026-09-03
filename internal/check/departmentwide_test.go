@@ -529,9 +529,9 @@ func TestTheDepartmentwideGroundingArmCanFail(t *testing.T) {
 			return true
 		})
 		if res.Status != StatusFail {
-			t.Errorf("moving the exception's own side by a dollar left the check %s, so the "+
-				"held-apart cell absorbs a mapping error instead of reporting it: %s",
-				res.Status, res.Summary)
+			t.Errorf("moving every services-and-supplies row in the exception's own column "+
+				"by a dollar each left the check %s, so the held-apart cell absorbs a "+
+				"mapping error instead of reporting it: %s", res.Status, res.Summary)
 		}
 		saysOneOf(t, res, "what pp.85-125's rows sum to in this category")
 	})

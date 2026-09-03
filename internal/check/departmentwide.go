@@ -152,13 +152,12 @@ func groundingFor(e departmentwideException) (fundingSourcesException, bool) {
 // IT RETURNS THE COUNT AND NOT AN ok, because none and two are different defects
 // with opposite repairs: none means this entry has lost its grounding and should
 // probably go, two means the column is ambiguous and this entry should STAY
-// while someone says which it answers. An earlier draft collapsed both into
-// ok=false and told the reader to delete in either case.
+// while someone says which it answers. Collapsing them into one ok loses the
+// difference and the caller can only give one piece of advice.
 //
 // The returned figure is meaningful only when the count is 1. A zero return is
 // not "no difference": zero is a legitimate difference and would read as
 // agreement.
-
 func printedDiscrepancy(year int, basis mapping.Basis) (amount.Cents, int) {
 	var found amount.Cents
 	n := 0
