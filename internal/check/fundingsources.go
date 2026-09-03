@@ -163,9 +163,17 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 // worth knowing before reading the paragraph above as an oversight.
 // fact-departments-resolve resolves the field against a DIVISION, and six of
 // data/departments.yaml's eleven departments are not division slugs, so typing
-// it here reddens six of the eleven rules. fisc-xudn owns the decision, and it
-// has to be made before fisc-7q6 maps the same fourteen pages at the division
-// tier and carries a department on every row.
+// it here reddens six of the eleven rules. fisc-xudn owns the decision.
+//
+// IT DID NOT HAVE TO BE MADE FIRST, WHICH THIS COMMENT USED TO SAY IT DID. The
+// claim was that the decision "has to be made before fisc-7q6 maps the same
+// fourteen pages at the division tier and carries a department on every row".
+// That lane has now landed and needed nothing from it: its 292 facts each carry
+// a DIVISION slug, which resolves, because the block it reads is printed by
+// division. The two blocks on these pages sit on opposite sides of the problem
+// -- the upper one has a division to name and the lower one has only a
+// department -- so the departmentwide lane did not test the decision, it went
+// round it.
 //
 // TIER 1, ZERO TOLERANCE, AND THE TOLERANCE QUESTION IS SETTLED BY THE PAGES.
 // Eleven of the twelve reconciled cells tie to the cent. The twelfth is a defect

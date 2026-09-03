@@ -671,18 +671,24 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 		}
 	}
 
-	// THE FLOOR IS AGAINST AN EMPTY DIVISION SET, NOT AGAINST EMPTY PAGE LISTS.
-	// A division with no pages cannot reach this test at all -- Load's
-	// validatePages refuses one, saying "is required; say which page the entry
-	// is printed on" -- so an earlier draft's guard against that, and the
-	// `len(d.Pages) == 0` branch that went with it, were both unreachable and
-	// are gone. What IS reachable is r.Divisions() coming back empty or short,
-	// at which point the loop runs few times or not at all and every assertion
-	// above is silently skipped.
-	if claims < 29 {
-		t.Errorf("divisions make %d page claims, want at least 29; 29 divisions each name "+
-			"at least one page, so a smaller number means the loop above examined less "+
-			"than the registry holds", claims)
+	// EXACT, NOT A FLOOR, AND COMPUTED FROM THE REGISTRY. The 29 divisions make
+	// 55 page claims between them, so a floor of 29 -- which is what two earlier
+	// drafts of this line asserted -- leaves 26 of them free to vanish with the
+	// guard still green. Twenty-six is most of the second schedule.
+	//
+	// The count is derived rather than typed for the same reason: 55 moves the
+	// day a division is added or a page is mapped, and a typed 55 would then be
+	// a second claim nothing keeps in step. What this asserts is that the loop
+	// above examined every claim the registry makes -- which is the reachable
+	// failure, r.Divisions() coming back empty or short, since Load's
+	// validatePages already refuses a division with no pages at all.
+	want := 0
+	for _, d := range r.Divisions() {
+		want += len(d.Pages)
+	}
+	if claims != want || want == 0 {
+		t.Errorf("the loop examined %d page claims and the registry makes %d; every claim "+
+			"must be checked, and zero means it examined nothing", claims, want)
 	}
 }
 

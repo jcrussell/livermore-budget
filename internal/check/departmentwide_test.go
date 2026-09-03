@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
@@ -488,6 +490,69 @@ func TestTheDepartmentwideGroundingArmCanFail(t *testing.T) {
 		// The advice must be the OPPOSITE of the deleted case. Getting this
 		// backwards is what the third review pass found.
 		saysOneOf(t, res, "Do NOT delete this entry")
+	})
+
+	// THE TWO REGRESSION PINS, which are what stop the exception hiding a later
+	// mapping error. Pass four proved the GROUNDING arm and left these two: with
+	// either deleted, `go test ./internal/check/...` stayed green.
+	//
+	// They are driven by moving the FACTS rather than the table, because that is
+	// the direction a real defect arrives from -- a rule re-read, a division
+	// dropped -- and it is the direction the pins exist to catch.
+	runFacts := func(t *testing.T, mutate func(f *fact.Fact) bool) Result {
+		t.Helper()
+		s := *base
+		s.Facts = append([]fact.Fact(nil), base.Facts...)
+		hits := 0
+		for i := range s.Facts {
+			if mutate(&s.Facts[i]) {
+				hits++
+			}
+		}
+		if hits == 0 {
+			t.Fatal("the mutation matched no fact, so this subtest proves nothing")
+		}
+		res, err := (&departmentwideTiesToSpine{}).Run(t.Context(), &s)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		return res
+	}
+
+	t.Run("the detail side moves off its pin", func(t *testing.T) {
+		res := runFacts(t, func(f *fact.Fact) bool {
+			if f.Scope != departmentwideScope || f.FiscalYear != 2027 ||
+				f.Category != "services-and-supplies" {
+				return false
+			}
+			f.AmountCents += 100
+			return true
+		})
+		if res.Status != StatusFail {
+			t.Errorf("moving the exception's own side by a dollar left the check %s, so the "+
+				"held-apart cell absorbs a mapping error instead of reporting it: %s",
+				res.Status, res.Summary)
+		}
+		saysOneOf(t, res, "what pp.85-125's rows sum to in this category")
+	})
+
+	t.Run("the spine cell is corrected", func(t *testing.T) {
+		// If p0067 were reissued and the corpus republished, the cell would tie
+		// on its own and this entry must be DELETED rather than re-pointed.
+		res := runFacts(t, func(f *fact.Fact) bool {
+			if f.Scope != spineScope || f.Kind != mapping.KindExpenditure ||
+				f.FiscalYear != 2027 || f.Category != "services-and-supplies" ||
+				f.FundGroup != "internal-service" {
+				return false
+			}
+			f.AmountCents -= 25000000
+			return true
+		})
+		if res.Status != StatusFail {
+			t.Errorf("correcting the spine cell left the check %s, so a stale exception "+
+				"survives its own retirement: %s", res.Status, res.Summary)
+		}
+		saysOneOf(t, res, "delete this exception")
 	})
 
 	t.Run("the ground moves", func(t *testing.T) {
