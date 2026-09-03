@@ -219,22 +219,29 @@ bd update <id> --claim             # claim before starting
 bd close <id> --reason "..."       # close with what actually happened
 ```
 
-The roadmap is eleven epics and **four of them are open**: `E5 Verification`
-(`fisc-1wr`), `E7 Coverage` (`fisc-5gk`), `E8 Further projections` (`fisc-4ua`)
-and `E10 The ACFR enters the corpus` (`fisc-1p4d`). `E1` through `E8` are the
-plan as first written; `E0 Extraction replacement` (`fisc-yqv`) and `E9 The
-drill-down reaches a reader` (`fisc-5miz`) were added afterwards, and `E10` was
-added later still. So a count of eight is a claim about the plan rather than
+The roadmap is twelve epics and **five of them are open**: `E5 Verification`
+(`fisc-1wr`), `E7 Coverage` (`fisc-5gk`), `E8 Further projections` (`fisc-4ua`),
+`E10 The ACFR enters the corpus` (`fisc-1p4d`) and `E11 The reader meets the
+money before the apparatus` (`fisc-yj4w`). `E1` through `E8` are the plan as
+first written; `E0 Extraction replacement` (`fisc-yqv`) and `E9 The drill-down
+reaches a reader` (`fisc-5miz`) were added afterwards, `E10` later still, and
+`E11` after that. So a count of eight is a claim about the plan rather than
 about the tracker — and so is any count taken from this paragraph. Read it off
-`bd list --type=epic --status=all`.
+`bd list --type=epic --status=all`, which is what this enumeration failed to do:
+it said eleven and four, and had never heard of `E11`.
 
 `E10` exists because the backlog had outgrown the roadmap. Measured 2026-08-30:
 47 of 69 live beads had no epic at all, `E4` and `E5` — both `P0` — contributed
 **zero** ready work between them and `E2` contributed one `P2` bead, and the
 beads that add up to "a second
 document enters the corpus" were scattered across `E5`, `E7`, `E8` and the flat backlog
-with nothing owning the milestone. That lane is also what unblocks `E5` — the
-whole remaining tier ladder is downstream of `fisc-9hf`, `E10`'s first child.
+with nothing owning the milestone. That paragraph used to end "that lane is also
+what unblocks `E5` — the whole remaining tier ladder is downstream of `fisc-9hf`,
+`E10`'s first child." `fisc-9hf` closed on 2026-08-30 and took `fisc-1wr.2` with
+it, and **`E5` did not become workable**. Measured 2026-09-03: `fisc-1wr.3`,
+`fisc-1wr.4` and `fisc-1wr.5.1` are deferred to 2026-11-10 by decision, and
+`fisc-1wr.7` sits behind `fisc-mq4.6` → `fisc-mq4.3`, deferred to the same date.
+So the ladder was downstream of two things and only one of them moved.
 
 `E2 Extraction` and `E4 Mapping engine` were closed in that review because each
 had **met its own stated end condition** — all three documents extracted, and
