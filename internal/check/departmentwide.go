@@ -78,8 +78,15 @@ func byCategory(m map[detailKey]cellSum) map[categoryKey]cellSum {
 //
 // IT IS NOT fundingSourcesException ON THE OTHER AXIS, AND THE DIFFERENCE IS THE
 // ONE THIS PROJECT CARES MOST ABOUT. That type's two figures are PRINTED --
-// 26,294,515 appears on eight extracted pages and 26,544,515 on two -- so its
-// entry asserts a page against a page. NEITHER FIGURE HERE IS PRINTED ANYWHERE.
+// 26,294,515 appears on four extracted pages (p0075, p0183, p0205, p0209) and
+// 26,544,515 on one (p0067) -- so its entry asserts a page against a page.
+// NEITHER FIGURE HERE IS PRINTED ANYWHERE.
+//
+// THOSE ARE PAGES AND NOT FILES. An earlier draft of this comment said eight and
+// two, and three commit messages repeated it, from a `grep -rl` over
+// data/extracted -- which counts each page's `-layout` text AND its `-bbox`
+// geometry, so every count taken that way is exactly doubled.
+//
 // grep data/extracted for 130,252,087 or 130,502,087 and there are no hits: they
 // are citywide object-category totals, which this corpus never prints, and they
 // exist only as sums this check computes. An earlier draft of this file copied
@@ -135,6 +142,19 @@ func (e departmentwideException) discrepancy() amount.Cents {
 // The returned figure is meaningful only when the count is 1. A zero return is
 // not "no difference": zero is a legitimate difference and would read as
 // agreement.
+// groundingFor returns the single funding-sources exception that grounds e, so
+// callers can quote its figures rather than typing them.
+func groundingFor(e departmentwideException) (fundingSourcesException, bool) {
+	var found fundingSourcesException
+	n := 0
+	for _, g := range fundingSourcesExceptions {
+		if g.year == e.year && g.basis == e.basis {
+			found, n = g, n+1
+		}
+	}
+	return found, n == 1
+}
+
 func printedDiscrepancy(year int, basis mapping.Basis) (amount.Cents, int) {
 	var found amount.Cents
 	n := 0
@@ -410,10 +430,18 @@ func (*departmentwideTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 		held += fmt.Sprintf("; %s is held apart at %s against the spine's %s. NEITHER FIGURE IS "+
 			"PRINTED, AND NEITHER IS THE %s BETWEEN THEM -- this corpus prints no citywide "+
 			"object-category total, so all three are arithmetic. What IS printed is the pair "+
-			"funding-sources-tie-to-spine reconciles, 26,294,515 on eight pages against "+
-			"p0067's 26,544,515, and this entry is required to differ by exactly what that "+
-			"pair differs by: %s (%s)",
-			e.key(), e.detailCents, e.spineCents, e.discrepancy(), e.reason, e.bead)
+			"funding-sources-tie-to-spine reconciles, and this entry is required to differ by "+
+			"exactly what that pair differs by",
+			e.key(), e.detailCents, e.spineCents, e.discrepancy())
+		if g, ok := groundingFor(e); ok {
+			// READ, NOT TYPED. A funding-sources entry re-pointed in a way that
+			// preserved the difference would otherwise leave this line
+			// publishing figures the corpus no longer carries, and the
+			// difference arm cannot notice, because it compares differences.
+			held += fmt.Sprintf(": %s against %s, both of which pages carry",
+				g.printedCents, g.spineCents)
+		}
+		held += fmt.Sprintf(". %s (%s)", e.reason, e.bead)
 	}
 	if len(unmatched) > 0 {
 		held += fmt.Sprintf("; %d further pair(s) the detail publishes have no spine column "+

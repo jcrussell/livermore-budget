@@ -662,10 +662,6 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 
 	var claims int
 	for _, d := range r.Divisions() {
-		if len(d.Pages) == 0 {
-			t.Errorf("division %q lists no pages", d.Slug)
-			continue
-		}
 		want := strings.Join(strings.Fields(d.Label), " ")
 		for _, p := range d.Pages {
 			claims++
@@ -675,12 +671,18 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 		}
 	}
 
-	// Without this the test passes on a registry whose divisions all lost their
-	// pages -- the loop would simply not run. 29 divisions each name at least
-	// one page and 23 of them name two or more, so the floor is well under the
-	// real figure and still far above zero.
+	// THE FLOOR IS AGAINST AN EMPTY DIVISION SET, NOT AGAINST EMPTY PAGE LISTS.
+	// A division with no pages cannot reach this test at all -- Load's
+	// validatePages refuses one, saying "is required; say which page the entry
+	// is printed on" -- so an earlier draft's guard against that, and the
+	// `len(d.Pages) == 0` branch that went with it, were both unreachable and
+	// are gone. What IS reachable is r.Divisions() coming back empty or short,
+	// at which point the loop runs few times or not at all and every assertion
+	// above is silently skipped.
 	if claims < 29 {
-		t.Errorf("divisions make %d page claims, want at least 29", claims)
+		t.Errorf("divisions make %d page claims, want at least 29; 29 divisions each name "+
+			"at least one page, so a smaller number means the loop above examined less "+
+			"than the registry holds", claims)
 	}
 }
 

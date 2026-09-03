@@ -3787,9 +3787,11 @@ rules:
   # contested internal-service figure (fisc-av0w), from a decomposition that
   # shares no row with any of that bead's other five witnesses.
   #
-  # FOUR ANCHORS NEED section_ordinal AND ALL FOUR FOR ONE REASON: Information
-  # Technology, Airport, Library and Horizons each name a division in this block
-  # AND a fund in the funding-sources block below it on the same page.
+  # FOUR ANCHORS NEED section_ordinal, because each also matches something in the
+  # funding-sources block below it on the same page. Three of the four are the
+  # division's own name appearing again as a FUND -- Information Technology,
+  # Airport, Horizons. The fourth is not: p115:29 prints "Library Donations", and
+  # an anchor matches by substring, so "Library" finds it.
   # ==========================================================================
 
   # --------------------------------------------------------------------------
@@ -4264,9 +4266,11 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      Not on pp.167-170: almost entirely enterprise money, funds 600/601.
-      section_ordinal is required because p111 prints "Airport" again at :35 as a
-      funding source.
+      Not on pp.167-170: enterprise money, and ONE fund rather than two. p111's
+      Airport row is 3,000,829, this division's whole Division Total in all four
+      columns, and that label resolves to fund 600. 601, CIP Airport, pays none
+      of it. section_ordinal is required because that funding-source row at :35
+      prints the same word this section anchors on.
     parts:
       - page: 111
         section: "Airport"
@@ -4308,8 +4312,11 @@ rules:
     units: dollars
     total_row: "Division Total"
     note: >-
-      section_ordinal is required because p115 prints "Library" again at :29 as a
-      funding source.
+      section_ordinal is required because p115:29 prints the funding-source row
+      "Library Donations", and an anchor matches by SUBSTRING -- so "Library"
+      finds that row too. Unlike the other three ordinals on these pages, the
+      second occurrence is not the division's own name appearing again as a fund;
+      it is a longer fund name that contains it.
     parts:
       - page: 115
         section: "Library"

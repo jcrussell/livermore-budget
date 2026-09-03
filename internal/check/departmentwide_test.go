@@ -407,3 +407,98 @@ func TestEveryCommittedScopeIsPairedWithTheSpine(t *testing.T) {
 		}
 	}
 }
+
+// THE GROUNDING ARM, DRIVEN THROUGH Run.
+//
+// TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs calls
+// printedDiscrepancy directly, which tests the helper and NOT the check's use of
+// it. Measured: deleting all three grounding branches out of Run left
+// `go test ./internal/check/...` entirely green. That is the shape AGENTS.md
+// names -- green because the gate fired, not because the defect was prevented --
+// arriving in a guard added by a review pass to close a review finding, which is
+// the shape the same file names one paragraph later.
+//
+// So this drives the arm the way the report does: it perturbs
+// fundingSourcesExceptions, the table that grounds the entry, and asserts Run
+// reports it. Deleting any one branch makes the matching subtest fail.
+func TestTheDepartmentwideGroundingArmCanFail(t *testing.T) {
+	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if len(departmentwideExceptions) == 0 {
+		t.Fatal("no departmentwide exception is declared, so no grounding arm can run")
+	}
+
+	// swapGrounding replaces the table this check grounds against for the length
+	// of one subtest. The exception table under test is left alone: what is
+	// being proved is that the check notices when its GROUND moves.
+	swapGrounding := func(t *testing.T, with []fundingSourcesException) {
+		t.Helper()
+		was := fundingSourcesExceptions
+		fundingSourcesExceptions = with
+		t.Cleanup(func() { fundingSourcesExceptions = was })
+	}
+	run := func(t *testing.T) Result {
+		t.Helper()
+		res, err := (&departmentwideTiesToSpine{}).Run(t.Context(), base)
+		if err != nil {
+			t.Fatalf("Run: %v", err)
+		}
+		return res
+	}
+	saysOneOf := func(t *testing.T, res Result, want string) {
+		t.Helper()
+		for _, f := range res.Findings {
+			if strings.Contains(f.Detail, want) {
+				return
+			}
+		}
+		t.Errorf("no finding says %q; got %d finding(s): %s",
+			want, len(res.Findings), res.Summary)
+	}
+
+	// The committed tables pass, or nothing below means anything.
+	if res := run(t); res.Status != StatusPass {
+		t.Fatalf("the committed corpus does not pass: %s", res.Summary)
+	}
+
+	t.Run("the ground is deleted", func(t *testing.T) {
+		swapGrounding(t, nil)
+		res := run(t)
+		if res.Status != StatusFail {
+			t.Errorf("removing every funding-sources exception left the check %s, so an "+
+				"entry whose only grounding is gone goes on being reported as reconciled: %s",
+				res.Status, res.Summary)
+		}
+		saysOneOf(t, res, "no funding-sources exception names this column any more")
+	})
+
+	t.Run("the ground is ambiguous", func(t *testing.T) {
+		e := fundingSourcesExceptions[0]
+		second := e
+		second.fundGroup = "probe"
+		swapGrounding(t, []fundingSourcesException{e, second})
+		res := run(t)
+		if res.Status != StatusFail {
+			t.Errorf("two funding-sources exceptions in one column left the check %s, so "+
+				"the entry is grounded on an arbitrary one of them: %s",
+				res.Status, res.Summary)
+		}
+		// The advice must be the OPPOSITE of the deleted case. Getting this
+		// backwards is what the third review pass found.
+		saysOneOf(t, res, "Do NOT delete this entry")
+	})
+
+	t.Run("the ground moves", func(t *testing.T) {
+		e := fundingSourcesExceptions[0]
+		e.printedCents += 100
+		swapGrounding(t, []fundingSourcesException{e})
+		res := run(t)
+		if res.Status != StatusFail {
+			t.Errorf("re-pointing the funding-sources exception by a dollar left the check "+
+				"%s, so the two axes can drift apart: %s", res.Status, res.Summary)
+		}
+		saysOneOf(t, res, "the same discrepancy seen on two axes")
+	})
+}

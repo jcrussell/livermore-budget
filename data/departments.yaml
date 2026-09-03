@@ -13,7 +13,11 @@
 # is what the `<DEPARTMENT> TOTAL` rollups assert.
 #
 # TWO SCHEDULES PRINT THIS AXIS AND THEY DO NOT AGREE ON ITS SIZE, which is why
-# every entry's `pages` names both where it applies. pp.167-170 are a GENERAL
+# every DIVISION entry's `pages` names both where it applies. The DEPARTMENT
+# entries below still name pp.167-170 only, though each department's ALL-CAPS
+# heading is printed on its pp.85-125 page too -- fisc-h2ls, and note that
+# TestEveryDivisionIsPrintedOnItsPages covers divisions and not departments, so
+# nothing catches it. pp.167-170 are a GENERAL
 # FUND schedule and print 23 divisions. pp.85-125 are the whole department,
 # whatever fund pays for it, and print 29 — the same 23, matched by label
 # exactly, plus six that no General Fund schedule can show because their money
