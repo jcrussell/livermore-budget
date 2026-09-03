@@ -97,6 +97,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		// expenditure key would be a one-sided failure in every test that
 		// builds a subject.
 		"funding-sources-tie-to-spine": "vacuous over 0",
+		"departmentwide-ties-to-spine": "vacuous over 0",
 		// Same reason one step further on: no revenue-by-fund fact means the
 		// trends projection declares no slice, builds no document, and there is
 		// neither a point nor a series to examine.
@@ -115,7 +116,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 22, Vacuous: 20, Skipped: 1}); got != rep.Counts {
+	if got := (Counts{Pass: 22, Vacuous: 21, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -137,7 +138,7 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 20 {
+	if lenient.Counts.Vacuous != 21 {
 		t.Fatalf("vacuous count = %d, want 20", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {

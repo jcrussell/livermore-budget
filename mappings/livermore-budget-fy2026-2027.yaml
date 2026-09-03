@@ -3749,6 +3749,801 @@ rules:
       - {label: "Fleet & Equipment Services", category: department-funding-sources, fund: 730, fund_group: internal-service}
       - {label: "Facilities Rehab Pgm", category: department-funding-sources, fund: 740, fund_group: internal-service}
 
+  # ==========================================================================
+  # DEPARTMENTWIDE EXPENDITURES BY CATEGORY, pp.85-125 -- scope
+  # departmentwide-expenditures.
+  #
+  # The UPPER block of the same fourteen pages whose lower block is mapped above
+  # as department-funding-sources. Fourteen pages print the header; the
+  # "Expenditures by Category" block is on ELEVEN of them, one per department
+  # (p102, p120 and p125 are continuation pages carrying funding sources only).
+  # 29 division blocks, 73 object rows.
+  #
+  # WHY ITS OWN SCOPE. These rows OVERLAP pp.167-170's, which publish the
+  # General Fund slice of 23 of these same 29 divisions at scope
+  # expenditure-by-department. Netting the two together would double every
+  # General Fund division. Same hazard and same answer as fisc-u2v.
+  #
+  # THE COLUMNS CARRY NO FUND, and that is the page rather than an omission:
+  # this block prints a department's spending whatever pays for it, and the
+  # fund breakdown is the OTHER block on the same page. So these facts tie to a
+  # citywide grand total and cannot tie to the spine's six per-group cells.
+  #
+  # WHAT THEY RECONCILE TO, measured. The eleven printed Total Department
+  # Expenditures rows against p0183:66 "Grand Total":
+  #
+  #     FY2023-24   207,274,363  vs  207,007,564   diff 266,799
+  #     FY2024-25   253,257,192  vs  253,257,192   tie
+  #     FY2025-26   254,095,412  vs  254,095,412   tie
+  #     FY2026-27   252,604,896  vs  252,604,896   tie
+  #
+  # The one difference decomposes entirely: 266,798 is dw-maintenance's
+  # Transfers Out row, which p183 correctly excludes from an EXPENDITURE total,
+  # and the remaining 1 is the FY2023-24 rounding this file declares on eleven
+  # other blocks.
+  #
+  # AND AGAINST THE SPINE: FY2025-26 ties at 254,095,412 exactly, while
+  # FY2026-27 is 252,604,896 against the spine's 252,854,896 -- exactly p0067's
+  # contested internal-service figure (fisc-av0w), from a decomposition that
+  # shares no row with any of that bead's other five witnesses.
+  #
+  # FOUR ANCHORS NEED section_ordinal AND ALL FOUR FOR ONE REASON: Information
+  # Technology, Airport, Library and Horizons each name a division in this block
+  # AND a fund in the funding-sources block below it on the same page.
+  # ==========================================================================
+
+  # --------------------------------------------------------------------------
+  - id: dw-city-council
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 85
+        section: "City Council"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-council}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-council}
+
+  # --------------------------------------------------------------------------
+  - id: dw-city-manager
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 89
+        section: "City Manager"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-manager}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-manager}
+
+  # --------------------------------------------------------------------------
+  - id: dw-city-clerk
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 89
+        section: "City Clerk"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-clerk}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-clerk}
+
+  # --------------------------------------------------------------------------
+  - id: dw-city-attorney
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 93
+        section: "City Attorney"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: city-attorney}
+      - {label: "Services & Supplies", category: services-and-supplies, department: city-attorney}
+
+  # --------------------------------------------------------------------------
+  - id: dw-risk-management
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      Not on pp.167-170: CITY ATTORNEY has one division there and two here.
+    parts:
+      - page: 93
+        section: "Risk Management"
+        stop_at: "Division Total"
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, and the same shape
+              this file declares on pp.111/127/128/129/130/131/135/168/169/170.
+              FIVE of the 29 division blocks on pp.85-125 miss their own printed
+              Division Total by exactly one dollar -- risk-management, finance,
+              information-technology, airport and public-works-administration --
+              and every one is in the FY 2023-24 Actual column and nowhere else.
+              All five are short rather than over, which is the one way this
+              differs from the funding-sources block on these same pages, where
+              three are short and two over. The three later columns tie exactly
+              on all 29.
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: risk-management}
+      - {label: "Services & Supplies", category: services-and-supplies, department: risk-management}
+
+  # --------------------------------------------------------------------------
+  - id: dw-administrative-services
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 97
+        section: "Administrative Services"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: administrative-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: administrative-services}
+
+  # --------------------------------------------------------------------------
+  - id: dw-finance
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 97
+        section: "Finance"
+        stop_at: "Division Total"
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, and the same shape
+              this file declares on pp.111/127/128/129/130/131/135/168/169/170.
+              FIVE of the 29 division blocks on pp.85-125 miss their own printed
+              Division Total by exactly one dollar -- risk-management, finance,
+              information-technology, airport and public-works-administration --
+              and every one is in the FY 2023-24 Actual column and nowhere else.
+              All five are short rather than over, which is the one way this
+              differs from the funding-sources block on these same pages, where
+              three are short and two over. The three later columns tie exactly
+              on all 29.
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: finance}
+      - {label: "Services & Supplies", category: services-and-supplies, department: finance}
+
+  # --------------------------------------------------------------------------
+  - id: dw-human-resources
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 97
+        section: "Human Resources"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: human-resources}
+      - {label: "Services & Supplies", category: services-and-supplies, department: human-resources}
+
+  # --------------------------------------------------------------------------
+  - id: dw-information-technology
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      Not on pp.167-170, and the largest division missing from them: $6,840,179 in
+      FY2025-26 against the department's $14,192,079. section_ordinal is required
+      because p97 prints "Information Technology" twice -- here as a division and
+      at :49 as fund 720, which pays more of this department than the General
+      Fund does.
+    parts:
+      - page: 97
+        section: "Information Technology"
+        section_ordinal: 1
+        stop_at: "Division Total"
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, and the same shape
+              this file declares on pp.111/127/128/129/130/131/135/168/169/170.
+              FIVE of the 29 division blocks on pp.85-125 miss their own printed
+              Division Total by exactly one dollar -- risk-management, finance,
+              information-technology, airport and public-works-administration --
+              and every one is in the FY 2023-24 Actual column and nowhere else.
+              All five are short rather than over, which is the one way this
+              differs from the funding-sources block on these same pages, where
+              three are short and two over. The three later columns tie exactly
+              on all 29.
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: information-technology}
+      - {label: "Services & Supplies", category: services-and-supplies, department: information-technology}
+      - {label: "Capital Outlay", category: capital-outlay, department: information-technology}
+
+  # --------------------------------------------------------------------------
+  - id: dw-cybersecurity
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      Not on pp.167-170. Wages & Benefits falls to $0 in both budget years after
+      $54,865 and $276,442 in the historical pair, with Services & Supplies flat
+      at $665,190.
+    parts:
+      - page: 97
+        section: "Cybersecurity"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: cybersecurity}
+      - {label: "Services & Supplies", category: services-and-supplies, department: cybersecurity}
+
+  # --------------------------------------------------------------------------
+  - id: dw-community-development-admin
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      The label wraps, and NOT where p169 wraps it: "Community Development" /
+      "Admin" here against "Community" / "Development Admin" there. The anchor is
+      this page's head.
+    parts:
+      - page: 101
+        section: "Community Development"
+        stop_at: "Division Total"
+        wrapped_labels: ["Admin"]
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: community-development-admin}
+      - {label: "Services & Supplies", category: services-and-supplies, department: community-development-admin}
+
+  # --------------------------------------------------------------------------
+  - id: dw-building-and-safety
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 101
+        section: "Building & Safety"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: building-and-safety}
+      - {label: "Services & Supplies", category: services-and-supplies, department: building-and-safety}
+
+  # --------------------------------------------------------------------------
+  - id: dw-engineering
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 101
+        section: "Engineering"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: engineering}
+      - {label: "Services & Supplies", category: services-and-supplies, department: engineering}
+
+  # --------------------------------------------------------------------------
+  - id: dw-housing-and-human-services
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      The label wraps: "Housing & Human" / "Services", the same break p169 makes.
+    parts:
+      - page: 101
+        section: "Housing & Human"
+        stop_at: "Division Total"
+        wrapped_labels: ["Services"]
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: housing-and-human-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: housing-and-human-services}
+      - {label: "Capital Outlay", category: capital-outlay, department: housing-and-human-services}
+      - {label: "Debt Services", category: debt-services, department: housing-and-human-services}
+
+  # --------------------------------------------------------------------------
+  - id: dw-planning
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 101
+        section: "Planning"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: planning}
+      - {label: "Services & Supplies", category: services-and-supplies, department: planning}
+      - {label: "Capital Outlay", category: capital-outlay, department: planning}
+
+  # --------------------------------------------------------------------------
+  - id: dw-fire-administration
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      ONE object row, and it is Services & Supplies. The Livermore-Pleasanton fire
+      service is contracted, so there is no wages line to map -- this division's
+      Total, Total Department Expenditures and that single row are three printed
+      statements of one figure.
+    parts:
+      - page: 105
+        section: "Fire Administration"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Services & Supplies", category: services-and-supplies, department: fire-administration}
+
+  # --------------------------------------------------------------------------
+  - id: dw-general-services
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 108
+        section: "General Services"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: general-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: general-services}
+      - {label: "Debt Services", category: debt-services, department: general-services}
+
+  # --------------------------------------------------------------------------
+  - id: dw-innovation-and-economic-devel
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      The label wraps: "Innovation & Economic" / "Devel", the same break p167
+      makes.
+    parts:
+      - page: 111
+        section: "Innovation & Economic"
+        stop_at: "Division Total"
+        wrapped_labels: ["Devel"]
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: innovation-and-economic-devel}
+      - {label: "Services & Supplies", category: services-and-supplies, department: innovation-and-economic-devel}
+      - {label: "Capital Outlay", category: capital-outlay, department: innovation-and-economic-devel}
+
+  # --------------------------------------------------------------------------
+  - id: dw-airport
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      Not on pp.167-170: almost entirely enterprise money, funds 600/601.
+      section_ordinal is required because p111 prints "Airport" again at :35 as a
+      funding source.
+    parts:
+      - page: 111
+        section: "Airport"
+        section_ordinal: 1
+        stop_at: "Division Total"
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, and the same shape
+              this file declares on pp.111/127/128/129/130/131/135/168/169/170.
+              FIVE of the 29 division blocks on pp.85-125 miss their own printed
+              Division Total by exactly one dollar -- risk-management, finance,
+              information-technology, airport and public-works-administration --
+              and every one is in the FY 2023-24 Actual column and nowhere else.
+              All five are short rather than over, which is the one way this
+              differs from the funding-sources block on these same pages, where
+              three are short and two over. The three later columns tie exactly
+              on all 29.
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: airport}
+      - {label: "Services & Supplies", category: services-and-supplies, department: airport}
+      - {label: "Debt Services", category: debt-services, department: airport}
+
+  # --------------------------------------------------------------------------
+  - id: dw-library
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      section_ordinal is required because p115 prints "Library" again at :29 as a
+      funding source.
+    parts:
+      - page: 115
+        section: "Library"
+        section_ordinal: 1
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: library}
+      - {label: "Services & Supplies", category: services-and-supplies, department: library}
+      - {label: "Capital Outlay", category: capital-outlay, department: library}
+
+  # --------------------------------------------------------------------------
+  - id: dw-police-administration
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 119
+        section: "Police Administration"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: police-administration}
+      - {label: "Services & Supplies", category: services-and-supplies, department: police-administration}
+
+  # --------------------------------------------------------------------------
+  - id: dw-patrol
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 119
+        section: "Patrol"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: patrol}
+      - {label: "Services & Supplies", category: services-and-supplies, department: patrol}
+      - {label: "Capital Outlay", category: capital-outlay, department: patrol}
+
+  # --------------------------------------------------------------------------
+  - id: dw-support-services
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 119
+        section: "Support Services"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: support-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: support-services}
+      - {label: "Capital Outlay", category: capital-outlay, department: support-services}
+
+  # --------------------------------------------------------------------------
+  - id: dw-special-operations
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 119
+        section: "Special Operations"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: special-operations}
+      - {label: "Services & Supplies", category: services-and-supplies, department: special-operations}
+      - {label: "Capital Outlay", category: capital-outlay, department: special-operations}
+
+  # --------------------------------------------------------------------------
+  - id: dw-horizons
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      Not on pp.167-170. section_ordinal is required because p119 prints
+      "Horizons" again at :53 as a funding source.
+    parts:
+      - page: 119
+        section: "Horizons"
+        section_ordinal: 1
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: horizons}
+      - {label: "Services & Supplies", category: services-and-supplies, department: horizons}
+
+  # --------------------------------------------------------------------------
+  - id: dw-public-works-administration
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      The label wraps: "Public Works" / "Administration", the same break p169
+      makes.
+    parts:
+      - page: 124
+        section: "Public Works"
+        stop_at: "Division Total"
+        wrapped_labels: ["Administration"]
+        stated_total_deltas:
+          - column: 1
+            delta_cents: 100
+            note: >-
+              The city's own rounding, stated minus mapped, and the same shape
+              this file declares on pp.111/127/128/129/130/131/135/168/169/170.
+              FIVE of the 29 division blocks on pp.85-125 miss their own printed
+              Division Total by exactly one dollar -- risk-management, finance,
+              information-technology, airport and public-works-administration --
+              and every one is in the FY 2023-24 Actual column and nowhere else.
+              All five are short rather than over, which is the one way this
+              differs from the funding-sources block on these same pages, where
+              three are short and two over. The three later columns tie exactly
+              on all 29.
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: public-works-administration}
+      - {label: "Services & Supplies", category: services-and-supplies, department: public-works-administration}
+
+  # --------------------------------------------------------------------------
+  - id: dw-maintenance
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      FIVE object rows, and the fifth is a TRANSFER, not an expenditure: p124:25
+      prints Transfers Out 266,798 in FY2023-24 Actual and "-" in all three later
+      columns. It carries kind: transfer_out rather than being swept into an
+      object category, and it is why this page's four Division Totals sum past
+      p183's Grand Total in that column and nowhere else -- p183 is an
+      EXPENDITURE total and correctly excludes it.
+    parts:
+      - page: 124
+        section: "Maintenance"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: maintenance}
+      - {label: "Services & Supplies", category: services-and-supplies, department: maintenance}
+      - {label: "Capital Outlay", category: capital-outlay, department: maintenance}
+      - {label: "Debt Services", category: debt-services, department: maintenance}
+      - {label: "Transfers Out", category: transfers/out, department: maintenance, kind: transfer_out}
+
+  # --------------------------------------------------------------------------
+  - id: dw-environmental-services
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    parts:
+      - page: 124
+        section: "Environmental Services"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: environmental-services}
+      - {label: "Services & Supplies", category: services-and-supplies, department: environmental-services}
+
+  # --------------------------------------------------------------------------
+  - id: dw-water-resources
+    kind: expenditure
+    basis: adopted
+    scope: departmentwide-expenditures
+    units: dollars
+    total_row: "Division Total"
+    note: >-
+      Not on pp.167-170, and the largest division in the city: $53,143,833 in
+      FY2025-26, more than a fifth of all citywide expenditure. Water and sewer
+      are enterprise funds.
+    parts:
+      - page: 124
+        section: "Water Resources"
+        stop_at: "Division Total"
+        column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
+        columns:
+          - {fiscal_year: 2024, basis: actual}
+          - {fiscal_year: 2025, basis: revised}
+          - {fiscal_year: 2026}
+          - {fiscal_year: 2027}
+    rows:
+      - {label: "Wages & Benefits", category: wages-and-benefits, department: water-resources}
+      - {label: "Services & Supplies", category: services-and-supplies, department: water-resources}
+      - {label: "Capital Outlay", category: capital-outlay, department: water-resources}
+      - {label: "Debt Services", category: debt-services, department: water-resources}
+
 
 rollups:
   # --------------------------------------------------------------------------

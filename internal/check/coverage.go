@@ -96,6 +96,37 @@ var unprojectedScopes = map[string]string{
 		"anchor on their own line. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; " +
 		"leg-level links carrying a transfer_id are fisc-9gh.",
 
+	departmentwideScope: "Budget Book pp.85-125, the Expenditures by Category block: the same " +
+		"eleven pages' UPPER block, decomposing each department by division and object " +
+		"category where the lower block decomposes it by paying fund. 29 division blocks, " +
+		"73 object rows, 292 facts -- 288 expenditure and four the Transfers Out row on " +
+		"p124 produces. These rows are the same money pp.66-67 publish, decomposed a third " +
+		"way, so drawing them into the fund-group spine doubles the city's expenditure. " +
+		"THEY CARRY NO FUND AND NO FUND GROUP, which is the page rather than an omission: " +
+		"this block prints what a department spends whatever pays for it. So they cannot " +
+		"tie to any one of the spine's six group cells and tie instead to its object " +
+		"categories summed over all six. WHAT IS RECONCILED IS THE TWO BUDGET COLUMNS AND " +
+		"NOTHING ELSE: departmentwide-ties-to-spine ties 8 cells, four object categories " +
+		"over FY2026 adopted and FY2027 adopted, of which seven tie to the cent -- FY2026 " +
+		"totalling 254,095,412, which IS all_funds_gross_expenditure_cents -- and one, " +
+		"services-and-supplies FY2027, ties instead against 130,252,087 where the spine " +
+		"publishes 130,502,087. That is the same 250,000 funding-sources-tie-to-spine " +
+		"declares, ARRIVING ON A DIFFERENT AXIS: that check lands it on the " +
+		"internal-service GROUP and this one on the SERVICES AND SUPPLIES category, and " +
+		"between them they place p0067's error at one cell of a grid neither could locate " +
+		"alone (fisc-av0w). The two historical columns, 146 of the 292 facts, tie to each " +
+		"division's own printed Division Total at build time and to nothing on the spine, " +
+		"because pp.66-67 print no actual or revised column; above that, each page's Total " +
+		"Department Expenditures equals the sum of its Division Totals in all 44 (page, " +
+		"column) cells, and five of the 29 divisions miss their own Division Total by " +
+		"exactly one dollar, every one in the FY2023-24 Actual column, declared as " +
+		"stated_total_deltas. WHICH DIVISION SPENT THE MONEY IS NOT COVERED BY THE " +
+		"ARITHMETIC AT ALL: the check sums the divisions away, so a dollar moved from " +
+		"Patrol to Horizons inside one object category and year leaves every cell " +
+		"unchanged. What holds it is fact-departments-resolve against " +
+		"data/departments.yaml, whose six pp.85-125-only divisions this lane added, plus " +
+		"each division's own printed Division Total",
+
 	acfrGeneralFundScope: "ACFR p41, the General Fund's Statement of Revenues, Expenditures " +
 		"and Changes in Fund Balances: 20 audited FY2024-25 figures, and the only facts in " +
 		"this store from a document other than the Budget Book. The page prints FOUR blocks " +
