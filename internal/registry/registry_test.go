@@ -620,6 +620,16 @@ func TestPublicWorksHeadingIsNotItsTotalRow(t *testing.T) {
 // name, which is the closed vocabulary that delimits that column on both
 // schedules, and the remainders are joined in order.
 //
+// AND THE SEARCH STOPS AT "Department Funding Sources", which is the arm that
+// makes this substantiate anything. pp.85-125 print a division block ABOVE a
+// funding-source block, and four of the labels name a division in one and a FUND
+// in the other -- Information Technology, Airport, Library and Horizons, the
+// same four whose rules need a section_ordinal for the same reason. Searching
+// the whole page, three of the six divisions this test was written to
+// substantiate passed on a fund row rather than on a division row, and a
+// fabricated `general-liability` division on p93 would have passed too. Cutting
+// the page at that heading is what tells the two blocks apart.
+//
 // This asserts presence and not position — the same claim
 // TestFundAliasesArePrintedOnTheirPages makes, "this is printed there, go and
 // look". Joining the column can in principle spell a label across two unrelated
@@ -642,7 +652,11 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read page %d: %v", n, err)
 		}
-		pages[n] = labelColumn(string(b))
+		// Everything below "Department Funding Sources" is the other block on
+		// the page, which names FUNDS. pp.167-170 carry no such heading, so the
+		// cut is a no-op there.
+		text, _, _ := strings.Cut(string(b), "Department Funding Sources")
+		pages[n] = labelColumn(text)
 		return pages[n]
 	}
 

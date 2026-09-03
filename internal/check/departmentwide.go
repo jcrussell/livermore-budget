@@ -126,9 +126,16 @@ func (e departmentwideException) discrepancy() amount.Cents {
 // grounds this entry, and the first-match answer would be an arbitrary one that
 // looks measured. Today there is exactly one and this returns it.
 //
-// ok=false rather than zero when there is no single match: zero is a legitimate
-// difference and would let a missing ground pass as agreement.
-func printedDiscrepancy(year int, basis mapping.Basis) (amount.Cents, bool) {
+// IT RETURNS THE COUNT AND NOT AN ok, because none and two are different defects
+// with opposite repairs: none means this entry has lost its grounding and should
+// probably go, two means the column is ambiguous and this entry should STAY
+// while someone says which it answers. An earlier draft collapsed both into
+// ok=false and told the reader to delete in either case.
+//
+// The returned figure is meaningful only when the count is 1. A zero return is
+// not "no difference": zero is a legitimate difference and would read as
+// agreement.
+func printedDiscrepancy(year int, basis mapping.Basis) (amount.Cents, int) {
 	var found amount.Cents
 	n := 0
 	for _, e := range fundingSourcesExceptions {
@@ -138,9 +145,9 @@ func printedDiscrepancy(year int, basis mapping.Basis) (amount.Cents, bool) {
 		}
 	}
 	if n != 1 {
-		return 0, false
+		return 0, n
 	}
-	return found, true
+	return found, 1
 }
 
 func (e departmentwideException) key() categoryKey {
@@ -310,17 +317,26 @@ func (*departmentwideTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 			// printed, so on their own they pin our arithmetic to itself. What
 			// they are allowed to differ BY is the discrepancy declared by the
 			// check whose figures the city really does print.
-			if want, ok := printedDiscrepancy(k.year, k.basis); !ok {
+			want, n := printedDiscrepancy(k.year, k.basis)
+			switch {
+			case n == 0:
 				findings = append(findings, finding(k.String(),
 					"holds %s apart from the spine, and no funding-sources exception names "+
 						"this column any more. Neither figure in this entry is printed, so "+
 						"that entry is the whole of its grounding: delete this one too, or "+
 						"say what prints the difference (%s)", e.discrepancy(), e.bead))
-			} else if e.discrepancy() != want {
+			case n > 1:
+				findings = append(findings, finding(k.String(),
+					"holds %s apart from the spine, and %d funding-sources exceptions name "+
+						"this column. A funding-sources entry names a FUND GROUP and this one "+
+						"names an OBJECT CATEGORY, and no fact carries both, so there is no "+
+						"way to say which grounds this. Do NOT delete this entry -- say which "+
+						"of the two it answers (%s)", e.discrepancy(), n, e.bead))
+			case e.discrepancy() != want:
 				findings = append(findings, finding(k.String(),
 					"holds %s apart from the spine where funding-sources-tie-to-spine holds "+
-						"%s, and they are the same $250,000 seen on two axes. One of the two "+
-						"entries has been re-pointed without the other (%s)",
+						"%s, and they are the same discrepancy seen on two axes. One of the "+
+						"two entries has been re-pointed without the other (%s)",
 					e.discrepancy(), want, e.bead))
 			}
 			if sp.cents != e.spineCents {
@@ -392,9 +408,11 @@ func (*departmentwideTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 			continue
 		}
 		held += fmt.Sprintf("; %s is held apart at %s against the spine's %s. NEITHER FIGURE IS "+
-			"PRINTED -- this corpus prints no citywide object-category total, so both are "+
-			"sums this check computes; what is printed is the %s between them, which "+
-			"funding-sources-tie-to-spine reconciles against pages that carry it: %s (%s)",
+			"PRINTED, AND NEITHER IS THE %s BETWEEN THEM -- this corpus prints no citywide "+
+			"object-category total, so all three are arithmetic. What IS printed is the pair "+
+			"funding-sources-tie-to-spine reconciles, 26,294,515 on eight pages against "+
+			"p0067's 26,544,515, and this entry is required to differ by exactly what that "+
+			"pair differs by: %s (%s)",
 			e.key(), e.detailCents, e.spineCents, e.discrepancy(), e.reason, e.bead)
 	}
 	if len(unmatched) > 0 {

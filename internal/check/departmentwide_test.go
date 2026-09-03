@@ -2,6 +2,7 @@ package check
 
 import (
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -223,9 +224,14 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	doc, ok := s.Docs[budgetDoc]
-	if !ok {
-		t.Fatalf("no extraction for %s", budgetDoc)
+	docIDs := make([]string, 0, len(s.Docs))
+	for id := range s.Docs {
+		docIDs = append(docIDs, id)
+	}
+	sort.Strings(docIDs)
+	if len(docIDs) < 2 {
+		t.Fatalf("the corpus holds %d extracted document(s); a claim about what THIS CORPUS "+
+			"prints cannot be made from one", len(docIDs))
 	}
 
 	if len(departmentwideExceptions) == 0 {
@@ -234,35 +240,48 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 
 	// THE SCAN COUNTS THE PAGES IT READ. An earlier draft looped to a hardcoded
 	// 268 and skipped a page it could not open, so the absence assertion below
-	// was vacuously true against an unreadable corpus -- and would have gone
-	// quietly weaker, not red, if the document ever grew. The floor is the
-	// budget book's own length, which the manifest carries.
+	// was vacuously true against an unreadable corpus.
+	//
+	// IT READS EVERY DOCUMENT THE SUBJECT LOADS AND NOT JUST THE BUDGET BOOK. The
+	// string it substantiates says this corpus prints no citywide
+	// object-category total, and a scan of one document cannot say that.
+	//
+	// "Every document the subject loads" is TWO of the three that are extracted:
+	// the budget book at 268 pages and the ACFR at 195. The CIP is extracted and
+	// is not loaded here, because no rule file maps it, so this test cannot
+	// speak for its 323 pages. That is a real limit on the claim rather than a
+	// gap in the loop, and it is why the assertion below counts pages rather
+	// than naming a corpus size.
 	scanned := 0
 	for _, e := range departmentwideExceptions {
 		for _, c := range []amount.Cents{e.spineCents, e.detailCents} {
 			// %s renders cents as a grouped dollar figure, which is how the
 			// pages print money.
 			needle := strings.TrimSuffix(strings.TrimPrefix(c.String(), "$"), ".00")
-			for page := 1; page <= doc.PageCount(); page++ {
-				text, err := doc.Page(page)
-				if err != nil {
-					t.Fatalf("page %d of %s: %v", page, budgetDoc, err)
-				}
-				scanned++
-				if strings.Contains(text, needle) {
-					t.Errorf("exception %s carries %s and p%04d PRINTS it; if a page really "+
-						"does publish this figure the entry should assert it directly, and "+
-						"the type comment saying no page does is now wrong",
-						e.key(), c, page)
-					break
+			for _, id := range docIDs {
+				d := s.Docs[id]
+				for page := 1; page <= d.PageCount(); page++ {
+					text, err := d.Page(page)
+					if err != nil {
+						t.Fatalf("page %d of %s: %v", page, id, err)
+					}
+					scanned++
+					if strings.Contains(text, needle) {
+						t.Errorf("exception %s carries %s and %s p%04d PRINTS it; if a page "+
+							"really does publish this figure the entry should assert it "+
+							"directly, and the type comment saying no page does is now wrong",
+							e.key(), c, id, page)
+						break
+					}
 				}
 			}
 		}
 
-		want, ok := printedDiscrepancy(e.year, e.basis)
-		if !ok {
-			t.Errorf("exception %s has no funding-sources counterpart for its column, so "+
-				"nothing printed grounds it", e.key())
+		want, n := printedDiscrepancy(e.year, e.basis)
+		if n != 1 {
+			t.Errorf("exception %s is grounded by %d funding-sources exceptions, want exactly "+
+				"1; none means it has lost its grounding, more than one means the column is "+
+				"ambiguous and the two have opposite repairs", e.key(), n)
 			continue
 		}
 		if e.discrepancy() != want {
@@ -272,9 +291,20 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 		}
 	}
 
-	if scanned < 268 {
-		t.Errorf("the absence scan read %d pages, want at least 268; a scan that read "+
-			"nothing proves nothing about what the corpus prints", scanned)
+	// EXACT RATHER THAN A FLOOR, and computed from the documents rather than
+	// typed: two figures per entry over every page of every document loaded. A
+	// floor would let a scan that stopped early pass, and a typed page count
+	// would go stale the day a document is added -- which is the same defect as
+	// the hardcoded 268 this replaces.
+	want := 0
+	for _, id := range docIDs {
+		want += s.Docs[id].PageCount()
+	}
+	want *= 2 * len(departmentwideExceptions)
+	if scanned != want {
+		t.Errorf("the absence scan read %d pages, want %d -- two figures per exception over "+
+			"every page of %d document(s); a scan that stopped early proves less than the "+
+			"string it substantiates claims", scanned, want, len(docIDs))
 	}
 }
 
@@ -306,6 +336,18 @@ func TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs(t *test
 // The list is a declaration in the sense internal/check/vacuity.go means: an
 // entry costs a bead and a reason, and an entry that stops being needed goes red
 // rather than sitting inert.
+//
+// THE SPINE PAIRS ONLY, AND THAT BOUNDARY IS DELIBERATE. Measured over the seven
+// scopes the store carries: 21 pairs, 6 declared, 15 not. Several of the 15 are
+// wrong in the way fisc-tlbp is about -- department-funding-sources and
+// departmentwide-expenditures are the two blocks of the same eleven pages and
+// are the same money, yet share zero sharedKeys addresses, so ARM 2 would
+// confirm a `disjoint` declaration on them. Ten of the 15 predate the
+// departmentwide lane. Closing them is a decision about what disjointScopes
+// asserts rather than fifteen entries typed at the bottom of it, so this test
+// covers the pairs where a doubling reaches the PUBLISHED SPINE and fisc-tlbp
+// owns the rest. It is named for that boundary rather than quietly stopping at
+// it.
 var undeclaredScopePairs = map[string]string{
 	acfrGeneralFundScope: "fisc-tlbp: the two disagree under one key and agree under the " +
 		"other, so neither `reconciled` nor `disjoint` is honestly assertable until that " +
