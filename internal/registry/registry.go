@@ -12,7 +12,7 @@
 // Loading validates. A registry that loaded is one whose invariants already
 // hold — no duplicate slug or fund number, every parent resolving, every
 // derived entry carrying its rationale and source note — so a caller looks up
-// without re-checking. The strictness is deliberate: both files are
+// without re-checking. The strictness is deliberate: these registries are
 // hand-written, and a typo that survives load becomes a wrong classification
 // on a published page rather than a build failure.
 //
@@ -293,10 +293,10 @@ func (d Department) clone() Department {
 //
 // Department names the heading above this division. It is a separate NAMESPACE
 // from Slug rather than a parent segment of it: five departments share a name
-// with a division beneath them — three exactly, City Council, City Manager and
-// City Attorney — so one namespace would force five invented names. It is also
-// a field rather than a `police/patrol` slug because check's departmentSlug
-// rule is single-segment and fact.RowPath composes `<division>/<category>`; a
+// with a division beneath them, all five matching on slug and on label — so
+// one namespace would force five invented names. It is also a field rather
+// than a `police/patrol` slug because check's departmentSlug rule is
+// single-segment and fact.RowPath composes `<division>/<category>`; a
 // two-segment slug would emit a two-slash row_path.
 type Division struct {
 	Slug       string `yaml:"slug"`
@@ -352,8 +352,9 @@ func (r *Registry) Category(slug string) (Category, bool) {
 // Label returns the human label for slug — the city's printed words, which is
 // what a reader should see in place of our machine identifier.
 //
-// This is the whole of the interface `internal/project` declares over this
-// package, so a change to its signature is a change to the site's contract.
+// It is one of the six methods `internal/project`'s Labels interface declares
+// over this package, so a change to its signature is a change to the site's
+// contract.
 func (r *Registry) Label(slug string) (string, bool) {
 	c, ok := r.categories[slug]
 	if !ok {
@@ -620,10 +621,12 @@ func (e *Error) Error() string {
 	return b.String()
 }
 
-// labeler is the interface `internal/project` declares to get the city's
-// words onto the site. Asserting it here means a signature change breaks this
-// package's own build instead of a consumer's, which is the only way a narrow
-// interface owned by the consumer stays honest.
+// labeler mirrors the Label method of the interface `internal/project`
+// declares to get the city's words onto the site. Asserting it here means a
+// change to THAT method's signature breaks this package's own build instead of
+// a consumer's, which is the only way a narrow interface owned by the consumer
+// stays honest. It covers Label alone; the consumer's interface declares five
+// more, and a change to any of those still surfaces only in project's build.
 type labeler interface {
 	Label(slug string) (string, bool)
 }

@@ -102,7 +102,7 @@ func readFactStore(repoRoot string) ([]byte, []fact.Fact, error) {
 func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte, error) {
 	// The label registry is loaded here, in the composition root, and passed
 	// in: internal/project is deliberately decoupled from internal/registry
-	// and reaches it through a one-method interface.
+	// and reaches it through an interface it declares itself.
 	reg, err := registry.Load(os.DirFS(filepath.Join(repoRoot, "data")))
 	if err != nil {
 		return nil, fmt.Errorf("load the data registries: %w", err)

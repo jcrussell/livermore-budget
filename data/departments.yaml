@@ -13,7 +13,8 @@
 # assert.
 #
 # TWO NAMESPACES, NOT ONE, AND THAT IS FORCED BY THE PAGE. Five departments
-# share a name with a division beneath them, three of them exactly:
+# share a name with a division beneath them, all five matching on slug and on
+# label:
 #
 #   CITY COUNCIL            p167:7   / City Council            p167:9
 #   CITY MANAGER            p167:17  / City Manager            p167:19

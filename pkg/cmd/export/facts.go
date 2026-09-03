@@ -187,7 +187,7 @@ func buildFactAssets(raw []byte, facts []fact.Fact, version string) (factAssets,
 
 	// THE EQUALITY. Reported with the offset and the page it falls in, because
 	// "the shards do not reproduce the store" leaves a reader to go and diff
-	// 718 KB by hand.
+	// the whole fact store by hand.
 	if got := concat.Bytes(); !bytes.Equal(got, raw) {
 		return factAssets{}, fmt.Errorf(
 			"the shards do not reproduce the fact store: %s", firstDifference(got, raw, assets.Pages))

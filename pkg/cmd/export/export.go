@@ -135,7 +135,8 @@ func (o *Options) Validate() error {
 
 // validateBrowseURL refuses a base the page could not cite. Every citation on
 // the site is composed from it, so a value that is not an absolute http(s) base
-// would not fail here — it would render 24 dead links and export cleanly.
+// would not fail here — every citation on the site would be a dead link, and
+// the export would still finish cleanly.
 func validateBrowseURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {

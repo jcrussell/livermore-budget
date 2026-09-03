@@ -265,7 +265,7 @@ func (r *Registry) loadTaxonomy(fsys fs.FS) error {
 			return err
 		}
 		// Absent means assignable: the exceptions are the three rollup nodes,
-		// and requiring the other twenty-two to opt in would make the common
+		// and requiring every other category to opt in would make the common
 		// case the one that is easy to get wrong.
 		c.Assignable = e.RawAssignable == nil || *e.RawAssignable
 		r.categories[c.Slug] = c
@@ -502,13 +502,13 @@ type entryErrFunc func(field, format string, args ...any) error
 //
 // IT DELIBERATELY MAKES NO CLAIM ABOUT THE OWNING ENTRY'S OWN `pages`.
 // contra_rows gets exactly that cross-field arm below and aliases must never
-// get it: measured over the committed taxonomy, all 8 of 8 category alias
-// blocks are WHOLLY DISJOINT from their category's pages. That is not a defect
-// -- a contra row is a detail line inside the category's own printed subtotal,
-// so it is on a page the category claims; an alias is the OTHER SPELLING, and
-// the reason a spelling needs recording at all is that some other schedule
-// prints it. Adding the arm here "by symmetry" would reject the whole
-// committed alias channel.
+// get it: measured over the committed taxonomy, every category alias block is
+// WHOLLY DISJOINT from its category's pages. That is not a defect -- a contra
+// row is a detail line inside the category's own printed subtotal, so it is on
+// a page the category claims; an alias is the OTHER SPELLING, and the reason a
+// spelling needs recording at all is that some other schedule prints it.
+// Adding the arm here "by symmetry" would reject the whole committed alias
+// channel.
 func validateAlias(i int, a Alias, ef entryErrFunc) error {
 	at := fmt.Sprintf("aliases[%d]", i)
 	if a.Term == "" {

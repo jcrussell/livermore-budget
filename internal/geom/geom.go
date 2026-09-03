@@ -101,8 +101,11 @@ type Page struct {
 	// self-consistent lie.
 	DocID  string
 	Number int
-	// Width and Height are the page box in points. The Budget Book is portrait
-	// Letter (612x792); the CIP is landscape (792x612).
+	// Width and Height are the page box in points. Every page in the corpus is
+	// Letter, but the orientation is per page and not per document: the Budget
+	// Book is portrait throughout (268 of 268), while the CIP is landscape on
+	// 75 of 323 and the ACFR on 21 of 195. Neither dimension follows from the
+	// doc_id for those two.
 	Width, Height float64
 	// Words are in the extractor's order: sorted by (y0, x0, y1, x1, text).
 	Words []Word

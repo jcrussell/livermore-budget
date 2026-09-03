@@ -138,7 +138,7 @@ const (
 )
 
 // Labels is the view of the label registry (internal/registry, fisc-6ns) this
-// projection needs, declared here in the consumer and kept to the one method
+// projection needs, declared here in the consumer and kept to the methods
 // actually used (byob-interfaces.2, as internal/mapping/resolve.go does with
 // its doc interface).
 //
