@@ -3,14 +3,33 @@
 #
 #@cite City of Livermore, "FY 2025-2027 Budget Book" (source id: livermore-budget-fy2026-2027)
 #@cite     "General Fund Expenditures by Major Category", PDF pp. 167-170
+#@cite     "Departmentwide Expenditures with Funding Sources", PDF pp. 85-125
 #
-# TWO TIERS, AND THE FACTS NAME THE LOWER ONE. pp.167-170 print 23 mixed-case
-# DIVISIONS grouped under 11 ALL-CAPS DEPARTMENTS. A mapping row's
-# `department:` field carries the DIVISION slug, because the division is the
-# level the object rows are printed under and the level whose `Total` the
-# document prints beside them. The department is reached through the division's
-# `department:` field here, and it is what the `<DEPARTMENT> TOTAL` rollups
-# assert.
+# TWO TIERS, AND THE FACTS NAME THE LOWER ONE. 29 mixed-case DIVISIONS grouped
+# under 11 ALL-CAPS DEPARTMENTS. A mapping row's `department:` field carries the
+# DIVISION slug, because the division is the level the object rows are printed
+# under and the level whose `Total` the document prints beside them. The
+# department is reached through the division's `department:` field here, and it
+# is what the `<DEPARTMENT> TOTAL` rollups assert.
+#
+# TWO SCHEDULES PRINT THIS AXIS AND THEY DO NOT AGREE ON ITS SIZE, which is why
+# every entry's `pages` names both where it applies. pp.167-170 are a GENERAL
+# FUND schedule and print 23 divisions. pp.85-125 are the whole department,
+# whatever fund pays for it, and print 29 — the same 23, matched by label
+# exactly, plus six that no General Fund schedule can show because their money
+# is mostly not the General Fund's:
+#
+#   Risk Management          p93   under CITY ATTORNEY
+#   Information Technology   p97   under ADMINISTRATIVE SERVICES
+#   Cybersecurity            p97   under ADMINISTRATIVE SERVICES
+#   Airport                  p111  under INNOVATION & ECONOMIC DEVELOPMENT
+#   Horizons                 p119  under POLICE DEPARTMENT
+#   Water Resources          p124  under PUBLIC WORKS
+#
+# The 23 match by LABEL and not merely by slug, wrapped ones included: pp.85-125
+# wrap "Community Development Admin", "Housing & Human Services", "Innovation &
+# Economic Devel" and "Public Works Administration" across two lines exactly as
+# pp.167-170 do. No entry needs an alias, and none has one.
 #
 # TWO NAMESPACES, NOT ONE, AND THAT IS FORCED BY THE PAGE. Five departments
 # share a name with a division beneath them, all five matching on slug and on
@@ -128,41 +147,63 @@ divisions:
   - slug: city-council
     label: City Council
     department: city-council
-    pages: [167]
+    pages: [85, 167]
 
   - slug: city-manager
     label: City Manager
     department: city-manager
-    pages: [167]
+    pages: [89, 167]
 
   - slug: city-clerk
     label: City Clerk
     department: city-manager
-    pages: [167]
+    pages: [89, 167]
 
   - slug: city-attorney
     label: City Attorney
     department: city-attorney
-    pages: [167]
+    pages: [93, 167]
+
+  - slug: risk-management
+    label: Risk Management
+    department: city-attorney
+    pages: [93]
+    note: >-
+      Printed on p93 and on no other page. pp.167-170 give CITY ATTORNEY one
+      division; the departmentwide schedule gives it two, and this is the
+      second. Its money is in the department's p167 total either way — the
+      General Fund slice of it — but the axis pp.167-170 print has no row for
+      it.
 
   - slug: library
     label: Library
     department: library-department
-    pages: [167]
+    pages: [115, 167]
 
   - slug: innovation-and-economic-devel
     label: Innovation & Economic Devel
     department: innovation-and-economic-development
-    pages: [167]
+    pages: [111, 167]
     note: >-
-      The label wraps: "Innovation & Economic" on p167:55 and "Devel" on
-      p167:56. The city abbreviates the division where it spells the department
-      out, so the two are not the same string even ignoring case.
+      The label wraps at the same point on both schedules: "Innovation &
+      Economic" / "Devel", at p167:55-56 and at p111:11-12. The city abbreviates
+      the division where it spells the department out, so the two are not the
+      same string even ignoring case.
+
+  - slug: airport
+    label: Airport
+    department: innovation-and-economic-development
+    pages: [111]
+    note: >-
+      Printed on p111 and on no other page. Almost entirely enterprise money —
+      funds 600/601 — which is why a General Fund schedule prints no row for
+      it, and it carries a Debt Services line that INNOVATION & ECONOMIC
+      DEVELOPMENT's p167 block does not.
 
   - slug: general-services
     label: General Services
     department: general-services
-    pages: [167, 168]
+    pages: [108, 167, 168]
     note: >-
       Straddles a page break: Wages & Benefits on p167:65, Services & Supplies
       and Debt Services on p168:7 and p168:9, and the printed Total on p168:11.
@@ -170,96 +211,139 @@ divisions:
   - slug: administrative-services
     label: Administrative Services
     department: administrative-services
-    pages: [168]
+    pages: [97, 168]
 
   - slug: finance
     label: Finance
     department: administrative-services
-    pages: [168]
+    pages: [97, 168]
 
   - slug: human-resources
     label: Human Resources
     department: administrative-services
-    pages: [168]
+    pages: [97, 168]
+
+  - slug: information-technology
+    label: Information Technology
+    department: administrative-services
+    pages: [97]
+    note: >-
+      Printed on p97 and on no other page. The largest division missing from
+      pp.167-170 by a wide margin: $6,840,179 in FY2025-26, against the whole
+      department's $14,192,079. Fund 720 (Information Technology, internal
+      service) pays more of ADMINISTRATIVE SERVICES than the General Fund does,
+      which is why pp.167-170 — a General Fund schedule — cannot show it.
+
+  - slug: cybersecurity
+    label: Cybersecurity
+    department: administrative-services
+    pages: [97]
+    note: >-
+      Printed on p97 and on no other page. Wages & Benefits falls to $0 in both
+      budget years after $54,865 and $276,442 in the two historical ones, with
+      Services & Supplies flat at $665,190 — a division that stops employing
+      anyone rather than one that closes.
 
   - slug: police-administration
     label: Police Administration
     department: police-department
-    pages: [168]
+    pages: [119, 168]
 
   - slug: patrol
     label: Patrol
     department: police-department
-    pages: [168]
+    pages: [119, 168]
 
   - slug: support-services
     label: Support Services
     department: police-department
-    pages: [168]
+    pages: [119, 168]
 
   - slug: special-operations
     label: Special Operations
     department: police-department
-    pages: [168, 169]
+    pages: [119, 168, 169]
+
     note: >-
       Straddles a page break: Wages & Benefits and Services & Supplies on p168,
       Capital Outlay and the printed Total on p169.
 
+  - slug: horizons
+    label: Horizons
+    department: police-department
+    pages: [119]
+    note: >-
+      Printed on p119 and on no other page. The city's youth and family
+      services programme, run under POLICE DEPARTMENT.
+
   - slug: community-development-admin
     label: Community Development Admin
     department: community-development
-    pages: [169]
+    pages: [101, 169]
     note: >-
-      The label wraps: "Community" on p169:15 and "Development Admin" on
-      p169:16.
+      The label wraps, and the two schedules break it in DIFFERENT places:
+      "Community" / "Development Admin" on p169:15-16, but "Community
+      Development" / "Admin" on p101:11-12. On both, the continuation sits below
+      the first object row rather than beside the first half.
 
   - slug: building-and-safety
     label: Building & Safety
     department: community-development
-    pages: [169]
+    pages: [101, 169]
 
   - slug: engineering
     label: Engineering
     department: community-development
-    pages: [169]
+    pages: [101, 169]
 
   - slug: housing-and-human-services
     label: Housing & Human Services
     department: community-development
-    pages: [169]
+    pages: [101, 169]
     note: >-
-      The label wraps: "Housing & Human" on p169:33 and "Services" on p169:34.
+      The label wraps at the same point on both schedules: "Housing & Human" /
+      "Services", at p169:33-34 and at p101:29-30.
 
   - slug: planning
     label: Planning
     department: community-development
-    pages: [169]
+    pages: [101, 169]
 
   - slug: public-works-administration
     label: Public Works Administration
     department: public-works
-    pages: [169]
+    pages: [124, 169]
     note: >-
-      The label wraps: "Public Works" on p169:49 and "Administration" on
-      p169:50.
+      The label wraps at the same point on both schedules: "Public Works" /
+      "Administration", at p169:49-50 and at p124:11-12.
 
   - slug: maintenance
     label: Maintenance
     department: public-works
-    pages: [169]
+    pages: [124, 169]
 
   - slug: environmental-services
     label: Environmental Services
     department: public-works
-    pages: [169, 170]
+    pages: [124, 169, 170]
     note: >-
       Straddles a page break: Wages & Benefits on p169:61, Services & Supplies
       on p170:7, and the printed Total on p170:9.
 
+  - slug: water-resources
+    label: Water Resources
+    department: public-works
+    pages: [124]
+    note: >-
+      Printed on p124 and on no other page, and the largest division in the
+      city: $53,143,833 in FY2025-26, more than a fifth of all citywide
+      expenditure. Water and sewer are enterprise funds, so a General Fund
+      schedule prints none of it.
+
   - slug: fire-administration
     label: Fire Administration
     department: fire-department
-    pages: [170]
+    pages: [105, 170]
     note: >-
       One object row only — Services & Supplies, p170:15. The Livermore-
       Pleasanton fire service is contracted, so the General Fund carries no

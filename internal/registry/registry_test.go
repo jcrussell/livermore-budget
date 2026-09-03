@@ -1,8 +1,10 @@
 package registry
 
 import (
+	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -476,10 +478,13 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 }
 
-// The committed department registry, checked against what Budget Book
-// pp.167-170 print. The counts are the assertion that an edit which still
-// parses has not quietly changed the axis: a dropped division is invisible to
-// every object-category sum, because its money simply moves to no other row.
+// The committed department registry, checked against what the budget book
+// prints. The counts are the assertion that an edit which still parses has not
+// quietly changed the axis: a dropped division is invisible to every
+// object-category sum, because its money simply moves to no other row.
+//
+// The division counts come from pp.85-125, which print the axis whole.
+// TestEveryDivisionIsPrintedOnItsPages is what ties each entry to a page.
 func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 	r, err := Load(os.DirFS(realData))
 	if err != nil {
@@ -489,25 +494,27 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 	if got, want := len(r.Departments()), 11; got != want {
 		t.Errorf("len(Departments()) = %d, want %d", got, want)
 	}
-	if got, want := len(r.Divisions()), 23; got != want {
+	if got, want := len(r.Divisions()), 29; got != want {
 		t.Errorf("len(Divisions()) = %d, want %d", got, want)
 	}
 
-	// Divisions per department, counted off the printed `Total` rows: p167 6,
-	// p168 7, p169 8, p170 2. Six departments have exactly one division, which
-	// is why six of the eleven <DEPARTMENT> TOTAL rows cover a single rule.
+	// Divisions per department, counted off the printed `Division Total` rows
+	// on pp.85-125, which print the whole axis: p85 1, p89 2, p93 2, p97 5,
+	// p101 5, p105 1, p108 1, p111 2, p115 1, p119 5, p124 4. pp.167-170 print
+	// 23 of these 29 — the General Fund slice — so a count taken there is
+	// smaller by the six the registry header names.
 	want := map[string]int{
-		"administrative-services":             3,
-		"city-attorney":                       1,
+		"administrative-services":             5,
+		"city-attorney":                       2,
 		"city-council":                        1,
 		"city-manager":                        2,
 		"community-development":               5,
 		"fire-department":                     1,
 		"general-services":                    1,
-		"innovation-and-economic-development": 1,
+		"innovation-and-economic-development": 2,
 		"library-department":                  1,
-		"police-department":                   4,
-		"public-works":                        3,
+		"police-department":                   5,
+		"public-works":                        4,
 	}
 	got := map[string]int{}
 	for _, d := range r.Divisions() {
@@ -587,4 +594,102 @@ func TestPublicWorksHeadingIsNotItsTotalRow(t *testing.T) {
 		t.Error("document_term + \" TOTAL\" now equals the printed total row; " +
 			"the asymmetry this test records has gone, so check p170:11")
 	}
+}
+
+// A division's `pages` asserts that the city prints its label on those pages.
+// This checks that against the extracted text, so a page number typed from
+// memory fails rather than sitting in the registry looking authoritative. It is
+// TestFundAliasesArePrintedOnTheirPages applied to the other axis, and it is
+// what makes the six pp.85-125-only entries a claim rather than an assertion.
+//
+// THE LABELS WRAP, THE TWO SCHEDULES WRAP THEM AT DIFFERENT POINTS, AND THE
+// CONTINUATION IS NOT ADJACENT TO WHAT IT CONTINUES. Four divisions print
+// across two lines wherever they appear — "Community Development Admin",
+// "Housing & Human Services", "Innovation & Economic Devel" and "Public Works
+// Administration". Collapsing the whole page finds none of them, because the
+// second half sits BELOW the first object row rather than beside the first
+// half, with that row's four figures in between:
+//
+//	p0101:11  Community Development Wages & Benefits   $803,509  ...
+//	p0101:12  Admin
+//	p0169:15  Community             Wages & Benefits    803,509  ...
+//	p0169:16  Development Admin
+//
+// Note the two schedules break the same label in different places. So the
+// search reads the LABEL COLUMN: each line is cut at the first object-category
+// name, which is the closed vocabulary that delimits that column on both
+// schedules, and the remainders are joined in order.
+//
+// This asserts presence and not position — the same claim
+// TestFundAliasesArePrintedOnTheirPages makes, "this is printed there, go and
+// look". Joining the column can in principle spell a label across two unrelated
+// divisions; what it cannot do is find one on a page that has no row for it,
+// which is the error being guarded against.
+//
+// Mutation: change any division's pages to a page that does not print it — 167
+// for water-resources, say, whose whole point is that pp.167-170 have no row
+// for it — and this fails naming the division and the page.
+func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
+	r := realRegistry(t)
+
+	pages := map[int]string{}
+	readPage := func(t *testing.T, n int) string {
+		t.Helper()
+		if body, ok := pages[n]; ok {
+			return body
+		}
+		b, err := os.ReadFile(fmt.Sprintf("%s/p%04d.txt", budgetPages, n))
+		if err != nil {
+			t.Fatalf("read page %d: %v", n, err)
+		}
+		pages[n] = labelColumn(string(b))
+		return pages[n]
+	}
+
+	var claims int
+	for _, d := range r.Divisions() {
+		if len(d.Pages) == 0 {
+			t.Errorf("division %q lists no pages", d.Slug)
+			continue
+		}
+		want := strings.Join(strings.Fields(d.Label), " ")
+		for _, p := range d.Pages {
+			claims++
+			if !strings.Contains(readPage(t, p), want) {
+				t.Errorf("division %q label %q is not printed on p%04d", d.Slug, d.Label, p)
+			}
+		}
+	}
+
+	// Without this the test passes on a registry whose divisions all lost their
+	// pages -- the loop would simply not run. 29 divisions each name at least
+	// one page and 23 of them name two or more, so the floor is well under the
+	// real figure and still far above zero.
+	if claims < 29 {
+		t.Errorf("divisions make %d page claims, want at least 29", claims)
+	}
+}
+
+// labelColumn is the left-hand column of a departmentwide or major-category
+// schedule: every line cut at the first object-category name, joined in order.
+// objectColumn is the closed vocabulary the budget book prints in the column to
+// its right, and "Total" is last so the longer "Division Total" wins.
+func labelColumn(page string) string {
+	objectColumn := []string{
+		"Wages & Benefits", "Services & Supplies", "Capital Outlay",
+		"Debt Services", "Transfers Out", "Division Total", "Total",
+	}
+	var out []string
+	for _, line := range strings.Split(page, "\n") {
+		cut := len(line)
+		for _, o := range objectColumn {
+			if i := strings.Index(line, o); i >= 0 && i < cut {
+				cut = i
+			}
+		}
+		if f := strings.Fields(line[:cut]); len(f) > 0 {
+			out = append(out, strings.Join(f, " "))
+		}
+	}
+	return strings.Join(out, " ")
 }

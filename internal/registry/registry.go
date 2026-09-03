@@ -283,8 +283,13 @@ func (d Department) clone() Department {
 	return d
 }
 
-// Division is one of the twenty-three mixed-case row groups pp.167-170 print
-// beneath a Department, and it is what a fact's `department` field holds.
+// Division is one of the mixed-case row groups the budget book prints beneath a
+// Department, and it is what a fact's `department` field holds.
+//
+// Two schedules print this axis at different sizes: pp.167-170 are General Fund
+// only and print 23, pp.85-125 are the whole department and print 29. The
+// registry holds the union, and each entry's Pages says which schedules show it.
+// departments.yaml's header carries the six that only pp.85-125 reach.
 //
 // The field and this type disagree in name, and deliberately: `department` is
 // published in facts.jsonl and in every mapping rule, so renaming it would
