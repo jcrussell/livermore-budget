@@ -26,10 +26,14 @@
 #   Horizons                 p119  under POLICE DEPARTMENT
 #   Water Resources          p124  under PUBLIC WORKS
 #
-# The 23 match by LABEL and not merely by slug, wrapped ones included: pp.85-125
-# wrap "Community Development Admin", "Housing & Human Services", "Innovation &
-# Economic Devel" and "Public Works Administration" across two lines exactly as
-# pp.167-170 do. No entry needs an alias, and none has one.
+# The 23 match by LABEL and not merely by slug, wrapped ones included: both
+# schedules wrap "Community Development Admin", "Housing & Human Services",
+# "Innovation & Economic Devel" and "Public Works Administration" across two
+# lines. Three of the four break at the same point on both. THE FOURTH DOES NOT
+# -- p101 gives "Community Development" / "Admin" where p169 gives "Community" /
+# "Development Admin" -- so a rule anchoring on either page's head is anchoring
+# on that page and not on the label. Each entry's note records its own breaks.
+# No entry needs an alias, and none has one.
 #
 # TWO NAMESPACES, NOT ONE, AND THAT IS FORCED BY THE PAGE. Five departments
 # share a name with a division beneath them, all five matching on slug and on

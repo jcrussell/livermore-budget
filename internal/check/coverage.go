@@ -116,11 +116,13 @@ var unprojectedScopes = map[string]string{
 		"between them they place p0067's error at one cell of a grid neither could locate " +
 		"alone (fisc-av0w). The two historical columns, 146 of the 292 facts, tie to each " +
 		"division's own printed Division Total at build time and to nothing on the spine, " +
-		"because pp.66-67 print no actual or revised column; above that, each page's Total " +
-		"Department Expenditures equals the sum of its Division Totals in all 44 (page, " +
-		"column) cells, and five of the 29 divisions miss their own Division Total by " +
-		"exactly one dollar, every one in the FY2023-24 Actual column, declared as " +
-		"stated_total_deltas. WHICH DIVISION SPENT THE MONEY IS NOT COVERED BY THE " +
+		"because pp.66-67 print no actual or revised column. Five of the 29 divisions miss " +
+		"that printed total by exactly one dollar, every one in the FY2023-24 Actual " +
+		"column, declared as stated_total_deltas. TOTAL DEPARTMENT EXPENDITURES DOES NOT " +
+		"HOLD THEM and it looks as though it should: no rule or rollup reads that row, " +
+		"and all 29 rules stop at Division Total. Its printed value does equal the sum of " +
+		"its page's printed Division Totals in all 44 (page, column) cells, but that was " +
+		"measured by hand while writing this lane and nothing re-checks it. WHICH DIVISION SPENT THE MONEY IS NOT COVERED BY THE " +
 		"ARITHMETIC AT ALL: the check sums the divisions away, so a dollar moved from " +
 		"Patrol to Horizons inside one object category and year leaves every cell " +
 		"unchanged. What holds it is fact-departments-resolve against " +

@@ -73,21 +73,61 @@ func byCategory(m map[detailKey]cellSum) map[categoryKey]cellSum {
 	return out
 }
 
-// departmentwideException is a cell reconciled against a PRINTED figure instead
-// of against the spine, because the spine's own page is wrong. It is
-// fundingSourcesException on the other axis, and it carries the same rules:
-// the cell is still examined and can still fail three ways, and BOTH figures are
-// read off a page rather than either being derived from the other.
+// departmentwideException is a cell held apart from the ordinary comparison
+// because the spine's own page is wrong.
+//
+// IT IS NOT fundingSourcesException ON THE OTHER AXIS, AND THE DIFFERENCE IS THE
+// ONE THIS PROJECT CARES MOST ABOUT. That type's two figures are PRINTED --
+// 26,294,515 appears on eight extracted pages and 26,544,515 on two -- so its
+// entry asserts a page against a page. NEITHER FIGURE HERE IS PRINTED ANYWHERE.
+// grep data/extracted for 130,252,087 or 130,502,087 and there are no hits: they
+// are citywide object-category totals, which this corpus never prints, and they
+// exist only as sums this check computes. An earlier draft of this file copied
+// the other type's wording and claimed both were read off a page. They are not,
+// and saying so in a string `fisc verify` prints on every run is the
+// published-versus-derived invariant broken in published text.
+//
+// SO THE ENTRY IS PINNED FROM TWO DIRECTIONS INSTEAD. detailCents and spineCents
+// are regression pins on our own arithmetic: the cell still fails if either side
+// moves, which is what stops the exception hiding a later mapping error. What
+// makes it more than a pair of magic numbers is the third arm -- their
+// DIFFERENCE must equal the discrepancy fundingSourcesExceptions declares
+// between two figures that ARE printed. That is where the grounding lives, and
+// it is one edge rather than a second copy: correct p0067 and delete that entry,
+// and this one goes red demanding the same.
 type departmentwideException struct {
 	category string
 	year     int
 	basis    mapping.Basis
 
-	spineCents   amount.Cents
-	printedCents amount.Cents
+	// spineCents and detailCents are what the two sides SUM TO, not figures any
+	// page prints. See the type comment before adding a third.
+	spineCents  amount.Cents
+	detailCents amount.Cents
 
 	bead   string
 	reason string
+}
+
+// discrepancy is what this entry holds apart, and it must be grounded in printed
+// figures rather than in this file.
+func (e departmentwideException) discrepancy() amount.Cents {
+	return e.spineCents - e.detailCents
+}
+
+// printedDiscrepancy is the same quantity taken from the check whose figures ARE
+// printed, and is what grounds every entry above.
+//
+// It returns ok=false rather than zero when no funding-sources exception names
+// the year: zero is a legitimate difference and would let a missing ground pass
+// as agreement.
+func printedDiscrepancy(year int, basis mapping.Basis) (amount.Cents, bool) {
+	for _, e := range fundingSourcesExceptions {
+		if e.year == year && e.basis == basis {
+			return e.spineCents - e.printedCents, true
+		}
+	}
+	return 0, false
 }
 
 func (e departmentwideException) key() categoryKey {
@@ -110,19 +150,18 @@ func (e departmentwideException) key() categoryKey {
 var departmentwideExceptions = []departmentwideException{{
 	category: "services-and-supplies", year: 2027, basis: mapping.BasisAdopted,
 
-	spineCents:   amount.Cents(13050208700),
-	printedCents: amount.Cents(13025208700),
+	spineCents:  amount.Cents(13050208700),
+	detailCents: amount.Cents(13025208700),
 
 	bead: "fisc-av0w",
 	reason: "p0067's Internal Service Funds column prints Services & Supplies 16,796,010 " +
 		"for FY2026-27, and the five internal service funds' own printed rows on " +
-		"pp.172-183 sum to 250,000 less. The spine carries p0067's figure, so the " +
-		"citywide services-and-supplies cell it publishes is 250,000 above what the " +
-		"eleven departmentwide pages print between them. These pages are an INDEPENDENT " +
-		"witness rather than a sixth copy of the same schedule: they decompose the money " +
-		"by department, division and object with no fund dimension at all, and they still " +
-		"put the difference in this category and this year and in no other of the eight " +
-		"cells. The other seven tie to the cent",
+		"pp.172-183 sum to 250,000 less. The spine carries p0067's figure, so the citywide " +
+		"services-and-supplies cell it publishes is 250,000 above what pp.85-125's division " +
+		"rows come to. These pages are an INDEPENDENT witness rather than a sixth copy of " +
+		"the same schedule: they decompose the money by department, division and object " +
+		"with no fund dimension at all, and they still put the difference in this category " +
+		"and this year and in none of the other seven cells, which tie to the cent",
 }}
 
 // departmentwideTiesToSpine asserts Budget Book pp.85-125's Expenditures by
@@ -159,18 +198,30 @@ var departmentwideExceptions = []departmentwideException{{
 //
 //   - pp.66-67 print no actual or revised column, so half these facts -- the
 //     FY2023-24 and FY2024-25 columns -- tie to nothing here. What holds them is
-//     each division's own printed Division Total at build time, and above that
-//     each page's Total Department Expenditures, which equals the sum of its
-//     Division Totals in all 44 (page, column) cells. Five of the 29 divisions
-//     miss their own Division Total by exactly one dollar, every one in the
-//     FY2023-24 Actual column; those are declared as stated_total_deltas.
+//     one thing and not two: each division's own printed Division Total, which
+//     is these rules' total_row and is compared at build time. Five of the 29
+//     miss it by exactly one dollar, every one in the FY2023-24 Actual column,
+//     declared as stated_total_deltas.
+//
+//     Total Department Expenditures does NOT hold them, and it is worth saying
+//     so because it looks as though it should. No rule and no rollup reads that
+//     row -- all 29 rules stop at Division Total. That its printed value equals
+//     the sum of its page's printed Division Totals in all 44 (page, column)
+//     cells is a measurement taken by hand while writing this lane, not a
+//     guarantee anything re-checks. A rollup over it is the obvious next
+//     guard and this lane did not build one.
 //
 //   - dw-maintenance's Transfers Out row, 266,798 in FY2023-24 Actual and a
 //     printed dash in all three later columns. The restriction excludes it by
 //     kind, and it is why the eleven pages' printed totals exceed p0183's Grand
 //     Total by 266,799 in that column and tie exactly in the other three --
 //     p0183 is an EXPENDITURE total and correctly leaves a transfer out of it.
-//     The remaining 1 is p0183's own rounding.
+//
+//     The remaining 1 is a difference between two figures the CITY printed, in
+//     two different schedules, and this lane does not know which is right. It is
+//     NOT the rounding the dw-* rules declare as stated_total_deltas: those
+//     reconcile our sum of a block's rows against that block's own printed
+//     total, which is a different quantity and lives inside one schedule.
 //
 //   - Which DIVISION spent the money. This check sums them all away: a dollar
 //     moved from Patrol to Horizons inside the same object category and year
@@ -236,11 +287,28 @@ func (*departmentwideTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 			// one deliberately does not.
 			exempt++
 			applied[k] = true
-			if d.cents != e.printedCents {
+			if d.cents != e.detailCents {
 				findings = append(findings, finding(k.String(),
-					"declared to reconcile against %s, the figure the eleven departmentwide "+
-						"pages print between them, and the detail sums to %s. %s",
-					e.printedCents, d.cents, e.reason))
+					"declared to reconcile against %s, what pp.85-125's rows sum to in this "+
+						"category, and the detail now sums to %s. %s",
+					e.detailCents, d.cents, e.reason))
+			}
+			// THE ARM THAT GROUNDS THE OTHER TWO. Neither figure above is
+			// printed, so on their own they pin our arithmetic to itself. What
+			// they are allowed to differ BY is the discrepancy declared by the
+			// check whose figures the city really does print.
+			if want, ok := printedDiscrepancy(k.year, k.basis); !ok {
+				findings = append(findings, finding(k.String(),
+					"holds %s apart from the spine, and no funding-sources exception names "+
+						"this column any more. Neither figure in this entry is printed, so "+
+						"that entry is the whole of its grounding: delete this one too, or "+
+						"say what prints the difference (%s)", e.discrepancy(), e.bead))
+			} else if e.discrepancy() != want {
+				findings = append(findings, finding(k.String(),
+					"holds %s apart from the spine where funding-sources-tie-to-spine holds "+
+						"%s, and they are the same $250,000 seen on two axes. One of the two "+
+						"entries has been re-pointed without the other (%s)",
+					e.discrepancy(), want, e.bead))
 			}
 			if sp.cents != e.spineCents {
 				findings = append(findings, finding(k.String(),
@@ -310,9 +378,11 @@ func (*departmentwideTiesToSpine) Run(_ context.Context, s *Subject) (Result, er
 		if !applied[e.key()] {
 			continue
 		}
-		held += fmt.Sprintf("; %s is reconciled against %s rather than against the spine's %s, "+
-			"and both figures are printed: %s (%s)",
-			e.key(), e.printedCents, e.spineCents, e.reason, e.bead)
+		held += fmt.Sprintf("; %s is held apart at %s against the spine's %s. NEITHER FIGURE IS "+
+			"PRINTED -- this corpus prints no citywide object-category total, so both are "+
+			"sums this check computes; what is printed is the %s between them, which "+
+			"funding-sources-tie-to-spine reconciles against pages that carry it: %s (%s)",
+			e.key(), e.detailCents, e.spineCents, e.discrepancy(), e.reason, e.bead)
 	}
 	if len(unmatched) > 0 {
 		held += fmt.Sprintf("; %d further pair(s) the detail publishes have no spine column "+

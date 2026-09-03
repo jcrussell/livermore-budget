@@ -139,7 +139,7 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
 	if lenient.Counts.Vacuous != 21 {
-		t.Fatalf("vacuous count = %d, want 20", lenient.Counts.Vacuous)
+		t.Fatalf("vacuous count = %d, want 21", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")

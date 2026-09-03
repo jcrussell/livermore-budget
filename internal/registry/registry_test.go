@@ -671,9 +671,13 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 }
 
 // labelColumn is the left-hand column of a departmentwide or major-category
-// schedule: every line cut at the first object-category name, joined in order.
-// objectColumn is the closed vocabulary the budget book prints in the column to
-// its right, and "Total" is last so the longer "Division Total" wins.
+// schedule: every line cut at the EARLIEST object-category name on it, joined in
+// order. objectColumn is the closed vocabulary the budget book prints in the
+// column to its right.
+//
+// The cut is the minimum index over the whole vocabulary, so the slice's order
+// is inert -- "Total" matching inside "Division Total" cannot win, because
+// "Division Total" starts nine characters earlier on the same line.
 func labelColumn(page string) string {
 	objectColumn := []string{
 		"Wages & Benefits", "Services & Supplies", "Capital Outlay",
