@@ -311,11 +311,11 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 		t.Fatalf("buildRun: %v", err)
 	}
 
-	var got Report
+	var got report
 	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
 		t.Fatalf("decode report: %v\n%s", err, out)
 	}
-	want := Report{
+	want := report{
 		Output:    "facts/facts.jsonl",
 		Facts:     10,
 		RuleFiles: 1,
@@ -324,7 +324,7 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 		// Only p78 has a total the document prints and a rule that names it.
 		PartsChecked: 1,
 		ColumnsTied:  2,
-		PartsUnchecked: []UncheckedPart{
+		PartsUnchecked: []uncheckedPart{
 			{RuleID: "transfers-out", Page: 76, Reason: reasonNoTotalRow},
 			{RuleID: "transfers-out", Page: 77, Reason: reasonNoTotalRow},
 			{RuleID: "transfers-in", Page: 79, Reason: reasonNoStatedTotals},
@@ -335,8 +335,8 @@ func TestBuildReportsWhatItCouldNotCheck(t *testing.T) {
 		// reason -- no rule in this fixture declares printed_decimals, and the
 		// key must still round-trip as [] rather than null.
 		ToleranceSlack:    []amount.Cents{},
-		RollupsUnasserted: []UnassertedRollup{},
-		Omissions: []DeclaredOmission{
+		RollupsUnasserted: []unassertedRollup{},
+		Omissions: []declaredOmission{
 			{RuleID: "transfers-out", Page: 77, RowLabel: "Enterprise Funds"},
 		},
 	}
@@ -364,7 +364,7 @@ func TestBuildSeparatesColumnsThatTieOnlyToADeclaredDelta(t *testing.T) {
 	if err := buildRun(opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
-	var got Report
+	var got report
 	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
 		t.Fatalf("decode report: %v\n%s", err, out)
 	}
@@ -675,7 +675,7 @@ func TestAStraddlingRuleCreditsEveryPartItCovers(t *testing.T) {
 	if err := buildRun(opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
-	var rep Report
+	var rep report
 	if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
 		t.Fatalf("decode report: %v", err)
 	}
@@ -756,7 +756,7 @@ func TestARollupIsReportedAsItsOwnClaim(t *testing.T) {
 	if err := buildRun(opts); err != nil {
 		t.Fatalf("buildRun: %v", err)
 	}
-	var rep Report
+	var rep report
 	if err := json.Unmarshal(out.Bytes(), &rep); err != nil {
 		t.Fatalf("decode report: %v", err)
 	}
@@ -767,7 +767,7 @@ func TestARollupIsReportedAsItsOwnClaim(t *testing.T) {
 	if rep.RollupColumnsTied != 1 {
 		t.Errorf("rollup_columns_tied = %d, want 1", rep.RollupColumnsTied)
 	}
-	want := []UnassertedRollup{{ID: "total-sources", Page: 90,
+	want := []unassertedRollup{{ID: "total-sources", Page: 90,
 		Reason: "exceeds the pages it closes by an amount that differs per column, " +
 			"so nothing on them sums to it (fisc-wev)"}}
 	if diff := cmp.Diff(want, rep.RollupsUnasserted); diff != "" {

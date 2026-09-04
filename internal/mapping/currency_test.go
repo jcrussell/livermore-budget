@@ -50,7 +50,7 @@ rules:
 
 func acfrDebtResolver(t *testing.T) (*Resolver, *Rule) {
 	t.Helper()
-	f, err := Parse(strings.NewReader(acfrP177DebtRow), "acfr-debt.yaml")
+	f, err := parse(strings.NewReader(acfrP177DebtRow), "acfr-debt.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

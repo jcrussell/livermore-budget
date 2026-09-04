@@ -37,7 +37,7 @@ func parseRowLabelFunds(t *testing.T, decl, rows string) error {
 	t.Helper()
 	src := strings.Replace(rowLabelFundsRule, "#DECL", decl, 1)
 	src = strings.Replace(src, "#ROWS", rows, 1)
-	_, err := Parse(strings.NewReader(src), "funding.yaml")
+	_, err := parse(strings.NewReader(src), "funding.yaml")
 	return err
 }
 
@@ -118,7 +118,7 @@ func TestRowLabelsNameFundsRefusesARowItWouldSayNothingAbout(t *testing.T) {
 		src = strings.Replace(src, "#ROWS", fundedRows, 1)
 		src = strings.Replace(src, "        columns:",
 			"        omitted_rows: [\"General Fund\", \"General Liability\"]\n        columns:", 1)
-		_, err := Parse(strings.NewReader(src), "funding.yaml")
+		_, err := parse(strings.NewReader(src), "funding.yaml")
 		if err == nil {
 			t.Fatal("accepted a declaration whose every row is omitted from every part")
 		}

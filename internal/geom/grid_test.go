@@ -36,17 +36,17 @@ func TestGridBandsMeetAtGapMidpoints(t *testing.T) {
 	}
 	// Band 0 starts at the gutter, the last band runs to infinity, and every
 	// interior boundary is the midpoint of the gap between two headers.
-	if got, want := g.Band(0).Lo, 60.72; got != want {
+	if got, want := g.band(0).Lo, 60.72; got != want {
 		t.Errorf("Band(0).Lo = %v, want %v", got, want)
 	}
-	if got := g.Band(7).Hi; !math.IsInf(got, 1) {
+	if got := g.band(7).Hi; !math.IsInf(got, 1) {
 		t.Errorf("Band(7).Hi = %v, want +Inf", got)
 	}
-	if got, want := g.Band(0).Hi, (105.13+123.55)/2; got != want {
+	if got, want := g.band(0).Hi, (105.13+123.55)/2; got != want {
 		t.Errorf("Band(0).Hi = %v, want %v", got, want)
 	}
 	for i := 1; i < g.Len(); i++ {
-		if got, want := g.Band(i).Lo, g.Band(i-1).Hi; got != want {
+		if got, want := g.band(i).Lo, g.band(i-1).Hi; got != want {
 			t.Errorf("Band(%d).Lo = %v, want Band(%d).Hi = %v", i, got, i-1, want)
 		}
 	}
@@ -97,7 +97,7 @@ func TestGridIndexPlacesARightAlignedColumn(t *testing.T) {
 			t.Errorf("Index(%v) = %d, want %d (the figure is printed under header 2)",
 				right, got, want)
 		}
-		if headers[1].Contains(right) {
+		if headers[1].contains(right) {
 			t.Errorf("%v overlaps its own header, which would make this test vacuous", right)
 		}
 	}
@@ -162,7 +162,7 @@ func TestSingleColumnGridClaimsEverythingRightOfTheGutter(t *testing.T) {
 		t.Fatalf("NewGrid: %v", err)
 	}
 	want := []Span{{Lo: 100, Hi: math.Inf(1)}}
-	if diff := cmp.Diff(want, []Span{g.Band(0)}); diff != "" {
+	if diff := cmp.Diff(want, []Span{g.band(0)}); diff != "" {
 		t.Errorf("bands (-want +got):\n%s", diff)
 	}
 	if got := g.Index(99); got != -1 {

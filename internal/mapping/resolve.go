@@ -49,9 +49,9 @@ var (
 	ErrNoStatedTotals = errors.New("part has no stated totals to check against")
 )
 
-// ResolveError locates a resolution failure in both the rule and the document,
+// resolveError locates a resolution failure in both the rule and the document,
 // because either one can be what is wrong.
-type ResolveError struct {
+type resolveError struct {
 	DocID  string
 	RuleID string
 	Page   int
@@ -60,7 +60,7 @@ type ResolveError struct {
 	Err    error
 }
 
-func (e *ResolveError) Error() string {
+func (e *resolveError) Error() string {
 	var b strings.Builder
 	if e.DocID != "" {
 		b.WriteString(e.DocID + " ")
@@ -76,7 +76,7 @@ func (e *ResolveError) Error() string {
 	return b.String()
 }
 
-func (e *ResolveError) Unwrap() error { return e.Err }
+func (e *resolveError) Unwrap() error { return e.Err }
 
 // Resolver reads the parts of one rule file against one extracted document.
 //
@@ -161,9 +161,9 @@ func (r *Resolver) page(n int) (string, error) {
 	return text, nil
 }
 
-// Block is a resolved span of page text: the rows one part covers, bounded by
+// block is a resolved span of page text: the rows one part covers, bounded by
 // the part's section and stop_at anchors.
-type Block struct {
+type block struct {
 	Page int
 	// Start and End are byte offsets into the page text. End is where the
 	// stop_at anchor begins, which is also where a stated totals row starts.
@@ -205,8 +205,8 @@ type Omission struct {
 	Page     int
 }
 
-// Block resolves the span of page text a part covers.
-func (r *Resolver) Block(rule *Rule, p *Part) (*Block, error) {
+// block resolves the span of page text a part covers.
+func (r *Resolver) block(rule *Rule, p *Part) (*block, error) {
 	text, err := r.page(p.Page)
 	if err != nil {
 		return nil, err
@@ -225,13 +225,13 @@ func (r *Resolver) Block(rule *Rule, p *Part) (*Block, error) {
 	if p.StopAt != "" {
 		i := strings.Index(text[start:], p.StopAt)
 		if i < 0 {
-			return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+			return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 				Field: "stop_at", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q does not occur after the section anchor", p.StopAt)}
 		}
 		end = start + i
 	}
-	return &Block{Page: p.Page, Start: start, End: end, Text: text[start:end]}, nil
+	return &block{Page: p.Page, Start: start, End: end, Text: text[start:end]}, nil
 }
 
 // anchor returns the byte offset of the ordinal-th occurrence of needle at or
@@ -248,7 +248,7 @@ func (r *Resolver) anchor(rule *Rule, p *Part, field, text string, from int, nee
 	}
 
 	fail := func(err error, msg, hint string) (int, error) {
-		return 0, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return 0, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: err}, hint)
 	}
 
@@ -390,7 +390,7 @@ func (r *Resolver) storePart(key partKey, rp *resolvedPart) *resolvedPart {
 }
 
 func (r *Resolver) readPart(rule *Rule, p *Part) ([]Value, []Omission, error) {
-	blk, err := r.Block(rule, p)
+	blk, err := r.block(rule, p)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -451,11 +451,11 @@ func omissions(rule *Rule, p *Part) []Omission {
 	return out
 }
 
-func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *Block, guard *columnGuard) ([]Value, error) {
+func (r *Resolver) labelledValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
 	ncols := len(p.Columns)
 	fail := func(field, msg, hint string) error {
-		return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
 	}
 
@@ -603,7 +603,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		if rule.TotalRowAbove {
 			nl := strings.IndexByte(gap, '\n')
 			if nl < 0 {
-				return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+				return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 					Page: p.Page, Field: "section", Err: ErrNotFound,
 					Msg: fmt.Sprintf("row %q is on the same printed line as the total %q",
 						rows[0].Label, rule.TotalRow)},
@@ -625,7 +625,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		// before the first row therefore still cannot be declared -- a real gap,
 		// and fisc-0cff rather than an oversight. No page in the corpus needs it.
 		if strings.ContainsFunc(gap, unicode.IsDigit) {
-			return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 				Page: p.Page, Field: "section", Err: ErrNotFound,
 				Msg: fmt.Sprintf("figures appear before the first row %q: %q",
 					rows[0].Label, strings.TrimSpace(gap))},
@@ -647,7 +647,7 @@ func (r *Resolver) checkGap(rule *Rule, p *Part, gap string, rows []Row, i int,
 		used[trimmed] = true
 		return nil
 	}
-	return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+	return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 		Page: p.Page, Field: "rows", Err: ErrNotFound,
 		Msg: fmt.Sprintf("%q sits between rows %q and %q but is not mapped",
 			trimmed, rows[i-1].PrintedLabel(), rows[i].PrintedLabel())},
@@ -696,7 +696,7 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 		col := p.Columns[c]
 		cents, err := amount.Parse(tk.text, rule.Units)
 		if err != nil {
-			return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+			return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 				Field: fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1),
 				Msg:   err.Error(), Err: err}
 		}
@@ -712,14 +712,14 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 	return out, nil
 }
 
-func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *Block, guard *columnGuard) ([]Value, error) {
+func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
 	rows, rowIndex := canonicalRows(rule, p)
 	ncols := len(p.Columns)
 	toks := tokens(blk.Text, blk.Start)
-	want := rule.ExpectedValues(p)
+	want := rule.expectedValues(p)
 
 	if len(toks) != want {
-		return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "parts", Err: ErrNotFound,
 			Msg: fmt.Sprintf("read %d values, want %d (%d rows × %d columns); "+
 				"rows declared absent from this page: %s",
@@ -752,7 +752,7 @@ func declaredOmissions(p *Part) string {
 	}
 	labels := make([]string, len(p.OmittedRows))
 	for i, o := range p.OmittedRows {
-		labels[i] = o.PrintedLabel()
+		labels[i] = o.printedLabel()
 	}
 	return fmt.Sprintf("%q", labels)
 }
@@ -773,7 +773,7 @@ func declaredOmissions(p *Part) string {
 // because the next line's figures are whitespace-separated from these and
 // would otherwise extend the run.
 func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
-	blk, err := r.Block(rule, p)
+	blk, err := r.block(rule, p)
 	if err != nil {
 		return nil, err
 	}
@@ -793,7 +793,7 @@ func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
 	}
 	totals, ok := amountRun(line, len(p.Columns), rule.Units)
 	if !ok {
-		return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Err: ErrNotFound,
 			Msg: fmt.Sprintf("no run of %d consecutive amounts follows the anchor on %q",
 				len(p.Columns), strings.TrimSpace(line))},
@@ -855,8 +855,8 @@ func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
 	return nil, false
 }
 
-// TotalsResult is what checking one part's totals established.
-type TotalsResult struct {
+// totalsResult is what checking one part's totals established.
+type totalsResult struct {
 	// Columns is how many non-skip columns were compared, which is the unit
 	// coverage is counted in. A skipped column produces no facts, so counting
 	// it would claim coverage the check did not earn.
@@ -894,7 +894,7 @@ type TotalsResult struct {
 // The figures checked are the memoized ones Values returned, not a second read
 // of the same part: a check that re-read the page would be corroborating a
 // different read from the one the caller published.
-func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
+func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*totalsResult, error) {
 	stated, err := r.StatedTotals(rule, p)
 	if err != nil {
 		return nil, err
@@ -937,7 +937,7 @@ func (r *Resolver) CheckTotals(rule *Rule, p *Part) (*TotalsResult, error) {
 // so summing across them is meaningful. What is established here, because it
 // needs the pages: that exactly one part prints the total row, and that a
 // declared discrepancy sits on that part rather than on one of the others.
-func (r *Resolver) CheckSpanningTotals(rule *Rule) (*TotalsResult, error) {
+func (r *Resolver) CheckSpanningTotals(rule *Rule) (*totalsResult, error) {
 	bearer, err := r.totalBearingPart(rule)
 	if err != nil {
 		return nil, err
@@ -957,7 +957,7 @@ func (r *Resolver) CheckSpanningTotals(rule *Rule) (*TotalsResult, error) {
 			continue
 		}
 		return nil, cmdutil.WithHint(
-			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 				Field: "stated_total_deltas", Err: ErrNotFound,
 				Msg: fmt.Sprintf("declared here, but page %d is the page that prints %q",
 					bearer.Page, rule.TotalRow)},
@@ -1004,7 +1004,7 @@ func (r *Resolver) totalBearingPart(rule *Rule) (*Part, error) {
 	var found []*Part
 	for i := range rule.Parts {
 		p := &rule.Parts[i]
-		blk, err := r.Block(rule, p)
+		blk, err := r.block(rule, p)
 		if err != nil {
 			return nil, err
 		}
@@ -1025,7 +1025,7 @@ func (r *Resolver) totalBearingPart(rule *Rule) (*Part, error) {
 			pages[i] = p.Page
 		}
 		return nil, cmdutil.WithHint(
-			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
+			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q occurs after the block on none of pages %v",
 					rule.TotalRow, pages)},
@@ -1038,7 +1038,7 @@ func (r *Resolver) totalBearingPart(rule *Rule) (*Part, error) {
 			pages[i] = p.Page
 		}
 		return nil, cmdutil.WithHint(
-			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: found[0].Page,
+			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: found[0].Page,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q occurs after the block on pages %v; it must identify one",
 					rule.TotalRow, pages)},
@@ -1047,8 +1047,8 @@ func (r *Resolver) totalBearingPart(rule *Rule) (*Part, error) {
 	}
 }
 
-// RollupResult is what checking one cross-rule rollup established.
-type RollupResult struct {
+// rollupResult is what checking one cross-rule rollup established.
+type rollupResult struct {
 	// Columns is how many non-skip columns were compared, and Rules how many
 	// covered rules' stated totals were summed into each of them.
 	Columns int
@@ -1062,7 +1062,7 @@ type RollupResult struct {
 // measurement that decides it. Each covered rule's own total has already been
 // tied to its rows by CheckTotals, so this is the second link of a chain
 // rather than a second opinion on the first.
-func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
+func (r *Resolver) CheckRollup(ro *Rollup) (*rollupResult, error) {
 	rules, err := r.coveredRules(ro)
 	if err != nil {
 		return nil, err
@@ -1077,7 +1077,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 	// already fixed here, one caller further away.
 	if len(rules) == 0 {
 		return nil, cmdutil.WithHint(
-			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+			&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "covers", Err: ErrNotFound, Msg: "names no rule to sum"},
 			"a rollup either lists the rules its printed total covers or "+
 				"declares unassertable with the reason it cannot be checked")
@@ -1126,7 +1126,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 		}
 		if len(stated) != len(sums) {
 			return nil, cmdutil.WithHint(
-				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
 					Msg: fmt.Sprintf("rule %q states %d columns and rule %q states %d",
 						first.ID, len(sums), rule.ID, len(stated))},
@@ -1142,7 +1142,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 			effectiveColumns(first, bearers[0]), effectiveColumns(rule, bearer))
 		if !comparable {
 			return nil, cmdutil.WithHint(
-				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
 					Msg: fmt.Sprintf("rule %q states %d columns on p%d and rule %q states %d on p%d",
 						first.ID, len(effectiveColumns(first, bearers[0])), bearers[0].Page,
@@ -1152,7 +1152,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 		}
 		if i >= 0 {
 			return nil, cmdutil.WithHint(
-				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "covers", Err: ErrNotFound,
 					Msg: fmt.Sprintf("rule %q states column %d on p%d as %s and rule %q states it on p%d as %s",
 						first.ID, i+1, bearers[0].Page, columnIdentity(effectiveColumns(first, bearers[0])[i]),
@@ -1175,7 +1175,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 		return nil, err
 	}
 
-	res := &RollupResult{Rules: len(rules)}
+	res := &rollupResult{Rules: len(rules)}
 	var bad []string
 	for i, col := range cols {
 		if col.Skip {
@@ -1193,7 +1193,7 @@ func (r *Resolver) CheckRollup(ro *Rollup) (*RollupResult, error) {
 		return res, nil
 	}
 	return nil, cmdutil.WithHint(
-		&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+		&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 			Field: "rollups", Msg: strings.Join(bad, "; ")},
 		"a rollup sums the totals its covered rules PRINT, each already tied "+
 			"to its own rows; a gap here is a rule missing from covers, a rule "+
@@ -1210,7 +1210,7 @@ func (r *Resolver) coveredRules(ro *Rollup) ([]*Rule, error) {
 	for _, id := range ro.Covers {
 		rule, ok := byID[id]
 		if !ok {
-			return nil, &ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+			return nil, &resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "covers", Err: ErrNotFound,
 				Msg: fmt.Sprintf("no rule %q in this file", id)}
 		}
@@ -1243,7 +1243,7 @@ func (r *Resolver) ruleStatedTotals(rule *Rule) ([]amount.Cents, *Part, error) {
 	}
 	if len(bearing) != 1 {
 		return nil, nil, cmdutil.WithHint(
-			&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
+			&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: rule.Parts[0].Page,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%d of this rule's parts print a total, and a rollup needs one",
 					len(bearing))},
@@ -1268,13 +1268,13 @@ func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]
 	}
 	first := strings.Index(text, ro.TotalRow)
 	if first < 0 {
-		return nil, 0, &ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+		return nil, 0, &resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 			Field: "total_row", Err: ErrNotFound,
 			Msg: fmt.Sprintf("%q does not occur on the page", ro.TotalRow)}
 	}
 	if strings.Contains(text[first+len(ro.TotalRow):], ro.TotalRow) {
 		return nil, 0, cmdutil.WithHint(
-			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+			&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%q occurs more than once on the page", ro.TotalRow)},
 			"lengthen the anchor until it names one printed line")
@@ -1286,7 +1286,7 @@ func (r *Resolver) rollupStatedTotals(ro *Rollup, n int, units amount.Units) ([]
 	totals, ok := amountRun(line, n, units)
 	if !ok {
 		return nil, 0, cmdutil.WithHint(
-			&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+			&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 				Field: "total_row", Err: ErrNotFound,
 				Msg: fmt.Sprintf("no run of %d consecutive amounts follows %q on %q",
 					n, ro.TotalRow, strings.TrimSpace(line))},
@@ -1326,7 +1326,7 @@ func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*P
 		if p.Page != ro.Page {
 			continue
 		}
-		blk, err := r.Block(rule, p)
+		blk, err := r.block(rule, p)
 		if err != nil {
 			return err
 		}
@@ -1338,7 +1338,7 @@ func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*P
 		}
 		if lineAt(text, from) == want {
 			return cmdutil.WithHint(
-				&ResolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+				&resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
 					Field: "total_row", Err: ErrNotFound,
 					Msg: fmt.Sprintf("names the same printed line as rule %q's total_row %q",
 						rule.ID, rule.TotalRow)},
@@ -1357,17 +1357,17 @@ func (r *Resolver) rollupNamesItsOwnLine(ro *Rollup, rules []*Rule, bearers []*P
 // offset for a different question -- whether a rollup names the same printed
 // line as one of the totals it covers -- and two computations of "where does
 // this rule's printed total sit" would be two things to keep in step.
-func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *Block, text string) (int, string, error) {
+func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *block, text string) (int, string, error) {
 	if p.LabelsFrom != 0 {
 		if p.StopAt == "" {
-			return 0, "stop_at", &ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+			return 0, "stop_at", &resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 				Page: p.Page, Field: "stop_at", Err: ErrNoStatedTotals,
 				Msg: "a label-less part needs a stop_at anchor to find its totals"}
 		}
 		return blk.End, "stop_at", nil
 	}
 	if rule.TotalRow == "" {
-		return 0, "total_row", &ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return 0, "total_row", &resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "total_row", Msg: "the rule declares none",
 			Err: ErrNoStatedTotals}
 	}
@@ -1382,7 +1382,7 @@ func (r *Resolver) totalAnchor(rule *Rule, p *Part, blk *Block, text string) (in
 	}
 	i := strings.Index(text[blk.End:], rule.TotalRow)
 	if i < 0 {
-		return 0, "total_row", &ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return 0, "total_row", &resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "total_row", Err: ErrNotFound,
 			Msg: fmt.Sprintf("%q does not occur after the block", rule.TotalRow)}
 	}
@@ -1511,7 +1511,7 @@ func (w *decimalsWitness) settle(rule *Rule) error {
 
 // decimalsError wraps a witness complaint as a resolve error.
 func (r *Resolver) decimalsError(rule *Rule, p *Part, err error) error {
-	return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+	return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 		Field: "printed_decimals", Err: ErrNotFound, Msg: err.Error()},
 		"printed_decimals says how finely THIS page prints, and the tolerance is "+
 			"derived from it; a count the page does not bear out would size that "+
@@ -1528,7 +1528,7 @@ func (r *Resolver) decimalsError(rule *Rule, p *Part, err error) error {
 // the total. Passing them separately is what stops a spanning rule silently
 // reading a delta off the wrong page.
 func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amount.Cents,
-	terms []int) (*TotalsResult, error) {
+	terms []int) (*totalsResult, error) {
 	p := cols
 
 	// The tolerance, derived from the page rather than chosen. Zero unless the
@@ -1540,7 +1540,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 	if rule.PrintedDecimals != nil {
 		u, ok := amount.DigitCents(rule.Units, *rule.PrintedDecimals)
 		if !ok {
-			return nil, &ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+			return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 				Field: "printed_decimals", Err: ErrNotFound,
 				Msg: fmt.Sprintf("%d decimal places is not exact at %s",
 					*rule.PrintedDecimals, string(rule.Units))}
@@ -1556,7 +1556,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 		declared[d.Column] = d.Cents
 	}
 
-	res := &TotalsResult{}
+	res := &totalsResult{}
 	var bad []string
 	for c, col := range p.Columns {
 		if col.Skip {
@@ -1603,7 +1603,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 	// pass quietly, because a tolerance nobody notices is how a global epsilon
 	// arrives one rule at a time.
 	if len(bad) == 0 && rule.PrintedDecimals != nil && res.Tolerated == 0 {
-		return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 			Field: "printed_decimals",
 			Msg: fmt.Sprintf("declares %d printed decimal places, but all %d compared column(s) tie exactly",
 				*rule.PrintedDecimals, res.Columns)},
@@ -1614,7 +1614,7 @@ func (r *Resolver) compareTotals(rule *Rule, cols, dec *Part, stated, sums []amo
 	if len(bad) == 0 {
 		return res, nil
 	}
-	return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+	return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
 		Field: "total_row", Msg: strings.Join(bad, "; ")},
 		"a mapped column that does not tie means a row was missed, "+
 			"double-counted, or read from the wrong column -- unless the "+

@@ -93,8 +93,8 @@ func testOptions(t *testing.T) (*Options, *iostreams.IOStreams, func() string, f
 		IO:        io,
 		RepoRoot:  func() (string, error) { return root, nil },
 		OutputDir: filepath.Join(t.TempDir(), "dist"),
-		Build: func(string) (Result, error) {
-			return Result{Projections: map[string][]byte{"sankey": goldenSankey(t)}}, nil
+		Build: func(string) (result, error) {
+			return result{Projections: map[string][]byte{"sankey": goldenSankey(t)}}, nil
 		},
 	}
 	return opts, io, out.String, errOut.String
@@ -633,8 +633,8 @@ func TestExportRunRefusesBeforeCleanDestroysTheSite(t *testing.T) {
 	}
 	delete(unviewedDocuments, stem)
 	t.Cleanup(func() { unviewedDocuments[stem] = reason })
-	opts.Build = func(string) (Result, error) {
-		return Result{Projections: map[string][]byte{
+	opts.Build = func(string) (result, error) {
+		return result{Projections: map[string][]byte{
 			"sankey": goldenSankey(t), stem: goldenSankey(t)}}, nil
 	}
 
@@ -689,8 +689,8 @@ func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
 func TestExportRunShipsTheBuildersFiles(t *testing.T) {
 	opts, _, out, _ := testOptions(t)
 	shard := []byte(`{"id":"fisc-f-000000000000","doc_id":"d","page":66}` + "\n")
-	opts.Build = func(string) (Result, error) {
-		return Result{
+	opts.Build = func(string) (result, error) {
+		return result{
 			Projections: map[string][]byte{"sankey": goldenSankey(t)},
 			Files:       map[string][]byte{"facts/d/pages/p0066.jsonl": shard},
 		}, nil
@@ -748,8 +748,8 @@ func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
 				t.Fatalf("seed export wrote no index: %v", err)
 			}
 
-			opts.Build = func(string) (Result, error) {
-				return Result{
+			opts.Build = func(string) (result, error) {
+				return result{
 					Projections: map[string][]byte{"sankey": goldenSankey(t)},
 					Files:       map[string][]byte{"../escaped.jsonl": []byte("{}")},
 				}, nil
@@ -773,8 +773,8 @@ func TestExportRunRefusesAnAssetThatEscapesTheSite(t *testing.T) {
 
 func TestExportRunReportsABuilderFailure(t *testing.T) {
 	opts, _, _, errOut := testOptions(t)
-	opts.Build = func(string) (Result, error) {
-		return Result{}, os.ErrNotExist
+	opts.Build = func(string) (result, error) {
+		return result{}, os.ErrNotExist
 	}
 	if err := exportRun(opts); err == nil {
 		t.Fatal("got nil error, want the builder's failure")
@@ -1058,7 +1058,7 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 // The count assertions that test did make are kept below, under their own name.
 func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	built := builtStemsForTest(t)
-	if err := assertPublishedReachable(views(Result{Projections: built}), built); err != nil {
+	if err := assertPublishedReachable(views(result{Projections: built}), built); err != nil {
 		t.Fatalf("the committed corpus: %v", err)
 	}
 
@@ -1079,7 +1079,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// Built from the REAL view set plus one, so the only thing wrong with it is
 	// the stale declaration -- starting from a bare slice would trip the
 	// missing-view arm above instead and prove nothing about this one.
-	stale := views(Result{Projections: built})
+	stale := views(result{Projections: built})
 	for stem := range unviewedDocuments {
 		stale = append(stale, export.View{Path: "x.html", Projection: stem})
 		break
@@ -1098,7 +1098,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// refuse.
 	unviewedDocuments["no-such-document"] = "left behind"
 	t.Cleanup(func() { delete(unviewedDocuments, "no-such-document") })
-	if err := assertPublishedReachable(views(Result{Projections: built}), built); err == nil {
+	if err := assertPublishedReachable(views(result{Projections: built}), built); err == nil {
 		t.Error("a declaration naming no published document was accepted")
 	} else if !strings.Contains(err.Error(), "publishes no such document") {
 		t.Errorf("got %v, want a refusal naming the leftover entry", err)
@@ -1132,7 +1132,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	got := views(Result{Projections: built})
+	got := views(result{Projections: built})
 
 	if len(got) != 5 {
 		t.Fatalf("got %d views over %v, want the spine, Revenue, Spending, the revenue "+
@@ -1248,7 +1248,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 // `fisc verify` is what says the document is missing.
 func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	only := map[string][]byte{export.PrimaryProjection: {}}
-	got := views(Result{Projections: only})
+	got := views(result{Projections: only})
 
 	// EVERY VIEW THAT NAMES A PROJECTION IS THE SPINE'S, and that is the
 	// assertion rather than a count. It used to be `len(got) != 1`, which was
@@ -1282,7 +1282,7 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	// the list is now derived from the views the full set produces rather than
 	// typed out.
 	dropped := map[string]bool{}
-	for _, v := range views(Result{Projections: map[string][]byte{
+	for _, v := range views(result{Projections: map[string][]byte{
 		export.PrimaryProjection:    {},
 		project.TrendsProjection:    {},
 		project.FundFlowsProjection: {},

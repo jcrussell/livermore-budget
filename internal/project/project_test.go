@@ -63,7 +63,7 @@ func TestOptionsValidate(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := c.o.Validate()
+			err := c.o.validate()
 			if c.want == "" {
 				if err != nil {
 					t.Fatalf("got %v, want no error", err)
@@ -93,7 +93,7 @@ func TestOptionsValidateAcceptsEveryBasis(t *testing.T) {
 			Scopes:  []string{"all-funds-gross"},
 			Version: "dev",
 		}
-		if err := o.Validate(); err != nil {
+		if err := o.validate(); err != nil {
 			t.Errorf("basis %q: got %v, want no error", b, err)
 		}
 	}
@@ -199,14 +199,14 @@ func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
 		Scopes:  []string{PublishedScope},
 		Version: "test",
 	}
-	got, err := one.OnlyScope()
+	got, err := one.onlyScope()
 	if err != nil || got != PublishedScope {
 		t.Fatalf("OnlyScope over one scope = %q, %v, want %q, nil", got, err, PublishedScope)
 	}
 
 	two := one
 	two.Scopes = []string{PublishedScope, TrendsScope}
-	if _, err := two.OnlyScope(); err == nil {
+	if _, err := two.onlyScope(); err == nil {
 		t.Fatal("OnlyScope over two scopes = nil error, want a refusal")
 	} else {
 		// The message has to name BOTH, or a reader cannot tell which
@@ -221,7 +221,7 @@ func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
 	// Validate does not refuse the set -- a two-scope Options is legal, it is
 	// only this document SHAPE that cannot describe one. Asserting that keeps
 	// the two refusals from being collapsed into one by a later reader.
-	if err := two.Validate(); err != nil {
+	if err := two.validate(); err != nil {
 		t.Errorf("Validate over two scopes = %v, want nil: the set is legal", err)
 	}
 }
@@ -239,7 +239,7 @@ func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
 
 	so := testOptions()
 	so.Scopes = both
-	if _, err := (&Sankey{}).Graph(spineFacts(t, testYear), so); err == nil {
+	if _, err := (&sankey{}).Graph(spineFacts(t, testYear), so); err == nil {
 		t.Error("Sankey.Graph over two scopes = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "one schedule") {
 		t.Errorf("Sankey.Graph = %q, want it to say the document is of one schedule", err)

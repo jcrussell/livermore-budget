@@ -44,7 +44,7 @@ func TestSankeyReproducesGoldenFile(t *testing.T) {
 		t.Errorf("graph mismatch (-want +got):\n%s", diff)
 	}
 
-	gotBytes, err := (&Sankey{Labels: goldenLabels}).Build(spineFacts(t, testYear), testOptions())
+	gotBytes, err := (&sankey{Labels: goldenLabels}).Build(spineFacts(t, testYear), testOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -385,7 +385,7 @@ func TestContraRowNetsIntoParent(t *testing.T) {
 
 // TestDeterminism is what makes a rebuild-and-diff check meaningful.
 func TestDeterminism(t *testing.T) {
-	s := &Sankey{Labels: goldenLabels}
+	s := &sankey{Labels: goldenLabels}
 
 	first, err := s.Build(spineFacts(t, testYear), testOptions())
 	if err != nil {
@@ -418,7 +418,7 @@ func TestDeterminism(t *testing.T) {
 // TestNoNullsOrMissingKeys enforces the contract's shape rule directly on the
 // bytes: every key present on every object, no null anywhere.
 func TestNoNullsOrMissingKeys(t *testing.T) {
-	out, err := (&Sankey{}).Build(nil, testOptions())
+	out, err := (&sankey{}).Build(nil, testOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestLabelFallback(t *testing.T) {
 
 	// No registry: the nodes in builtinLabels keep their words, and a category
 	// falls back to its slug.
-	graph, err := (&Sankey{}).Graph(spine(t), testOptions())
+	graph, err := (&sankey{}).Graph(spine(t), testOptions())
 	if err != nil {
 		t.Fatalf("Graph: %v", err)
 	}
@@ -472,7 +472,7 @@ func TestLabelFallback(t *testing.T) {
 	// A registry wins for any node that has a category slug, including over a
 	// built-in label. It is never consulted for a fund group, which has no
 	// category and whose name is a data/funds.yaml fund type.
-	withLabels := &Sankey{Labels: stubLabels{
+	withLabels := &sankey{Labels: stubLabels{
 		"taxes/property": "Property Taxes",
 		"transfers/in":   "Transfers In (p76)",
 		"general":        "General (from the wrong vocabulary)",
@@ -505,7 +505,7 @@ func TestLabelFallback(t *testing.T) {
 // rather than a package-scope assertion so that internal/project does not
 // import the registry it was deliberately decoupled from.
 func TestRegistrySatisfiesLabels(t *testing.T) {
-	var _ Labels = (*registry.Registry)(nil)
+	var _ labels = (*registry.Registry)(nil)
 }
 
 // TestSources reports the pages actually read, so the citation on the page
@@ -539,7 +539,7 @@ func TestGraphRejects(t *testing.T) {
 				label: "Property Taxes", group: "general", cents: 100})
 			c.mutate(&fs[0])
 
-			_, err := (&Sankey{}).Graph(fs, testOptions())
+			_, err := (&sankey{}).Graph(fs, testOptions())
 			if err == nil {
 				t.Fatalf("got no error, want one containing %q", c.want)
 			}
@@ -554,7 +554,7 @@ func TestGraphRejects(t *testing.T) {
 // an unvalidated projection of year zero is an empty document, not an error,
 // and an empty document is the failure that ships.
 func TestGraphRejectsBadOptions(t *testing.T) {
-	_, err := (&Sankey{}).Graph(spineFacts(t, testYear), Options{})
+	_, err := (&sankey{}).Graph(spineFacts(t, testYear), Options{})
 	if err == nil {
 		t.Fatal("got no error, want one")
 	}
@@ -578,7 +578,7 @@ func TestGraphRefusesAForeignSchedule(t *testing.T) {
 	o := testOptions()
 	o.Scopes = []string{TrendsScope}
 
-	_, err := (&Sankey{}).Graph(spineFacts(t, testYear), o)
+	_, err := (&sankey{}).Graph(spineFacts(t, testYear), o)
 	if err == nil {
 		t.Fatal("got no error, want one")
 	}
@@ -864,7 +864,7 @@ func sortedStrings(s []string) bool {
 
 // contestedFY2027 is the one declared entry, fetched rather than respelled so a
 // change to the declaration reaches these tests.
-func contestedFY2027(t *testing.T) ContestedTotal {
+func contestedFY2027(t *testing.T) contestedTotal {
 	t.Helper()
 	all := ContestedTotals()
 	if len(all) != 1 {

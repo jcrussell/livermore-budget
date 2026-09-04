@@ -31,24 +31,24 @@ const factsPath = cmdutil.FactsPath
 // function answers the wider one the command actually needs. The split is also
 // what keeps the ~10 direct callers of buildProjections in the test suite
 // unchanged.
-func buildAll(repoRoot string) (Result, error) {
+func buildAll(repoRoot string) (result, error) {
 	// ONE READ OF THE STORE, used twice: the projections are built from the
 	// decoded facts and the shards are compared against the raw bytes. Reading
 	// it twice would make that comparison a claim about two files that happen
 	// to have the same name.
 	raw, facts, err := readFactStore(repoRoot)
 	if err != nil {
-		return Result{}, err
+		return result{}, err
 	}
 	projections, err := buildProjectionsFrom(repoRoot, facts)
 	if err != nil {
-		return Result{}, err
+		return result{}, err
 	}
 	assets, err := buildFactAssets(raw, facts, generatedBy())
 	if err != nil {
-		return Result{}, err
+		return result{}, err
 	}
-	return Result{
+	return result{
 		Projections: projections,
 		Files:       assets.Files,
 		PageIndex:   assets.pageIndex(),
@@ -465,7 +465,7 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 // refusing to export at all would mean a corpus that lost one schedule could not
 // publish the others. What must never happen is a NAV ENTRY pointing at a page
 // that was not written, and dropping the view is exactly what prevents that.
-func views(built Result) []export.View {
+func views(built result) []export.View {
 	projections := built.Projections
 	out := []export.View{{
 		Path:       export.IndexPath,

@@ -139,7 +139,7 @@ func Decimals(s string, u Units) (int, bool) {
 	if !ok {
 		return 0, false
 	}
-	t := stripCurrency(Normalize(s))
+	t := stripCurrency(normalize(s))
 	if strings.HasPrefix(t, "(") && strings.HasSuffix(t, ")") {
 		t = stripCurrency(strings.TrimSuffix(strings.TrimPrefix(t, "("), ")"))
 	}
@@ -176,12 +176,12 @@ var ErrAbsent = errors.New("cell is absent")
 
 // A ParseError explains why a token was rejected, including the token itself
 // so the failure is actionable from a log line.
-type ParseError struct {
+type parseError struct {
 	Token  string
 	Reason string
 }
 
-func (e *ParseError) Error() string {
+func (e *parseError) Error() string {
 	return fmt.Sprintf("cannot parse amount %q: %s", e.Token, e.Reason)
 }
 
@@ -219,7 +219,7 @@ var zeroTokens = map[string]bool{
 	"-": true, "--": true, "0": false, // "0" parses normally
 }
 
-// Normalize canonicalizes a cell without interpreting it: non-breaking spaces
+// normalize canonicalizes a cell without interpreting it: non-breaking spaces
 // become spaces, soft hyphens are dropped, the several dash and minus
 // characters unify to "-", and whitespace collapses.
 //
@@ -232,7 +232,7 @@ var zeroTokens = map[string]bool{
 // it would change are 45 ellipses and one trademark sign — all in prose, never
 // in a cell this package is asked to parse. The non-breaking space it would
 // also fold is handled explicitly below, because that one does land in cells.
-func Normalize(s string) string {
+func normalize(s string) string {
 	var b strings.Builder
 	for _, r := range s {
 		switch r {
@@ -264,10 +264,10 @@ func Normalize(s string) string {
 func Parse(s string, u Units) (Cents, error) {
 	mult, maxDecimals, ok := u.centsPer()
 	if !ok {
-		return 0, &ParseError{Token: s, Reason: fmt.Sprintf("unknown units %q", string(u))}
+		return 0, &parseError{Token: s, Reason: fmt.Sprintf("unknown units %q", string(u))}
 	}
 
-	t := Normalize(s)
+	t := normalize(s)
 	if t == "" {
 		return 0, ErrAbsent
 	}
@@ -289,19 +289,19 @@ func Parse(s string, u Units) (Cents, error) {
 	}
 
 	if t == "" {
-		return 0, &ParseError{Token: s, Reason: "no digits, only currency or bracket characters"}
+		return 0, &parseError{Token: s, Reason: "no digits, only currency or bracket characters"}
 	}
 	if isZero, known := zeroTokens[t]; known && isZero {
 		return 0, nil
 	}
 
 	if splitDigits.MatchString(t) {
-		return 0, &ParseError{Token: s,
+		return 0, &parseError{Token: s,
 			Reason: "digits separated by whitespace, which is an extraction artifact " +
 				"(e.g. \"2 40,000\" for 240,000); the value is ambiguous"}
 	}
 	if strings.HasPrefix(t, "-") {
-		return 0, &ParseError{Token: s,
+		return 0, &parseError{Token: s,
 			Reason: "leading minus sign; negatives are parenthesized in these documents, " +
 				"so this is usually a dash-as-zero glued on from the previous column"}
 	}
@@ -310,31 +310,31 @@ func Parse(s string, u Units) (Cents, error) {
 	switch {
 	case strings.Contains(intPart, ","):
 		if !grouped.MatchString(intPart) {
-			return 0, &ParseError{Token: s, Reason: "misplaced thousands separator, " +
+			return 0, &parseError{Token: s, Reason: "misplaced thousands separator, " +
 				"which usually means a decimal point was lost during extraction " +
 				"(e.g. \"1,234,56\" for 1,234.56)"}
 		}
 	case !ungrouped.MatchString(intPart):
-		return 0, &ParseError{Token: s, Reason: "not a recognized number"}
+		return 0, &parseError{Token: s, Reason: "not a recognized number"}
 	}
 	if hasDot && !fraction.MatchString(fracPart) {
-		return 0, &ParseError{Token: s, Reason: "not a recognized number"}
+		return 0, &parseError{Token: s, Reason: "not a recognized number"}
 	}
 	if len(fracPart) > maxDecimals {
-		return 0, &ParseError{Token: s, Reason: fmt.Sprintf(
+		return 0, &parseError{Token: s, Reason: fmt.Sprintf(
 			"%d decimal places cannot be represented exactly in %s", len(fracPart), u)}
 	}
 
 	whole, err := strconv.ParseInt(strings.ReplaceAll(intPart, ",", ""), 10, 64)
 	if err != nil {
-		return 0, &ParseError{Token: s, Reason: "integer part out of range"}
+		return 0, &parseError{Token: s, Reason: "integer part out of range"}
 	}
 	// Bound the product, not just the parsed integer. strconv only checked
 	// that the digits fit in an int64; multiplying by the unit scale can
 	// still wrap, and a wrapped value is a confident wrong number of exactly
 	// the kind this package exists to refuse.
 	if whole > math.MaxInt64/mult {
-		return 0, &ParseError{Token: s, Reason: fmt.Sprintf(
+		return 0, &parseError{Token: s, Reason: fmt.Sprintf(
 			"value overflows int64 cents at %s scale", u)}
 	}
 	cents := whole * mult
@@ -342,7 +342,7 @@ func Parse(s string, u Units) (Cents, error) {
 	if fracPart != "" {
 		frac, err := strconv.ParseInt(fracPart, 10, 64)
 		if err != nil {
-			return 0, &ParseError{Token: s, Reason: "fractional part out of range"}
+			return 0, &parseError{Token: s, Reason: "fractional part out of range"}
 		}
 		// mult is divisible by 10^len(fracPart), checked above, so this is exact.
 		scale := int64(1)
@@ -351,7 +351,7 @@ func Parse(s string, u Units) (Cents, error) {
 		}
 		add := frac * (mult / scale)
 		if cents > math.MaxInt64-add {
-			return 0, &ParseError{Token: s, Reason: fmt.Sprintf(
+			return 0, &parseError{Token: s, Reason: fmt.Sprintf(
 				"value overflows int64 cents at %s scale", u)}
 		}
 		cents += add
@@ -363,10 +363,10 @@ func Parse(s string, u Units) (Cents, error) {
 	return Cents(cents), nil
 }
 
-// ParseOrZero is Parse with absent cells treated as zero. Use it only where a
+// parseOrZero is Parse with absent cells treated as zero. Use it only where a
 // rule has declared that a blank means zero for that table; the default is to
 // keep the distinction.
-func ParseOrZero(s string, u Units) (Cents, error) {
+func parseOrZero(s string, u Units) (Cents, error) {
 	c, err := Parse(s, u)
 	if errors.Is(err, ErrAbsent) {
 		return 0, nil

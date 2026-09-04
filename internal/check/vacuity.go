@@ -56,14 +56,14 @@ var declaredVacuous = map[string]vacancy{
 	},
 }
 
-// Declaration is one declared vacancy and what its check actually reported on
+// declaration is one declared vacancy and what its check actually reported on
 // this run.
 //
 // Status is carried because it is the whole self-retiring half: a declaration
 // whose check has stopped being vacuous is a statement that has stopped being
 // true, and the report says so rather than leaving the entry to outlive the
 // work it was waiting for.
-type Declaration struct {
+type declaration struct {
 	CheckID string `json:"check_id"`
 	Reason  string `json:"reason"`
 	Bead    string `json:"bead"`
@@ -81,7 +81,7 @@ type Declaration struct {
 // three stale declarations and a clean run exited 3. Whether an id names a real
 // check is a claim about [All] rather than about a run, and it is asserted
 // statically by TestEveryDeclarationNamesACheckThatExists.
-func (d Declaration) Ran() bool { return d.Status != "" }
+func (d declaration) Ran() bool { return d.Status != "" }
 
 // Stale says whether this declaration has stopped describing the run: the check
 // reached a verdict OTHER than vacuous, so the work it was waiting for has
@@ -107,12 +107,12 @@ func (d Declaration) Ran() bool { return d.Status != "" }
 //     sourcePDFsMatchBothRecords is the only Full() check in the tree and
 //     nobody would declare it vacuous, but the next --full check inherits the
 //     hole, and ci.yml's --strict step passes no --full.
-func (d Declaration) Stale() bool {
+func (d declaration) Stale() bool {
 	return d.Status == StatusPass || d.Status == StatusFail
 }
 
 // StaleReason says what to do about it, for the report to print.
-func (d Declaration) StaleReason() string {
+func (d declaration) StaleReason() string {
 	return fmt.Sprintf("declared vacuous and reported %s; %s landed, so remove the "+
 		"declaration rather than leaving it to excuse a check that no longer "+
 		"needs excusing", d.Status, d.Bead)
@@ -136,10 +136,10 @@ func (r *Report) resolveDeclarations() {
 	}
 	sort.Strings(ids)
 
-	r.Declared = make([]Declaration, 0, len(ids))
+	r.Declared = make([]declaration, 0, len(ids))
 	for _, id := range ids {
 		v := declaredVacuous[id]
-		r.Declared = append(r.Declared, Declaration{
+		r.Declared = append(r.Declared, declaration{
 			CheckID: id, Reason: v.reason, Bead: v.bead, Status: status[id],
 		})
 	}
@@ -156,8 +156,8 @@ func (r *Report) resolveDeclarations() {
 }
 
 // StaleDeclarations are the entries that have stopped being true.
-func (r *Report) StaleDeclarations() []Declaration {
-	var out []Declaration
+func (r *Report) StaleDeclarations() []declaration {
+	var out []declaration
 	for _, d := range r.Declared {
 		if d.Stale() {
 			out = append(out, d)

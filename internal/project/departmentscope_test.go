@@ -112,7 +112,7 @@ func TestDepartmentDetailDoesNotEnterTheSpine(t *testing.T) {
 	}
 	all := append(spineFacts(t, testYear), detailFacts(t, detailScope, true)...)
 
-	got, err := (&Sankey{Labels: goldenLabels}).Build(all, testOptions())
+	got, err := (&sankey{Labels: goldenLabels}).Build(all, testOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestDepartmentDetailDoesNotEnterTheSpine(t *testing.T) {
 func TestDetailAtSpineScopeErrorsOutOfNetCells(t *testing.T) {
 	all := append(spineFacts(t, testYear), detailFacts(t, testScope, true)...)
 
-	_, err := (&Sankey{Labels: goldenLabels}).Graph(all, testOptions())
+	_, err := (&sankey{Labels: goldenLabels}).Graph(all, testOptions())
 	if err == nil {
 		t.Fatal("a department-bearing fact at the spine's scope built a graph; the spine " +
 			"has no department tier and must refuse one")
@@ -171,7 +171,7 @@ func TestDetailAtSpineScopeErrorsOutOfNetCells(t *testing.T) {
 func TestTheDepartmentlessVariantDoublesTheGeneralFund(t *testing.T) {
 	all := append(spineFacts(t, testYear), detailFacts(t, testScope, false)...)
 
-	g, err := (&Sankey{Labels: goldenLabels}).Graph(all, testOptions())
+	g, err := (&sankey{Labels: goldenLabels}).Graph(all, testOptions())
 	if err != nil {
 		t.Fatalf("Graph: %v; the departmentless variant is accepted, which is the point", err)
 	}

@@ -11,7 +11,7 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// Report is the build's account of itself.
+// report is the build's account of itself.
 //
 // The unchecked list is why this is a struct rather than a couple of counters.
 // A column that ties to the total the document prints is verified by the
@@ -21,7 +21,7 @@ import (
 // it published was never checked by anything. Naming every unchecked part, with
 // its rule and page, is what keeps that distinction in front of the reader —
 // and, via --json, in front of CI.
-type Report struct {
+type report struct {
 	// Output is the repository-relative path that was written.
 	Output string `json:"output"`
 
@@ -81,35 +81,35 @@ type Report struct {
 	RollupsAsserted   int `json:"rollups_asserted"`
 	RollupColumnsTied int `json:"rollup_columns_tied"`
 
-	PartsUnchecked    []UncheckedPart    `json:"parts_unchecked"`
-	RollupsUnasserted []UnassertedRollup `json:"rollups_unasserted"`
-	Omissions         []DeclaredOmission `json:"declared_omissions"`
+	PartsUnchecked    []uncheckedPart    `json:"parts_unchecked"`
+	RollupsUnasserted []unassertedRollup `json:"rollups_unasserted"`
+	Omissions         []declaredOmission `json:"declared_omissions"`
 }
 
-// UnassertedRollup is a total the DOCUMENT prints over several rules that no
+// unassertedRollup is a total the DOCUMENT prints over several rules that no
 // rule structure here can assert, with the declared reason.
 //
 // It is reported rather than omitted because silence is the failure mode. A
 // build that mapped p140's ten pages and never mentioned that the page's own
 // closing total exceeds them by ~$57M would be publishing the gap as though it
 // were not there.
-type UnassertedRollup struct {
+type unassertedRollup struct {
 	ID     string `json:"id"`
 	Page   int    `json:"page"`
 	Reason string `json:"reason"`
 }
 
-// UncheckedPart is a part whose figures no printed total corroborates.
-type UncheckedPart struct {
+// uncheckedPart is a part whose figures no printed total corroborates.
+type uncheckedPart struct {
 	RuleID string `json:"rule_id"`
 	Page   int    `json:"page"`
 	Reason string `json:"reason"`
 }
 
-// DeclaredOmission is a row the rule says the page does not print. It is
+// declaredOmission is a row the rule says the page does not print. It is
 // reported because it is a claim about the document that nothing else surfaces:
 // the row produces no fact, so its absence is invisible in facts.jsonl.
-type DeclaredOmission struct {
+type declaredOmission struct {
 	RuleID   string `json:"rule_id"`
 	Page     int    `json:"page"`
 	RowLabel string `json:"row_label"`
@@ -132,12 +132,12 @@ const (
 // newReport starts an empty report with non-nil slices, so the --json shape is
 // the same whether or not anything went unchecked. A key that becomes null when
 // a list is empty makes a consumer handle two shapes for one meaning.
-func newReport() *Report {
-	return &Report{
+func newReport() *report {
+	return &report{
 		ToleranceSlack:    []amount.Cents{},
-		PartsUnchecked:    []UncheckedPart{},
-		RollupsUnasserted: []UnassertedRollup{},
-		Omissions:         []DeclaredOmission{},
+		PartsUnchecked:    []uncheckedPart{},
+		RollupsUnasserted: []unassertedRollup{},
+		Omissions:         []declaredOmission{},
 	}
 }
 
@@ -155,7 +155,7 @@ func newReport() *Report {
 // ErrNoStatedTotals is neither a pass nor a failure. A part carrying a
 // total_row that the document prints no total for is unchecked, exactly like a
 // rule that declares none, and is reported the same way.
-func (rep *Report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mapping.Part) error {
+func (rep *report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mapping.Part) error {
 	if rule.TotalRow == "" {
 		rep.unchecked(rule, p, reasonNoTotalRow)
 		return nil
@@ -189,7 +189,7 @@ func (rep *Report) checkTotals(r *mapping.Resolver, rule *mapping.Rule, p *mappi
 // prints the total would leave the others in PartsUnchecked under a reason
 // saying the rule declares no total_row -- which is false, and is exactly the
 // misreport this whole flag exists to remove.
-func (rep *Report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) error {
+func (rep *report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) error {
 	res, err := r.CheckSpanningTotals(rule)
 	if err != nil {
 		// Unlike the per-part path there is no ErrNoStatedTotals branch here.
@@ -209,7 +209,7 @@ func (rep *Report) checkSpanningTotals(r *mapping.Resolver, rule *mapping.Rule) 
 
 // checkRollups asserts each printed total that covers several rules, and
 // records the ones the document prints that cannot be asserted.
-func (rep *Report) checkRollups(r *mapping.Resolver, f *mapping.File) error {
+func (rep *report) checkRollups(r *mapping.Resolver, f *mapping.File) error {
 	for i := range f.Rollups {
 		ro := &f.Rollups[i]
 		// Empty is spelled one way: the parser refuses a whitespace-only
@@ -217,7 +217,7 @@ func (rep *Report) checkRollups(r *mapping.Resolver, f *mapping.File) error {
 		// entries are declarations.
 		if ro.Unassertable != "" {
 			rep.RollupsUnasserted = append(rep.RollupsUnasserted,
-				UnassertedRollup{ID: ro.ID, Page: ro.Page, Reason: ro.Unassertable})
+				unassertedRollup{ID: ro.ID, Page: ro.Page, Reason: ro.Unassertable})
 			continue
 		}
 		res, err := r.CheckRollup(ro)
@@ -230,22 +230,22 @@ func (rep *Report) checkRollups(r *mapping.Resolver, f *mapping.File) error {
 	return nil
 }
 
-func (rep *Report) unchecked(rule *mapping.Rule, p *mapping.Part, reason string) {
+func (rep *report) unchecked(rule *mapping.Rule, p *mapping.Part, reason string) {
 	rep.PartsUnchecked = append(rep.PartsUnchecked,
-		UncheckedPart{RuleID: rule.ID, Page: p.Page, Reason: reason})
+		uncheckedPart{RuleID: rule.ID, Page: p.Page, Reason: reason})
 }
 
-func (rep *Report) addOmissions(rule *mapping.Rule, omissions []mapping.Omission) {
+func (rep *report) addOmissions(rule *mapping.Rule, omissions []mapping.Omission) {
 	for _, o := range omissions {
 		rep.Omissions = append(rep.Omissions,
-			DeclaredOmission{RuleID: rule.ID, Page: o.Page, RowLabel: o.Row.PrintedLabel()})
+			declaredOmission{RuleID: rule.ID, Page: o.Page, RowLabel: o.Row.PrintedLabel()})
 	}
 }
 
 // print reports the build. The facts are the data and they went to a file, so
 // the summary is chatter and belongs on ErrOut; --json is the machine-readable
 // form and is the only thing this command ever puts on Out.
-func (rep *Report) print(ios *iostreams.IOStreams, asJSON bool) error {
+func (rep *report) print(ios *iostreams.IOStreams, asJSON bool) error {
 	if asJSON {
 		enc := json.NewEncoder(ios.Out)
 		enc.SetEscapeHTML(false)

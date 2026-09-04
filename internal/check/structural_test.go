@@ -1297,16 +1297,16 @@ func TestReadSourcePDFClassifiesWhatItFinds(t *testing.T) {
 	writeRepoFile(t, root, "data/pdf/probe.pdf", body)
 	writeRepoFile(t, root, "data/pdf/pointer.pdf", lfsPointer(strings.Repeat("b", 64), 12))
 
-	want := map[string]SourcePDF{
+	want := map[string]sourcePDF{
 		"data/pdf/probe.pdf": {
-			Path: "data/pdf/probe.pdf", State: SourcePresent,
+			Path: "data/pdf/probe.pdf", State: sourcePresent,
 			Bytes: int64(len(body)), SHA256: hex.EncodeToString(sum[:]),
 		},
 		"data/pdf/pointer.pdf": {
-			Path: "data/pdf/pointer.pdf", State: SourcePointer,
+			Path: "data/pdf/pointer.pdf", State: sourcePointer,
 			PointerOID: strings.Repeat("b", 64), PointerBytes: 12,
 		},
-		"data/pdf/absent.pdf": {Path: "data/pdf/absent.pdf", State: SourceMissing},
+		"data/pdf/absent.pdf": {Path: "data/pdf/absent.pdf", State: sourceMissing},
 	}
 	for name, wantPDF := range want {
 		got, err := readSourcePDF(os.DirFS(root), name)

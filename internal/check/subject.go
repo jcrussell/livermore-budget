@@ -147,13 +147,13 @@ type fundFlowsBuilder interface {
 	Document(facts []fact.Fact, o project.Options) (*project.FundFlowsDocument, error)
 }
 
-// Projection is one built graph, with the options it was built under.
+// projection is one built graph, with the options it was built under.
 //
 // The options are carried because they are the difference between a graph that
 // means something and one that does not: a projection built over two fiscal
 // years doubles every figure and still balances (see project.Options), so a
 // check that reports on a graph has to be able to say which slice it was of.
-type Projection struct {
+type projection struct {
 	Name    string
 	Options project.Options
 	// Graph is the built graph, or nil for a projection whose document is not
@@ -177,7 +177,7 @@ type Projection struct {
 	FundFlows *project.FundFlowsDocument
 }
 
-// Linked is one document's nodes and links, whatever shape carried them.
+// linked is one document's nodes and links, whatever shape carried them.
 //
 // THE STRUCTURAL CHECKS ARE ABOUT A GRAPH AND NOT ABOUT A HEADLINE. Acyclicity,
 // tier ordering, a link's value against its citation, a parent that resolves --
@@ -193,19 +193,19 @@ type Projection struct {
 // to be non-zero. A value test would go green over a spine whose headline had
 // been zeroed, which publishedProjectionBuilt's doc comment calls worse than no
 // coverage at all.
-type Linked struct {
-	Projection
+type linked struct {
+	projection
 	Nodes []project.Node
 	Links []project.Link
 }
 
 // String names the projection the way a report should: the file stem plus the
 // slice of the corpus it covers.
-func (p Projection) String() string {
+func (p projection) String() string {
 	return fmt.Sprintf("%s %s %s", p.Name, project.Describe(p.Options.Columns), p.Options.ScopeList())
 }
 
-// ProjectionFailure is one slice a projection refused to build, with the
+// projectionFailure is one slice a projection refused to build, with the
 // refusal.
 //
 // It is RECORDED rather than returned because a projection that will not build
@@ -225,7 +225,7 @@ func (p Projection) String() string {
 // and that was the defect: see buildProjections, which records it with a nil
 // document, and documentsAreChecked, which reports it with a report around it
 // rather than by killing the run.
-type ProjectionFailure struct {
+type projectionFailure struct {
 	Name    string
 	Options project.Options
 	Err     error
@@ -233,7 +233,7 @@ type ProjectionFailure struct {
 
 // String names the failed slice the way Projection.String names a built one, so
 // a report can list the two together.
-func (f ProjectionFailure) String() string {
+func (f projectionFailure) String() string {
 	return fmt.Sprintf("%s %s %s", f.Name, project.Describe(f.Options.Columns), f.Options.ScopeList())
 }
 
@@ -284,7 +284,7 @@ type Subject struct {
 	// by document id, and it is empty when Full is false. It carries the state of
 	// each file rather than its bytes: a hash Load computed, or the reason there
 	// was nothing to hash.
-	SourcePDFs map[string]SourcePDF
+	SourcePDFs map[string]sourcePDF
 	// Resolvers is one memoized resolver per rule file, keyed by the file's
 	// path. Nothing in tier 1 needs them: they are here because the totals
 	// reconciliation (fisc-1wr.2) and the structural sweep (fisc-1wr.5) both
@@ -293,12 +293,12 @@ type Subject struct {
 	Resolvers map[string]*mapping.Resolver
 	// Projections is every graph the facts support, one per (fiscal year, basis)
 	// the fact store carries within spineScope, in that order.
-	Projections []Projection
+	Projections []projection
 	// ProjectionFailures is every slice a projection refused to build. It is
 	// empty on a healthy corpus, and projectionsBuild is the check that reports
 	// it — a failure here silences every graph check at once, so it must not be
 	// reachable only through a missing entry in Projections.
-	ProjectionFailures []ProjectionFailure
+	ProjectionFailures []projectionFailure
 	// Published is every document the site publishes, and the slice of the
 	// fact store each must be built over.
 	//
@@ -317,7 +317,7 @@ type Subject struct {
 	Published []project.PublishedDocument
 }
 
-// Graphs is every projection that produced a graph, which is what the
+// graphs is every projection that produced a graph, which is what the
 // structural checks are about.
 //
 // It exists so that a check meaning "every graph" cannot be written as "every
@@ -328,8 +328,8 @@ type Subject struct {
 // different shape, checked by whatever check is about that shape. What would be
 // a gap is a projection no check reads at all, and that is what
 // projectionsBuild and facts-are-projected are for.
-func (s *Subject) Graphs() []Projection {
-	out := make([]Projection, 0, len(s.Projections))
+func (s *Subject) graphs() []projection {
+	out := make([]projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		if p.Graph != nil {
 			out = append(out, p)
@@ -338,29 +338,29 @@ func (s *Subject) Graphs() []Projection {
 	return out
 }
 
-// LinkedDocuments is every projection carrying nodes and links, whatever
+// linkedDocuments is every projection carrying nodes and links, whatever
 // document shape carried them, in the order they were built.
 //
 // This is what the STRUCTURAL checks read. See [Linked] for why they cannot read
 // [Subject.Graphs] and why the headline checks still do.
-func (s *Subject) LinkedDocuments() []Linked {
-	out := make([]Linked, 0, len(s.Projections))
+func (s *Subject) linkedDocuments() []linked {
+	out := make([]linked, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		switch {
 		case p.Graph != nil:
-			out = append(out, Linked{Projection: p, Nodes: p.Graph.Nodes, Links: p.Graph.Links})
+			out = append(out, linked{projection: p, Nodes: p.Graph.Nodes, Links: p.Graph.Links})
 		case p.FundFlows != nil:
-			out = append(out, Linked{Projection: p,
+			out = append(out, linked{projection: p,
 				Nodes: p.FundFlows.Nodes, Links: p.FundFlows.Links})
 		}
 	}
 	return out
 }
 
-// FundFlowsDocuments is every projection that built a drill-down, for the checks
+// fundFlowsDocuments is every projection that built a drill-down, for the checks
 // that are of that shape alone.
-func (s *Subject) FundFlowsDocuments() []Projection {
-	out := make([]Projection, 0, len(s.Projections))
+func (s *Subject) fundFlowsDocuments() []projection {
+	out := make([]projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		if p.FundFlows != nil {
 			out = append(out, p)
@@ -369,12 +369,12 @@ func (s *Subject) FundFlowsDocuments() []Projection {
 	return out
 }
 
-// TrendDocuments is every projection whose document is a set of series, with the
+// trendDocuments is every projection whose document is a set of series, with the
 // options it was built under. It is Graphs for the other shape, and it exists
 // for the same reason: a check that means "every trends document" must not have
 // to write "every projection" and remember the nil.
-func (s *Subject) TrendDocuments() []Projection {
-	out := make([]Projection, 0, len(s.Projections))
+func (s *Subject) trendDocuments() []projection {
+	out := make([]projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
 		if p.Trends != nil {
 			out = append(out, p)
@@ -434,7 +434,7 @@ func Load(o LoadOptions) (*Subject, error) {
 		Full:        o.Full,
 		Docs:        map[string]*corpus.Doc{},
 		Extractions: map[string]*corpus.Doc{},
-		SourcePDFs:  map[string]SourcePDF{},
+		SourcePDFs:  map[string]sourcePDF{},
 		Resolvers:   map[string]*mapping.Resolver{},
 	}
 	fsys := os.DirFS(o.Root)
@@ -568,34 +568,34 @@ func (s *Subject) openExtractions(root string) error {
 	return nil
 }
 
-// SourceState is what Load found where a source document should be. The three
+// sourceState is what Load found where a source document should be. The three
 // values are three different things to do about it, which is why one bool would
 // not have done: fetch the bytes, restore the file, or look at what changed them.
-type SourceState string
+type sourceState string
 
 // The states a source document can be in.
 const (
-	// SourcePresent is a readable file, whose bytes Load hashed.
-	SourcePresent SourceState = "present"
-	// SourceMissing is no file at all.
-	SourceMissing SourceState = "missing"
-	// SourcePointer is an unsmudged Git LFS pointer: the file the registry names
+	// sourcePresent is a readable file, whose bytes Load hashed.
+	sourcePresent sourceState = "present"
+	// sourceMissing is no file at all.
+	sourceMissing sourceState = "missing"
+	// sourcePointer is an unsmudged Git LFS pointer: the file the registry names
 	// is there, and it holds a 130-byte text stanza naming the bytes instead of
 	// the bytes. This is the NORMAL state of data/pdf/ in a clone made without
 	// git-lfs, and in CI, which sets GIT_LFS_SKIP_SMUDGE deliberately — so it
 	// must never be reported as a corrupted document.
-	SourcePointer SourceState = "pointer"
+	sourcePointer sourceState = "pointer"
 )
 
-// SourcePDF is what Load found at one source document's path.
+// sourcePDF is what Load found at one source document's path.
 //
 // It carries what was found rather than a verdict about it, because the verdict
 // needs the registry and the manifest beside it and belongs in a check.
-type SourcePDF struct {
+type sourcePDF struct {
 	// Path is the file Load looked at, repository-relative, as the registry
 	// spelled it.
 	Path  string
-	State SourceState
+	State sourceState
 	// Bytes and SHA256 are the size and hash of the bytes on disk. They are set
 	// only for SourcePresent; for the other two states there were no bytes to
 	// hash, and a zero hash must not read as one that failed to match.
@@ -633,8 +633,8 @@ const lfsPointerLimit = 1024
 // recorded and returned. Any other read failure is returned as an error: those
 // are failures of the machine rather than states of the repository, and a check
 // cannot conclude anything about bytes the filesystem would not hand over.
-func loadSourcePDFs(fsys fs.FS, sources []registry.Source) (map[string]SourcePDF, error) {
-	out := make(map[string]SourcePDF, len(sources))
+func loadSourcePDFs(fsys fs.FS, sources []registry.Source) (map[string]sourcePDF, error) {
+	out := make(map[string]sourcePDF, len(sources))
 	for _, s := range sources {
 		got, err := readSourcePDF(fsys, s.File)
 		if err != nil {
@@ -646,8 +646,8 @@ func loadSourcePDFs(fsys fs.FS, sources []registry.Source) (map[string]SourcePDF
 }
 
 // readSourcePDF classifies and, where there are bytes to hash, hashes one file.
-func readSourcePDF(fsys fs.FS, name string) (SourcePDF, error) {
-	got := SourcePDF{Path: name, State: SourceMissing}
+func readSourcePDF(fsys fs.FS, name string) (sourcePDF, error) {
+	got := sourcePDF{Path: name, State: sourceMissing}
 	f, err := fsys.Open(name)
 	if errors.Is(err, fs.ErrNotExist) {
 		return got, nil
@@ -667,7 +667,7 @@ func readSourcePDF(fsys fs.FS, name string) (SourcePDF, error) {
 	}
 	head = head[:n]
 	if oid, size, ok := parseLFSPointer(head); ok {
-		got.State, got.PointerOID, got.PointerBytes = SourcePointer, oid, size
+		got.State, got.PointerOID, got.PointerBytes = sourcePointer, oid, size
 		return got, nil
 	}
 
@@ -676,7 +676,7 @@ func readSourcePDF(fsys fs.FS, name string) (SourcePDF, error) {
 	if err != nil {
 		return got, err
 	}
-	got.State, got.Bytes, got.SHA256 = SourcePresent, written, hex.EncodeToString(h.Sum(nil))
+	got.State, got.Bytes, got.SHA256 = sourcePresent, written, hex.EncodeToString(h.Sum(nil))
 	return got, nil
 }
 
@@ -714,7 +714,7 @@ func parseLFSPointer(b []byte) (oid string, size int64, ok bool) {
 // the scope, which selects the schedule and therefore the projection — see
 // spineScope.
 func buildProjections(ps []project.Projection, facts []fact.Fact, version string) (
-	[]Projection, []ProjectionFailure, error,
+	[]projection, []projectionFailure, error,
 ) {
 	slices := factSlices(facts, version)
 	// Zero slices means zero projections, and a report over zero projections is
@@ -735,8 +735,8 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				"slice %q that `fisc export` publishes", spineScope)
 	}
 
-	out := make([]Projection, 0, len(ps))
-	var failed []ProjectionFailure
+	out := make([]projection, 0, len(ps))
+	var failed []projectionFailure
 	for _, p := range ps {
 		// Each projection is built over the slices IT says it is of, not over
 		// the cartesian product of every projection and every slice. The
@@ -766,7 +766,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		ff, isFundFlows := p.(fundFlowsBuilder)
 
 		for _, o := range want {
-			built := Projection{Name: p.Name(), Options: o}
+			built := projection{Name: p.Name(), Options: o}
 			var err error
 			switch {
 			case isGraph:
@@ -780,7 +780,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				// Recorded, not returned: see ProjectionFailure. The loop goes
 				// on so that one bad slice does not hide a second one, and so
 				// that the checks reading the slices that DID build still run.
-				failed = append(failed, ProjectionFailure{Name: p.Name(), Options: o, Err: err})
+				failed = append(failed, projectionFailure{Name: p.Name(), Options: o, Err: err})
 				continue
 			}
 			// A projection satisfying neither interface is appended with both

@@ -25,7 +25,7 @@ func scopeFact(scope string, kind mapping.Kind, category string, fund int) fact.
 func scopeSubject(facts []fact.Fact, selects ...string) *Subject {
 	return &Subject{
 		Facts: facts,
-		Projections: []Projection{{
+		Projections: []projection{{
 			Name: "test-projection",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},

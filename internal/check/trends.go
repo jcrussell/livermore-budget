@@ -59,7 +59,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 
 	var findings []Finding
 	points := 0
-	for _, p := range s.TrendDocuments() {
+	for _, p := range s.trendDocuments() {
 		published := make(map[string]bool)
 		declared := make(map[project.Column]bool, len(p.Options.Columns))
 		for _, c := range p.Options.Columns {
@@ -114,8 +114,8 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 		unit:     "points",
 		held: fmt.Sprintf("%d points across %d trends %s, each equal to the fact it cites and "+
 			"each fact in the slice published exactly once",
-			points, len(s.TrendDocuments()),
-			plural(len(s.TrendDocuments()), "document", "documents")),
+			points, len(s.trendDocuments()),
+			plural(len(s.trendDocuments()), "document", "documents")),
 		nothing:  "no projection built a trends document, so no point has been compared",
 		findings: findings,
 	}.result(), nil
@@ -128,7 +128,7 @@ func (*trendPointsTieToFacts) Run(_ context.Context, s *Subject) (Result, error)
 // amount, an id and four provenance fields, and every one of them is a claim a
 // reader can act on. Comparing the amount alone would let a point cite the right
 // figure off the wrong page.
-func comparePoint(p Projection, series project.Series, pt project.Point,
+func comparePoint(p projection, series project.Series, pt project.Point,
 	byID map[string]fact.Fact, published map[string]bool,
 ) []Finding {
 	subject := fmt.Sprintf("%s %s FY%d %s", p.Name, series.SeriesID, pt.FiscalYear, pt.Basis)
@@ -251,7 +251,7 @@ func (*trendSeriesAreComplete) Run(_ context.Context, s *Subject) (Result, error
 	declared := map[string]int{}
 	seen := map[string]bool{}
 
-	for _, p := range s.TrendDocuments() {
+	for _, p := range s.trendDocuments() {
 		for _, sr := range p.Trends.Series {
 			series++
 			seen[sr.SeriesID] = true

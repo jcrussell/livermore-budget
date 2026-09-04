@@ -25,7 +25,7 @@ func probeGG(t *testing.T, old, new string) *File {
 	if !strings.Contains(acfrGeneralGovernmentProbe, old) {
 		t.Fatalf("the probe rule no longer contains %q, so this mutation changes nothing", old)
 	}
-	f, err := Parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe, old, new, 1)), "probe.yaml")
+	f, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe, old, new, 1)), "probe.yaml")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -33,7 +33,7 @@ func probeGG(t *testing.T, old, new string) *File {
 }
 
 // checkGG resolves the probe and returns whatever CheckTotals concluded.
-func checkGG(t *testing.T, f *File) (*TotalsResult, error) {
+func checkGG(t *testing.T, f *File) (*totalsResult, error) {
 	t.Helper()
 	rule := &f.Rules[0]
 	r, err := NewResolver(testDoc(t, acfrFixtures, []int{acfrStatementPage}), f)
@@ -174,7 +174,7 @@ rules:
       - {label: "Transfers in", category: transfers/in}
       - {label: "Transfers (out)", category: transfers/out, kind: transfer_out}
 `
-	f, err := Parse(strings.NewReader(yaml), "probe.yaml")
+	f, err := parse(strings.NewReader(yaml), "probe.yaml")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -199,7 +199,7 @@ rules:
 // six more on pp.168-170 -- are the city's own arithmetic, declared exactly
 // with stated_total_deltas (fisc-2sd) rather than bounded.
 func TestPrintedDecimalsIsRefusedOnDollarTables(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.NewReplacer(
+	_, err := parse(strings.NewReader(strings.NewReplacer(
 		"units: millions", "units: dollars",
 	).Replace(acfrGeneralGovernmentProbe)), "probe.yaml")
 	if err == nil {
@@ -215,7 +215,7 @@ func TestPrintedDecimalsIsRefusedOnDollarTables(t *testing.T) {
 // document is out by; the other bounds an unnamed one. A rule holding both
 // offers somewhere to hide the difference.
 func TestPrintedDecimalsAndStatedTotalDeltasCannotBothBeDeclared(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
+	_, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
 		"        columns:", `        stated_total_deltas:
           - {column: 1, delta_cents: 1000000, note: "the same discrepancy, named"}
         columns:`, 1)), "probe.yaml")
@@ -231,7 +231,7 @@ func TestPrintedDecimalsAndStatedTotalDeltasCannotBothBeDeclared(t *testing.T) {
 // keeps that flag from being a loosening. Without it the flag would mean "the
 // total is somewhere above", which no guard in this package could bound.
 func TestTotalRowAboveRequiresTheSectionAnchorToBeTheTotalRow(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
+	_, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
 		`        section: "General Government:"`, `        section: "Current:"`, 1)), "probe.yaml")
 	if err == nil {
 		t.Fatal("a total_row_above rule anchored somewhere other than its total was accepted")
@@ -256,7 +256,7 @@ func TestTotalRowAboveRequiresTheSectionAnchorToBeTheTotalRow(t *testing.T) {
 // line. Both anchors are renamed together, so the rule is internally consistent
 // and only its position on the page is wrong.
 func TestTotalRowAboveStillRefusesABlockThatStartsTooEarly(t *testing.T) {
-	f, err := Parse(strings.NewReader(strings.NewReplacer(
+	f, err := parse(strings.NewReader(strings.NewReplacer(
 		`total_row: "General Government:"`, `total_row: "Current:"`,
 		`section: "General Government:"`, `section: "Current:"`,
 	).Replace(acfrGeneralGovernmentProbe)), "probe.yaml")
@@ -293,7 +293,7 @@ func TestTotalRowAboveStillRefusesABlockThatStartsTooEarly(t *testing.T) {
 // parser did not care. An honest declaration is worth nothing while the
 // dishonest one still works.
 func TestWrappedLabelsRefusesAnAmount(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+	_, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 		"        columns:", `        wrapped_labels: ["0.0"]
         columns:`, 1)), "probe.yaml")
 	if err == nil {
@@ -308,7 +308,7 @@ func TestWrappedLabelsRefusesAnAmount(t *testing.T) {
 // TestUnmappedTextRefusesTextThatIsNotAFigure is the other half of the pair
 // above: neither declaration can stand in for the other.
 func TestUnmappedTextRefusesTextThatIsNotAFigure(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+	_, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 		"        columns:", `        unmapped_text:
           - text: "Miscellaneous"
             note: "a row label, which is not what this declares"
@@ -325,7 +325,7 @@ func TestUnmappedTextRefusesTextThatIsNotAFigure(t *testing.T) {
 // unmapped_text entry, which is why it is asserted rather than assumed. See
 // Part.UnmappedText on why this is the weakest declaration class here.
 func TestUnmappedTextRefusesAStaleDeclaration(t *testing.T) {
-	f, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+	f, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 		"        columns:", `        unmapped_text:
           - text: "0.0"
             note: "the real one"
@@ -380,7 +380,7 @@ rules:
     rows:
       - {label: "Miscellaneous", category: miscellaneous-revenue}
 `
-	_, err := Parse(strings.NewReader(yaml), "probe.yaml")
+	_, err := parse(strings.NewReader(yaml), "probe.yaml")
 	if err == nil {
 		t.Fatal("unmapped_text was accepted on a labels_from part, where it is inert")
 	}
@@ -528,7 +528,7 @@ rules:
       - {label: "Miscellaneous", category: miscellaneous-revenue}
       - {label: "Total Revenues", skip: true}
 `
-	f, err := Parse(strings.NewReader(yaml), "probe.yaml")
+	f, err := parse(strings.NewReader(yaml), "probe.yaml")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -543,7 +543,7 @@ rules:
 
 	// And without the declaration the same read is refused, so the assertion
 	// above is about the declaration rather than about the block.
-	bare, err := Parse(strings.NewReader(strings.Replace(yaml,
+	bare, err := parse(strings.NewReader(strings.Replace(yaml,
 		`        unmapped_text:
           - text: "0.0"
             note: "the orphan, now sitting between two mapped rows"
@@ -603,7 +603,7 @@ func TestUnmappedTextParseRefusals(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+			_, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 				"        columns:", tc.block+"\n        columns:", 1)), "probe.yaml")
 			if err == nil {
 				t.Fatalf("accepted: %s", tc.block)
@@ -628,7 +628,7 @@ func TestWrappedLabelsParseRefusals(t *testing.T) {
 		{"duplicate", `        wrapped_labels: ["Devel", "Devel"]`, "is listed twice"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+			_, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 				"        columns:", tc.block+"\n        columns:", 1)), "probe.yaml")
 			if err == nil {
 				t.Fatalf("accepted: %s", tc.block)
@@ -659,7 +659,7 @@ func TestPrintedDecimalsParseRefusals(t *testing.T) {
 			if !strings.Contains(acfrGeneralGovernmentProbe, tc.from) {
 				t.Fatalf("the probe no longer contains %q", tc.from)
 			}
-			_, err := Parse(strings.NewReader(
+			_, err := parse(strings.NewReader(
 				strings.Replace(acfrGeneralGovernmentProbe, tc.from, tc.to, 1)), "probe.yaml")
 			if err == nil {
 				t.Fatalf("accepted %s -> %q", tc.from, tc.to)
@@ -692,7 +692,7 @@ func TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm(t *testing.T) {
 	src := strings.Replace(acfrGeneralGovernmentProbe, `    total_row: "General Government:"`+"\n", "", 1)
 	src = strings.Replace(src, "    total_row_above: true\n", "", 1)
 	src = strings.Replace(src, `        section: "General Government:"`, `        section: "Current:"`, 1)
-	_, err := Parse(strings.NewReader(src), "probe.yaml")
+	_, err := parse(strings.NewReader(src), "probe.yaml")
 	if err == nil {
 		t.Fatal("printed_decimals was accepted on a rule with no total_row")
 	}
@@ -710,7 +710,7 @@ func TestPrintedDecimalsWithoutATotalRowIsRefusedByItsOwnArm(t *testing.T) {
 // comparison; splitting the rule makes each part its own. Both are available,
 // and silently comparing per part is not.
 func TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
+	_, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
 		`          - {fiscal_year: 2024, skip: true}`,
 		`          - {fiscal_year: 2024, skip: true}
       - page: 42
@@ -737,7 +737,7 @@ func TestPrintedDecimalsIsRefusedOnAMultiPartRuleThatDoesNotSpan(t *testing.T) {
 // misdeclaration. It is the same shape as the stated_total_deltas refusal one
 // declaration further out.
 func TestPrintedDecimalsAndUnmappedTextCannotBothBeDeclared(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
+	_, err := parse(strings.NewReader(strings.Replace(acfrGeneralGovernmentProbe,
 		"        columns:", `        unmapped_text:
           - {text: "0.0", note: "a figure declared out of a block that also rounds"}
         columns:`, 1)), "probe.yaml")
@@ -768,7 +768,7 @@ func TestTotalRowAboveRefusals(t *testing.T) {
         columns:
           - {fund_group: general, fiscal_year: 2025}
           - {fiscal_year: 2024, skip: true}`, 1)
-		_, err := Parse(strings.NewReader(src), "probe.yaml")
+		_, err := parse(strings.NewReader(src), "probe.yaml")
 		if err == nil {
 			t.Fatal("total_row_above was accepted with total_spans_parts")
 		}
@@ -790,7 +790,7 @@ func TestTotalRowAboveRefusals(t *testing.T) {
 		// printed_decimals refuses a multi-part rule of its own accord, so it
 		// comes off: without this the test would pass on that arm instead.
 		src = strings.Replace(src, "    printed_decimals: 2\n", "", 1)
-		_, err := Parse(strings.NewReader(src), "probe.yaml")
+		_, err := parse(strings.NewReader(src), "probe.yaml")
 		if err == nil {
 			t.Fatal("total_row_above was accepted on a rule with a labels_from part")
 		}

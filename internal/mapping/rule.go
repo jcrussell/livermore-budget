@@ -468,7 +468,7 @@ type Part struct {
 	// Each entry names exactly one row, as a bare label or as the pair of
 	// anchors that identifies it; see OmittedRow. An entry that names no row
 	// is refused, and so is one that names more than one.
-	OmittedRows []OmittedRow `yaml:"omitted_rows"`
+	OmittedRows []omittedRow `yaml:"omitted_rows"`
 
 	// Columns describe the value columns, left to right.
 	Columns []Column `yaml:"columns"`
@@ -505,7 +505,7 @@ type Part struct {
 	//
 	// AN ENTRY MAY BE null, AND ONLY FOR THE LAST COLUMN WHEN IT IS SKIPPED.
 	// See ColumnHeader.
-	ColumnHeaders ColumnHeaders `yaml:"column_headers"`
+	ColumnHeaders columnHeaders `yaml:"column_headers"`
 
 	// WrappedLabels are the printed fragments this part's page wraps onto a
 	// line of their own, each written out verbatim.
@@ -572,7 +572,7 @@ type Part struct {
 	//
 	// A rule declaring both is refused, so no column is ever compared against
 	// a named figure with slack around it. Absent both, exact equality holds.
-	StatedTotalDeltas []StatedTotalDelta `yaml:"stated_total_deltas"`
+	StatedTotalDeltas []statedTotalDelta `yaml:"stated_total_deltas"`
 
 	// UnmappedText declares a FIGURE the page prints inside this block that
 	// belongs to no row, with the reason it is there.
@@ -618,12 +618,12 @@ type Part struct {
 	// therefore load-bearing rather than decorative.
 	//
 	// fisc-hcus.
-	UnmappedText []UnmappedText `yaml:"unmapped_text"`
+	UnmappedText []unmappedText `yaml:"unmapped_text"`
 }
 
-// UnmappedText is one figure a page prints inside a block that belongs to no
+// unmappedText is one figure a page prints inside a block that belongs to no
 // row, and why.
-type UnmappedText struct {
+type unmappedText struct {
 	// Text is the figure exactly as the page prints it, matched against the
 	// fully trimmed text of the gap it sits in -- the same matching
 	// wrapped_labels uses, so the two behave alike where they behave at all.
@@ -637,7 +637,7 @@ type UnmappedText struct {
 	Note string `yaml:"note"`
 }
 
-// ColumnHeader is one entry in a part's ColumnHeaders: the header a page prints
+// columnHeader is one entry in a part's ColumnHeaders: the header a page prints
 // over a column, or the explicit statement that it prints none.
 //
 // THE null ENTRY EXISTS BECAUSE A PAGE CAN PRINT A COLUMN WITH NO HEADER OVER
@@ -670,7 +670,7 @@ type UnmappedText struct {
 // the row's other figures (columnGuard.checkRow), the row must yield exactly
 // len(Columns) tokens, and checkGap still refuses anything unexplained between
 // rows. What is given up is the band check on that one token, and only there.
-type ColumnHeader struct {
+type columnHeader struct {
 	// Text is the header as the page prints it, empty when Unheaded.
 	Text string
 	// Unheaded says the page prints no header over this column. It is a
@@ -679,7 +679,7 @@ type ColumnHeader struct {
 	Unheaded bool
 }
 
-// ColumnHeaders is a part's header list.
+// columnHeaders is a part's header list.
 //
 // It is a named slice with its own unmarshaler because yaml.v3 DROPS a null
 // element from a sequence rather than decoding it: the element unmarshaler is
@@ -688,18 +688,18 @@ type ColumnHeader struct {
 // failure this whole guard exists to prevent -- it would have been reported as
 // "has 1 entries but the part has 2 columns", blaming the author for the
 // decoder.
-type ColumnHeaders []ColumnHeader
+type columnHeaders []columnHeader
 
 // UnmarshalYAML reads the sequence element by element, so a null keeps its
 // place.
-func (h *ColumnHeaders) UnmarshalYAML(n *yaml.Node) error {
+func (h *columnHeaders) UnmarshalYAML(n *yaml.Node) error {
 	if n.Kind != yaml.SequenceNode {
 		return fmt.Errorf("line %d: column_headers is a list of the headers the page "+
 			"prints over this part's columns, left to right", n.Line)
 	}
-	out := make(ColumnHeaders, 0, len(n.Content))
+	out := make(columnHeaders, 0, len(n.Content))
 	for _, e := range n.Content {
-		var c ColumnHeader
+		var c columnHeader
 		if e.Tag == "!!null" {
 			c.Unheaded = true
 		} else if e.Kind != yaml.ScalarNode {
@@ -716,16 +716,16 @@ func (h *ColumnHeaders) UnmarshalYAML(n *yaml.Node) error {
 
 // String renders an entry for an error message, so a null reads as a claim
 // rather than as an empty pair of quotes.
-func (c ColumnHeader) String() string {
+func (c columnHeader) String() string {
 	if c.Unheaded {
 		return "null (the page prints no header here)"
 	}
 	return fmt.Sprintf("%q", c.Text)
 }
 
-// StatedTotalDelta is one column's declared discrepancy between the document's
+// statedTotalDelta is one column's declared discrepancy between the document's
 // printed total and the rows beneath it.
-type StatedTotalDelta struct {
+type statedTotalDelta struct {
 	// Column is 1 based, matching how CheckTotals numbers columns when it
 	// reports a mismatch, so a failure message can be turned into this
 	// declaration without translating an index.
@@ -942,7 +942,7 @@ func (r Row) PrintedLabel() string {
 	return r.Label + " " + r.LabelTail
 }
 
-// OmittedRow names one of the rule's rows that a part does not print. It is
+// omittedRow names one of the rule's rows that a part does not print. It is
 // written the way the row itself is written, and for the same reason:
 //
 //	omitted_rows: ["Licenses & Permits"]
@@ -959,13 +959,13 @@ func (r Row) PrintedLabel() string {
 // one thing Row.LabelTail exists in order not to do. Before this form existed,
 // a row carrying a label_tail could not be named here at all, while
 // OmittedRows' own doc called the declaration mandatory (fisc-gtv).
-type OmittedRow struct {
+type omittedRow struct {
 	Label     string `yaml:"label"`
 	LabelTail string `yaml:"label_tail"`
 }
 
 // UnmarshalYAML accepts either spelling.
-func (o *OmittedRow) UnmarshalYAML(n *yaml.Node) error {
+func (o *omittedRow) UnmarshalYAML(n *yaml.Node) error {
 	if n.Kind == yaml.ScalarNode {
 		return n.Decode(&o.Label)
 	}
@@ -987,30 +987,30 @@ func (o *OmittedRow) UnmarshalYAML(n *yaml.Node) error {
 	}
 	// The alias sheds this method, so the struct tags above do the decoding
 	// rather than being decoration.
-	type entry OmittedRow
+	type entry omittedRow
 	var e entry
 	if err := n.Decode(&e); err != nil {
 		return err
 	}
-	*o = OmittedRow(e)
+	*o = omittedRow(e)
 	return nil
 }
 
 // row is the Row this entry names, so identity and printed form are computed
 // by Row's own methods and cannot drift from them.
-func (o OmittedRow) row() Row { return Row{Label: o.Label, LabelTail: o.LabelTail} }
+func (o omittedRow) row() Row { return Row{Label: o.Label, LabelTail: o.LabelTail} }
 
-// Identity is the row identity this entry claims, in the same key space the
+// identity is the row identity this entry claims, in the same key space the
 // rule's rows are indexed by.
-func (o OmittedRow) Identity() string { return o.row().Identity() }
+func (o omittedRow) identity() string { return o.row().Identity() }
 
-// PrintedLabel is how the entry reads in a message, matching what the row
+// printedLabel is how the entry reads in a message, matching what the row
 // would have published had the page printed it.
-func (o OmittedRow) PrintedLabel() string { return o.row().PrintedLabel() }
+func (o omittedRow) printedLabel() string { return o.row().PrintedLabel() }
 
-// LabelledPart returns the part that carries row labels for p, which is p
+// labelledPart returns the part that carries row labels for p, which is p
 // itself unless p declares LabelsFrom.
-func (r *Rule) LabelledPart(p *Part) *Part {
+func (r *Rule) labelledPart(p *Part) *Part {
 	if p.LabelsFrom == 0 {
 		return p
 	}
@@ -1052,14 +1052,14 @@ func (r *Rule) ActiveRows(p *Part) []Row {
 func omittedSet(p *Part) map[string]bool {
 	set := make(map[string]bool, len(p.OmittedRows))
 	for _, o := range p.OmittedRows {
-		set[o.Identity()] = true
+		set[o.identity()] = true
 	}
 	return set
 }
 
-// ExpectedValues is how many numbers a positional read of this part must find:
+// expectedValues is how many numbers a positional read of this part must find:
 // one per active row per column. A mismatch means the page's shape has changed
 // and the rule can no longer be trusted.
-func (r *Rule) ExpectedValues(p *Part) int {
+func (r *Rule) expectedValues(p *Part) int {
 	return len(r.ActiveRows(p)) * len(p.Columns)
 }

@@ -47,7 +47,7 @@ const wrappedDecl = `        wrapped_labels: ["Devel"]`
 func innovationValues(t *testing.T, decl string) ([]Value, error) {
 	t.Helper()
 	src := strings.Replace(p167Innovation, "        #WRAPPED", decl, 1)
-	f, err := Parse(strings.NewReader(src), "p167.yaml")
+	f, err := parse(strings.NewReader(src), "p167.yaml")
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,7 @@ func TestAWrappedLabelBeforeTheFirstRowIsDeclarable(t *testing.T) {
 	t.Run("declared, it resolves", func(t *testing.T) {
 		src := strings.Replace(early, "        #WRAPPED",
 			`        wrapped_labels: ["Economic", "Devel"]`, 1)
-		f, err := Parse(strings.NewReader(src), "p167.yaml")
+		f, err := parse(strings.NewReader(src), "p167.yaml")
 		if err != nil {
 			t.Fatalf("Parse: %v", err)
 		}
@@ -175,7 +175,7 @@ func TestAWrappedLabelBeforeTheFirstRowIsDeclarable(t *testing.T) {
 	t.Run("stale, it is still refused", func(t *testing.T) {
 		src := strings.Replace(early, "        #WRAPPED",
 			`        wrapped_labels: ["Economic", "Devel", "Nowhere On This Page"]`, 1)
-		f, err := Parse(strings.NewReader(src), "p167.yaml")
+		f, err := parse(strings.NewReader(src), "p167.yaml")
 		if err != nil {
 			t.Fatalf("Parse: %v", err)
 		}
@@ -225,7 +225,7 @@ rules:
         columns:
           - {fund_group: general, fiscal_year: 2026}
 `
-	_, err := Parse(strings.NewReader(src), "labelsfrom.yaml")
+	_, err := parse(strings.NewReader(src), "labelsfrom.yaml")
 	if err == nil {
 		t.Fatal("wrapped_labels was accepted on a labels_from part, where nothing reads it")
 	}

@@ -58,7 +58,7 @@ rules:
 func stormwaterResolver(t *testing.T, kinds string) (*Resolver, *Rule) {
 	t.Helper()
 	src := strings.Replace(stormwaterRule, "    #KINDS", kinds, 1)
-	f, err := Parse(strings.NewReader(src), "stormwater.yaml")
+	f, err := parse(strings.NewReader(src), "stormwater.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestTotalRowKindsRefusesWhatAssertsNothing(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := strings.Replace(stormwaterRule, "    #KINDS", tc.kinds, 1)
-			if _, err := Parse(strings.NewReader(src), "stormwater.yaml"); err == nil {
+			if _, err := parse(strings.NewReader(src), "stormwater.yaml"); err == nil {
 				t.Fatal("accepted")
 			} else if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %v, want it to contain %q", err, tc.want)
@@ -140,7 +140,7 @@ func TestTotalRowKindsRefusesWhatAssertsNothing(t *testing.T) {
 // its kinds.
 func TestARowKindThatIsNotOneOfTheFiveIsRefused(t *testing.T) {
 	src := strings.Replace(stormwaterRule, "kind: transfer_in}", "kind: transfers}", 1)
-	_, err := Parse(strings.NewReader(src), "stormwater.yaml")
+	_, err := parse(strings.NewReader(src), "stormwater.yaml")
 	if err == nil {
 		t.Fatal("a row declaring kind: transfers was accepted")
 	}

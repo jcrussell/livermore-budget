@@ -366,7 +366,7 @@ rules:
 // other half, and neither is worth much alone.
 func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
 	const yaml = acfrRevenueProbe
-	f, err := Parse(strings.NewReader(yaml), "probe.yaml")
+	f, err := parse(strings.NewReader(yaml), "probe.yaml")
 	if err != nil {
 		t.Fatalf("the rule does not even parse: %v", err)
 	}
@@ -415,7 +415,7 @@ func TestACFRp0041RevenueBlockNeedsItsOrphanDeclared(t *testing.T) {
 // reached for one here would not build -- see
 // TestPrintedDecimalsIsRefusedWhenNoColumnNeedsIt.
 func TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared(t *testing.T) {
-	f, err := Parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
+	f, err := parse(strings.NewReader(strings.Replace(acfrRevenueProbe,
 		"        columns:", `        unmapped_text:
           - text: "0.0"
             note: "the spreadsheet artefact this test is about"
@@ -460,7 +460,7 @@ func TestACFRp0041RevenueBlockResolvesWithTheOrphanDeclared(t *testing.T) {
 // and the same sum would carry $2,500,000, which is a hundredfold wider and is
 // the mistake the declaration exists to prevent.
 func TestACFRp0041GeneralGovernmentTiesOnlyWithinThePageDerivedTolerance(t *testing.T) {
-	f, err := Parse(strings.NewReader(acfrGeneralGovernmentProbe), "probe.yaml")
+	f, err := parse(strings.NewReader(acfrGeneralGovernmentProbe), "probe.yaml")
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

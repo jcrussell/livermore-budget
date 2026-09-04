@@ -459,13 +459,13 @@ func Describe(cols []Column) string {
 	return strings.Join(out, ", ")
 }
 
-// Validate reports options that cannot produce a meaningful document.
+// validate reports options that cannot produce a meaningful document.
 //
 // It is strict about the three selectors and about the version because each
 // one appears in the published metadata: a document that says which year,
 // basis and scope it covers, and which binary wrote it, is auditable, and one
 // that leaves any of them blank is a chart with no caption.
-func (o Options) Validate() error {
+func (o Options) validate() error {
 	if len(o.Columns) == 0 {
 		return errors.New("at least one column is required")
 	}
@@ -512,7 +512,7 @@ func (o Options) Validate() error {
 	return nil
 }
 
-// OnlyScope is the one schedule a single-schedule document is of, and the
+// onlyScope is the one schedule a single-schedule document is of, and the
 // refusal of any other shape.
 //
 // IT EXISTS SO THE REFUSAL IS WRITTEN ONCE. Sankey.Graph, Trends.Document and
@@ -528,7 +528,7 @@ func (o Options) Validate() error {
 // answers "how many", not "which one" -- a projection built over the wrong
 // single schedule is a different error and each projection reports it in its
 // own words.
-func (o Options) OnlyScope() (string, error) {
+func (o Options) onlyScope() (string, error) {
 	if len(o.Scopes) != 1 {
 		return "", cmdutil.WithHint(
 			fmt.Errorf("this document is of one schedule, and these options name %d: %s",
@@ -606,6 +606,6 @@ type Sliced interface {
 // caller may forget to set, because forgetting it is silent: the page renders,
 // and every node is labelled "Use Of Money And Property" instead of the words
 // the city printed.
-func Registry(l Labels) []Projection {
-	return []Projection{&Sankey{Labels: l}, &Trends{Labels: l}, &FundFlows{Labels: l}}
+func Registry(l labels) []Projection {
+	return []Projection{&sankey{Labels: l}, &Trends{Labels: l}, &fundFlows{Labels: l}}
 }

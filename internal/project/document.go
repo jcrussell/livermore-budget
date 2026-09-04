@@ -34,8 +34,8 @@ import (
 // so testdata/sankey.golden.json is the proof the extraction was faithful --
 // internal/project/sankey_test.go compares it with bytes.Equal.
 
-// Counts is how much of the corpus this document accounts for.
-type Counts struct {
+// counts is how much of the corpus this document accounts for.
+type counts struct {
 	// Facts is how many facts matched the options, which is NOT how many links
 	// were drawn: stocks get no link, and neither do zero-valued cells. The
 	// gap between Facts and Links is the part of the schedule the chart cannot
@@ -87,7 +87,7 @@ type Caveat struct {
 	AppliesTo []string `json:"applies_to"`
 }
 
-// ValidateCaveats refuses a set no page could render honestly.
+// validateCaveats refuses a set no page could render honestly.
 //
 // IT RUNS AT BUILD TIME, in every document builder, because every failure below
 // is invisible downstream: a missing id publishes an anchor of "", a missing
@@ -105,7 +105,7 @@ type Caveat struct {
 // or the caveat genuinely does not apply. A caller with no nodes to offer --
 // a document that is not a graph -- passes nil, and the arm is skipped rather
 // than being made to fail on every entry.
-func ValidateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
+func validateCaveats(caveats []Caveat, nodes map[string]struct{}) error {
 	seen := make(map[string]struct{}, len(caveats))
 	for i, c := range caveats {
 		switch {
@@ -267,7 +267,7 @@ type Envelope struct {
 // document needs a metadata block that says so; it does not get to borrow this
 // one and lose half the claim on the way.
 func envelope(o Options) (Envelope, error) {
-	scope, err := o.OnlyScope()
+	scope, err := o.onlyScope()
 	if err != nil {
 		return Envelope{}, err
 	}

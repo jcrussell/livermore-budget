@@ -19,12 +19,12 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/iostreams"
 )
 
-// DefaultOutputDir is where the site lands when --output is not given. It is
+// defaultOutputDir is where the site lands when --output is not given. It is
 // gitignored: exporting into the working tree by default would make `git
 // status` noise the price of looking at your own chart.
-const DefaultOutputDir = "dist"
+const defaultOutputDir = "dist"
 
-// Result is everything a Builder produces for one export.
+// result is everything a Builder produces for one export.
 //
 // TWO MAPS RATHER THAN ONE, because they land in different namespaces and the
 // difference is contractual. Projections is keyed by filename STEM and written
@@ -34,7 +34,7 @@ const DefaultOutputDir = "dist"
 // THE OUTPUT ROOT and written verbatim wherever it says. Merging them would
 // need a rule for telling a stem from a path, and every such rule is a guess
 // about what a name means.
-type Result struct {
+type result struct {
 	Projections map[string][]byte
 	// Files is the non-projection asset channel: anything the site ships that
 	// is not a projection document. See export.Options.Files, which has had
@@ -57,7 +57,7 @@ type Result struct {
 	RecordsBase map[string]string
 }
 
-// Builder produces everything to publish: the projection documents, keyed by
+// builder produces everything to publish: the projection documents, keyed by
 // the filename stem they are written under (data/<stem>.json), and any other
 // assets the site ships.
 //
@@ -71,7 +71,7 @@ type Result struct {
 // and this command never set it, so the one thing that travelled it was the
 // page text Write ships on its own behalf; nothing a Builder produced could get
 // out. That is what the fact store needs.
-type Builder func(repoRoot string) (Result, error)
+type builder func(repoRoot string) (result, error)
 
 // Options is one invocation of the command.
 type Options struct {
@@ -96,7 +96,7 @@ type Options struct {
 	SourceBrowseURL string
 
 	// Build produces the projections and any other assets. Nil means buildAll.
-	Build Builder
+	Build builder
 
 	// extractedDir is the committed extraction tree. Empty means the
 	// repository's, which is what every real invocation uses.
@@ -157,7 +157,7 @@ func NewCmdExport(f *cmdutil.Factory, runF func(*Options) error) *cobra.Command 
 	opts := &Options{
 		IO:        f.IOStreams,
 		RepoRoot:  f.RepoRoot,
-		OutputDir: DefaultOutputDir,
+		OutputDir: defaultOutputDir,
 	}
 
 	cmd := &cobra.Command{
@@ -196,7 +196,7 @@ the repository instead.`,
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", DefaultOutputDir, "Directory to write the site into")
+	cmd.Flags().StringVarP(&opts.OutputDir, "output", "o", defaultOutputDir, "Directory to write the site into")
 	cmd.Flags().BoolVar(&opts.Clean, "clean", false, "Empty the output directory first (refuses anything that is not a generated site)")
 	cmd.Flags().StringVar(&opts.SourceBrowseURL, "source-browse-url", "",
 		"Cite the extracted page text at this base URL instead of shipping it in the site (e.g. "+export.DefaultSourceBrowseURL+")")

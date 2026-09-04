@@ -39,7 +39,7 @@ rules:
 
 func readTwoAnchor(t *testing.T, src string) ([]Value, []Omission, error) {
 	t.Helper()
-	f, err := Parse(strings.NewReader(src), "two-anchor.yaml")
+	f, err := parse(strings.NewReader(src), "two-anchor.yaml")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +138,7 @@ func TestATwoAnchorRowIsOmittedByNamingBothAnchors(t *testing.T) {
 // test above: ActiveRows filtered on the bare Label, so one declaration would
 // have dropped every row sharing it -- here, the whole rule.
 func TestActiveRowsDropOnlyTheRowNamed(t *testing.T) {
-	f, err := Parse(strings.NewReader(omissionRule(omitWastewater)), "two-anchor.yaml")
+	f, err := parse(strings.NewReader(omissionRule(omitWastewater)), "two-anchor.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -195,7 +195,7 @@ func TestOmittedRowMustNameExactlyOneRow(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(omissionRule(tt.omitted)), "two-anchor.yaml")
+			_, err := parse(strings.NewReader(omissionRule(tt.omitted)), "two-anchor.yaml")
 			if err == nil {
 				t.Fatal("parsed; an omitted_rows entry must name exactly one row")
 			}
@@ -218,7 +218,7 @@ func TestTotalRowInRowsIsRefusedForATwoAnchorRow(t *testing.T) {
 	src := strings.Replace(omissionRule(omitWastewater),
 		"    units: dollars\n",
 		"    units: dollars\n    total_row: \"Transfer From General Fund\"\n", 1)
-	_, err := Parse(strings.NewReader(src), "two-anchor.yaml")
+	_, err := parse(strings.NewReader(src), "two-anchor.yaml")
 	if err == nil {
 		t.Fatal("parsed; a total_row that is also a data row double-counts it")
 	}
@@ -231,7 +231,7 @@ func TestTotalRowInRowsIsRefusedForATwoAnchorRow(t *testing.T) {
 // saying it has "leading or trailing whitespace" sends the author looking for
 // a character to trim rather than for the anchor they meant to name.
 func TestBlankLabelTailIsReportedAsBlank(t *testing.T) {
-	_, err := Parse(strings.NewReader(
+	_, err := parse(strings.NewReader(
 		twoAnchorRule("Transfer From General Fund", "   ", "to Airport")), "two-anchor.yaml")
 	if err == nil {
 		t.Fatal("parsed; a blank label_tail names nothing")
@@ -259,7 +259,7 @@ rules:
       - {label: "Transfer From Water to Water", category: a}
       - {label: "Transfer From Water", label_tail: "to Water", category: a}
 `
-	_, err := Parse(strings.NewReader(src), "printed.yaml")
+	_, err := parse(strings.NewReader(src), "printed.yaml")
 	if err == nil {
 		t.Fatal("parsed; two rows cannot publish one row_label")
 	}

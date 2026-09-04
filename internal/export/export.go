@@ -60,10 +60,10 @@ const PrimaryProjection = "sankey"
 // output layout, so it is a constant rather than something a caller may move.
 const IndexPath = "index.html"
 
-// DataDir is the output subdirectory holding projection JSON. It is part of
+// dataDir is the output subdirectory holding projection JSON. It is part of
 // the published contract — docs/sankey-contract.md promises
 // <output>/data/<projection>.json — so it is a constant, not a flag.
-const DataDir = "data"
+const dataDir = "data"
 
 // PageTextDir is the output subdirectory holding the committed extraction of
 // every page the projection cites. The tree under it mirrors the repository's
@@ -84,11 +84,11 @@ const DataDir = "data"
 // would change silently as views were added.
 const PageTextDir = "extracted"
 
-// MarkerName is the sentinel written into a generated site. It is what tells
+// markerName is the sentinel written into a generated site. It is what tells
 // a later --clean run that the directory is fisc's to delete. The name is
 // cmdutil's, not this package's: the writer and the deleter agreeing on it by
 // coincidence is how a --clean starts refusing to clean.
-const MarkerName = cmdutil.ExportMarkerName
+const markerName = cmdutil.ExportMarkerName
 
 // DefaultSourceBrowseURL is where the committed page text is browsable when
 // the site does not ship it itself — that is, when the caller supplies neither
@@ -594,7 +594,7 @@ func (o *Options) validate() error {
 // page that used to exist. An asset at trends.html would have shadowed a view
 // silently.
 var fixedPaths = func() map[string]bool {
-	m := map[string]bool{MarkerName: true}
+	m := map[string]bool{markerName: true}
 	for _, name := range verbatimAssets {
 		m[name] = true
 	}
@@ -646,7 +646,7 @@ func (v View) validate(built map[string][]byte) error {
 	// The distinction matters to whoever hits it: "app.js is not an .html file"
 	// invites you to rename it to app.html, which shadows nothing and is still
 	// wrong. "app.js is part of the fixed site layout" says why.
-	case fixedPaths[v.Path], strings.HasPrefix(v.Path, DataDir+"/"):
+	case fixedPaths[v.Path], strings.HasPrefix(v.Path, dataDir+"/"):
 		return fmt.Errorf("view path %q is part of the fixed site layout", v.Path)
 	case !strings.HasSuffix(v.Path, ".html"):
 		return fmt.Errorf("view path %q is not an .html file", v.Path)
@@ -921,13 +921,13 @@ func assetPath(rel string, reserved map[string]bool) error {
 		return fmt.Errorf("asset path %q is not slash-separated", rel)
 	case path.IsAbs(rel), rel == ".", rel == "..", strings.HasPrefix(rel, "../"), path.Clean(rel) != rel:
 		return fmt.Errorf("asset path %q is not a clean relative path", rel)
-	case reserved[rel], strings.HasPrefix(rel, DataDir+"/"), strings.HasPrefix(rel, "vendor/"):
+	case reserved[rel], strings.HasPrefix(rel, dataDir+"/"), strings.HasPrefix(rel, "vendor/"):
 		return fmt.Errorf("asset path %q is part of the fixed site layout", rel)
 	}
 	return nil
 }
 
-// Plan is a site resolved in full and not yet written: every byte of every
+// plan is a site resolved in full and not yet written: every byte of every
 // file, in the order it goes down.
 //
 // IT EXISTS SO A CALLER CAN LEARN ITS INPUT IS BAD BEFORE IT DESTROYS ANYTHING.
@@ -942,7 +942,7 @@ func assetPath(rel string, reserved map[string]bool) error {
 // left behind inside Write, so an export whose store covers a page the
 // extraction does not still emptied the directory and then refused. Found by
 // review, reproduced by moving one committed page text aside.
-type Plan struct {
+type plan struct {
 	dir   string
 	files []plannedFile
 }
@@ -955,7 +955,7 @@ type plannedFile struct {
 
 // Prepare resolves an Options into a Plan, or refuses it. It touches no
 // filesystem outside the inputs it reads.
-func Prepare(o Options) (*Plan, error) {
+func Prepare(o Options) (*plan, error) {
 	if err := o.validate(); err != nil {
 		return nil, err
 	}
@@ -986,7 +986,7 @@ func Prepare(o Options) (*Plan, error) {
 		}
 	}
 
-	plan := &Plan{dir: o.Dir}
+	plan := &plan{dir: o.Dir}
 	seen := make(map[string]bool)
 	add := func(rel string, b []byte) error {
 		if seen[rel] {
@@ -1004,7 +1004,7 @@ func Prepare(o Options) (*Plan, error) {
 	// dies midway then leaves a directory that --clean recognises as ours;
 	// writing it last would dead-end the retry, because index.html is not
 	// there either and SafeCleanDir would refuse to touch the debris.
-	if err := add(MarkerName, []byte("fisc export\n")); err != nil {
+	if err := add(markerName, []byte("fisc export\n")); err != nil {
 		return nil, err
 	}
 	for _, name := range verbatimAssets {
@@ -1020,7 +1020,7 @@ func Prepare(o Options) (*Plan, error) {
 		return nil, err
 	}
 	for _, name := range sortedKeys(o.Projections) {
-		if err := add(path.Join(DataDir, name+".json"), o.Projections[name]); err != nil {
+		if err := add(path.Join(dataDir, name+".json"), o.Projections[name]); err != nil {
 			return nil, err
 		}
 	}
@@ -1062,7 +1062,7 @@ func Prepare(o Options) (*Plan, error) {
 // It does not clean the directory: destroying files is a separate decision with
 // its own guard rail (cmdutil.SafeCleanDir), and burying it in a writer would
 // make every caller of Write a caller of RemoveAll.
-func (p *Plan) Write() ([]string, error) {
+func (p *plan) Write() ([]string, error) {
 	// #nosec G301 -- the output is a web root; a directory a server running as
 	// another user cannot traverse is a broken deploy, not a hardened one.
 	if err := os.MkdirAll(p.dir, 0o755); err != nil {

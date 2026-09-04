@@ -69,7 +69,7 @@ type Trends struct {
 	// Labels resolves the fund name and the category label the document
 	// publishes. Nil is allowed and means both fall back, so a build never
 	// fails for want of a registry -- see Sankey.Labels for the same rule.
-	Labels Labels
+	Labels labels
 }
 
 var (
@@ -125,27 +125,27 @@ func (*Trends) Slices(facts []fact.Fact, version string) []Options {
 type TrendsDocument struct {
 	SchemaVersion int            `json:"schema_version"`
 	Projection    string         `json:"projection"`
-	Metadata      TrendsMetadata `json:"metadata"`
+	Metadata      trendsMetadata `json:"metadata"`
 	Series        []Series       `json:"series"`
 }
 
-// TrendsMetadata is this document's metadata block.
+// trendsMetadata is this document's metadata block.
 //
 // It embeds [Envelope] and carries NONE of the spine's fiscal_year,
 // fiscal_year_label, basis or headline. Those are singular or spine-specific
 // and this document is of four columns and three bases; publishing them zeroed
 // to keep a familiar shape would be exactly the absent-is-not-zero error this
 // project refuses everywhere else.
-type TrendsMetadata struct {
+type trendsMetadata struct {
 	Envelope
 	// Columns are the printed columns, in the order the schedule prints them.
-	Columns []TrendColumn `json:"columns"`
+	Columns []trendColumn `json:"columns"`
 	Sources []Source      `json:"sources"`
-	Counts  TrendCounts   `json:"counts"`
+	Counts  trendCounts   `json:"counts"`
 	Caveats []Caveat      `json:"caveats"`
 }
 
-// TrendCounts is how much of the corpus this document accounts for.
+// trendCounts is how much of the corpus this document accounts for.
 //
 // THERE IS NO facts_cited HERE, and its absence is the considered answer rather
 // than an omission. [Counts] publishes one because on the spine it is genuinely
@@ -162,15 +162,15 @@ type TrendsMetadata struct {
 // same divergence is caught directly, and with the row named, by
 // trend-points-tie-to-facts; this is the form of it a reader can see in the file
 // without running anything.
-type TrendCounts struct {
+type trendCounts struct {
 	Facts  int `json:"facts"`
 	Series int `json:"series"`
 	Points int `json:"points"`
 }
 
-// TrendColumn is one printed column, with the claim about what may be compared
+// trendColumn is one printed column, with the claim about what may be compared
 // with what.
-type TrendColumn struct {
+type trendColumn struct {
 	FiscalYear      int    `json:"fiscal_year"`
 	FiscalYearLabel string `json:"fiscal_year_label"`
 	Basis           string `json:"basis"`
@@ -247,12 +247,12 @@ func (t *Trends) Build(facts []fact.Fact, o Options) ([]byte, error) {
 // it without parsing back the JSON it is trying to validate. It is Trends's
 // Sankey.Graph.
 func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error) {
-	if err := o.Validate(); err != nil {
+	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("revenue-trends options: %w", err)
 	}
 	// Two refusals for the reason Sankey.Graph gives: how many schedules and
 	// which schedule are different mistakes.
-	scope, err := o.OnlyScope()
+	scope, err := o.onlyScope()
 	if err != nil {
 		return nil, fmt.Errorf("revenue-trends: %w", err)
 	}
@@ -347,18 +347,18 @@ func (t *Trends) Document(facts []fact.Fact, o Options) (*TrendsDocument, error)
 	// should be refused and passes the rest. nil is for a caller that genuinely
 	// cannot supply nodes; this one can, and the answer is none.
 	cavs := trendsCaveats()
-	if err := ValidateCaveats(cavs, map[string]struct{}{}); err != nil {
+	if err := validateCaveats(cavs, map[string]struct{}{}); err != nil {
 		return nil, err
 	}
 
 	return &TrendsDocument{
 		SchemaVersion: SchemaVersion,
 		Projection:    t.Name(),
-		Metadata: TrendsMetadata{
+		Metadata: trendsMetadata{
 			Envelope: env,
 			Columns:  trendColumns(o.Columns),
 			Sources:  sourcesOf(selected),
-			Counts: TrendCounts{
+			Counts: trendCounts{
 				Facts:  len(selected),
 				Series: len(series),
 				Points: points,
@@ -427,10 +427,10 @@ func trendsCaveats() []Caveat {
 }
 
 // trendColumns publishes the columns with their labels and comparable groups.
-func trendColumns(cols []Column) []TrendColumn {
-	out := make([]TrendColumn, 0, len(cols))
+func trendColumns(cols []Column) []trendColumn {
+	out := make([]trendColumn, 0, len(cols))
 	for _, c := range cols {
-		out = append(out, TrendColumn{
+		out = append(out, trendColumn{
 			FiscalYear:      c.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(c.FiscalYear),
 			Basis:           string(c.Basis),

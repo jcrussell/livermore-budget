@@ -134,7 +134,7 @@ func TestParseRejects(t *testing.T) {
 			if errors.Is(err, ErrAbsent) {
 				t.Fatalf("Parse(%q) returned ErrAbsent, want a parse rejection", tt.token)
 			}
-			var pe *ParseError
+			var pe *parseError
 			if !errors.As(err, &pe) {
 				t.Fatalf("got %T (%v), want a *ParseError naming the token", err, err)
 			}
@@ -198,7 +198,7 @@ func TestAbsentIsNotZero(t *testing.T) {
 	}
 
 	// ParseOrZero opts out, but only where a rule says blanks mean zero.
-	got, err = ParseOrZero("", Dollars)
+	got, err = parseOrZero("", Dollars)
 	if err != nil || got != 0 {
 		t.Errorf("ParseOrZero(\"\") = (%v, %v), want (0, nil)", got, err)
 	}
@@ -325,7 +325,7 @@ func TestNoOverflowIsSilent(t *testing.T) {
 // documents print a zero cell as a hyphen, an en dash or a true minus sign
 // depending on the schedule, and zeroTokens only lists the "-" spelling.
 func TestNormalizeUnifiesDashes(t *testing.T) {
-	if got, want := Normalize("– — − -"), "- - - -"; got != want {
+	if got, want := normalize("– — − -"), "- - - -"; got != want {
 		t.Errorf("Normalize(en/em/minus/hyphen) = %q, want %q", got, want)
 	}
 	// A backslash is no longer stripped from anything: there is no markdown in
@@ -458,7 +458,7 @@ func TestDecimalsAgreesWithParseOnPrecision(t *testing.T) {
 					tok, string(u), d, string(u), max)
 			}
 			if _, err := Parse(tok, u); err != nil {
-				var pe *ParseError
+				var pe *parseError
 				if errors.As(err, &pe) && strings.Contains(pe.Reason, "decimal places cannot be represented") {
 					t.Errorf("Decimals(%q, %q) reported %d places but Parse rejects it for precision: %v",
 						tok, string(u), d, err)

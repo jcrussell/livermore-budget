@@ -173,12 +173,12 @@ func MakeID(docID, ruleID, rowPath, rowLabel, columnPath string, fiscalYear int,
 	return IDPrefix + hex.EncodeToString(h[:])[:idHexLen]
 }
 
-// SeriesIDPrefix marks a series id. It is deliberately not [IDPrefix]: a series
+// seriesIDPrefix marks a series id. It is deliberately not [IDPrefix]: a series
 // and a fact are different things and an id that could be either is an id a
 // reader has to look up to understand.
-const SeriesIDPrefix = "fisc-s-"
+const seriesIDPrefix = "fisc-s-"
 
-// MakeSeriesID identifies one printed ROW across the columns it appears in.
+// makeSeriesID identifies one printed ROW across the columns it appears in.
 //
 // It is [MakeID]'s tuple MINUS the fiscal year and the basis, and that is not a
 // convenience: two facts are the same printed row at different times exactly
@@ -195,16 +195,16 @@ const SeriesIDPrefix = "fisc-s-"
 //
 // rowLabel is mapping.Row.PrintedLabel(), the same string the fact record
 // publishes, for every reason MakeID's doc comment gives about it.
-func MakeSeriesID(docID, ruleID, rowPath, rowLabel, columnPath string) string {
+func makeSeriesID(docID, ruleID, rowPath, rowLabel, columnPath string) string {
 	h := sha256.Sum256([]byte(strings.Join([]string{
 		docID, ruleID, rowPath, rowLabel, columnPath,
 	}, "\x1f")))
-	return SeriesIDPrefix + hex.EncodeToString(h[:])[:idHexLen]
+	return seriesIDPrefix + hex.EncodeToString(h[:])[:idHexLen]
 }
 
 // SeriesID is the series this fact is one point of.
 func (f Fact) SeriesID() string {
-	return MakeSeriesID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath)
+	return makeSeriesID(f.DocID, f.RuleID, f.RowPath, f.RowLabel, f.ColumnPath)
 }
 
 // RowPath is the classification a row asserts, as a path.

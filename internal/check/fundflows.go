@@ -53,7 +53,7 @@ func (*fundFlowsCountsReconcile) Run(_ context.Context, s *Subject) (Result, err
 	var findings []Finding
 	var summaries []string
 
-	for _, p := range s.FundFlowsDocuments() {
+	for _, p := range s.fundFlowsDocuments() {
 		doc := p.FundFlows
 		c := doc.Metadata.Counts
 

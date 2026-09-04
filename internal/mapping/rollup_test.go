@@ -115,7 +115,7 @@ const adminCovers = `    covers: [div-administrative-services, div-finance, div-
 func adminResolver(t *testing.T, covers string) (*File, *Resolver) {
 	t.Helper()
 	src := strings.Replace(adminServicesRules, "    #COVERS", covers, 1)
-	f, err := Parse(strings.NewReader(src), "admin.yaml")
+	f, err := parse(strings.NewReader(src), "admin.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -263,7 +263,7 @@ rollups:
 
 func councilResolver(t *testing.T, anchor, page string) (*File, *Resolver) {
 	t.Helper()
-	f, err := Parse(strings.NewReader(strings.Replace(cityCouncilRules, "#ANCHOR", anchor, 1)),
+	f, err := parse(strings.NewReader(strings.Replace(cityCouncilRules, "#ANCHOR", anchor, 1)),
 		"council.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -351,7 +351,7 @@ func TestRollupsRefuseWhatTheyCannotMean(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := strings.Replace(adminServicesRules, "    #COVERS", tc.covers, 1)
-			if _, err := Parse(strings.NewReader(src), "admin.yaml"); err == nil {
+			if _, err := parse(strings.NewReader(src), "admin.yaml"); err == nil {
 				t.Fatal("accepted")
 			} else if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %v, want it to contain %q", err, tc.want)
@@ -369,7 +369,7 @@ func TestARollupNeedsEveryCoveredRuleToPrintATotal(t *testing.T) {
 	// Take the total_row off Human Resources only.
 	i := strings.Index(src, "  - id: div-human-resources")
 	src = src[:i] + strings.Replace(src[i:], "    total_row: \"Total\"\n", "", 1)
-	if _, err := Parse(strings.NewReader(src), "admin.yaml"); err == nil {
+	if _, err := parse(strings.NewReader(src), "admin.yaml"); err == nil {
 		t.Fatal("accepted a rollup covering a rule that prints no total")
 	} else if !strings.Contains(err.Error(), `rule "div-human-resources" declares no total_row`) {
 		t.Errorf("error = %v", err)
@@ -390,7 +390,7 @@ func TestARollupAnchorMustNameOnePrintedLine(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := strings.Replace(adminServicesRules, "    #COVERS", adminCovers, 1)
-			f, err := Parse(strings.NewReader(src), "admin.yaml")
+			f, err := parse(strings.NewReader(src), "admin.yaml")
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
@@ -473,7 +473,7 @@ rollups:
     total_row: "DEPARTMENT TOTAL"
     covers: [div-one, div-two]
 `
-	f, err := Parse(strings.NewReader(src), "widths.yaml")
+	f, err := parse(strings.NewReader(src), "widths.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -499,7 +499,7 @@ rollups:
 func TestAWhitespaceUnassertableIsRefused(t *testing.T) {
 	src := strings.Replace(adminServicesRules, "    #COVERS",
 		adminCovers+"\n    unassertable: \" \"", 1)
-	if _, err := Parse(strings.NewReader(src), "admin.yaml"); err == nil {
+	if _, err := parse(strings.NewReader(src), "admin.yaml"); err == nil {
 		t.Fatal("accepted a whitespace-only unassertable")
 	} else if !strings.Contains(err.Error(), "is whitespace; omit it or give the reason") {
 		t.Errorf("error = %v", err)
@@ -574,7 +574,7 @@ rollups:
     total_row: "DEPARTMENT TOTAL"
     covers: [div-one, div-two]
 `
-	f, err := Parse(strings.NewReader(src), "columns.yaml")
+	f, err := parse(strings.NewReader(src), "columns.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -652,7 +652,7 @@ rollups:
     total_row: "DEPARTMENT TOTAL"
     covers: [div-one, div-two]
 `
-	f, err := Parse(strings.NewReader(src), "bases.yaml")
+	f, err := parse(strings.NewReader(src), "bases.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

@@ -65,7 +65,7 @@ func parseRollupSpan(t *testing.T, kind, scope, kinds string) error {
 	src := strings.Replace(rollupSpanFile, "#KIND", kind, 1)
 	src = strings.Replace(src, "#SCOPE", scope, 1)
 	src = strings.Replace(src, "#KINDS", kinds, 1)
-	_, err := Parse(strings.NewReader(src), "rollupspan.yaml")
+	_, err := parse(strings.NewReader(src), "rollupspan.yaml")
 	return err
 }
 
@@ -206,7 +206,7 @@ rollups:
       exceeds the pages it closes by ~$57M, differently per column (fisc-wev)
     kinds: [expenditure, revenue]
 `
-	_, err := Parse(strings.NewReader(src), "unassertable.yaml")
+	_, err := parse(strings.NewReader(src), "unassertable.yaml")
 	if err == nil {
 		t.Fatal("accepted kinds: on a rollup that covers no rules")
 	}

@@ -137,7 +137,7 @@ const (
 	NodeFundBalanceContribution = "fund-balance/contribution"
 )
 
-// Labels is the view of the label registry (internal/registry, fisc-6ns) this
+// labels is the view of the label registry (internal/registry, fisc-6ns) this
 // projection needs, declared here in the consumer and kept to the methods
 // actually used (byob-interfaces.2, as internal/mapping/resolve.go does with
 // its doc interface).
@@ -150,7 +150,7 @@ const (
 // space. That matters more than it looks: "debt-service" is a fund type and
 // "debt-services" an object category, and data/taxonomy.yaml is explicit that
 // one string spanning two axes is the near-miss it exists to prevent.
-type Labels interface {
+type labels interface {
 	// Label returns the city's own words for a category slug, and whether the
 	// registry knows the slug at all. A miss is not an error: an unlabelled
 	// node falls back to a slug-derived label so a newly mapped category
@@ -276,14 +276,14 @@ var builtinLabels = map[string]string{
 type Graph struct {
 	SchemaVersion int      `json:"schema_version"`
 	Projection    string   `json:"projection"`
-	Metadata      Metadata `json:"metadata"`
+	Metadata      metadata `json:"metadata"`
 	Nodes         []Node   `json:"nodes"`
 	Links         []Link   `json:"links"`
 }
 
-// Metadata is everything a reader needs to know what slice of the budget the
+// metadata is everything a reader needs to know what slice of the budget the
 // graph below it covers, and what it deliberately leaves out.
-type Metadata struct {
+type metadata struct {
 	GeneratedBy string `json:"generated_by"`
 	FiscalYear  int    `json:"fiscal_year"`
 	// FiscalYearLabel is the city's own way of writing the year: FY2026 is
@@ -296,7 +296,7 @@ type Metadata struct {
 	Units           string   `json:"units"`
 	Sources         []Source `json:"sources"`
 	Headline        Headline `json:"headline"`
-	Counts          Counts   `json:"counts"`
+	Counts          counts   `json:"counts"`
 	// Caveats are the things this chart cannot show, in the chart's own file.
 	// A caveat that lives only in a design document is a caveat nobody reads.
 	Caveats []Caveat `json:"caveats"`
@@ -399,28 +399,28 @@ type Link struct {
 	Derived  bool     `json:"derived"`
 }
 
-// Sankey projects the citywide spine as a flow diagram.
-type Sankey struct {
+// sankey projects the citywide spine as a flow diagram.
+type sankey struct {
 	// Labels supplies the city's own words for a category slug. It is optional
 	// and a field rather than a constructor argument because Registry hands
 	// back projections before the composition root has loaded data/: a nil
 	// Labels degrades to a readable slug rather than to no document.
-	Labels Labels
+	Labels labels
 }
 
 var (
-	_ Projection = (*Sankey)(nil)
+	_ Projection = (*sankey)(nil)
 	// Sliced is asserted here and not only relied on. It is consumed through a
 	// runtime type assertion in both callers -- pkg/cmd/export's data.go and
 	// internal/check's subject.go -- so a drift in Slices' signature would
 	// compile clean, make both assertions return false, and silently fall back
 	// to PublishedFiscalYears() x PublishedBasis. The spine would then stop
 	// being built over the years it declares with no error anywhere.
-	_ Sliced = (*Sankey)(nil)
+	_ Sliced = (*sankey)(nil)
 )
 
 // Name is the file stem: sankey.json.
-func (*Sankey) Name() string { return "sankey" }
+func (*sankey) Name() string { return "sankey" }
 
 // Slices is one graph per (fiscal year, basis) the spine schedule carries.
 //
@@ -446,7 +446,7 @@ func (*Sankey) Name() string { return "sankey" }
 // schedule is what makes this projection a Sankey of the citywide spine rather
 // than of whatever else the store happens to carry: a department-by-category
 // page is a different scope and its rows would be added on top of the spine's.
-func (*Sankey) Slices(facts []fact.Fact, version string) []Options {
+func (*sankey) Slices(facts []fact.Fact, version string) []Options {
 	type key struct {
 		year  int
 		basis mapping.Basis
@@ -484,7 +484,7 @@ func (*Sankey) Slices(facts []fact.Fact, version string) []Options {
 }
 
 // Build renders the graph as canonical JSON.
-func (s *Sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
+func (s *sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
 	g, err := s.Graph(facts, o)
 	if err != nil {
 		return nil, err
@@ -513,8 +513,8 @@ type cell struct {
 // The switch below is the row-to-slug table of docs/sankey-contract.md written
 // out as code, one case per printed row family, and it is kept in one function
 // so that correspondence stays visible.
-func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
-	if err := o.Validate(); err != nil {
+func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
+	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)
 	}
 	// The scope selects the SCHEDULE, and refusing a foreign one is what stops
@@ -532,7 +532,7 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	// at a drill-down's options, and a set of one that is not the spine means
 	// they pointed it at the wrong schedule. Reporting either as the other
 	// sends the reader to the wrong declaration.
-	scope, err := o.OnlyScope()
+	scope, err := o.onlyScope()
 	if err != nil {
 		return nil, fmt.Errorf("sankey: %w", err)
 	}
@@ -682,14 +682,14 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	// exactly the mistake AppliesTo makes silent.
 	drawn := sortedNodes(nodes)
 	cavs := caveats(h, col, links)
-	if err := ValidateCaveats(cavs, nodeIDs(drawn)); err != nil {
+	if err := validateCaveats(cavs, nodeIDs(drawn)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
 	return &Graph{
 		SchemaVersion: SchemaVersion,
 		Projection:    s.Name(),
-		Metadata: Metadata{
+		Metadata: metadata{
 			GeneratedBy:     o.Version,
 			FiscalYear:      col.FiscalYear,
 			FiscalYearLabel: fiscalYearLabel(col.FiscalYear),
@@ -699,7 +699,7 @@ func (s *Sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 			Units:           "cents",
 			Sources:         sourcesOf(selected),
 			Headline:        h,
-			Counts: Counts{
+			Counts: counts{
 				Facts:      len(selected),
 				FactsCited: citedFacts(links),
 				Nodes:      len(nodes),
@@ -825,7 +825,7 @@ type endpoint struct {
 
 // addNode records a node the first time a link touches it. Nodes exist because
 // links do: an unreferenced node is a box with nothing flowing through it.
-func (s *Sankey) addNode(nodes map[string]Node, e endpoint) {
+func (s *sankey) addNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
@@ -843,7 +843,7 @@ func (s *Sankey) addNode(nodes map[string]Node, e endpoint) {
 // boxes in builtinLabels, and otherwise a readable transform of the id. The
 // last case is a placeholder, not a translation — the point of the registry is
 // that the site shows the city's words rather than ours.
-func (s *Sankey) label(id, slug string) string {
+func (s *sankey) label(id, slug string) string {
 	// builtinLabels wins over the registry, which is the opposite of what you
 	// would expect from a curated data file and is deliberate.
 	//
@@ -981,7 +981,7 @@ var (
 	}
 )
 
-// ContestedTotal is a fund group's total that the SPINE PAGE PRINTS and other
+// contestedTotal is a fund group's total that the SPINE PAGE PRINTS and other
 // schedules of the same document contradict, together with what they say
 // instead.
 //
@@ -1006,7 +1006,7 @@ var (
 // agrees with internal/check's fundingSourcesExceptions, which verifies both
 // figures against the corpus on every run. Between them, neither a stale caveat
 // nor a stale declaration can survive.
-type ContestedTotal struct {
+type contestedTotal struct {
 	Column    Column
 	FundGroup string
 	// Published is the spine's figure for the group, in cents, and is what this
@@ -1028,7 +1028,7 @@ type ContestedTotal struct {
 // entry here is a place the city's book contradicts itself that we publish
 // anyway, and a long list would mean the corpus had stopped being reconcilable
 // rather than that this mechanism had become useful.
-var contestedTotals = []ContestedTotal{{
+var contestedTotals = []contestedTotal{{
 	Column:     Column{FiscalYear: 2027, Basis: mapping.BasisAdopted},
 	FundGroup:  "internal-service",
 	Published:  2654451500,
@@ -1049,7 +1049,7 @@ var contestedTotals = []ContestedTotal{{
 // assertion should compare against THIS declaration rather than against a
 // second copy of the same figures, because two copies agreeing is not the claim
 // worth making.
-func ContestedTotals() []ContestedTotal { return slices.Clone(contestedTotals) }
+func ContestedTotals() []contestedTotal { return slices.Clone(contestedTotals) }
 
 // GroupExpenditure is what a graph draws as one fund group's expenditure,
 // exported alongside ContestedTotals because an assertion about an entry needs
@@ -1138,7 +1138,7 @@ func transferEndpoints(links []Link) []string {
 // column being trusted on its own. A caveat naming a figure the chart does not
 // draw is worse than no caveat: it tells a reader to distrust a number that is
 // not there, and it would go on saying so after the figure was corrected.
-func contestedCaveat(c ContestedTotal, col Column, links []Link) (Caveat, bool) {
+func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) {
 	if col != c.Column {
 		return Caveat{}, false
 	}

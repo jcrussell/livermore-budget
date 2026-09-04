@@ -17,17 +17,17 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// ParseError reports a problem in a rule file, located precisely enough to fix
+// parseError reports a problem in a rule file, located precisely enough to fix
 // without hunting. Rule files are hand-written, so the error message is the
 // primary interface for most of the people who will ever see this package.
-type ParseError struct {
+type parseError struct {
 	Path   string
 	RuleID string
 	Field  string
 	Msg    string
 }
 
-func (e *ParseError) Error() string {
+func (e *parseError) Error() string {
 	var b strings.Builder
 	b.WriteString(e.Path)
 	if e.RuleID != "" {
@@ -50,7 +50,7 @@ func Load(p string) (*File, error) {
 		return nil, fmt.Errorf("open rule file: %w", err)
 	}
 	defer f.Close()
-	return Parse(f, p)
+	return parse(f, p)
 }
 
 // LoadDir reads every *.yaml under dir, in sorted order so results are
@@ -92,7 +92,7 @@ func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 		if err != nil {
 			return nil, fmt.Errorf("open %s: %w", full, err)
 		}
-		parsed, err := Parse(r, full)
+		parsed, err := parse(r, full)
 		// Read-only close: the read has already succeeded or already failed,
 		// so there is nothing a Close error would let the caller do.
 		_ = r.Close()
@@ -103,7 +103,7 @@ func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 		// different rows produce the same fact.
 		for _, rule := range parsed.Rules {
 			if prev, dup := seen[rule.ID]; dup {
-				return nil, &ParseError{Path: full, RuleID: rule.ID,
+				return nil, &parseError{Path: full, RuleID: rule.ID,
 					Msg: fmt.Sprintf("duplicate rule id, already defined in %s", prev)}
 			}
 			seen[rule.ID] = full
@@ -118,8 +118,8 @@ func LoadDir(fsys fs.FS, dir string) ([]*File, error) {
 	return files, nil
 }
 
-// Parse decodes and validates a rule file.
-func Parse(r io.Reader, p string) (*File, error) {
+// parse decodes and validates a rule file.
+func parse(r io.Reader, p string) (*File, error) {
 	var f File
 	dec := yaml.NewDecoder(r)
 	// Unknown fields are errors: a typo'd key would otherwise be silently
@@ -128,9 +128,9 @@ func Parse(r io.Reader, p string) (*File, error) {
 	dec.KnownFields(true)
 	if err := dec.Decode(&f); err != nil {
 		if errors.Is(err, io.EOF) {
-			return nil, &ParseError{Path: p, Msg: "file is empty"}
+			return nil, &parseError{Path: p, Msg: "file is empty"}
 		}
-		return nil, &ParseError{Path: p, Msg: err.Error()}
+		return nil, &parseError{Path: p, Msg: err.Error()}
 	}
 
 	// The decoder is a stream. Decoding once and stopping would accept a file
@@ -139,11 +139,11 @@ func Parse(r io.Reader, p string) (*File, error) {
 	var extra File
 	if err := dec.Decode(&extra); err == nil {
 		return nil, cmdutil.WithHint(
-			&ParseError{Path: p, Msg: "file contains more than one YAML document"},
+			&parseError{Path: p, Msg: "file contains more than one YAML document"},
 			"put each document in its own file; every rule in a file must "+
 				"belong to the doc_id declared at the top")
 	} else if !errors.Is(err, io.EOF) {
-		return nil, &ParseError{Path: p, Msg: err.Error()}
+		return nil, &parseError{Path: p, Msg: err.Error()}
 	}
 	f.Path = p
 	if err := f.validate(); err != nil {
@@ -159,7 +159,7 @@ func (f *File) Validate() error { return f.validate() }
 
 func (f *File) validate() error {
 	errf := func(ruleID, field, format string, args ...any) error {
-		return &ParseError{Path: f.Path, RuleID: ruleID, Field: field,
+		return &parseError{Path: f.Path, RuleID: ruleID, Field: field,
 			Msg: fmt.Sprintf(format, args...)}
 	}
 
@@ -755,11 +755,11 @@ func validateRule(r *Rule, errf errFunc) error {
 					"entry %d: label_tail %q has leading or trailing whitespace",
 					j, o.LabelTail)
 			}
-			if rowIndex[o.Identity()] {
-				if declared[o.Identity()] {
-					return errf(r.ID, field, "%q is declared twice", o.PrintedLabel())
+			if rowIndex[o.identity()] {
+				if declared[o.identity()] {
+					return errf(r.ID, field, "%q is declared twice", o.printedLabel())
 				}
-				declared[o.Identity()] = true
+				declared[o.identity()] = true
 				continue
 			}
 			if o.LabelTail == "" && len(tailed[o.Label]) > 0 {
@@ -771,7 +771,7 @@ func validateRule(r *Rule, errf errFunc) error {
 						"- {label: ..., label_tail: ...}")
 			}
 			return cmdutil.WithHint(
-				errf(r.ID, field, "%q is not one of this rule's rows", o.PrintedLabel()),
+				errf(r.ID, field, "%q is not one of this rule's rows", o.printedLabel()),
 				"omitted_rows names rows that exist in the rule but are "+
 					"absent from this page")
 		}
@@ -823,7 +823,7 @@ func validateRule(r *Rule, errf errFunc) error {
 			return errf(r.ID, fmt.Sprintf("parts[page %d].labels_from", p.Page),
 				"points at itself")
 		}
-		src := r.LabelledPart(p)
+		src := r.labelledPart(p)
 		if src == nil {
 			return cmdutil.WithHint(
 				errf(r.ID, fmt.Sprintf("parts[page %d].labels_from", p.Page),
@@ -1245,7 +1245,7 @@ func validatePartAnchors(r *Rule, p *Part, errf errFunc) error {
 	// describeUnmatched an empty header list. Refusing it here says the real
 	// thing: a part whose every column is headerless has not opted into the
 	// guard, it has asked for one that cannot exist.
-	if !slices.ContainsFunc(p.ColumnHeaders, func(h ColumnHeader) bool { return !h.Unheaded }) {
+	if !slices.ContainsFunc(p.ColumnHeaders, func(h columnHeader) bool { return !h.Unheaded }) {
 		return cmdutil.WithHint(
 			errf(r.ID, field("column_headers"), "every entry is null"),
 			"the grid is built from the headers the page prints, so at least one "+
@@ -1332,7 +1332,7 @@ func checkColumnGrids(files []*File) error {
 	type declaration struct {
 		path    string
 		rule    string
-		headers ColumnHeaders
+		headers columnHeaders
 	}
 	type key struct {
 		docID string
@@ -1357,7 +1357,7 @@ func checkColumnGrids(files []*File) error {
 				}
 				if !slices.Equal(prev.headers, p.ColumnHeaders) {
 					return cmdutil.WithHint(
-						&ParseError{Path: f.Path, RuleID: r.ID,
+						&parseError{Path: f.Path, RuleID: r.ID,
 							Field: fmt.Sprintf("parts[page %d].column_headers", p.Page),
 							Msg: fmt.Sprintf("is %s, but rule %q in %s declares %s for the same page",
 								describeHeaders(p.ColumnHeaders), prev.rule, prev.path,
@@ -1385,7 +1385,7 @@ func checkColumnGrids(files []*File) error {
 					continue
 				}
 				return cmdutil.WithHint(
-					&ParseError{Path: f.Path, RuleID: r.ID,
+					&parseError{Path: f.Path, RuleID: r.ID,
 						Field: fmt.Sprintf("parts[page %d]", p.Page),
 						Msg: fmt.Sprintf("declares no column_headers, but rule %q in %s "+
 							"declares %s for the same page", prev.rule, prev.path,
@@ -1561,7 +1561,7 @@ func checkCounterpart(r *Rule, row Row, errf errFunc) error {
 // describeHeaders renders a header list for an error message. Written out
 // rather than left to %q because a ColumnHeader is a struct, and a null entry
 // has to read as the claim it is rather than as an empty string.
-func describeHeaders(hs ColumnHeaders) string {
+func describeHeaders(hs columnHeaders) string {
 	parts := make([]string, len(hs))
 	for i, h := range hs {
 		parts[i] = h.String()

@@ -701,11 +701,11 @@ func (*sourcePDFsMatchBothRecords) Run(_ context.Context, s *Subject) (Result, e
 				"though the run was --full", src.File, src.ID)
 		}
 		switch pdf.State {
-		case SourceMissing:
+		case sourceMissing:
 			unavailable = append(unavailable, fmt.Sprintf("%s is not there", pdf.Path))
-		case SourcePointer:
+		case sourcePointer:
 			unavailable = append(unavailable, describePointer(pdf, src))
-		case SourcePresent:
+		case sourcePresent:
 			hashed++
 			registryRecords++
 			doc := s.Extractions[src.ID]
@@ -720,7 +720,7 @@ func (*sourcePDFsMatchBothRecords) Run(_ context.Context, s *Subject) (Result, e
 			// checked nor unavailable, which is a vacuous pass.
 			return Result{}, fmt.Errorf("the source document at %s (%s) is in state %q, "+
 				"which is not one of %q, %q or %q",
-				src.File, src.ID, pdf.State, SourcePresent, SourceMissing, SourcePointer)
+				src.File, src.ID, pdf.State, sourcePresent, sourceMissing, sourcePointer)
 		}
 	}
 
@@ -756,7 +756,7 @@ func (*sourcePDFsMatchBothRecords) Run(_ context.Context, s *Subject) (Result, e
 // otherwise leave open: whether `git lfs pull` will reconcile the tree, or
 // whether the registry and the committed pointer already disagree and no fetch
 // can.
-func describePointer(pdf SourcePDF, src registry.Source) string {
+func describePointer(pdf sourcePDF, src registry.Source) string {
 	agrees := "which is the sha256 the registry records, so `git lfs pull` fetches the " +
 		"recorded document"
 	if pdf.PointerOID != src.SHA256 {
@@ -775,7 +775,7 @@ func describePointer(pdf SourcePDF, src registry.Source) string {
 // missing extraction is manifestMatchesSourceRegistry's finding rather than a
 // second copy of it here. The caller counts the comparisons this actually makes, so
 // a document compared once is not reported as a document compared twice.
-func comparePDF(pdf SourcePDF, src registry.Source, doc *corpus.Doc) []Finding {
+func comparePDF(pdf sourcePDF, src registry.Source, doc *corpus.Doc) []Finding {
 	var says []string
 	if pdf.SHA256 != src.SHA256 {
 		says = append(says, fmt.Sprintf("%s records sha256 %s", sourcesFile, short(src.SHA256)))

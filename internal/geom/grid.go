@@ -15,8 +15,8 @@ type Span struct {
 	Lo, Hi float64
 }
 
-// Contains reports whether x falls in the span.
-func (s Span) Contains(x float64) bool { return x > s.Lo && x <= s.Hi }
+// contains reports whether x falls in the span.
+func (s Span) contains(x float64) bool { return x > s.Lo && x <= s.Hi }
 
 // Grid is a page's column geometry: the x-band each column claims.
 //
@@ -95,8 +95,8 @@ func midpoint(a, b float64) float64 { return (a + b) / 2 }
 // Len is how many columns the grid has.
 func (g *Grid) Len() int { return len(g.bands) }
 
-// Band is column i's x-range.
-func (g *Grid) Band(i int) Span { return g.bands[i] }
+// band is column i's x-range.
+func (g *Grid) band(i int) Span { return g.bands[i] }
 
 // Gutter is the right edge of the row-label area: the lower bound of column 0.
 func (g *Grid) Gutter() float64 { return g.gutter }
@@ -113,7 +113,7 @@ func (g *Grid) Index(x float64) int {
 		return -1
 	}
 	for i, b := range g.bands {
-		if b.Contains(x) {
+		if b.contains(x) {
 			return i
 		}
 	}

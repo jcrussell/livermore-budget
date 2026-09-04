@@ -207,7 +207,7 @@ func buildRun(o *Options) error {
 // files can claim the same cell. Streaming would trade a check the project
 // depends on for memory this corpus does not need — the Budget Book's whole
 // mapping is in the low tens of thousands of facts.
-func resolve(root string, files []*mapping.File) ([]fact.Fact, *Report, error) {
+func resolve(root string, files []*mapping.File) ([]fact.Fact, *report, error) {
 	rep := newReport()
 	var facts []fact.Fact
 

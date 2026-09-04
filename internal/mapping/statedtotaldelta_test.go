@@ -70,7 +70,7 @@ const declaration = `        stated_total_deltas:
 func p127Resolver(t *testing.T, deltas string) (*Resolver, *Rule) {
 	t.Helper()
 	src := strings.Replace(p127PropertyTaxes, "        #DELTAS", deltas, 1)
-	f, err := Parse(strings.NewReader(src), "p127.yaml")
+	f, err := parse(strings.NewReader(src), "p127.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -264,7 +264,7 @@ func TestStatedTotalDeltaIsRefusedAtParseTime(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := strings.Replace(p127PropertyTaxes, "        #DELTAS", tc.block, 1)
-			_, err := Parse(strings.NewReader(src), "p127.yaml")
+			_, err := parse(strings.NewReader(src), "p127.yaml")
 			if err == nil {
 				t.Fatal("Parse accepted it")
 			}
@@ -284,7 +284,7 @@ func TestStatedTotalDeltaOnASkippedColumnIsRefused(t *testing.T) {
 		"          - {skip: true}\n"+
 			"        stated_total_deltas:\n"+
 			"          - {column: 4, delta_cents: 100, note: x}", 1)
-	_, err := Parse(strings.NewReader(src), "p127.yaml")
+	_, err := parse(strings.NewReader(src), "p127.yaml")
 	if err == nil {
 		t.Fatal("Parse accepted a delta on a skipped column")
 	}

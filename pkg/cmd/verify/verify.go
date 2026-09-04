@@ -49,14 +49,14 @@ import (
 // report, where it cannot wrap.
 const exitReportNotClean = 3
 
-// Loader builds the subject the checks read. Nil means [check.Load].
+// loader builds the subject the checks read. Nil means [check.Load].
 //
 // This is the seam a test uses to hand the checks a corpus it constructed,
 // rather than standing up a repository on disk — the same shape `fisc export`
 // uses for its Builder, and defaulted in the run function for the same reason:
 // the default reaches the filesystem, and a command constructed for `--help`
 // must not.
-type Loader func(check.LoadOptions) (*check.Subject, error)
+type loader func(check.LoadOptions) (*check.Subject, error)
 
 // Options carries the command's dependencies and its parsed flags.
 type Options struct {
@@ -71,7 +71,7 @@ type Options struct {
 	Strict bool
 
 	// Load builds the subject. Nil means check.Load.
-	Load Loader
+	Load loader
 	// Checks are the checks to run. Nil means check.All.
 	//
 	// This is a seam for the same reason Load is one. What this command owns is the

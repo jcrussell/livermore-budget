@@ -426,7 +426,7 @@ rules:
       - {label: "Gamma", category: gamma}
 `, omitted)
 
-	f, err := Parse(strings.NewReader(src), "omission-fixture.yaml")
+	f, err := parse(strings.NewReader(src), "omission-fixture.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -571,7 +571,7 @@ func TestAmbiguousSectionAnchorListsCandidates(t *testing.T) {
 	p := partOn(t, ru, 66)
 	p.SectionOrdinal = 0
 
-	_, err := r.Block(ru, p)
+	_, err := r.block(ru, p)
 	if err == nil {
 		t.Fatal("Block with an ambiguous anchor = nil error, want a failure")
 	}
@@ -594,7 +594,7 @@ func TestSectionOrdinalPastTheEnd(t *testing.T) {
 	p := partOn(t, ru, 66)
 	p.SectionOrdinal = 3
 
-	_, err := r.Block(ru, p)
+	_, err := r.block(ru, p)
 	if !errors.Is(err, ErrNotFound) {
 		t.Errorf("Block with section_ordinal past the end = %v, want ErrNotFound", err)
 	}
@@ -629,7 +629,7 @@ func TestResolveRejectsWhatItCannotRead(t *testing.T) {
 	t.Run("a negative section ordinal is refused, not indexed", func(t *testing.T) {
 		p := *p
 		p.SectionOrdinal = -1
-		if _, err := r.Block(ru, &p); err == nil {
+		if _, err := r.block(ru, &p); err == nil {
 			t.Fatal("Block with a negative ordinal = nil error, want a refusal")
 		} else if !strings.Contains(err.Error(), "count from 1") {
 			t.Errorf("error = %q, want it to say ordinals count from 1", err)

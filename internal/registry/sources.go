@@ -18,10 +18,10 @@ import (
 // that classifies a fact reads it at all.
 const SourcesFile = "sources.yaml"
 
-// SourcesSchemaVersion is the only sources.yaml version this package reads. It
+// sourcesSchemaVersion is the only sources.yaml version this package reads. It
 // versions independently of the other two: a change to the source registry's
 // shape says nothing about the fund schema.
-const SourcesSchemaVersion = 1
+const sourcesSchemaVersion = 1
 
 // Source is one entry in sources.yaml: a document this project reads, and the
 // bytes it was read from.
@@ -106,8 +106,8 @@ func LoadSources(fsys fs.FS) ([]Source, error) {
 		return &Error{File: SourcesFile, Entry: entry, Field: field,
 			Msg: fmt.Sprintf(format, args...)}
 	}
-	if doc.SchemaVersion != SourcesSchemaVersion {
-		return nil, schemaVersionErr(SourcesFile, doc.SchemaVersion, SourcesSchemaVersion)
+	if doc.SchemaVersion != sourcesSchemaVersion {
+		return nil, schemaVersionErr(SourcesFile, doc.SchemaVersion, sourcesSchemaVersion)
 	}
 	if len(doc.Sources) == 0 {
 		return nil, errf("", "sources", "is empty")

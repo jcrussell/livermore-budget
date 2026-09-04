@@ -23,13 +23,13 @@ import (
 	"sort"
 )
 
-// SchemaVersion is the geometry-file version this package understands.
+// schemaVersion is the geometry-file version this package understands.
 //
 // It is the geometry file's OWN version, stamped by tools/extract.py, and is
 // deliberately not the manifest's corpus.SchemaVersion: the two artifacts
 // version independently, and a reader pinned to the wrong one would report a
 // perfectly good page as unreadable.
-const SchemaVersion = 1
+const schemaVersion = 1
 
 // Word is one word poppler placed on the page: its bounding box and its text.
 //
@@ -48,9 +48,9 @@ type Word struct {
 // the width of the number.
 func (w Word) Right() float64 { return w.X1 }
 
-// Height is the word's vertical extent, the quantity Page.Lines derives its
+// height is the word's vertical extent, the quantity Page.Lines derives its
 // clustering tolerance from.
-func (w Word) Height() float64 { return w.Y1 - w.Y0 }
+func (w Word) height() float64 { return w.Y1 - w.Y0 }
 
 // UnmarshalJSON decodes the on-disk form, which is the flat array
 // [x0, y0, x1, y1, "text"] rather than an object.
@@ -137,9 +137,9 @@ func ParsePage(b []byte) (*Page, error) {
 	if err := json.Unmarshal(b, &wire); err != nil {
 		return nil, fmt.Errorf("parse geometry: %w", err)
 	}
-	if wire.SchemaVersion != SchemaVersion {
+	if wire.SchemaVersion != schemaVersion {
 		return nil, fmt.Errorf("geometry schema_version %d, want %d",
-			wire.SchemaVersion, SchemaVersion)
+			wire.SchemaVersion, schemaVersion)
 	}
 	if wire.DocID == "" {
 		return nil, fmt.Errorf("geometry has no doc_id")
@@ -192,7 +192,7 @@ func (p *Page) MedianWordHeight() (float64, bool) {
 	}
 	hs := make([]float64, len(p.Words))
 	for i, w := range p.Words {
-		hs[i] = w.Height()
+		hs[i] = w.height()
 	}
 	slices.Sort(hs)
 	return hs[len(hs)/2], true

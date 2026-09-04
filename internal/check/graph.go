@@ -49,7 +49,7 @@ func (*graphAcyclic) Description() string {
 func (*graphAcyclic) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	links, nodes := 0, 0
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		links += len(p.Links)
 		nodes += len(p.Nodes)
 		if cycle := findCycle(p.Links); len(cycle) > 0 {
@@ -61,7 +61,7 @@ func (*graphAcyclic) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: links,
 		unit:     "links",
 		held: fmt.Sprintf("%d links over %d nodes in %d projections, no cycle",
-			links, nodes, len(s.LinkedDocuments())),
+			links, nodes, len(s.linkedDocuments())),
 		nothing:  "no projection carries a link, so there is no path to walk",
 		findings: findings,
 	}.result(), nil
@@ -140,7 +140,7 @@ func (*derivedNodesJustified) Run(_ context.Context, s *Subject) (Result, error)
 	var findings []Finding
 	subjects := 0
 
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		for _, n := range p.Nodes {
 			isInferred := slices.Contains(inferred, n.ID)
 			if !n.Derived && !isInferred {
@@ -214,7 +214,7 @@ func (*linkValuesTieToFacts) Run(_ context.Context, s *Subject) (Result, error) 
 
 	var findings []Finding
 	links := 0
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		selected := factIndex(factsFor(s.Facts, p.Options))
 		for _, l := range p.Links {
 			links++
@@ -302,7 +302,7 @@ func (*linkLocatorsMatchTheirFacts) Description() string {
 func (*linkLocatorsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	links := 0
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		selected := factIndex(factsFor(s.Facts, p.Options))
 		for _, l := range p.Links {
 			links++
@@ -420,7 +420,7 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	var summaries []string
 
-	for _, p := range s.Graphs() {
+	for _, p := range s.graphs() {
 		selected := factsFor(s.Facts, p.Options)
 		stock, zero := 0, 0
 		for _, c := range netCells(selected) {
@@ -463,7 +463,7 @@ func (*countsReconcile) Run(_ context.Context, s *Subject) (Result, error) {
 	}
 
 	return conclusion{
-		subjects: len(s.Graphs()),
+		subjects: len(s.graphs()),
 		unit:     "projections",
 		held:     strings.Join(summaries, "; "),
 		nothing:  "no projection was built, so there are no counts to reconcile",
@@ -523,7 +523,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	subjects := 0
 
-	for _, p := range s.Graphs() {
+	for _, p := range s.graphs() {
 		var grossRevenue, grossExpenditure, externalRevenue, externalExpenditure, transfersOut int64
 		for _, f := range factsFor(s.Facts, p.Options) {
 			external := f.FundGroup != fundGroupInternalService
@@ -574,7 +574,7 @@ func (*headlineTiesToFacts) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: subjects,
 		unit:     "facts",
 		held: fmt.Sprintf("%d revenue, expenditure and transfer-out facts across %d projections, "+
-			"each of the five figures the sum of them", subjects, len(s.Graphs())),
+			"each of the five figures the sum of them", subjects, len(s.graphs())),
 		nothing:  "no fact is a revenue, an expenditure or a transfer out, so there is no headline to check",
 		findings: findings,
 	}.result(), nil
@@ -606,7 +606,7 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 	var findings []Finding
 	subjects := 0
 
-	for _, p := range s.Graphs() {
+	for _, p := range s.graphs() {
 		var in, out int64
 		for _, f := range factsFor(s.Facts, p.Options) {
 			switch f.Kind {
@@ -640,7 +640,7 @@ func (*headlineTransferResidual) Run(_ context.Context, s *Subject) (Result, err
 		subjects: subjects,
 		unit:     "transfer facts",
 		held: fmt.Sprintf("%d transfer facts across %d projections, each headline the sum of them",
-			subjects, len(s.Graphs())),
+			subjects, len(s.graphs())),
 		nothing:  "no fact is a transfer, so there is no residual to state",
 		findings: findings,
 	}.result(), nil
@@ -691,7 +691,7 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 	var summaries []string
 	subjects := 0
 
-	for _, p := range s.Graphs() {
+	for _, p := range s.graphs() {
 		h := p.Graph.Metadata.Headline
 		if h.InternalTransferOutCents == 0 &&
 			h.AllFundsGrossExpenditureCents == h.ExternalExpenditureCents {
@@ -752,7 +752,7 @@ func (*transferLegsPair) Description() string {
 func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	legs := map[string][]project.Link{}
 	var ids []string
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		for _, l := range p.Links {
 			if l.TransferID == "" {
 				continue
@@ -854,7 +854,7 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 	var findings []Finding
 	parented, docs := 0, 0
 
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		byID := make(map[string]project.Node, len(p.Nodes))
 		for _, n := range p.Nodes {
 			byID[n.ID] = n
@@ -976,7 +976,7 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 	var findings []Finding
 	subjects := 0
 	tiered := map[string]bool{}
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		for _, n := range p.Nodes {
 			if n.ConstraintTier == "" {
 				continue

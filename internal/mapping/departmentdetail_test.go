@@ -199,7 +199,7 @@ func TestDroppingADivisionRuleFails(t *testing.T) {
 	// Patrol is the largest division on the pages, so its absence cannot be
 	// mistaken for rounding.
 	cut := removeRule(t, string(src), "div-patrol")
-	f, err := Parse(strings.NewReader(cut), publishedSpine)
+	f, err := parse(strings.NewReader(cut), publishedSpine)
 	if err == nil {
 		// The rollup that covers it should refuse first: POLICE DEPARTMENT
 		// TOTAL names a rule that is no longer there.

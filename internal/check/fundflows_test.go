@@ -35,7 +35,7 @@ func fundFlowsSubject() *Subject {
 	}
 	return &Subject{
 		Facts: facts,
-		Projections: []Projection{{
+		Projections: []projection{{
 			Name: project.FundFlowsProjection,
 			Options: project.Options{Columns: []project.Column{col},
 				Scopes: project.FundFlowsScopes(), Version: testVersion},

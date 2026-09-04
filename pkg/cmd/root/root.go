@@ -20,8 +20,8 @@ import (
 // Command groups. Commands set GroupID so `fisc --help` reads as a workflow
 // rather than an alphabetical list.
 const (
-	GroupData = "data"
-	GroupSite = "site"
+	groupData = "data"
+	groupSite = "site"
 )
 
 // NewCmdRoot builds the root command.
@@ -69,8 +69,8 @@ committed artifacts, so it needs neither Python nor the source PDFs.`,
 	})
 
 	cmd.AddGroup(
-		&cobra.Group{ID: GroupData, Title: "Data commands"},
-		&cobra.Group{ID: GroupSite, Title: "Site commands"},
+		&cobra.Group{ID: groupData, Title: "Data commands"},
+		&cobra.Group{ID: groupSite, Title: "Site commands"},
 	)
 
 	// Feature commands are added here as they land: reanchor is still to come.

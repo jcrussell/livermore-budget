@@ -135,7 +135,7 @@ func TestCategoryReadsTheWholeEntry(t *testing.T) {
 		Parent:       "taxes",
 		Kinds:        []string{"revenue"},
 		Pages:        []int{66, 127},
-		ContraRows:   []ContraRow{{Term: "ERAF", Page: 127}},
+		ContraRows:   []contraRow{{Term: "ERAF", Page: 127}},
 		Note:         "Two of the detail lines are negative.",
 		Assignable:   true,
 	}
@@ -149,7 +149,7 @@ func TestCategoryReadsTheWholeEntry(t *testing.T) {
 	if !ok {
 		t.Fatal(`Category("use-of-money-and-property") not found`)
 	}
-	if diff := cmp.Diff([]Alias{{Term: "Use of Money & Prop", Pages: []int{131, 132}}}, money.Aliases); diff != "" {
+	if diff := cmp.Diff([]alias{{Term: "Use of Money & Prop", Pages: []int{131, 132}}}, money.Aliases); diff != "" {
 		t.Errorf("aliases mismatch (-want +got):\n%s", diff)
 	}
 
@@ -533,7 +533,7 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		"city-council", "city-manager", "city-attorney",
 		"general-services", "administrative-services",
 	} {
-		if _, ok := r.Department(slug); !ok {
+		if _, ok := r.department(slug); !ok {
 			t.Errorf("Department(%q) not found; it names both tiers", slug)
 		}
 		if _, ok := r.Division(slug); !ok {
@@ -550,7 +550,7 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		if d.Label == "" {
 			t.Errorf("division %q has no label", d.Slug)
 		}
-		if _, ok := r.Department(d.Department); !ok {
+		if _, ok := r.department(d.Department); !ok {
 			t.Errorf("division %q names department %q, which does not resolve", d.Slug, d.Department)
 		}
 	}
@@ -583,7 +583,7 @@ func TestPublicWorksHeadingIsNotItsTotalRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load(%s): %v", realData, err)
 	}
-	d, ok := r.Department("public-works")
+	d, ok := r.department("public-works")
 	if !ok {
 		t.Fatal(`Department("public-works") not found`)
 	}

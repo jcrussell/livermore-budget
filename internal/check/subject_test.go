@@ -949,7 +949,7 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 	// One graph per published (fiscal year, basis) of the spine, keyed so a
 	// missing column is reported as a missing column rather than as a zero sum.
 	graphs := map[project.Column]*project.Graph{}
-	for _, p := range s.Graphs() {
+	for _, p := range s.graphs() {
 		for _, c := range p.Options.Columns {
 			graphs[c] = p.Graph
 		}

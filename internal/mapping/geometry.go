@@ -180,13 +180,13 @@ func (r *Resolver) guard(rule *Rule, p *Part) (*columnGuard, error) {
 		return nil, nil
 	}
 	fail := func(err error, msg, hint string) (*columnGuard, error) {
-		return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "column_headers", Msg: msg, Err: err}, hint)
 	}
 
 	pr, err := r.pairing(p.Page)
 	if err != nil {
-		return nil, cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "geometry", Msg: err.Error(), Err: err},
 			"this part declares column_headers, so it is read against "+
 				"geometry/pNNNN.json as well as the page text; a page whose two "+
@@ -383,7 +383,7 @@ func describeLines(pr *pairing, matched []headerMatch) string {
 // half.
 func (g *columnGuard) checkRow(r *Resolver, rule *Rule, p *Part, row Row, toks []token) error {
 	fail := func(field, msg, hint string) error {
-		return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Msg: msg, Err: ErrNotFound}, hint)
 	}
 
@@ -492,13 +492,13 @@ func describeColumn(c Column) string {
 // such a check could not fire. It becomes reachable only when the exact count is
 // relaxed for sparse pages, and belongs in that change rather than sitting here
 // unexercised.
-func (r *Resolver) checkLineAccounting(rule *Rule, p *Part, blk *Block, rows []Row) error {
+func (r *Resolver) checkLineAccounting(rule *Rule, p *Part, blk *block, rows []Row) error {
 	// A block may begin or end mid-line, which is normal -- p67's section anchor
 	// is the end of the header line, and its stop_at is the "$" of the totals
 	// row. A partial line still counts if it carries anything printed, because
 	// what is being counted is the printed lines the block covers.
 	fail := func(msg, hint string) error {
-		return cmdutil.WithHint(&ResolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: "parts", Msg: msg, Err: ErrNotFound}, hint)
 	}
 

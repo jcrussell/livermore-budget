@@ -277,7 +277,7 @@ var goldenLabels = stubLabels{
 // buildGraph builds with the golden labels and fails the test on error.
 func buildGraph(t *testing.T, fs []fact.Fact, o Options) *Graph {
 	t.Helper()
-	g, err := (&Sankey{Labels: goldenLabels}).Graph(fs, o)
+	g, err := (&sankey{Labels: goldenLabels}).Graph(fs, o)
 	if err != nil {
 		t.Fatalf("Graph: %v", err)
 	}

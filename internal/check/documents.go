@@ -197,7 +197,7 @@ func (*documentsAreChecked) Run(_ context.Context, s *Subject) (Result, error) {
 // EVERY ARM NAMES ITS CHECKS, and that is what keeps this honest rather than a
 // list of shapes someone remembers to extend. A shape added here without checks
 // behind it is a claim a reader can falsify by grepping for the names.
-func documentShape(p Projection) string {
+func documentShape(p projection) string {
 	switch {
 	case p.Graph != nil:
 		// graph.go: acyclic, link values tie to facts, headline ties to facts,

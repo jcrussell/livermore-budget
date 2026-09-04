@@ -506,7 +506,7 @@ func TestTheSiteLinksEveryShardItShips(t *testing.T) {
 	}
 	shipped := 0
 	for rel := range built.Files {
-		if !strings.HasPrefix(rel, FactsDir+"/") {
+		if !strings.HasPrefix(rel, factsDir+"/") {
 			continue
 		}
 		shipped++
@@ -562,7 +562,7 @@ func TestTheProvenanceViewIsPublishedWhenThereIsAStore(t *testing.T) {
 
 	// AND IT IS ABSENT WITHOUT A STORE, so the nav never points at a page that
 	// was not written -- the property views() exists to hold.
-	for _, v := range views(Result{Projections: built.Projections}) {
+	for _, v := range views(result{Projections: built.Projections}) {
 		if v.Template == "provenance.html.tmpl" {
 			t.Error("a provenance view was published with no page index behind it")
 		}

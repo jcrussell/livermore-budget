@@ -1166,7 +1166,7 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 func projectionRefs(projections map[string][]byte) []projectionRef {
 	refs := make([]projectionRef, 0, len(projections))
 	for _, name := range sortedKeys(projections) {
-		refs = append(refs, projectionRef{Name: name, Path: path.Join(DataDir, name+".json")})
+		refs = append(refs, projectionRef{Name: name, Path: path.Join(dataDir, name+".json")})
 	}
 	return refs
 }
@@ -1239,7 +1239,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Year:       m.FiscalYear,
 			Label:      m.FiscalYearLabel,
 			Stem:       stem,
-			Path:       path.Join(DataDir, stem+".json"),
+			Path:       path.Join(dataDir, stem+".json"),
 			Basis:      m.Basis,
 			Title:      sankeyTitle(v.Title, m.FiscalYearLabel),
 			ChartTitle: "Sankey diagram of the " + m.FiscalYearLabel + " " + m.Basis + " budget",
@@ -1356,7 +1356,7 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Year:  m.FiscalYear,
 			Label: m.FiscalYearLabel,
 			Stem:  stem,
-			Path:  path.Join(DataDir, stem+".json"),
+			Path:  path.Join(dataDir, stem+".json"),
 			Basis: m.Basis,
 			Title: v.Title,
 			// THE SUBJECT IS THE VIEW'S AND THE REST IS COMPOSED, which keeps
@@ -1647,7 +1647,7 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ProjectionBy: meta.GeneratedBy,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  refs,
-			DataPath:     path.Join(DataDir, v.Projection+".json"),
+			DataPath:     path.Join(dataDir, v.Projection+".json"),
 			Scope:        meta.Scope,
 			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
 			CaveatsPath:  caveatsPath,
@@ -1951,7 +1951,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		docs = append(docs, caveatDocument{
 			Stem:     stem,
 			Label:    label,
-			DataPath: path.Join(DataDir, stem+".json"),
+			DataPath: path.Join(dataDir, stem+".json"),
 			Entries:  entries,
 			Drawn:    drawn[stem],
 		})

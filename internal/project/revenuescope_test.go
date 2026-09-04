@@ -105,7 +105,7 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 	}
 	all := append(spineFacts(t, testYear), revenueDetailFacts(t, revenueScope)...)
 
-	got, err := (&Sankey{Labels: goldenLabels}).Build(all, testOptions())
+	got, err := (&sankey{Labels: goldenLabels}).Build(all, testOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 func TestRevenueDetailAtSpineScopeWouldDoubleTheGeneralFund(t *testing.T) {
 	all := append(spineFacts(t, testYear), revenueDetailFacts(t, testScope)...)
 
-	g, err := (&Sankey{Labels: goldenLabels}).Graph(all, testOptions())
+	g, err := (&sankey{Labels: goldenLabels}).Graph(all, testOptions())
 	if err != nil {
 		t.Fatalf("Graph: %v; a fund-bearing fact at the spine's scope is ACCEPTED, which "+
 			"is the point of this test", err)

@@ -43,7 +43,7 @@ func TestLoadSpine(t *testing.T) {
 	if p66.LabelsFrom != 0 {
 		t.Errorf("p66 should carry its own labels, got labels_from=%d", p66.LabelsFrom)
 	}
-	if got, want := rev.ExpectedValues(&p66), 10*4; got != want {
+	if got, want := rev.expectedValues(&p66), 10*4; got != want {
 		t.Errorf("p66 expected values = %d, want %d", got, want)
 	}
 
@@ -52,13 +52,13 @@ func TestLoadSpine(t *testing.T) {
 	// rule declared "Licenses & Permits" omitted to match, but the page was
 	// never short a row — our extractor was deleting one (fisc-c00). 10*8=80
 	// is both what a naive read expects and what the document actually prints.
-	if got := rev.LabelledPart(&p67); got == nil || got.Page != 66 {
+	if got := rev.labelledPart(&p67); got == nil || got.Page != 66 {
 		t.Fatalf("p67 should borrow labels from p66")
 	}
 	if len(p67.OmittedRows) != 0 {
 		t.Errorf("p67 declares omissions %q; the page prints all ten rows", p67.OmittedRows)
 	}
-	if got, want := rev.ExpectedValues(&p67), 10*8; got != want {
+	if got, want := rev.expectedValues(&p67), 10*8; got != want {
 		t.Errorf("p67 expected values = %d, want %d", got, want)
 	}
 	active := rev.ActiveRows(&p67)
@@ -234,7 +234,7 @@ func TestParseRejects(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(tt.yaml), "test.yaml")
+			_, err := parse(strings.NewReader(tt.yaml), "test.yaml")
 			if err == nil {
 				t.Fatalf("got nil error, want one mentioning %q", tt.want)
 			}
@@ -248,12 +248,12 @@ func TestParseRejects(t *testing.T) {
 // The errors a human reads must say where the problem is, not just that there
 // is one.
 func TestParseErrorNamesTheRule(t *testing.T) {
-	_, err := Parse(strings.NewReader(
+	_, err := parse(strings.NewReader(
 		strings.Replace(base(""), "kind: revenue", "kind: income", 1)), "mappings/budget.yaml")
 	if err == nil {
 		t.Fatal("got nil error")
 	}
-	var pe *ParseError
+	var pe *parseError
 	if !errors.As(err, &pe) {
 		t.Fatalf("got %T, want a *ParseError", err)
 	}
@@ -267,7 +267,7 @@ func TestParseErrorNamesTheRule(t *testing.T) {
 // A schema_version from the future gets a hint, because the fix is not in the
 // file the user is looking at.
 func TestFutureSchemaVersionHasAHint(t *testing.T) {
-	_, err := Parse(strings.NewReader("schema_version: 99\ndoc_id: d\nrules: []\n"), "x.yaml")
+	_, err := parse(strings.NewReader("schema_version: 99\ndoc_id: d\nrules: []\n"), "x.yaml")
 	var h *cmdutil.ErrHint
 	if !errors.As(err, &h) {
 		t.Fatalf("got %T, want an *ErrHint telling the user to upgrade", err)
@@ -335,7 +335,7 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(tt.yaml), "x.yaml")
+			_, err := parse(strings.NewReader(tt.yaml), "x.yaml")
 			if err == nil {
 				t.Fatalf("got nil error, want one mentioning %q", tt.want)
 			}
@@ -349,7 +349,7 @@ func TestParseRejectsSilentLosses(t *testing.T) {
 // A missing schema_version must not tell the author to upgrade the binary,
 // which cannot help.
 func TestMissingSchemaVersionDoesNotSayUpgrade(t *testing.T) {
-	_, err := Parse(strings.NewReader(strings.Replace(base(""), "schema_version: 1\n", "", 1)), "x.yaml")
+	_, err := parse(strings.NewReader(strings.Replace(base(""), "schema_version: 1\n", "", 1)), "x.yaml")
 	if err == nil {
 		t.Fatal("got nil error")
 	}
@@ -409,13 +409,13 @@ func headerRuleCols(columns, headers string) string {
 }
 
 func TestParseAcceptsColumnHeaders(t *testing.T) {
-	f, err := Parse(strings.NewReader(
+	f, err := parse(strings.NewReader(
 		headerRule(`["FY 2025-26", "FY 2026-27"]`)), "headers.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
 	got := f.Rules[0].Parts[0].ColumnHeaders
-	if diff := cmp.Diff(ColumnHeaders{{Text: "FY 2025-26"}, {Text: "FY 2026-27"}}, got); diff != "" {
+	if diff := cmp.Diff(columnHeaders{{Text: "FY 2025-26"}, {Text: "FY 2026-27"}}, got); diff != "" {
 		t.Errorf("column_headers (-want +got):\n%s", diff)
 	}
 }
@@ -426,7 +426,7 @@ func TestParseAcceptsColumnHeaders(t *testing.T) {
 // says where a column sits on the page, not which column it is. A reviewer
 // reaching for the duplicate-column check would break the spine.
 func TestParseAcceptsRepeatedColumnHeaders(t *testing.T) {
-	if _, err := Parse(strings.NewReader(
+	if _, err := parse(strings.NewReader(
 		headerRule(`["FY 2025-26", "FY 2025-26"]`)), "headers.yaml"); err != nil {
 		t.Errorf("Parse rejected repeated headers: %v", err)
 	}
@@ -442,14 +442,14 @@ func TestParseAcceptsRepeatedColumnHeaders(t *testing.T) {
 // header to name it with. Without this, the one-entry-per-column rule and the
 // no-empty-entry rule between them make the page unpublishable.
 func TestParseAcceptsANullOverASkippedLastColumn(t *testing.T) {
-	f, err := Parse(strings.NewReader(headerRuleCols(
+	f, err := parse(strings.NewReader(headerRuleCols(
 		"[{fiscal_year: 2026}, {fiscal_year: 2027}, {skip: true}]",
 		`["FY 2025-26", "FY 2026-27", ~]`)), "headers.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
 	got := f.Rules[0].Parts[0].ColumnHeaders
-	want := ColumnHeaders{{Text: "FY 2025-26"}, {Text: "FY 2026-27"}, {Unheaded: true}}
+	want := columnHeaders{{Text: "FY 2025-26"}, {Text: "FY 2026-27"}, {Unheaded: true}}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("column_headers (-want +got):\n%s", diff)
 	}
@@ -542,7 +542,7 @@ func TestParseRejectsBadColumnHeaders(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := Parse(strings.NewReader(tt.yaml), "headers.yaml")
+			_, err := parse(strings.NewReader(tt.yaml), "headers.yaml")
 			if err == nil {
 				t.Fatalf("Parse = nil error, want one mentioning %q", tt.want)
 			}
@@ -572,11 +572,11 @@ func TestParseRejectsDisagreeingColumnHeaders(t *testing.T) {
 	}
 
 	agree := `["FY 2025-26", "FY 2026-27"]`
-	if _, err := Parse(strings.NewReader(two(agree, agree)), "headers.yaml"); err != nil {
+	if _, err := parse(strings.NewReader(two(agree, agree)), "headers.yaml"); err != nil {
 		t.Fatalf("Parse rejected two parts that agree: %v", err)
 	}
 
-	_, err := Parse(strings.NewReader(
+	_, err := parse(strings.NewReader(
 		two(agree, `["FY 2025-26", "FY 2027-28"]`)), "headers.yaml")
 	if err == nil {
 		t.Fatal("Parse accepted two rules describing one page's grid differently")
@@ -607,7 +607,7 @@ func TestParseRejectsAPartLeftOutOfTheColumnGuard(t *testing.T) {
 		"  - id: unguarded\n    kind: expenditure\n    basis: adopted\n    units: dollars\n" +
 		part("")
 
-	_, err := Parse(strings.NewReader(src), "headers.yaml")
+	_, err := parse(strings.NewReader(src), "headers.yaml")
 	if err == nil {
 		t.Fatal("Parse accepted a page one of whose parts opts out of the column guard")
 	}

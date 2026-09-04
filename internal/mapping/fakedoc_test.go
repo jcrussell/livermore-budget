@@ -65,7 +65,7 @@ func (d *scriptedDoc) Page(n int) (string, error) {
 // scriptedResolver pairs a scripted document with a rule file written inline.
 func scriptedResolver(t *testing.T, src string, script map[int][]pageRead) (*Resolver, *Rule) {
 	t.Helper()
-	f, err := Parse(strings.NewReader(src), "scripted.yaml")
+	f, err := parse(strings.NewReader(src), "scripted.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

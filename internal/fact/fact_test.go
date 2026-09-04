@@ -924,7 +924,7 @@ func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
 	)
 	row := "Industrial Construction Tax"
 
-	base := MakeSeriesID(doc, rule, path, row, col)
+	base := makeSeriesID(doc, rule, path, row, col)
 	// Every column of one row agrees.
 	for _, c := range []struct {
 		year  int
@@ -950,10 +950,10 @@ func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
 	// A different row of the same fund, and the same row in a different fund,
 	// are different series. The second is the case the document exists for:
 	// "Property Taxes" is printed by four funds.
-	if MakeSeriesID(doc, rule, path, "Other Row", col) == base {
+	if makeSeriesID(doc, rule, path, "Other Row", col) == base {
 		t.Error("two different printed rows share a series id")
 	}
-	if MakeSeriesID(doc, rule, path, row, "special-revenue/fund/310") == base {
+	if makeSeriesID(doc, rule, path, row, "special-revenue/fund/310") == base {
 		t.Error("one row label in two funds shares a series id")
 	}
 
@@ -962,7 +962,7 @@ func TestMakeSeriesIDIsTheFactIDWithoutTheColumn(t *testing.T) {
 	if strings.HasPrefix(base, IDPrefix) {
 		t.Errorf("series id %q carries the fact prefix", base)
 	}
-	if !strings.HasPrefix(base, SeriesIDPrefix) {
-		t.Errorf("series id %q does not carry %q", base, SeriesIDPrefix)
+	if !strings.HasPrefix(base, seriesIDPrefix) {
+		t.Errorf("series id %q does not carry %q", base, seriesIDPrefix)
 	}
 }

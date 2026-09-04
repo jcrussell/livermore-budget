@@ -69,7 +69,7 @@ func p67Rule(t *testing.T, headers []string) (*Resolver, *Rule, *Part) {
 		"        columns: [{fund_group: general, fiscal_year: 2026}]\n" +
 		"    rows:\n" + rows.String()
 
-	f, err := Parse(strings.NewReader(src), "p67.yaml")
+	f, err := parse(strings.NewReader(src), "p67.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -128,7 +128,7 @@ func p66Rule(t *testing.T, headers []string) (*Resolver, *Rule, *Part) {
 		"        columns: [" + strings.Join(cols, ", ") + "]\n" +
 		headerYAML(headers) +
 		"    rows:\n" + rows.String()
-	f, err := Parse(strings.NewReader(src), "p66.yaml")
+	f, err := parse(strings.NewReader(src), "p66.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -239,7 +239,7 @@ func p67RuleWithColumns(t *testing.T, headers []string) (*Resolver, *Rule, *Part
 		"        columns: [" + strings.Join(cols, ", ") + "]\n" +
 		headerYAML(headers) +
 		"    rows:\n      - {label: \"row0\", category: c}\n"
-	f, err := Parse(strings.NewReader(src), "p67.yaml")
+	f, err := parse(strings.NewReader(src), "p67.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -388,7 +388,7 @@ func TestASparseRowIsRefusedRatherThanMisfiled(t *testing.T) {
 	d := inlineDocWithGeometry(t, "sparse-doc",
 		map[int]string{1: sparsePage},
 		map[int]string{1: sparseGeometry("sparse-doc")})
-	f, err := Parse(strings.NewReader(sparseRule), "sparse.yaml")
+	f, err := parse(strings.NewReader(sparseRule), "sparse.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -463,7 +463,7 @@ rules:
 	d := inlineDocWithGeometry(t, "fused-doc",
 		map[int]string{1: labels, 2: fused},
 		map[int]string{1: labelsGeom, 2: fusedGeom})
-	f, err := Parse(strings.NewReader(src), "fused.yaml")
+	f, err := parse(strings.NewReader(src), "fused.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -474,7 +474,7 @@ rules:
 
 	rule := &f.Rules[0]
 	// The count guard is satisfied, which is the point of the fixture.
-	if got, want := rule.ExpectedValues(&rule.Parts[1]), 2; got != want {
+	if got, want := rule.expectedValues(&rule.Parts[1]), 2; got != want {
 		t.Fatalf("the fixture expects %d values, want %d; it no longer isolates "+
 			"the line count from the value count", got, want)
 	}
@@ -497,7 +497,7 @@ rules:
 func TestGuardRefusesWhatItCannotCheck(t *testing.T) {
 	t.Run("the page has no geometry", func(t *testing.T) {
 		d := inlineDoc(t, "sparse-doc", map[int]string{1: sparsePage})
-		f, err := Parse(strings.NewReader(sparseRule), "sparse.yaml")
+		f, err := parse(strings.NewReader(sparseRule), "sparse.yaml")
 		if err != nil {
 			t.Fatalf("Parse: %v", err)
 		}
@@ -533,7 +533,7 @@ func TestGuardRefusesWhatItCannotCheck(t *testing.T) {
 		})
 		d := inlineDocWithGeometry(t, "sparse-doc",
 			map[int]string{1: sparsePage}, map[int]string{1: short})
-		f, err := Parse(strings.NewReader(sparseRule), "sparse.yaml")
+		f, err := parse(strings.NewReader(sparseRule), "sparse.yaml")
 		if err != nil {
 			t.Fatalf("Parse: %v", err)
 		}
@@ -598,7 +598,7 @@ rules:
       - {label: "Beta", category: c}
 `
 	d := inlineDocWithGeometry(t, "wrap-doc", map[int]string{1: page}, map[int]string{1: g})
-	f, err := Parse(strings.NewReader(src), "wrap.yaml")
+	f, err := parse(strings.NewReader(src), "wrap.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -650,7 +650,7 @@ func cipRule(t *testing.T, page int, section, stopAt, label string) (*Resolver, 
 		"        columns: [" + strings.Join(cols, ", ") + "]\n" +
 		headerYAML(headers) +
 		"    rows:\n      - {label: " + quote(label) + ", category: c}\n"
-	f, err := Parse(strings.NewReader(src), "cip.yaml")
+	f, err := parse(strings.NewReader(src), "cip.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -767,7 +767,7 @@ rules:
       - {label: "PB200646 LARPD Pa rk Expans ion Projects", category: c}
       - {label: "PB200654 Holmes Street", category: c}
 `
-	f, err := Parse(strings.NewReader(src), "cip.yaml")
+	f, err := parse(strings.NewReader(src), "cip.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

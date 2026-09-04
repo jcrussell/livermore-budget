@@ -30,7 +30,7 @@ func trendsSubject(t *testing.T, facts []fact.Fact) *Subject {
 	}
 	return &Subject{
 		Facts:       facts,
-		Projections: []Projection{{Name: "revenue-trends", Options: o, Trends: doc}},
+		Projections: []projection{{Name: "revenue-trends", Options: o, Trends: doc}},
 	}
 }
 
@@ -329,7 +329,7 @@ func TestAPointInAnUndeclaredColumnIsCaught(t *testing.T) {
 	}
 	s := &Subject{
 		Facts:       facts,
-		Projections: []Projection{{Name: "revenue-trends", Options: o, Trends: doc}},
+		Projections: []projection{{Name: "revenue-trends", Options: o, Trends: doc}},
 	}
 
 	// Before the mutation the one-column document is clean, which is what makes

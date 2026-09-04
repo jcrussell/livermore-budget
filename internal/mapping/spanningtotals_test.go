@@ -67,7 +67,7 @@ func spanningResolver(t *testing.T, spans bool) (*Resolver, *Rule) {
 	if spans {
 		src = strings.Replace(src, "    #SPANS", "    total_spans_parts: true", 1)
 	}
-	f, err := Parse(strings.NewReader(src), "spanning.yaml")
+	f, err := parse(strings.NewReader(src), "spanning.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestSpanningTotalsHonourTheDeclarationOnTheTotalsPage(t *testing.T) {
               The city's own rounding: the two rows print 134,242 and the
               document states 134,243.`, 1)
 
-	f, err := Parse(strings.NewReader(src), "spanning.yaml")
+	f, err := parse(strings.NewReader(src), "spanning.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -170,7 +170,7 @@ func TestADeltaOnTheWrongPageIsRefused(t *testing.T) {
           - column: 1
             delta_cents: 100
             note: "declared against a page that prints no total"`, 1)
-	f, err := Parse(strings.NewReader(src), "spanning.yaml")
+	f, err := parse(strings.NewReader(src), "spanning.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestTheTotalRowMustIdentifyOnePage(t *testing.T) {
 			src := strings.Replace(spanningPages, "    #SPANS", "    total_spans_parts: true", 1)
 			pages := spanningDoc(t)
 			src = tc.mutate(src, pages)
-			f, err := Parse(strings.NewReader(src), "spanning.yaml")
+			f, err := parse(strings.NewReader(src), "spanning.yaml")
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
@@ -267,7 +267,7 @@ func TestTheSpineCannotDeclareItsTotalSpansItsParts(t *testing.T) {
 	mutated := strings.Replace(string(src), anchor,
 		anchor+"    total_spans_parts: true\n", 1)
 
-	_, err = Parse(strings.NewReader(mutated), publishedSpine)
+	_, err = parse(strings.NewReader(mutated), publishedSpine)
 	if err == nil {
 		t.Fatal("the parser accepted total_spans_parts on spine-revenues; p66 declares " +
 			"4 columns and p67 declares 8, and summing across them is meaningless")
@@ -324,7 +324,7 @@ func TestTotalSpansPartsRefusesWhatItCannotMean(t *testing.T) {
 	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			src := strings.Replace(spanningPages, "    #SPANS", "    total_spans_parts: true", 1)
-			if _, err := Parse(strings.NewReader(tc.mutate(src)), "spanning.yaml"); err == nil {
+			if _, err := parse(strings.NewReader(tc.mutate(src)), "spanning.yaml"); err == nil {
 				t.Fatal("accepted")
 			} else if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %v, want it to contain %q", err, tc.want)

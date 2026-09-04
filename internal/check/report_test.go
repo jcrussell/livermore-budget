@@ -61,7 +61,7 @@ func TestAnErrorIsNotAFailure(t *testing.T) {
 	broke := &fake{id: "broke", err: errors.New("the manifest is unreadable")}
 	rep := run(t, nil, ReportOptions{}, failed("claim"), broke)
 
-	if diff := cmp.Diff(Counts{Fail: 1, Error: 1}, rep.Counts); diff != "" {
+	if diff := cmp.Diff(counts{Fail: 1, Error: 1}, rep.Counts); diff != "" {
 		t.Errorf("counts mismatch (-want +got):\n%s", diff)
 	}
 	got := statuses(rep)

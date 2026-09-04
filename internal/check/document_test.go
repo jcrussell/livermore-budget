@@ -67,11 +67,11 @@ func TestANonGraphProjectionDoesNotKillTheRun(t *testing.T) {
 // TestGraphsExcludesWhatHasNoGraph is the other half: the checks that mean
 // "every graph" must not be reachable by a projection that has none.
 func TestGraphsExcludesWhatHasNoGraph(t *testing.T) {
-	s := &Subject{Projections: []Projection{
+	s := &Subject{Projections: []projection{
 		{Name: "sankey", Graph: &project.Graph{}},
 		{Name: "series-only"},
 	}}
-	got := s.Graphs()
+	got := s.graphs()
 	if len(got) != 1 || got[0].Name != "sankey" {
 		t.Fatalf("Graphs() = %v, want the one projection carrying a graph", got)
 	}
@@ -81,7 +81,7 @@ func TestGraphsExcludesWhatHasNoGraph(t *testing.T) {
 // becoming a hole: a document no structural check reads must be reported, not
 // published quietly.
 func TestAnUncheckedDocumentIsReported(t *testing.T) {
-	s := &Subject{Projections: []Projection{
+	s := &Subject{Projections: []projection{
 		{Name: "sankey", Graph: &project.Graph{}},
 		{Name: "series-only"},
 	}}
@@ -189,7 +189,7 @@ func TestAProjectionThatProducesNothingIsNotADefect(t *testing.T) {
 func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 	s := &Subject{
 		Published: spineDocuments(2026, 2027),
-		Projections: []Projection{{
+		Projections: []projection{{
 			Name:  project.PublishedProjection,
 			Graph: &project.Graph{},
 			Options: project.Options{
@@ -217,7 +217,7 @@ func TestAPublishedYearNothingBuiltIsReported(t *testing.T) {
 func TestAPublishedYearBuiltByAnotherProjectionIsNotEnough(t *testing.T) {
 	s := &Subject{
 		Published: spineDocuments(2026),
-		Projections: []Projection{{
+		Projections: []projection{{
 			Name: "something-else",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
@@ -265,7 +265,7 @@ func withUncheckedDocuments(t *testing.T, m map[string]string) {
 // The `nothing:` branch was unreachable while any declaration was live.
 func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
 	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (fisc-000)"})
-	s := &Subject{Projections: []Projection{{Name: "blob"}}}
+	s := &Subject{Projections: []projection{{Name: "blob"}}}
 
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 	if err != nil {
@@ -292,7 +292,7 @@ func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
 // would report "2 findings over 0 projections": a numerator with no denominator
 // under it, which is as unreadable as the pass over zero the narrowing fixed.
 func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
-	s := &Subject{Projections: []Projection{{Name: "blob"}, {Name: "blob-two"}}}
+	s := &Subject{Projections: []projection{{Name: "blob"}, {Name: "blob-two"}}}
 
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 	if err != nil {
@@ -313,7 +313,7 @@ func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
 // document stays unchecked forever.
 func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (fisc-000)"})
-	s := &Subject{Projections: []Projection{
+	s := &Subject{Projections: []projection{
 		{Name: "sankey", Graph: &project.Graph{}},
 		{Name: "blob"},
 	}}
@@ -342,7 +342,7 @@ func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
 func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 	t.Run("no projection of that name", func(t *testing.T) {
 		withUncheckedDocuments(t, map[string]string{"gone": "removed or typo'd"})
-		s := &Subject{Projections: []Projection{{Name: "sankey", Graph: &project.Graph{}}}}
+		s := &Subject{Projections: []projection{{Name: "sankey", Graph: &project.Graph{}}}}
 
 		res, err := (&documentsAreChecked{}).Run(t.Context(), s)
 		if err != nil {
@@ -357,7 +357,7 @@ func TestAStaleUncheckedDocumentDeclarationIsCaught(t *testing.T) {
 
 	t.Run("the projection now carries a series", func(t *testing.T) {
 		withUncheckedDocuments(t, map[string]string{"revenue-trends": "no checks yet"})
-		s := &Subject{Projections: []Projection{
+		s := &Subject{Projections: []projection{
 			{Name: "revenue-trends", Trends: &project.TrendsDocument{}},
 		}}
 

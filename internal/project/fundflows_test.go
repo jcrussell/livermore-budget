@@ -63,7 +63,7 @@ func fundFlowsFact(scope string, kind mapping.Kind, category, department, group 
 }
 
 func fundFlowsFacts() []fact.Fact {
-	const rev, exp = ScopeRevenueByFund, ScopeExpenditureByDepartment
+	const rev, exp = ScopeRevenueByFund, scopeExpenditureByDepartment
 	return []fact.Fact{
 		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 100, 1000, "a"),
 		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "enterprise", 500, 2000, "b"),
@@ -74,9 +74,9 @@ func fundFlowsFacts() []fact.Fact {
 	}
 }
 
-func buildFundFlows(t *testing.T, facts []fact.Fact, l Labels) *FundFlowsDocument {
+func buildFundFlows(t *testing.T, facts []fact.Fact, l labels) *FundFlowsDocument {
 	t.Helper()
-	doc, err := (&FundFlows{Labels: l}).Document(facts, fundFlowsOptions())
+	doc, err := (&fundFlows{Labels: l}).Document(facts, fundFlowsOptions())
 	if err != nil {
 		t.Fatalf("Document: %v", err)
 	}
@@ -355,7 +355,7 @@ func TestTheDivisionTotalIsTheSumOfItsObjectRows(t *testing.T) {
 // TestFundFlowsRefusesWhatItCannotPlace covers every guard, because each one is
 // a mapping defect that would otherwise publish a smaller city with no error.
 func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
-	const rev, exp = ScopeRevenueByFund, ScopeExpenditureByDepartment
+	const rev, exp = ScopeRevenueByFund, scopeExpenditureByDepartment
 	cases := []struct {
 		name  string
 		facts []fact.Fact
@@ -415,7 +415,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			if c.opts != nil {
 				o = c.opts(o)
 			}
-			_, err := (&FundFlows{Labels: fundFlowsLabels()}).Document(c.facts, o)
+			_, err := (&fundFlows{Labels: fundFlowsLabels()}).Document(c.facts, o)
 			if err == nil {
 				t.Fatal("Document = nil error, want a refusal")
 			}
@@ -430,7 +430,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 // nil Labels is a hierarchy with nothing in it rather than a readable fallback.
 // This is where it differs from Sankey, whose Labels is genuinely optional.
 func TestFundFlowsNeedsARegistry(t *testing.T) {
-	_, err := (&FundFlows{}).Document(fundFlowsFacts(), fundFlowsOptions())
+	_, err := (&fundFlows{}).Document(fundFlowsFacts(), fundFlowsOptions())
 	if err == nil || !strings.Contains(err.Error(), "no registry") {
 		t.Fatalf("Document with no Labels = %v, want a refusal naming the registry", err)
 	}
@@ -439,7 +439,7 @@ func TestFundFlowsNeedsARegistry(t *testing.T) {
 // TestFundFlowsIsDeterministic: two builds of the same facts are byte-identical,
 // which is the contract every projection in this package holds to.
 func TestFundFlowsIsDeterministic(t *testing.T) {
-	p := &FundFlows{Labels: fundFlowsLabels()}
+	p := &fundFlows{Labels: fundFlowsLabels()}
 	first, err := p.Build(fundFlowsFacts(), fundFlowsOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
@@ -467,7 +467,7 @@ func TestFundFlowsSlicesDeclareOnlyColumnsBothSchedulesCarry(t *testing.T) {
 	extra.FiscalYear = testYear + 1
 	facts = append(facts, extra)
 
-	got := (&FundFlows{Labels: fundFlowsLabels()}).Slices(facts, "test")
+	got := (&fundFlows{Labels: fundFlowsLabels()}).Slices(facts, "test")
 	if len(got) != 1 {
 		t.Fatalf("slices = %d, want 1: only one column is printed by both schedules", len(got))
 	}
@@ -529,10 +529,10 @@ func TestATransferInLinkIsNotExternal(t *testing.T) {
 // fact-funds-resolve only examines facts that DO name a fund.
 func TestTheExpenditureSideRefusesAFundlessFact(t *testing.T) {
 	facts := []fact.Fact{
-		fundFlowsFact(ScopeExpenditureByDepartment, mapping.KindExpenditure,
+		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,
 			"wages-and-benefits", "police", "general", 0, 600, "d"),
 	}
-	_, err := (&FundFlows{Labels: fundFlowsLabels()}).Document(facts, fundFlowsOptions())
+	_, err := (&fundFlows{Labels: fundFlowsLabels()}).Document(facts, fundFlowsOptions())
 	if err == nil || !strings.Contains(err.Error(), "names no fund") {
 		t.Fatalf("Document = %v, want a refusal naming the missing fund", err)
 	}
@@ -547,7 +547,7 @@ func TestATierFiveParentIsCutAtTheFirstSlash(t *testing.T) {
 	labels.stubLabels["fund-balance/ending"] = "Ending Balance"
 	facts := []fact.Fact{
 		fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue, "taxes/property", "", "general", 100, 1, "a"),
-		fundFlowsFact(ScopeExpenditureByDepartment, mapping.KindExpenditure,
+		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,
 			"fund-balance/ending", "police", "general", 100, 600, "d"),
 	}
 	doc := buildFundFlows(t, facts, labels)

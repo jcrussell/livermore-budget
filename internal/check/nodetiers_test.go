@@ -11,7 +11,7 @@ import (
 func tieredSubject(t *testing.T) *Subject {
 	t.Helper()
 	s := testSubject(t)
-	if len(s.Graphs()) == 0 {
+	if len(s.graphs()) == 0 {
 		t.Fatal("the fixture built no graph, so nothing below asserts anything")
 	}
 	return s
@@ -110,7 +110,7 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			s := tieredSubject(t)
-			c.damage(t, s.Graphs()[0].Graph)
+			c.damage(t, s.graphs()[0].Graph)
 			res := runNodeTiers(t, s)
 			if res.Status != StatusFail {
 				t.Fatalf("status = %s, want FAIL", res.Status)

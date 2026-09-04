@@ -89,7 +89,7 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := ValidateCaveats(tc.in, tc.nodes)
+			err := validateCaveats(tc.in, tc.nodes)
 			switch {
 			case tc.wantErr == "" && err != nil:
 				t.Errorf("ValidateCaveats = %v, want no error", err)
@@ -117,8 +117,8 @@ func TestValidateCaveatsRefusesEveryShapeThatWouldRender(t *testing.T) {
 // different names for one concept across two documents on one site, and every
 // test in this package would still pass.
 func TestSharedMetadataTagsHaveNotDrifted(t *testing.T) {
-	spine := jsonTags(t, Metadata{})
-	trends := jsonTags(t, TrendsMetadata{})
+	spine := jsonTags(t, metadata{})
+	trends := jsonTags(t, trendsMetadata{})
 
 	have := func(tags []string, want string) bool {
 		for _, tag := range tags {
@@ -143,11 +143,11 @@ func TestSharedMetadataTagsHaveNotDrifted(t *testing.T) {
 	// the same thing in both documents and must be spelled the same, while
 	// facts_cited is the spine's alone because only there is it a different
 	// number from facts. See TrendCounts.
-	if got, want := jsonTags(t, TrendCounts{})[0], jsonTags(t, Counts{})[0]; got != want {
+	if got, want := jsonTags(t, trendCounts{})[0], jsonTags(t, counts{})[0]; got != want {
 		t.Errorf("TrendCounts leads with %q and Counts with %q; the two documents would "+
 			"report the same quantity under different names", got, want)
 	}
-	for _, tag := range jsonTags(t, TrendCounts{}) {
+	for _, tag := range jsonTags(t, trendCounts{}) {
 		if tag == "facts_cited" {
 			t.Error("TrendCounts publishes facts_cited, which equals facts and points here; " +
 				"three names for one number is a key for a concept the code does not compute")
@@ -166,7 +166,7 @@ func TestTheSpineMetadataKeyOrderIsFrozen(t *testing.T) {
 		"generated_by", "fiscal_year", "fiscal_year_label", "basis", "scope",
 		"currency", "units", "sources", "headline", "counts", "caveats",
 	}
-	if got := jsonTags(t, Metadata{}); !reflect.DeepEqual(got, want) {
+	if got := jsonTags(t, metadata{}); !reflect.DeepEqual(got, want) {
 		t.Errorf("metadata key order (-want +got):\n%v\n%v", want, got)
 	}
 }
@@ -179,7 +179,7 @@ func TestTheTrendsMetadataKeyOrderMatchesTheContract(t *testing.T) {
 		"generated_by", "scope", "currency", "units",
 		"columns", "sources", "counts", "caveats",
 	}
-	if got := jsonTags(t, TrendsMetadata{}); !reflect.DeepEqual(got, want) {
+	if got := jsonTags(t, trendsMetadata{}); !reflect.DeepEqual(got, want) {
 		t.Errorf("metadata key order (-want +got):\n%v\n%v", want, got)
 	}
 }
@@ -259,7 +259,7 @@ func TestTheFundFlowsCountsPublishTheirOwnIdentity(t *testing.T) {
 	}
 	// It must NOT be mistakable for the spine's block, whose facts_cited means
 	// something else.
-	if reflect.DeepEqual(jsonTags(t, FundFlowsCounts{}), jsonTags(t, Counts{})) {
+	if reflect.DeepEqual(jsonTags(t, FundFlowsCounts{}), jsonTags(t, counts{})) {
 		t.Error("the two count blocks have the same keys; a reader would apply the spine's " +
 			"identity to a document that does not hold it")
 	}

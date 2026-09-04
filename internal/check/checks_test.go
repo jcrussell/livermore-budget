@@ -116,7 +116,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (Counts{Pass: 22, Vacuous: 21, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 22, Vacuous: 21, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -1605,7 +1605,7 @@ func TestTwoProjectionsRefusingOneSliceStrandItsFactsOnce(t *testing.T) {
 // A denominator that is not the thing the unit says is a denominator a reader
 // cannot use.
 func TestProjectionsBuildCountsSlicesNotProjections(t *testing.T) {
-	s := &Subject{Projections: []Projection{{
+	s := &Subject{Projections: []projection{{
 		Name:  "trends",
 		Graph: &project.Graph{},
 		Options: project.Options{
@@ -1863,7 +1863,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		}
 		fact.Sort(facts)
 		s := factsSubject(t, facts)
-		s.Projections = []Projection{{
+		s.Projections = []projection{{
 			Name: "sankey",
 			Options: project.Options{
 				Columns: []project.Column{{
@@ -1925,7 +1925,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		}}
 		// A projection OF the declared scope, over a store that carries no fact
 		// in it. Drawn, and empty.
-		s.Projections = append(s.Projections, Projection{
+		s.Projections = append(s.Projections, projection{
 			Name: "detail",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
@@ -1977,7 +1977,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		fact.Sort(facts)
 
 		s := factsSubject(t, facts)
-		s.Projections = []Projection{{
+		s.Projections = []projection{{
 			Name: "half",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2027, Basis: facts[0].Basis}},

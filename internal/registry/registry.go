@@ -40,13 +40,13 @@ const (
 // nothing about the taxonomy schema, and one shared constant would force a
 // pointless bump on the others every time.
 const (
-	// FundsSchemaVersion is the only funds.yaml version this package reads.
-	FundsSchemaVersion = 1
-	// TaxonomySchemaVersion is the only taxonomy.yaml version this package reads.
-	TaxonomySchemaVersion = 1
-	// DepartmentsSchemaVersion is the only departments.yaml version this
+	// fundsSchemaVersion is the only funds.yaml version this package reads.
+	fundsSchemaVersion = 1
+	// taxonomySchemaVersion is the only taxonomy.yaml version this package reads.
+	taxonomySchemaVersion = 1
+	// departmentsSchemaVersion is the only departments.yaml version this
 	// package reads.
-	DepartmentsSchemaVersion = 1
+	departmentsSchemaVersion = 1
 )
 
 // The near miss this project is most likely to make: `debt-service` is a fund
@@ -122,7 +122,7 @@ var constraintTiers = []string{
 	"unknown",
 }
 
-// Alias is one string the city prints for a thing this registry names
+// alias is one string the city prints for a thing this registry names
 // differently. Term is the printed spelling, verbatim -- abbreviations and
 // typos included, because normalizing is what would let "Measure D" collapse
 // onto two different funds -- and Pages says where to go and look. An alias
@@ -141,7 +141,7 @@ var constraintTiers = []string{
 // source note for an alias, because an alias's whole claim is "this string
 // appears on these pages". Rationale carries the different question of why the
 // string binds to THIS entry.
-type Alias struct {
+type alias struct {
 	Term    string `yaml:"term"`
 	Pages   []int  `yaml:"pages"`
 	Derived bool   `yaml:"derived"`
@@ -150,10 +150,10 @@ type Alias struct {
 	Note      string `yaml:"note"`
 }
 
-// ContraRow names a detail line that is negative inside its own printed
+// contraRow names a detail line that is negative inside its own printed
 // subtotal. A consumer that re-sums the detail must keep the sign, and a flow
 // diagram must not render one as its own inbound flow.
-type ContraRow struct {
+type contraRow struct {
 	Term string `yaml:"term"`
 	Page int    `yaml:"page"`
 }
@@ -171,8 +171,8 @@ type Category struct {
 	Parent       string      `yaml:"parent"`
 	Kinds        []string    `yaml:"kinds"`
 	Pages        []int       `yaml:"pages"`
-	Aliases      []Alias     `yaml:"aliases"`
-	ContraRows   []ContraRow `yaml:"contra_rows"`
+	Aliases      []alias     `yaml:"aliases"`
+	ContraRows   []contraRow `yaml:"contra_rows"`
 	Note         string      `yaml:"note"`
 
 	// Derived marks a slug that is not a mechanical transform of a printed
@@ -223,7 +223,7 @@ type Fund struct {
 	// Rehab Pgm". Each is published text with the page it was read from, and
 	// FundByLabel resolves it — a schedule that names a fund in prose has no
 	// fund number to join on otherwise.
-	Aliases []Alias `yaml:"aliases"`
+	Aliases []alias `yaml:"aliases"`
 
 	// Major is set only where the budget book itself says so, which is why it
 	// is absent rather than false for the internal service funds: those
@@ -243,7 +243,7 @@ func (f Fund) clone() Fund {
 	return f
 }
 
-// Department is one of the eleven ALL-CAPS headings Budget Book pp.167-170
+// department is one of the eleven ALL-CAPS headings Budget Book pp.167-170
 // print over their division rows.
 //
 // A FACT NEVER NAMES ONE. A mapping row's `department:` carries a DIVISION
@@ -258,7 +258,7 @@ func (f Fund) clone() Fund {
 // (p170:11), and INNOVATION & ECONOMIC DEVELOPMENT (p167:53) closes with the
 // city's own misspelling. An anchor derived from this field would be wrong
 // twice, which is why the rule file spells its anchors out.
-type Department struct {
+type department struct {
 	Slug         string `yaml:"slug"`
 	Label        string `yaml:"label"`
 	DocumentTerm string `yaml:"document_term"`
@@ -278,7 +278,7 @@ type Department struct {
 // clone deep-copies the slice fields, for the reason Category.clone does: the
 // value is returned by copy, which copies a slice header only, so without this
 // a caller could write through Pages into the registry's own state.
-func (d Department) clone() Department {
+func (d department) clone() department {
 	d.Pages = slices.Clone(d.Pages)
 	return d
 }
@@ -335,7 +335,7 @@ type Registry struct {
 	// second claimant, so this is a function, not a set of candidates.
 	fundLabels map[string]int
 
-	departments     map[string]Department
+	departments     map[string]department
 	departmentSlugs []string // sorted, for enumeration in a stable order
 	divisions       map[string]Division
 	divisionSlugs   []string // sorted, for enumeration in a stable order
@@ -438,7 +438,7 @@ func (r *Registry) FundName(number int) (string, bool) {
 func (r *Registry) FundByLabel(label string) (Fund, error) {
 	number, ok := r.fundLabels[label]
 	if !ok {
-		return Fund{}, &UnknownFundError{Label: label}
+		return Fund{}, &unknownFundError{Label: label}
 	}
 	return r.funds[number].clone(), nil
 }
@@ -549,16 +549,16 @@ func (r *Registry) Division(slug string) (Division, bool) {
 	return d.clone(), true
 }
 
-// Department returns the departments.yaml entry for slug — the ALL-CAPS tier,
+// department returns the departments.yaml entry for slug — the ALL-CAPS tier,
 // which no fact names directly.
 //
 // It exists because Division.Department is a slug, and a parent nothing can
 // resolve is a field a consumer cannot use: whoever holds a Division and wants
 // the heading above it needs this.
-func (r *Registry) Department(slug string) (Department, bool) {
+func (r *Registry) department(slug string) (department, bool) {
 	d, ok := r.departments[slug]
 	if !ok {
-		return Department{}, false
+		return department{}, false
 	}
 	return d.clone(), true
 }
@@ -575,8 +575,8 @@ func (r *Registry) Divisions() []Division {
 
 // Departments returns every department, ordered by slug. The slice and every
 // slice inside it are copies.
-func (r *Registry) Departments() []Department {
-	out := make([]Department, 0, len(r.departmentSlugs))
+func (r *Registry) Departments() []department {
+	out := make([]department, 0, len(r.departmentSlugs))
 	for _, s := range r.departmentSlugs {
 		out = append(out, r.departments[s].clone())
 	}
@@ -598,17 +598,17 @@ type Error struct {
 	Msg   string
 }
 
-// UnknownFundError reports a printed label that names no fund. It is its own
+// unknownFundError reports a printed label that names no fund. It is its own
 // type so a caller mapping a schedule can tell "this page names a fund we
 // have not written down" from any other failure, and can report every such
 // label at once instead of stopping at the first: the fix is an edit to
 // funds.yaml, and a reader wants the whole list.
-type UnknownFundError struct {
+type unknownFundError struct {
 	// Label is the string as printed, unnormalized.
 	Label string
 }
 
-func (e *UnknownFundError) Error() string {
+func (e *unknownFundError) Error() string {
 	return fmt.Sprintf("no fund is named %q in %s; a printed label resolves only by an exact match on a fund's name or a declared alias",
 		e.Label, FundsFile)
 }

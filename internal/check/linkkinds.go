@@ -72,7 +72,7 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 	var findings []Finding
 	links := 0
 
-	for _, p := range s.LinkedDocuments() {
+	for _, p := range s.linkedDocuments() {
 		byID := factIndex(factsFor(s.Facts, p.Options))
 		for _, l := range p.Links {
 			links++
@@ -122,7 +122,7 @@ func (*linkKindsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, err
 		unit:     "links",
 		held: fmt.Sprintf("%d links across %d document(s), each carrying one of %s, and none "+
 			"whose facts are all transfers or all fund-balance rows published as external",
-			links, len(s.LinkedDocuments()), describeLinkKinds()),
+			links, len(s.linkedDocuments()), describeLinkKinds()),
 		nothing:  "no projection carries a link, so no kind has been read",
 		findings: findings,
 	}.result(), nil

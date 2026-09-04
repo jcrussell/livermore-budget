@@ -24,13 +24,13 @@ const FundFlowsProjection = "fund-flows"
 // the second look like a borrowing.
 const (
 	ScopeRevenueByFund           = TrendsScope
-	ScopeExpenditureByDepartment = "expenditure-by-department"
+	scopeExpenditureByDepartment = "expenditure-by-department"
 )
 
 // FundFlowsScopes is the schedule set, in the order a reader meets the money:
 // revenue first, then what it is spent on.
 func FundFlowsScopes() []string {
-	return []string{ScopeRevenueByFund, ScopeExpenditureByDepartment}
+	return []string{ScopeRevenueByFund, scopeExpenditureByDepartment}
 }
 
 // generalFund is the only fund pp.167-170 decompose, and the tier-3 node the
@@ -162,7 +162,7 @@ type FundFlowsMetadata struct {
 	Caveats         []Caveat        `json:"caveats"`
 }
 
-// FundFlows draws the General Fund drill-down: where a fund's revenue comes from
+// fundFlows draws the General Fund drill-down: where a fund's revenue comes from
 // and, for the General Fund, what it is spent on.
 //
 // IT PUBLISHES NO HEADLINE, and that is a decision rather than an omission. A
@@ -202,20 +202,20 @@ type FundFlowsMetadata struct {
 // of zero. A sankey needs a link at each adjacent tier pair it can be drawn at.
 // The cost is that an expenditure fact is cited twice, which
 // FundFlowsCounts.FactsCitedTwice publishes as a number.
-type FundFlows struct {
+type fundFlows struct {
 	// Labels supplies the city's words and the fund hierarchy. Unlike Sankey's,
 	// it is NOT optional: a nil Labels cannot answer FundType, and a fund node
 	// with no parent is the fold with nothing in it.
-	Labels Labels
+	Labels labels
 }
 
 var (
-	_ Projection = (*FundFlows)(nil)
-	_ Sliced     = (*FundFlows)(nil)
+	_ Projection = (*fundFlows)(nil)
+	_ Sliced     = (*fundFlows)(nil)
 )
 
 // Name is [Projection]'s, and it is this document's file stem.
-func (*FundFlows) Name() string { return FundFlowsProjection }
+func (*fundFlows) Name() string { return FundFlowsProjection }
 
 // Slices is one Options per column, [Sankey.Slices]'s rule and not
 // [Trends.Slices]'s: a flow diagram of two budgets is not a chart of anything.
@@ -225,11 +225,11 @@ func (*FundFlows) Name() string { return FundFlowsProjection }
 // nothing today -- and the day one schedule gains a column the other does not,
 // a document over it would draw a whole revenue side against an empty
 // expenditure side and look like a city that stopped spending.
-func (*FundFlows) Slices(facts []fact.Fact, version string) []Options {
+func (*fundFlows) Slices(facts []fact.Fact, version string) []Options {
 	type col = Column
 	seen := map[string]map[col]bool{
 		ScopeRevenueByFund:           {},
-		ScopeExpenditureByDepartment: {},
+		scopeExpenditureByDepartment: {},
 	}
 	for i := range facts {
 		c := facts[i].Scope
@@ -239,7 +239,7 @@ func (*FundFlows) Slices(facts []fact.Fact, version string) []Options {
 	}
 	cols := make([]col, 0, len(seen[ScopeRevenueByFund]))
 	for c := range seen[ScopeRevenueByFund] {
-		if seen[ScopeExpenditureByDepartment][c] {
+		if seen[scopeExpenditureByDepartment][c] {
 			cols = append(cols, c)
 		}
 	}
@@ -257,7 +257,7 @@ func (*FundFlows) Slices(facts []fact.Fact, version string) []Options {
 }
 
 // Build is [Projection]'s entry point.
-func (f *FundFlows) Build(facts []fact.Fact, o Options) ([]byte, error) {
+func (f *fundFlows) Build(facts []fact.Fact, o Options) ([]byte, error) {
 	doc, err := f.Document(facts, o)
 	if err != nil {
 		return nil, err
@@ -267,8 +267,8 @@ func (f *FundFlows) Build(facts []fact.Fact, o Options) ([]byte, error) {
 
 // Document builds the drill-down and returns it, so `fisc verify` reads the
 // same structure `fisc export` writes rather than re-parsing the JSON.
-func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, error) {
-	if err := o.Validate(); err != nil {
+func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, error) {
+	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("fund-flows options: %w", err)
 	}
 	if !sameScopes(o.Scopes, FundFlowsScopes()) {
@@ -438,7 +438,7 @@ func (f *FundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	// marks nothing, and marking nothing is indistinguishable from having
 	// nothing to mark.
 	cavs := fundFlowsCaveats(len(twice), out)
-	if err := ValidateCaveats(cavs, nodeIDs(out)); err != nil {
+	if err := validateCaveats(cavs, nodeIDs(out)); err != nil {
 		return nil, fmt.Errorf("%s: %w", col, err)
 	}
 
@@ -662,7 +662,7 @@ type expKey struct {
 // EVERY GUARD IS A REFUSAL AND NOT A SKIP, this package's own netCells' rule: a
 // fact this document cannot place is a mapping defect, and dropping it publishes
 // a smaller city with no error anywhere.
-func (*FundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum, error) {
+func (*fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum, error) {
 	rev := map[revKey]*cellSum{}
 	exp := map[expKey]*cellSum{}
 	expFund := 0
@@ -688,7 +688,7 @@ func (*FundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expK
 			}
 			k := revKey{fa.Kind, fa.Category, fa.FundGroup, fa.Fund}
 			add(rev, k, fa)
-		case ScopeExpenditureByDepartment:
+		case scopeExpenditureByDepartment:
 			if fa.Department == "" {
 				return nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s carries no department", fa.ID),
@@ -776,7 +776,7 @@ func revenueLinkKind(k revKey) LinkKind {
 }
 
 // revenueEndpoint is the tier-0 end of a revenue flow.
-func (*FundFlows) revenueEndpoint(k revKey) (endpoint, error) {
+func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 	switch k.kind {
 	case mapping.KindRevenue:
 		return endpoint{id: prefixRevenue + k.category, slug: k.category,
@@ -793,7 +793,7 @@ func (*FundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 }
 
 // fundEndpoint is a tier-3 fund node.
-func (f *FundFlows) fundEndpoint(number int) (endpoint, error) {
+func (f *fundFlows) fundEndpoint(number int) (endpoint, error) {
 	if _, ok := f.Labels.FundType(number); !ok {
 		return endpoint{}, cmdutil.WithHint(
 			fmt.Errorf("fund-flows: fund %d is in no data/funds.yaml entry", number),
@@ -803,7 +803,7 @@ func (f *FundFlows) fundEndpoint(number int) (endpoint, error) {
 	return endpoint{id: prefixFund + strconv.Itoa(number), tier: tierFund, role: roleFund}, nil
 }
 
-func (*FundFlows) divisionEndpoint(division string) endpoint {
+func (*fundFlows) divisionEndpoint(division string) endpoint {
 	return endpoint{id: prefixDept + division, tier: tierDepartment, role: roleDepartment}
 }
 
@@ -813,14 +813,14 @@ func (*FundFlows) divisionEndpoint(division string) endpoint {
 // so a bare expenditure/wages-and-benefits node cannot have 22 parents. The
 // prefix stays `expenditure/` because that is the id form the contract's table
 // gives tier 5; slugLabel reads the last segment, so the label falls out right.
-func (*FundFlows) objectEndpoint(division, category string) endpoint {
+func (*fundFlows) objectEndpoint(division, category string) endpoint {
 	return endpoint{id: prefixExpenditure + division + "/" + category, slug: category,
 		tier: tierObjectCategory, role: roleObjectCategory}
 }
 
 // addFundFlowNode records a node the first time something touches it, and hangs
 // the constraint tier and its disclosure on a fund.
-func (f *FundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
+func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
@@ -861,7 +861,7 @@ func (f *FundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 }
 
 // addParents adds the fund-group node every fund node is parented to.
-func (f *FundFlows) addParents(nodes map[string]Node) error {
+func (f *fundFlows) addParents(nodes map[string]Node) error {
 	type edge struct{ child, parent string }
 	var want []edge
 	for _, id := range sortedKeys(nodes) {
@@ -886,7 +886,7 @@ func (f *FundFlows) addParents(nodes map[string]Node) error {
 
 // label resolves a node's words: a built-in first, then the registry, then a
 // readable transform of the id -- Sankey.label's order, for its reasons.
-func (f *FundFlows) label(e endpoint) string {
+func (f *fundFlows) label(e endpoint) string {
 	if l, ok := builtinLabels[e.id]; ok {
 		return l
 	}

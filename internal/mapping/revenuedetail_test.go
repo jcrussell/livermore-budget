@@ -291,7 +291,7 @@ func TestDroppingARevenueRuleFails(t *testing.T) {
 	// id, so the file stops being loadable at all.
 	t.Run("a rule a rollup covers fails at parse", func(t *testing.T) {
 		cut := removeRule(t, string(src), "gf-rev-licenses-permits")
-		if _, err := Parse(strings.NewReader(cut), publishedSpine); err == nil {
+		if _, err := parse(strings.NewReader(cut), publishedSpine); err == nil {
 			t.Fatal("a file with gf-rev-licenses-permits removed parsed; gf-total-revenues " +
 				"covers it and must not resolve without it")
 		} else if !strings.Contains(err.Error(), "gf-rev-licenses-permits") {
@@ -305,7 +305,7 @@ func TestDroppingARevenueRuleFails(t *testing.T) {
 	// notices is the tie against the spine.
 	t.Run("a rule no rollup covers is caught only by the tie", func(t *testing.T) {
 		cut := removeRule(t, string(src), "fund-rev-water")
-		f, err := Parse(strings.NewReader(cut), publishedSpine)
+		f, err := parse(strings.NewReader(cut), publishedSpine)
 		if err != nil {
 			t.Fatalf("Parse: %v; no rollup covers fund-rev-water, so removing it must "+
 				"leave a loadable file — that is the point of this case", err)
@@ -354,7 +354,7 @@ func TestDroppingAFundZeroInBothBudgetYearsIsInvisibleToTheTie(t *testing.T) {
 	// Transferable Development Cred: $4,723,774 in FY2023-24 and $7,055,955 in
 	// FY2024-25, and a printed dash in both budget years.
 	cut := removeRule(t, string(src), "fund-rev-transferable-development-cred")
-	f, err := Parse(strings.NewReader(cut), publishedSpine)
+	f, err := parse(strings.NewReader(cut), publishedSpine)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

@@ -114,7 +114,7 @@ const correctAttribution = `  - id: dept-city-manager
 func departmentResolver(t *testing.T, rollups string) (*File, *Resolver) {
 	t.Helper()
 	src := strings.Replace(departmentRules, "#ROLLUPS", rollups, 1)
-	f, err := Parse(strings.NewReader(src), "departments.yaml")
+	f, err := parse(strings.NewReader(src), "departments.yaml")
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

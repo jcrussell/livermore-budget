@@ -48,7 +48,7 @@ type taxonomyDoc struct {
 // invite the cross-tier uniqueness rule the file cannot satisfy.
 type departmentsDoc struct {
 	SchemaVersion int          `yaml:"schema_version"`
-	Departments   []Department `yaml:"departments"`
+	Departments   []department `yaml:"departments"`
 	Divisions     []Division   `yaml:"divisions"`
 }
 
@@ -136,8 +136,8 @@ func (r *Registry) loadFunds(fsys fs.FS) error {
 		return errf(fmt.Sprintf("fund %d", number), field, format, args...)
 	}
 
-	if doc.SchemaVersion != FundsSchemaVersion {
-		return schemaVersionErr(FundsFile, doc.SchemaVersion, FundsSchemaVersion)
+	if doc.SchemaVersion != fundsSchemaVersion {
+		return schemaVersionErr(FundsFile, doc.SchemaVersion, fundsSchemaVersion)
 	}
 	if len(doc.Funds) == 0 {
 		return errf("", "funds", "is empty")
@@ -243,8 +243,8 @@ func (r *Registry) loadTaxonomy(fsys fs.FS) error {
 		return errf(fmt.Sprintf("category %q", slug), field, format, args...)
 	}
 
-	if doc.SchemaVersion != TaxonomySchemaVersion {
-		return schemaVersionErr(TaxonomyFile, doc.SchemaVersion, TaxonomySchemaVersion)
+	if doc.SchemaVersion != taxonomySchemaVersion {
+		return schemaVersionErr(TaxonomyFile, doc.SchemaVersion, taxonomySchemaVersion)
 	}
 	if len(doc.Categories) == 0 {
 		return errf("", "categories", "is empty")
@@ -319,8 +319,8 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 		return errf(fmt.Sprintf("division %q", slug), field, format, args...)
 	}
 
-	if doc.SchemaVersion != DepartmentsSchemaVersion {
-		return schemaVersionErr(DepartmentsFile, doc.SchemaVersion, DepartmentsSchemaVersion)
+	if doc.SchemaVersion != departmentsSchemaVersion {
+		return schemaVersionErr(DepartmentsFile, doc.SchemaVersion, departmentsSchemaVersion)
 	}
 	if len(doc.Departments) == 0 {
 		return errf("", "departments", "is empty")
@@ -329,7 +329,7 @@ func (r *Registry) loadDepartments(fsys fs.FS) error {
 		return errf("", "divisions", "is empty")
 	}
 
-	r.departments = make(map[string]Department, len(doc.Departments))
+	r.departments = make(map[string]department, len(doc.Departments))
 	r.departmentSlugs = make([]string, 0, len(doc.Departments))
 	for i, d := range doc.Departments {
 		if d.Slug == "" {
@@ -509,7 +509,7 @@ type entryErrFunc func(field, format string, args ...any) error
 // spelling needs recording at all is that some other schedule prints it.
 // Adding the arm here "by symmetry" would reject the whole committed alias
 // channel.
-func validateAlias(i int, a Alias, ef entryErrFunc) error {
+func validateAlias(i int, a alias, ef entryErrFunc) error {
 	at := fmt.Sprintf("aliases[%d]", i)
 	if a.Term == "" {
 		return ef(at+".term", "is required")
@@ -643,7 +643,7 @@ func validateCategory(c Category, catf errFunc) error {
 				"inside this category's printed subtotal, and with no pages there is "+
 				"nothing to check it against")
 	}
-	rows := make(map[ContraRow]bool, len(c.ContraRows))
+	rows := make(map[contraRow]bool, len(c.ContraRows))
 	for i, cr := range c.ContraRows {
 		at := fmt.Sprintf("contra_rows[%d]", i)
 		if cr.Term == "" {

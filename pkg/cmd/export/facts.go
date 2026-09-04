@@ -18,7 +18,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 )
 
-// FactsDir is where the published fact store goes in the output tree.
+// factsDir is where the published fact store goes in the output tree.
 //
 // TOP-LEVEL, NOT UNDER data/, and the choice is forced rather than stylistic.
 // export.assetPath rejects any key beginning with data/ or vendor/, because
@@ -29,12 +29,12 @@ import (
 // The tree under it mirrors PageTextDir's — <doc-id>/pages/pNNNN — so a
 // citation's two halves come from parallel paths and a reader who knows one
 // layout knows the other.
-const FactsDir = "facts"
+const factsDir = "facts"
 
 // CSVPath and IndexPath are the two whole-store artifacts.
 const (
-	factsCSVPath   = FactsDir + "/facts.csv"
-	factsIndexPath = FactsDir + "/index.json"
+	factsCSVPath   = factsDir + "/facts.csv"
+	factsIndexPath = factsDir + "/index.json"
 )
 
 // factPage is one shard: the facts of one (doc_id, page), and where both halves
@@ -103,7 +103,7 @@ func shardPath(docID string, page int) string {
 // buildProvenancePage's comment says the locator-to-URL rule belongs to
 // whoever produced the records, and that is here.
 func shardBase(docID string) string {
-	return fmt.Sprintf("%s/%s/pages/", FactsDir, docID)
+	return fmt.Sprintf("%s/%s/pages/", factsDir, docID)
 }
 
 func shardFile(page int) string {

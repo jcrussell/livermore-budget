@@ -132,7 +132,7 @@ func TestP76LabelsResolveOrFailByName(t *testing.T) {
 		for _, label := range tt.labels {
 			f, err := r.FundByLabel(label)
 			if err != nil {
-				var unknown *UnknownFundError
+				var unknown *unknownFundError
 				if !errors.As(err, &unknown) {
 					t.Errorf("FundByLabel(%q) error is %T, want *UnknownFundError", label, err)
 					continue
@@ -172,7 +172,7 @@ func TestFundByLabelFailsByName(t *testing.T) {
 	if got := err.Error(); got != want {
 		t.Errorf("FundByLabel(%q) error =\n%q\nwant\n%q", label, got, want)
 	}
-	var unknown *UnknownFundError
+	var unknown *unknownFundError
 	if !errors.As(err, &unknown) {
 		t.Fatalf("error is %T, want *UnknownFundError", err)
 	}

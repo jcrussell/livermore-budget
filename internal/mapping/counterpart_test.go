@@ -293,7 +293,7 @@ func TestTheDocumentCannotCheckACounterpart(t *testing.T) {
 // errfLike is the error shape validate's closure produces, spelled here so the
 // counterpart arms can be exercised without parsing a whole file.
 func errfLike(ruleID, field, format string, args ...any) error {
-	return &ParseError{Path: "counterpart_test", RuleID: ruleID, Field: field,
+	return &parseError{Path: "counterpart_test", RuleID: ruleID, Field: field,
 		Msg: fmt.Sprintf(format, args...)}
 }
 
@@ -344,7 +344,7 @@ rules:
 	// The counterpart names fund 200 in special-revenue, and so does the second
 	// column -- but that column is skipped, so it publishes nothing.
 	skipped := rule("{fund_group: special-revenue, fund: 200, fiscal_year: 2026, skip: true}")
-	if _, err := Parse(strings.NewReader(skipped), "skip.yaml"); err != nil {
+	if _, err := parse(strings.NewReader(skipped), "skip.yaml"); err != nil {
 		t.Errorf("a counterpart colliding only with a SKIPPED column was refused: %v\n"+
 			"a skipped column publishes no fact, so there is nothing to collide with", err)
 	}
@@ -352,7 +352,7 @@ rules:
 	// The same collision on a column the rule actually reads is still refused,
 	// so the exemption above is about the CELL and not about the arm.
 	live := rule("{fund_group: special-revenue, fund: 200, fiscal_year: 2026}")
-	_, err := Parse(strings.NewReader(live), "live.yaml")
+	_, err := parse(strings.NewReader(live), "live.yaml")
 	if err == nil {
 		t.Fatal("a counterpart duplicating a LIVE column was accepted")
 	}
@@ -391,7 +391,7 @@ rules:
       - label: "Transfer From Water"
         category: transfers/in
 `
-	if _, err := Parse(strings.NewReader(omitted), "omitted.yaml"); err != nil {
+	if _, err := parse(strings.NewReader(omitted), "omitted.yaml"); err != nil {
 		t.Errorf("a counterpart colliding only with a column of a part that OMITS "+
 			"this row was refused: %v\nthe row has no cell there to collide with", err)
 	}
@@ -424,7 +424,7 @@ rules:
       - label: "Transfer From Water"
         category: transfers/in
 `
-	if _, err := Parse(strings.NewReader(omittedEverywhere), "everywhere.yaml"); err != nil {
+	if _, err := parse(strings.NewReader(omittedEverywhere), "everywhere.yaml"); err != nil {
 		t.Errorf("a counterpart on a row omitted from its ONLY part was refused: %v\n"+
 			"the row publishes no cell anywhere, so there is nothing to collide with", err)
 	}
@@ -434,7 +434,7 @@ rules:
 	// rather than on the second part existing at all.
 	present := strings.Replace(omitted,
 		"        omitted_rows: [{label: \"Transfer From Low Income Hsng\"}]\n", "", 1)
-	_, presentErr := Parse(strings.NewReader(present), "present.yaml")
+	_, presentErr := parse(strings.NewReader(present), "present.yaml")
 	if presentErr == nil {
 		t.Fatal("a counterpart duplicating a column of a part that PRINTS this row " +
 			"was accepted")

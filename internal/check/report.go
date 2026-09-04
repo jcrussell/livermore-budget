@@ -31,7 +31,7 @@ type Report struct {
 	// that leaves.
 	Full   bool   `json:"full"`
 	Strict bool   `json:"strict"`
-	Counts Counts `json:"counts"`
+	Counts counts `json:"counts"`
 	// Results is one entry per check in [All]'s order, including the checks that
 	// were skipped. A check that produced no entry would be indistinguishable
 	// from a check that does not exist.
@@ -40,16 +40,16 @@ type Report struct {
 	// here, in check-id order. Published rather than merely consulted, so a
 	// reader of the report can see the whole exemption surface without reading
 	// the source, the way facts-are-projected prints the unprojected scopes.
-	Declared []Declaration `json:"declared_vacuous"`
+	Declared []declaration `json:"declared_vacuous"`
 	// Undeclared are the vacuous checks no declaration covers. They are what
 	// --strict fails on; see [Report.Failed].
 	Undeclared []string `json:"undeclared_vacuous"`
 }
 
-// Counts is how many checks reached each status. They are five separate
+// counts is how many checks reached each status. They are five separate
 // counters and never summed into a "checks passed" figure: vacuous and skipped
 // are not passes.
-type Counts struct {
+type counts struct {
 	Pass    int `json:"pass"`
 	Fail    int `json:"fail"`
 	Vacuous int `json:"vacuous"`

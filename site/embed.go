@@ -19,7 +19,7 @@ import (
 	"io/fs"
 )
 
-// Assets is the site source tree: the page template, the client script, the
+// assets is the site source tree: the page template, the client script, the
 // stylesheet, the vendored d3 bundles with their licences, and the zero-byte
 // .nojekyll that stops GitHub Pages running the output through Jekyll.
 //
@@ -31,8 +31,8 @@ import (
 //go:embed index.html.tmpl trends.html.tmpl chart.html.tmpl provenance.html.tmpl caveats.html.tmpl app.js style.css
 //go:embed all:vendor
 //go:embed .nojekyll
-var Assets embed.FS
+var assets embed.FS
 
 // FS returns the embedded assets. Callers take an fs.FS rather than the
 // embed.FS so a test can substitute a fstest.MapFS.
-func FS() fs.FS { return Assets }
+func FS() fs.FS { return assets }
