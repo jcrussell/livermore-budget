@@ -311,10 +311,10 @@ func (*factOffsetPointsAtToken) Run(_ context.Context, s *Subject) (Result, erro
 // What separates them is that the p76 pair comes from ONE rule and ONE row, and
 // that row declares a counterpart; the ACFR hazard is two different rules.
 //
-// The row is found by its printed label, which is what the fact publishes. Where a
-// rule prints the same label on two rows, one of them declaring a counterpart is
-// enough to satisfy this -- the alternative is to make row_label unique, which the
-// documents do not oblige.
+// The row is found by its printed label, which is what the fact publishes and
+// what fact.MakeID hashes. That is unambiguous rather than a best effort:
+// validateRule already refuses two rows of one rule printing the same label,
+// because their facts would be one row_label to every reader of facts.jsonl.
 type factCitationsAreDeclared struct{}
 
 var _ Check = (*factCitationsAreDeclared)(nil)
@@ -477,7 +477,10 @@ func (*factTransferOrientationIsDeclared) Run(_ context.Context, s *Subject) (Re
 					"a transfer against its kind's direction must declare %q or a consumer cannot "+
 					"tell it from money flowing the other way",
 				f.DocID, f.Page, f.Token, f.RowLabel, f.Kind, f.AmountCents, f.Sign, mapping.SignNetted))
-		case f.AmountCents >= 0 && f.Sign == mapping.SignNetted:
+		// > 0 and not >= 0: a netted row's `-` cells publish a zero, and zero
+		// runs with every direction. 64 of the store's 178 transfer facts are
+		// zero, so >= would redden a correctly declared multi-column row.
+		case f.AmountCents > 0 && f.Sign == mapping.SignNetted:
 			findings = append(findings, finding(f.ID,
 				"%s p%d prints %q for row %q as %d cents, which already runs with its kind %s, "+
 					"but the row declares sign %q",

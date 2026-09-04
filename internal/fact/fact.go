@@ -79,10 +79,16 @@ type Fact struct {
 	// row — a flow diagram cannot draw a negative link, so contra rows net
 	// into their parent instead of getting one.
 	//
-	// Nothing re-signs a value between the parser and this record. If a
-	// document ever prints a deduction as a positive number under a "Less:"
-	// heading, that convention needs its own field rather than an overload of
-	// this one, because the two are indistinguishable once merged.
+	// A THIRD VALUE SAYS SOMETHING ELSE AGAIN. SignNetted marks a row printed
+	// against its KIND's direction rather than a deduction inside its category:
+	// ACFR p41 parenthesises Transfers (out) because its block sums to a net
+	// figure, while Budget Book p66 prints TRANSFER OUT as a positive magnitude.
+	// A consumer summing one kind across scopes must read this or it will cancel
+	// where it meant to accumulate.
+	//
+	// Nothing re-signs a value between the parser and this record. That last
+	// value is what the paragraph this one replaced anticipated when it said a
+	// new convention "needs its own field rather than an overload of this one".
 	Sign  mapping.Sign `json:"sign"`
 	Units amount.Units `json:"units"`
 	// AmountCents is integer cents, always, whatever scale the source table was

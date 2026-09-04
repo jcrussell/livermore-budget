@@ -511,8 +511,23 @@ func validateRule(r *Rule, errf errFunc) error {
 			tailed[row.Label] = append(tailed[row.Label], row.PrintedLabel())
 		}
 		if !row.Sign.valid() {
-			return errf(r.ID, "rows", "row %q: sign %q, want positive or contra",
+			return errf(r.ID, "rows", "row %q: sign %q, want positive, contra or netted",
 				row.Label, row.Sign)
+		}
+		// SignNetted says a row is printed against its KIND's direction, so it
+		// is meaningless on a kind that has no direction, and
+		// fact-transfer-orientation-is-declared only witnesses transfers. Left
+		// unvalidated, `sign: netted` on a revenue row publishes facts nothing
+		// checks. Refused here rather than widened there: the check is right to
+		// be narrow, because a negative revenue or fund balance is a magnitude
+		// and not an orientation.
+		if row.Sign == SignNetted {
+			if k := row.EffectiveKind(r); k != KindTransferIn && k != KindTransferOut {
+				return cmdutil.WithHint(
+					errf(r.ID, "rows", "row %q: sign netted on kind %q", row.Label, k),
+					"netted says the document prints this row against its kind's "+
+						"direction, which only transfer_in and transfer_out have")
+			}
 		}
 		if row.Kind != "" && !row.Kind.valid() {
 			return errf(r.ID, "rows", "row %q: kind %q is not one of the five",

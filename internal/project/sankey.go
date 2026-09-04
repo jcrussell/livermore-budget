@@ -770,6 +770,11 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 		// The amount is added as the document printed it. A contra row arrives
 		// already negative and nothing here re-signs it; sign says how the row
 		// relates to its category, it is not an instruction to negate.
+		//
+		// A netted row arrives negative too, for a different reason, and this
+		// sum does not distinguish them. It does not have to yet: no projection
+		// selects a scope carrying one. One that did would have to read Sign
+		// before adding, or it would cancel where it meant to accumulate.
 		c.cents += f.AmountCents
 		c.factIDs = append(c.factIDs, f.ID)
 		c.locs.add(&facts[i])

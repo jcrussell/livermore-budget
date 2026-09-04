@@ -168,6 +168,16 @@ func TestParseRejects(t *testing.T) {
 			want: "kind",
 		},
 		{
+			// SignNetted says a row is printed against its KIND's direction, so
+			// it means nothing on a kind that has no direction -- and
+			// fact-transfer-orientation-is-declared witnesses only transfers,
+			// so an unrefused one would publish facts nothing checks.
+			name: "sign netted on a kind with no direction",
+			yaml: strings.Replace(base(""), `- {label: "A"`,
+				`- {label: "A", sign: netted`, 1),
+			want: "sign netted on kind",
+		},
+		{
 			name: "duplicate row label",
 			yaml: base("") + "      - {label: \"A\", category: a2}\n",
 			want: "duplicate row label",
@@ -242,6 +252,22 @@ func TestParseRejects(t *testing.T) {
 				t.Errorf("got %q, want it to mention %q", err, tt.want)
 			}
 		})
+	}
+}
+
+// TestSignNettedIsAcceptedOnATransferRow is the other half of the rejection
+// above. Without it the rule could be "netted is never accepted", which would
+// also pass TestParseRejects and would refuse the one row in the corpus that
+// needs it -- ACFR p41's Transfers (out).
+func TestSignNettedIsAcceptedOnATransferRow(t *testing.T) {
+	y := strings.Replace(base(""), "kind: revenue", "kind: transfer_out", 1)
+	y = strings.Replace(y, `- {label: "A"`, `- {label: "A", sign: netted`, 1)
+	f, err := parse(strings.NewReader(y), "test.yaml")
+	if err != nil {
+		t.Fatalf("netted on a transfer_out row was refused: %v", err)
+	}
+	if got := f.Rules[0].Rows[0].Sign; got != SignNetted {
+		t.Errorf("row sign = %q, want %q", got, SignNetted)
 	}
 }
 

@@ -105,7 +105,12 @@ func (b Basis) valid() bool {
 	return false
 }
 
-// Sign marks a row that reduces its category rather than adding to it.
+// Sign says how a row relates to its category, and it is never an instruction
+// to negate: AmountCents is always the figure as the document printed it.
+//
+// Two things need saying and they are different. SignContra marks a row that
+// REDUCES its category rather than adding to it. SignNetted marks a row the
+// document prints against its KIND's direction. Both leave the amount alone.
 type Sign string
 
 const (

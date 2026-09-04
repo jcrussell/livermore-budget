@@ -148,6 +148,11 @@ func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 			f(mapping.KindTransferOut, mapping.SignPositive, -2572000000), true},
 		{"a transfer_in declaring netted while running with its kind is the reverse error",
 			f(mapping.KindTransferIn, mapping.SignNetted, 54780000), true},
+		// 64 of the store's 178 transfer facts are zero, published where a
+		// column prints "-". Zero runs with every direction, so a netted row's
+		// zero cells are not the reverse error.
+		{"a netted transfer whose column is zero is not a contradiction",
+			f(mapping.KindTransferOut, mapping.SignNetted, 0), false},
 		{"a negative revenue is a magnitude, not an orientation: p127's (20,033)",
 			f(mapping.KindRevenue, mapping.SignPositive, -2003300), false},
 		{"a negative fund_balance is a balance that fell, and the spine carries six",
