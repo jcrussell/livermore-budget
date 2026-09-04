@@ -116,9 +116,33 @@ const (
 	// property tax. A Sankey cannot render a negative link, so these net into
 	// their parent category and are disclosed in the provenance panel.
 	SignContra Sign = "contra"
+	// SignNetted marks a row the document prints with the OPPOSITE ORIENTATION
+	// to its kind's convention, because it sits inside a block that sums to a
+	// net figure.
+	//
+	// It is not SignContra one more time, and the difference is the one this
+	// field exists to carry. A contra row is a deduction INSIDE its own
+	// category: p127's ERAF reduces property tax, and summing it with its
+	// siblings is exactly right. A netted row is the SAME quantity pointing the
+	// other way: ACFR p41 prints Transfers (out) as (25.72) because its block
+	// sums to a net Other Financing Sources (Uses), while Budget Book p66 prints
+	// TRANSFER OUT as a positive magnitude in a uses column. Both are the money
+	// leaving, both are published exactly as printed, and summing the two
+	// together cancels rather than accumulates.
+	//
+	// SignContra's own comment anticipated this: "If a document ever prints a
+	// deduction as a positive number under a 'Less:' heading, that convention
+	// needs its own field rather than an overload of this one." This is that
+	// sentence's mirror image (fisc-fdxx).
+	//
+	// IT IS STILL NOT AN INSTRUCTION TO NEGATE. AmountCents remains the figure
+	// as the document printed it; this says which way the document was facing.
+	SignNetted Sign = "netted"
 )
 
-func (s Sign) valid() bool { return s == "" || s == SignPositive || s == SignContra }
+func (s Sign) valid() bool {
+	return s == "" || s == SignPositive || s == SignContra || s == SignNetted
+}
 
 // File is one rule file, covering one source document.
 type File struct {

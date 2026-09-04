@@ -423,6 +423,79 @@ func declaresCounterpart(rule *mapping.Rule, label string) bool {
 	return false
 }
 
+// factTransferOrientationIsDeclared asserts a transfer whose printed figure
+// points the other way says so.
+//
+// TRANSFER IS THE ONE KIND WHOSE MEANING IS A DIRECTION, which is why this is
+// restricted to it rather than being a rule about negative amounts. A negative
+// revenue or fund balance is a magnitude: Budget Book p127 prints "Prior Year -
+// Unsecured (20,033)", an ordinary revenue row that was negative that year, and
+// six spine fund_balance facts are negative because a balance can fall. Neither
+// changes what the row MEANS. A negative transfer_out does: the kind already
+// says which way the money goes, so a figure pointing the other way is the
+// document expressing the same direction with the opposite orientation, and
+// that is indistinguishable from money actually flowing back.
+//
+// WHAT IT CATCHES is fisc-fdxx. ACFR p41 prints Transfers (out) as (25.72)
+// because its block sums to a net Other Financing Sources (Uses); Budget Book
+// p66 prints TRANSFER OUT as a positive magnitude in a uses column. Both are
+// published exactly as printed -- that is the invariant and neither document is
+// misread -- so summing transfer_out across the two cancels rather than
+// accumulates. Before SignNetted, Fact.Sign read "positive" under BOTH
+// conventions, so a consumer had no way to tell and nothing in this package
+// could see it: the two scopes share no key, no detail-ties-to-spine check
+// spans them and none can, and fact-kind-matches-category is satisfied by both.
+//
+// WHAT IT DOES NOT DO, because the gap should be stated rather than discovered.
+// It makes the convention LEGIBLE; it does not stop a consumer summing across
+// conventions. Nothing does today, and nothing needs to: no projection selects
+// acfr-general-fund-summary. When one does, the check that refuses the mixture
+// can read this field, which it could not have done before.
+type factTransferOrientationIsDeclared struct{}
+
+var _ Check = (*factTransferOrientationIsDeclared)(nil)
+
+func (*factTransferOrientationIsDeclared) ID() string { return "fact-transfer-orientation-is-declared" }
+func (*factTransferOrientationIsDeclared) Tier() int  { return 1 }
+func (*factTransferOrientationIsDeclared) Full() bool { return false }
+func (*factTransferOrientationIsDeclared) Description() string {
+	return "a transfer printed against its kind's direction declares sign: netted, and one declaring it is so printed"
+}
+
+func (*factTransferOrientationIsDeclared) Run(_ context.Context, s *Subject) (Result, error) {
+	var findings []Finding
+	transfers, netted := 0, 0
+	for _, f := range s.Facts {
+		if f.Kind != mapping.KindTransferIn && f.Kind != mapping.KindTransferOut {
+			continue
+		}
+		transfers++
+		switch {
+		case f.AmountCents < 0 && f.Sign != mapping.SignNetted:
+			findings = append(findings, finding(f.ID,
+				"%s p%d prints %q for row %q, a %s of %d cents, and the row declares sign %q; "+
+					"a transfer against its kind's direction must declare %q or a consumer cannot "+
+					"tell it from money flowing the other way",
+				f.DocID, f.Page, f.Token, f.RowLabel, f.Kind, f.AmountCents, f.Sign, mapping.SignNetted))
+		case f.AmountCents >= 0 && f.Sign == mapping.SignNetted:
+			findings = append(findings, finding(f.ID,
+				"%s p%d prints %q for row %q as %d cents, which already runs with its kind %s, "+
+					"but the row declares sign %q",
+				f.DocID, f.Page, f.Token, f.RowLabel, f.AmountCents, f.Kind, mapping.SignNetted))
+		case f.Sign == mapping.SignNetted:
+			netted++
+		}
+	}
+	return conclusion{
+		subjects: transfers,
+		unit:     "transfer facts",
+		held: fmt.Sprintf("%d transfer facts, %d printed against their kind's direction and declaring it",
+			transfers, netted),
+		nothing:  "the fact store carries no transfers",
+		findings: findings,
+	}.result(), nil
+}
+
 // pageCache reads each page of each document at most once.
 type pageCache struct {
 	docs  map[string]*corpus.Doc

@@ -51,8 +51,12 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-token-reparses":         "pass over 12",
 		"fact-offset-points-at-token": "pass over 12",
 		"fact-citations-are-declared": "pass over 12",
-		"fact-vocabulary":             "pass over 24", // 12 categories + 12 fund groups
-		"fact-kind-matches-category":  "pass over 12",
+		// Two of the fixture's twelve facts are transfers, and neither is
+		// printed against its kind's direction. The committed corpus has one
+		// that is: ACFR p41's Transfers (out).
+		"fact-transfer-orientation-is-declared": "pass over 2",
+		"fact-vocabulary":                       "pass over 24", // 12 categories + 12 fund groups
+		"fact-kind-matches-category":            "pass over 12",
 		// Two fund balances, general and enterprise, each with all three of its
 		// lines. Both satisfy beginning + change == ending; neither did before
 		// this check was written. See fixtureCells.
@@ -117,7 +121,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 23, Vacuous: 21, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 21, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,

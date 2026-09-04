@@ -122,3 +122,46 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 		})
 	}
 }
+
+// TestATransferPrintedAgainstItsKindMustSaySo pins fisc-fdxx's invariant, and
+// pins the RESTRICTION as well as the rule: the last two cases are the negative
+// revenue and fund_balance facts the committed store really carries, and a check
+// written as "a negative amount must be declared" would redden all sixteen of
+// them.
+func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
+	f := func(kind mapping.Kind, sign mapping.Sign, cents int64) fact.Fact {
+		return fact.Fact{
+			ID: "f", DocID: "doc", Page: 41, Token: "(25.72)",
+			RowLabel: "Transfers (out)", Kind: kind, Sign: sign, AmountCents: cents,
+		}
+	}
+	for _, tc := range []struct {
+		name     string
+		fact     fact.Fact
+		wantFail bool
+	}{
+		{"a transfer_out printed as a positive magnitude, the Budget Book convention",
+			f(mapping.KindTransferOut, mapping.SignPositive, 1014659800), false},
+		{"a transfer_out printed parenthesised and declaring it, the ACFR convention",
+			f(mapping.KindTransferOut, mapping.SignNetted, -2572000000), false},
+		{"a transfer_out printed parenthesised and NOT declaring it is fisc-fdxx",
+			f(mapping.KindTransferOut, mapping.SignPositive, -2572000000), true},
+		{"a transfer_in declaring netted while running with its kind is the reverse error",
+			f(mapping.KindTransferIn, mapping.SignNetted, 54780000), true},
+		{"a negative revenue is a magnitude, not an orientation: p127's (20,033)",
+			f(mapping.KindRevenue, mapping.SignPositive, -2003300), false},
+		{"a negative fund_balance is a balance that fell, and the spine carries six",
+			f(mapping.KindFundBalance, mapping.SignPositive, -103415400), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := (&factTransferOrientationIsDeclared{}).Run(
+				t.Context(), &Subject{Facts: []fact.Fact{tc.fact}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := len(res.Findings) > 0; got != tc.wantFail {
+				t.Errorf("findings = %v, want failure %v (summary: %s)", res.Findings, tc.wantFail, res.Summary)
+			}
+		})
+	}
+}

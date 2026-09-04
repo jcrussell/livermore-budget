@@ -187,16 +187,25 @@
 # would justify, would widen it to 3 units and buy slack this page cannot
 # afford.
 #
-# A NOTE ON SIGN, because it differs from the Budget Book and nothing checks it.
-# The ACFR prints Transfers (out) parenthesised -- (25.72) -- because the block
-# sums to a net Other Financing Sources (Uses). The Budget Book prints its
-# TRANSFER OUT row as a positive magnitude in a uses column. Both are published
-# here exactly as printed, which is the invariant, but it means transfer_out
-# facts carry OPPOSITE SIGNS in the two documents. A consumer summing
-# transfer_out across scopes would get nonsense. Nothing in internal/check can
-# see this: the two scopes share no key and no check compares them, and
-# Fact.Sign -- the one field whose job is to say how a row relates to its
-# category -- reads `positive` under BOTH conventions. Filed as fisc-fdxx.
+# A NOTE ON SIGN, because it differs from the Budget Book. The ACFR prints
+# Transfers (out) parenthesised -- (25.72) -- because the block sums to a net
+# Other Financing Sources (Uses). The Budget Book prints its TRANSFER OUT row as
+# a positive magnitude in a uses column. Both are published here exactly as
+# printed, which is the invariant, but it means transfer_out facts point
+# OPPOSITE WAYS in the two documents, and a consumer summing transfer_out across
+# scopes would get nonsense.
+#
+# The row below therefore declares `sign: netted` (fisc-fdxx), and
+# fact-transfer-orientation-is-declared refuses a transfer printed against its
+# kind's direction that does not. Removing the declaration makes it red, naming
+# this fact. Nothing is re-signed: amount_cents stays -2572000000, exactly the
+# figure the page prints.
+#
+# WHAT THAT DOES AND DOES NOT BUY. Fact.Sign used to read `positive` under BOTH
+# conventions, so a consumer had no way to tell them apart; now it can. It still
+# does not STOP a consumer summing across conventions -- nothing does, and
+# nothing needs to yet, because no projection selects this scope. When one does,
+# the check that refuses the mixture has a field to read.
 schema_version: 1
 doc_id: livermore-acfr-fy2025
 
@@ -231,7 +240,7 @@ rules:
           - {fiscal_year: 2024, skip: true}
     rows:
       - {label: "Transfers in", category: transfers/in}
-      - {label: "Transfers (out)", category: transfers/out, kind: transfer_out}
+      - {label: "Transfers (out)", category: transfers/out, kind: transfer_out, sign: netted}
 
   # --------------------------------------------------------------------------
   - id: acfr-p0041-gf-fund-balances
