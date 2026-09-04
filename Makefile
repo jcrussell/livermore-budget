@@ -42,7 +42,7 @@ lint: ## Run golangci-lint (warns if the version differs from .golangci-version)
 
 .PHONY: fmt
 fmt: ## Format Go sources
-	gofmt -w ./cmd ./internal ./pkg ./site
+	gofmt -w ./cmd ./internal ./pkg ./site ./tools/codehash
 
 .PHONY: vet
 vet: ## Run go vet
@@ -95,6 +95,24 @@ js-if-available: ## Run js, warning rather than failing if node is absent
 		exit 0; \
 	}; \
 	$(MAKE) --no-print-directory js
+
+# codehash fingerprints Go files by their code alone, so that a change asserted
+# to be comments-only can be proved to be one. It is a BEFORE-AND-AFTER
+# comparison and so is deliberately not part of pre-commit, which a single-shot
+# target could not express:
+#
+#     make codehash FILES="internal/geom/geom.go" > /tmp/before
+#     ...rewrite the comments...
+#     make codehash FILES="internal/geom/geom.go" | diff /tmp/before -
+#
+# Reading `git diff` and requiring every changed line to start with // would be
+# cheaper and answers a different question: a diff reports which LINES differ,
+# not whether any code moved. See tools/codehash/main.go for why it is also
+# unsound line by line.
+.PHONY: codehash
+codehash: ## Fingerprint FILES=... by code alone, ignoring comments
+	@test -n "$(FILES)" || { echo "usage: make codehash FILES=\"a.go b.go\"" >&2; exit 2; }
+	@go run ./tools/codehash $(FILES)
 
 .PHONY: pre-commit
 pre-commit: fmt vet test lint-if-available js-if-available ## Format, vet, test, lint, and check app.js
