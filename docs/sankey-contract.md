@@ -472,7 +472,7 @@ different checks. Measured by mutating the fact and running `fisc verify`:
 So there is no edit to this fact that keeps its p67 citation, and re-citing it to
 p0183 would make the spine no longer a read of pp.66-67.
 
-**What the reader gets instead is disclosure.** `project.ContestedTotal` declares
+**What the reader gets instead is disclosure.** `project.ContestedTotals()` declares
 the column, the spine's figure, what the rest of the book makes it, and the bead;
 `sankey-2027.json` carries it as a caveat and `sankey.json` does not, FY2026
 tying everywhere. The declaration is *conditional on the graph actually drawing

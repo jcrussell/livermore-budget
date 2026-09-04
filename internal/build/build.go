@@ -31,23 +31,35 @@ type Info struct {
 // linker flags were not supplied. Computed once; nothing mutates on the read
 // path.
 var Get = sync.OnceValue(func() Info {
-	i := Info{Version: Version, Commit: Commit, Date: Date}
-	if i.Commit != "" && i.Date != "" {
-		return i
-	}
-	bi, ok := debug.ReadBuildInfo()
+	return get(Info{Version: Version, Commit: Commit, Date: Date}, debug.ReadBuildInfo)
+})
+
+// get is Get with the metadata source injected, so a test can supply settings
+// the running binary does not have.
+//
+// THE BUILD METADATA IS READ EVEN WHEN THE LINKER SUPPLIED EVERYTHING, and that
+// is the whole point of this function. An earlier version returned early once
+// Commit and Date were both set, which made the vcs.modified arm below
+// unreachable in every binary the Makefile produces -- so the dirty marker
+// worked only for `go build` and not for the build that ships. The Makefile's
+// `git describe --dirty` does not cover the gap: measured, it reports a clean
+// hash for a tree carrying an UNTRACKED file, where vcs.modified reports true.
+// Nothing here overrides a linker-supplied field; fromSettings fills only what
+// is empty.
+func get(i Info, read func() (*debug.BuildInfo, bool)) Info {
+	bi, ok := read()
 	if !ok {
 		return i
 	}
 	return fromSettings(i, bi.Settings)
-})
+}
 
 // fromSettings fills from the Go build metadata whatever the linker flags left
 // empty, and records whether the tree was dirty when the binary was built.
 //
-// SPLIT OUT OF Get SO A TEST CAN VARY THE INPUT. Get reads the running
-// binary's own metadata, and a test cannot dirty the working tree and rebuild
-// itself; synthetic settings are the only way to assert the marker.
+// Get reads the running binary's own metadata, and a test cannot dirty the
+// working tree and rebuild itself; synthetic settings are the only way to
+// assert the marker.
 //
 // A build with no vcs settings at all -- `-buildvcs=false`, or a build outside
 // a repository -- reports Modified false and Commit empty together, so it
@@ -66,7 +78,8 @@ func fromSettings(i Info, settings []debug.BuildSetting) Info {
 		case "vcs.modified":
 			// Read whatever the commit came from. The setting describes the
 			// tree the binary was built from, which is the same tree the
-			// Makefile's `git rev-parse` read.
+			// Makefile's `git rev-parse` read, so it applies to a
+			// linker-supplied commit as much as to a discovered one.
 			i.Modified = s.Value == "true"
 		}
 	}
