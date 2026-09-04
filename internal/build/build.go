@@ -15,10 +15,16 @@ var (
 )
 
 // Info describes the running binary.
+//
+// Modified is separate from Commit rather than a suffix on it because String
+// truncates the hash to twelve characters, which would cut a "+dirty" suffix
+// off the end and report a dirty build as a clean one -- the exact failure this
+// field exists to prevent.
 type Info struct {
-	Version string
-	Commit  string
-	Date    string
+	Version  string
+	Commit   string
+	Date     string
+	Modified bool
 }
 
 // Get returns the build info, falling back to the Go build metadata when the
@@ -33,7 +39,21 @@ var Get = sync.OnceValue(func() Info {
 	if !ok {
 		return i
 	}
-	for _, s := range bi.Settings {
+	return fromSettings(i, bi.Settings)
+})
+
+// fromSettings fills from the Go build metadata whatever the linker flags left
+// empty, and records whether the tree was dirty when the binary was built.
+//
+// SPLIT OUT OF Get SO A TEST CAN VARY THE INPUT. Get reads the running
+// binary's own metadata, and a test cannot dirty the working tree and rebuild
+// itself; synthetic settings are the only way to assert the marker.
+//
+// A build with no vcs settings at all -- `-buildvcs=false`, or a build outside
+// a repository -- reports Modified false and Commit empty together, so it
+// claims no commit rather than claiming a clean one.
+func fromSettings(i Info, settings []debug.BuildSetting) Info {
+	for _, s := range settings {
 		switch s.Key {
 		case "vcs.revision":
 			if i.Commit == "" {
@@ -43,10 +63,15 @@ var Get = sync.OnceValue(func() Info {
 			if i.Date == "" {
 				i.Date = s.Value
 			}
+		case "vcs.modified":
+			// Read whatever the commit came from. The setting describes the
+			// tree the binary was built from, which is the same tree the
+			// Makefile's `git rev-parse` read.
+			i.Modified = s.Value == "true"
 		}
 	}
 	return i
-})
+}
 
 // String renders the version line shown by `fisc --version`.
 func (i Info) String() string {
@@ -56,7 +81,13 @@ func (i Info) String() string {
 		if len(c) > 12 {
 			c = c[:12]
 		}
-		s += " (" + c + ")"
+		s += " (" + c
+		if i.Modified {
+			s += "+dirty"
+		}
+		s += ")"
+	} else if i.Modified {
+		s += " (dirty)"
 	}
 	if i.Date != "" {
 		s += " built " + i.Date
