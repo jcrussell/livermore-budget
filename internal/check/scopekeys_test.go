@@ -113,7 +113,10 @@ func TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsCanReach(t *testi
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	run := func() []Finding {
+	// Takes the *testing.T it is called with: calling t.Fatal on the OUTER t
+	// from inside a subtest does not stop the subtest, so the cleanup below it
+	// would be skipped while execution carried on.
+	run := func(t *testing.T) []Finding {
 		t.Helper()
 		res, err := (&projectionScopesAreDisjoint{}).Run(t.Context(), s)
 		if err != nil {
@@ -121,7 +124,7 @@ func TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsCanReach(t *testi
 		}
 		return res.Findings
 	}
-	if got := run(); len(got) > 0 {
+	if got := run(t); len(got) > 0 {
 		t.Fatalf("the committed corpus already has findings, so this test cannot "+
 			"attribute one to a declaration: %v", got)
 	}
@@ -142,7 +145,7 @@ func TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsCanReach(t *testi
 		defer delete(disjointScopes, p)
 
 		var joined []string
-		for _, f := range run() {
+		for _, f := range run(t) {
 			joined = append(joined, f.Detail)
 		}
 		all := strings.Join(joined, "\n")
@@ -165,11 +168,66 @@ func TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsCanReach(t *testi
 			}
 			disjointScopes[p] = "FY2025 audited against FY2026-27 adopted: selectFacts " +
 				"admits one (fiscal_year, basis) per projection, so no column holds both"
-			got := run()
-			delete(disjointScopes, p)
+			// defer and not a bare delete: run() can abort this subtest, and a
+			// bare delete on the line after would leave a package-global
+			// mutated for every test that follows.
+			got := func() []Finding {
+				defer delete(disjointScopes, p)
+				return run(t)
+			}()
 			if len(got) > 0 {
 				t.Errorf("declaring %s disjoint was refused, and the declaration is TRUE: %v", p, got)
 			}
 		}
 	})
+}
+
+// TestTheMergeableMeasurementSkipsFactsNetCellsRefuses pins the filter in
+// sharedMergeableKeys, which shipped without one.
+//
+// netCells errors rather than merging on a fact carrying a department, or
+// missing a category or a fund group, so such a fact cannot take part in a
+// collision -- it stops the build instead. Counting it overstates the hazard and
+// reinstates the false-refusal class: every expenditure-by-department fact
+// carries a department, so without the filter that scope reports collisions it
+// cannot have, and a true disjointness declaration for it would be refused.
+//
+// Deleting the filter leaves go test and fisc verify green, which is why the
+// claim needs a test rather than a run.
+func TestTheMergeableMeasurementSkipsFactsNetCellsRefuses(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// expenditure-by-department and NOT departmentwide-expenditures: both carry
+	// departments, but only this pair's keys overlap the spine's at all, so it
+	// is the only one whose measurement the filter changes -- 8 shared keys
+	// unfiltered against 0 filtered. Picking the other scope gives a test that
+	// passes with the filter deleted, which is what the first draft of this did.
+	pair := pairOf(project.PublishedScope, expenditureDetailScope)
+
+	// The scope must really be department-bearing, or this proves nothing.
+	departmentBearing := 0
+	for i := range s.Facts {
+		if s.Facts[i].Scope == expenditureDetailScope && s.Facts[i].Department != "" {
+			departmentBearing++
+		}
+	}
+	if departmentBearing == 0 {
+		t.Fatalf("no fact in scope %q carries a department, so the filter has "+
+			"nothing to exclude and this test could not fail", expenditureDetailScope)
+	}
+
+	if got := len(sharedMergeableKeys(s.Facts)[pair]); got != 0 {
+		t.Errorf("%s shares %d mergeable key(s); every fact of that scope carries a "+
+			"department, and netCells refuses those rather than merging them, so "+
+			"the pair cannot collide at any grain", pair, got)
+	}
+
+	// And the filter must not be a blanket one: a pair that CAN collide still does.
+	live := pairOf(project.PublishedScope, revenueDetailScope)
+	if got := len(sharedMergeableKeys(s.Facts)[live]); got == 0 {
+		t.Errorf("%s shares no mergeable key, so the filter is excluding facts "+
+			"netCells would accept", live)
+	}
 }

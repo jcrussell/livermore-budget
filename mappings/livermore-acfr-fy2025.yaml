@@ -264,8 +264,20 @@ rules:
       leaving them out would make their figures unexplained text between rows
       and the read would refuse.
 
-      THOSE THREE skip: true FLAGS ARE LOAD-BEARING, AND SINCE fisc-2x7y THEY
-      ARE GUARDED. MEASURED, not argued: give the "Transfers in" row here a
+      THOSE THREE skip: true FLAGS ARE LOAD-BEARING. TWO OF THE THREE ARE
+      GUARDED SINCE fisc-2x7y; THE THIRD IS NOT, AND THE DIFFERENCE IS EXACT.
+      "Transfers in" and "Transfers (out)" are rows the sibling rule PUBLISHES,
+      so un-skipping one makes two facts cite one printed figure and
+      fact-citations-are-declared refuses it. "Total Other Financing Sources
+      (Uses)" is that rule's total_row: its figure is consumed as a total and
+      cited by no fact, so un-skipping it collides with nothing. Measured --
+      un-skipping it with sign: netted publishes the block's own (25.19) as a
+      THIRD transfer_out fact, making ACFR transfers/out 25.72 + 25.19, with
+      fisc verify at 44 passed, 0 FAILED. Without the sign it goes red, but on
+      the ORIENTATION check and not the doubling, which is the
+      green-because-the-gate-fired shape and not a guard. Tracked as fisc-b0dq.
+
+      MEASURED, not argued: give the "Transfers in" row here a
       category and a matching kind instead of skip, rebuild, and the store
       publishes the page's single printed 0.53 TWICE -- $1,060,000 of ACFR
       transfers/in where the page prints $530,000. That is now one FAILED
