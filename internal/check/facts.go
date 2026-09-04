@@ -8,6 +8,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/corpus"
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
 // factsSorted asserts the committed fact store is in canonical order.
@@ -281,6 +282,145 @@ func (*factOffsetPointsAtToken) Run(_ context.Context, s *Subject) (Result, erro
 		nothing:  "the fact store is empty",
 		findings: findings,
 	}.result(), nil
+}
+
+// factCitationsAreDeclared asserts that where two facts cite one printed figure,
+// they are a row and its declared counterpart.
+//
+// ONE PRINTED FIGURE IS NORMALLY ONE FACT, and the exception is declared rather
+// than inferred. Budget Book p76 prints "Transfer From Low Income Hsng to
+// General Fund 257,012", which is one movement with two ends: money leaving fund
+// 200 and the same money arriving at fund 100. fact.Fact carries one fund, so the
+// pair needs two facts, and both cite the same doc_id, page, offset and token
+// because one printed figure IS the provenance for both directions. Row.Counterpart
+// is where a rule says so.
+//
+// WHAT IT CATCHES is the hazard fisc-2x7y measured on ACFR p41, the first page in
+// this corpus read by two rules over one section anchor. Give one of the rows the
+// second rule declares `skip: true` a category and a matching kind instead, and
+// the store publishes that page's single printed 0.53 twice -- 106,000,000 cents
+// of ACFR transfers where the page prints 53,000,000. Every other check is
+// satisfied: fact.MakeID hashes rule_id so the ids differ and fact-ids-unique
+// holds; both re-parse their own token and both offsets land on it, because it IS
+// the same printed figure; no detail-ties-to-spine check spans that scope and none
+// can, since it is FY2025 audited against a spine printing no audited column; and
+// projection-scopes-are-disjoint compares scopes, while both facts are in one.
+//
+// SO THE DISCRIMINATOR CANNOT BE THE ADDRESS ALONE. A rule refusing every shared
+// (doc_id, page, offset) would redden the 44 addresses p76 legitimately shares.
+// What separates them is that the p76 pair comes from ONE rule and ONE row, and
+// that row declares a counterpart; the ACFR hazard is two different rules.
+//
+// The row is found by its printed label, which is what the fact publishes. Where a
+// rule prints the same label on two rows, one of them declaring a counterpart is
+// enough to satisfy this -- the alternative is to make row_label unique, which the
+// documents do not oblige.
+type factCitationsAreDeclared struct{}
+
+var _ Check = (*factCitationsAreDeclared)(nil)
+
+func (*factCitationsAreDeclared) ID() string { return "fact-citations-are-declared" }
+func (*factCitationsAreDeclared) Tier() int  { return 1 }
+func (*factCitationsAreDeclared) Full() bool { return false }
+func (*factCitationsAreDeclared) Description() string {
+	return "two facts cite one printed figure only as a row and its declared counterpart"
+}
+
+func (*factCitationsAreDeclared) Run(_ context.Context, s *Subject) (Result, error) {
+	rules := map[string]*mapping.Rule{}
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			rules[f.Rules[i].ID] = &f.Rules[i]
+		}
+	}
+
+	type citation struct {
+		doc    string
+		page   int
+		offset int
+	}
+	// Grouped in the store's own order, and reported in it, so a finding names
+	// the same fact twice across runs.
+	order := []citation{}
+	byCitation := map[citation][]fact.Fact{}
+	for _, f := range s.Facts {
+		c := citation{f.DocID, f.Page, f.Offset}
+		if _, seen := byCitation[c]; !seen {
+			order = append(order, c)
+		}
+		byCitation[c] = append(byCitation[c], f)
+	}
+
+	var findings []Finding
+	declared := 0
+	for _, c := range order {
+		group := byCitation[c]
+		if len(group) < 2 {
+			continue
+		}
+		where := fmt.Sprintf("%s p%d offset %d", c.doc, c.page, c.offset)
+		if len(group) > 2 {
+			findings = append(findings, finding(where,
+				"%d facts cite this one printed figure; a counterpart pair is two",
+				len(group)))
+			continue
+		}
+		a, b := group[0], group[1]
+		if a.RuleID != b.RuleID {
+			findings = append(findings, finding(where,
+				"rules %q and %q both publish token %q here, and a counterpart is "+
+					"declared on a ROW, so two rules cannot be one",
+				a.RuleID, b.RuleID, a.Token))
+			continue
+		}
+		if a.RowLabel != b.RowLabel {
+			findings = append(findings, finding(where,
+				"rule %q publishes token %q here for rows %q and %q; a counterpart "+
+					"pair is one row's two ends",
+				a.RuleID, a.Token, a.RowLabel, b.RowLabel))
+			continue
+		}
+		if a.AmountCents != b.AmountCents {
+			findings = append(findings, finding(where,
+				"rule %q publishes %d and %d cents for one printed token %q",
+				a.RuleID, a.AmountCents, b.AmountCents, a.Token))
+			continue
+		}
+		rule, ok := rules[a.RuleID]
+		if !ok {
+			findings = append(findings, finding(where,
+				"two facts cite this figure under rule %q, which no rule file declares",
+				a.RuleID))
+			continue
+		}
+		if !declaresCounterpart(rule, a.RowLabel) {
+			findings = append(findings, finding(where,
+				"rule %q publishes token %q twice for row %q, which declares no "+
+					"counterpart, so one printed figure is published as two facts",
+				a.RuleID, a.Token, a.RowLabel))
+			continue
+		}
+		declared++
+	}
+
+	return conclusion{
+		subjects: len(s.Facts),
+		unit:     "facts",
+		held: fmt.Sprintf("%d facts over %d printed figures; %d %s shared by a row and its declared counterpart",
+			len(s.Facts), len(order), declared, plural(declared, "figure", "figures")),
+		nothing:  "the fact store is empty",
+		findings: findings,
+	}.result(), nil
+}
+
+// declaresCounterpart reports whether any row of rule printing label declares one.
+func declaresCounterpart(rule *mapping.Rule, label string) bool {
+	for i := range rule.Rows {
+		if rule.Rows[i].PrintedLabel() == label && rule.Rows[i].Counterpart != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // pageCache reads each page of each document at most once.

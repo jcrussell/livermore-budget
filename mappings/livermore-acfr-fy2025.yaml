@@ -255,27 +255,27 @@ rules:
       leaving them out would make their figures unexplained text between rows
       and the read would refuse.
 
-      THOSE THREE skip: true FLAGS ARE LOAD-BEARING AND NOTHING GUARDS THEM.
-      MEASURED, not argued: give the "Transfers in" row here a category and a
-      matching kind instead of skip, rebuild, and the store publishes the page's
-      single printed 0.53 TWICE -- $1,060,000 of ACFR transfers/in where the
-      page prints $530,000 -- with fisc verify --strict reporting ZERO FAILED.
-      That measurement was taken at 0448a5b, when the run read 40 passed; it has
-      read 41 since fund-balance-identity landed one commit later, and three
-      review passes quoted 41 in their own gate lines while reading past this
-      sentence. The count is deliberately not restated here: what matters is that
-      nothing fails, and a count copied into a comment is the defect AGENTS.md's
-      "Before you quote a number" exists to name.
-      The fact ids differ because rule_id is in the hashed tuple, so
-      CheckUniqueIDs sees nothing; both facts re-parse, both offsets land on
-      their token, and no scope-to-scope check applies. It goes red ONLY if the
-      row also carries the wrong kind, and then fact-kind-matches-category
-      catches the kind rather than the doubling.
+      THOSE THREE skip: true FLAGS ARE LOAD-BEARING, AND SINCE fisc-2x7y THEY
+      ARE GUARDED. MEASURED, not argued: give the "Transfers in" row here a
+      category and a matching kind instead of skip, rebuild, and the store
+      publishes the page's single printed 0.53 TWICE -- $1,060,000 of ACFR
+      transfers/in where the page prints $530,000. That is now one FAILED
+      finding from fact-citations-are-declared, naming both rules and the token;
+      it used to be zero.
 
-      This is fisc-u2v's doubling mechanism inside a single page, which is a
-      shape this corpus has not had before: two rules over one section, one
-      skipping what the other publishes. Filed as fisc-2x7y. Do not turn a skip
-      here into a published row without reading it.
+      Every other check stays satisfied under that mutation, which is why the
+      new one was needed and why the reasoning is kept: the fact ids differ
+      because rule_id is in the hashed tuple, so CheckUniqueIDs sees nothing;
+      both facts re-parse and both offsets land on their token, because it IS
+      the same printed figure; and no scope-to-scope check applies, since both
+      are in one scope. Before fact-citations-are-declared it went red only if
+      the row ALSO carried the wrong kind, and then fact-kind-matches-category
+      caught the kind rather than the doubling.
+
+      This is fisc-u2v's doubling mechanism inside a single page: two rules over
+      one section, one skipping what the other publishes. Do not turn a skip
+      here into a published row without reading it -- the guard will refuse it,
+      which is the point, not a formality to work around.
     parts:
       - page: 41
         section: "Other Financing Sources (Uses)"

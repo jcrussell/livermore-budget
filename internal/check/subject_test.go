@@ -242,6 +242,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"fact-ids-recompute":               StatusPass,
 		"fact-token-reparses":              StatusPass,
 		"fact-offset-points-at-token":      StatusPass,
+		"fact-citations-are-declared":      StatusPass,
 		"fact-vocabulary":                  StatusPass,
 		"fact-kind-matches-category":       StatusPass,
 		"node-tiers-are-declared":          StatusPass,
