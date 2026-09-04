@@ -940,8 +940,8 @@ func assetPath(rel string, reserved map[string]bool) error {
 // That is not hypothetical and it is why this type replaced a plain
 // Options.Validate(): validation alone was hoisted first, and withPageText was
 // left behind inside Write, so an export whose store covers a page the
-// extraction does not still emptied the directory and then refused. Found by
-// review, reproduced by moving one committed page text aside.
+// extraction does not still emptied the directory and then refused. Reproduced
+// by moving one committed page text aside.
 type plan struct {
 	dir   string
 	files []plannedFile
