@@ -287,6 +287,15 @@ rules:
           - {fund_group: special-revenue, fiscal_year: 2026}
           - {fund_group: special-revenue, fiscal_year: 2027}
           - {fund_group: internal-service, fiscal_year: 2026}
+          # THIS COLUMN CARRIES THE CORPUS'S ONE CONTESTED FIGURE, and it is
+          # published as printed on purpose. p0067 gives this column's Services
+          # & Supplies as 16,796,010 and its TOTAL EXPENDITURES as 26,544,515;
+          # p0183, p0075, p0205 and p0209 all print that total as 26,294,515.
+          # The S&S row that would yield it is 16,546,010, which is printed on NO
+          # page of the corpus -- it is the sum of five per-fund cells on p0183 --
+          # so publishing it would put a value we computed into the fact store.
+          # docs/sankey-contract.md, "The contested total", carries the mutation
+          # proof that both correction routes fail closed. fisc-av0w.
           - {fund_group: internal-service, fiscal_year: 2027}
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits}
@@ -1143,6 +1152,27 @@ rules:
   # ==========================================================================
   # REVENUE SOURCES BY FUND, Budget Book pp.127-140 (fisc-5gk.1, scope
   # revenue-by-fund per fisc-u2v). 79 rules, 231 data rows, 924 facts.
+  #
+  # BEFORE YOU ADD pp.68-75 TO THIS SCOPE: DON'T. They are per-fund and they
+  # carry revenue, so they read like more of the same schedule, and they are a
+  # THIRD citywide revenue total that does not agree with the spine.
+  #
+  # Measured. p0074.txt:52 prints "Total All Funds: $318,509,884 $310,669,663
+  # $72,386,884 $701,566,431" -- beginning balance, revenues, transfers in,
+  # total sources, confirmed because the first three sum to the fourth exactly.
+  # The spine's FY2026-27 revenue, summing the six TOTAL REVENUES: cells on
+  # pp.66-67, is 302,443,043. The difference is 8,226,620.
+  #
+  # The delta is NOT just a different basis, because the transfers column on
+  # those same pages reconciles exactly: p74's Transfers In 72,386,884 equals
+  # p76's FY2026-27 grand total 21,624,633 plus p0075.txt:58's Transfers Out to
+  # CIP 50,762,251. So pp.73-75 and p76 are the same money and agree; it is the
+  # REVENUE column that does not, and the cause is unresolved.
+  #
+  # revenue-detail-ties-to-spine WOULD catch the over-inclusion -- it requires
+  # this scope's per-cell sums to equal the spine's -- but it would surface as a
+  # mysterious red check rather than as a known property of the document, which
+  # is why this note is here rather than only in the tracker. fisc-zs5.
   # ==========================================================================
 
   - id: gf-rev-property-taxes

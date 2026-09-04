@@ -198,6 +198,21 @@ func TestRevenueDetailTiesToTheSpineOffThePages(t *testing.T) {
 //
 // The per-cell test above would pass over a schedule that had lost a whole fund
 // group, provided the spine had lost it too. This one names the six.
+//
+// COMPLETE IS OVER THE TWO BUDGET YEARS AND NOT OVER THE FOUR THE SCHEDULE
+// PRINTS, which is why the loop below names 2026 and 2027 rather than iterating
+// whatever the store holds. pp.66-67 print no actual and no revised column, so
+// there is nothing for FY2024 actual or FY2025 revised to be a decomposition
+// OF -- revenue-detail-ties-to-spine names both pairs as unreconciled in its
+// summary on every run. Those years are not merely unchecked: FY2024-25's
+// capital column is short of p63's Table 2 by $4,125,627, because General Fund
+// CIP Reserves has no section on pp.131-140 (fisc-zl9, disclosed to readers as a
+// trends caveat). Widening this loop to four years goes red for a blunter
+// reason than that gap, and the distinction is worth keeping straight: measured,
+// it reports "FY2024 capital: pp.127-140 sum to $19,743,053.00, pp.66-67 print
+// $0.00" -- the spine has no such column at all, so every group reads zero. The
+// $4,125,627 is a discrepancy against p63's Table 2, which is a different page
+// and a different comparison from the one this test makes.
 func TestRevenueDetailReproducesEverySpineFundGroup(t *testing.T) {
 	f, r := revenueDetail(t)
 	detail := readRevenueDetail(t, f, r)

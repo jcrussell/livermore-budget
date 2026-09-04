@@ -441,6 +441,50 @@ portions would publish a division the city never printed. What goes stale the
 day p76 lands is the prose above about the schedule being unmapped, not this
 figure.
 
+## The contested total
+
+The spine publishes one figure the same book contradicts four pages over, and it
+keeps publishing it deliberately. Budget Book p67's Internal Service Funds column
+prints Services & Supplies `16,796,010` for FY2026-27, giving TOTAL EXPENDITURES
+`26,544,515`. Four other pages print `26,294,515` -- `p0183:64`, `p0075:53`,
+`p0205:17` and `p0209:20`, the last of which corroborates twice because its five
+per-fund figures also sum to it -- and `p0061:39` implies it, printing
+`26,906,515`, which is that figure plus the `612,000` to-CIP transfer. Of the 48
+`(fund group x object category x budget year)` cells between pp.172-183 and
+pp.66-67, **47 agree to the dollar** and this is the 48th.
+
+**We keep p67's figure, and the reason is not deference to the spine.** The
+figure that would replace the Services & Supplies row, `16,546,010`, is printed
+on **no page of the corpus** -- grep all 786 extracted pages and it does not
+occur. It is the sum of five per-fund cells on p0183. Publishing it would put a
+value we computed into `facts/facts.jsonl`, which is the one thing the fact store
+is defined not to hold: a fact is one figure the city printed, at the page and
+offset cited.
+
+The store enforces that rather than trusting it, and the two routes fail on two
+different checks. Measured by mutating the fact and running `fisc verify`:
+
+| mutation | what goes red |
+|---|---|
+| `amount_cents` corrected, token left as p67 prints it | `fact-token-reparses` -- token `"16,796,010"` is $16,796,010.00 but the fact carries $16,546,010.00 |
+| `amount_cents` and token both corrected | `fact-offset-points-at-token` -- p67 at offset 2548 is `"16,796,010"`, but the fact cites `"16,546,010"` |
+
+So there is no edit to this fact that keeps its p67 citation, and re-citing it to
+p0183 would make the spine no longer a read of pp.66-67.
+
+**What the reader gets instead is disclosure.** `project.ContestedTotal` declares
+the column, the spine's figure, what the rest of the book makes it, and the bead;
+`sankey-2027.json` carries it as a caveat and `sankey.json` does not, FY2026
+tying everywhere. The declaration is *conditional on the graph actually drawing
+`26,544,515`*, so correcting the fact retires the sentence with nobody having to
+remember it.
+
+Two checks carry a named exception for the same cell --
+`funding-sources-tie-to-spine` and `departmentwide-ties-to-spine` -- and both
+failure messages already say what to do if the city ever reissues the page:
+*delete this exception rather than re-pointing it; the cell then ties on its
+own*. `fisc-av0w`.
+
 ## What the fund groups must satisfy
 
 For every fund group and fiscal year:
