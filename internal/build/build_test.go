@@ -197,8 +197,13 @@ func TestStringDistinguishesUnknownFromClean(t *testing.T) {
 }
 
 // TestStringMarksADirtyBuildWithNoCommit covers the arm the truncation branch
-// cannot reach: Modified true with Commit empty, which is what a dirty build
-// looks like when the linker supplied a Date but no Commit.
+// cannot reach: Modified true with Commit empty.
+//
+// THAT COMBINATION IS REACHABLE, and the branch is not dead code, but the
+// linker is not how you get there -- any vcs settings at all mean vcs.revision
+// has filled Commit. Measured: a `git init`-ed repository with no commits yet
+// emits vcs.modified=true and NO vcs.revision, so a binary built inside one
+// carries exactly this state.
 func TestStringMarksADirtyBuildWithNoCommit(t *testing.T) {
 	i := Info{Version: "dev", Modified: true}
 	if got, want := i.String(), "dev (dirty)"; got != want {
