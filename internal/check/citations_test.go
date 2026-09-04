@@ -126,8 +126,10 @@ func TestOnePrintedFigureIsTwoFactsOnlyWhenARowDeclaresIt(t *testing.T) {
 // TestATransferPrintedAgainstItsKindMustSaySo pins fisc-fdxx's invariant, and
 // pins the RESTRICTION as well as the rule: the last two cases are the negative
 // revenue and fund_balance facts the committed store really carries, and a check
-// written as "a negative amount must be declared" would redden all sixteen of
-// them.
+// written as "a negative amount must be declared" would redden all FIFTEEN of
+// them -- 9 negative revenue and 6 negative fund_balance. The store holds
+// sixteen negative facts; the sixteenth is the netted transfer_out, which such a
+// rule would not redden because it declares.
 func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 	f := func(kind mapping.Kind, sign mapping.Sign, cents int64) fact.Fact {
 		return fact.Fact{
@@ -168,5 +170,40 @@ func TestATransferPrintedAgainstItsKindMustSaySo(t *testing.T) {
 				t.Errorf("findings = %v, want failure %v (summary: %s)", res.Findings, tc.wantFail, res.Summary)
 			}
 		})
+	}
+}
+
+// TestTheOrientationSummaryDoesNotCountAZeroAsNetted pins a string fisc verify
+// prints on every run.
+//
+// The count and the arm above it have to agree: a zero declares no direction, so
+// counting one as "printed against their kind's direction" would contradict the
+// reason zeroes are exempt in the first place. Latent on the committed corpus,
+// where the one netted row has no zero column, which is why it needs a test
+// rather than a run.
+func TestTheOrientationSummaryDoesNotCountAZeroAsNetted(t *testing.T) {
+	nettedAt := func(cents int64) fact.Fact {
+		return fact.Fact{
+			ID: "f", DocID: "doc", Page: 41, Token: "-", RowLabel: "Transfers (out)",
+			Kind: mapping.KindTransferOut, Sign: mapping.SignNetted, AmountCents: cents,
+		}
+	}
+	run := func(f fact.Fact) string {
+		res, err := (&factTransferOrientationIsDeclared{}).Run(
+			t.Context(), &Subject{Facts: []fact.Fact{f}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(res.Findings) > 0 {
+			t.Fatalf("unexpected findings: %v", res.Findings)
+		}
+		return res.Summary
+	}
+	if got := run(nettedAt(0)); !strings.Contains(got, "1 transfer facts, 0 printed against") {
+		t.Errorf("summary for a zero-valued netted transfer = %q\n"+
+			"want it to count 0 as printed against its kind's direction", got)
+	}
+	if got := run(nettedAt(-2572000000)); !strings.Contains(got, "1 transfer facts, 1 printed against") {
+		t.Errorf("summary for a negative netted transfer = %q\nwant it to count 1", got)
 	}
 }

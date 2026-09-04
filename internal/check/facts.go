@@ -485,7 +485,11 @@ func (*factTransferOrientationIsDeclared) Run(_ context.Context, s *Subject) (Re
 				"%s p%d prints %q for row %q as %d cents, which already runs with its kind %s, "+
 					"but the row declares sign %q",
 				f.DocID, f.Page, f.Token, f.RowLabel, f.AmountCents, f.Kind, mapping.SignNetted))
-		case f.Sign == mapping.SignNetted:
+		case f.AmountCents < 0:
+			// Counted here rather than on `Sign == netted`, so the summary says
+			// what it means: a zero declares no direction, and counting one as
+			// "printed against its kind's direction" would contradict the arm
+			// above on a line fisc verify prints every run.
 			netted++
 		}
 	}

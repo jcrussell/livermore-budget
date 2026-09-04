@@ -514,6 +514,10 @@ func validateRule(r *Rule, errf errFunc) error {
 			return errf(r.ID, "rows", "row %q: sign %q, want positive, contra or netted",
 				row.Label, row.Sign)
 		}
+		if row.Kind != "" && !row.Kind.valid() {
+			return errf(r.ID, "rows", "row %q: kind %q is not one of the five",
+				row.Label, row.Kind)
+		}
 		// SignNetted says a row is printed against its KIND's direction, so it
 		// is meaningless on a kind that has no direction, and
 		// fact-transfer-orientation-is-declared only witnesses transfers. Left
@@ -521,17 +525,33 @@ func validateRule(r *Rule, errf errFunc) error {
 		// checks. Refused here rather than widened there: the check is right to
 		// be narrow, because a negative revenue or fund balance is a magnitude
 		// and not an orientation.
+		//
+		// BOTH ENDS, because fact.FromValues builds the counterpart leg from a
+		// COPY of this row -- it overrides Category and Kind and inherits
+		// everything else, Sign included. Inheriting it is right when both ends
+		// are transfers: one printed figure, one orientation, and a negative
+		// transfer_in is against its direction exactly as the transfer_out is.
+		// It is wrong the moment the far end is not a transfer, which is how a
+		// netted revenue fact reached the store past the near-row check alone.
+		//
+		// It sits BELOW the kind arm above so that {sign: netted, kind: income}
+		// is reported as an invalid kind rather than as a sign on kind "income",
+		// which names the wrong field to whoever has to fix the YAML.
 		if row.Sign == SignNetted {
-			if k := row.EffectiveKind(r); k != KindTransferIn && k != KindTransferOut {
+			ends := []Kind{row.EffectiveKind(r)}
+			if row.Counterpart != nil {
+				ends = append(ends, row.Counterpart.Kind)
+			}
+			for _, k := range ends {
+				if k == KindTransferIn || k == KindTransferOut {
+					continue
+				}
 				return cmdutil.WithHint(
 					errf(r.ID, "rows", "row %q: sign netted on kind %q", row.Label, k),
 					"netted says the document prints this row against its kind's "+
-						"direction, which only transfer_in and transfer_out have")
+						"direction, which only transfer_in and transfer_out have; "+
+						"a counterpart leg inherits the row's sign")
 			}
-		}
-		if row.Kind != "" && !row.Kind.valid() {
-			return errf(r.ID, "rows", "row %q: kind %q is not one of the five",
-				row.Label, row.Kind)
 		}
 		// EVERY ROW CARRIES A CATEGORY. A department is a SECOND AXIS and not
 		// a substitute for one: pp.167-170 cross department against object

@@ -178,6 +178,27 @@ func TestParseRejects(t *testing.T) {
 			want: "sign netted on kind",
 		},
 		{
+			// fact.FromValues builds the far leg from a COPY of the row and
+			// overrides only Category and Kind, so Sign is inherited. A netted
+			// row whose counterpart is not a transfer therefore publishes a
+			// netted revenue fact, which the orientation check filters out and
+			// nothing else reads.
+			name: "sign netted with a counterpart that is not a transfer",
+			yaml: strings.Replace(
+				strings.Replace(base(""), "kind: revenue", "kind: transfer_out", 1),
+				`- {label: "A"`,
+				`- {label: "A", sign: netted, counterpart: {category: c, kind: revenue, fund: 1}`, 1),
+			want: "sign netted on kind \"revenue\"",
+		},
+		{
+			// The kind arm must be reached first, or the author is told about
+			// the sign when the actual mistake is the kind.
+			name: "an invalid kind is reported as a kind even when the sign is netted",
+			yaml: strings.Replace(base(""), `- {label: "A"`,
+				`- {label: "A", sign: netted, kind: income`, 1),
+			want: "is not one of the five",
+		},
+		{
 			name: "duplicate row label",
 			yaml: base("") + "      - {label: \"A\", category: a2}\n",
 			want: "duplicate row label",
