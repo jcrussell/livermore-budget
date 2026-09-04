@@ -893,6 +893,31 @@ and drop the history that argued for it. This governs source comments and not
 this file, whose own *(Correction, recorded here rather than by amending)*
 blocks are argued for where they stand.
 
+**Narration already in the tree is dropped in the file you were editing
+anyway, never in a sweep.** When you touch a file for any other reason, drop the
+history from the blocks you touched — and *drop* it, do not rewrite the comment
+around it. `fisc-pm8f` priced the rewrite: 42.5 minutes and 411k tokens for 148
+lines of `internal/geom`, which extrapolates to ~90 hours over the tree and grew
+the file it touched by 18%. Verification cost attaches to claims written or
+kept, so a deletion is the cheap half and a restatement re-imports the whole
+cost.
+
+Two measurements decide this, both taken at `a14b6c2`. First, **a sweep would
+reach nothing an ordinary lane does not**: all 62 files carrying narration were
+touched in the last 100 commits — no cold files — and 40 consecutive commits
+reach 71% of the narrated lines. Second, **the quantity is small and the usual
+figure is the wrong one**: 185 of 19,137 comment lines carry a history marker,
+about 1%. `fisc-a3rp`'s ~3,000 is a count of every line of every *block* one of
+those sentences sits in, which is what you must READ, not what you would delete;
+deleting the block takes the rule with the history, which is what the paragraph
+above forbids. Sizing the work off it overstates it by an order of magnitude.
+
+The reason this is a standing habit rather than a lane is in the numbers below:
+history is the smallest of the four causes. Reading a comment warm, with the
+code it describes already open, is also the only way to tell a rule from the
+history that argued for it — the hard case is a paragraph whose history IS the
+evidence for the rule it ends with, and no filter separates those.
+
 The evidence is `fisc-pm8f`, over the findings counted in
 [What fifteen passes measured](#what-fifteen-passes-measured). Reclassifying the
 false-text ones by *cause* gives restating-a-rule-that-changed-elsewhere 35%,
