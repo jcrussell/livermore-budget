@@ -3,6 +3,7 @@ package build
 
 import (
 	"runtime/debug"
+	"strings"
 	"sync"
 )
 
@@ -20,11 +21,20 @@ var (
 // truncates the hash to twelve characters, which would cut a "+dirty" suffix
 // off the end and report a dirty build as a clean one -- the exact failure this
 // field exists to prevent.
+//
+// VCSKnown IS WHAT KEEPS Modified FALSE FROM MEANING "CLEAN". The two states a
+// bool cannot tell apart are "the tree was clean" and "nothing recorded whether
+// the tree was clean", and a build with -buildvcs=false is the second: measured,
+// `GOFLAGS=-buildvcs=false make build` on a dirty tree emits no vcs settings at
+// all while ldflags still supply a commit, so a bare Modified would publish that
+// commit as though it were the source of the running code. String says
+// "+unknown" there rather than nothing.
 type Info struct {
 	Version  string
 	Commit   string
 	Date     string
 	Modified bool
+	VCSKnown bool
 }
 
 // Get returns the build info, falling back to the Go build metadata when the
@@ -62,10 +72,15 @@ func get(i Info, read func() (*debug.BuildInfo, bool)) Info {
 // assert the marker.
 //
 // A build with no vcs settings at all -- `-buildvcs=false`, or a build outside
-// a repository -- reports Modified false and Commit empty together, so it
-// claims no commit rather than claiming a clean one.
+// a repository -- leaves VCSKnown false, which String renders as "+unknown" on
+// any commit it does have. Reporting Modified false there would be a claim
+// nothing measured, and the linker can supply a commit independently of the
+// metadata, so "no settings" does not imply "no commit".
 func fromSettings(i Info, settings []debug.BuildSetting) Info {
 	for _, s := range settings {
+		if strings.HasPrefix(s.Key, "vcs.") {
+			i.VCSKnown = true
+		}
 		switch s.Key {
 		case "vcs.revision":
 			if i.Commit == "" {
@@ -95,8 +110,11 @@ func (i Info) String() string {
 			c = c[:12]
 		}
 		s += " (" + c
-		if i.Modified {
+		switch {
+		case i.Modified:
 			s += "+dirty"
+		case !i.VCSKnown:
+			s += "+unknown"
 		}
 		s += ")"
 	} else if i.Modified {

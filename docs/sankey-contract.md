@@ -464,10 +464,17 @@ offset cited.
 The store enforces that rather than trusting it, and the two routes fail on two
 different checks. Measured by mutating the fact and running `fisc verify`:
 
-| mutation | what goes red |
+| mutation | the fact check that goes red |
 |---|---|
 | `amount_cents` corrected, token left as p67 prints it | `fact-token-reparses` -- token `"16,796,010"` is $16,796,010.00 but the fact carries $16,546,010.00 |
 | `amount_cents` and token both corrected | `fact-offset-points-at-token` -- p67 at offset 2548 is `"16,796,010"`, but the fact cites `"16,546,010"` |
+
+Each route yields **three** failures, not one: the fact check above plus
+`funding-sources-tie-to-spine` and `departmentwide-ties-to-spine`, which are
+declared against the spine's present figure and go red the moment it moves. The
+table names only the fact check because that is the arm a synthetic figure cannot
+get past -- the tie checks would fall silent again if the exceptions were
+re-pointed, and the fact checks would not.
 
 So there is no edit to this fact that keeps its p67 citation, and re-citing it to
 p0183 would make the spine no longer a read of pp.66-67.
@@ -479,11 +486,20 @@ tying everywhere. The declaration is *conditional on the graph actually drawing
 `26,544,515`*, so correcting the fact retires the sentence with nobody having to
 remember it.
 
-Two checks carry a named exception for the same cell --
-`funding-sources-tie-to-spine` and `departmentwide-ties-to-spine` -- and both
-failure messages already say what to do if the city ever reissues the page:
-*delete this exception rather than re-pointing it; the cell then ties on its
-own*. `fisc-av0w`.
+Two checks carry a named exception for this $250,000, and **not for the same
+cell** -- they reach it on different axes, which is what makes them independent
+witnesses rather than two copies of one claim. `funding-sources-tie-to-spine`
+holds out `(FY2027, adopted, internal-service)`, a FUND GROUP, against two
+figures both of which pages print. `departmentwide-ties-to-spine` holds out
+`(FY2027, adopted, services-and-supplies)`, an OBJECT CATEGORY, where its own
+summary is careful to say neither figure is printed anywhere and all three are
+arithmetic. pp.85-125 decompose the money by department, division and object with
+no fund dimension at all, and still put the difference in this category and this
+year and in none of the other seven cells.
+
+`funding-sources-tie-to-spine`'s failure message already says what to do if the
+city reissues the page: *delete this exception rather than re-pointing it; the
+cell then ties on its own*. `fisc-av0w`.
 
 ## What the fund groups must satisfy
 

@@ -34,7 +34,7 @@ func TestFromSettingsReadsTheDirtyMarker(t *testing.T) {
 				{Key: "vcs.time", Value: "2026-09-04T15:37:19Z"},
 				{Key: "vcs.modified", Value: "false"},
 			},
-			want: Info{Commit: rev, Date: "2026-09-04T15:37:19Z"},
+			want: Info{Commit: rev, Date: "2026-09-04T15:37:19Z", VCSKnown: true},
 		},
 		{
 			name: "a dirty build is marked",
@@ -43,26 +43,37 @@ func TestFromSettingsReadsTheDirtyMarker(t *testing.T) {
 				{Key: "vcs.time", Value: "2026-09-04T15:37:19Z"},
 				{Key: "vcs.modified", Value: "true"},
 			},
-			want: Info{Commit: rev, Date: "2026-09-04T15:37:19Z", Modified: true},
+			want: Info{Commit: rev, Date: "2026-09-04T15:37:19Z", Modified: true, VCSKnown: true},
 		},
 		{
-			name: "no vcs settings claims no commit rather than a clean one",
+			name: "no vcs settings leaves the tree state unknown, not clean",
 			// -buildvcs=false, or a build outside a repository. Modified stays
-			// false, but so does Commit, so nothing is asserted about a tree.
+			// false, and VCSKnown stays false to say that false was not measured.
 			settings: []debug.BuildSetting{{Key: "GOARCH", Value: "amd64"}},
 			want:     Info{},
 		},
 		{
+			name: "no vcs settings does not make a linker-supplied commit clean",
+			// The arm fisc-qz2w reaches again if VCSKnown goes away: measured,
+			// `GOFLAGS=-buildvcs=false make build` on a tree with an untracked
+			// file emitted no vcs settings while ldflags still supplied the
+			// commit, and the version line claimed a clean build.
+			in:       Info{Version: "v1", Commit: rev, Date: "d"},
+			settings: []debug.BuildSetting{{Key: "GOARCH", Value: "amd64"}},
+			want:     Info{Version: "v1", Commit: rev, Date: "d"},
+		},
+		{
 			name: "a dirty tree marks a commit the linker supplied",
-			// Get falls through to here whenever EITHER ldflags field is
-			// missing. vcs.modified describes the tree the Makefile's
-			// `git rev-parse` read, so it applies to that commit too.
+			// vcs.modified describes the tree the Makefile's `git rev-parse`
+			// read, so it applies to a linker-supplied commit as much as to a
+			// discovered one. The sibling test below covers the case where the
+			// linker supplied BOTH fields, which is what the Makefile does.
 			in: Info{Commit: rev},
 			settings: []debug.BuildSetting{
 				{Key: "vcs.revision", Value: "0000000000000000000000000000000000000000"},
 				{Key: "vcs.modified", Value: "true"},
 			},
-			want: Info{Commit: rev, Modified: true},
+			want: Info{Commit: rev, Modified: true, VCSKnown: true},
 		},
 	}
 
@@ -109,7 +120,7 @@ func TestTheBuildMetadataIsReadEvenWhenTheLinkerSuppliedEverything(t *testing.T)
 		t.Fatal("the build metadata was not read at all when ldflags supplied Commit and Date; " +
 			"the dirty marker cannot fire on the path make build takes")
 	}
-	want := Info{Version: "v1.2.3", Commit: ld, Date: "2026-09-04T15:37:19Z", Modified: true}
+	want := Info{Version: "v1.2.3", Commit: ld, Date: "2026-09-04T15:37:19Z", Modified: true, VCSKnown: true}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("get() mismatch (-want +got):\n%s", diff)
 	}
@@ -136,7 +147,10 @@ func TestGetSurvivesAbsentBuildInfo(t *testing.T) {
 func TestStringSurvivesTruncation(t *testing.T) {
 	const rev = "44d173a10e6f382e3c42181825df1cd395f4a269"
 
-	clean := Info{Version: "dev", Commit: rev, Date: "2026-09-04T15:37:19Z"}
+	// VCSKnown is what makes this one CLEAN rather than merely unmeasured;
+	// without it String renders "+unknown" and the fixture would not be the
+	// thing the test is named for.
+	clean := Info{Version: "dev", Commit: rev, Date: "2026-09-04T15:37:19Z", VCSKnown: true}
 	dirty := clean
 	dirty.Modified = true
 
@@ -148,6 +162,37 @@ func TestStringSurvivesTruncation(t *testing.T) {
 	}
 	if clean.String() == dirty.String() {
 		t.Error("a dirty build renders identically to a clean one, which is fisc-qz2w")
+	}
+}
+
+// TestStringDistinguishesUnknownFromClean is the guard on the second half of
+// fisc-qz2w: Modified false means "clean" only when something measured it.
+//
+// A bare bool cannot tell "the tree was clean" from "nothing recorded whether
+// the tree was clean", and the second is reachable -- `-buildvcs=false` with
+// ldflags supplying a commit. All three renderings must differ.
+func TestStringDistinguishesUnknownFromClean(t *testing.T) {
+	const rev = "44d173a10e6f382e3c42181825df1cd395f4a269"
+	base := Info{Version: "dev", Commit: rev}
+
+	clean := base
+	clean.VCSKnown = true
+	dirty := clean
+	dirty.Modified = true
+	unknown := base // VCSKnown false
+
+	got := []string{clean.String(), dirty.String(), unknown.String()}
+	want := []string{
+		"dev (44d173a10e6f)",
+		"dev (44d173a10e6f+dirty)",
+		"dev (44d173a10e6f+unknown)",
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("String() mismatch (-want +got):\n%s", diff)
+	}
+	if unknown.String() == clean.String() {
+		t.Error("an unmeasured tree renders as a clean one, which is fisc-qz2w " +
+			"reachable through -buildvcs=false")
 	}
 }
 
