@@ -803,3 +803,60 @@ rules:
 	// would read as a guard. What the Fatalf above already establishes is the
 	// checkable half -- that the read did not succeed.
 }
+
+// TestEveryMappedPartWithHeadersCanCarryTheColumnGuard pins buildPairing's
+// coverage claim over the mapped set.
+//
+// The guard is reached only for a part declaring column_headers, so the claim
+// worth checking is not "every mapped page pairs" -- one does not -- but "every
+// part that ASKS for the guard can have it". A part declaring headers on a page
+// whose substrates disagree would refuse at read time with a message about the
+// substrates rather than about the rule, which is a confusing way to discover
+// that a page cannot carry the guard at all.
+//
+// It reads data/extracted/ rather than testdata/, because the claim is about the
+// whole committed corpus and a fixture could only restate it. That is the same
+// reason internal/corpus and internal/registry reach for it.
+//
+// Deleting the ColumnHeaders condition below makes this fail on ACFR p41, which
+// is the one mapped page whose substrates disagree.
+func TestEveryMappedPartWithHeadersCanCarryTheColumnGuard(t *testing.T) {
+	files, err := LoadDir(os.DirFS("../.."), "mappings")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type key struct {
+		doc  string
+		page int
+	}
+	wantsGuard := map[key]bool{}
+	for _, f := range files {
+		for _, r := range f.Rules {
+			for i := range r.Parts {
+				if len(r.Parts[i].ColumnHeaders) > 0 {
+					wantsGuard[key{f.DocID, r.Parts[i].Page}] = true
+				}
+			}
+		}
+	}
+	if len(wantsGuard) == 0 {
+		t.Fatal("no mapped part declares column_headers, so this test cannot fail")
+	}
+	for k := range wantsGuard {
+		text, err := os.ReadFile(fmt.Sprintf("../../data/extracted/%s/pages/p%04d.txt", k.doc, k.page))
+		if err != nil {
+			t.Fatalf("%s p%d: %v", k.doc, k.page, err)
+		}
+		raw, err := os.ReadFile(fmt.Sprintf("../../data/extracted/%s/geometry/p%04d.json", k.doc, k.page))
+		if err != nil {
+			t.Fatalf("%s p%d: %v", k.doc, k.page, err)
+		}
+		g, err := geom.ParsePage(raw)
+		if err != nil {
+			t.Fatalf("%s p%d: %v", k.doc, k.page, err)
+		}
+		if _, err := buildPairing(string(text), g); err != nil {
+			t.Errorf("%s p%d declares column_headers but cannot carry the guard: %v", k.doc, k.page, err)
+		}
+	}
+}

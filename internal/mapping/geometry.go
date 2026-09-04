@@ -52,10 +52,17 @@ type pairing struct {
 // Both substrates describe the same printed page, so they must agree about it.
 // Where they do, each -layout token has exactly one geometry word and the pairing
 // is an offset lookup; where they do not, this fails and the page cannot carry
-// the guard at all. That is a real limit rather than a theoretical one: on 124 of
-// the corpus's 786 pages the two disagree about how many lines the page has, and
-// on 99 more they disagree about the tokens on a line. None is a page any rule
-// maps, and every one of them refuses here rather than being read approximately.
+// the guard at all. That is a real limit rather than a theoretical one: measured
+// at b62a6c8, on 124 of the corpus's 786 pages the two disagree about how many
+// lines the page has, and on 99 more they disagree about the tokens on a line.
+//
+// ONE OF THEM IS MAPPED: ACFR p41, which has 52 non-blank text lines against 51
+// geometry lines. It declares no column_headers, so this never runs for it. The
+// claim worth checking is therefore not that every mapped page pairs -- one does
+// not -- but that every part ASKING for the guard can have it, which
+// TestEveryMappedPartWithHeadersCanCarryTheColumnGuard pins over the committed
+// corpus. Every page that fails refuses here rather than being read
+// approximately.
 func buildPairing(text string, g *geom.Page) (*pairing, error) {
 	lines := g.Lines()
 
