@@ -275,7 +275,7 @@ rules:
       THIRD transfer_out fact, making ACFR transfers/out 25.72 + 25.19, with
       fisc verify at 44 passed, 0 FAILED. Without the sign it goes red, but on
       the ORIENTATION check and not the doubling, which is the
-      green-because-the-gate-fired shape and not a guard. Tracked as fisc-b0dq.
+      green-because-the-gate-fired shape and not a guard. Tracked as fisc-eaic.
 
       MEASURED, not argued: give the "Transfers in" row here a
       category and a matching kind instead of skip, rebuild, and the store

@@ -224,6 +224,21 @@ func TestTheMergeableMeasurementSkipsFactsNetCellsRefuses(t *testing.T) {
 			"the pair cannot collide at any grain", pair, got)
 	}
 
+	// The FINE arm applies it too. That is latent on the committed store -- no
+	// pair's fine count moves either way -- so it is asserted as the shared
+	// property rather than as a number, and canMerge is what both call.
+	for i := range s.Facts {
+		if f := &s.Facts[i]; f.Department != "" && canMerge(f) {
+			t.Errorf("canMerge admits %s, which carries department %q; "+
+				"project.netCells errors on it rather than merging", f.ID, f.Department)
+			break
+		}
+	}
+	if len(sharedKeys(s.Facts)[pair]) != 0 {
+		t.Errorf("%s shares a fine address built from department-bearing facts, "+
+			"so the two arms disagree about what can collide", pair)
+	}
+
 	// And the filter must not be a blanket one: a pair that CAN collide still does.
 	live := pairOf(project.PublishedScope, revenueDetailScope)
 	if got := len(sharedMergeableKeys(s.Facts)[live]); got == 0 {

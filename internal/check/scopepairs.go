@@ -261,8 +261,9 @@ type cellAddress struct {
 // mergeableAddress is the coarsest address at which a projection can actually
 // merge two facts, which is NOT the same as the key netCells writes.
 //
-// THE KEY netCells WRITES IS THREE FIELDS AND THAT IS NOT THE REACHABLE GRAIN.
-// netCells has exactly one caller, sankey, and it is handed selectFacts' output
+// THE KEY project.netCells WRITES IS THREE FIELDS AND THAT IS NOT THE REACHABLE
+// GRAIN. It is qualified because this package declares a netCells of its own.
+// project.netCells has one caller, sankey, and it is handed selectFacts' output
 // -- which admits a fact only if its (fiscal_year, basis) is one of the columns
 // selected -- and sankey refuses any Options carrying more than one column. So
 // every fact that reaches netCells already agrees on year and basis, and two
@@ -299,16 +300,12 @@ type mergeableAddress struct {
 // sharedMergeableKeys is, for every pair of scopes, the addresses both publish a
 // fact at that a projection could actually merge.
 //
-// FACTS netCells REFUSES ARE NOT COUNTED. It errors rather than merging on a
-// fact carrying a department, or missing a category or a fund group, so such a
-// fact cannot participate in a collision -- it stops the build instead. Counting
-// them overstated the hazard: every expenditure-by-department fact carries a
-// department, so that scope reported collisions it cannot have.
+// It counts only facts [canMerge] admits, for the reason given there.
 func sharedMergeableKeys(facts []fact.Fact) map[scopePair]map[mergeableAddress]bool {
 	byScope := map[string]map[mergeableAddress]bool{}
 	for i := range facts {
 		f := &facts[i]
-		if f.Department != "" || f.Category == "" || f.FundGroup == "" {
+		if !canMerge(f) {
 			continue
 		}
 		a := mergeableAddress{
@@ -343,6 +340,29 @@ func sharedMergeableKeys(facts []fact.Fact) map[scopePair]map[mergeableAddress]b
 	return out
 }
 
+// canMerge reports whether a fact could take part in a collision at all.
+//
+// project.netCells is the only place in this repository where two facts are ever
+// summed into one cell, and it ERRORS rather than merging on a fact carrying a
+// department, or missing a category or a fund group. Such a fact stops a build;
+// it cannot be double-published by one. Counting it overstates the hazard, and
+// the overstatement has teeth: every expenditure-by-department fact carries a
+// department, so without this that scope reports collisions it cannot have and a
+// TRUE disjointness declaration for it would be refused.
+//
+// BOTH ARMS APPLY IT, and they must. cellAddress models a document keyed more
+// finely than any that exists, but even a finer-grained document would have to
+// merge somewhere, and project.netCells is the only somewhere. Measured at the
+// commit that introduced this: filtering changes no pair's FINE count today and
+// takes all-funds-gross + expenditure-by-department from 8 mergeable keys to 0,
+// so it is latent on one arm and load-bearing on the other.
+//
+// If a second merge point is ever added, this reasoning is what has to be
+// revisited -- not the field lists.
+func canMerge(f *fact.Fact) bool {
+	return f.Department == "" && f.Category != "" && f.FundGroup != ""
+}
+
 // sharedKeys is, for every pair of scopes, the addresses both publish a fact at.
 //
 // THE KEY IS THE ONE A PROJECTION WOULD COLLIDE ON, not a convenient subset.
@@ -354,6 +374,9 @@ func sharedKeys(facts []fact.Fact) map[scopePair]map[cellAddress]bool {
 	byScope := map[string]map[addr]bool{}
 	for i := range facts {
 		f := &facts[i]
+		if !canMerge(f) {
+			continue
+		}
 		a := addr{
 			Kind: f.Kind, Category: f.Category, FundGroup: f.FundGroup,
 			Fund: f.Fund, FiscalYear: f.FiscalYear, Basis: f.Basis,
