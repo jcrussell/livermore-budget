@@ -45,34 +45,35 @@ func fieldsOfStruct(t *testing.T, path, name string) []string {
 	return got
 }
 
-// TestNetCellAddressMirrorsTheProjection pins the claim netCellAddress's doc
-// comment makes: that it is the key internal/project's netCells actually
-// collides on.
+// TestMergeableAddressIsTheProjectionsKeyPlusWhatSelectionFixes pins what
+// mergeableAddress claims to be.
 //
-// It is a MIRROR and not an import, because project.cellKey is unexported and
-// because this check must keep measuring what netCells did even if netCells is
-// re-keyed. So the two can drift, and this is what makes the drift loud: adding
-// a field to cellKey without adding it here would leave ARM 2 validating
-// disjointness declarations against a grain no projection uses, which is the
-// fisc-tlbp defect arriving from the other direction.
+// netCells keys on three fields, but it has one caller -- sankey -- which hands
+// it selectFacts' output and refuses more than one column, so every fact
+// reaching it already agrees on fiscal year and basis. The grain a projection
+// can realize is therefore netCells' key plus those two, and this asserts that
+// relationship rather than a field list nobody would notice going stale.
 //
-// Comparing field NAMES read from the source rather than values, because the
-// claim is structural and reflect cannot see an unexported type across a package
-// boundary.
-func TestNetCellAddressMirrorsTheProjection(t *testing.T) {
-	want := fieldsOfStruct(t, "../project/sankey.go", "cellKey")
-	got := fieldsOfStruct(t, "scopepairs.go", "netCellAddress")
+// Comparing names read from the source, because project.cellKey is unexported
+// and reflect cannot see it across a package boundary.
+func TestMergeableAddressIsTheProjectionsKeyPlusWhatSelectionFixes(t *testing.T) {
+	netKey := fieldsOfStruct(t, "../project/sankey.go", "cellKey")
+	got := fieldsOfStruct(t, "scopepairs.go", "mergeableAddress")
+
+	want := append(append([]string{}, netKey...), "fiscalyear", "basis")
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("netCellAddress does not mirror project.cellKey (-cellKey +netCellAddress):\n%s\n"+
-			"ARM 2 validates disjointness declarations against this grain; if netCells was "+
-			"re-keyed, follow it here deliberately rather than leaving the two apart", diff)
+		t.Errorf("mergeableAddress is not project.cellKey plus (fiscal_year, basis) "+
+			"(-want +got):\n%s\nARM 2 validates disjointness declarations at this "+
+			"grain. If netCells was re-keyed, or sankey stopped fixing the column, "+
+			"follow it here deliberately.", diff)
 	}
-	if len(got) == 0 {
-		t.Fatal("no fields compared, so this test could not fail")
+	if len(netKey) == 0 {
+		t.Fatal("no fields read from project.cellKey, so this test could not fail")
 	}
-	// The finer address must be a strict superset: it is the key that answers
-	// "could ANY projection collide these", so anything the coarse key carries
-	// it must carry too.
+
+	// The fine address must be a strict superset: it is the key that answers
+	// "could ANY document collide these", so it must carry everything the
+	// reachable grain does, and exactly one field more.
 	fine := fieldsOfStruct(t, "scopepairs.go", "cellAddress")
 	set := map[string]bool{}
 	for _, f := range fine {
@@ -80,68 +81,95 @@ func TestNetCellAddressMirrorsTheProjection(t *testing.T) {
 	}
 	for _, f := range got {
 		if !set[f] {
-			t.Errorf("netCellAddress carries %q and cellAddress does not, so the "+
+			t.Errorf("mergeableAddress carries %q and cellAddress does not, so the "+
 				"finer key is not a refinement of the coarser one", f)
 		}
 	}
+	if len(fine) != len(got)+1 {
+		t.Errorf("cellAddress has %d fields and mergeableAddress %d; the difference "+
+			"should be exactly the fund, which is what a projection merges across",
+			len(fine), len(got))
+	}
 }
 
-// TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsNetOn reproduces
-// fisc-tlbp exactly: the declaration that was made, the measurement that
-// justified it, and the collision it did not cover.
+// TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsCanReach is the
+// guard fisc-tlbp asked for, and both halves matter.
 //
-// The entry below is the one that really landed and was reverted. Its reason was
-// measured with sharedKeys, which is true -- acfr-general-fund-summary and
-// all-funds-gross share ZERO six-field addresses, because one is FY2025 audited
-// and the other FY2026/FY2027 adopted, and fiscal_year and basis are in that key.
-// Under the three-field key netCells collides on, they share 15. A declaration
-// asserting a safety that does not hold is worse than the undeclared pair it
-// replaced, because ARM 3 stops reporting it.
-func TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsNetOn(t *testing.T) {
+// REFUSED: a pair that shares no cellAddress and does share a mergeableAddress.
+// all-funds-gross and revenue-by-fund are that case and are the check's own
+// worked example -- the spine carries fund 0 where the detail carries fund
+// numbers, so they share zero six-field addresses and 74 five-field ones while
+// being the same $299,969,007.
+//
+// ACCEPTED: the ACFR pairs. They share nothing at either grain, because that
+// scope is FY2025 audited and everything else is FY2026-27 adopted, and
+// selectFacts admits one (fiscal_year, basis) per projection. An earlier version
+// of this check keyed on netCells' three fields alone and refused a TRUE
+// declaration here, which would have blocked E10's ACFR-beside-the-spine
+// document except by writing a false reason. That is why the acceptance is
+// asserted and not assumed.
+func TestADisjointnessDeclarationIsCheckedAtTheGrainProjectionsCanReach(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	pair := pairOf(acfrGeneralFundScope, project.PublishedScope)
-
-	// The committed store must be clean, or the assertion below proves nothing.
-	clean, cleanErr := (&projectionScopesAreDisjoint{}).Run(t.Context(), s)
-	if cleanErr != nil {
-		t.Fatal(cleanErr)
+	run := func() []Finding {
+		t.Helper()
+		res, err := (&projectionScopesAreDisjoint{}).Run(t.Context(), s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Findings
 	}
-	if len(clean.Findings) > 0 {
+	if got := run(); len(got) > 0 {
 		t.Fatalf("the committed corpus already has findings, so this test cannot "+
-			"attribute one to the declaration: %v", clean.Findings)
-	}
-	if len(sharedKeys(s.Facts)[pair]) != 0 {
-		t.Fatalf("%s shares a six-field address, so the old measurement no longer "+
-			"holds and this test is not reproducing fisc-tlbp", pair)
-	}
-	if got := len(sharedNetKeys(s.Facts)[pair]); got == 0 {
-		t.Fatalf("%s shares no netCells key, so there is nothing for the coarse "+
-			"arm to catch and this test could not fail", pair)
+			"attribute one to a declaration: %v", got)
 	}
 
-	disjointScopes[pair] = "they share no cell key"
-	defer delete(disjointScopes, pair)
+	fine, mergeable := sharedKeys(s.Facts), sharedMergeableKeys(s.Facts)
 
-	res, err := (&projectionScopesAreDisjoint{}).Run(t.Context(), s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Findings) == 0 {
-		t.Fatal("declaring the ACFR pair disjoint on a six-field measurement produced " +
-			"no finding; ARM 2 is measuring only the finer key again")
-	}
-	var joined []string
-	for _, f := range res.Findings {
-		joined = append(joined, f.Detail)
-	}
-	all := strings.Join(joined, "\n")
-	if !strings.Contains(all, "at the grain a projection nets on") {
-		t.Errorf("findings = %s\nwant the coarse-key arm to be the one that fired", all)
-	}
-	if !strings.Contains(all, "netCells") {
-		t.Errorf("findings = %s\nwant the finding to name what collides", all)
-	}
+	t.Run("refused when the pair merges at the reachable grain", func(t *testing.T) {
+		p := pairOf(project.PublishedScope, revenueDetailScope)
+		if len(fine[p]) != 0 {
+			t.Fatalf("%s shares a six-field address, so this no longer isolates the "+
+				"coarse arm", p)
+		}
+		if len(mergeable[p]) == 0 {
+			t.Fatal("the spine and the revenue detail no longer merge at the reachable " +
+				"grain, so there is nothing for the coarse arm to catch")
+		}
+		disjointScopes[p] = "they share no cell key"
+		defer delete(disjointScopes, p)
+
+		var joined []string
+		for _, f := range run() {
+			joined = append(joined, f.Detail)
+		}
+		all := strings.Join(joined, "\n")
+		if all == "" {
+			t.Fatal("declaring the spine and the revenue detail disjoint produced no " +
+				"finding; ARM 2 is measuring only the finer key again")
+		}
+		if !strings.Contains(all, "at the grain a projection can reach") {
+			t.Errorf("findings = %s\nwant the coarse-key arm to be the one that fired", all)
+		}
+	})
+
+	t.Run("accepted when the pair cannot meet in any column", func(t *testing.T) {
+		for _, other := range []string{project.PublishedScope, revenueDetailScope, transfersDetailScope} {
+			p := pairOf(acfrGeneralFundScope, other)
+			if len(fine[p])+len(mergeable[p]) != 0 {
+				t.Errorf("%s shares %d fine and %d mergeable key(s); the ACFR is FY2025 "+
+					"audited and cannot meet an adopted column", p, len(fine[p]), len(mergeable[p]))
+				continue
+			}
+			disjointScopes[p] = "FY2025 audited against FY2026-27 adopted: selectFacts " +
+				"admits one (fiscal_year, basis) per projection, so no column holds both"
+			got := run()
+			delete(disjointScopes, p)
+			if len(got) > 0 {
+				t.Errorf("declaring %s disjoint was refused, and the declaration is TRUE: %v", p, got)
+			}
+		}
+	})
 }

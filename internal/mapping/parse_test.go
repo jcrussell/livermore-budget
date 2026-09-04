@@ -187,7 +187,7 @@ func TestParseRejects(t *testing.T) {
 			yaml: strings.Replace(
 				strings.Replace(base(""), "kind: revenue", "kind: transfer_out", 1),
 				`- {label: "A"`,
-				`- {label: "A", sign: netted, counterpart: {category: c, kind: revenue, fund: 1}`, 1),
+				`- {label: "A", sign: netted, counterpart: {category: c, kind: revenue, fund: 1, fund_group: general}`, 1),
 			want: "sign netted on kind \"revenue\"",
 		},
 		{
@@ -197,6 +197,17 @@ func TestParseRejects(t *testing.T) {
 			yaml: strings.Replace(base(""), `- {label: "A"`,
 				`- {label: "A", sign: netted, kind: income`, 1),
 			want: "is not one of the five",
+		},
+		{
+			// The netted guard reads the counterpart's kind, so it must sit
+			// below checkCounterpart or a mistyped one is reported as a sign
+			// error. Same class as the row.Kind ordering above.
+			name: "a mistyped counterpart kind is reported as a kind, not as a sign",
+			yaml: strings.Replace(
+				strings.Replace(base(""), "kind: revenue", "kind: transfer_out", 1),
+				`- {label: "A"`,
+				`- {label: "A", sign: netted, counterpart: {category: c, kind: incom, fund: 1, fund_group: general}`, 1),
+			want: "counterpart kind \"incom\" is not one of the five",
 		},
 		{
 			name: "duplicate row label",

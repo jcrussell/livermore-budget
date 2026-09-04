@@ -124,11 +124,12 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 	// ARM 2: the measured relation, over every pair of scopes the corpus
 	// carries. This is the subject count: each pair is a thing examined.
 	shared := sharedKeys(s.Facts)
-	// A DECLARATION MUST HOLD UNDER THE COARSEST KEY A PROJECTION USES, not only
-	// the finest. netCells keys on three fields, so a pair sharing no
-	// cellAddress can still be netted into one cell; measuring only cellAddress
-	// let a declaration assert a safety that did not hold (fisc-tlbp).
-	sharedNet := sharedNetKeys(s.Facts)
+	// A DECLARATION MUST HOLD UNDER THE COARSEST GRAIN A PROJECTION CAN REACH,
+	// not only the finest. That grain is cellAddress minus fund, because the
+	// spine carries fund 0 where the detail carries fund numbers, so measuring
+	// only cellAddress let a declaration assert a safety that did not hold
+	// (fisc-tlbp). It is NOT netCells' own three fields: see mergeableAddress.
+	sharedNet := sharedMergeableKeys(s.Facts)
 	pairs := allScopePairs(s.Facts)
 	for _, p := range pairs {
 		reason, declared := disjointScopes[p]
@@ -146,10 +147,11 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 		if len(sharedNet[p]) > 0 {
 			findings = append(findings, finding(p.String(),
 				"declared disjoint (%s) and the corpus disagrees at the grain a projection "+
-					"nets on: these scopes share no (kind, category, fund_group, fund, "+
-					"fiscal year, basis) address, but %d key(s) of (kind, category, "+
-					"fund_group), which is what internal/project's netCells collides on. A "+
-					"projection selecting both would merge those cells",
+					"can reach: these scopes share no (kind, category, fund_group, fund, "+
+					"fiscal year, basis) address, but %d of (kind, category, fund_group, "+
+					"fiscal year, basis) -- the same key without the FUND, which is what a "+
+					"projection merges on because the spine carries fund 0 where the detail "+
+					"carries fund numbers. A projection selecting both would merge those cells",
 				reason, len(sharedNet[p])))
 		}
 	}
@@ -243,13 +245,10 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 // a document could key on, so two scopes sharing one would collide in a
 // projection keyed at ANY grain.
 //
-// IT IS NOT SUFFICIENT ON ITS OWN, and an earlier version of this comment had
-// the safety argument the wrong way round -- it reasoned that a narrower key
-// "would report two scopes as colliding when only a coarse document would
-// collide them", as though over-reporting were the risk. A coarser key collides
-// MORE, so the question "could these two scopes collide" is answered by the
-// COARSEST key any projection uses, not the finest. That is netCellAddress
-// below, and ARM 2 measures both (fisc-tlbp).
+// IT IS NOT SUFFICIENT ON ITS OWN. A coarser key collides MORE, so "could these
+// two scopes collide" is answered by the coarsest grain a projection can reach,
+// not by the finest one a document could key on. That is mergeableAddress below
+// -- this address without the fund -- and ARM 2 measures both (fisc-tlbp).
 type cellAddress struct {
 	Kind       mapping.Kind
 	Category   string
@@ -259,40 +258,65 @@ type cellAddress struct {
 	Basis      mapping.Basis
 }
 
-// netCellAddress is the key internal/project's netCells actually collides on.
+// mergeableAddress is the coarsest address at which a projection can actually
+// merge two facts, which is NOT the same as the key netCells writes.
 //
-// It is cellAddress minus fund, fiscal year and basis, and it is a COARSER key,
-// so it collides more readily. That is why it is here: a pair sharing no
-// cellAddress can still be netted into one cell by the projection code that
-// exists today, which is what made a disjointness declaration measured against
-// cellAddress alone able to assert a safety that did not hold.
+// THE KEY netCells WRITES IS THREE FIELDS AND THAT IS NOT THE REACHABLE GRAIN.
+// netCells has exactly one caller, sankey, and it is handed selectFacts' output
+// -- which admits a fact only if its (fiscal_year, basis) is one of the columns
+// selected -- and sankey refuses any Options carrying more than one column. So
+// every fact that reaches netCells already agrees on year and basis, and two
+// facts differing in either can never meet in a cell. Adding them back gives the
+// grain a projection can realize.
 //
-// MEASURED on the committed store: five of the twenty-one pairs share zero
-// cellAddress and more than zero of these -- acfr-general-fund-summary against
-// all-funds-gross (15), revenue-by-fund (10) and transfers-by-fund (2), and
-// all-funds-gross against revenue-by-fund (37) and expenditure-by-department
-// (4). The last two are reconciled pairs, which ARM 3 already refuses to
-// co-select; the three ACFR pairs are neither reconciled nor declared.
+// It is therefore cellAddress MINUS FUND, and fund is the whole of the
+// difference. That is not a small distinction: the spine carries fund 0 and the
+// detail schedules carry fund numbers, so a spine cell and a detail cell for the
+// same category in the same year are a collision no cellAddress comparison can
+// see.
 //
-// It mirrors project.cellKey rather than importing it because that type is
-// unexported and because this check must keep measuring what netCells did even
-// if netCells is re-keyed -- a re-key would be the thing to notice, not
-// something to follow silently. TestNetCellAddressMirrorsTheProjection pins the
-// two together.
-type netCellAddress struct {
-	Kind      mapping.Kind
-	Category  string
-	FundGroup string
+// MEASURED on the committed store, over facts netCells would accept, as shared
+// (fine, mergeable) keys:
+//
+//	all-funds-gross + revenue-by-fund         0, 74
+//	all-funds-gross + transfers-by-fund       2, 16
+//	revenue-by-fund + transfers-by-fund      22,  8
+//
+// and every ACFR pair is (0, 0), because that scope is FY2025 audited and
+// everything else is FY2026-27 adopted. An earlier version of this type carried
+// only netCells' three fields; under that key the ACFR pairs read 15, 10 and 2,
+// and a TRUE disjointness declaration for them was refused -- which would have
+// blocked E10's ACFR-beside-the-spine document except by writing a false reason.
+// fisc-tlbp's own description had warned of exactly that.
+type mergeableAddress struct {
+	Kind       mapping.Kind
+	Category   string
+	FundGroup  string
+	FiscalYear int
+	Basis      mapping.Basis
 }
 
-// sharedNetKeys is, for every pair of scopes, the netCells keys both publish at.
-func sharedNetKeys(facts []fact.Fact) map[scopePair]map[netCellAddress]bool {
-	byScope := map[string]map[netCellAddress]bool{}
+// sharedMergeableKeys is, for every pair of scopes, the addresses both publish a
+// fact at that a projection could actually merge.
+//
+// FACTS netCells REFUSES ARE NOT COUNTED. It errors rather than merging on a
+// fact carrying a department, or missing a category or a fund group, so such a
+// fact cannot participate in a collision -- it stops the build instead. Counting
+// them overstated the hazard: every expenditure-by-department fact carries a
+// department, so that scope reported collisions it cannot have.
+func sharedMergeableKeys(facts []fact.Fact) map[scopePair]map[mergeableAddress]bool {
+	byScope := map[string]map[mergeableAddress]bool{}
 	for i := range facts {
 		f := &facts[i]
-		a := netCellAddress{Kind: f.Kind, Category: f.Category, FundGroup: f.FundGroup}
+		if f.Department != "" || f.Category == "" || f.FundGroup == "" {
+			continue
+		}
+		a := mergeableAddress{
+			Kind: f.Kind, Category: f.Category, FundGroup: f.FundGroup,
+			FiscalYear: f.FiscalYear, Basis: f.Basis,
+		}
 		if byScope[f.Scope] == nil {
-			byScope[f.Scope] = map[netCellAddress]bool{}
+			byScope[f.Scope] = map[mergeableAddress]bool{}
 		}
 		byScope[f.Scope][a] = true
 	}
@@ -302,14 +326,14 @@ func sharedNetKeys(facts []fact.Fact) map[scopePair]map[netCellAddress]bool {
 	}
 	sort.Strings(scopes)
 
-	out := map[scopePair]map[netCellAddress]bool{}
+	out := map[scopePair]map[mergeableAddress]bool{}
 	for i := 0; i < len(scopes); i++ {
 		for j := i + 1; j < len(scopes); j++ {
 			p := pairOf(scopes[i], scopes[j])
 			for a := range byScope[scopes[i]] {
 				if byScope[scopes[j]][a] {
 					if out[p] == nil {
-						out[p] = map[netCellAddress]bool{}
+						out[p] = map[mergeableAddress]bool{}
 					}
 					out[p][a] = true
 				}
