@@ -52,11 +52,30 @@ import (
 // string more than once. [mapping.Resolver.TotalRowSpan] applies the block
 // narrowing.
 //
-// A RULE WHOSE DECLARED TOTAL RESOLVES ON NO PART IS A FINDING, not a skip. A
-// resolution failure is the one way this check could quietly examine nothing,
-// and a spanning block is not an exception to it: a rule whose total prints on
-// its last page fails to resolve on the earlier ones and resolves there, which
-// is why the arm is per RULE and not per part.
+// WHAT IT DOES ABOUT LOSING A SPAN, precisely, because this is the part four
+// review passes kept getting wrong and the exact boundary matters.
+//
+// A resolution failure is the one way this check can quietly examine less than
+// it did yesterday, and it cannot be refused outright: fourteen committed parts
+// legitimately resolve no stated-total line. Eleven are total_spans_parts rules
+// whose total prints on the block's LAST page, and three are label-less parts
+// anchoring on the block terminator -- a fund-group header and the running
+// footer.
+//
+// So there are two mechanisms and only one of them is a finding:
+//
+//   - THE COUNT IS PUBLISHED UNCONDITIONALLY. Every unresolved declared total is
+//     counted and printed in the summary on every run, exempt or not. That is
+//     what makes span loss VISIBLE rather than silent, and it is the half that
+//     no exemption predicate can hide: break a spanning rule's total_row and the
+//     line reads 161 resolved and 15 unresolved instead of 162 and 14.
+//   - THE FINDING IS NARROW, and deliberately under-claims. It fires for a
+//     LABELLED part of a rule that declares a total_row and does not spread it
+//     across parts. Break a spanning rule or a label-less part's anchor and this
+//     check still reports pass, with the counts moved. Widening it correctly
+//     needs the exemptions to be DECLARED the way declaredVacuous and
+//     unprojectedScopes are, rather than inferred from a predicate over the
+//     rule's shape; that is fisc-xbvs and it is not done here.
 type factOffsetIsNotAStatedTotal struct{}
 
 var _ Check = (*factOffsetIsNotAStatedTotal)(nil)
@@ -89,7 +108,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 
 	// Keyed by document and page, which is how a fact addresses itself.
 	spans := map[string]map[int][]totalSpan{}
-	lines := 0
+	lines, unresolved := 0, 0
 	for _, f := range s.Files {
 		r, ok := s.Resolvers[f.Path]
 		if !ok {
@@ -121,6 +140,14 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					continue
 				}
 				if err != nil {
+					// COUNTED WHATEVER THE ARM BELOW DOES WITH IT. The published
+					// summary carries this number, so a span that stops
+					// resolving moves a figure `fisc verify` prints on every run
+					// whether or not any predicate calls it a finding. That is
+					// the part of this that cannot be gamed by an exemption
+					// being too broad -- and three consecutive review passes
+					// found exactly that, each in a different clause.
+					unresolved++
 					// The two ordinary shapes, per the arm below: a spanning
 					// rule's total prints on the block's last page, and a
 					// label-less part anchors on the block terminator rather
@@ -205,6 +232,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				continue
 			}
 			if err != nil {
+				unresolved++
 				findings = append(findings, finding(ro.ID,
 					"prints a rollup total this check cannot locate, so a fact published "+
 						"on that line cannot be refused: %v", err))
@@ -251,8 +279,8 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 	return conclusion{
 		subjects: examined,
 		unit:     "facts",
-		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s (rule totals and rollups)",
-			examined, lines, plural(lines, "line", "lines")),
+		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s (rule totals and rollups); %d declared total(s) resolve to no line",
+			examined, lines, plural(lines, "line", "lines"), unresolved),
 		nothing:  nothing,
 		findings: findings,
 	}.result(), nil

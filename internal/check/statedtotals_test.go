@@ -1,6 +1,7 @@
 package check
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -224,6 +225,77 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 	}
 }
 
+// TestLosingAnExemptSpanStillMovesThePublishedCount is what the check has
+// instead of a finding for the fourteen parts whose non-resolution is exempt,
+// and it is the half that no predicate can hide.
+//
+// Three consecutive review passes found a fail-open in the exemption predicate,
+// each in a different clause, and the third measurement was that TEN of the
+// eleven total_spans_parts rules could lose their only span with the check still
+// reporting pass. The narrow finding is kept and under-claims on purpose
+// (fisc-xbvs); what makes the loss VISIBLE rather than silent is that the
+// unresolved count is published unconditionally, so breaking an exempt rule
+// moves two numbers `fisc verify` prints on every run.
+//
+// This asserts that. Drop the unconditional `unresolved++` and it goes red.
+func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	before := runStatedTotals(t, s)
+	if before.Status != StatusPass {
+		t.Fatalf("the unbent corpus reported %s: %s", before.Status, before.Summary)
+	}
+	// A GENUINELY EXEMPT RULE, found by simulation. Not every spanning rule is
+	// exempt in practice: div-general-services is covered by a rollup, so
+	// breaking its total_row breaks RollupTotalSpan and produces a finding by a
+	// different route. The subject wanted here is one whose loss the check
+	// really does forgive, which is the case this test exists for.
+	var bent *mapping.Rule
+	var after Result
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			rule := &f.Rules[i]
+			if !rule.TotalSpansParts || rule.TotalRow == "" {
+				continue
+			}
+			was := rule.TotalRow
+			rule.TotalRow = "No Page Prints This Row"
+			res := runStatedTotals(t, s)
+			if res.Status == StatusPass {
+				bent, after = rule, res
+				break
+			}
+			rule.TotalRow = was
+		}
+		if bent != nil {
+			break
+		}
+	}
+	if bent == nil {
+		t.Fatal("no committed spanning rule loses a span without producing a finding, so " +
+			"the exemption this test is about no longer bites -- assert the finding instead")
+	}
+	// THE UNRESOLVED COUNT SPECIFICALLY, not just "the summary changed". The
+	// first version of this test asserted the latter and passed with the
+	// unconditional counter deleted, because the RESOLVED count moves too --
+	// green because the other gate fired.
+	wasUnresolved, nowUnresolved := unresolvedIn(t, before.Summary), unresolvedIn(t, after.Summary)
+	if nowUnresolved != wasUnresolved+1 {
+		t.Errorf("rule %q lost its stated-total span and the published unresolved count "+
+			"went %d -> %d, want %d: the loss is not visible as a loss.\n  before: %q\n  after:  %q",
+			bent.ID, wasUnresolved, nowUnresolved, wasUnresolved+1, before.Summary, after.Summary)
+	}
+	// It is exempt from the FINDING on purpose, and that is the claim fisc-xbvs
+	// owns. If this ever starts failing, the exemption has been tightened and
+	// this test should be replaced by one asserting the finding.
+	if after.Status != StatusPass {
+		t.Logf("NOTE: breaking a spanning rule now reports %s -- the exemption has been "+
+			"tightened and fisc-xbvs may be dischargeable", after.Status)
+	}
+}
+
 // TestOneLostPartIsCaughtEvenWhenOthersResolve is the fail-open this arm shipped
 // with, and it took four review passes to surface.
 //
@@ -239,6 +311,24 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 // excuse have their own tests above -- the eleven spanning parts whose total
 // prints on the block's last page, and the label-less parts anchoring on a block
 // terminator.
+// unresolvedIn reads the "N declared total(s) resolve to no line" figure out of
+// the check's published summary, so a test can assert the number a reader sees
+// rather than a number recomputed beside it.
+func unresolvedIn(t *testing.T, summary string) int {
+	t.Helper()
+	const tail = " declared total(s) resolve to no line"
+	i := strings.Index(summary, tail)
+	if i < 0 {
+		t.Fatalf("the summary does not publish an unresolved count: %q", summary)
+	}
+	j := strings.LastIndexByte(summary[:i], ' ') + 1
+	n, err := strconv.Atoi(summary[j:i])
+	if err != nil {
+		t.Fatalf("unreadable unresolved count in %q: %v", summary, err)
+	}
+	return n
+}
+
 func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
