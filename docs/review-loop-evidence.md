@@ -59,12 +59,11 @@ lane's fifth-pass five are the loop's own work.
 `git log --format='%s' | grep -oiE '[a-z]+ findings'` over the whole log. The
 grep over-collects, catching subjects that carry the word without a yield.
 
-**The command and the number it was published with do not match, and that is
-worth more than either.** AGENTS.md carried "92 passes and 472 findings, measured
-at `ab71b7a`"; running the line above *at* `ab71b7a` returns **94**. Whatever
-produced 92 was not this command, and nothing recorded the difference — which is
-the quoted-number-drift this file is partly about. Re-run it and read what it
-says; do not quote this paragraph.
+Running the line above *at* `ab71b7a` returns **94**, and the published figure
+was 92. The difference is the over-collection: `spike findings` and
+`more findings` are the two subjects that carry the word without a yield, and
+94 − 2 = 92, which is what the table below sums to. So the number and the command
+agree once the caveat beside them is applied — read them together.
 
 | yield | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11 | 12 | 13 |
 |---|---|---|---|---|---|---|---|---|---|---|---|

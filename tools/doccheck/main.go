@@ -23,9 +23,10 @@
 // the memory arm of `make narration`, which warns and continues whenever bd
 // cannot answer.
 //
-// A CITATION IS NOT A LINE. Two of the ones in the tree today wrap across two
-// comment lines, so the scan joins the file and normalises comment markers out
-// of the captured title rather than matching line by line -- see titleOf.
+// A CITATION IS NOT A LINE. Three of the ones in the tree wrap across two lines
+// -- two in Go comments and one in a docs/ blockquote -- so the scan joins the
+// file and normalises markers out of the captured title rather than matching
+// line by line. See titleOf.
 package main
 
 import (
@@ -68,7 +69,7 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // heading, and four separate places cite it as though it were a section name.
 var (
 	headingPattern = regexp.MustCompile(`(?m)^#{1,6}[ \t]+(.*\S)[ \t]*$`)
-	boldPattern    = regexp.MustCompile(`(?s)\*\*(.+?)\*\*`)
+	boldPattern    = regexp.MustCompile(`(?sm)^[ \t]*(?:[-*+][ \t]+)?\*\*(.+?)\*\*`)
 )
 
 // exempt is the files whose citations are not claims about the tree. It is one
@@ -209,6 +210,13 @@ func anchorsIn(path string) (map[string]bool, error) {
 	// became anchors and four real lead phrases vanished -- among them BOTH
 	// rules that have to sit above the generated block, so a correct citation of
 	// either would have failed the gate.
+	//
+	// ONLY A LEAD PHRASE COUNTS -- bold opening a line or a bullet. Accepting
+	// bold ANYWHERE made one-word inline emphasis into anchors, so "not",
+	// "range", "message" and "verify" all resolved and a citation naming no
+	// section of this file passed the gate. That is the fail-open direction, and
+	// it is the shape a citation actually takes: the one the tree cites,
+	// "History's home is git", opens its bullet.
 	for _, m := range boldPattern.FindAllStringSubmatch(text, -1) {
 		anchors[fold(m[1])] = true
 	}

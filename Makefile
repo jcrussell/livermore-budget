@@ -158,14 +158,16 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 # doccheck refuses a citation that names no section of AGENTS.md.
 #
 # The tree cites AGENTS.md by section name from Go, from this file and from
-# site/app.js -- thirteen of them at the time this landed -- and nothing checked
-# the strings. So renaming a section left every citation of it pointing at
+# site/app.js, and nothing checked the strings. So renaming a section left every citation of it pointing at
 # nothing, which is worse than no pointer: it reads as though the rule is
 # written down and sends the reader looking for a heading that is gone.
 #
-# THREE OF THEM ARE PRINTED TO A TERMINAL rather than only sitting in a comment
-# -- narration's failure message above, tools/memcheck and tools/beadrefs -- so a
-# stale one is a false claim made to a user already dealing with a failure.
+# SOME OF THEM ARE PRINTED TO A TERMINAL rather than only sitting in a comment --
+# narration's failure message above, tools/memcheck, tools/beadrefs and doccheck
+# itself -- so a stale one is a false claim made to a user already dealing with a
+# failure. tools/doccheck's package comment carries the count; it is not repeated
+# here, because this exact sentence has now been wrong at two, three and four in
+# consecutive commits by being written down twice.
 #
 # A BOLD LEAD PHRASE IS AN ANCHOR TOO, and that is not a nicety: four of the
 # thirteen cite "History's home is git", which is bolded text inside a section
@@ -290,12 +292,16 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 	@dir="$$(git rev-parse --git-path hooks)"; \
 	test -n "$$dir" || { echo "could not resolve the hooks directory; not a git checkout?" >&2; exit 1; }; \
 	top="$$(git rev-parse --show-toplevel)"; \
+	common="$$(cd "$$(git rev-parse --git-common-dir)" 2>/dev/null && pwd)"; \
+	maintop="$$(dirname "$$common")"; \
 	case "$$dir" in \
 		/*) abs="$$dir";; \
 		*) abs="$$top/$$dir";; \
 	esac; \
 	case "$$abs/" in \
 		"$$top"/*) ;; \
+		"$$common"/*) ;; \
+		"$$maintop"/*) ;; \
 		*) echo "refusing: $$dir is outside this repository." >&2; \
 		   echo "  core.hooksPath is set to a directory git uses for OTHER repos" >&2; \
 		   echo "  too -- probably a global setting -- so installing here would run" >&2; \

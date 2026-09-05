@@ -22,7 +22,7 @@ func TestAnchorsInTakesHeadingsBoldPhrasesAndPostColonTails(t *testing.T) {
 
 **History's home is git.** No credit lines.
 
-Ordinary **bold** in a sentence.
+Ordinary **bold** mid-sentence is not an anchor.
 `)
 	got, err := anchorsIn(path)
 	if err != nil {
@@ -34,7 +34,6 @@ Ordinary **bold** in a sentence.
 		"the failure mode to look for: green because the gate fired": true,
 		"green because the gate fired":                               true,
 		"history's home is git":                                      true,
-		"bold":                                                       true,
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("anchorsIn (-want +got):\n%s", diff)
@@ -53,8 +52,9 @@ func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 
 - **Never claim or close a `+"`byob-*`"+` bead**, ever.
 - **A count against the
-  documents** ("78 rows", "786 pages"), and **a count that is the
-  evidence** stays.
+  documents** stays, and so does this.
+- **A count that is the
+  evidence** stays too.
 `)
 	got, err := anchorsIn(path)
 	if err != nil {
@@ -64,11 +64,35 @@ func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 		"t": true,
 		// fold treats `*` as furniture, so the anchor normalises to a space.
 		// Harmless because a citation of it folds identically; what matters is
-		// that the run PAIRED correctly and the two anchors after it survived.
+		// that the run PAIRED correctly and the two wrapped anchors after it
+		// survived. Both of those open their own bullet, because only a LEAD
+		// phrase is an anchor now.
 		"never claim or close a `byob- ` bead": true,
 		"a count against the documents":        true,
 		"a count that is the evidence":         true,
 	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("anchorsIn (-want +got):\n%s", diff)
+	}
+}
+
+// Only a bold LEAD phrase is an anchor. Accepting bold anywhere made one-word
+// inline emphasis resolve, so a citation naming no section of AGENTS.md passed
+// the gate -- the fail-open direction.
+func TestInlineEmphasisIsNotAnAnchor(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "AGENTS.md")
+	write(t, path, `# T
+
+- **A lead phrase.** With **inline** emphasis after it.
+
+Prose with **stress** in the middle of a sentence.
+`)
+	got, err := anchorsIn(path)
+	if err != nil {
+		t.Fatalf("anchorsIn: %v", err)
+	}
+	want := map[string]bool{"t": true, "a lead phrase": true}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("anchorsIn (-want +got):\n%s", diff)
 	}
