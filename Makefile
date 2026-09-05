@@ -245,32 +245,80 @@ codehash: ## Fingerprint FILES=... by code alone, ignoring comments
 .PHONY: pre-commit
 pre-commit: fmt vet narration beadrefs doccheck test lint-if-available js-if-available ## Format, vet, narration, beadrefs, doccheck, test, lint, and check app.js
 
-# A HOOK CANNOT BE COMMITTED. .git/hooks is not tracked, so "symlink pre-commit
-# into it" is per-checkout setup somebody has to actually run -- and until this
-# target existed, CLAUDE.md and the since-merged docs/agents/workflow.md both
-# described the symlink as though it were already there. It was not, in any checkout anyone
-# looked at, which made a workflow document assert a guard that did not exist.
+# A HOOK CANNOT BE COMMITTED. The hooks directory is not tracked, so "install
+# the pre-commit hook" is per-checkout setup somebody has to actually run -- and
+# until this target existed, CLAUDE.md and the since-merged docs/agents/workflow.md
+# both described the symlink as though it were already there. It was not, in any
+# checkout anyone looked at, which made a workflow document assert a guard that
+# did not exist.
+#
+# THE SECOND VERSION OF THAT DEFECT WAS THIS TARGET'S OWN. It wrote into
+# .git/hooks unconditionally and announced success. But core.hooksPath REPLACES
+# .git/hooks rather than adding to it, and bd sets it to .beads/hooks here, so
+# git never read what this installed: the symlink and its script sat on disk for
+# a week, the local gate never ran once, and the target printed that it had
+# installed a hook that runs `make pre-commit`. A false claim the program prints
+# is the worst kind, so the path now comes from git and the claim is READ BACK
+# from the file git will actually execute before anything is printed.
+#
+# `git rev-parse --git-path hooks` is the one question that answers this: it
+# returns core.hooksPath when set and .git/hooks when not.
+#
+# IT APPENDS RATHER THAN CLOBBERS when another tool already owns the file, and
+# lands outside any BEGIN/END markers -- which is what git-lfs already does in
+# .beads/hooks, its three lines sitting above bd's block in pre-push and
+# post-merge, so it is a demonstrated arrangement rather than a hope.
+#
+# BUT IT REFUSES A HOOK GIT TRACKS, and that is the case here: core.hooksPath
+# points at .beads/hooks, whose six hooks are committed files. Writing there
+# would either leave the tree permanently dirty or, if committed, turn an opt-in
+# convenience into a hook that fires for everyone who has bd -- including a
+# contributor with no Go toolchain, who could then not commit at all. The
+# paragraph below is the rule that forbids that, so this refuses and says what
+# the options are instead of quietly making the trade.
 #
 # THE LOCAL HOOK IS A CONVENIENCE AND CI IS THE GATE. A contributor who never
 # runs this target is not doing anything wrong; the required lint and verify
 # jobs still fail their PR. Keep it that way -- a repository whose correctness
 # depends on every clone having run a setup step has no gate at all.
-#
-# It refuses an existing regular file rather than clobbering it, because that
-# file is somebody's own hook and losing it silently is worse than not
-# installing ours.
 .PHONY: hooks
 hooks: ## Install the local pre-commit hook (idempotent; CI is still the gate)
-	@test -d .git/hooks || { echo "no .git/hooks; not a git checkout?" >&2; exit 1; }
-	@if [ -e .git/hooks/pre-commit ] && [ ! -L .git/hooks/pre-commit ]; then \
-		echo "refusing: .git/hooks/pre-commit exists and is not a symlink" >&2; \
-		echo "  move it aside, then re-run 'make hooks'" >&2; \
+	@dir="$$(git rev-parse --git-path hooks)"; \
+	test -n "$$dir" || { echo "could not resolve the hooks directory; not a git checkout?" >&2; exit 1; }; \
+	hook="$$dir/pre-commit"; \
+	if git ls-files --error-unmatch "$$hook" >/dev/null 2>&1; then \
+		echo "refusing: git tracks $$hook, so this target will not write it." >&2; \
+		echo "  core.hooksPath points at a tracked directory, which means a hook" >&2; \
+		echo "  installed here is either an uncommitted change to a tracked file" >&2; \
+		echo "  or a commit that makes 'make pre-commit' mandatory for everyone" >&2; \
+		echo "  who has bd -- including a contributor with no Go toolchain." >&2; \
+		echo "  Run 'make pre-commit' yourself before committing; CI is the gate." >&2; \
 		exit 1; \
+	fi; \
+	mkdir -p "$$dir" || exit 1; \
+	printf '#!/bin/sh\nexec make pre-commit\n' > "$$dir/pre-commit.fisc"; \
+	chmod +x "$$dir/pre-commit.fisc"; \
+	if [ ! -e "$$hook" ]; then \
+		printf '#!/bin/sh\nexec "$$(dirname "$$0")/pre-commit.fisc"\n' > "$$hook"; \
+		chmod +x "$$hook"; \
+	elif grep -q 'pre-commit\.fisc' "$$hook" 2>/dev/null; then \
+		:; \
+	elif [ -L "$$hook" ]; then \
+		ln -sf pre-commit.fisc "$$hook"; \
+	else \
+		printf '\n# --- fisc: run this repo'"'"'s own gate after whatever else owns this file ---\n"$$(dirname "$$0")/pre-commit.fisc" || exit $$?\n' >> "$$hook"; \
+	fi; \
+	chmod +x "$$hook" 2>/dev/null || true; \
+	back="$$(git rev-parse --git-path hooks)"; \
+	if [ ! -x "$$back/pre-commit" ] || ! grep -q 'pre-commit\.fisc' "$$back/pre-commit" 2>/dev/null; then \
+		echo "refusing to claim success: $$back/pre-commit does not invoke pre-commit.fisc" >&2; \
+		exit 1; \
+	fi; \
+	echo "installed $$back/pre-commit -> pre-commit.fisc (runs 'make pre-commit')"; \
+	if [ "$$back" != ".git/hooks" ] && [ -e .git/hooks/pre-commit ]; then \
+		echo "note: .git/hooks/pre-commit also exists and git does NOT run it," >&2; \
+		echo "  because core.hooksPath points at $$back. Remove it if you like." >&2; \
 	fi
-	@printf '#!/bin/sh\nexec make pre-commit\n' > .git/hooks/pre-commit.fisc
-	@chmod +x .git/hooks/pre-commit.fisc
-	@ln -sf pre-commit.fisc .git/hooks/pre-commit
-	@echo "installed .git/hooks/pre-commit -> pre-commit.fisc (runs 'make pre-commit')"
 
 # Extraction is deliberately NOT part of the Go binary. It is a rare,
 # human-initiated step whose output is committed; fisc reads only that output

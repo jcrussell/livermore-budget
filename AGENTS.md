@@ -200,10 +200,13 @@ must not stop a commit. `make lint` on its own still fails, because that target
 is CI's required check. Lint was red on `main` across three commits before this
 was wired up, which is the gap it closes.
 
-`make hooks` installs the local hook. It is per-checkout setup nobody may have
-run — `.git/hooks` is not tracked — so **CI is the gate and the hook is a
-convenience**. Do not assume the gate ran; run `make pre-commit` yourself. Note
-it does *not* run `fisc verify`.
+`make hooks` installs the local hook into the directory git actually reads,
+which is `core.hooksPath` when that is set and `.git/hooks` when it is not. It
+**refuses when that directory is tracked** — as `.beads/hooks` is here — because
+a committed hook would make `make pre-commit` mandatory for everyone who has bd.
+So **CI is the gate and the hook is a convenience**, and in this checkout there
+is no local hook at all: do not assume the gate ran, and run `make pre-commit`
+yourself. Note it does *not* run `fisc verify`.
 
 `./bin/fisc verify` is the gate. `--full` adds the PDF hash check and needs the
 LFS files. Run `./bin/fisc build --output bin/facts-rebuilt.jsonl` and `cmp`
