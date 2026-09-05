@@ -84,8 +84,8 @@ func TestResolveReportsOnlyWhatNeitherSourceKnows(t *testing.T) {
 }
 
 func TestResolveAsksOncePerDistinctID(t *testing.T) {
-	// AGENTS.md is 1,136 lines citing the same handful of ids repeatedly, so a
-	// per-CITATION shell-out would be a process per occurrence.
+	// AGENTS.md cites the same handful of ids over and over, so a per-CITATION
+	// shell-out would be a process per occurrence.
 	refs := []ref{
 		{id: "fisc-dead", file: "a.md", line: 1},
 		{id: "fisc-dead", file: "a.md", line: 2},
@@ -114,11 +114,26 @@ func TestResolveWithNoSecondOpinionDecidesOnTheExportAlone(t *testing.T) {
 	}
 }
 
-func TestDropExemptIDsRefusesADeclarationWithNoSubject(t *testing.T) {
-	// An exemption for a token that appears nowhere is a declaration outliving
-	// its subject, which is a hole nobody can see.
-	if _, err := dropExemptIDs(nil); err == nil {
-		t.Error("dropExemptIDs(no refs) = nil error, want a refusal: every exemption is unmatched")
+func TestDropExemptIDsRefusesADeclarationWhoseFileNoLongerCarriesIt(t *testing.T) {
+	// An exemption whose token has gone is a declaration outliving its subject,
+	// which is a hole nobody can see. Staleness is measured against the file the
+	// declaration NAMES, so this reports a stale one only when that file was
+	// actually read -- a narrower run is a narrower run.
+	scanned := map[string]bool{}
+	for _, e := range exemptIDs {
+		scanned[e.file] = true
+	}
+	if _, err := dropExemptIDs(nil, scanned); err == nil {
+		t.Error("dropExemptIDs(file read, token absent) = nil error, want a refusal")
+	}
+}
+
+func TestDropExemptIDsIsSilentWhenTheDeclaredFileWasNotRead(t *testing.T) {
+	// This is the case that made the first version wrong: it reported every
+	// exemption stale on any run narrower than the Makefile's path list, and
+	// following its advice would have broken the gate.
+	if _, err := dropExemptIDs(nil, map[string]bool{}); err != nil {
+		t.Errorf("dropExemptIDs(nothing read) = %v, want no error", err)
 	}
 }
 
@@ -127,31 +142,35 @@ func TestAnExemptionCannotSatisfyItselfFromItsOwnDeclaration(t *testing.T) {
 	// there by construction. Counting that as a sighting made the staleness
 	// check unfalsifiable -- measured: a key renamed to a token in no other file
 	// left a full run green.
+	scanned := map[string]bool{declarationFile: true}
 	var refs []ref
-	for id := range exemptIDs {
+	for id, e := range exemptIDs {
+		scanned[e.file] = true
 		refs = append(refs, ref{id: id, file: declarationFile, line: 1})
 	}
-	if _, err := dropExemptIDs(refs); err == nil {
+	if _, err := dropExemptIDs(refs, scanned); err == nil {
 		t.Error("dropExemptIDs(sightings only in the declaration) = nil error, want a refusal")
 	}
 
-	// One real sighting elsewhere is what the declaration is for.
-	for id := range exemptIDs {
-		refs = append(refs, ref{id: id, file: "site/app.js", line: 2})
+	// One real sighting in the file the declaration names is what it is for.
+	for id, e := range exemptIDs {
+		refs = append(refs, ref{id: id, file: e.file, line: 2})
 	}
-	if _, err := dropExemptIDs(refs); err != nil {
-		t.Errorf("dropExemptIDs(sighting outside the declaration) = %v, want no error", err)
+	if _, err := dropExemptIDs(refs, scanned); err != nil {
+		t.Errorf("dropExemptIDs(sighting in the declared file) = %v, want no error", err)
 	}
 }
 
 func TestDropExemptIDsKeepsEverythingItDoesNotDeclare(t *testing.T) {
 	var refs []ref
-	for id := range exemptIDs {
-		refs = append(refs, ref{id: id, file: "site/app.js", line: 1})
+	scanned := map[string]bool{}
+	for id, e := range exemptIDs {
+		refs = append(refs, ref{id: id, file: e.file, line: 1})
+		scanned[e.file] = true
 	}
 	refs = append(refs, ref{id: "fisc-kc3j", file: "AGENTS.md", line: 2})
 
-	kept, err := dropExemptIDs(refs)
+	kept, err := dropExemptIDs(refs, scanned)
 	if err != nil {
 		t.Fatalf("dropExemptIDs: %v", err)
 	}
@@ -194,14 +213,14 @@ func TestRefsUnderScansAFileNamedDirectlyWhateverItIsCalled(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "walked"), []byte("fisc-walked\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	direct, err := refsUnder([]string{named})
+	direct, _, err := refsUnder([]string{named})
 	if err != nil {
 		t.Fatalf("refsUnder(file): %v", err)
 	}
 	if len(direct) != 1 || direct[0].id != "fisc-named" {
 		t.Errorf("refsUnder(%q) = %v, want the one citation it holds", named, direct)
 	}
-	walked, err := refsUnder([]string{dir})
+	walked, _, err := refsUnder([]string{dir})
 	if err != nil {
 		t.Fatalf("refsUnder(dir): %v", err)
 	}
@@ -231,7 +250,7 @@ func TestRefsUnderWalksAndFiltersByExtension(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	refs, err := refsUnder([]string{dir})
+	refs, _, err := refsUnder([]string{dir})
 	if err != nil {
 		t.Fatalf("refsUnder: %v", err)
 	}
@@ -299,7 +318,7 @@ func TestEveryExemptionNamesAFileThatExists(t *testing.T) {
 	if err := checkExemptions(t.TempDir()); err == nil {
 		t.Error("checkExemptions(empty dir) = nil, want a refusal: the declaration has nothing to exempt")
 	}
-	if _, err := refsUnder([]string{t.TempDir()}); err != nil {
+	if _, _, err := refsUnder([]string{t.TempDir()}); err != nil {
 		t.Errorf("refsUnder does not check exemptions and must not: %v", err)
 	}
 }
@@ -307,7 +326,7 @@ func TestEveryExemptionNamesAFileThatExists(t *testing.T) {
 func TestRefsUnderFailsOnAPathItCannotRead(t *testing.T) {
 	// A path that cannot be read is a path that cannot be checked, and the
 	// argument list is hand-maintained in the Makefile.
-	if _, err := refsUnder([]string{filepath.Join(t.TempDir(), "nope")}); err == nil {
+	if _, _, err := refsUnder([]string{filepath.Join(t.TempDir(), "nope")}); err == nil {
 		t.Error("refsUnder(missing path) = nil error, want a failure")
 	}
 }

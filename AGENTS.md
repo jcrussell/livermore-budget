@@ -656,10 +656,12 @@ unchecked one as a defect. Three traps:
   the id `bd create` prints is not guessable, so writing one from memory is easy
   and reads as tracked.
 
-  **Two things it does not cover.** A commit MESSAGE is not scanned before it
-  lands, so read the id back there yourself. And the path list is
-  hand-maintained: it fails on a listed path that has gone, and it cannot know
-  about one that was never listed.
+  **What it does not cover.** A commit MESSAGE is not scanned before it lands, so
+  read the id back there yourself. And its reach is two hand-maintained lists —
+  the paths, in the Makefile, and the file extensions picked up while walking one
+  of them, in `scannable`. Both fail loudly on an entry that has gone and neither
+  can know about one that was never added, which is how `site/style.css` and
+  `site/app.js` were each unchecked for a while after this landed.
 
 - **When you correct a figure in prose, grep the tree for its copies in the
   same commit.** A fact restated in four files is not one defect; it is four
@@ -854,10 +856,11 @@ and drop the history that argued for it.
 
 **`make narration` is the enforced half of this**, over Go sources and over the
 injected memories, which are worse placed for an erratum because `bd prime`
-delivers one whether or not anyone opens the file it is about. It refuses two
-literal phrases and is deliberately not a prose detector; the rest of the rule is
-still read by hand. The same target's `make beadrefs` sibling refuses a bead id
-that names no bead.
+delivers one whether or not anyone opens the file it is about. Both arms are
+deliberately narrow rather than prose detectors — the Go arm refuses two literal
+phrases, the memory arm a handful of patterns that name the memory as their
+subject — so the rest of the rule is still read by hand. `make beadrefs` is the
+sibling that refuses a bead id naming no bead.
 
 **This file is governed by the rule too.** It carried two errata blocks about
 wrong commit messages, each keeping the rule and the history that argued for it;

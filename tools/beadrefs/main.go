@@ -1,10 +1,9 @@
 // Command beadrefs refuses a bead id that names no bead.
 //
-// AGENTS.md calls an invented id the worst of the three claim defects it names,
-// and the reason is that it does not read as a mistake: the work really is
-// tracked and only the pointer is dead, so nobody goes looking. It has happened
-// twice here. Writing one is easy, because `bd create` prints an id that is not
-// guessable and a sentence citing it is often drafted before the bead exists.
+// An invented id does not read as a mistake: the work really is tracked and only
+// the pointer is dead, so nobody goes looking. It has happened twice here.
+// Writing one is easy, because `bd create` prints an id that is not guessable
+// and a sentence citing it is often drafted before the bead exists.
 //
 // It resolves against .beads/issues.jsonl, the committed export, and NOT against
 // bd. That is what makes it a gate rather than an advisory check: the export is
@@ -67,15 +66,24 @@ var exempt = map[string]string{
 // change to site/app.js to ship its jscheck guard in the same commit, and these
 // are strings a returning reader's browser already holds.
 //
-// Its staleness check is in main, not here: an exempt id that no longer appears
-// anywhere is a declaration outliving its subject, and only a full run knows.
-// The sighting must come from OUTSIDE this file, because the declaration below
-// is itself scanned -- without that, every exemption satisfies its own staleness
-// test and the check can never fire. That was measured, not reasoned: renaming a
-// key here to a token in no other file left the run green.
-var exemptIDs = map[string]string{
-	"fisc-theme": "the localStorage key holding the reader's light/dark choice",
-	"fisc-year":  "the radio-group name for the fiscal-year control",
+// Each names the file it lives in, and that is what its staleness is measured
+// against: the file must exist, and if a run scanned that file the token must
+// have been seen there. Anchoring it to a file rather than to the walk is the
+// same principle checkExemptions follows -- a run over a narrower path set is a
+// narrower run and not a stale declaration.
+//
+// The sighting must also come from OUTSIDE this file, because the declaration
+// below is itself scanned; without that, every exemption satisfies its own
+// staleness test. That was measured rather than reasoned: renaming a key here to
+// a token in no other file left a full run green.
+var exemptIDs = map[string]exemptID{
+	"fisc-theme": {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice"},
+	"fisc-year":  {file: "site/app.js", what: "the radio-group name for the fiscal-year control"},
+}
+
+type exemptID struct {
+	file string
+	what string
 }
 
 func main() {
@@ -92,12 +100,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
 		os.Exit(2)
 	}
-	refs, err := refsUnder(os.Args[2:])
+	refs, scanned, err := refsUnder(os.Args[2:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
 		os.Exit(2)
 	}
-	kept, err := dropExemptIDs(refs)
+	kept, err := dropExemptIDs(refs, scanned)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
 		os.Exit(2)
@@ -130,6 +138,11 @@ func checkExemptions(root string) error {
 			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", file, reason, err)
 		}
 	}
+	for id, e := range exemptIDs {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(e.file))); err != nil {
+			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", id, e.what, err)
+		}
+	}
 	return nil
 }
 
@@ -137,25 +150,30 @@ func checkExemptions(root string) error {
 // that no longer has a subject. It belongs here rather than in refsUnder because
 // only a run over the whole path list can say an id appears nowhere; a narrower
 // run is a narrower run.
-func dropExemptIDs(refs []ref) ([]ref, error) {
+func dropExemptIDs(refs []ref, scanned map[string]bool) ([]ref, error) {
 	seen := map[string]bool{}
 	kept := refs[:0:0]
 	for _, r := range refs {
 		if _, ok := exemptIDs[r.id]; ok {
-			if filepath.ToSlash(filepath.Clean(r.file)) != declarationFile {
+			if norm(r.file) != declarationFile {
 				seen[r.id] = true
 			}
 			continue
 		}
 		kept = append(kept, r)
 	}
-	for id, what := range exemptIDs {
-		if !seen[id] {
-			return nil, fmt.Errorf("the exemption for %s (%q) matches nothing in the tree; delete it", id, what)
+	for id, e := range exemptIDs {
+		if scanned[e.file] && !seen[id] {
+			return nil, fmt.Errorf("the exemption for %s (%q) says it lives in %s, and %s was read without it; delete it",
+				id, e.what, e.file, e.file)
 		}
 	}
 	return kept, nil
 }
+
+// norm puts a path in the form the declarations are written in, so a comparison
+// does not turn on whether the caller wrote ./Makefile or Makefile.
+func norm(path string) string { return filepath.ToSlash(filepath.Clean(path)) }
 
 // declarationFile is where exemptIDs is written, and a sighting there does not
 // count. It is a path rather than something derived because nothing in Go tells
@@ -209,8 +227,9 @@ func knownIDs(path string) (map[string]bool, error) {
 // refsUnder collects every citation in the named files and directories. A
 // directory is walked; anything unreadable is an error rather than a skip,
 // because a path that cannot be read is a path that cannot be checked.
-func refsUnder(paths []string) ([]ref, error) {
+func refsUnder(paths []string) ([]ref, map[string]bool, error) {
 	var refs []ref
+	scanned := map[string]bool{}
 	for _, p := range paths {
 		// #nosec G703 -- the path list is this command's argument, which is the
 		// whole of its interface: it checks the paths it is asked to.
@@ -224,7 +243,7 @@ func refsUnder(paths []string) ([]ref, error) {
 			// A file named on the command line is scanned whatever it is called,
 			// which is how Makefile gets read; the extension filter is only for
 			// deciding what to pick up while walking a DIRECTORY.
-			if path != filepath.Clean(p) && !scannable(path) {
+			if norm(path) != norm(p) && !scannable(path) {
 				return nil
 			}
 			if _, ok := exempt[filepath.ToSlash(filepath.Clean(path))]; ok {
@@ -234,14 +253,15 @@ func refsUnder(paths []string) ([]ref, error) {
 			if err != nil {
 				return err
 			}
+			scanned[norm(path)] = true
 			refs = append(refs, found...)
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return refs, nil
+	return refs, scanned, nil
 }
 
 // scannable says whether a file found by walking a directory carries prose or
@@ -249,7 +269,7 @@ func refsUnder(paths []string) ([]ref, error) {
 // they are extracted artifacts and a fisc- token in one is a value, not a claim.
 func scannable(path string) bool {
 	switch filepath.Ext(path) {
-	case ".md", ".go", ".mjs", ".js", ".tmpl", ".py", ".yaml", ".yml":
+	case ".md", ".go", ".mjs", ".js", ".tmpl", ".css", ".py", ".yaml", ".yml":
 		return true
 	}
 	return false
