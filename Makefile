@@ -68,8 +68,19 @@ tidy: ## Tidy go.mod/go.sum
 # Pre-existing hits are the ones AGENTS.md says to drop in the file you were
 # editing anyway rather than in a sweep, so this target's failure is the moment
 # you touch such a file, which is exactly when the rule says to fix it.
+#
+# THE SECOND ARM READS THE MEMORIES, which bd prime injects into every session.
+# Same rule, worse placed: a memory's erratum arrives in context whether or not
+# anyone opens the file it is about. It is a separate arm rather than a separate
+# target so the two share this failure message and the pointer to AGENTS.md.
+#
+# It WARNS AND CONTINUES WITHOUT bd, the way lint-if-available does without
+# golangci-lint. Memories live in the Dolt DB and in no git artifact, so unlike
+# every other arm of pre-commit this one cannot be a CI job -- there is nothing
+# in a checkout for CI to read. That makes it advisory by construction, which is
+# worth knowing before trusting it.
 .PHONY: narration
-narration: ## Refuse review credits and comment errata in Go sources
+narration: ## Refuse review credits and comment errata in Go sources and memories
 	@if grep -rnE '^[[:space:]]*//.*(Found by /code-review|this comment used to say)' \
 		--include='*.go' ./cmd ./internal ./pkg ./tools 2>/dev/null; then \
 		echo "" >&2; \
@@ -79,6 +90,11 @@ narration: ## Refuse review credits and comment errata in Go sources
 		echo "  that argued for it. See AGENTS.md, \"History's home is git\"." >&2; \
 		exit 1; \
 	fi
+	@command -v bd >/dev/null 2>&1 || { \
+		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
+		exit 0; \
+	}; \
+	bd memories --json | go run ./tools/memcheck
 
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #
