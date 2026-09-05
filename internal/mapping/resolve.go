@@ -853,11 +853,14 @@ func (r *Resolver) TotalRowSpan(rule *Rule, p *Part) (lo, hi int, err error) {
 // figures the document prints on the rollup's own total line.
 //
 // IT IS [Resolver.TotalRowSpan] ONE LEVEL UP, AND THE LEVEL MATTERS. A rollup is
-// a printed total covering several RULES -- pp.167-170's fourteen
-// "<DEPARTMENT> TOTAL" rows over their divisions -- so its figure is a total by
-// exactly the argument a rule's total_row is, and republishing one as a row
-// doubles a department. Locating a rule's totals and not a rollup's left that
-// hole open for the fourteen widest totals in the corpus.
+// a printed total covering several RULES -- pp.167-170's eleven
+// "<DEPARTMENT> TOTAL" rows over their divisions, and three more elsewhere in
+// the file -- so its figure is a total by exactly the argument a rule's
+// total_row is, and republishing one as a row doubles a department. Locating a
+// rule's totals and not a rollup's left that hole open for the widest totals in
+// the corpus. (Eleven, not fourteen: rollupNamesItsOwnLine's own comment below
+// says "six of pp.167-170's eleven", and the first draft of this one said
+// fourteen a few hundred lines above it.)
 //
 // It returns ErrNoStatedTotals for a rollup that covers no rule, which is the
 // unassertable case: the document prints the total and nothing here can say

@@ -76,7 +76,11 @@ func (*factOffsetIsNotAStatedTotal) Description() string {
 // at its token, so no fact can sit in the whitespace.
 type totalSpan struct {
 	lo, hi int
+	// ruleID is a rule id or a rollup id, and kind says which. The published
+	// finding names one of them, so a rollup violation reported as `rule "x"`
+	// sends a reader grepping mappings/ for a rule that is not there.
 	ruleID string
+	kind   string
 	label  string
 }
 
@@ -109,7 +113,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		// fisc-loxx.
 		for i := range f.Rules {
 			rule := &f.Rules[i]
-			resolved, failures := 0, []string{}
+			failures := []string{}
 			for j := range rule.Parts {
 				p := &rule.Parts[j]
 				lo, hi, err := r.TotalRowSpan(rule, p)
@@ -117,10 +121,15 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					continue
 				}
 				if err != nil {
-					failures = append(failures, fmt.Sprintf("p%d: %v", p.Page, err))
+					// The two ordinary shapes, per the arm below: a spanning
+					// rule's total prints on the block's last page, and a
+					// label-less part anchors on the block terminator rather
+					// than on a totals row.
+					if !rule.TotalSpansParts && p.LabelsFrom == 0 && rule.TotalRow != "" {
+						failures = append(failures, fmt.Sprintf("p%d: %v", p.Page, err))
+					}
 					continue
 				}
-				resolved++
 				lines++
 				if spans[f.DocID] == nil {
 					spans[f.DocID] = map[int][]totalSpan{}
@@ -140,38 +149,55 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					label = rule.TotalRow
 				}
 				spans[f.DocID][p.Page] = append(spans[f.DocID][p.Page],
-					totalSpan{lo: lo, hi: hi, ruleID: rule.ID, label: label})
+					totalSpan{lo: lo, hi: hi, ruleID: rule.ID, kind: "rule", label: label})
 			}
-			// GATED ON A DECLARED total_row, AND THE WIDER GATE WAS TRIED AND IS
-			// WRONG. Widening this to `len(failures) > 0` -- on the reading that
-			// discarding a label-less part's failures is the same
-			// LabelsFrom-before-TotalRow trap as above -- turns three ordinary
-			// parts into findings. spine-transfers-in, spine-transfers-out and
-			// spine-fund-balance declare no total_row, and their label-less p67
-			// parts anchor on the block TERMINATOR: the fund-group header line
-			// and the running footer "BUDGET FY 2025-27 Page 63". Resolving no
-			// stated total there is the corpus's normal shape, not a defect, and
-			// pkg/cmd/build already reports those parts as unchecked.
+			// PER PART, NOT PER RULE, AND `resolved == 0` WAS FAIL-OPEN.
+			// Gating on "the rule resolved nothing" means a MULTI-PART rule that
+			// loses one part's span still passes on the strength of the others.
+			// Reproduced end to end: break spine-revenues' total_row and
+			// fisc verify reports PASS over 161 lines instead of 162, with no
+			// finding, while a fact planted on p66's real "TOTAL REVENUES:" line
+			// goes unrefused. Every span this check loses is a line it can no
+			// longer refuse a fact on, so every lost span has to be said.
 			//
-			// What this arm is for is narrower and is what the doc comment says:
-			// a rule that DECLARES a printed total and cannot find it anywhere
-			// has lost a span it asserted it had.
-			if rule.TotalRow != "" && resolved == 0 {
+			// TWO KINDS OF FAILURE ARE ORDINARY AND ARE NOT FINDINGS, which is
+			// why `failures` alone is the wrong gate and was tried:
+			//
+			//   - A total_spans_parts rule prints its total on the block's LAST
+			//     page, so the earlier parts cannot resolve it. All eleven
+			//     committed failures of that shape are exactly this.
+			//   - A LABEL-LESS part anchors on the block TERMINATOR rather than
+			//     a totals row, and three committed parts land on text that is
+			//     no total at all -- spine-transfers-in on p67's fund-group
+			//     header, spine-transfers-out and spine-fund-balance on the
+			//     running footer. Resolving nothing there is the corpus's normal
+			//     shape and pkg/cmd/build already reports those parts unchecked.
+			//
+			// So what must resolve is a LABELLED part of a rule that DECLARES a
+			// total_row and does not spread it across parts.
+			if len(failures) > 0 {
 				findings = append(findings, finding(rule.ID,
-					"declares total_row %q and resolves it on none of its %d part(s), so "+
-						"this check contributes no span for it and cannot refuse a fact "+
-						"published on that total's line: %v",
-					rule.TotalRow, len(rule.Parts), failures))
+					"declares total_row %q and fails to resolve it on %d of its %d "+
+						"part(s), so this check contributes no span there and cannot "+
+						"refuse a fact published on that total's line: %v",
+					rule.TotalRow, len(failures), len(rule.Parts), failures))
 			}
 		}
 
 		// ROLLUPS TOO, AND THEY ARE THE WIDEST TOTALS IN THE CORPUS. A rollup is
-		// a printed total covering several RULES -- pp.167-170's fourteen
+		// a printed total covering several RULES -- pp.167-170's ELEVEN
 		// "<DEPARTMENT> TOTAL" rows over their divisions -- so its figure is a
 		// total by exactly the argument a rule's total_row is, and republishing
 		// one doubles a whole department rather than one block. This check
-		// landed covering rule totals only, which left all fourteen open, and
+		// landed covering rule totals only, which left every rollup open, and
 		// dept-city-council's printed $149,198 on p167 was the worked example.
+		//
+		// FOURTEEN IS THE COUNT OF ALL ROLLUPS IN THE FILE and eleven is the
+		// department totals; the other three are gf-total-expenses on p170,
+		// gf-total-revenues on p130 and other-funds-total-sources on p140. The
+		// first draft of this comment said "pp.167-170's fourteen", which
+		// contradicted resolve.go's own "six of pp.167-170's eleven" a few
+		// hundred lines away.
 		for j := range f.Rollups {
 			ro := &f.Rollups[j]
 			lo, hi, err := r.RollupTotalSpan(ro)
@@ -189,7 +215,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				spans[f.DocID] = map[int][]totalSpan{}
 			}
 			spans[f.DocID][ro.Page] = append(spans[f.DocID][ro.Page],
-				totalSpan{lo: lo, hi: hi, ruleID: ro.ID, label: ro.TotalRow})
+				totalSpan{lo: lo, hi: hi, ruleID: ro.ID, kind: "rollup", label: ro.TotalRow})
 		}
 	}
 
@@ -206,7 +232,8 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 	nothing := "the fact store is empty, so nothing could cite a printed total"
 	if lines == 0 {
 		examined = 0
-		nothing = "no rule resolves a stated-total line, so no printed total could be republished"
+		nothing = "no rule and no rollup resolves a stated-total line, so no printed " +
+			"total could be republished"
 	}
 	for _, fa := range s.Facts {
 		for _, sp := range spans[fa.DocID][fa.Page] {
@@ -216,9 +243,9 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 			findings = append(findings, finding(
 				fmt.Sprintf("%s p%d offset %d", fa.DocID, fa.Page, fa.Offset),
 				"rule %q publishes token %q as row %q, but that figure is printed on "+
-					"rule %q's stated-total line %q, so a total the document uses to "+
+					"%s %q's stated-total line %q, so a total the document uses to "+
 					"check a block is republished as one of the block's own rows",
-				fa.RuleID, fa.Token, fa.RowLabel, sp.ruleID, sp.label))
+				fa.RuleID, fa.Token, fa.RowLabel, sp.kind, sp.ruleID, sp.label))
 		}
 	}
 	return conclusion{

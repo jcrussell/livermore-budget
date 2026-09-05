@@ -58,11 +58,19 @@ func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
 		t.Fatalf("fact-offset-is-not-a-stated-total = %s: %s (%v)",
 			res.Status, res.Summary, res.Findings)
 	}
-	// NEITHER OF THE TWO ASSERTIONS THIS REPLACED COULD FAIL. `examined` is
-	// len(s.Facts) unless lines == 0, and lines == 0 zeroes it, which makes the
-	// result VACUOUS and the status assertion above has already fired. So
-	// "Subjects == len(Facts)" and "the summary does not say 0 lines" were both
-	// implied by reaching this line. Found by /code-review.
+	// ONE OF THE TWO ASSERTIONS BELOW STILL CANNOT FAIL, AND IT IS KEPT ON
+	// PURPOSE. `examined` is len(s.Facts) unless lines == 0, and lines == 0
+	// zeroes it, which makes the result VACUOUS and the status assertion above
+	// has already fired -- so Subjects == len(Facts) is implied by reaching this
+	// line today. It is the check's published subject count, it costs nothing,
+	// and it is the assertion that would catch `examined` being narrowed to
+	// some subset of the store. The summary-string assertion that sat beside it
+	// was deleted rather than kept, because it restated the vacuity rule in
+	// prose and nothing else.
+	//
+	// (A previous pass's comment here claimed BOTH had been replaced when only
+	// one had. Found by /code-review, in a comment written to record that two
+	// assertions could not fail.)
 	//
 	// What is NOT implied is how many lines the check found, and that is the
 	// number a silent regression would move: the whole check degrades quietly if
@@ -94,8 +102,8 @@ func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
 	}
 	if rollups == 0 {
 		t.Error("no rollup resolves its printed total, so the check could not fail on one -- " +
-			"this check shipped covering rule totals only, and pp.167-170's fourteen " +
-			"department totals were the hole")
+			"this check shipped covering rule totals only, and the file's fourteen " +
+			"rollups -- eleven of them pp.167-170's department totals -- were the hole")
 	}
 }
 
@@ -159,8 +167,9 @@ func pageOf(t *testing.T, s *Subject, docID string, page int) string {
 // TestARepublishedRollupTotalIsCaught is the same defect one level up, and the
 // check shipped without it.
 //
-// A rollup is a printed total covering several RULES -- pp.167-170's fourteen
-// "<DEPARTMENT> TOTAL" rows over their divisions. dept-city-council's p167 line
+// A rollup is a printed total covering several RULES -- pp.167-170's eleven
+// "<DEPARTMENT> TOTAL" rows over their divisions, plus three more elsewhere in
+// the file. dept-city-council's p167 line
 // prints $149,198 and covers div-city-council's own Total, so republishing it as
 // a row doubles a department. The first three review passes over this lane all
 // read a check that located rule totals and no rollup at all.
@@ -203,8 +212,97 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 		t.Fatalf("a fact citing rollup %q's printed total reported %s: %s",
 			id, res.Status, res.Summary)
 	}
-	if got := findingDetails(res); !strings.Contains(got, id) {
+	got := findingDetails(res)
+	if !strings.Contains(got, id) {
 		t.Errorf("the finding does not name the rollup %q: %s", id, got)
+	}
+	// IT MUST SAY "rollup", NOT "rule". The message named `rule %q` for every
+	// span, and rollup ids are not rule ids -- a reader would grep mappings/ for
+	// a rule that is not there. Found by /code-review.
+	if !strings.Contains(got, `rollup "`+id+`"`) {
+		t.Errorf("the finding calls the rollup a rule: %s", got)
+	}
+}
+
+// TestOneLostPartIsCaughtEvenWhenOthersResolve is the fail-open this arm shipped
+// with, and it took four review passes to surface.
+//
+// The arm was `rule.TotalRow != "" && resolved == 0`: a rule that lost ONE
+// part's stated-total span still passed on the strength of its other parts.
+// Reproduced end to end before the fix -- break spine-revenues' total_row and
+// fisc verify reported PASS over 161 lines rather than 162, with no finding,
+// while a fact planted on p66's real "TOTAL REVENUES:" line went unrefused.
+// Every span this check loses is a line it can no longer refuse a fact on.
+//
+// The rule bent here is chosen for the shape the arm must NOT excuse: labelled
+// parts, a declared total_row, and not total_spans_parts. The two shapes it MUST
+// excuse have their own tests above -- the eleven spanning parts whose total
+// prints on the block's last page, and the label-less parts anchoring on a block
+// terminator.
+func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	// The shape wanted is a rule that keeps SOME span after its total_row is
+	// broken, because that is exactly what `resolved == 0` forgave. It is found
+	// by simulation rather than by naming a rule, so the test follows the corpus
+	// instead of pinning it. spine-revenues is today's answer: its p66 part is
+	// labelled and resolves through total_row, and its p67 part is label-less
+	// and resolves through stop_at, so breaking total_row costs one of the two.
+	var bent *mapping.Rule
+	var before, after int
+	count := func(r *mapping.Resolver, rule *mapping.Rule) int {
+		n := 0
+		for j := range rule.Parts {
+			if _, _, err := r.TotalRowSpan(rule, &rule.Parts[j]); err == nil {
+				n++
+			}
+		}
+		return n
+	}
+	for _, f := range s.Files {
+		r := s.Resolvers[f.Path]
+		for i := range f.Rules {
+			rule := &f.Rules[i]
+			if rule.TotalRow == "" || rule.TotalSpansParts || len(rule.Parts) < 2 {
+				continue
+			}
+			was := rule.TotalRow
+			b := count(r, rule)
+			rule.TotalRow = "No Page Prints This Row"
+			a := count(r, rule)
+			rule.TotalRow = was
+			if a > 0 && a < b {
+				bent, before, after = rule, b, a
+				break
+			}
+		}
+		if bent != nil {
+			break
+		}
+	}
+	if bent == nil {
+		t.Fatal("no committed rule loses SOME but not all of its stated-total spans when " +
+			"its total_row is broken, so this test asserts nothing")
+	}
+	id := bent.ID
+
+	if res := runStatedTotals(t, s); res.Status != StatusPass {
+		t.Fatalf("the unbent corpus reported %s: %s", res.Status, res.Summary)
+	}
+
+	bent.TotalRow = "No Page Prints This Row"
+	res := runStatedTotals(t, s)
+	if res.Status != StatusFail {
+		t.Fatalf("rule %q went from %d resolved spans to %d and the check reported %s: %s",
+			id, before, after, res.Status, res.Summary)
+	}
+	got := findingDetails(res)
+	for _, want := range []string{id, "fails to resolve it on"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("the finding does not name %q: %s", want, got)
+		}
 	}
 }
 
@@ -365,7 +463,7 @@ func TestARuleWhoseTotalResolvesNowhereIsCaught(t *testing.T) {
 		t.Fatalf("a rule whose total_row resolves nowhere reported %s: %s", res.Status, res.Summary)
 	}
 	got := findingDetails(res)
-	for _, want := range []string{id, "resolves it on none", "No Page Prints This Row"} {
+	for _, want := range []string{id, "fails to resolve it on", "No Page Prints This Row"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("the finding does not name %q: %s", want, got)
 		}
