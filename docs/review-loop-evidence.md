@@ -56,9 +56,15 @@ lane's fifth-pass five are the loop's own work.
 
 ## A pass has never returned nothing
 
-`git log --format='%s' | grep -oiE '[a-z]+ findings'` over the whole log.
-Measured at `ab71b7a`, 92 passes and 472 findings — the grep over-collects,
-catching two subjects that carry the word without a yield.
+`git log --format='%s' | grep -oiE '[a-z]+ findings'` over the whole log. The
+grep over-collects, catching subjects that carry the word without a yield.
+
+**The command and the number it was published with do not match, and that is
+worth more than either.** AGENTS.md carried "92 passes and 472 findings, measured
+at `ab71b7a`"; running the line above *at* `ab71b7a` returns **94**. Whatever
+produced 92 was not this command, and nothing recorded the difference — which is
+the quoted-number-drift this file is partly about. Re-run it and read what it
+says; do not quote this paragraph.
 
 | yield | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11 | 12 | 13 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -69,8 +75,8 @@ log records. Yield is close to independent of how much code the pass is reading:
 the caveats lane's first pass read 1,812 insertions and returned 9, its fourth
 read a 69-line fix and returned 5.
 
-Both counts are live rather than pinned — re-run the commands rather than
-quoting this paragraph.
+The distribution table above stays pinned at `ab71b7a`, because it is a
+snapshot; the totals move with every lane.
 
 ## The fixes are the size of the feature
 

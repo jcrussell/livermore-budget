@@ -41,6 +41,33 @@ Ordinary **bold** in a sentence.
 	}
 }
 
+// Bold anchors are paired over the whole file. A line-wise scan pairs the `**`
+// that CLOSES a run opened on the previous line with the one that OPENS the
+// next, which both loses the wrapped anchor and invents one from the prose
+// between two runs -- and the invented one is the fail-open direction.
+func TestBoldAnchorsPairAcrossLinesAndInventNothingBetween(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "AGENTS.md")
+	write(t, path, `# T
+
+- **A count against the
+  documents** ("78 rows", "786 pages"), and **a count that is the
+  evidence** stays.
+`)
+	got, err := anchorsIn(path)
+	if err != nil {
+		t.Fatalf("anchorsIn: %v", err)
+	}
+	want := map[string]bool{
+		"t":                             true,
+		"a count against the documents": true,
+		"a count that is the evidence":  true,
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("anchorsIn (-want +got):\n%s", diff)
+	}
+}
+
 // A citation is not a line. Two in the tree today wrap across two comment lines,
 // and four live inside Go string literals where the quotes are backslashed.
 func TestCitesInReadsWrappedAndEscapedCitations(t *testing.T) {
@@ -79,7 +106,11 @@ func f() {
 		t.Errorf("titles (-want +got):\n%s", diff)
 	}
 	// The wrapped one is reported where it STARTS, which is the line a reader
-	// has to open to fix it.
+	// has to open to fix it. Fatal rather than Errorf: indexing got[1] after a
+	// short read panics instead of failing readably.
+	if len(got) < 2 {
+		t.Fatalf("read %d citations, want %d", len(got), len(want))
+	}
 	if got[1].line != 5 {
 		t.Errorf("wrapped citation line = %d, want 5", got[1].line)
 	}

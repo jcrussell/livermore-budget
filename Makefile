@@ -289,6 +289,19 @@ pre-commit: fmt vet narration beadrefs doccheck test lint-if-available js-if-ava
 hooks: ## Install the local pre-commit hook where git reads it, or refuse and say why
 	@dir="$$(git rev-parse --git-path hooks)"; \
 	test -n "$$dir" || { echo "could not resolve the hooks directory; not a git checkout?" >&2; exit 1; }; \
+	top="$$(git rev-parse --show-toplevel)"; \
+	case "$$(cd "$$(dirname "$$dir")" 2>/dev/null && pwd)/" in \
+		"$$top"/*|"$$top"/) ;; \
+		*) echo "refusing: $$dir is outside this repository." >&2; \
+		   echo "  core.hooksPath is set to a directory git uses for OTHER repos" >&2; \
+		   echo "  too -- probably a global setting -- so installing here would run" >&2; \
+		   echo "  'make pre-commit' on every commit you make anywhere." >&2; \
+		   exit 1;; \
+	esac; \
+	if [ "$$dir" != ".git/hooks" ] && [ -e .git/hooks/pre-commit ]; then \
+		echo "note: .git/hooks/pre-commit exists and git does NOT run it, because" >&2; \
+		echo "  core.hooksPath points at $$dir. It is dead; remove it if you like." >&2; \
+	fi; \
 	hook="$$dir/pre-commit"; \
 	if git ls-files --error-unmatch "$$hook" >/dev/null 2>&1; then \
 		echo "refusing: git tracks $$hook, so this target will not write it." >&2; \
@@ -304,7 +317,7 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 		ours=new; \
 	elif [ -L "$$hook" ]; then \
 		case "$$(readlink "$$hook")" in pre-commit.fisc) ours=yes;; esac; \
-	elif grep -q 'pre-commit\.fisc' "$$hook" 2>/dev/null; then \
+	elif [ "$$(cat "$$hook" 2>/dev/null)" = "$$(printf '#!/bin/sh\nexec "$$(dirname "$$0")/pre-commit.fisc"')" ]; then \
 		ours=yes; \
 	fi; \
 	if [ "$$ours" = no ]; then \
@@ -327,18 +340,14 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 	reaches=no; \
 	if [ -L "$$back/pre-commit" ]; then \
 		case "$$(readlink "$$back/pre-commit")" in pre-commit.fisc) reaches=yes;; esac; \
-	elif grep -q 'pre-commit\.fisc' "$$back/pre-commit" 2>/dev/null; then \
+	elif [ "$$(cat "$$back/pre-commit" 2>/dev/null)" = "$$(printf '#!/bin/sh\nexec "$$(dirname "$$0")/pre-commit.fisc"')" ]; then \
 		reaches=yes; \
 	fi; \
 	if [ ! -x "$$back/pre-commit" ] || [ ! -x "$$back/pre-commit.fisc" ] || [ "$$reaches" = no ]; then \
 		echo "refusing to claim success: $$back/pre-commit does not invoke pre-commit.fisc" >&2; \
 		exit 1; \
 	fi; \
-	echo "installed $$back/pre-commit -> pre-commit.fisc (runs 'make pre-commit')"; \
-	if [ "$$back" != ".git/hooks" ] && [ -e .git/hooks/pre-commit ]; then \
-		echo "note: .git/hooks/pre-commit also exists and git does NOT run it," >&2; \
-		echo "  because core.hooksPath points at $$back. Remove it if you like." >&2; \
-	fi
+	echo "installed $$back/pre-commit -> pre-commit.fisc (runs 'make pre-commit')"
 
 # Extraction is deliberately NOT part of the Go binary. It is a rare,
 # human-initiated step whose output is committed; fisc reads only that output

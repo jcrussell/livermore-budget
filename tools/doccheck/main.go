@@ -12,10 +12,11 @@
 // fixtures; that is the wrong trade here, because the only other citation in
 // this file is the one the failure message prints, and it is worth checking.
 //
-// THREE OF THE CITATIONS ARE PRINTED TO A TERMINAL by a failing gate rather than
-// only sitting in a comment -- the Makefile's narration arm, tools/memcheck and
-// tools/beadrefs -- so a stale one is a false claim the program makes to a user
-// at the moment they are already dealing with a failure.
+// FOUR OF THE CITATIONS ARE PRINTED TO A TERMINAL by a failing gate rather than
+// only sitting in a comment -- the Makefile's narration arm, tools/memcheck,
+// tools/beadrefs, and this command's own failure message below -- so a stale one
+// is a false claim the program makes to a user at the moment they are already
+// dealing with a failure.
 //
 // It resolves against the committed AGENTS.md and nothing else: no bd, no Dolt,
 // no node, no network. So it is a full gate in pre-commit and in CI both, unlike
@@ -66,7 +67,7 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // "History's home is git" is a bolded lead phrase inside a section, not a
 // heading, and four separate places cite it as though it were a section name.
 var (
-	headingPattern = regexp.MustCompile(`^#{1,6}\s+(.*\S)\s*$`)
+	headingPattern = regexp.MustCompile(`(?m)^#{1,6}[ \t]+(.*\S)[ \t]*$`)
 	boldPattern    = regexp.MustCompile(`\*\*([^*]+)\*\*`)
 )
 
@@ -97,8 +98,9 @@ func main() {
 	// pattern. citePattern has already lost a marker class once -- `>` was added
 	// to furniture and not to it -- and that failure is invisible from the exit
 	// code, because a command that matches nothing reports nothing dead. The
-	// committed tree carries thirteen, so zero means the matcher stopped working
-	// rather than that the tree got clean.
+	// committed tree carries 27 over the Makefile's path list -- this command's
+	// own files and docs/ included, because it does not exclude them -- so zero
+	// means the matcher stopped working rather than that the tree got clean.
 	if len(cites) == 0 {
 		fmt.Fprintf(os.Stderr, "doccheck: no citation of %s found anywhere in the scanned paths\n", agents)
 		fmt.Fprintln(os.Stderr, "  The tree has always carried some, so this is citePattern failing to")
@@ -153,17 +155,23 @@ func anchorsIn(path string) (map[string]bool, error) {
 	if err != nil {
 		return nil, err
 	}
+	text := string(b)
 	anchors := map[string]bool{}
-	for _, line := range strings.Split(string(b), "\n") {
-		if m := headingPattern.FindStringSubmatch(line); m != nil {
-			anchors[fold(m[1])] = true
-			if _, after, found := strings.Cut(m[1], ": "); found {
-				anchors[fold(after)] = true
-			}
+	for _, m := range headingPattern.FindAllStringSubmatch(text, -1) {
+		anchors[fold(m[1])] = true
+		if _, after, found := strings.Cut(m[1], ": "); found {
+			anchors[fold(after)] = true
 		}
-		for _, m := range boldPattern.FindAllStringSubmatch(line, -1) {
-			anchors[fold(m[1])] = true
-		}
+	}
+	// BOLD IS PAIRED OVER THE WHOLE FILE, NOT LINE BY LINE. A line-wise scan
+	// pairs the `**` that CLOSES a bold run opened on the previous line with the
+	// `**` that opens the next one, so it both loses every wrapped anchor and
+	// invents one out of the prose lying between two runs -- measured on the
+	// committed file, `("pp.85-125's 78 rows", "the corpus is 786 pages"), and`
+	// was in the anchor set. Pairing from the start of the document is what
+	// makes the delimiters line up.
+	for _, m := range boldPattern.FindAllStringSubmatch(text, -1) {
+		anchors[fold(m[1])] = true
 	}
 	return anchors, nil
 }
