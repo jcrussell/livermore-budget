@@ -840,11 +840,64 @@ func (r *Resolver) statedTotalLine(rule *Rule, p *Part) (lo, hi int, totals []am
 // string more than once on the page, so a plain search finds the wrong
 // occurrence on a third of them. See fisc-eaic for the hazard.
 //
-// The span starts PAST the label, at the first byte of the figures, because a
-// fact's offset points at its token and never at a row label.
+// THE SPAN IS [anchor, end of line), and the anchor is the byte just past the
+// LABEL rather than the first byte of the figures -- the run of spaces between
+// them is inside it. Fail-closed and free: a fact's offset points at its token,
+// so nothing can sit in the whitespace.
 func (r *Resolver) TotalRowSpan(rule *Rule, p *Part) (lo, hi int, err error) {
 	lo, hi, _, err = r.statedTotalLine(rule, p)
 	return lo, hi, err
+}
+
+// RollupTotalSpan is the byte range, within the rollup's page text, of the
+// figures the document prints on the rollup's own total line.
+//
+// IT IS [Resolver.TotalRowSpan] ONE LEVEL UP, AND THE LEVEL MATTERS. A rollup is
+// a printed total covering several RULES -- pp.167-170's fourteen
+// "<DEPARTMENT> TOTAL" rows over their divisions -- so its figure is a total by
+// exactly the argument a rule's total_row is, and republishing one as a row
+// doubles a department. Locating a rule's totals and not a rollup's left that
+// hole open for the fourteen widest totals in the corpus.
+//
+// It returns ErrNoStatedTotals for a rollup that covers no rule, which is the
+// unassertable case: the document prints the total and nothing here can say
+// where, so there is no span to hand out.
+//
+// The width and units come from the FIRST covered rule's bearer part, which is
+// what CheckRollup reads them from; the column-consistency refusals CheckRollup
+// makes on the rest are its own and are not repeated here, because a caller
+// asking where a line is does not need the covered rules to agree with it.
+func (r *Resolver) RollupTotalSpan(ro *Rollup) (lo, hi int, err error) {
+	rules, err := r.coveredRules(ro)
+	if err != nil {
+		return 0, 0, err
+	}
+	if len(rules) == 0 {
+		return 0, 0, &resolveError{DocID: r.file.DocID, Page: ro.Page, RuleID: ro.ID,
+			Field: "covers", Err: ErrNoStatedTotals,
+			Msg: "the rollup covers no rule, so its printed total cannot be located"}
+	}
+	_, bearer, err := r.ruleStatedTotals(rules[0])
+	if err != nil {
+		return 0, 0, err
+	}
+	// rollupStatedTotals is what refuses an anchor that is missing, ambiguous,
+	// or followed by no run of amounts, so the span this returns is a line the
+	// document really totals on -- the property TotalRowSpan had to be taught.
+	_, at, err := r.rollupStatedTotals(ro, len(bearer.Columns), rules[0].Units)
+	if err != nil {
+		return 0, 0, err
+	}
+	text, err := r.page(ro.Page)
+	if err != nil {
+		return 0, 0, err
+	}
+	lo = at + len(ro.TotalRow)
+	hi = len(text)
+	if i := strings.IndexByte(text[lo:], '\n'); i >= 0 {
+		hi = lo + i
+	}
+	return lo, hi, nil
 }
 
 // amountRun returns the first maximal run of exactly n parsable amounts in s.

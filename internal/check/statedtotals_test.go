@@ -58,14 +58,44 @@ func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
 		t.Fatalf("fact-offset-is-not-a-stated-total = %s: %s (%v)",
 			res.Status, res.Summary, res.Findings)
 	}
+	// NEITHER OF THE TWO ASSERTIONS THIS REPLACED COULD FAIL. `examined` is
+	// len(s.Facts) unless lines == 0, and lines == 0 zeroes it, which makes the
+	// result VACUOUS and the status assertion above has already fired. So
+	// "Subjects == len(Facts)" and "the summary does not say 0 lines" were both
+	// implied by reaching this line. Found by /code-review.
+	//
+	// What is NOT implied is how many lines the check found, and that is the
+	// number a silent regression would move: the whole check degrades quietly if
+	// TotalRowSpan starts refusing lines it used to resolve. The count itself is
+	// deliberately not pinned -- it moves with every page that gets mapped -- so
+	// what is asserted is that both KINDS of total are represented, which is the
+	// durable claim and the one this file's own history says goes wrong.
 	if res.Subjects != len(s.Facts) {
 		t.Errorf("examined %d facts, want the whole store's %d", res.Subjects, len(s.Facts))
 	}
-	// The count of lines is deliberately NOT pinned -- it moves with every page
-	// that gets mapped. That it is not zero is the durable claim.
-	if strings.Contains(res.Summary, " 0 resolved stated-total") {
-		t.Errorf("the check resolved no stated-total line, so it could not have failed: %q",
-			res.Summary)
+	rules, rollups := 0, 0
+	for _, f := range s.Files {
+		r := s.Resolvers[f.Path]
+		for i := range f.Rules {
+			for j := range f.Rules[i].Parts {
+				if _, _, err := r.TotalRowSpan(&f.Rules[i], &f.Rules[i].Parts[j]); err == nil {
+					rules++
+				}
+			}
+		}
+		for j := range f.Rollups {
+			if _, _, err := r.RollupTotalSpan(&f.Rollups[j]); err == nil {
+				rollups++
+			}
+		}
+	}
+	if rules == 0 {
+		t.Error("no rule part resolves a stated total, so the check could not fail on one")
+	}
+	if rollups == 0 {
+		t.Error("no rollup resolves its printed total, so the check could not fail on one -- " +
+			"this check shipped covering rule totals only, and pp.167-170's fourteen " +
+			"department totals were the hole")
 	}
 }
 
@@ -82,8 +112,23 @@ func TestARepublishedTotalIsCaught(t *testing.T) {
 	doc, page, off, ruleID := aStatedTotalLine(t, s, func(r *mapping.Rule, _ *mapping.Part) bool {
 		return r.TotalRow != ""
 	})
+	// PLANTED AT THE FIRST FIGURE, NOT AT THE SPAN'S FIRST BYTE. Every fail-path
+	// test in this file used to plant at exactly `lo`, which is the byte after
+	// the LABEL -- whitespace on 147 of the 149 rule spans, where
+	// fact-offset-points-at-token guarantees no fact can sit. So the span's
+	// extent was never exercised: narrowing the check to `Offset >= lo+1` left
+	// the whole package green. A real republished total sits where its token
+	// does, which is what this now plants. Found by /code-review.
+	at := off
+	for at < len(pageOf(t, s, doc, page)) && pageOf(t, s, doc, page)[at] == ' ' {
+		at++
+	}
+	if at == off {
+		t.Fatalf("the span at %d starts on a non-space, so this test no longer plants "+
+			"past the label as it claims", off)
+	}
 	s.Facts = append(s.Facts, fact.Fact{
-		DocID: doc, Page: page, Offset: off, Token: "1,234",
+		DocID: doc, Page: page, Offset: at, Token: "1,234",
 		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
 	})
 
@@ -97,6 +142,69 @@ func TestARepublishedTotalIsCaught(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("the finding does not name %q: %s", want, got)
 		}
+	}
+}
+
+// pageOf is the extracted text of one page, for tests that need to look at the
+// line they are planting a fact on.
+func pageOf(t *testing.T, s *Subject, docID string, page int) string {
+	t.Helper()
+	text, err := s.Docs[docID].Page(page)
+	if err != nil {
+		t.Fatalf("%s p%d: %v", docID, page, err)
+	}
+	return text
+}
+
+// TestARepublishedRollupTotalIsCaught is the same defect one level up, and the
+// check shipped without it.
+//
+// A rollup is a printed total covering several RULES -- pp.167-170's fourteen
+// "<DEPARTMENT> TOTAL" rows over their divisions. dept-city-council's p167 line
+// prints $149,198 and covers div-city-council's own Total, so republishing it as
+// a row doubles a department. The first three review passes over this lane all
+// read a check that located rule totals and no rollup at all.
+func TestARepublishedRollupTotalIsCaught(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	var docID, id string
+	var page, off int
+	for _, f := range s.Files {
+		r := s.Resolvers[f.Path]
+		for j := range f.Rollups {
+			lo, _, err := r.RollupTotalSpan(&f.Rollups[j])
+			if err != nil {
+				continue
+			}
+			docID, page, off, id = f.DocID, f.Rollups[j].Page, lo, f.Rollups[j].ID
+			break
+		}
+		if id != "" {
+			break
+		}
+	}
+	if id == "" {
+		t.Fatal("no committed rollup resolves its printed total, so this test asserts nothing")
+	}
+	text := pageOf(t, s, docID, page)
+	at := off
+	for at < len(text) && text[at] == ' ' {
+		at++
+	}
+	s.Facts = append(s.Facts, fact.Fact{
+		DocID: docID, Page: page, Offset: at, Token: "1,234",
+		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Rollup Total",
+	})
+
+	res := runStatedTotals(t, s)
+	if res.Status != StatusFail {
+		t.Fatalf("a fact citing rollup %q's printed total reported %s: %s",
+			id, res.Status, res.Summary)
+	}
+	if got := findingDetails(res); !strings.Contains(got, id) {
+		t.Errorf("the finding does not name the rollup %q: %s", id, got)
 	}
 }
 

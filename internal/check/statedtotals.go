@@ -10,7 +10,7 @@ import (
 )
 
 // factOffsetIsNotAStatedTotal asserts that no fact cites a figure the document
-// prints on some rule's stated-total line.
+// prints as a total -- on a rule's stated-total line or on a rollup's.
 //
 // A TOTAL IS THE DOCUMENT CHECKING OUR WORK, AND A ROW IS OUR WORK. Conflating
 // them publishes the sum of a block alongside the block, so the city's own money
@@ -65,11 +65,15 @@ func (*factOffsetIsNotAStatedTotal) ID() string { return "fact-offset-is-not-a-s
 func (*factOffsetIsNotAStatedTotal) Tier() int  { return 1 }
 func (*factOffsetIsNotAStatedTotal) Full() bool { return false }
 func (*factOffsetIsNotAStatedTotal) Description() string {
-	return "no fact cites a figure printed on a rule's stated-total line"
+	return "no fact cites a figure printed on a rule's or a rollup's stated-total line"
 }
 
-// totalSpan is one resolved stated-total line: the byte range its figures
-// occupy in a page's extracted text, and the rule that declared it.
+// totalSpan is one resolved stated-total line: the byte range from just past its
+// LABEL to the end of the printed line, and the rule or rollup that declared it.
+//
+// The run of spaces between the label and the first figure is inside the range,
+// which is the fail-closed direction and costs nothing: a fact's offset points
+// at its token, so no fact can sit in the whitespace.
 type totalSpan struct {
 	lo, hi int
 	ruleID string
@@ -160,6 +164,33 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					rule.TotalRow, len(rule.Parts), failures))
 			}
 		}
+
+		// ROLLUPS TOO, AND THEY ARE THE WIDEST TOTALS IN THE CORPUS. A rollup is
+		// a printed total covering several RULES -- pp.167-170's fourteen
+		// "<DEPARTMENT> TOTAL" rows over their divisions -- so its figure is a
+		// total by exactly the argument a rule's total_row is, and republishing
+		// one doubles a whole department rather than one block. This check
+		// landed covering rule totals only, which left all fourteen open, and
+		// dept-city-council's printed $149,198 on p167 was the worked example.
+		for j := range f.Rollups {
+			ro := &f.Rollups[j]
+			lo, hi, err := r.RollupTotalSpan(ro)
+			if errors.Is(err, mapping.ErrNoStatedTotals) {
+				continue
+			}
+			if err != nil {
+				findings = append(findings, finding(ro.ID,
+					"prints a rollup total this check cannot locate, so a fact published "+
+						"on that line cannot be refused: %v", err))
+				continue
+			}
+			lines++
+			if spans[f.DocID] == nil {
+				spans[f.DocID] = map[int][]totalSpan{}
+			}
+			spans[f.DocID][ro.Page] = append(spans[f.DocID][ro.Page],
+				totalSpan{lo: lo, hi: hi, ruleID: ro.ID, label: ro.TotalRow})
+		}
 	}
 
 	// NO SORT IS NEEDED AND NONE IS DONE. Every loop above and below ranges a
@@ -193,7 +224,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 	return conclusion{
 		subjects: examined,
 		unit:     "facts",
-		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s",
+		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s (rule totals and rollups)",
 			examined, lines, plural(lines, "line", "lines")),
 		nothing:  nothing,
 		findings: findings,
