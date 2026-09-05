@@ -48,8 +48,11 @@ import (
 var citePattern = regexp.MustCompile(`AGENTS\.md(?:'s|,)((?:[\s*]|//|#)*(?:under)?(?:[\s*]|//|#)*)\\?"([^"]*)"`)
 
 // furniture is what a wrapped citation picks up between its words: a newline,
-// the comment marker that opens the next line, and the indentation around it.
-var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*)+`)
+// the marker that opens the next line, and the indentation around it. The
+// markers are per-language and `>` is one of them, because a citation inside a
+// markdown blockquote -- which is how every docs/ evidence file names the
+// section it belongs to -- wraps with a `>` at the head of the next line.
+var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 
 // headingPattern and boldPattern are the two shapes an anchor takes in AGENTS.md.
 // Bold is an anchor and not only a decoration because the tree cites one:
