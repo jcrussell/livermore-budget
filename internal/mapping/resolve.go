@@ -813,9 +813,9 @@ func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
 // wants the figures and throws the POSITION away, and the position is the only
 // thing that can answer "is this fact republishing a total". A caller outside
 // this package cannot recompute it, because the anchor is narrowed by the
-// block: measured over the committed rules, 53 of 150 resolvable parts print
-// their total_row string more than once on the page, so a plain search finds
-// the wrong occurrence on a third of them. See fisc-eaic for the hazard.
+// block: of the 152 committed parts whose stated total resolves, 50 print their
+// own total_row string more than once on the page, so a plain search finds the
+// wrong occurrence on a third of them. See fisc-eaic for the hazard.
 //
 // The span starts PAST the label, at the first byte of the figures, because a
 // fact's offset points at its token and never at a row label.

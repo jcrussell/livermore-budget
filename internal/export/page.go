@@ -422,7 +422,7 @@ type chartPageData struct {
 
 // trendsPageData is the revenue-trends template's input.
 //
-// IT CARRIES NO ConfigJSON AND THE PAGE LOADS NO SCRIPT, which is a decision
+// IT CARRIES NO ConfigJSON AND THE PAGE LOADS NO app.js, which is a decision
 // rather than an omission. Everything below is rendered server-side, table and
 // mark alike, so this view works with JavaScript off — which is the property
 // the spine page already defends for its headline, applied to a whole page.

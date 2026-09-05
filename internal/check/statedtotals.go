@@ -47,9 +47,15 @@ import (
 //
 // THE POSITION IS RESOLVED, NOT SEARCHED FOR, and the difference is a third of
 // the corpus. A rule's total_row is anchored AFTER that rule's block, so the
-// same printed string earlier on the page is a different line: measured over the
-// committed rules, 53 of 152 resolvable parts print their total_row string more
-// than once. [mapping.Resolver.TotalRowSpan] applies the block narrowing.
+// same printed string earlier on the page is a different line: of the 152
+// committed parts whose stated total resolves, 50 print their own total_row
+// string more than once. [mapping.Resolver.TotalRowSpan] applies the block
+// narrowing.
+//
+// (Both halves of that ratio were wrong when this check landed -- "53 of 150"
+// here and "53 of 152" in the resolver, with the 53 counted over the 160 parts
+// that DECLARE a total_row and the denominator over the 152 that resolve one.
+// A numerator and a denominator from two populations, found by /code-review.)
 //
 // A RULE WHOSE DECLARED TOTAL RESOLVES ON NO PART IS A FINDING, not a skip. A
 // resolution failure is the one way this check could quietly examine nothing,
@@ -91,9 +97,10 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		// EVERY RULE AND EVERY PART, not only the rules declaring a total_row.
 		// A LABEL-LESS part has a stated total wherever its block ends, via
 		// stop_at, whether or not its rule declares a total_row -- see
-		// totalAnchor, which tests LabelsFrom BEFORE it tests TotalRow. Three
-		// committed parts are of that shape, and filtering on TotalRow here
-		// left this check unable to fail on any of them.
+		// totalAnchor, which tests LabelsFrom BEFORE it tests TotalRow. Five
+		// committed parts are label-less; three of them declare no total_row,
+		// and filtering on TotalRow here left this check unable to fail on
+		// those three.
 		for i := range f.Rules {
 			rule := &f.Rules[i]
 			resolved, failures := 0, []string{}
@@ -112,9 +119,19 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				if spans[f.DocID] == nil {
 					spans[f.DocID] = map[int][]totalSpan{}
 				}
-				label := rule.TotalRow
-				if label == "" {
-					label = "the end of the block, via stop_at " + strconv.Quote(p.StopAt)
+				// THE LABEL MUST BRANCH THE WAY totalAnchor BRANCHED, and on
+				// LabelsFrom FIRST. The OTHER two label-less parts --
+				// spine-revenues and spine-expenditures on p67 -- DO declare a
+				// total_row, and their anchor was still stop_at. Choosing the
+				// label on TotalRow alone made a finding there name "TOTAL
+				// REVENUES:" as the printed stated-total line on p67, a string
+				// p67 does not contain at all (it is p66 that prints it): a
+				// check reporting a defect by pointing at a line that is not
+				// there. Found by /code-review, one predicate over from the
+				// same trap this loop was widened for.
+				label := "the end of the block, via stop_at " + strconv.Quote(p.StopAt)
+				if p.LabelsFrom == 0 && rule.TotalRow != "" {
+					label = rule.TotalRow
 				}
 				spans[f.DocID][p.Page] = append(spans[f.DocID][p.Page],
 					totalSpan{lo: lo, hi: hi, ruleID: rule.ID, label: label})
@@ -124,7 +141,8 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 			if rule.TotalRow != "" && resolved == 0 {
 				findings = append(findings, finding(rule.ID,
 					"declares total_row %q and resolves it on none of its %d part(s), so "+
-						"this rule's printed total is checked against no fact: %v",
+						"this check contributes no span for it and cannot refuse a fact "+
+						"published on that total's line: %v",
 					rule.TotalRow, len(rule.Parts), failures))
 			}
 		}
@@ -135,9 +153,15 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 	// the span maps are only ever looked up, never ranged. So a run names its
 	// findings in the same order twice by construction, which is the property
 	// factCitationsAreDeclared keeps an explicit `order` slice to get.
-	examined := 0
-	if lines > 0 {
-		examined = len(s.Facts)
+	// EITHER WAY OF EXAMINING NOTHING IS VACUOUS AND THEY ARE DIFFERENT, so the
+	// reason is chosen rather than assumed. A single `nothing` string asserting
+	// only the first would publish a false reason on a run with 152 resolved
+	// lines and an empty store. Found by /code-review.
+	examined := len(s.Facts)
+	nothing := "the fact store is empty, so nothing could cite a printed total"
+	if lines == 0 {
+		examined = 0
+		nothing = "no rule resolves a stated-total line, so no printed total could be republished"
 	}
 	for _, fa := range s.Facts {
 		for _, sp := range spans[fa.DocID][fa.Page] {
@@ -157,7 +181,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		unit:     "facts",
 		held: fmt.Sprintf("%d facts, none citing a figure printed on any of the %d resolved stated-total %s",
 			examined, lines, plural(lines, "line", "lines")),
-		nothing:  "no rule resolves a stated-total line, so no printed total could be republished",
+		nothing:  nothing,
 		findings: findings,
 	}.result(), nil
 }

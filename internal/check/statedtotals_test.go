@@ -106,8 +106,10 @@ func TestARepublishedTotalIsCaught(t *testing.T) {
 // A label-less part has a stated total wherever its block ends, via stop_at,
 // whether or not its rule declares a total_row: totalAnchor tests LabelsFrom
 // BEFORE it tests TotalRow. The first draft of this check iterated only rules
-// with a total_row, which left three committed parts unguarded -- and every
-// other test here stayed green, because none of them planted a fact on one.
+// with a total_row, which left unguarded the three label-less parts that
+// declare none -- and every other test here stayed green, because none of
+// them planted a fact on one. (Five parts are label-less in all; the other
+// two are TestALabelLessPartWithATotalRowNamesItsRealAnchor's subject.)
 //
 // So this test picks a part of exactly that shape and asserts the check sees it.
 // Restore `if rule.TotalRow == "" { continue }` to the rule loop and it goes red
@@ -132,6 +134,65 @@ func TestALabelLessPartsTotalIsCovered(t *testing.T) {
 	}
 	if got := findingDetails(res); !strings.Contains(got, "stop_at") {
 		t.Errorf("the finding does not say the total came from stop_at: %s", got)
+	}
+}
+
+// TestALabelLessPartWithATotalRowNamesItsRealAnchor is the SECOND half of the
+// LabelsFrom-before-TotalRow trap, and the first fix landed without it.
+//
+// Two committed parts are label-less AND declare a total_row: spine-revenues and
+// spine-expenditures on p67. totalAnchor tests LabelsFrom first, so their anchor
+// is stop_at "$" and their total_row is never searched for -- and p67 prints
+// neither "TOTAL REVENUES:" nor "TOTAL EXPENDITURES:" anywhere (it is p66 that
+// prints them). Choosing the finding's label on TotalRow alone therefore made
+// this check report a real defect by pointing at a printed line that does not
+// exist, which is worse than not reporting it: a reader goes to p67, greps, and
+// concludes the check is broken.
+//
+// Restore `label := rule.TotalRow` ahead of the LabelsFrom test and this goes
+// red while every other test in this file still passes.
+func TestALabelLessPartWithATotalRowNamesItsRealAnchor(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	doc, page, off, ruleID := aStatedTotalLine(t, s, func(r *mapping.Rule, p *mapping.Part) bool {
+		return r.TotalRow != "" && p.LabelsFrom != 0
+	})
+	// The premise, asserted rather than assumed: the declared total_row is not
+	// on this page, so naming it would name nothing.
+	var declared string
+	for _, f := range s.Files {
+		for i := range f.Rules {
+			if f.Rules[i].ID == ruleID {
+				declared = f.Rules[i].TotalRow
+			}
+		}
+	}
+	text, err := s.Docs[doc].Page(page)
+	if err != nil {
+		t.Fatalf("page %d: %v", page, err)
+	}
+	if strings.Contains(text, declared) {
+		t.Fatalf("p%d does print %q, so this test no longer covers the case it was written for",
+			page, declared)
+	}
+
+	s.Facts = append(s.Facts, fact.Fact{
+		DocID: doc, Page: page, Offset: off, Token: "1,234",
+		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
+	})
+	res := runStatedTotals(t, s)
+	if res.Status != StatusFail {
+		t.Fatalf("a fact citing %q's stop_at total reported %s: %s", ruleID, res.Status, res.Summary)
+	}
+	got := findingDetails(res)
+	if strings.Contains(got, declared) {
+		t.Errorf("the finding names %q as the printed stated-total line, and p%d does not print it: %s",
+			declared, page, got)
+	}
+	if !strings.Contains(got, "stop_at") {
+		t.Errorf("the finding does not name the stop_at anchor it actually resolved: %s", got)
 	}
 }
 
