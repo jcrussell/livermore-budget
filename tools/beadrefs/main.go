@@ -66,9 +66,12 @@ var exempt = map[string]string{
 // change to site/app.js to ship its jscheck guard in the same commit, and these
 // are strings a returning reader's browser already holds.
 //
-// Each names the file it lives in, and that is what its staleness is measured
+// Each names ONE file it lives in, and that is what its staleness is measured
 // against: the file must exist, and if a run scanned that file the token must
-// have been seen there. Anchoring it to a file rather than to the walk is the
+// have been seen there. Both of these tokens occur in several files, so the
+// anchor is a choice; if one moves out of its anchor the run says so and names
+// both remedies, since re-pointing and deleting are different answers and
+// deleting the wrong one turns the surviving occurrences into dead beads. Anchoring it to a file rather than to the walk is the
 // same principle checkExemptions follows -- a run over a narrower path set is a
 // narrower run and not a stale declaration.
 //
@@ -77,8 +80,8 @@ var exempt = map[string]string{
 // staleness test. That was measured rather than reasoned: renaming a key here to
 // a token in no other file left a full run green.
 var exemptIDs = map[string]exemptID{
-	"fisc-theme": {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice"},
-	"fisc-year":  {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control, also in chart.html.tmpl"},
+	"fisc-theme": {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice; also inlined in every site/*.html.tmpl"},
+	"fisc-year":  {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control; also in chart.html.tmpl"},
 }
 
 type exemptID struct {
@@ -139,6 +142,15 @@ func checkExemptions(root string) error {
 		}
 	}
 	for id, e := range exemptIDs {
+		// A declaration cannot anchor itself to the file it is written in: the
+		// declaration below would then be the sighting that keeps it alive, and
+		// the staleness check could never fire. Refused here, where the message
+		// can say so, rather than left to produce a permanent unexplained error
+		// in dropExemptIDs.
+		if e.file == declarationFile {
+			return fmt.Errorf("the exemption for %s (%q) names %s, which is where the declaration itself lives; anchor it to the file that actually carries the token",
+				id, e.what, e.file)
+		}
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(e.file))); err != nil {
 			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", id, e.what, err)
 		}
@@ -160,7 +172,7 @@ func dropExemptIDs(refs []ref, scanned map[string]bool) ([]ref, error) {
 			// way: the token could vanish from its own file entirely and any
 			// other occurrence -- including in this file's own declaration --
 			// would keep the exemption alive.
-			if norm(r.file) == e.file && e.file != declarationFile {
+			if norm(r.file) == e.file {
 				seen[r.id] = true
 			}
 			continue
@@ -169,7 +181,7 @@ func dropExemptIDs(refs []ref, scanned map[string]bool) ([]ref, error) {
 	}
 	for id, e := range exemptIDs {
 		if scanned[e.file] && !seen[id] {
-			return nil, fmt.Errorf("the exemption for %s (%q) says it lives in %s, and %s was read without it; delete it",
+			return nil, fmt.Errorf("the exemption for %s (%q) says it lives in %s, and %s was read without it: re-point it at the file that carries the token now, or delete it if the token is gone",
 				id, e.what, e.file, e.file)
 		}
 	}

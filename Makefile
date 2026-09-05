@@ -87,10 +87,12 @@ tidy: ## Tidy go.mod/go.sum
 # checkout between `bd init` and a pull of the project's memories has a working
 # bd and nothing for this to read, and must still be able to commit.
 #
-# THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT: a warning is not a
-# gate, and THIS arm can never become one, because memories live in the Dolt DB
-# and in no git artifact and there is nothing in a checkout for CI to read. Treat
-# a green memory arm as evidence only that the memories were readable and clean.
+# THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT. With bd on PATH
+# this arm FAILS like any other and is a gate on the machine that runs it; what
+# it can never be is a CI gate, because memories live in the Dolt DB and in no
+# git artifact and there is nothing in a checkout for CI to read. So an erratum
+# is caught where it is written or not at all, and a green memory arm is evidence
+# only that the memories were readable and clean on THIS machine.
 #
 # The Go arm has no such limit -- it reads committed source -- and CI runs this
 # target for it. Between them the target is a real gate over the tree and an

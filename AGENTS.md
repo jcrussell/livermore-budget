@@ -187,8 +187,10 @@ both were broken repeatedly while the prose sat in context: `narration` refuses
 history in a comment, and `beadrefs` refuses an id that names no bead. Read them
 where they are enforced rather than here — the Makefile comments carry the
 argument, and each failure message names the section of this file it comes from.
-`narration` has one arm that can only ever warn: the memories live in the Dolt DB
-and in no git artifact, so nothing in a checkout lets CI read them.
+`narration`'s memory arm is a real gate LOCALLY -- with `bd` on PATH it fails
+`pre-commit` like any other -- and can never be one in CI, because the memories
+live in the Dolt DB and in no git artifact and nothing in a checkout lets CI read
+them. So a memory erratum is caught on the machine that writes it or not at all.
 
 `make pre-commit` lints, but warns and continues when `golangci-lint` is not on
 PATH — the linter is not needed to build or test this project, so its absence

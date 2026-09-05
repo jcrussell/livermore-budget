@@ -239,7 +239,7 @@ func TestScannableCoversWhatTheSiteAndTheToolingAreWrittenIn(t *testing.T) {
 	// AGENTS.md calls the least-defended files in the repo; tools/extract.py is
 	// the only Python. Every one was outside the first version of this filter.
 	for _, p := range []string{
-		"site/app.js", "site/index.html.tmpl", "tools/extract.py",
+		"site/app.js", "site/index.html.tmpl", "site/style.css", "tools/extract.py",
 		"AGENTS.md", "internal/x.go", "tools/jscheck/a.mjs", "data/funds.yaml", "ci.yml",
 	} {
 		if !scannable(p) {
@@ -363,6 +363,61 @@ func TestCitedInTellsABeadIDFromTheOtherThingsNamedfisc(t *testing.T) {
 				t.Errorf("citedIn(%q) (-want +got):\n%s", tt.line, diff)
 			}
 		})
+	}
+}
+
+func TestCheckExemptionsCoversTheIDDeclarationsToo(t *testing.T) {
+	// The file arm and the id arm are separate loops over separate maps, and the
+	// id arm could be deleted with every other test still green. It is
+	// load-bearing: a renamed file under an id exemption is caught by nothing
+	// else, because dropExemptIDs keys on scanned[e.file] and a path that has
+	// gone is never in that set.
+	if err := checkExemptions(t.TempDir()); err == nil {
+		t.Fatal("checkExemptions(empty dir) = nil, want a refusal")
+	}
+	if len(exempt) == 0 || len(exemptIDs) == 0 {
+		t.Skip("one of the two declarations is empty; this test cannot tell the arms apart")
+	}
+	// With only the FILE declarations satisfied, the id arm must still object.
+	root := t.TempDir()
+	for file := range exempt {
+		touch(t, root, file)
+	}
+	if err := checkExemptions(root); err == nil {
+		t.Error("checkExemptions with only the file exemptions present = nil, want the id arm to object")
+	}
+	for _, e := range exemptIDs {
+		touch(t, root, e.file)
+	}
+	if err := checkExemptions(root); err != nil {
+		t.Errorf("checkExemptions with everything present = %v, want no error", err)
+	}
+}
+
+func TestAnIDExemptionMayNotAnchorItselfToTheDeclaration(t *testing.T) {
+	// Anchoring an exemption to the file the declaration is written in would let
+	// the declaration be its own sighting, and the staleness check could never
+	// fire again. It is refused where the message can explain it.
+	saved := exemptIDs
+	t.Cleanup(func() { exemptIDs = saved })
+	exemptIDs = map[string]exemptID{
+		"fisc-selfanchored": {file: declarationFile, what: "a token declared to live in the declaration"},
+	}
+	root := t.TempDir()
+	touch(t, root, declarationFile)
+	if err := checkExemptions(root); err == nil {
+		t.Error("checkExemptions(exemption anchored to the declaration) = nil, want a refusal")
+	}
+}
+
+func touch(t *testing.T, root, rel string) {
+	t.Helper()
+	p := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, nil, 0o600); err != nil {
+		t.Fatal(err)
 	}
 }
 
