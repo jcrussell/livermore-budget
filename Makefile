@@ -155,6 +155,31 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
 		.github docs cmd internal pkg tools site mappings data testdata
 
+# doccheck refuses a citation that names no section of AGENTS.md.
+#
+# The tree cites AGENTS.md by section name from Go, from this file and from
+# site/app.js -- thirteen of them at the time this landed -- and nothing checked
+# the strings. So renaming a section left every citation of it pointing at
+# nothing, which is worse than no pointer: it reads as though the rule is
+# written down and sends the reader looking for a heading that is gone.
+#
+# TWO OF THEM ARE PRINTED TO A TERMINAL rather than only sitting in a comment --
+# narration's failure message above, and tools/memcheck -- so a stale one is a
+# false claim made to a user who is already dealing with a failure.
+#
+# A BOLD LEAD PHRASE IS AN ANCHOR TOO, and that is not a nicety: four of the
+# thirteen cite "History's home is git", which is bolded text inside a section
+# and not a heading at all.
+#
+# Like beadrefs and unlike narration's memory arm, this is a real gate. It reads
+# the committed AGENTS.md and nothing else -- no bd, no Dolt, no node, no
+# network -- so CI runs it too.
+.PHONY: doccheck
+doccheck: ## Refuse citations that name no section of AGENTS.md
+	@go run ./tools/doccheck AGENTS.md \
+		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
+		.github docs cmd internal pkg tools site mappings data testdata
+
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #
 # golangci-lint is not required to build or test this project, and adding it to
@@ -218,7 +243,7 @@ codehash: ## Fingerprint FILES=... by code alone, ignoring comments
 	@go run ./tools/codehash $(FILES)
 
 .PHONY: pre-commit
-pre-commit: fmt vet narration beadrefs test lint-if-available js-if-available ## Format, vet, narration, beadrefs, test, lint, and check app.js
+pre-commit: fmt vet narration beadrefs doccheck test lint-if-available js-if-available ## Format, vet, narration, beadrefs, doccheck, test, lint, and check app.js
 
 # A HOOK CANNOT BE COMMITTED. .git/hooks is not tracked, so "symlink pre-commit
 # into it" is per-checkout setup somebody has to actually run -- and until this
