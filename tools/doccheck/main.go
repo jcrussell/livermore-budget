@@ -68,8 +68,31 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // heading, and four separate places cite it as though it were a section name.
 var (
 	headingPattern = regexp.MustCompile(`(?m)^#{1,6}[ \t]+(.*\S)[ \t]*$`)
-	boldPattern    = regexp.MustCompile(`\*\*([^*]+)\*\*`)
+	boldPattern    = regexp.MustCompile(`(?s)\*\*(.+?)\*\*`)
 )
+
+// exempt is the files whose citations are not claims about the tree. It is one
+// entry and should stay near one: main_test.go's fixtures are synthetic
+// citations, some of which must NOT resolve, so scanning them means a rename
+// reports the fixtures beside the real orphan and a negative-path test cannot be
+// written at all.
+//
+// Its own main.go is deliberately NOT here. The only citation in that file is the
+// one the failure message prints, and that one is worth checking.
+var exempt = map[string]string{
+	"tools/doccheck/main_test.go": "its fixtures are citations that must not resolve",
+}
+
+// checkExemptions refuses a declaration that has outlived the file it exempts,
+// which is otherwise a hole nobody can see.
+func checkExemptions(root string) error {
+	for file, reason := range exempt {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(file))); err != nil {
+			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", file, reason, err)
+		}
+	}
+	return nil
+}
 
 func main() {
 	if len(os.Args) < 3 {
@@ -77,6 +100,10 @@ func main() {
 		os.Exit(2)
 	}
 	agents := os.Args[1]
+	if err := checkExemptions("."); err != nil {
+		fmt.Fprintf(os.Stderr, "doccheck: %v\n", err)
+		os.Exit(2)
+	}
 	anchors, err := anchorsIn(agents)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "doccheck: %v\n", err)
@@ -98,9 +125,14 @@ func main() {
 	// pattern. citePattern has already lost a marker class once -- `>` was added
 	// to furniture and not to it -- and that failure is invisible from the exit
 	// code, because a command that matches nothing reports nothing dead. The
-	// committed tree carries 27 over the Makefile's path list -- this command's
-	// own files and docs/ included, because it does not exclude them -- so zero
-	// means the matcher stopped working rather than that the tree got clean.
+	// committed tree has never carried zero, so zero means the matcher stopped
+	// working rather than that the tree got clean.
+	//
+	// IT IS A FLOOR AND NOT A COVERAGE CHECK. It cannot see a PARTIAL loss --
+	// dropping one marker class from citePattern would stop it reading docs/ and
+	// site/app.js while the Go citations still counted, and the run would exit 0.
+	// Exempting this command's own fixtures at least stops those standing in for
+	// a tree that is no longer being read.
 	if len(cites) == 0 {
 		fmt.Fprintf(os.Stderr, "doccheck: no citation of %s found anywhere in the scanned paths\n", agents)
 		fmt.Fprintln(os.Stderr, "  The tree has always carried some, so this is citePattern failing to")
@@ -163,13 +195,20 @@ func anchorsIn(path string) (map[string]bool, error) {
 			anchors[fold(after)] = true
 		}
 	}
-	// BOLD IS PAIRED OVER THE WHOLE FILE, NOT LINE BY LINE. A line-wise scan
-	// pairs the `**` that CLOSES a bold run opened on the previous line with the
-	// `**` that opens the next one, so it both loses every wrapped anchor and
-	// invents one out of the prose lying between two runs -- measured on the
-	// committed file, `("pp.85-125's 78 rows", "the corpus is 786 pages"), and`
-	// was in the anchor set. Pairing from the start of the document is what
-	// makes the delimiters line up.
+	// BOLD IS PAIRED OVER THE WHOLE FILE, LAZILY, AND MUST BE ABLE TO CROSS A
+	// LONE ASTERISK. Two failures got here in two commits, and the second was
+	// caused by the fix for the first.
+	//
+	// Line by line, the `**` CLOSING a run opened on the previous line pairs with
+	// the `**` OPENING the next, which loses every wrapped anchor and invents one
+	// from the prose between two runs.
+	//
+	// Pairing over the whole file fixed that and introduced worse: with `[^*]+`
+	// as the body, the lone `*` in **... `byob-*` bead** desynchronised every
+	// pair after it. Measured on the committed file, 14 spans of ordinary prose
+	// became anchors and four real lead phrases vanished -- among them BOTH
+	// rules that have to sit above the generated block, so a correct citation of
+	// either would have failed the gate.
 	for _, m := range boldPattern.FindAllStringSubmatch(text, -1) {
 		anchors[fold(m[1])] = true
 	}
@@ -209,6 +248,9 @@ func citesUnder(paths []string) ([]cite, error) {
 				return nil
 			}
 			if norm(path) != norm(p) && !scannable(path) {
+				return nil
+			}
+			if _, ok := exempt[norm(path)]; ok {
 				return nil
 			}
 			found, err := citesIn(path)

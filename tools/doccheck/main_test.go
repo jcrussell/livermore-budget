@@ -41,15 +41,17 @@ Ordinary **bold** in a sentence.
 	}
 }
 
-// Bold anchors are paired over the whole file. A line-wise scan pairs the `**`
-// that CLOSES a run opened on the previous line with the one that OPENS the
-// next, which both loses the wrapped anchor and invents one from the prose
-// between two runs -- and the invented one is the fail-open direction.
-func TestBoldAnchorsPairAcrossLinesAndInventNothingBetween(t *testing.T) {
+// Bold anchors are paired over the whole file, and the body must be able to
+// cross a LONE asterisk. The fixture carries `byob-*` for that reason: without
+// it this test passes under a `[^*]+` body, which desynchronises every pair
+// after the first stray `*` in the real file and lost both rules that must sit
+// above the generated block.
+func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
 	write(t, path, `# T
 
+- **Never claim or close a `+"`byob-*`"+` bead**, ever.
 - **A count against the
   documents** ("78 rows", "786 pages"), and **a count that is the
   evidence** stays.
@@ -59,9 +61,13 @@ func TestBoldAnchorsPairAcrossLinesAndInventNothingBetween(t *testing.T) {
 		t.Fatalf("anchorsIn: %v", err)
 	}
 	want := map[string]bool{
-		"t":                             true,
-		"a count against the documents": true,
-		"a count that is the evidence":  true,
+		"t": true,
+		// fold treats `*` as furniture, so the anchor normalises to a space.
+		// Harmless because a citation of it folds identically; what matters is
+		// that the run PAIRED correctly and the two anchors after it survived.
+		"never claim or close a `byob- ` bead": true,
+		"a count against the documents":        true,
+		"a count that is the evidence":         true,
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("anchorsIn (-want +got):\n%s", diff)

@@ -290,8 +290,12 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 	@dir="$$(git rev-parse --git-path hooks)"; \
 	test -n "$$dir" || { echo "could not resolve the hooks directory; not a git checkout?" >&2; exit 1; }; \
 	top="$$(git rev-parse --show-toplevel)"; \
-	case "$$(cd "$$(dirname "$$dir")" 2>/dev/null && pwd)/" in \
-		"$$top"/*|"$$top"/) ;; \
+	case "$$dir" in \
+		/*) abs="$$dir";; \
+		*) abs="$$top/$$dir";; \
+	esac; \
+	case "$$abs/" in \
+		"$$top"/*) ;; \
 		*) echo "refusing: $$dir is outside this repository." >&2; \
 		   echo "  core.hooksPath is set to a directory git uses for OTHER repos" >&2; \
 		   echo "  too -- probably a global setting -- so installing here would run" >&2; \
