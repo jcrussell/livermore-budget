@@ -174,11 +174,21 @@ Go only — neither the PDFs nor Python are needed to build, test, or verify.
 ```bash
 make build        # bin/fisc
 make test         # always -race
-make pre-commit   # fmt, vet, test, lint, js
+make pre-commit   # fmt, vet, narration, beadrefs, test, lint, js
+make narration    # refuse history in Go comments and in the injected memories
+make beadrefs     # refuse a fisc-* id that names no bead
 make hooks        # install the local pre-commit hook, once per checkout
 make site         # static site into dist/ (gitignored)
 make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
 ```
+
+**Two of those targets are rules this file used to state only in prose**, and
+both were broken repeatedly while the prose sat in context: `narration` refuses
+history in a comment, and `beadrefs` refuses an id that names no bead. Read them
+where they are enforced rather than here — the Makefile comments carry the
+argument, and each target's failure message names the section it comes from.
+`narration` has one arm that can only ever warn: the memories live in the Dolt DB
+and in no git artifact, so nothing in a checkout lets CI read them.
 
 `make pre-commit` lints, but warns and continues when `golangci-lint` is not on
 PATH — the linter is not needed to build or test this project, so its absence
@@ -219,38 +229,27 @@ bd update <id> --claim             # claim before starting
 bd close <id> --reason "..."       # close with what actually happened
 ```
 
-The roadmap is twelve epics and **five of them are open**: `E5 Verification`
-(`fisc-1wr`), `E7 Coverage` (`fisc-5gk`), `E8 Further projections` (`fisc-4ua`),
-`E10 The ACFR enters the corpus` (`fisc-1p4d`) and `E11 The reader meets the
-money before the apparatus` (`fisc-yj4w`). `E1` through `E8` are the plan as
-first written; `E0 Extraction replacement` (`fisc-yqv`) and `E9 The drill-down
-reaches a reader` (`fisc-5miz`) were added afterwards, `E10` later still, and
-`E11` after that. So a count of eight is a claim about the plan rather than
-about the tracker — and so is any count taken from this paragraph. Read it off
-`bd list --type=epic --status=all`, which is what this enumeration failed to do:
-it said eleven and four, and had never heard of `E11`.
+**Do not read the roadmap off this file.** `bd list --type=epic --status=all` is
+the roadmap, and every enumeration of it written here has gone stale: one said
+eleven epics and four open, its replacement said twelve and five and named an
+epic that had since closed while never having heard of the one that replaced it.
+The epics are also not in one numbered series — `E0`, `E9`, `E10`, `E11` and
+`E12` were each added after the original plan — so a count taken from any
+narrative here is a claim about the plan rather than about the tracker.
 
-`E10` exists because the backlog had outgrown the roadmap. Measured 2026-08-30:
-47 of 69 live beads had no epic at all, `E4` and `E5` — both `P0` — contributed
-**zero** ready work between them and `E2` contributed one `P2` bead, and the
-beads that add up to "a second
-document enters the corpus" were scattered across `E5`, `E7`, `E8` and the flat backlog
-with nothing owning the milestone. That paragraph used to end "that lane is also
-what unblocks `E5` — the whole remaining tier ladder is downstream of `fisc-9hf`,
-`E10`'s first child." `fisc-9hf` closed on 2026-08-30 and took `fisc-1wr.2` with
-it, and **`E5` did not become workable**. Measured 2026-09-03: `fisc-1wr.3`,
-`fisc-1wr.4` and `fisc-1wr.5.1` are deferred to 2026-11-10 by decision, and
-`fisc-1wr.7` sits behind `fisc-mq4.6` → `fisc-mq4.3`, deferred to the same date.
-So the ladder was downstream of two things and only one of them moved.
+**A closed epic here means its end condition was met**, not that every bead filed
+under it is done. `E2 Extraction` and `E4 Mapping engine` were closed on that
+basis while still sitting at `P0`: all three documents extracted, and
+`facts.jsonl` generated from the p66-67 spine. Their few remaining children are
+past those end conditions and are open at top level, and the dotted ids still
+record where they came from.
 
-`E2 Extraction` and `E4 Mapping engine` were closed in that review because each
-had **met its own stated end condition** — all three documents extracted, and
-`facts.jsonl` generated from the p66-67 spine — while still sitting at `P0`. `E4`
-had nothing claimable at all; `E2` had one `P2` determinism test, which is a guard
-on the artifacts rather than part of producing them. Their few remaining children
-are past those end conditions and are open at top level; the dotted ids still
-record where they came from. A closed epic here means *its end condition was met*,
-not that every bead filed under it is done.
+**An epic closing does not make its dependents workable, and the check is worth
+doing before planning around one.** `fisc-9hf` closed on 2026-08-30 and took
+`fisc-1wr.2` with it, and `E5` did not become workable: measured 2026-09-03, its
+ladder was downstream of two things and only one of them had moved, with
+`fisc-1wr.3`, `fisc-1wr.4`, `fisc-1wr.5.1` and `fisc-1wr.7` all deferred to
+2026-11-10 by decision.
 
 Dependencies are wired so `bd ready` surfaces only genuinely unblocked work, and
 that held when it was checked. **Priority is the part that drifts.** The failure
@@ -273,10 +272,11 @@ Commit after review at logical points — not continuously, and not never. Skip
 review entirely for mechanical commits: a pinned dependency, a `.gitignore`
 fix, a docs typo. Review has a real cost and those have no design surface.
 
-Everywhere else, **a single pass is not the gate**. Measured over one session's
-three lane boundaries: nine passes, 23 findings. Three of those were defects
-introduced by an *earlier pass's own fix*; a later session added the fourth row
-below —
+Everywhere else, **a single pass is not the gate**, and the reason is counted
+rather than asserted: in
+[What fifteen passes measured](#what-fifteen-passes-measured), an earlier pass's
+own fix is the second-largest source of findings in the whole audit. Four shapes
+it takes, each found by the pass after the one that wrote it —
 
 | the fix | what the next pass found in it |
 |---|---|
@@ -285,44 +285,17 @@ below —
 | two commits saying "filed as a bead" | neither bead existed |
 | a test written for a summary defect, asserting `Contains("78 declared fund(s)")` | the malformed string it was written for satisfies that substring, so it passed on the bug |
 
-The rest were defects in the original work — but they were found across all
-three passes, not the first. The two worth recognising by shape: a guard
-written as fail-closed that shipped **fail-open**, and a test that passed
-identically with and without the fix it was named for.
+Three more shapes, these in the original work rather than in a fix: a guard
+written as fail-closed that shipped **fail-open**; a test that passed identically
+with and without the fix it was named for; and a map read with no ok-check, which
+left the one test guarding against a wrong-column read unable to fail on it.
 
-Severity decayed across passes and never reached zero. Hence the loop.
-
-**And it does not always decay.** The pp.85-125 lane (`cd1192c..261c78f`) went
-5, 4, **5** — the third pass found *more* than the second, and **every one of
-its five was a defect in the original commit that two passes had read past.**
-
-Four were false statements in committed text: a page list naming five pages that
-carry no such declaration; a README cell whose back-reference pointed at the row
-above the one it meant; a summary clause reading `a further 78` with nothing
-before it; and a **derived** figure cited as a printed one — three commits after
-the test beside it said in as many words that the figure appears on no page in
-the corpus. Two of those four are strings `fisc verify` prints on every run, and
-the last is the "published is not derived" invariant broken in published text.
-The fifth was a map read with no ok-check, which left the one test guarding
-against a wrong-column read unable to fail on it.
-
-The table's fourth row comes from the same pass and is the *fix* side rather
-than the finding side: the first pass's fix shipped a test for the `a further
-78` string asserting a substring that the malformed string satisfies, so it
-passed on the bug it was written for.
-
-A three-pass cap would have shipped all five. So the count is a floor as well as
-a ceiling — see below.
-
-*(Correction, recorded here rather than by amending, because the log is the
-audit trail: `261c78f`'s own message says two of that pass's findings were
-"introduced by an earlier pass's own fix" and attributes the malformed summary
-clause to the second pass. Checked against `git show cd1192c` — the clause was
-in the original commit, and what an earlier fix introduced was the test that
-failed to catch it. One, not two, and on the fix side rather than the finding
-side. The habit that produced the error is the one
-[Before you quote a number](#before-you-quote-a-number) exists for, applied to a
-commit message about review rather than about the corpus.)*
+**A false claim is worse when the program prints it.** On one lane, two of the
+false statements a late pass found were strings `fisc verify` emits on every run,
+and one of those cited a **derived** figure as a printed one — the "published and
+derived are different things" invariant broken in published text, three commits
+after the test beside it said in as many words that the figure appears on no page
+in the corpus.
 
 ### The loop
 
@@ -370,22 +343,20 @@ commit message about review rather than about the corpus.)*
 ### Three passes at least, five at most
 
 **Three is the floor.** Two passes is one pass plus a check that the fixes
-parse. The table above and the pp.85-125 counts both say the same thing: the
-defects an earlier fix introduces are only visible to a pass that runs after it,
-and the second pass is usually still finding original defects rather than
-introduced ones.
+parse. The table above says why: the defects an earlier fix introduces are only
+visible to a pass that runs after it, and the second pass is usually still
+finding original defects rather than introduced ones.
 
 **Five is the ceiling**, raised from three because three was demonstrably too
 low on a lane whose third pass found five real defects, all of them in the
 original commit. The ceiling is not a target — stop the moment step 6's
 condition is met.
 
-*(That sentence used to read "stop the moment a pass returns clean, which is
-often the third". Both halves were false and nothing in the tree contradicted
-them, which is why they survived. A pass has never returned clean here — the
-smallest yield in 61 recorded passes is two. And the third pass is not where
-lanes end: `git log --format=%s | grep -ci fifth` counts nine lanes that ran the
-full five, and no lane has ever stopped because a pass came back clean.)*
+**No lane has ever stopped because a pass came back clean.** A pass has never
+returned clean here — the smallest yield in 61 recorded passes is two — and
+`git log --format=%s | grep -ci fifth` counts nine lanes that ran the full five.
+So a stopping rule that waits for silence is a rule that always defers to the
+cap.
 
 **A late pass still finding real defects is a signal about the change, not about
 the review.** At the cap, report what the last pass found and let the owner
@@ -393,32 +364,18 @@ decide whether to narrow the commit rather than keep patching it. Every boundary
 in the measured session hit its cap with findings still outstanding, and that is
 information the owner should have rather than something to absorb silently.
 
-**A third lane, measured 2026-08-30.** The ACFR tolerance lane
-(`6df0858..4cdcbd5` — `total_row_above`, `printed_decimals`, `unmapped_text` and
-ACFR p41) ran the full five and went **11, 8, 6, 6, 4**. Three things in that
-sequence are worth having:
+**A fix that propagates a NUMBER without its DEFINITION is a shape to look for.**
+On the ACFR tolerance lane a second-pass reviewer read two files that disagreed
+about a figure and said to make them agree; the wrong one was corrected, because
+an intermediate draft had quietly redefined the term both were counting ("the
+page's four blocks" → "the four blocks this file maps"). The fourth pass found
+it.
 
-- **It never reached zero**, and the counts fell by less than half over five
-  passes. The cap did its job as a stopping rule, not as a promise.
-- **The fourth pass found a defect the SECOND pass's own fix had introduced**,
-  and the mechanism is new. The second-pass reviewer read two files that
-  disagreed about a figure and said to make them agree; the wrong one was
-  corrected, because an intermediate draft had quietly redefined the term both
-  were counting ("the page's four blocks" → "the four blocks this file maps").
-  A fix that propagates a NUMBER without its DEFINITION is a shape to look for.
-- **Exactly one of the 35 findings was fail-open** — an unguarded `abs(diff)*2`
-  in the new tolerance that wrapped negative and accepted any discrepancy. It
-  survived four passes. The other 34 were false text, missing tests, or refusals
-  that were too strict, which is to say: the passes that felt least productive
-  were the ones that found the only defect that could have published a wrong
-  figure.
-
-*(Correction, recorded here rather than by amending, because the log is the
-audit trail: `4cdcbd5`'s own message says "the other twenty-nine findings". It is
-thirty-four — 11+8+6+6+4 = 35, less the one fail-open. The number was written
-from memory of the pass counts rather than added up, in a commit message about
-review rigour, which is the defect
-[Before you quote a number](#before-you-quote-a-number) exists to name.)*
+**The passes that feel least productive are the ones worth having.** That same
+lane ran the full five and went 11, 8, 6, 6, 4, and exactly one of its 35
+findings was fail-open — an unguarded `abs(diff)*2` in the new tolerance that
+wrapped negative and accepted any discrepancy. It survived four passes. The other
+34 were false text, missing tests, or refusals that were too strict.
 
 ### What fifteen passes measured
 
@@ -677,28 +634,27 @@ unchecked one as a defect. Three traps:
 - **Rebuild-and-`cmp`, don't rebuild in place.** `./bin/fisc build --output
   bin/facts-rebuilt.jsonl` then `cmp` against `facts/facts.jsonl`; the
   committed file is the audit trail and CI compares it byte for byte.
-- **A commit message describing a fix is a claim about the tree, and so is
-  every id in it.** Grep for the fix before writing the sentence, and read the
-  id back — `bd create` prints the new bead's id and it is not guessable.
-
-  Both halves have failed here. `261c78f` said it had reworded a citation and
+- **A commit message describing a fix is a claim about the tree.** Grep for the
+  fix before writing the sentence. `261c78f` said it had reworded a citation and
   spelled out a README cell; the fifth review pass found both unchanged. The
   cause was mechanical and will recur: a batch of scripted edits with an
   assertion in the middle aborted at the second, the later edits never ran, and
-  the message had been drafted from the plan rather than from the diff. Two
-  commits later, a bead correctly filed was cited under an invented id.
+  the message had been drafted from the plan rather than from the diff.
 
   **So: one edit per script, or check each edit's exit status.** A heredoc that
   raises halfway leaves a tree that still builds and still passes every test,
-  so no gate goes red. What caught the unmade edit was the fifth review pass;
-  what caught the invented id was the author, in `e630516`. The range audit
-  below is the systematic version of the first.
+  so no gate goes red. The range audit below is the systematic version of this.
 
-  Both the unmade edit and the invented id are the class of writing "filed as a
-  bead" without filing one, and both are worse than a missing note in the same
-  way: the claim reads as *done*, or
-  as *tracked*, so nobody goes looking. The invented id is the worst of the
-  three, because the work really is tracked and only the pointer is dead.
+  An unmade edit is the class of writing "filed as a bead" without filing one,
+  and both are worse than a missing note in the same way: the claim reads as
+  *done*, or as *tracked*, so nobody goes looking.
+
+- **An id in prose or a comment is checked by `make beadrefs`**, which resolves
+  every `fisc-*` it finds against `.beads/issues.jsonl` and is a CI job. This
+  used to be a paragraph here and was broken twice anyway; the id `bd create`
+  prints is not guessable, so writing one from memory is easy and reads as
+  tracked. A commit MESSAGE is not covered — nothing scans one before it lands —
+  so read the id back there yourself.
 
 - **When you correct a figure in prose, grep the tree for its copies in the
   same commit.** A fact restated in four files is not one defect; it is four
@@ -889,9 +845,20 @@ one. It is only a symbol's `.go` path that goes.
 the next reader whether a fix was designed or discovered. No errata either —
 *"an earlier version of this comment said X"* adds a second claim, about the
 past, that nothing can check. Where an erratum carries a **rule**, keep the rule
-and drop the history that argued for it. This governs source comments and not
-this file, whose own *(Correction, recorded here rather than by amending)*
-blocks are argued for where they stand.
+and drop the history that argued for it.
+
+**`make narration` is the enforced half of this**, over Go sources and over the
+injected memories, which are worse placed for an erratum because `bd prime`
+delivers one whether or not anyone opens the file it is about. It refuses two
+literal phrases and is deliberately not a prose detector; the rest of the rule is
+still read by hand. The same target's `make beadrefs` sibling refuses a bead id
+that names no bead.
+
+**This file is governed by the rule too.** It carried two errata blocks about
+wrong commit messages, each keeping the rule and the history that argued for it;
+the rules are now stated where they belong — in
+[Before you quote a number](#before-you-quote-a-number) — and the history is in
+the log.
 
 **Narration already in the tree is dropped in the file you were editing
 anyway, never in a sweep.** When you touch a file for any other reason, drop the
@@ -940,8 +907,8 @@ correct in the diff and were wrong in the file.
 - **Go tests never require Python, the source PDFs, or the network.** Use the
   fixtures in `testdata/`, which are real artifacts copied from
   `data/extracted/`. They are *copies*, and `make extract` does not touch them:
-  the 27 page fixtures under `testdata/pages/` (25) and
-  `pkg/cmd/build/testdata/pages/` (2) have to be re-copied by hand when the
+  the page fixtures under `testdata/pages/` and
+  `pkg/cmd/build/testdata/pages/` have to be re-copied by hand when the
   extraction changes, and their sha256s must equal the ones the source
   document's `manifest.json` records. A fixture that has drifted is the bad
   case — the tests reading it stay green against a substrate that no longer
@@ -983,8 +950,8 @@ now pinned rather than bounded, so a comment edited without re-measuring fails
 ### A change to `app.js` ships its check in the same commit
 
 `site/app.js` has no compiler, no types and no test framework. `tools/jscheck`
-is the only thing standing behind 2,972 lines that readers are served verbatim,
-and it is hand-written per feature, so a client change with no jscheck beside it
+is the only thing standing behind a file readers are served verbatim, and it is
+hand-written per feature, so a client change with no jscheck beside it
 is a change nothing can see go wrong. **Do not open review on one.**
 
 Measured, because the cost is not obvious: `bd0a098` added 492 lines of
@@ -1063,7 +1030,8 @@ line of defence.
 
 **The designed answer for what those miss is the geometry column guard**, and it
 is the reason `-bbox` is extracted at all. With `column_headers` declared —
-which all 139 parts of `mappings/livermore-budget-fy2026-2027.yaml` do —
+which every part of `mappings/livermore-budget-fy2026-2027.yaml` that reads rows
+does —
 `placementMessage` (`internal/mapping/geometry.go`) reports which column a
 token's x actually lands in against the one the rule reads it as, and it fires
 before `amount.Parse` ever reaches a neighbour's label word. `geometry_test.go`
