@@ -264,7 +264,7 @@ func withUncheckedDocuments(t *testing.T, m map[string]string) {
 // check's own doc comment calls the one thing this package exists to prevent.
 // The `nothing:` branch was unreachable while any declaration was live.
 func TestADeclaredDocumentIsNotCountedAsExamined(t *testing.T) {
-	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (fisc-000)"})
+	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (bead id goes here)"})
 	s := &Subject{Projections: []projection{{Name: "blob"}}}
 
 	res, err := (&documentsAreChecked{}).Run(t.Context(), s)
@@ -312,7 +312,7 @@ func TestAnUnreadProjectionIsInItsOwnDenominator(t *testing.T) {
 // invisible, because a growing exemption read as a shrinking one is how a
 // document stays unchecked forever.
 func TestADeclaredDocumentDoesNotHideAnExaminedOne(t *testing.T) {
-	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (fisc-000)"})
+	withUncheckedDocuments(t, map[string]string{"blob": "no checks yet (bead id goes here)"})
 	s := &Subject{Projections: []projection{
 		{Name: "sankey", Graph: &project.Graph{}},
 		{Name: "blob"},

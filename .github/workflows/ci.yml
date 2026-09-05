@@ -172,6 +172,21 @@ jobs:
       # job proves the source half only, which is the half CI can prove.
       - run: make narration
 
+  beadrefs:
+    name: beadrefs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # This one is a full gate here rather than an advisory check: it resolves
+      # against .beads/issues.jsonl, which the checkout carries, so bd being
+      # absent from the runner costs it nothing.
+      - run: make beadrefs
+
   vet:
     name: go vet
     runs-on: ubuntu-latest
@@ -323,7 +338,7 @@ jobs:
   # stops being republishable for reasons that have nothing to do with the site.
   pages-build:
     name: package the site
-    needs: [lint, format, narration, build, test, vet, tidy, facts, verify, js]
+    needs: [lint, format, narration, beadrefs, build, test, vet, tidy, facts, verify, js]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:

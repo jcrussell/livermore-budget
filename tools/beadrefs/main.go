@@ -1,0 +1,285 @@
+// Command beadrefs refuses a bead id that names no bead.
+//
+// AGENTS.md calls an invented id the worst of the three claim defects it names,
+// and the reason is that it does not read as a mistake: the work really is
+// tracked and only the pointer is dead, so nobody goes looking. It has happened
+// twice here. Writing one is easy, because `bd create` prints an id that is not
+// guessable and a sentence citing it is often drafted before the bead exists.
+//
+// It resolves against .beads/issues.jsonl, the committed export, and NOT against
+// bd. That is what makes it a gate rather than an advisory check: the export is
+// in every checkout, so CI can run this with no bd, no Dolt server and no
+// network -- unlike the memory arm of `make narration`, which reads a database
+// no checkout carries.
+//
+// THE EXPORT LAGS THE DATABASE, which is the one way this can be wrong about a
+// real bead. It is a passive export, so an id filed minutes ago may not be in it
+// yet. Where bd IS on PATH the misses are re-asked of it before anything is
+// reported, and where bd is absent -- CI -- a miss is a failure, because the
+// export is the only artifact CI has and the remedy is to commit it.
+package main
+
+import (
+	"bufio"
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"time"
+)
+
+// idPattern matches the project's own ids and not byob's. A byob id names
+// reference material imported from another repository, and AGENTS.md says never
+// to claim or close one, so nothing here should be asserting they exist.
+//
+// THE PATTERN ALONE IS NOT ENOUGH, because `fisc-` is an overloaded prefix in
+// this tree and not a namespace: fact ids are fisc-f-<hash>, series ids are
+// fisc-s-<hash>, the export marker file is .fisc-export and a scratch directory
+// is .fisc-write-probe-*. Every one of those begins with something a bead id
+// could be. What tells them apart is the SECOND hyphen and the leading dot, so
+// the boundaries are applied in citedIn rather than here; RE2 has no lookaround.
+var idPattern = regexp.MustCompile(`fisc-[a-z0-9]+(?:\.[0-9]+)*`)
+
+// exempt names files whose fisc- literals are fixtures rather than claims about
+// the tracker, with the reason each is here. It is a declaration and not a
+// pattern, so adding one is a visible decision.
+//
+// A declaration that has gone stale fails, the way internal/check/vacuity.go's
+// does: the file must still exist. Staleness is measured against the FILESYSTEM
+// rather than against the walk, because a run over a narrower path set is a
+// narrower run and not a stale declaration.
+var exempt = map[string]string{
+	"tools/beadrefs/main_test.go": "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
+}
+
+func main() {
+	if len(os.Args) < 3 {
+		fmt.Fprintln(os.Stderr, "usage: beadrefs issues.jsonl path...")
+		os.Exit(2)
+	}
+	if err := checkExemptions("."); err != nil {
+		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
+		os.Exit(2)
+	}
+	known, err := knownIDs(os.Args[1])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
+		os.Exit(2)
+	}
+	refs, err := refsUnder(os.Args[2:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
+		os.Exit(2)
+	}
+	dead := resolve(refs, known, bdKnows(context.Background()))
+	if len(dead) == 0 {
+		return
+	}
+	for _, r := range dead {
+		fmt.Fprintf(os.Stderr, "%s:%d: %s names no bead\n", r.file, r.line, r.id)
+	}
+	fmt.Fprintln(os.Stderr, "")
+	fmt.Fprintln(os.Stderr, "beadrefs: the ids above resolve to nothing.")
+	fmt.Fprintln(os.Stderr, "  An id that names no bead reads as though the work is tracked,")
+	fmt.Fprintln(os.Stderr, "  so nobody goes looking. File the bead and use the id bd printed,")
+	fmt.Fprintln(os.Stderr, "  or drop the citation. If the bead is real and newly filed, its")
+	fmt.Fprintln(os.Stderr, "  export has not landed: commit .beads/issues.jsonl.")
+	os.Exit(1)
+}
+
+// checkExemptions refuses a declaration that has outlived the file it exempts,
+// which is otherwise a hole nobody can see. It takes the root explicitly because
+// the declared paths are repo-relative and this must be answerable from anywhere
+// -- refsUnder deliberately does not do it, since a run over a narrower path set
+// is a narrower run rather than a stale declaration.
+func checkExemptions(root string) error {
+	for file, reason := range exempt {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(file))); err != nil {
+			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", file, reason, err)
+		}
+	}
+	return nil
+}
+
+// ref is one citation: which id, and where it was written.
+type ref struct {
+	id   string
+	file string
+	line int
+}
+
+// knownIDs reads every id out of the committed export. The file is one JSON
+// object per line and records without an id are skipped rather than refused,
+// because the export carries more than issues.
+func knownIDs(path string) (map[string]bool, error) {
+	f, err := os.Open(path) // #nosec G304,G703 -- the path is this command's argument.
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	known := map[string]bool{}
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var rec struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+			return nil, fmt.Errorf("%s: %w", path, err)
+		}
+		if rec.ID != "" {
+			known[rec.ID] = true
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	if len(known) == 0 {
+		return nil, fmt.Errorf("%s carries no ids at all, so every citation would be reported dead", path)
+	}
+	return known, nil
+}
+
+// refsUnder collects every citation in the named files and directories. A
+// directory is walked; anything unreadable is an error rather than a skip,
+// because a path that cannot be read is a path that cannot be checked.
+func refsUnder(paths []string) ([]ref, error) {
+	var refs []ref
+	for _, p := range paths {
+		// #nosec G703 -- the path list is this command's argument, which is the
+		// whole of its interface: it checks the paths it is asked to.
+		err := filepath.WalkDir(p, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				return nil
+			}
+			switch filepath.Ext(path) {
+			case ".md", ".go", ".mjs", ".yaml", ".yml":
+			default:
+				return nil
+			}
+			if _, ok := exempt[filepath.ToSlash(filepath.Clean(path))]; ok {
+				return nil
+			}
+			found, err := refsIn(path)
+			if err != nil {
+				return err
+			}
+			refs = append(refs, found...)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+	return refs, nil
+}
+
+func refsIn(path string) ([]ref, error) {
+	f, err := os.Open(path) // #nosec G304,G703 -- see knownIDs.
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+
+	var refs []ref
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
+	for n := 1; sc.Scan(); n++ {
+		for _, id := range citedIn(sc.Text()) {
+			refs = append(refs, ref{id: id, file: path, line: n})
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+	return refs, nil
+}
+
+// citedIn returns the bead ids one line CITES, which is not every fisc- token it
+// contains. A match is a citation only when nothing runs into it on either side:
+// a preceding dot or hyphen or letter makes it part of a longer name (.fisc-export),
+// and a following hyphen or letter makes it a prefix of one (fisc-f-0ba7b00dfaf7).
+// A following dot is left alone -- the pattern has already taken any dotted child,
+// so what remains is the period ending a sentence.
+func citedIn(line string) []string {
+	var ids []string
+	for _, loc := range idPattern.FindAllStringIndex(line, -1) {
+		if loc[0] > 0 && runsInto(line[loc[0]-1]) {
+			continue
+		}
+		if loc[1] < len(line) && (line[loc[1]] == '-' || isWordByte(line[loc[1]])) {
+			continue
+		}
+		ids = append(ids, line[loc[0]:loc[1]])
+	}
+	return ids
+}
+
+func runsInto(b byte) bool { return b == '.' || b == '-' || isWordByte(b) }
+
+func isWordByte(b byte) bool {
+	return b == '_' || (b >= '0' && b <= '9') || (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
+}
+
+// resolve reports the citations that name nothing, sorted by file and line so a
+// run reads like a grep. secondOpinion is consulted once per distinct missing
+// id, and only for ids the export lacks, so a green tree never shells out.
+func resolve(refs []ref, known map[string]bool, secondOpinion func(string) bool) []ref {
+	verdict := map[string]bool{}
+	var dead []ref
+	for _, r := range refs {
+		if known[r.id] {
+			continue
+		}
+		ok, asked := verdict[r.id]
+		if !asked {
+			ok = secondOpinion(r.id)
+			verdict[r.id] = ok
+		}
+		if !ok {
+			dead = append(dead, r)
+		}
+	}
+	sort.Slice(dead, func(i, j int) bool {
+		if dead[i].file != dead[j].file {
+			return dead[i].file < dead[j].file
+		}
+		return dead[i].line < dead[j].line
+	})
+	return dead
+}
+
+// bdKnows asks bd about an id the export lacks, which covers the window between
+// filing a bead and committing the export. With bd absent it answers no, so CI
+// -- where bd never exists -- decides on the export alone.
+//
+// The deadline is not decoration. bd talks to a Dolt server that can be locked
+// by another process, and this runs inside pre-commit; without one, an id the
+// export happens to lack would hang the commit rather than fail it.
+func bdKnows(ctx context.Context) func(string) bool {
+	path, err := exec.LookPath("bd")
+	if err != nil {
+		return func(string) bool { return false }
+	}
+	return func(id string) bool {
+		ask, cancel := context.WithTimeout(ctx, bdTimeout)
+		defer cancel()
+		return exec.CommandContext(ask, path, "show", id).Run() == nil // #nosec G204 -- id matched idPattern.
+	}
+}
+
+// bdTimeout bounds one `bd show`.
+const bdTimeout = 10 * time.Second

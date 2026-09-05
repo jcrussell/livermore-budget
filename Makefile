@@ -132,6 +132,27 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 	rm -f "$$err"; \
 	printf '%s' "$$memories" | go run ./tools/memcheck
 
+# beadrefs refuses a bead id that names no bead.
+#
+# AGENTS.md calls an invented id the worst of the three claim defects it names:
+# the work really is tracked and only the pointer is dead, so it reads as done
+# and nobody goes looking. It has happened twice, and it was a prose rule until
+# now.
+#
+# UNLIKE narration'S MEMORY ARM THIS IS A REAL GATE. It resolves against
+# .beads/issues.jsonl, which is committed, so it needs no bd, no Dolt server and
+# no network, and CI runs it. Where bd IS present it is asked about ids the
+# export lacks, which is the window between filing a bead and committing the
+# export.
+#
+# The path list is hand-maintained and beadrefs fails on a path it cannot read,
+# so an entry deleted from the tree takes this red rather than silently
+# narrowing the scan.
+.PHONY: beadrefs
+beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
+	@go run ./tools/beadrefs .beads/issues.jsonl \
+		AGENTS.md CLAUDE.md README.md docs cmd internal pkg tools site mappings
+
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #
 # golangci-lint is not required to build or test this project, and adding it to
@@ -195,7 +216,7 @@ codehash: ## Fingerprint FILES=... by code alone, ignoring comments
 	@go run ./tools/codehash $(FILES)
 
 .PHONY: pre-commit
-pre-commit: fmt vet narration test lint-if-available js-if-available ## Format, vet, narration, test, lint, and check app.js
+pre-commit: fmt vet narration beadrefs test lint-if-available js-if-available ## Format, vet, narration, beadrefs, test, lint, and check app.js
 
 # A HOOK CANNOT BE COMMITTED. .git/hooks is not tracked, so "symlink pre-commit
 # into it" is per-checkout setup somebody has to actually run -- and until this
