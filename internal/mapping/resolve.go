@@ -791,9 +791,8 @@ func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
 // header and a page number.
 //
 // So the amountRun test below is what MAKES a line a stated total, and every
-// caller gets it. [Resolver.TotalRowSpan] shipped without it and reported
-// exactly those three lines as stated totals (fisc-eaic's lane, second review
-// pass).
+// caller gets it. A caller that anchors without it reports those three lines as
+// stated totals.
 func (r *Resolver) statedTotalLine(rule *Rule, p *Part) (lo, hi int, totals []amount.Cents, err error) {
 	blk, err := r.block(rule, p)
 	if err != nil {
@@ -857,10 +856,9 @@ func (r *Resolver) TotalRowSpan(rule *Rule, p *Part) (lo, hi int, err error) {
 // "<DEPARTMENT> TOTAL" rows over their divisions, and three more elsewhere in
 // the file -- so its figure is a total by exactly the argument a rule's
 // total_row is, and republishing one as a row doubles a department. Locating a
-// rule's totals and not a rollup's left that hole open for the widest totals in
-// the corpus. (Eleven, not fourteen: rollupNamesItsOwnLine's own comment below
-// says "six of pp.167-170's eleven", and the first draft of this one said
-// fourteen a few hundred lines above it.)
+// rule's totals and not a rollup's leaves that hole open for the widest totals
+// in the corpus. Eleven is the department rollups and fourteen is every rollup
+// in the file; rollupNamesItsOwnLine below counts the same eleven.
 //
 // It returns ErrNoStatedTotals for a rollup that covers no rule, which is the
 // unassertable case: the document prints the total and nothing here can say

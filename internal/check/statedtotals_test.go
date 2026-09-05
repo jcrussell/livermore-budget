@@ -59,19 +59,12 @@ func TestNoCommittedFactCitesAStatedTotal(t *testing.T) {
 		t.Fatalf("fact-offset-is-not-a-stated-total = %s: %s (%v)",
 			res.Status, res.Summary, res.Findings)
 	}
-	// ONE OF THE TWO ASSERTIONS BELOW STILL CANNOT FAIL, AND IT IS KEPT ON
+	// THE SUBJECT-COUNT ASSERTION BELOW CANNOT FAIL TODAY AND IS KEPT ON
 	// PURPOSE. `examined` is len(s.Facts) unless lines == 0, and lines == 0
 	// zeroes it, which makes the result VACUOUS and the status assertion above
-	// has already fired -- so Subjects == len(Facts) is implied by reaching this
-	// line today. It is the check's published subject count, it costs nothing,
-	// and it is the assertion that would catch `examined` being narrowed to
-	// some subset of the store. The summary-string assertion that sat beside it
-	// was deleted rather than kept, because it restated the vacuity rule in
-	// prose and nothing else.
-	//
-	// (A previous pass's comment here claimed BOTH had been replaced when only
-	// one had. Found by /code-review, in a comment written to record that two
-	// assertions could not fail.)
+	// has already fired. It is the check's published subject count, it costs
+	// nothing, and it is what would catch `examined` being narrowed to some
+	// subset of the store.
 	//
 	// What is NOT implied is how many lines the check found, and that is the
 	// number a silent regression would move: the whole check degrades quietly if
@@ -121,13 +114,13 @@ func TestARepublishedTotalIsCaught(t *testing.T) {
 	doc, page, off, ruleID := aStatedTotalLine(t, s, func(r *mapping.Rule, _ *mapping.Part) bool {
 		return r.TotalRow != ""
 	})
-	// PLANTED AT THE FIRST FIGURE, NOT AT THE SPAN'S FIRST BYTE. Every fail-path
-	// test in this file used to plant at exactly `lo`, which is the byte after
-	// the LABEL -- whitespace on 147 of the 149 rule spans, where
-	// fact-offset-points-at-token guarantees no fact can sit. So the span's
-	// extent was never exercised: narrowing the check to `Offset >= lo+1` left
-	// the whole package green. A real republished total sits where its token
-	// does, which is what this now plants. Found by /code-review.
+	// PLANTED AT THE FIRST FIGURE, NOT AT THE SPAN'S FIRST BYTE. `lo` is the
+	// byte after the LABEL, which is whitespace on 147 of the 149 rule spans,
+	// and fact-offset-points-at-token guarantees no fact sits in whitespace --
+	// so planting there exercises the span's start and never its EXTENT.
+	// Collapsing the check to `hi := lo+1` must redden this test; it does not
+	// if the fact is planted at `lo`. A real republished total sits where its
+	// token does, which is what this plants.
 	at := off
 	for at < len(pageOf(t, s, doc, page)) && pageOf(t, s, doc, page)[at] == ' ' {
 		at++
@@ -165,15 +158,14 @@ func pageOf(t *testing.T, s *Subject, docID string, page int) string {
 	return text
 }
 
-// TestARepublishedRollupTotalIsCaught is the same defect one level up, and the
-// check shipped without it.
+// TestARepublishedRollupTotalIsCaught is the same defect one level up.
 //
 // A rollup is a printed total covering several RULES -- pp.167-170's eleven
 // "<DEPARTMENT> TOTAL" rows over their divisions, plus three more elsewhere in
-// the file. dept-city-council's p167 line
-// prints $149,198 and covers div-city-council's own Total, so republishing it as
-// a row doubles a department. The first three review passes over this lane all
-// read a check that located rule totals and no rollup at all.
+// the file. dept-city-council's p167 line prints $149,198 and covers
+// div-city-council's own Total, so republishing it as a row doubles a whole
+// department. Delete the rollup loop from the check and this is the only test
+// that reddens.
 func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -217,9 +209,9 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 	if !strings.Contains(got, id) {
 		t.Errorf("the finding does not name the rollup %q: %s", id, got)
 	}
-	// IT MUST SAY "rollup", NOT "rule". The message named `rule %q` for every
-	// span, and rollup ids are not rule ids -- a reader would grep mappings/ for
-	// a rule that is not there. Found by /code-review.
+	// IT MUST SAY "rollup", NOT "rule". Rollup ids are not rule ids, so a
+	// violation published as `rule "dept-city-council"` sends its reader to grep
+	// mappings/ for a rule that is not there.
 	if !strings.Contains(got, `rollup "`+id+`"`) {
 		t.Errorf("the finding calls the rollup a rule: %s", got)
 	}
@@ -229,15 +221,16 @@ func TestARepublishedRollupTotalIsCaught(t *testing.T) {
 // instead of a finding for the fourteen parts whose non-resolution is exempt,
 // and it is the half that no predicate can hide.
 //
-// Three consecutive review passes found a fail-open in the exemption predicate,
-// each in a different clause, and the third measurement was that TEN of the
-// eleven total_spans_parts rules could lose their only span with the check still
-// reporting pass. The narrow finding is kept and under-claims on purpose
-// (fisc-xbvs); what makes the loss VISIBLE rather than silent is that the
-// unresolved count is published unconditionally, so breaking an exempt rule
-// moves two numbers `fisc verify` prints on every run.
+// The finding arm under-claims on purpose (fisc-xbvs): ten of the eleven
+// total_spans_parts rules can lose their only span with the check still
+// reporting pass. What makes that loss VISIBLE rather than silent is the
+// unresolved count, published unconditionally, so breaking an exempt rule moves
+// a number `fisc verify` prints on every run.
 //
-// This asserts that. Drop the unconditional `unresolved++` and it goes red.
+// This asserts that count specifically and not merely that the summary changed
+// -- the RESOLVED count moves too, so a laxer assertion passes with the
+// unconditional `unresolved++` deleted. Delete it and this is the only test in
+// the package that reddens.
 func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -247,11 +240,11 @@ func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
 	if before.Status != StatusPass {
 		t.Fatalf("the unbent corpus reported %s: %s", before.Status, before.Summary)
 	}
-	// A GENUINELY EXEMPT RULE, found by simulation. Not every spanning rule is
-	// exempt in practice: div-general-services is covered by a rollup, so
-	// breaking its total_row breaks RollupTotalSpan and produces a finding by a
-	// different route. The subject wanted here is one whose loss the check
-	// really does forgive, which is the case this test exists for.
+	// A GENUINELY EXEMPT RULE, found by simulation rather than named. Not every
+	// spanning rule is exempt in practice: div-general-services is covered by a
+	// rollup, so breaking its total_row breaks RollupTotalSpan and produces a
+	// finding by that route instead. The subject wanted here is one whose loss
+	// the check really does forgive.
 	var bent *mapping.Rule
 	var after Result
 	for _, f := range s.Files {
@@ -277,10 +270,9 @@ func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
 		t.Fatal("no committed spanning rule loses a span without producing a finding, so " +
 			"the exemption this test is about no longer bites -- assert the finding instead")
 	}
-	// THE UNRESOLVED COUNT SPECIFICALLY, not just "the summary changed". The
-	// first version of this test asserted the latter and passed with the
-	// unconditional counter deleted, because the RESOLVED count moves too --
-	// green because the other gate fired.
+	// THE UNRESOLVED COUNT SPECIFICALLY, not just "the summary changed": the
+	// RESOLVED count moves too, so the laxer assertion is green whether or not
+	// the unconditional counter is there.
 	wasUnresolved, nowUnresolved := unresolvedIn(t, before.Summary), unresolvedIn(t, after.Summary)
 	if nowUnresolved != wasUnresolved+1 {
 		t.Errorf("rule %q lost its stated-total span and the published unresolved count "+
@@ -296,15 +288,13 @@ func TestLosingAnExemptSpanStillMovesThePublishedCount(t *testing.T) {
 	}
 }
 
-// TestOneLostPartIsCaughtEvenWhenOthersResolve is the fail-open this arm shipped
-// with, and it took four review passes to surface.
+// TestOneLostPartIsCaughtEvenWhenOthersResolve holds the arm to per-PART.
 //
-// The arm was `rule.TotalRow != "" && resolved == 0`: a rule that lost ONE
-// part's stated-total span still passed on the strength of its other parts.
-// Reproduced end to end before the fix -- break spine-revenues' total_row and
-// fisc verify reported PASS over 161 lines rather than 162, with no finding,
-// while a fact planted on p66's real "TOTAL REVENUES:" line went unrefused.
-// Every span this check loses is a line it can no longer refuse a fact on.
+// Gate it on `resolved == 0` instead and a rule that loses ONE part's
+// stated-total span passes on the strength of its other parts: fisc verify
+// reports PASS over 161 lines rather than 162, with no finding, while a fact
+// planted on p66's real "TOTAL REVENUES:" line goes unrefused. Every span this
+// check loses is a line it can no longer refuse a fact on.
 //
 // The rule bent here is chosen for the shape the arm must NOT excuse: labelled
 // parts, a declared total_row, and not total_spans_parts. The two shapes it MUST
@@ -396,23 +386,19 @@ func TestOneLostPartIsCaughtEvenWhenOthersResolve(t *testing.T) {
 	}
 }
 
-// TestALabelLessPartWithNoTotalsRunContributesNoSpan is what replaced this
-// file's original regression guard, and the replacement is the finding.
+// TestALabelLessPartWithNoTotalsRunContributesNoSpan asserts that a label-less
+// part anchoring on a block TERMINATOR contributes no span.
 //
-// THE GUARD IT REPLACES WAS GREEN BECAUSE THE GATE FIRED. It planted a fact on
-// "a label-less part with no total_row", found one, and passed -- and the line
-// it planted on was p67 offset 2204, `Capital Funds  Debt Service Funds ...`,
-// a COLUMN HEADER. It proved the check flags a header line, which is a defect
-// rather than the property it was named for. Its two siblings landed on the
-// running footer "BUDGET FY 2025-27 Page 63". All three came from TotalRowSpan
-// returning an anchored position without asking whether that line prints a
-// total at all.
+// Three committed parts are of that shape and none of the three lines is a
+// total: spine-transfers-in lands on p67's column-header line
+// `Capital Funds  Debt Service Funds ...`, and spine-transfers-out and
+// spine-fund-balance land on the running footer "BUDGET FY 2025-27 Page 63".
+// A check that took the anchor for a total would report a defect against a
+// header and a page number.
 //
-// So the property now asserted is the one that was actually wrong: those three
-// parts must contribute NO span, because the terminator they anchor on prints
-// no totals run. Delete the amountRun test from statedTotalLine and this goes
-// red -- the three lines come back as stated totals and the check's own summary
-// over-counts them.
+// Delete the amountRun test from statedTotalLine and this goes red, naming all
+// three lines verbatim -- they come back as stated totals and the check's own
+// summary over-counts them.
 func TestALabelLessPartWithNoTotalsRunContributesNoSpan(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {

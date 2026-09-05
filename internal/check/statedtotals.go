@@ -52,8 +52,8 @@ import (
 // string more than once. [mapping.Resolver.TotalRowSpan] applies the block
 // narrowing.
 //
-// WHAT IT DOES ABOUT LOSING A SPAN, precisely, because this is the part four
-// review passes kept getting wrong and the exact boundary matters.
+// WHAT IT DOES ABOUT LOSING A SPAN, precisely, because the boundary is narrow
+// and easy to read as wider than it is.
 //
 // A resolution failure is the one way this check can quietly examine less than
 // it did yesterday, and it cannot be refused outright: fourteen committed parts
@@ -143,10 +143,8 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					// COUNTED WHATEVER THE ARM BELOW DOES WITH IT. The published
 					// summary carries this number, so a span that stops
 					// resolving moves a figure `fisc verify` prints on every run
-					// whether or not any predicate calls it a finding. That is
-					// the part of this that cannot be gamed by an exemption
-					// being too broad -- and three consecutive review passes
-					// found exactly that, each in a different clause.
+					// whether or not any predicate calls it a finding. It is the
+					// part of this that an over-broad exemption cannot hide.
 					unresolved++
 					// The two ordinary shapes, per the arm below: a spanning
 					// rule's total prints on the block's last page, and a
@@ -162,15 +160,13 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 					spans[f.DocID] = map[int][]totalSpan{}
 				}
 				// THE LABEL MUST BRANCH THE WAY totalAnchor BRANCHED, and on
-				// LabelsFrom FIRST. The OTHER two label-less parts --
-				// spine-revenues and spine-expenditures on p67 -- DO declare a
-				// total_row, and their anchor was still stop_at. Choosing the
-				// label on TotalRow alone made a finding there name "TOTAL
-				// REVENUES:" as the printed stated-total line on p67, a string
-				// p67 does not contain at all (it is p66 that prints it): a
-				// check reporting a defect by pointing at a line that is not
-				// there. Found by /code-review, one predicate over from the
-				// same trap this loop was widened for.
+				// LabelsFrom FIRST. spine-revenues and spine-expenditures on
+				// p67 are label-less AND declare a total_row, and their anchor
+				// is still stop_at -- so naming rule.TotalRow there would name
+				// "TOTAL REVENUES:" as p67's printed stated-total line, a string
+				// p67 does not contain at all (p66 prints it). A check that
+				// reports a defect by pointing at a line that is not there sends
+				// its reader to grep for nothing.
 				label := "the end of the block, via stop_at " + strconv.Quote(p.StopAt)
 				if p.LabelsFrom == 0 && rule.TotalRow != "" {
 					label = rule.TotalRow
@@ -178,17 +174,15 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 				spans[f.DocID][p.Page] = append(spans[f.DocID][p.Page],
 					totalSpan{lo: lo, hi: hi, ruleID: rule.ID, kind: "rule", label: label})
 			}
-			// PER PART, NOT PER RULE, AND `resolved == 0` WAS FAIL-OPEN.
-			// Gating on "the rule resolved nothing" means a MULTI-PART rule that
-			// loses one part's span still passes on the strength of the others.
-			// Reproduced end to end: break spine-revenues' total_row and
-			// fisc verify reports PASS over 161 lines instead of 162, with no
-			// finding, while a fact planted on p66's real "TOTAL REVENUES:" line
-			// goes unrefused. Every span this check loses is a line it can no
-			// longer refuse a fact on, so every lost span has to be said.
+			// PER PART, NOT PER RULE. Gating on "the rule resolved nothing"
+			// lets a MULTI-PART rule lose one part's span and still pass on the
+			// strength of the others, and every span this check loses is a
+			// printed total line it can no longer refuse a fact on -- so a lost
+			// span has to be said even when its siblings resolve.
+			// TestOneLostPartIsCaughtEvenWhenOthersResolve holds this.
 			//
 			// TWO KINDS OF FAILURE ARE ORDINARY AND ARE NOT FINDINGS, which is
-			// why `failures` alone is the wrong gate and was tried:
+			// why `len(failures) > 0` alone is the wrong gate:
 			//
 			//   - A total_spans_parts rule prints its total on the block's LAST
 			//     page, so the earlier parts cannot resolve it. All eleven
@@ -215,16 +209,12 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		// a printed total covering several RULES -- pp.167-170's ELEVEN
 		// "<DEPARTMENT> TOTAL" rows over their divisions -- so its figure is a
 		// total by exactly the argument a rule's total_row is, and republishing
-		// one doubles a whole department rather than one block. This check
-		// landed covering rule totals only, which left every rollup open, and
-		// dept-city-council's printed $149,198 on p167 was the worked example.
+		// one doubles a whole department rather than one block --
+		// dept-city-council's printed $149,198 on p167 is the worked example.
 		//
 		// FOURTEEN IS THE COUNT OF ALL ROLLUPS IN THE FILE and eleven is the
 		// department totals; the other three are gf-total-expenses on p170,
-		// gf-total-revenues on p130 and other-funds-total-sources on p140. The
-		// first draft of this comment said "pp.167-170's fourteen", which
-		// contradicted resolve.go's own "six of pp.167-170's eleven" a few
-		// hundred lines away.
+		// gf-total-revenues on p130 and other-funds-total-sources on p140.
 		for j := range f.Rollups {
 			ro := &f.Rollups[j]
 			lo, hi, err := r.RollupTotalSpan(ro)
@@ -255,7 +245,7 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 	// EITHER WAY OF EXAMINING NOTHING IS VACUOUS AND THEY ARE DIFFERENT, so the
 	// reason is chosen rather than assumed. A single `nothing` string asserting
 	// only the first would publish a false reason on a run with resolved lines
-	// and an empty store. Found by /code-review.
+	// and an empty store.
 	examined := len(s.Facts)
 	nothing := "the fact store is empty, so nothing could cite a printed total"
 	if lines == 0 {

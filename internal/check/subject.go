@@ -290,10 +290,6 @@ type Subject struct {
 	// structural sweep (fisc-1wr.5) and fact-offset-is-not-a-stated-total all
 	// resolve rules, and building them anywhere else would mean several runs of
 	// the same read in one command.
-	//
-	// This used to say "Nothing in tier 1 needs them", which went false when
-	// fact-offset-is-not-a-stated-total landed as a tier-1 check that locates
-	// every rule's and rollup's printed total through them.
 	Resolvers map[string]*mapping.Resolver
 	// Projections is every graph the facts support, one per (fiscal year, basis)
 	// the fact store carries within spineScope, in that order.
