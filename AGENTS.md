@@ -247,9 +247,11 @@ record where they came from.
 **An epic closing does not make its dependents workable, and the check is worth
 doing before planning around one.** `fisc-9hf` closed on 2026-08-30 and took
 `fisc-1wr.2` with it, and `E5` did not become workable: measured 2026-09-03, its
-ladder was downstream of two things and only one of them had moved, with
-`fisc-1wr.3`, `fisc-1wr.4`, `fisc-1wr.5.1` and `fisc-1wr.7` all deferred to
-2026-11-10 by decision.
+ladder was downstream of two things and only one of them had moved.
+`fisc-1wr.3`, `fisc-1wr.4` and `fisc-1wr.5.1` are deferred to 2026-11-10 by
+decision, and `fisc-1wr.7` sits behind `fisc-mq4.6` → `fisc-mq4.3`, which are
+deferred to the same date — a different reason with the same effect, which is
+why the count is two.
 
 Dependencies are wired so `bd ready` surfaces only genuinely unblocked work, and
 that held when it was checked. **Priority is the part that drifts.** The failure
@@ -353,10 +355,12 @@ original commit. The ceiling is not a target — stop the moment step 6's
 condition is met.
 
 **No lane has ever stopped because a pass came back clean.** A pass has never
-returned clean here — the smallest yield in 61 recorded passes is two — and
-`git log --format=%s | grep -ci fifth` counts nine lanes that ran the full five.
-So a stopping rule that waits for silence is a rule that always defers to the
-cap.
+returned clean here, and lanes routinely run the full five —
+`git log --format=%s | grep -ci fifth` counts them. Both commands below are
+live, so re-run them rather than quoting this paragraph; every figure it has
+ever carried has gone stale, most recently because the session that wrote this
+sentence went on to add eight review-fix commits of its own. So a stopping rule
+that waits for silence is a rule that always defers to the cap.
 
 **A late pass still finding real defects is a signal about the change, not about
 the review.** At the cap, report what the last pass found and let the owner
@@ -438,13 +442,16 @@ the loop's own work. By the fourth pass the review is mostly reading its own
 output, which is what a non-decaying count looks like from the inside.
 
 **A pass has never returned nothing.** `git log --format='%s' | grep -oiE
-'[a-z]+ findings'` over the whole log — 61 passes, ~323 findings:
+'[a-z]+ findings'` over the whole log. Measured at `ab71b7a`, 92 passes and 472
+findings — and note the grep over-collects, catching two subjects that carry the
+word without a yield. The distribution, at that commit:
 
 | yield | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 11 | 12 | 13 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| passes | 7 | 5 | 16 | 10 | 4 | 10 | 4 | 2 | 1 | 1 | 1 |
+| passes | 8 | 10 | 27 | 15 | 7 | 14 | 5 | 3 | 1 | 1 | 1 |
 
-Zero has never occurred and neither has one. Yield is also close to independent
+Zero has never occurred and neither has one, over four months and every lane the
+log records. Yield is also close to independent
 of how much code the pass is reading: the caveats lane's first pass read 1,812
 insertions and returned 9, its fourth read a 69-line fix and returned 5. A rule
 that waits for silence from a detector with a floor of two is a rule that always

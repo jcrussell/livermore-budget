@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -114,6 +115,59 @@ func TestResolveWithNoSecondOpinionDecidesOnTheExportAlone(t *testing.T) {
 	}
 }
 
+func TestAnExemptionIsKeptAliveOnlyByITSOWNFile(t *testing.T) {
+	// A sighting anywhere else must not count. It did once, and the consequence
+	// is that the token could vanish from the file the declaration names while
+	// any other occurrence -- including this command's own declaration of it --
+	// kept the exemption alive. Measured on the tree at the time: fisc-year was
+	// declared as living in site/app.js and actually lives in the templates, and
+	// nothing said so until this rule tightened.
+	scanned := map[string]bool{}
+	var elsewhere []ref
+	for id, e := range exemptIDs {
+		scanned[e.file] = true
+		elsewhere = append(elsewhere, ref{id: id, file: "AGENTS.md", line: 1})
+	}
+	if _, err := dropExemptIDs(elsewhere, scanned); err == nil {
+		t.Error("dropExemptIDs(sightings only in another file) = nil error, want a refusal")
+	}
+}
+
+func TestEveryIDExemptionNamesAFileThatReallyCarriesIt(t *testing.T) {
+	// The declaration is a claim about the tree like any other.
+	root := filepath.Join("..", "..")
+	for id, e := range exemptIDs {
+		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(e.file)))
+		if err != nil {
+			t.Errorf("exemption for %s: %v", id, err)
+			continue
+		}
+		if !strings.Contains(string(body), id) {
+			t.Errorf("exemption for %s says it lives in %s, which does not contain it", id, e.file)
+		}
+	}
+}
+
+func TestAnswersForRejectsAPrefixResolution(t *testing.T) {
+	// bd resolves a unique prefix and exits 0, so the reply has to be checked
+	// against the id that was asked for. This is a function of bytes precisely
+	// so that it can be tested: inside bdKnows it could not be, and reducing it
+	// to "did bd return anything" left every test green.
+	reply := []byte(`[{"id":"fisc-i38","title":"x"}]`)
+	if answersFor(reply, "fisc-i3") {
+		t.Error(`answersFor(reply about fisc-i38, "fisc-i3") = true, want false`)
+	}
+	if !answersFor(reply, "fisc-i38") {
+		t.Error(`answersFor(reply about fisc-i38, "fisc-i38") = false, want true`)
+	}
+	// bd absent, bd erroring, or a reply this cannot parse are all "no".
+	for _, out := range [][]byte{nil, []byte("not json"), []byte(`[]`), []byte(`{"id":"fisc-i38"}`)} {
+		if answersFor(out, "fisc-i38") {
+			t.Errorf("answersFor(%q) = true, want false", out)
+		}
+	}
+}
+
 func TestDropExemptIDsRefusesADeclarationWhoseFileNoLongerCarriesIt(t *testing.T) {
 	// An exemption whose token has gone is a declaration outliving its subject,
 	// which is a hole nobody can see. Staleness is measured against the file the
@@ -192,9 +246,14 @@ func TestScannableCoversWhatTheSiteAndTheToolingAreWrittenIn(t *testing.T) {
 			t.Errorf("scannable(%q) = false, want true", p)
 		}
 	}
-	// Extracted artifacts: a fisc- token in one is a value, not a claim.
+	// A golden carries a prose note citing a bead, so .json is in.
+	if !scannable("testdata/sankey.golden.json") {
+		t.Error(`scannable("testdata/sankey.golden.json") = false, want true`)
+	}
+	// The page fixtures are the city's own printed text and cannot carry a claim
+	// about this tracker.
 	for _, p := range []string{
-		"testdata/pages/p0067.txt", "testdata/sankey.golden.json", "data/pdf/x.pdf",
+		"testdata/pages/p0067.txt", "data/pdf/x.pdf",
 	} {
 		if scannable(p) {
 			t.Errorf("scannable(%q) = true, want false", p)

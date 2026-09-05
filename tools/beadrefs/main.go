@@ -78,7 +78,7 @@ var exempt = map[string]string{
 // a token in no other file left a full run green.
 var exemptIDs = map[string]exemptID{
 	"fisc-theme": {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice"},
-	"fisc-year":  {file: "site/app.js", what: "the radio-group name for the fiscal-year control"},
+	"fisc-year":  {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control, also in chart.html.tmpl"},
 }
 
 type exemptID struct {
@@ -154,8 +154,13 @@ func dropExemptIDs(refs []ref, scanned map[string]bool) ([]ref, error) {
 	seen := map[string]bool{}
 	kept := refs[:0:0]
 	for _, r := range refs {
-		if _, ok := exemptIDs[r.id]; ok {
-			if norm(r.file) != declarationFile {
+		if e, ok := exemptIDs[r.id]; ok {
+			// The sighting must be in the file the declaration names. Accepting
+			// one anywhere else made the check unfalsifiable in the ordinary
+			// way: the token could vanish from its own file entirely and any
+			// other occurrence -- including in this file's own declaration --
+			// would keep the exemption alive.
+			if norm(r.file) == e.file && e.file != declarationFile {
 				seen[r.id] = true
 			}
 			continue
@@ -264,12 +269,22 @@ func refsUnder(paths []string) ([]ref, map[string]bool, error) {
 	return refs, scanned, nil
 }
 
-// scannable says whether a file found by walking a directory carries prose or
-// code rather than fixture data. Page text (.txt) and goldens (.json) are out:
-// they are extracted artifacts and a fisc- token in one is a value, not a claim.
+// scannable says whether a file found by walking a directory can carry a claim
+// about the tracker.
+//
+// .json IS IN THE LIST, which is not obvious: it is mostly extracted geometry,
+// where a fisc- token would be a value. But testdata/sankey.golden.json carries
+// a prose note citing a bead, so "a golden holds values and not claims" was
+// simply false, and the citedIn boundaries already reject the one value shape
+// that occurs there (fact ids, fisc-f-<hash>).
+//
+// .txt IS NOT, and that is the same judgement going the other way: the page
+// fixtures under testdata/pages/ are the city's own printed text and cannot
+// contain a claim about this tracker. requirements.txt is named directly in the
+// Makefile instead.
 func scannable(path string) bool {
 	switch filepath.Ext(path) {
-	case ".md", ".go", ".mjs", ".js", ".tmpl", ".css", ".py", ".yaml", ".yml":
+	case ".md", ".go", ".mjs", ".js", ".tmpl", ".css", ".py", ".yaml", ".yml", ".json":
 		return true
 	}
 	return false
@@ -369,25 +384,34 @@ func bdKnows(ctx context.Context) func(string) bool {
 		if err != nil {
 			return false
 		}
-		// bd RESOLVES A UNIQUE PREFIX: asked about the first few characters of an
-		// id it exits 0 and returns the whole one, and the caller cannot tell
-		// that from a hit. A truncated id is a dead pointer whatever bd does,
-		// and accepting one here would pass pre-commit and fail CI, where bd is
-		// absent and only the export answers. So the answer has to name the id
-		// that was asked about.
-		var recs []struct {
-			ID string `json:"id"`
-		}
-		if err := json.Unmarshal(out, &recs); err != nil {
-			return false
-		}
-		for _, r := range recs {
-			if r.ID == id {
-				return true
-			}
-		}
+		return answersFor(out, id)
+	}
+}
+
+// answersFor says whether bd's reply is about the id that was asked for.
+//
+// bd RESOLVES A UNIQUE PREFIX: asked about the first few characters of an id it
+// exits 0 and returns the whole one, and exec gives the caller no way to tell
+// that from a hit. A truncated id is a dead pointer whatever bd does with it,
+// and accepting one would pass pre-commit and fail CI, where bd is absent and
+// only the export answers.
+//
+// It is a function of bytes rather than a step inside bdKnows because the
+// version inside could not be tested: bdKnows closes over exec.LookPath, so
+// reducing this comparison to "did bd return anything" left every test green.
+func answersFor(out []byte, id string) bool {
+	var recs []struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(out, &recs); err != nil {
 		return false
 	}
+	for _, r := range recs {
+		if r.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // bdTimeout bounds one `bd show`.

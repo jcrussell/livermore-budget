@@ -134,10 +134,9 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 
 # beadrefs refuses a bead id that names no bead.
 #
-# AGENTS.md calls an invented id the worst of the three claim defects it names:
-# the work really is tracked and only the pointer is dead, so it reads as done
-# and nobody goes looking. It has happened twice, and it was a prose rule until
-# now.
+# An invented id does not read as a mistake: the work really is tracked and only
+# the pointer is dead, so it reads as done and nobody goes looking. It has
+# happened twice, and it was a prose rule in AGENTS.md until now.
 #
 # UNLIKE narration'S MEMORY ARM THIS IS A REAL GATE. It resolves against
 # .beads/issues.jsonl, which is committed, so it needs no bd, no Dolt server and
@@ -151,8 +150,8 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 .PHONY: beadrefs
 beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 	@go run ./tools/beadrefs .beads/issues.jsonl \
-		AGENTS.md CLAUDE.md README.md Makefile .github/workflows/ci.yml \
-		docs cmd internal pkg tools site mappings data testdata
+		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
+		.github docs cmd internal pkg tools site mappings data testdata
 
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #
