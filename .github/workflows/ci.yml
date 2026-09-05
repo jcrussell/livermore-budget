@@ -156,6 +156,22 @@ jobs:
           node-version: '22'
       - run: make js
 
+  narration:
+    name: narration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # The Go arm reads committed source and is a real gate here. The memory
+      # arm warns and continues, because bd is not installed on this runner and
+      # the memories live in a Dolt database that no checkout carries -- so this
+      # job proves the source half only, which is the half CI can prove.
+      - run: make narration
+
   vet:
     name: go vet
     runs-on: ubuntu-latest

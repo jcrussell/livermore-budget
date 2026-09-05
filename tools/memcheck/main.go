@@ -17,11 +17,21 @@
 // memory. A present-tense scope limit ("WHAT THIS MEMORY CANNOT TELL YOU IS THE
 // CURRENT PUSH STATE") is a true and useful sentence and must keep passing.
 //
-// The correction pattern wants a full ISO date or an ALL-CAPS line-leading
-// CORRECTED, and not a bare year, because "the city corrected 2024's printed
-// total" is a sentence about the corpus and not about this text.
-// TestScanFindsOnlyPastTenseSelfReference carries that case and the others that
-// decide where each pattern's edge is.
+// TWO OF THE FIVE ARE JUSTIFIED BY SHAPE RATHER THAN BY GRAMMAR, which is worth
+// knowing before adding a sixth. A full ISO date after "corrected" and an
+// ALL-CAPS line-leading CORRECTED are house-style forms rather than sentences
+// whose subject is provably this text; the bare-year form is refused precisely
+// because "the city corrected 2024's printed total" is about the corpus. A
+// pattern for a parenthesised "(correction: ...)" was tried and withdrawn for
+// exactly that reason -- it refused a true parenthetical about a reprinted ACFR
+// figure, and no memory carried the form it was aimed at.
+//
+// EVERY GAP BETWEEN WORDS IS \s+ AND NOT A SPACE. The bodies are hard-wrapped
+// paragraphs -- most of them span lines -- so a pattern with a literal space
+// misses any erratum that happens to wrap at the wrong word, which is the
+// majority of the places one could sit.
+// TestScanFindsOnlyPastTenseSelfReference carries these cases and the others
+// that decide where each pattern's edge is.
 //
 // Unlike narration's Go arm this one has no file-touch signal to defer a
 // pre-existing hit to the session that was editing that file anyway: memories
@@ -44,11 +54,10 @@ import (
 // be the subject of a past-tense claim; see the package comment for why nothing
 // looser belongs here.
 var errata = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)th(is|e) memory (used to|previously|once|said|no longer)`),
-	regexp.MustCompile(`(?i)earlier versions? of this memory`),
-	regexp.MustCompile(`(?i)\bthis used to (say|read|end|claim)`),
-	regexp.MustCompile(`(?i)\(correction[,:]`),
-	regexp.MustCompile(`(?i)\bcorrected 20\d\d-\d\d-\d\d`),
+	regexp.MustCompile(`(?i)th(is|e)\s+memory\s+(used\s+to|previously|once|said|no\s+longer)`),
+	regexp.MustCompile(`(?i)earlier\s+versions?\s+of\s+this\s+memory`),
+	regexp.MustCompile(`(?i)\bthis\s+used\s+to\s+(say|read|end|claim)`),
+	regexp.MustCompile(`(?i)\bcorrected\s+20\d\d-\d\d-\d\d`),
 	regexp.MustCompile(`(?m)^CORRECTED\b`),
 }
 

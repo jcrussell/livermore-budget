@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -20,7 +21,14 @@ func TestScanFindsOnlyPastTenseSelfReference(t *testing.T) {
 		{"previously, qualified", "This memory previously said Y.", true},
 		{"said, past tense", "This memory said THREE until the fourth scope landed.", true},
 		{"noun dropped entirely", "A rule. This used to say something else.", true},
-		{"AGENTS.md's own errata idiom", "(Correction, recorded here rather than by amending: it is 34.)", true},
+		{"a parenthetical correction about a document", "ACFR p41 (correction: the city reprinted the total as 58,179,467) ties.", false},
+
+		// The bodies are hard-wrapped, so every one of these is a form the check
+		// has to see across a line break as readily as on one line.
+		{"wrapped after the noun", "The rule is X. This memory\nused to say Y.", true},
+		{"wrapped mid-phrase", "TWO EARLIER VERSIONS OF\nTHIS MEMORY WERE WRONG.", true},
+		{"wrapped before the date", "The rule is X. corrected\n2026-08-29, and the point is this.", true},
+		{"wrapped, still about a document", "The city\ncorrected 2024's printed total in a later schedule.", false},
 		{"once said", "This memory once said check.All() returns 34.", true},
 		{"earlier versions", "TWO EARLIER VERSIONS OF THIS MEMORY WERE WRONG.", true},
 		{"earlier version singular", "An earlier version of this memory said Y.", true},
@@ -172,5 +180,9 @@ func TestExcerptCollapsesNewlinesAndClampsAtBothEnds(t *testing.T) {
 }
 
 func quote(s string) string {
-	return `"` + strings.ReplaceAll(strings.ReplaceAll(s, `\`, `\\`), `"`, `\"`) + `"`
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err) // a Go string always marshals
+	}
+	return string(b)
 }

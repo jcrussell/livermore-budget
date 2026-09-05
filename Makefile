@@ -88,16 +88,20 @@ tidy: ## Tidy go.mod/go.sum
 # bd and nothing for this to read, and must still be able to commit.
 #
 # THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT: a warning is not a
-# gate, and this arm can never become one. Memories live in the Dolt DB and in no
-# git artifact, so there is nothing in a checkout for CI to read -- and note that
-# narration as a whole is not a CI job either, so both arms are local-only. Treat
-# a green run as evidence only that the memories were readable and clean.
+# gate, and THIS arm can never become one, because memories live in the Dolt DB
+# and in no git artifact and there is nothing in a checkout for CI to read. Treat
+# a green memory arm as evidence only that the memories were readable and clean.
+#
+# The Go arm has no such limit -- it reads committed source -- and CI runs this
+# target for it. Between them the target is a real gate over the tree and an
+# advisory check over the database.
 .PHONY: narration
 narration: ## Refuse review credits and comment errata in Go sources and memories
 	@hits=$$(grep -rnE '^[[:space:]]*//.*(Found by /code-review|this comment used to say)' \
 		--include='*.go' ./cmd ./internal ./pkg ./site ./tools); \
 	status=$$?; \
 	if [ $$status -gt 1 ]; then \
+		if [ -n "$$hits" ]; then echo "$$hits" >&2; fi; \
 		echo "narration: grep failed with status $$status; the directory list above" >&2; \
 		echo "  is hand-maintained and one of its entries is probably gone." >&2; \
 		exit 1; \
@@ -115,13 +119,14 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
 		exit 0; \
 	}; \
-	memories=$$(bd memories --json 2>/tmp/memcheck-bd-err.$$$$) || { \
+	err=$$(mktemp) || exit 1; \
+	memories=$$(bd memories --json 2>"$$err") || { \
 		echo "warning: 'bd memories --json' failed, skipping the memory errata check:" >&2; \
-		sed 's/^/  /' /tmp/memcheck-bd-err.$$$$ >&2; \
-		rm -f /tmp/memcheck-bd-err.$$$$; \
+		sed 's/^/  /' "$$err" >&2; \
+		rm -f "$$err"; \
 		exit 0; \
 	}; \
-	rm -f /tmp/memcheck-bd-err.$$$$; \
+	rm -f "$$err"; \
 	printf '%s' "$$memories" | go run ./tools/memcheck
 
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
