@@ -77,15 +77,21 @@ tidy: ## Tidy go.mod/go.sum
 # the file and its history stays in git, a memory is edited with bd remember and
 # leaves no git artifact at all.
 #
-# It WARNS AND CONTINUES WITHOUT bd, the way lint-if-available does without
-# golangci-lint. Memories live in the Dolt DB and in no git artifact, so unlike
-# every other arm of pre-commit this one cannot be a CI job -- there is nothing
-# in a checkout for CI to read. That makes it advisory by construction, which is
-# worth knowing before trusting it.
+# IT WARNS AND CONTINUES WHENEVER bd CANNOT ANSWER -- absent from PATH, or
+# present and failing, which is what a fresh clone with no Dolt DB looks like.
+# Without the second of those a contributor with Go and no beads database could
+# not commit at all, and "a contributor with only Go can still land a change" is
+# a property this project keeps.
+#
+# THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT: a warning is not a
+# gate, and this arm can never become one. Memories live in the Dolt DB and in no
+# git artifact, so there is nothing in a checkout for CI to read -- and note that
+# narration as a whole is not a CI job either, so both arms are local-only. Treat
+# a green run as evidence only that the memories were readable and clean.
 .PHONY: narration
 narration: ## Refuse review credits and comment errata in Go sources and memories
 	@if grep -rnE '^[[:space:]]*//.*(Found by /code-review|this comment used to say)' \
-		--include='*.go' ./cmd ./internal ./pkg ./tools 2>/dev/null; then \
+		--include='*.go' ./cmd ./internal ./pkg ./site ./tools 2>/dev/null; then \
 		echo "" >&2; \
 		echo "narration: the lines above put HISTORY in a source comment." >&2; \
 		echo "  A review credit belongs in the commit body; an erratum belongs" >&2; \
@@ -97,7 +103,11 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
 		exit 0; \
 	}; \
-	bd memories --json | go run ./tools/memcheck
+	memories=$$(bd memories --json 2>/dev/null) || { \
+		echo "warning: 'bd memories --json' failed, skipping the memory errata check" >&2; \
+		exit 0; \
+	}; \
+	printf '%s' "$$memories" | go run ./tools/memcheck
 
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #

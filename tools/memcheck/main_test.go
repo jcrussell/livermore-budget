@@ -14,11 +14,13 @@ func TestScanFindsOnlyPastTenseSelfReference(t *testing.T) {
 		body string
 		want bool
 	}{
-		// The three shapes measured in the memories this check was written for.
+		// The shapes measured in the memories this check was written for.
 		{"used to", "The rule is X. This memory used to say Y.", true},
 		{"previously, without the demonstrative", "the memory previously said Y, which is wrong", true},
 		{"previously, qualified", "This memory previously said Y.", true},
 		{"said, past tense", "This memory said THREE until the fourth scope landed.", true},
+		{"noun dropped entirely", "A rule. This used to say something else.", true},
+		{"AGENTS.md's own errata idiom", "(Correction, recorded here rather than by amending: it is 34.)", true},
 		{"once said", "This memory once said check.All() returns 34.", true},
 		{"earlier versions", "TWO EARLIER VERSIONS OF THIS MEMORY WERE WRONG.", true},
 		{"earlier version singular", "An earlier version of this memory said Y.", true},
@@ -35,7 +37,8 @@ func TestScanFindsOnlyPastTenseSelfReference(t *testing.T) {
 		{"an earlier draft of another file", "An earlier draft of the contract shipped paths it does not write.", false},
 		{"a bead's text", "Text on the lane's beads describing work as pending is historical.", false},
 
-		// The live scope limit that made the first draft of this list too wide.
+		// A present-tense scope limit is a true and useful sentence, and it is
+		// the case that decides how far the demonstrative patterns may reach.
 		{"present-tense scope limit", "WHAT THIS MEMORY CANNOT TELL YOU IS THE CURRENT PUSH STATE.", false},
 	}
 	for _, tt := range tests {
@@ -92,10 +95,9 @@ func TestScanRejectsMalformedInput(t *testing.T) {
 }
 
 func TestScanRefusesAnInputItExaminedNothingIn(t *testing.T) {
-	// Every one of these unmarshals into map[string]json.RawMessage WITHOUT an
-	// error and leaves no body to read, so before this each returned zero hits
-	// and took the target green while scanning nothing -- the shape AGENTS.md
-	// calls green because the gate fired.
+	// Every one of these parses WITHOUT an error and leaves no body to read, so
+	// a scanner that only counts hits reports them clean while scanning nothing
+	// -- the shape AGENTS.md calls green because the gate fired.
 	for _, in := range []string{
 		`null`,
 		`{}`,
@@ -110,9 +112,26 @@ func TestScanRefusesAnInputItExaminedNothingIn(t *testing.T) {
 	}
 }
 
+func TestScanRefusesANestedShape(t *testing.T) {
+	// The count rule alone does not catch an envelope: one stray top-level
+	// string beside it satisfies "examined at least one body" while the real
+	// bodies sit a level down, unread.
+	for _, in := range []string{
+		`{"note":"x","memories":{"k":"This memory used to say X."}}`,
+		`{"memories":{"k":"This memory used to say X."}}`,
+		`{"note":"x","memories":["This memory used to say X."]}`,
+	} {
+		t.Run(in, func(t *testing.T) {
+			if _, err := scan([]byte(in)); err == nil {
+				t.Errorf("scan(%s) = nil error, want a refusal: the bodies are nested", in)
+			}
+		})
+	}
+}
+
 func TestExcerptDoesNotCutAMultiByteRuneInHalf(t *testing.T) {
-	// 17 of the 49 memories carry em-dashes, and pad is a byte count, so an
-	// excerpt clamped at a raw offset printed replacement bytes at the reader.
+	// The memory bodies carry em-dashes and pad is a byte count, so an excerpt
+	// clamped at a raw byte offset prints replacement bytes at the reader.
 	body := strings.Repeat("—", 40) + "This memory used to say Y." + strings.Repeat("—", 40)
 	start := strings.Index(body, "This memory used to")
 	got := excerpt(body, start, start+len("This memory used to"))

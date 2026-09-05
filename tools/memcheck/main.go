@@ -19,8 +19,9 @@
 //
 // The correction pattern wants a full ISO date or an ALL-CAPS line-leading
 // CORRECTED, and not a bare year, because "the city corrected 2024's printed
-// total" is a sentence about the corpus. A first draft matching `corrected 20\d\d`
-// refused it, and TestScanFindsOnlyPastTenseSelfReference is where that showed.
+// total" is a sentence about the corpus and not about this text.
+// TestScanFindsOnlyPastTenseSelfReference carries that case and the others that
+// decide where each pattern's edge is.
 //
 // Unlike narration's Go arm this one has no file-touch signal to defer a
 // pre-existing hit to the session that was editing that file anyway: memories
@@ -45,6 +46,8 @@ import (
 var errata = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)th(is|e) memory (used to|previously|once|said|no longer)`),
 	regexp.MustCompile(`(?i)earlier versions? of this memory`),
+	regexp.MustCompile(`(?i)\bthis used to (say|read|end|claim)`),
+	regexp.MustCompile(`(?i)\(correction[,:]`),
 	regexp.MustCompile(`(?i)\bcorrected 20\d\d-\d\d-\d\d`),
 	regexp.MustCompile(`(?m)^CORRECTED\b`),
 }
@@ -78,15 +81,18 @@ func main() {
 // scan reports one line per erratum found, sorted by key so the output is
 // stable across runs of a map.
 //
-// IT FAILS ON AN INPUT CARRYING NO BODIES rather than reporting it clean. A
-// top-level null, an empty object, and an envelope that moves the bodies down a
-// level ({"schema_version":1,"memories":{...}}) all unmarshal into this map
-// without error and leave nothing to examine, so without this the check would
-// pass while reading nothing at all -- green because the gate never fired. A
-// project with genuinely zero memories is indistinguishable from those here,
-// and this repo is not that project.
+// IT REFUSES ANY SHAPE IT CANNOT READ AS BODIES rather than reporting it clean,
+// and it takes two rules to do that. A top-level null and an empty object both
+// unmarshal without error and leave nothing to examine, so a scan that examined
+// no body at all is an error: this repo is not a project with zero memories. And
+// a NESTED value means the bodies have moved down a level
+// ({"schema_version":1,"memories":{...}}), which the count rule alone does not
+// catch -- one stray top-level string beside the envelope satisfies it while the
+// real bodies go unread. Both are the shape AGENTS.md calls green because the
+// gate fired: an exit code that says nothing was wrong when it means nothing was
+// looked at.
 func scan(in []byte) ([]string, error) {
-	var raw map[string]json.RawMessage
+	var raw map[string]any
 	if err := json.Unmarshal(in, &raw); err != nil {
 		return nil, fmt.Errorf("parsing memories: %w", err)
 	}
@@ -99,15 +105,18 @@ func scan(in []byte) ([]string, error) {
 	var hits []string
 	examined := 0
 	for _, k := range keys {
-		var body string
-		if err := json.Unmarshal(raw[k], &body); err != nil {
-			continue // schema_version and anything else that is not a body
-		}
-		examined++
-		for _, re := range errata {
-			for _, loc := range re.FindAllStringIndex(body, -1) {
-				hits = append(hits, fmt.Sprintf("%s: %s", k, excerpt(body, loc[0], loc[1])))
+		switch v := raw[k].(type) {
+		case string:
+			examined++
+			for _, re := range errata {
+				for _, loc := range re.FindAllStringIndex(v, -1) {
+					hits = append(hits, fmt.Sprintf("%s: %s", k, excerpt(v, loc[0], loc[1])))
+				}
 			}
+		case map[string]any, []any:
+			return nil, fmt.Errorf("%q holds a nested value: the memories are not a flat object of key to body, so this check would read past them", k)
+		default:
+			// schema_version and any other scalar that is not a body.
 		}
 	}
 	if examined == 0 {
@@ -128,9 +137,9 @@ func excerpt(body string, start, end int) string {
 	if hi >= len(body) {
 		hi, suffix = len(body), ""
 	}
-	// pad is a byte count, and 17 of the 49 memories carry em-dashes, so both
-	// ends have to be walked out to a rune boundary or the excerpt prints the
-	// tail of a multi-byte character as replacement bytes.
+	// pad is a byte count and the bodies carry em-dashes, so both ends have to
+	// be walked out to a rune boundary or the excerpt prints the tail of a
+	// multi-byte character as replacement bytes.
 	for lo > 0 && !utf8.RuneStart(body[lo]) {
 		lo--
 	}
