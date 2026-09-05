@@ -83,6 +83,10 @@ tidy: ## Tidy go.mod/go.sum
 # not commit at all, and "a contributor with only Go can still land a change" is
 # a property this project keeps.
 #
+# An empty memory set warns for the same reason, one layer down in memcheck: a
+# checkout between `bd init` and a pull of the project's memories has a working
+# bd and nothing for this to read, and must still be able to commit.
+#
 # THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT: a warning is not a
 # gate, and this arm can never become one. Memories live in the Dolt DB and in no
 # git artifact, so there is nothing in a checkout for CI to read -- and note that
@@ -90,8 +94,16 @@ tidy: ## Tidy go.mod/go.sum
 # a green run as evidence only that the memories were readable and clean.
 .PHONY: narration
 narration: ## Refuse review credits and comment errata in Go sources and memories
-	@if grep -rnE '^[[:space:]]*//.*(Found by /code-review|this comment used to say)' \
-		--include='*.go' ./cmd ./internal ./pkg ./site ./tools 2>/dev/null; then \
+	@hits=$$(grep -rnE '^[[:space:]]*//.*(Found by /code-review|this comment used to say)' \
+		--include='*.go' ./cmd ./internal ./pkg ./site ./tools); \
+	status=$$?; \
+	if [ $$status -gt 1 ]; then \
+		echo "narration: grep failed with status $$status; the directory list above" >&2; \
+		echo "  is hand-maintained and one of its entries is probably gone." >&2; \
+		exit 1; \
+	fi; \
+	if [ -n "$$hits" ]; then \
+		echo "$$hits" >&2; \
 		echo "" >&2; \
 		echo "narration: the lines above put HISTORY in a source comment." >&2; \
 		echo "  A review credit belongs in the commit body; an erratum belongs" >&2; \
@@ -103,10 +115,13 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
 		exit 0; \
 	}; \
-	memories=$$(bd memories --json 2>/dev/null) || { \
-		echo "warning: 'bd memories --json' failed, skipping the memory errata check" >&2; \
+	memories=$$(bd memories --json 2>/tmp/memcheck-bd-err.$$$$) || { \
+		echo "warning: 'bd memories --json' failed, skipping the memory errata check:" >&2; \
+		sed 's/^/  /' /tmp/memcheck-bd-err.$$$$ >&2; \
+		rm -f /tmp/memcheck-bd-err.$$$$; \
 		exit 0; \
 	}; \
+	rm -f /tmp/memcheck-bd-err.$$$$; \
 	printf '%s' "$$memories" | go run ./tools/memcheck
 
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.

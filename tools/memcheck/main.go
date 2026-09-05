@@ -58,10 +58,19 @@ func main() {
 		fmt.Fprintf(os.Stderr, "memcheck: reading stdin: %v\n", err)
 		os.Exit(2)
 	}
-	hits, err := scan(in)
+	hits, examined, err := scan(in)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "memcheck: %v\n", err)
 		os.Exit(2)
+	}
+	if examined == 0 {
+		// A beads database that exists and holds no memories at all -- what a
+		// fresh `bd init` looks like before the project's memories are pulled.
+		// It is reported rather than refused, because refusing it stops a
+		// contributor in that state from committing anything, and the arm this
+		// runs under is advisory in the same way when bd is absent entirely.
+		fmt.Fprintln(os.Stderr, "warning: the memory set is empty, so nothing was checked")
+		return
 	}
 	if len(hits) == 0 {
 		return
@@ -81,20 +90,25 @@ func main() {
 // scan reports one line per erratum found, sorted by key so the output is
 // stable across runs of a map.
 //
-// IT REFUSES ANY SHAPE IT CANNOT READ AS BODIES rather than reporting it clean,
-// and it takes two rules to do that. A top-level null and an empty object both
-// unmarshal without error and leave nothing to examine, so a scan that examined
-// no body at all is an error: this repo is not a project with zero memories. And
-// a NESTED value means the bodies have moved down a level
-// ({"schema_version":1,"memories":{...}}), which the count rule alone does not
-// catch -- one stray top-level string beside the envelope satisfies it while the
-// real bodies go unread. Both are the shape AGENTS.md calls green because the
-// gate fired: an exit code that says nothing was wrong when it means nothing was
-// looked at.
-func scan(in []byte) ([]string, error) {
+// IT REFUSES ANY SHAPE IT CANNOT READ AS BODIES rather than reporting it clean.
+// A top-level null unmarshals into a nil map without error, and a NESTED value
+// means the bodies have moved down a level
+// ({"schema_version":1,"memories":{...}}) -- and note that counting the bodies
+// does not catch the second on its own, because one stray top-level string
+// beside the envelope makes the count non-zero while the real bodies go unread.
+// Both are the shape AGENTS.md calls green because the gate fired: an exit code
+// that says nothing was wrong when it means nothing was looked at.
+//
+// A WELL-FORMED OBJECT HOLDING NO BODIES IS NOT ONE OF THOSE. It is what a fresh
+// `bd init` returns, and the count is handed back to the caller to report rather
+// than refused here; see main.
+func scan(in []byte) ([]string, int, error) {
 	var raw map[string]any
 	if err := json.Unmarshal(in, &raw); err != nil {
-		return nil, fmt.Errorf("parsing memories: %w", err)
+		return nil, 0, fmt.Errorf("parsing memories: %w", err)
+	}
+	if raw == nil {
+		return nil, 0, fmt.Errorf("the input is JSON null rather than an object of memories")
 	}
 	keys := make([]string, 0, len(raw))
 	for k := range raw {
@@ -114,15 +128,12 @@ func scan(in []byte) ([]string, error) {
 				}
 			}
 		case map[string]any, []any:
-			return nil, fmt.Errorf("%q holds a nested value: the memories are not a flat object of key to body, so this check would read past them", k)
+			return nil, 0, fmt.Errorf("%q holds a nested value: the memories are not a flat object of key to body, so this check would read past them", k)
 		default:
 			// schema_version and any other scalar that is not a body.
 		}
 	}
-	if examined == 0 {
-		return nil, fmt.Errorf("no memory bodies in the input: %d top-level key(s), none of them a string", len(raw))
-	}
-	return hits, nil
+	return hits, examined, nil
 }
 
 // excerpt quotes the match with enough either side to recognise it, on one line
