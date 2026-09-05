@@ -380,6 +380,7 @@ func TestCheckExemptionsCoversTheIDDeclarationsToo(t *testing.T) {
 	}
 	// With only the FILE declarations satisfied, the id arm must still object.
 	root := t.TempDir()
+	touch(t, root, declarationFile)
 	for file := range exempt {
 		touch(t, root, file)
 	}
@@ -403,10 +404,29 @@ func TestAnIDExemptionMayNotAnchorItselfToTheDeclaration(t *testing.T) {
 	exemptIDs = map[string]exemptID{
 		"fisc-selfanchored": {file: declarationFile, what: "a token declared to live in the declaration"},
 	}
+	// Every OTHER declaration has to be satisfied, or checkExemptions errors out
+	// of the file loop first and this passes on an unrelated message. That is
+	// how the first version of this test could not fail at all.
 	root := t.TempDir()
+	for file := range exempt {
+		touch(t, root, file)
+	}
 	touch(t, root, declarationFile)
-	if err := checkExemptions(root); err == nil {
-		t.Error("checkExemptions(exemption anchored to the declaration) = nil, want a refusal")
+	err := checkExemptions(root)
+	if err == nil {
+		t.Fatal("checkExemptions(exemption anchored to the declaration) = nil, want a refusal")
+	}
+	if !strings.Contains(err.Error(), "fisc-selfanchored") {
+		t.Errorf("checkExemptions = %v, want a refusal naming fisc-selfanchored rather than something else", err)
+	}
+}
+
+func TestTheDeclarationFileIsItselfAClaimAboutTheTree(t *testing.T) {
+	// declarationFile is a hardcoded path in a tool whose principle is that a
+	// stale declaration must fail. Renaming main.go would silently disarm the
+	// self-anchor guard, since nothing else ever resolves that path.
+	if _, err := os.Stat(filepath.Join("..", "..", filepath.FromSlash(declarationFile))); err != nil {
+		t.Errorf("declarationFile %q: %v", declarationFile, err)
 	}
 }
 

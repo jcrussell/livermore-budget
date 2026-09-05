@@ -87,12 +87,12 @@ tidy: ## Tidy go.mod/go.sum
 # checkout between `bd init` and a pull of the project's memories has a working
 # bd and nothing for this to read, and must still be able to commit.
 #
-# THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT. With bd on PATH
-# this arm FAILS like any other and is a gate on the machine that runs it; what
-# it can never be is a CI gate, because memories live in the Dolt DB and in no
-# git artifact and there is nothing in a checkout for CI to read. So an erratum
-# is caught where it is written or not at all, and a green memory arm is evidence
-# only that the memories were readable and clean on THIS machine.
+# THE COST OF THAT IS REAL AND IS THE REASON IT IS SPELT OUT. This arm FAILS like
+# any other WHEN bd CAN ANSWER, and skips whenever it cannot -- three ways above,
+# and a fourth inside memcheck for a database holding no memories. What it can
+# never be is a CI gate, because memories live in the Dolt DB and in no git
+# artifact. So a green memory arm is evidence only that the memories were
+# readable and clean on THIS machine, and a skip is not evidence of anything.
 #
 # The Go arm has no such limit -- it reads committed source -- and CI runs this
 # target for it. Between them the target is a real gate over the tree and an

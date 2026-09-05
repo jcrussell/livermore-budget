@@ -141,6 +141,12 @@ func checkExemptions(root string) error {
 			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", file, reason, err)
 		}
 	}
+	// declarationFile is a hardcoded path and so is a claim about the tree like
+	// any other: nothing else ever resolves it, so a rename would leave the
+	// self-anchor guard below silently disarmed.
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(declarationFile))); err != nil {
+		return fmt.Errorf("declarationFile names %s, which is not there: %w", declarationFile, err)
+	}
 	for id, e := range exemptIDs {
 		// A declaration cannot anchor itself to the file it is written in: the
 		// declaration below would then be the sighting that keeps it alive, and

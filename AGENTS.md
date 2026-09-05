@@ -187,10 +187,12 @@ both were broken repeatedly while the prose sat in context: `narration` refuses
 history in a comment, and `beadrefs` refuses an id that names no bead. Read them
 where they are enforced rather than here — the Makefile comments carry the
 argument, and each failure message names the section of this file it comes from.
-`narration`'s memory arm is a real gate LOCALLY -- with `bd` on PATH it fails
-`pre-commit` like any other -- and can never be one in CI, because the memories
-live in the Dolt DB and in no git artifact and nothing in a checkout lets CI read
-them. So a memory erratum is caught on the machine that writes it or not at all.
+`narration`'s memory arm fails `pre-commit` like any other arm **when `bd` can
+answer**, and warns and continues when it cannot — bd absent, bd erroring on an
+unreachable database, or a database holding no memories are all skips. It can
+never be a CI gate at all, because the memories live in the Dolt DB and in no git
+artifact. So a memory erratum is caught on a machine whose bd is working, or not
+at all.
 
 `make pre-commit` lints, but warns and continues when `golangci-lint` is not on
 PATH — the linter is not needed to build or test this project, so its absence
@@ -251,9 +253,9 @@ doing before planning around one.** `fisc-9hf` closed on 2026-08-30 and took
 `fisc-1wr.2` with it, and `E5` did not become workable: measured 2026-09-03, its
 ladder was downstream of two things and only one of them had moved.
 `fisc-1wr.3`, `fisc-1wr.4` and `fisc-1wr.5.1` are deferred to 2026-11-10 by
-decision, and `fisc-1wr.7` sits behind `fisc-mq4.6` → `fisc-mq4.3`, which are
-deferred to the same date — a different reason with the same effect, which is
-why the count is two.
+decision, and `fisc-1wr.7` sits behind the `fisc-mq4.6` → `fisc-mq4.3` chain —
+a different reason with the same effect, which is why the count is two. Read the
+current state off `bd`; the point that survives is the shape, not the statuses.
 
 Dependencies are wired so `bd ready` surfaces only genuinely unblocked work, and
 that held when it was checked. **Priority is the part that drifts.** The failure
@@ -326,8 +328,8 @@ in the corpus.
 5. **Re-review the range including the fixes.** This is the step that matters:
    it is where the table above comes from.
 6. **Stop when a pass returns no WRONG-OUTPUT and no FAIL-OPEN finding** — not
-   when it returns nothing. It will not return nothing. Across 61 recorded
-   passes the smallest yield is **two** and zero has never once occurred, so
+   when it returns nothing. It will not return nothing. Over every pass the log
+   records the smallest yield is **two** and zero has never once occurred, so
    the rule this replaces named an outcome the project has never observed and
    the cap was doing all the stopping. Findings you decline for a stated reason
    count as stopped too — `fisc-i38`, `fisc-oz4` and `fisc-8fr` all exist
@@ -668,9 +670,11 @@ unchecked one as a defect. Three traps:
   **What it does not cover.** A commit MESSAGE is not scanned before it lands, so
   read the id back there yourself. And its reach is two hand-maintained lists —
   the paths, in the Makefile, and the file extensions picked up while walking one
-  of them, in `scannable`. Both fail loudly on an entry that has gone and neither
-  can know about one that was never added, which is how `site/style.css` and
-  `site/app.js` were each unchecked for a while after this landed.
+  of them, in `scannable`. A listed path that has gone from the TREE fails the
+  run; a path DELETED FROM THE LIST just makes the scan quietly smaller, and
+  neither list can know about an entry that was never added. That is how
+  `site/app.js` and then `site/style.css` were each unchecked for a while after
+  this landed.
 
 - **When you correct a figure in prose, grep the tree for its copies in the
   same commit.** A fact restated in four files is not one defect; it is four
@@ -867,8 +871,9 @@ and drop the history that argued for it.
 injected memories, which are worse placed for an erratum because `bd prime`
 delivers one whether or not anyone opens the file it is about. Both arms are
 deliberately narrow rather than prose detectors — the Go arm refuses two literal
-phrases, the memory arm a handful of patterns that name the memory as their
-subject — so the rest of the rule is still read by hand. `make beadrefs` is the
+phrases, and the memory arm five patterns, three naming the memory as their
+subject and two matching a house-style shape — so the rest of the rule is still
+read by hand. `make beadrefs` is the
 sibling that refuses a bead id naming no bead.
 
 **This file is governed by the rule too.** It carried two errata blocks about
