@@ -834,10 +834,9 @@ func (r *Resolver) statedTotalLine(rule *Rule, p *Part) (lo, hi int, totals []am
 //
 // WHY THE POSITION IS WORTH EXPORTING. It is the only thing that can answer "is
 // this fact republishing a total", and a caller outside this package cannot
-// recompute it, because the anchor is narrowed by the block: of the 149
-// committed parts whose stated total resolves, 50 print their own total_row
-// string more than once on the page, so a plain search finds the wrong
-// occurrence on a third of them. See fisc-eaic for the hazard.
+// recompute it: the anchor is narrowed by the block, and a page that prints the
+// same total_row string more than once gives a plain search the wrong
+// occurrence. See fisc-eaic for the hazard.
 //
 // THE SPAN IS [anchor, end of line), and the anchor is the byte just past the
 // LABEL rather than the first byte of the figures -- the run of spaces between
@@ -857,8 +856,7 @@ func (r *Resolver) TotalRowSpan(rule *Rule, p *Part) (lo, hi int, err error) {
 // the file -- so its figure is a total by exactly the argument a rule's
 // total_row is, and republishing one as a row doubles a department. Locating a
 // rule's totals and not a rollup's leaves that hole open for the widest totals
-// in the corpus. Eleven is the department rollups and fourteen is every rollup
-// in the file; rollupNamesItsOwnLine below counts the same eleven.
+// in the corpus.
 //
 // It returns ErrNoStatedTotals for a rollup that covers no rule, which is the
 // unassertable case: the document prints the total and nothing here can say

@@ -45,30 +45,20 @@ import (
 // So the author careless enough to get the sign wrong was caught, and the author
 // careful enough to get it right was not.
 //
-// THE POSITION IS RESOLVED, NOT SEARCHED FOR, and the difference is a third of
-// the corpus. A rule's total_row is anchored AFTER that rule's block, so the
-// same printed string earlier on the page is a different line: of the 149
-// committed parts whose stated total resolves, 50 print their own total_row
-// string more than once. [mapping.Resolver.TotalRowSpan] applies the block
-// narrowing.
+// THE POSITION IS RESOLVED, NOT SEARCHED FOR. A rule's total_row is anchored
+// AFTER that rule's block, so the same printed string earlier on the page is a
+// different line, and many parts print theirs more than once.
+// [mapping.Resolver.TotalRowSpan] applies the block narrowing.
 //
 // WHAT IT DOES ABOUT LOSING A SPAN, precisely, because the boundary is narrow
-// and easy to read as wider than it is.
+// and easy to read as wider than it is. A resolution failure is the one way this
+// check can quietly examine less than it did yesterday, and it cannot be refused
+// outright: some parts legitimately resolve no stated-total line at all. So
+// there are two mechanisms and only one of them is a finding:
 //
-// A resolution failure is the one way this check can quietly examine less than
-// it did yesterday, and it cannot be refused outright: fourteen committed parts
-// legitimately resolve no stated-total line. Eleven are total_spans_parts rules
-// whose total prints on the block's LAST page, and three are label-less parts
-// anchoring on the block terminator -- a fund-group header and the running
-// footer.
-//
-// So there are two mechanisms and only one of them is a finding:
-//
-//   - THE COUNT IS PUBLISHED UNCONDITIONALLY. Every unresolved declared total is
-//     counted and printed in the summary on every run, exempt or not. That is
-//     what makes span loss VISIBLE rather than silent, and it is the half that
-//     no exemption predicate can hide: break a spanning rule's total_row and the
-//     line reads 161 resolved and 15 unresolved instead of 162 and 14.
+//   - THE COUNT IS PUBLISHED UNCONDITIONALLY, exempt or not, which is what makes
+//     span loss VISIBLE rather than silent and is the half no exemption
+//     predicate can hide.
 //   - THE FINDING IS NARROW, and deliberately under-claims. It fires for a
 //     LABELLED part of a rule that declares a total_row and does not spread it
 //     across parts. Break a spanning rule or a label-less part's anchor and this
@@ -212,9 +202,6 @@ func (*factOffsetIsNotAStatedTotal) Run(_ context.Context, s *Subject) (Result, 
 		// one doubles a whole department rather than one block --
 		// dept-city-council's printed $149,198 on p167 is the worked example.
 		//
-		// FOURTEEN IS THE COUNT OF ALL ROLLUPS IN THE FILE and eleven is the
-		// department totals; the other three are gf-total-expenses on p170,
-		// gf-total-revenues on p130 and other-funds-total-sources on p140.
 		for j := range f.Rollups {
 			ro := &f.Rollups[j]
 			lo, hi, err := r.RollupTotalSpan(ro)

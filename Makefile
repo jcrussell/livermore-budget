@@ -52,6 +52,34 @@ vet: ## Run go vet
 tidy: ## Tidy go.mod/go.sum
 	go mod tidy
 
+# narration refuses the two phrases that only ever introduce HISTORY into a
+# source comment: a review credit, and an erratum about what the comment used to
+# say. AGENTS.md's "History's home is git" forbids both and was a paragraph until
+# now; one lane put seventeen of them into four files with that paragraph in
+# context the whole time, so this is the rule restated as something that can go
+# red.
+#
+# IT IS DELIBERATELY TWO NARROW PHRASES AND NOT A PROSE DETECTOR. "an earlier
+# version" and "used to say" have honest uses in a doc comment about a DOCUMENT
+# -- the city reprints schedules -- so widening this would refuse true sentences
+# about the corpus and teach people to reword around it. What it catches is the
+# two forms that are never about the code's present.
+#
+# Pre-existing hits are the ones AGENTS.md says to drop in the file you were
+# editing anyway rather than in a sweep, so this target's failure is the moment
+# you touch such a file, which is exactly when the rule says to fix it.
+.PHONY: narration
+narration: ## Refuse review credits and comment errata in Go sources
+	@if grep -rnE '^[[:space:]]*//.*(Found by /code-review|this comment used to say)' \
+		--include='*.go' ./cmd ./internal ./pkg ./tools 2>/dev/null; then \
+		echo "" >&2; \
+		echo "narration: the lines above put HISTORY in a source comment." >&2; \
+		echo "  A review credit belongs in the commit body; an erratum belongs" >&2; \
+		echo "  in git. Keep the rule the comment carries and delete the history" >&2; \
+		echo "  that argued for it. See AGENTS.md, \"History's home is git\"." >&2; \
+		exit 1; \
+	fi
+
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #
 # golangci-lint is not required to build or test this project, and adding it to
@@ -115,7 +143,7 @@ codehash: ## Fingerprint FILES=... by code alone, ignoring comments
 	@go run ./tools/codehash $(FILES)
 
 .PHONY: pre-commit
-pre-commit: fmt vet test lint-if-available js-if-available ## Format, vet, test, lint, and check app.js
+pre-commit: fmt vet narration test lint-if-available js-if-available ## Format, vet, narration, test, lint, and check app.js
 
 # A HOOK CANNOT BE COMMITTED. .git/hooks is not tracked, so "symlink pre-commit
 # into it" is per-checkout setup somebody has to actually run -- and until this
