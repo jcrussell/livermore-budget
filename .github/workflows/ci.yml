@@ -95,16 +95,18 @@ jobs:
           go-version-file: go.mod
       # Not `make fmt`: that target rewrites the tree in place and exits 0, so
       # in CI it would launder unformatted code into a green run. Reported
-      # rather than repaired, over the same four directories the Makefile
+      # rather than repaired, over the same five directories the Makefile
       # covers -- site/ is in that list because site/embed.go lives there and
-      # an earlier three-directory version of both silently skipped it.
+      # an earlier three-directory version of both silently skipped it, and
+      # tools/ because it was named one subdirectory at a time and a new one
+      # went in unformatted-unchecked.
       #
       # This is the gofmt half only. Import grouping is goimports with
       # local-prefixes, which gofmt does not know about and `make fmt` will
       # happily "fix" the wrong way; the lint job is what catches that.
       - name: Check formatting
         run: |
-          unformatted=$(gofmt -l ./cmd ./internal ./pkg ./site)
+          unformatted=$(gofmt -l ./cmd ./internal ./pkg ./site ./tools)
           if [ -n "$unformatted" ]; then
             echo "these files are not gofmt-clean; run 'make fmt':" >&2
             echo "$unformatted" >&2

@@ -42,7 +42,7 @@ lint: ## Run golangci-lint (warns if the version differs from .golangci-version)
 
 .PHONY: fmt
 fmt: ## Format Go sources
-	gofmt -w ./cmd ./internal ./pkg ./site ./tools/codehash
+	gofmt -w ./cmd ./internal ./pkg ./site ./tools
 
 .PHONY: vet
 vet: ## Run go vet
@@ -71,8 +71,11 @@ tidy: ## Tidy go.mod/go.sum
 #
 # THE SECOND ARM READS THE MEMORIES, which bd prime injects into every session.
 # Same rule, worse placed: a memory's erratum arrives in context whether or not
-# anyone opens the file it is about. It is a separate arm rather than a separate
-# target so the two share this failure message and the pointer to AGENTS.md.
+# anyone opens the file it is about. It is a second arm on this target rather
+# than a target of its own so that pre-commit gains no new step. The two print
+# DIFFERENT messages, because the remedies differ: a source comment is edited in
+# the file and its history stays in git, a memory is edited with bd remember and
+# leaves no git artifact at all.
 #
 # It WARNS AND CONTINUES WITHOUT bd, the way lint-if-available does without
 # golangci-lint. Memories live in the Dolt DB and in no git artifact, so unlike

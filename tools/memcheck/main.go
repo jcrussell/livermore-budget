@@ -36,13 +36,14 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // errata are matched against a memory body. Each requires the memory itself to
 // be the subject of a past-tense claim; see the package comment for why nothing
 // looser belongs here.
 var errata = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)this memory (used to|previously|once)`),
+	regexp.MustCompile(`(?i)th(is|e) memory (used to|previously|once|said|no longer)`),
 	regexp.MustCompile(`(?i)earlier versions? of this memory`),
 	regexp.MustCompile(`(?i)\bcorrected 20\d\d-\d\d-\d\d`),
 	regexp.MustCompile(`(?m)^CORRECTED\b`),
@@ -76,6 +77,14 @@ func main() {
 
 // scan reports one line per erratum found, sorted by key so the output is
 // stable across runs of a map.
+//
+// IT FAILS ON AN INPUT CARRYING NO BODIES rather than reporting it clean. A
+// top-level null, an empty object, and an envelope that moves the bodies down a
+// level ({"schema_version":1,"memories":{...}}) all unmarshal into this map
+// without error and leave nothing to examine, so without this the check would
+// pass while reading nothing at all -- green because the gate never fired. A
+// project with genuinely zero memories is indistinguishable from those here,
+// and this repo is not that project.
 func scan(in []byte) ([]string, error) {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(in, &raw); err != nil {
@@ -88,16 +97,21 @@ func scan(in []byte) ([]string, error) {
 	sort.Strings(keys)
 
 	var hits []string
+	examined := 0
 	for _, k := range keys {
 		var body string
 		if err := json.Unmarshal(raw[k], &body); err != nil {
 			continue // schema_version and anything else that is not a body
 		}
+		examined++
 		for _, re := range errata {
 			for _, loc := range re.FindAllStringIndex(body, -1) {
 				hits = append(hits, fmt.Sprintf("%s: %s", k, excerpt(body, loc[0], loc[1])))
 			}
 		}
+	}
+	if examined == 0 {
+		return nil, fmt.Errorf("no memory bodies in the input: %d top-level key(s), none of them a string", len(raw))
 	}
 	return hits, nil
 }
@@ -113,6 +127,15 @@ func excerpt(body string, start, end int) string {
 	}
 	if hi >= len(body) {
 		hi, suffix = len(body), ""
+	}
+	// pad is a byte count, and 17 of the 49 memories carry em-dashes, so both
+	// ends have to be walked out to a rune boundary or the excerpt prints the
+	// tail of a multi-byte character as replacement bytes.
+	for lo > 0 && !utf8.RuneStart(body[lo]) {
+		lo--
+	}
+	for hi < len(body) && !utf8.RuneStart(body[hi]) {
+		hi++
 	}
 	return prefix + strings.Join(strings.Fields(body[lo:hi]), " ") + suffix
 }

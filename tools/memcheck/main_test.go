@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -15,8 +16,9 @@ func TestScanFindsOnlyPastTenseSelfReference(t *testing.T) {
 	}{
 		// The three shapes measured in the memories this check was written for.
 		{"used to", "The rule is X. This memory used to say Y.", true},
-		{"previously", "the memory previously said Y, which is wrong", false},
+		{"previously, without the demonstrative", "the memory previously said Y, which is wrong", true},
 		{"previously, qualified", "This memory previously said Y.", true},
+		{"said, past tense", "This memory said THREE until the fourth scope landed.", true},
 		{"once said", "This memory once said check.All() returns 34.", true},
 		{"earlier versions", "TWO EARLIER VERSIONS OF THIS MEMORY WERE WRONG.", true},
 		{"earlier version singular", "An earlier version of this memory said Y.", true},
@@ -70,7 +72,7 @@ func TestScanSkipsNonStringValuesAndSortsByKey(t *testing.T) {
 }
 
 func TestScanReportsEveryHitInOneBody(t *testing.T) {
-	// A memory that carries six errata is six findings, not one: fixing the
+	// A memory that carries three errata is three findings, not one: fixing the
 	// first and re-running must still go red.
 	in := []byte(`{"k": "This memory used to say A. CORRECTED 2026-08-29. This memory once said B."}`)
 	hits, err := scan(in)
@@ -86,6 +88,36 @@ func TestScanRejectsMalformedInput(t *testing.T) {
 	// bd absent, or a truncated pipe, must not read as a clean memory set.
 	if _, err := scan([]byte("not json")); err == nil {
 		t.Error("scan(non-JSON) = nil error, want a parse error")
+	}
+}
+
+func TestScanRefusesAnInputItExaminedNothingIn(t *testing.T) {
+	// Every one of these unmarshals into map[string]json.RawMessage WITHOUT an
+	// error and leaves no body to read, so before this each returned zero hits
+	// and took the target green while scanning nothing -- the shape AGENTS.md
+	// calls green because the gate fired.
+	for _, in := range []string{
+		`null`,
+		`{}`,
+		`{"schema_version":1}`,
+		`{"schema_version":1,"memories":{"k":"This memory used to say X."}}`,
+	} {
+		t.Run(in, func(t *testing.T) {
+			if _, err := scan([]byte(in)); err == nil {
+				t.Errorf("scan(%s) = nil error, want a refusal: nothing was examined", in)
+			}
+		})
+	}
+}
+
+func TestExcerptDoesNotCutAMultiByteRuneInHalf(t *testing.T) {
+	// 17 of the 49 memories carry em-dashes, and pad is a byte count, so an
+	// excerpt clamped at a raw offset printed replacement bytes at the reader.
+	body := strings.Repeat("—", 40) + "This memory used to say Y." + strings.Repeat("—", 40)
+	start := strings.Index(body, "This memory used to")
+	got := excerpt(body, start, start+len("This memory used to"))
+	if !utf8.ValidString(got) {
+		t.Errorf("excerpt = %q, want valid UTF-8", got)
 	}
 }
 
