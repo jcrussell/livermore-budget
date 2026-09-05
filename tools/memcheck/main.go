@@ -12,19 +12,21 @@
 // THE PHRASE LIST IS DELIBERATELY NARROW, for the reason narration's Go arm
 // gives. "an earlier version" and "used to say" have honest uses in a sentence
 // about a DOCUMENT -- the city reprints schedules, and one memory correctly
-// reports that an ACFR row "was quoted as producing '-512,946'". So every
-// pattern here requires past-tense self-reference: the subject has to be the
-// memory. A present-tense scope limit ("WHAT THIS MEMORY CANNOT TELL YOU IS THE
-// CURRENT PUSH STATE") is a true and useful sentence and must keep passing.
+// reports that an ACFR row "was quoted as producing '-512,946'". A present-tense
+// scope limit ("WHAT THIS MEMORY CANNOT TELL YOU IS THE CURRENT PUSH STATE") is
+// a true and useful sentence and must keep passing.
 //
-// TWO OF THE FIVE ARE JUSTIFIED BY SHAPE RATHER THAN BY GRAMMAR, which is worth
-// knowing before adding a sixth. A full ISO date after "corrected" and an
-// ALL-CAPS line-leading CORRECTED are house-style forms rather than sentences
-// whose subject is provably this text; the bare-year form is refused precisely
-// because "the city corrected 2024's printed total" is about the corpus. A
-// pattern for a parenthesised "(correction: ...)" was tried and withdrawn for
-// exactly that reason -- it refused a true parenthetical about a reprinted ACFR
-// figure, and no memory carried the form it was aimed at.
+// THREE OF THE FIVE REQUIRE PAST-TENSE SELF-REFERENCE and two do not, which is
+// the thing to know before adding a sixth. The demonstrative patterns name the
+// memory as the subject and are safe on that ground. A full ISO date after
+// "corrected" and an ALL-CAPS line-leading CORRECTED are house-style SHAPES, and
+// each carries a residual risk of refusing a true sentence about the corpus that
+// happens to take that shape; the bare-year form is already refused for being
+// too easy to hit, because "the city corrected 2024's printed total" is about
+// the corpus. A parenthesised "(correction: ...)" must not be added for the same
+// reason: it refuses a true parenthetical about a reprinted ACFR figure, and no
+// memory carries the form it would be aimed at. See fisc-kaq1 for the residue
+// this leaves in the two shape patterns.
 //
 // EVERY GAP BETWEEN WORDS IS \s+ AND NOT A SPACE. The bodies are hard-wrapped
 // paragraphs -- most of them span lines -- so a pattern with a literal space

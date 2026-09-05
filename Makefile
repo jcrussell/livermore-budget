@@ -97,7 +97,7 @@ tidy: ## Tidy go.mod/go.sum
 # advisory check over the database.
 .PHONY: narration
 narration: ## Refuse review credits and comment errata in Go sources and memories
-	@hits=$$(grep -rnE '^[[:space:]]*//.*(Found by /code-review|this comment used to say)' \
+	@hits=$$(grep -rnE '//.*(Found by /code-review|this comment used to say)' \
 		--include='*.go' ./cmd ./internal ./pkg ./site ./tools); \
 	status=$$?; \
 	if [ $$status -gt 1 ]; then \
@@ -119,7 +119,10 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
 		exit 0; \
 	}; \
-	err=$$(mktemp) || exit 1; \
+	err=$$(mktemp "$${TMPDIR:-/tmp}/memcheck-bd-err.XXXXXX") || { \
+		echo "warning: mktemp failed, skipping the memory errata check" >&2; \
+		exit 0; \
+	}; \
 	memories=$$(bd memories --json 2>"$$err") || { \
 		echo "warning: 'bd memories --json' failed, skipping the memory errata check:" >&2; \
 		sed 's/^/  /' "$$err" >&2; \

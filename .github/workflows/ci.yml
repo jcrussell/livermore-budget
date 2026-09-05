@@ -323,7 +323,7 @@ jobs:
   # stops being republishable for reasons that have nothing to do with the site.
   pages-build:
     name: package the site
-    needs: [lint, format, build, test, vet, tidy, facts, verify, js]
+    needs: [lint, format, narration, build, test, vet, tidy, facts, verify, js]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
