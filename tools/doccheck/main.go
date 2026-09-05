@@ -45,9 +45,9 @@ import (
 // opening quote may be comment furniture, because a citation is allowed to wrap:
 // the run in the middle absorbs newlines, `//`, `#` and leading `*`.
 //
-// The opening and closing quotes are optionally backslashed, because four of the
-// citations are written with escaped quotes -- three in Go string literals and
-// one in a shell echo in the Makefile.
+// The opening and closing quotes are optionally backslashed, because some
+// citations are written with escaped quotes -- in Go string literals, and in a
+// shell echo in the Makefile.
 //
 // ITS GAP CLASS MUST MATCH furniture's. They are two halves of one rule: this
 // one decides whether a wrapped citation is FOUND, and furniture decides how its
@@ -69,7 +69,7 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // heading, and four separate places cite it as though it were a section name.
 var (
 	headingPattern = regexp.MustCompile(`(?m)^#{1,6}[ \t]+(.*\S)[ \t]*$`)
-	boldPattern    = regexp.MustCompile(`(?sm)^[ \t]*(?:[-*+][ \t]+)?\*\*(.+?)\*\*`)
+	boldPattern    = regexp.MustCompile(`(?sm)^[ \t]*(?:(?:[-*+]|[0-9]+\.)[ \t]+)?\*\*(.+?)\*\*`)
 )
 
 // exempt is the files whose citations are not claims about the tree. It is one
@@ -206,17 +206,22 @@ func anchorsIn(path string) (map[string]bool, error) {
 	//
 	// Pairing over the whole file fixed that and introduced worse: with `[^*]+`
 	// as the body, the lone `*` in **... `byob-*` bead** desynchronised every
-	// pair after it. Measured on the committed file, 14 spans of ordinary prose
-	// became anchors and four real lead phrases vanished -- among them BOTH
-	// rules that have to sit above the generated block, so a correct citation of
-	// either would have failed the gate.
+	// pair after it. Measured on the committed file at the time, 14 spans of
+	// ordinary prose became anchors and four real lead phrases vanished, among
+	// them BOTH rules that have to sit above the generated block. THAT FIGURE
+	// WAS TAKEN BEFORE THE `^` ANCHOR BELOW; with it, the same mutation loses
+	// one anchor and invents none, because a desynchronised run rarely starts a
+	// line. The body still has to cross a lone `*`, which is what the test pins.
 	//
-	// ONLY A LEAD PHRASE COUNTS -- bold opening a line or a bullet. Accepting
-	// bold ANYWHERE made one-word inline emphasis into anchors, so "not",
-	// "range", "message" and "verify" all resolved and a citation naming no
-	// section of this file passed the gate. That is the fail-open direction, and
-	// it is the shape a citation actually takes: the one the tree cites,
-	// "History's home is git", opens its bullet.
+	// ONLY A LEAD PHRASE COUNTS -- bold opening a line, a bullet or a NUMBERED
+	// item. Accepting bold anywhere made one-word inline emphasis into anchors,
+	// so "not", "range" and "message" resolved and a citation naming no section
+	// of this file passed the gate; that is the fail-open direction, and a lead
+	// phrase is the shape a cited rule actually takes.
+	//
+	// The ordered-list arm is not decoration: leaving it out took the generated
+	// block's seven numbered rules out of the anchor set, so a citation of
+	// "Push to remote" would have been reported dead.
 	for _, m := range boldPattern.FindAllStringSubmatch(text, -1) {
 		anchors[fold(m[1])] = true
 	}

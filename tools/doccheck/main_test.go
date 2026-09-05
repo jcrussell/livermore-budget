@@ -43,8 +43,10 @@ Ordinary **bold** mid-sentence is not an anchor.
 // Bold anchors are paired over the whole file, and the body must be able to
 // cross a LONE asterisk. The fixture carries `byob-*` for that reason: without
 // it this test passes under a `[^*]+` body, which desynchronises every pair
-// after the first stray `*` in the real file and lost both rules that must sit
-// above the generated block.
+// after the first stray `*`. The 14-invented-anchor figure that first justified
+// this was measured BEFORE boldPattern was anchored to a lead position; anchored,
+// the same mutation loses one anchor and invents none. The body must still cross
+// the asterisk, and that is what this pins.
 func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
@@ -76,15 +78,18 @@ func TestBoldAnchorsPairAcrossLinesAndAcrossALoneAsterisk(t *testing.T) {
 	}
 }
 
-// Only a bold LEAD phrase is an anchor. Accepting bold anywhere made one-word
-// inline emphasis resolve, so a citation naming no section of AGENTS.md passed
-// the gate -- the fail-open direction.
+// Only a bold LEAD phrase is an anchor -- opening a line, a bullet or a NUMBERED
+// item. Accepting bold anywhere made one-word inline emphasis resolve, so a
+// citation naming no section of AGENTS.md passed the gate. Dropping the ordered
+// arm is the opposite error and just as real: it took the generated block's
+// seven numbered rules out of the set, so a citation of one read as dead.
 func TestInlineEmphasisIsNotAnAnchor(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "AGENTS.md")
 	write(t, path, `# T
 
 - **A lead phrase.** With **inline** emphasis after it.
+4. **A numbered one** counts too.
 
 Prose with **stress** in the middle of a sentence.
 `)
@@ -92,14 +97,15 @@ Prose with **stress** in the middle of a sentence.
 	if err != nil {
 		t.Fatalf("anchorsIn: %v", err)
 	}
-	want := map[string]bool{"t": true, "a lead phrase": true}
+	want := map[string]bool{"t": true, "a lead phrase": true, "a numbered one": true}
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("anchorsIn (-want +got):\n%s", diff)
 	}
 }
 
 // A citation is not a line. Two in the tree today wrap across two comment lines,
-// and four live inside Go string literals where the quotes are backslashed.
+// and some live inside string literals where the quotes are backslashed -- in
+// Go, and in a shell echo in the Makefile.
 func TestCitesInReadsWrappedAndEscapedCitations(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")

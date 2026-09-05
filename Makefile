@@ -169,8 +169,8 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 # here, because this exact sentence has now been wrong at two, three and four in
 # consecutive commits by being written down twice.
 #
-# A BOLD LEAD PHRASE IS AN ANCHOR TOO, and that is not a nicety: four of the
-# thirteen cite "History's home is git", which is bolded text inside a section
+# A BOLD LEAD PHRASE IS AN ANCHOR TOO, and that is not a nicety: several
+# citations name "History's home is git", which is bolded text inside a section
 # and not a heading at all.
 #
 # Like beadrefs and unlike narration's memory arm, this is a real gate. It reads
@@ -293,7 +293,9 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 	test -n "$$dir" || { echo "could not resolve the hooks directory; not a git checkout?" >&2; exit 1; }; \
 	top="$$(git rev-parse --show-toplevel)"; \
 	common="$$(cd "$$(git rev-parse --git-common-dir)" 2>/dev/null && pwd)"; \
-	maintop="$$(dirname "$$common")"; \
+	maintop="$$(git -C "$$common/.." rev-parse --show-toplevel 2>/dev/null)"; \
+	test -n "$$common" || common="$$top/.git"; \
+	test -n "$$maintop" || maintop="$$top"; \
 	case "$$dir" in \
 		/*) abs="$$dir";; \
 		*) abs="$$top/$$dir";; \
