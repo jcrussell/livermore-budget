@@ -186,7 +186,7 @@ make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
 both were broken repeatedly while the prose sat in context: `narration` refuses
 history in a comment, and `beadrefs` refuses an id that names no bead. Read them
 where they are enforced rather than here — the Makefile comments carry the
-argument, and each target's failure message names the section it comes from.
+argument, and each failure message names the section of this file it comes from.
 `narration` has one arm that can only ever warn: the memories live in the Dolt DB
 and in no git artifact, so nothing in a checkout lets CI read them.
 
@@ -649,12 +649,17 @@ unchecked one as a defect. Three traps:
   and both are worse than a missing note in the same way: the claim reads as
   *done*, or as *tracked*, so nobody goes looking.
 
-- **An id in prose or a comment is checked by `make beadrefs`**, which resolves
-  every `fisc-*` it finds against `.beads/issues.jsonl` and is a CI job. This
-  used to be a paragraph here and was broken twice anyway; the id `bd create`
-  prints is not guessable, so writing one from memory is easy and reads as
-  tracked. A commit MESSAGE is not covered — nothing scans one before it lands —
-  so read the id back there yourself.
+- **An id in prose or a comment is checked by `make beadrefs`**, over the path
+  list in the Makefile, against `.beads/issues.jsonl` and then against `bd` for
+  anything the export has not caught up with. It is a CI job, where only the
+  export answers. This used to be a paragraph here and was broken twice anyway;
+  the id `bd create` prints is not guessable, so writing one from memory is easy
+  and reads as tracked.
+
+  **Two things it does not cover.** A commit MESSAGE is not scanned before it
+  lands, so read the id back there yourself. And the path list is
+  hand-maintained: it fails on a listed path that has gone, and it cannot know
+  about one that was never listed.
 
 - **When you correct a figure in prose, grep the tree for its copies in the
   same commit.** A fact restated in four files is not one defect; it is four

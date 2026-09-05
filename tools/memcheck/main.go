@@ -95,6 +95,7 @@ func main() {
 	fmt.Fprintln(os.Stderr, "  arrives in context whether or not anyone opens the file it is")
 	fmt.Fprintln(os.Stderr, "  about. Keep the corrected statement and delete the sentence")
 	fmt.Fprintln(os.Stderr, "  about what it replaced. Edit with 'bd remember --key <key>'.")
+	fmt.Fprintln(os.Stderr, "  See AGENTS.md, \"History's home is git\".")
 	os.Exit(1)
 }
 

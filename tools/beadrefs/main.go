@@ -57,6 +57,27 @@ var exempt = map[string]string{
 	"tools/beadrefs/main_test.go": "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
 }
 
+// exemptIDs names tokens that are shaped like a bead id and are not one, with
+// what each actually is. Two exist, both in the client, and neither can be told
+// from a bead id by any rule -- `fisc-theme` and `fisc-year` are a localStorage
+// key and a radio-group name, and a bead id is `fisc-` plus a short token that
+// could equally be a word.
+//
+// Renaming them would be the better fix and is not free: AGENTS.md requires a
+// change to site/app.js to ship its jscheck guard in the same commit, and these
+// are strings a returning reader's browser already holds.
+//
+// Its staleness check is in main, not here: an exempt id that no longer appears
+// anywhere is a declaration outliving its subject, and only a full run knows.
+// The sighting must come from OUTSIDE this file, because the declaration below
+// is itself scanned -- without that, every exemption satisfies its own staleness
+// test and the check can never fire. That was measured, not reasoned: renaming a
+// key here to a token in no other file left the run green.
+var exemptIDs = map[string]string{
+	"fisc-theme": "the localStorage key holding the reader's light/dark choice",
+	"fisc-year":  "the radio-group name for the fiscal-year control",
+}
+
 func main() {
 	if len(os.Args) < 3 {
 		fmt.Fprintln(os.Stderr, "usage: beadrefs issues.jsonl path...")
@@ -76,7 +97,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
 		os.Exit(2)
 	}
-	dead := resolve(refs, known, bdKnows(context.Background()))
+	kept, err := dropExemptIDs(refs)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
+		os.Exit(2)
+	}
+	dead := resolve(kept, known, bdKnows(context.Background()))
 	if len(dead) == 0 {
 		return
 	}
@@ -89,6 +115,7 @@ func main() {
 	fmt.Fprintln(os.Stderr, "  so nobody goes looking. File the bead and use the id bd printed,")
 	fmt.Fprintln(os.Stderr, "  or drop the citation. If the bead is real and newly filed, its")
 	fmt.Fprintln(os.Stderr, "  export has not landed: commit .beads/issues.jsonl.")
+	fmt.Fprintln(os.Stderr, "  See AGENTS.md, \"Before you quote a number\".")
 	os.Exit(1)
 }
 
@@ -105,6 +132,35 @@ func checkExemptions(root string) error {
 	}
 	return nil
 }
+
+// dropExemptIDs removes the declared non-bead tokens, and refuses a declaration
+// that no longer has a subject. It belongs here rather than in refsUnder because
+// only a run over the whole path list can say an id appears nowhere; a narrower
+// run is a narrower run.
+func dropExemptIDs(refs []ref) ([]ref, error) {
+	seen := map[string]bool{}
+	kept := refs[:0:0]
+	for _, r := range refs {
+		if _, ok := exemptIDs[r.id]; ok {
+			if filepath.ToSlash(filepath.Clean(r.file)) != declarationFile {
+				seen[r.id] = true
+			}
+			continue
+		}
+		kept = append(kept, r)
+	}
+	for id, what := range exemptIDs {
+		if !seen[id] {
+			return nil, fmt.Errorf("the exemption for %s (%q) matches nothing in the tree; delete it", id, what)
+		}
+	}
+	return kept, nil
+}
+
+// declarationFile is where exemptIDs is written, and a sighting there does not
+// count. It is a path rather than something derived because nothing in Go tells
+// a file its own name at runtime that a test could also assert against.
+const declarationFile = "tools/beadrefs/main.go"
 
 // ref is one citation: which id, and where it was written.
 type ref struct {
@@ -165,9 +221,10 @@ func refsUnder(paths []string) ([]ref, error) {
 			if d.IsDir() {
 				return nil
 			}
-			switch filepath.Ext(path) {
-			case ".md", ".go", ".mjs", ".yaml", ".yml":
-			default:
+			// A file named on the command line is scanned whatever it is called,
+			// which is how Makefile gets read; the extension filter is only for
+			// deciding what to pick up while walking a DIRECTORY.
+			if path != filepath.Clean(p) && !scannable(path) {
 				return nil
 			}
 			if _, ok := exempt[filepath.ToSlash(filepath.Clean(path))]; ok {
@@ -185,6 +242,17 @@ func refsUnder(paths []string) ([]ref, error) {
 		}
 	}
 	return refs, nil
+}
+
+// scannable says whether a file found by walking a directory carries prose or
+// code rather than fixture data. Page text (.txt) and goldens (.json) are out:
+// they are extracted artifacts and a fisc- token in one is a value, not a claim.
+func scannable(path string) bool {
+	switch filepath.Ext(path) {
+	case ".md", ".go", ".mjs", ".js", ".tmpl", ".py", ".yaml", ".yml":
+		return true
+	}
+	return false
 }
 
 func refsIn(path string) ([]ref, error) {
@@ -277,7 +345,28 @@ func bdKnows(ctx context.Context) func(string) bool {
 	return func(id string) bool {
 		ask, cancel := context.WithTimeout(ctx, bdTimeout)
 		defer cancel()
-		return exec.CommandContext(ask, path, "show", id).Run() == nil // #nosec G204 -- id matched idPattern.
+		out, err := exec.CommandContext(ask, path, "show", id, "--json").Output() // #nosec G204 -- id matched idPattern.
+		if err != nil {
+			return false
+		}
+		// bd RESOLVES A UNIQUE PREFIX: asked about the first few characters of an
+		// id it exits 0 and returns the whole one, and the caller cannot tell
+		// that from a hit. A truncated id is a dead pointer whatever bd does,
+		// and accepting one here would pass pre-commit and fail CI, where bd is
+		// absent and only the export answers. So the answer has to name the id
+		// that was asked about.
+		var recs []struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(out, &recs); err != nil {
+			return false
+		}
+		for _, r := range recs {
+			if r.ID == id {
+				return true
+			}
+		}
+		return false
 	}
 }
 

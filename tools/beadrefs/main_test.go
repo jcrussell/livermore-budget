@@ -114,6 +114,104 @@ func TestResolveWithNoSecondOpinionDecidesOnTheExportAlone(t *testing.T) {
 	}
 }
 
+func TestDropExemptIDsRefusesADeclarationWithNoSubject(t *testing.T) {
+	// An exemption for a token that appears nowhere is a declaration outliving
+	// its subject, which is a hole nobody can see.
+	if _, err := dropExemptIDs(nil); err == nil {
+		t.Error("dropExemptIDs(no refs) = nil error, want a refusal: every exemption is unmatched")
+	}
+}
+
+func TestAnExemptionCannotSatisfyItselfFromItsOwnDeclaration(t *testing.T) {
+	// The declaration is in a file this command scans, so every exempt id occurs
+	// there by construction. Counting that as a sighting made the staleness
+	// check unfalsifiable -- measured: a key renamed to a token in no other file
+	// left a full run green.
+	var refs []ref
+	for id := range exemptIDs {
+		refs = append(refs, ref{id: id, file: declarationFile, line: 1})
+	}
+	if _, err := dropExemptIDs(refs); err == nil {
+		t.Error("dropExemptIDs(sightings only in the declaration) = nil error, want a refusal")
+	}
+
+	// One real sighting elsewhere is what the declaration is for.
+	for id := range exemptIDs {
+		refs = append(refs, ref{id: id, file: "site/app.js", line: 2})
+	}
+	if _, err := dropExemptIDs(refs); err != nil {
+		t.Errorf("dropExemptIDs(sighting outside the declaration) = %v, want no error", err)
+	}
+}
+
+func TestDropExemptIDsKeepsEverythingItDoesNotDeclare(t *testing.T) {
+	var refs []ref
+	for id := range exemptIDs {
+		refs = append(refs, ref{id: id, file: "site/app.js", line: 1})
+	}
+	refs = append(refs, ref{id: "fisc-kc3j", file: "AGENTS.md", line: 2})
+
+	kept, err := dropExemptIDs(refs)
+	if err != nil {
+		t.Fatalf("dropExemptIDs: %v", err)
+	}
+	want := []ref{{id: "fisc-kc3j", file: "AGENTS.md", line: 2}}
+	if diff := cmp.Diff(want, kept, cmp.AllowUnexported(ref{})); diff != "" {
+		t.Errorf("kept (-want +got):\n%s", diff)
+	}
+}
+
+func TestScannableCoversWhatTheSiteAndTheToolingAreWrittenIn(t *testing.T) {
+	// site/app.js and site/*.html.tmpl carry bead citations and are what
+	// AGENTS.md calls the least-defended files in the repo; tools/extract.py is
+	// the only Python. Every one was outside the first version of this filter.
+	for _, p := range []string{
+		"site/app.js", "site/index.html.tmpl", "tools/extract.py",
+		"AGENTS.md", "internal/x.go", "tools/jscheck/a.mjs", "data/funds.yaml", "ci.yml",
+	} {
+		if !scannable(p) {
+			t.Errorf("scannable(%q) = false, want true", p)
+		}
+	}
+	// Extracted artifacts: a fisc- token in one is a value, not a claim.
+	for _, p := range []string{
+		"testdata/pages/p0067.txt", "testdata/sankey.golden.json", "data/pdf/x.pdf",
+	} {
+		if scannable(p) {
+			t.Errorf("scannable(%q) = true, want false", p)
+		}
+	}
+}
+
+func TestRefsUnderScansAFileNamedDirectlyWhateverItIsCalled(t *testing.T) {
+	// Makefile has no extension and is in the path list, so the extension filter
+	// must apply to walking a DIRECTORY and not to an argument.
+	dir := t.TempDir()
+	named := filepath.Join(dir, "Makefile")
+	if err := os.WriteFile(named, []byte("# fisc-named\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "walked"), []byte("fisc-walked\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	direct, err := refsUnder([]string{named})
+	if err != nil {
+		t.Fatalf("refsUnder(file): %v", err)
+	}
+	if len(direct) != 1 || direct[0].id != "fisc-named" {
+		t.Errorf("refsUnder(%q) = %v, want the one citation it holds", named, direct)
+	}
+	walked, err := refsUnder([]string{dir})
+	if err != nil {
+		t.Fatalf("refsUnder(dir): %v", err)
+	}
+	for _, r := range walked {
+		if r.id == "fisc-walked" {
+			t.Error("walking picked up an extensionless file; the filter must still apply there")
+		}
+	}
+}
+
 func TestRefsUnderWalksAndFiltersByExtension(t *testing.T) {
 	dir := t.TempDir()
 	for name, body := range map[string]string{

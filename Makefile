@@ -151,7 +151,8 @@ narration: ## Refuse review credits and comment errata in Go sources and memorie
 .PHONY: beadrefs
 beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 	@go run ./tools/beadrefs .beads/issues.jsonl \
-		AGENTS.md CLAUDE.md README.md docs cmd internal pkg tools site mappings
+		AGENTS.md CLAUDE.md README.md Makefile .github/workflows/ci.yml \
+		docs cmd internal pkg tools site mappings data testdata
 
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #
