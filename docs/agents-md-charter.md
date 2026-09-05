@@ -50,8 +50,9 @@ makes it a different arrangement rather than the same one under new names.
 AGENTS.md was 690 lines at `5794a60`. Seven days later it was 1,126 — **+63%** —
 and the only commit in that window that shrank it was `d6ff0c7`, by 32 lines. A
 five-pass review lane over the file itself (`6761254`..`f1d0815`) *added* 22 net
-lines. Nothing stopped the growth, which is why the line budget is a check rather
-than an intention.
+lines. Nothing stopped the growth, and nothing yet stops it: a line-budget check
+is specified in `fisc-ak39` and has not been written, so what holds the size down
+today is only the habit this file is arguing for.
 
 ## The two sections that must precede the generated block
 

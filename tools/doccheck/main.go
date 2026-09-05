@@ -44,8 +44,15 @@ import (
 // the run in the middle absorbs newlines, `//`, `#` and leading `*`.
 //
 // The opening and closing quotes are optionally backslashed, because four of the
-// citations live inside Go string literals where the quotes are escaped.
-var citePattern = regexp.MustCompile(`AGENTS\.md(?:'s|,)((?:[\s*]|//|#)*(?:under)?(?:[\s*]|//|#)*)\\?"([^"]*)"`)
+// citations are written with escaped quotes -- three in Go string literals and
+// one in a shell echo in the Makefile.
+//
+// ITS GAP CLASS MUST MATCH furniture's. They are two halves of one rule: this
+// one decides whether a wrapped citation is FOUND, and furniture decides how its
+// title is normalised once it is. A marker missing here is a dead citation that
+// passes the gate in silence, which is the worse direction of the two -- and `>`
+// was missing here after being added there.
+var citePattern = regexp.MustCompile(`AGENTS\.md(?:'s|,)((?:[\s*>]|//|#)*(?:under)?(?:[\s*>]|//|#)*)\\?"([^"]*)"`)
 
 // furniture is what a wrapped citation picks up between its words: a newline,
 // the marker that opens the next line, and the indentation around it. The

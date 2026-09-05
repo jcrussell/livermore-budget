@@ -146,7 +146,8 @@ make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
   the directory git actually reads (`core.hooksPath` when set, `.git/hooks`
   otherwise) and **refuses when that directory is tracked**, as `.beads/hooks` is
   here — a committed hook would make `make pre-commit` mandatory for everyone who
-  has bd. So in this checkout there is no local hook: never assume the gate ran.
+  has bd. So in this checkout the fisc gate is not installed at all — bd's own
+  tracked hook still runs — and you must run `make pre-commit` yourself.
 
 ## Architecture
 

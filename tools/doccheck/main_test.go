@@ -85,6 +85,30 @@ func f() {
 	}
 }
 
+// A citation that wraps inside a markdown blockquote must be FOUND, not skipped.
+// Every docs/ evidence file opens with one, so a gap here is a dead citation
+// that passes in silence -- the fail-open direction. citePattern's gap class and
+// furniture's must agree; `>` was in the second and missing from the first.
+func TestABlockquoteCitationIsFoundAndNormalised(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "evidence.md")
+	write(t, path, `# Evidence
+
+> Evidence for AGENTS.md, "Where
+> writing goes". This file states no rule.
+`)
+	got, err := citesIn(path)
+	if err != nil {
+		t.Fatalf("citesIn: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("read %d citations, want 1; a zero here is the fail-open this test exists for", len(got))
+	}
+	if diff := cmp.Diff("Where writing goes", got[0].title); diff != "" {
+		t.Errorf("title (-want +got):\n%s", diff)
+	}
+}
+
 // The failure this command exists to catch, end to end: a heading is renamed and
 // the citations of it are left behind.
 func TestARenamedHeadingOrphansItsCitations(t *testing.T) {

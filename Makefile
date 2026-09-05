@@ -163,9 +163,9 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 # nothing, which is worse than no pointer: it reads as though the rule is
 # written down and sends the reader looking for a heading that is gone.
 #
-# TWO OF THEM ARE PRINTED TO A TERMINAL rather than only sitting in a comment --
-# narration's failure message above, and tools/memcheck -- so a stale one is a
-# false claim made to a user who is already dealing with a failure.
+# THREE OF THEM ARE PRINTED TO A TERMINAL rather than only sitting in a comment
+# -- narration's failure message above, tools/memcheck and tools/beadrefs -- so a
+# stale one is a false claim made to a user already dealing with a failure.
 #
 # A BOLD LEAD PHRASE IS AN ANCHOR TOO, and that is not a nicety: four of the
 # thirteen cite "History's home is git", which is bolded text inside a section
@@ -264,10 +264,14 @@ pre-commit: fmt vet narration beadrefs doccheck test lint-if-available js-if-ava
 # `git rev-parse --git-path hooks` is the one question that answers this: it
 # returns core.hooksPath when set and .git/hooks when not.
 #
-# IT APPENDS RATHER THAN CLOBBERS when another tool already owns the file, and
-# lands outside any BEGIN/END markers -- which is what git-lfs already does in
-# .beads/hooks, its three lines sitting above bd's block in pre-push and
-# post-merge, so it is a demonstrated arrangement rather than a hope.
+# IT REFUSES A HOOK IT DOES NOT OWN, rather than appending to it. Appending was
+# the first attempt and it was wrong three ways at once: a hook ending in `exec`
+# or `exit 0` never reaches an appended arm, and the read-back below greps for
+# the string rather than for reachability, so it would have printed success over
+# a gate that could not run; appending shell syntax to a hook that is not shell
+# -- the pre-commit framework installs a Python one -- makes every commit die on
+# a SyntaxError with nothing to say why; and retargeting an existing symlink is
+# clobbering whatever owns it. All three were found by review over this range.
 #
 # BUT IT REFUSES A HOOK GIT TRACKS, and that is the case here: core.hooksPath
 # points at .beads/hooks, whose six hooks are committed files. Writing there
@@ -282,7 +286,7 @@ pre-commit: fmt vet narration beadrefs doccheck test lint-if-available js-if-ava
 # jobs still fail their PR. Keep it that way -- a repository whose correctness
 # depends on every clone having run a setup step has no gate at all.
 .PHONY: hooks
-hooks: ## Install the local pre-commit hook (idempotent; CI is still the gate)
+hooks: ## Install the local pre-commit hook where git reads it, or refuse and say why
 	@dir="$$(git rev-parse --git-path hooks)"; \
 	test -n "$$dir" || { echo "could not resolve the hooks directory; not a git checkout?" >&2; exit 1; }; \
 	hook="$$dir/pre-commit"; \
@@ -303,10 +307,14 @@ hooks: ## Install the local pre-commit hook (idempotent; CI is still the gate)
 		chmod +x "$$hook"; \
 	elif grep -q 'pre-commit\.fisc' "$$hook" 2>/dev/null; then \
 		:; \
-	elif [ -L "$$hook" ]; then \
-		ln -sf pre-commit.fisc "$$hook"; \
 	else \
-		printf '\n# --- fisc: run this repo'"'"'s own gate after whatever else owns this file ---\n"$$(dirname "$$0")/pre-commit.fisc" || exit $$?\n' >> "$$hook"; \
+		echo "refusing: $$hook already exists and is not ours." >&2; \
+		echo "  Another tool owns it, and this target will not append to a hook" >&2; \
+		echo "  it did not write: an arm added after an 'exec' or an 'exit 0'" >&2; \
+		echo "  never runs, and shell syntax appended to a non-shell hook breaks" >&2; \
+		echo "  every commit. Chain it yourself if you want both:" >&2; \
+		echo "    \"\$$(dirname \"\$$0\")/pre-commit.fisc\" || exit \$$?" >&2; \
+		exit 1; \
 	fi; \
 	chmod +x "$$hook" 2>/dev/null || true; \
 	back="$$(git rev-parse --git-path hooks)"; \
