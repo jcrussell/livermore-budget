@@ -83,6 +83,47 @@ func kindList() string {
 	return strings.Join(s, ", ")
 }
 
+// Quantity is the grammar a cell must satisfy, and it is not Kind: a Kind
+// classifies a published fact in the flow model, a Quantity says what a CELL
+// is before any fact exists. Every quantity but the amount default is read so
+// the row stays whole, and publishes nothing (fisc-9tn4).
+type Quantity string
+
+// The quantities a cell can be. QuantityAmount is the default and the only
+// quantity that publishes; a rule file never writes it.
+const (
+	QuantityAmount        Quantity = "amount"
+	QuantityAmountPerUnit Quantity = "amount_per_unit"
+	QuantityPercentage    Quantity = "percentage"
+	QuantityNumber        Quantity = "number"
+)
+
+// quantities is the closed set, in the order the constants declare it — the
+// same one-list discipline as kinds, so a fifth value cannot be added to one
+// spelling and missed by the other.
+var quantities = []Quantity{
+	QuantityAmount,
+	QuantityAmountPerUnit,
+	QuantityPercentage,
+	QuantityNumber,
+}
+
+func (q Quantity) valid() bool { return slices.Contains(quantities, q) }
+
+// quantityList spells the declarable values for an error message. It excludes
+// QuantityAmount, which the parser refuses to see written: an undeclared cell
+// already parses amounts.
+func quantityList() string {
+	s := make([]string, 0, len(quantities)-1)
+	for _, q := range quantities {
+		if q == QuantityAmount {
+			continue
+		}
+		s = append(s, string(q))
+	}
+	return strings.Join(s, ", ")
+}
+
 // Basis distinguishes a budgeted figure from an audited one. Mixing them in a
 // single view is the most common way a civic budget chart misleads, so it is
 // carried on every fact rather than assumed per document.
@@ -792,6 +833,16 @@ type Column struct {
 	// Skip marks a column that is present in the text but should not produce
 	// facts, so column positions still line up.
 	Skip bool `yaml:"skip"`
+
+	// Quantity declares that this column's cells are not amounts: they must
+	// satisfy the named grammar (internal/quantity), which keeps the row whole
+	// for checkGap, and they never publish. A non-amount column therefore
+	// needs no fiscal_year and no distinct identity — no fact ever carries it.
+	//
+	// skip cannot express this, and the ordering is why: parseRow parses a
+	// cell BEFORE it consults skip, deliberately, so a skipped "2.5%" still
+	// fails the amount grammar. This is the channel fisc-9tn4 settled on.
+	Quantity Quantity `yaml:"quantity"`
 }
 
 // Counterpart is the far end of a figure that moves money between two funds.
@@ -910,6 +961,13 @@ type Row struct {
 	// Skip marks a row that occupies a position but produces no facts, such
 	// as a subtotal that would double-count.
 	Skip bool `yaml:"skip"`
+
+	// Quantity overrides every column's quantity for this row — the whole-row
+	// arm of fisc-9tn4's decision. In the section's dominant orientation the
+	// non-amount is a ROW spanning every year column (p169, p179, p189, p192),
+	// which no column declaration can express. A non-amount row is read and
+	// publishes nothing, so it needs no category.
+	Quantity Quantity `yaml:"quantity"`
 }
 
 // Identity is the row's identity within its rule: both anchors when it has
@@ -940,6 +998,19 @@ func (r Row) EffectiveKind(rule *Rule) Kind {
 		return r.Kind
 	}
 	return rule.Kind
+}
+
+// EffectiveQuantity is the grammar this row's cell in c must satisfy: the
+// row's override where it declares one, the column's otherwise, amounts by
+// default. Only a QuantityAmount cell can become a fact.
+func (r Row) EffectiveQuantity(c Column) Quantity {
+	if r.Quantity != "" {
+		return r.Quantity
+	}
+	if c.Quantity != "" {
+		return c.Quantity
+	}
+	return QuantityAmount
 }
 
 // EffectiveColumn is the column a row's own fact is filed under: the printed

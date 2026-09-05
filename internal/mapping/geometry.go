@@ -470,6 +470,11 @@ func describeColumn(c Column) string {
 	if c.Skip {
 		return "skipped"
 	}
+	// A non-amount column may declare no fiscal year at all, and "FY0" would
+	// name it worse than its grammar does.
+	if c.Quantity != "" && c.FiscalYear == 0 {
+		return string(c.Quantity)
+	}
 	if c.FundGroup == "" {
 		return fmt.Sprintf("FY%d", c.FiscalYear)
 	}

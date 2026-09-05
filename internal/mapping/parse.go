@@ -518,6 +518,27 @@ func validateRule(r *Rule, errf errFunc) error {
 			return errf(r.ID, "rows", "row %q: kind %q is not one of the five",
 				row.Label, row.Kind)
 		}
+		if row.Quantity != "" {
+			if row.Quantity == QuantityAmount {
+				return cmdutil.WithHint(
+					errf(r.ID, "rows", "row %q: quantity %q is the default",
+						row.Label, row.Quantity),
+					"an undeclared row already parses amounts; remove the declaration")
+			}
+			if !row.Quantity.valid() {
+				return errf(r.ID, "rows", "row %q: quantity %q, want one of %s",
+					row.Label, row.Quantity, quantityList())
+			}
+			// A non-amount row is read and publishes nothing, so there is no
+			// near leg for a counterpart to be the far end of.
+			if row.Counterpart != nil {
+				return cmdutil.WithHint(
+					errf(r.ID, "rows", "row %q: quantity %s with a counterpart",
+						row.Label, row.Quantity),
+					"a counterpart fans one published figure into two facts; a "+
+						"non-amount row publishes none")
+			}
+		}
 		// EVERY ROW CARRIES A CATEGORY. A department is a SECOND AXIS and not
 		// a substitute for one: pp.167-170 cross department against object
 		// category, so a department row still says what KIND of spending the
@@ -535,7 +556,9 @@ func validateRule(r *Rule, errf errFunc) error {
 		// here, at the boundary, which is where it was always the mapping's
 		// business to close it. All 49 department rows already carried one, so
 		// no fact moved.
-		if !row.Skip && row.Category == "" {
+		// A non-amount row is exempt exactly as a skipped one: it publishes
+		// nothing, so there is no fact for a category to classify.
+		if !row.Skip && row.Quantity == "" && row.Category == "" {
 			return cmdutil.WithHint(
 				errf(r.ID, "rows", "row %q has no category", row.Label),
 				"every row needs one, including a row that declares a department: "+
@@ -736,6 +759,33 @@ func validateRule(r *Rule, errf errFunc) error {
 				return errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d].basis", p.Page, j),
 					"got %q", c.Basis)
 			}
+			if c.Quantity != "" {
+				if c.Quantity == QuantityAmount {
+					return cmdutil.WithHint(
+						errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
+							"quantity %q is the default", c.Quantity),
+						"an undeclared column already parses amounts; remove the declaration")
+				}
+				if !c.Quantity.valid() {
+					return errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
+						"quantity %q, want one of %s", c.Quantity, quantityList())
+				}
+				// A rule's total_row is read as one run of amounts, one per
+				// column (see amountRun), and a table whose columns are not
+				// all amounts prints no such line. Refused here so the
+				// mismatch cannot surface later as a missing-anchor error.
+				if r.TotalRow != "" {
+					return cmdutil.WithHint(
+						errf(r.ID, fmt.Sprintf("parts[page %d].columns[%d]", p.Page, j),
+							"parses %s, but the rule declares total_row %q",
+							c.Quantity, r.TotalRow),
+						"a stated-totals line prints one amount per column; a "+
+							"table with a non-amount column has no such line to read")
+				}
+				// A non-amount column never publishes, so like a skipped one
+				// it needs no fiscal_year and no distinct identity.
+				continue
+			}
 			if c.Skip {
 				continue
 			}
@@ -827,6 +877,12 @@ func validateRule(r *Rule, errf errFunc) error {
 				return cmdutil.WithHint(
 					errf(r.ID, field, "column %d is skipped", d.Column),
 					"a skipped column produces no facts and is never totalled, "+
+						"so there is nothing for a delta to describe")
+			}
+			if q := p.Columns[d.Column-1].Quantity; q != "" {
+				return cmdutil.WithHint(
+					errf(r.ID, field, "column %d parses %s, not amounts", d.Column, q),
+					"a non-amount column produces no facts and is never totalled, "+
 						"so there is nothing for a delta to describe")
 			}
 			if deltas[d.Column] {

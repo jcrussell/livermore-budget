@@ -456,3 +456,65 @@ rules:
       - {label: "City Attorney", category: general-government}
       - {label: "Administrative Services", category: general-government}
       - {label: "General Services", category: general-government}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0177-debt-by-type
+    kind: fund_balance
+    basis: audited
+    scope: acfr-debt-by-type
+    units: dollars
+    note: >-
+      p177, Ratios of Outstanding Debt by Type: ten year rows, ten value
+      columns, and the page fisc-9tn4 was settled on. The two quantity
+      declarations below are what let the rule read it at all -- col 9 prints
+      "2.5%", which amount.Parse rejects, and col 10 prints "$ 1,009" per
+      capita, which amount.Parse ACCEPTS; the quantity is the only thing
+      standing between dollars-per-capita and a store of city money
+      (fisc-54vn).
+
+      EVERYTHING HERE IS READ AND NOTHING PUBLISHES, and each skip is a
+      measured blocker, not a preference. The eight amount columns cannot be
+      facts: the year lives in the ROW label and Fact.FiscalYear has no row
+      channel, and the seven debt columns share one (fund_group, fund,
+      fiscal_year, basis) identity (fisc-xmh2); no mapping.Kind states
+      outstanding debt truthfully (fisc-7jtl) -- the kind above is the
+      schema's required field, inert while every row is skipped. When
+      publication lands, the page's check lands with it: cols 1-7 sum to col 8
+      per row, 2024 short by exactly 176,292, its own Financed Purchases cell
+      (fisc-xmh2 carries it). Until then the arithmetic guard is
+      internal/mapping/acfr_p177_test.go, which reads the page through THIS
+      rule with the skips lifted in memory.
+
+      NO column_headers, MEASURED: the page's footnote "(1)" sits on its own
+      -layout line and 2.6pt above its sentence, inside geometry's 4.66pt line
+      tolerance, so the substrates disagree 23 lines to 22 and the pairing
+      refuses -- p41's failure mode. TestACFRDebtPageCannotCarryTheColumnGuard
+      pins it.
+    parts:
+      - page: 177
+        # The last word of the four-line column-header block, printed once on
+        # the page; the ten year rows begin on the next line.
+        section: "Capita"
+        stop_at: "Note:"
+        columns:
+          - {skip: true} # Governmental: Certificates of Participation
+          - {skip: true} # Governmental: Notes & Loans Payable
+          - {skip: true} # Governmental: Financed Purchases and SBITA
+          - {skip: true} # Business-Type: Certificates of Participation
+          - {skip: true} # Business-Type: Financed Purchases
+          - {skip: true} # Business-Type: State Loan
+          - {skip: true} # Business-Type: Financed Purchases and SBITA
+          - {skip: true} # Total Primary Government
+          - {quantity: percentage} # Percentage of Personal Income (1)
+          - {quantity: amount_per_unit} # Per Capita
+    rows:
+      - {label: "2016", skip: true}
+      - {label: "2017", skip: true}
+      - {label: "2018", skip: true}
+      - {label: "2019", skip: true}
+      - {label: "2020", skip: true}
+      - {label: "2021", skip: true}
+      - {label: "2022", skip: true}
+      - {label: "2023", skip: true}
+      - {label: "2024", skip: true}
+      - {label: "2025", skip: true}

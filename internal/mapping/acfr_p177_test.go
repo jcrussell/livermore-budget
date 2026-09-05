@@ -1,172 +1,169 @@
 package mapping
 
 import (
-	"fmt"
-	"os"
-	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 )
 
-// ACFR p177, the ten-year schedule of outstanding debt by type. It is the page
-// behind this project's most-cited claim: AGENTS.md, under "Review does not
-// cover this project's main risks", names amount.TestLeadingMinusIsReallyPositive
-// as the worked example of proving a reading with arithmetic rather than
-// intuition. This file is that example's other half -- the test carries the
-// arithmetic, and this reads the same row off the committed fixture.
+// ACFR p177, the ten-year schedule of outstanding debt by type — the page
+// fisc-9tn4 was settled on, and the first consumer of the quantity channel.
 //
-// That test reconciles a row TRANSCRIBED INTO ITS OWN COMMENT. Nothing checked
-// the transcription against the document, and the transcription is of what
-// XBERG produced: a "-512,946" with the dash of an empty column glued to the
-// front. The committed corpus does not contain that token, or any token of that
-// shape -- a leading minus on a grouped number appears zero times across all 786
-// extracted pages. The parser must still refuse one, which the amount package
-// asserts; what changes here is where the evidence comes from.
-//
-// The resolver cannot read this page, and WHAT STOPS IT IS THE PERCENTAGE
-// COLUMN, measured by building a rule over the page and running it rather than
-// by reading the page:
-//
-//	row "2016" column 9: cannot parse amount "2.5%": not a recognized number
-//
-// The row reads through the first eight columns before that, standalone "$" and
-// all. THE COMMENT HERE USED TO BLAME THAT "$", citing fisc-yun. fisc-yun is
-// CLOSED, dropCurrencyMarks reads a lone mark in the labelled path, and the same
-// wrong claim was made about ACFR p41 and caught there by running the rule --
-// which is what testdata/README.md:74 already suspected of this page and could
-// not confirm, because it had not been re-probed end to end. It has been now.
-// The remaining obstacle is fisc-4ua.4's undecided question: how a rule reads a
-// table whose columns are not all amounts. A rule cannot simply stop at column
-// nine either, because checkGap then refuses the unmapped tail.
-//
-// The page is parsed here with strings.Fields and amount.Parse -- the real
-// parser on every token, which is the load-bearing part -- and the row structure
-// is a year in column one, so there is no row-identity judgment to get wrong.
-const acfrDebtPage = 177
+// Every test here reads the page THROUGH the published rule
+// (acfr-p0177-debt-by-type), so this file and the mapping cannot become two
+// drifting readings of one page: the arithmetic below is over the tokens the
+// rule's own anchors and grammars produced. The rule publishes nothing
+// (fisc-xmh2, fisc-7jtl carry the blockers), so its amount cells are reachable
+// only by lifting the skips in memory — which is also what makes these tests
+// the page's arithmetic guard until publication lands and the check moves to
+// internal/check.
+const publishedACFR = "../../mappings/livermore-acfr-fy2025.yaml"
 
-// acfrDebtRow is one year of the schedule as the page prints it: seven debt
-// columns, the city's own total, and two ratios this test does not read.
-type acfrDebtRow struct {
-	year   int
-	parts  []amount.Cents
-	stated amount.Cents
+const acfrDebtRuleID = "acfr-p0177-debt-by-type"
+
+// acfrDebtResolver loads the published ACFR mapping and resolves it against
+// the committed p177 fixture pair. mutate, if non-nil, edits the rule before
+// any read — the in-memory mutations these proofs are built on.
+func acfrDebtResolver(t *testing.T, mutate func(*Rule)) (*Resolver, *Rule) {
+	t.Helper()
+	f, err := Load(publishedACFR)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	var rule *Rule
+	for i := range f.Rules {
+		if f.Rules[i].ID == acfrDebtRuleID {
+			rule = &f.Rules[i]
+		}
+	}
+	if rule == nil {
+		t.Fatalf("%s declares no rule %q", publishedACFR, acfrDebtRuleID)
+	}
+	if mutate != nil {
+		mutate(rule)
+	}
+	r, err := NewResolver(testDoc(t, acfrFixtures, []int{177}), f)
+	if err != nil {
+		t.Fatalf("NewResolver: %v", err)
+	}
+	return r, rule
 }
 
-var acfrYear = regexp.MustCompile(`^20\d\d$`)
+// unskip lifts every publication gate the committed rule declares — row skips
+// and amount-column skips — leaving the two quantity columns as they are. What
+// remains is exactly the read the rule performs, with its amount cells visible.
+func unskip(rule *Rule) {
+	for i := range rule.Rows {
+		rule.Rows[i].Skip = false
+	}
+	for i := range rule.Parts {
+		for j := range rule.Parts[i].Columns {
+			rule.Parts[i].Columns[j].Skip = false
+		}
+	}
+}
 
-// readACFRDebtSchedule parses every year row of the fixture.
-func readACFRDebtSchedule(t *testing.T) []acfrDebtRow {
-	t.Helper()
-
-	path := fmt.Sprintf("../../testdata/pages/acfr-p%04d.txt", acfrDebtPage)
-	b, err := os.ReadFile(path)
+// TestACFRDebtRulePublishesNothing pins the committed state: the rule reads
+// the whole page — a resolution error here would say it no longer does — and
+// yields not one Value. Every fact is blocked, and each blocker is a bead
+// (fisc-xmh2, fisc-7jtl); un-skipping anything without settling those would
+// publish debt under a false kind with a false year.
+func TestACFRDebtRulePublishesNothing(t *testing.T) {
+	r, rule := acfrDebtResolver(t, nil)
+	values, _, err := r.Values(rule, &rule.Parts[0])
 	if err != nil {
-		t.Fatalf("read fixture %s: %v", path, err)
+		t.Fatalf("Values: %v", err)
+	}
+	if len(values) != 0 {
+		t.Fatalf("the committed rule published %d values, want 0", len(values))
+	}
+}
+
+// acfrDebtGrid is the unskipped read laid out by year: for each of the ten
+// rows, the eight amount columns in printed order (seven debt columns, then
+// the city's own Total Primary Government).
+func acfrDebtGrid(t *testing.T) map[int][]amount.Cents {
+	t.Helper()
+	r, rule := acfrDebtResolver(t, unskip)
+	values, _, err := r.Values(rule, &rule.Parts[0])
+	if err != nil {
+		t.Fatalf("Values: %v", err)
+	}
+	if want := 10 * 8; len(values) != want {
+		t.Fatalf("unskipped read yields %d values, want %d (ten rows over "+
+			"eight amount columns; the two quantity columns must yield none)", len(values), want)
 	}
 
-	var out []acfrDebtRow
-	for _, line := range strings.Split(string(b), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 0 || !acfrYear.MatchString(fields[0]) {
-			continue
+	grid := map[int][]amount.Cents{}
+	for _, v := range values {
+		if v.ColumnIndex >= 8 {
+			t.Fatalf("column %d (%s) yielded a value; a non-amount column must "+
+				"not, whatever the skips say", v.ColumnIndex+1, v.Column.Quantity)
 		}
 		year := 0
-		for _, r := range fields[0] {
-			year = year*10 + int(r-'0')
+		for _, c := range v.Row.Label {
+			year = year*10 + int(c-'0')
 		}
-
-		// The FY2016 row prints a standalone "$" before each figure. Dropping
-		// it here is what a rule cannot do (fisc-yun); it is dropped rather
-		// than parsed because "$" is not an amount and never was one.
-		var cents []amount.Cents
-		for _, tok := range fields[1:] {
-			if tok == "$" {
-				continue
-			}
-			c, err := amount.Parse(tok, amount.Dollars)
-			if err != nil {
-				// The two ratio columns end the row: a percentage and a
-				// per-capita figure the schedule does not total.
-				break
-			}
-			cents = append(cents, c)
+		if grid[year] == nil {
+			grid[year] = make([]amount.Cents, 8)
 		}
-		if len(cents) < 8 {
-			t.Fatalf("FY%d: got %d figures, want at least 8 (seven debt columns "+
-				"and the city's total)", year, len(cents))
-		}
-		out = append(out, acfrDebtRow{year: year, parts: cents[:7], stated: cents[7]})
+		grid[year][v.ColumnIndex] = v.Cents
 	}
-	if len(out) != 10 {
-		t.Fatalf("got %d year rows, want 10; this is a ten-year schedule", len(out))
-	}
-	return out
+	return grid
 }
 
 // TestACFRDebtScheduleTiesExceptOneRow is the schedule checking our reading of
-// it, and it is the reason the fixture is worth committing: nine of the ten
-// rows tie to the city's own printed total EXACTLY, which is what makes the
-// tenth a fact about the document rather than a suspicion about the parser.
+// it: nine of the ten rows tie to the city's own printed total EXACTLY, which
+// is what makes the tenth a fact about the document rather than a suspicion
+// about the parser.
 //
-// FY2024's printed total is short by 176,292 -- exactly its own Financed
-// Purchases figure, the column the city started using that year. This is not
-// the "<= $5, always the FY2023-24 Actual column" rounding that fisc-2sd
-// declares for the Budget Book; it is a whole column missing from a total.
+// FY2024's printed total is short by 176,292 — exactly its own Financed
+// Purchases figure, the column the city started using that year. Naming the
+// column is the whole claim; a difference that merely happened to be 176,292
+// would prove nothing.
 func TestACFRDebtScheduleTiesExceptOneRow(t *testing.T) {
-	rows := readACFRDebtSchedule(t)
-
 	const (
 		shortYear                         = 2024
 		financedPurchasesCol              = 4
 		shortBy              amount.Cents = 17629200
 	)
-	for _, row := range rows {
+	grid := acfrDebtGrid(t)
+	if len(grid) != 10 {
+		t.Fatalf("got %d year rows, want 10", len(grid))
+	}
+	for year, row := range grid {
 		var sum amount.Cents
-		for _, c := range row.parts {
+		for _, c := range row[:7] {
 			sum += c
 		}
-		diff := sum - row.stated
+		diff := sum - row[7]
 		switch {
-		case row.year == shortYear:
+		case year == shortYear:
 			if diff != shortBy {
 				t.Errorf("FY%d: rows sum to %s against a printed %s, a difference of %s; want %s",
-					row.year, sum, row.stated, diff, shortBy)
+					year, sum, row[7], diff, shortBy)
 			}
-			// Naming the column is the whole claim. A difference that merely
-			// happened to be 176,292 would prove nothing.
-			if got := row.parts[financedPurchasesCol]; got != shortBy {
+			if got := row[financedPurchasesCol]; got != shortBy {
 				t.Errorf("FY%d: the difference is %s but Financed Purchases is %s, "+
 					"so the total is not simply missing that column",
-					row.year, shortBy, got)
+					year, shortBy, got)
 			}
 		case diff != 0:
 			t.Errorf("FY%d: rows sum to %s against a printed %s, off by %s",
-				row.year, sum, row.stated, diff)
+				year, sum, row[7], diff)
 		}
 	}
 }
 
-// TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus is the flagship claim,
-// moved off a transcription and onto the page.
-//
-// The FY2017 row is the one amount.TestLeadingMinusIsReallyPositive reconciles.
-// Under poppler it carries seven figures, two of them dashes the city prints as
-// published zeros, and the 512,946 stands alone: the token that test quotes as
-// "-512,946" is not in the corpus. Both readings still hold and neither is
-// weakened -- the arithmetic proves the sign, and a leading minus is still
-// refused -- but the corruption is xberg's, not this document's.
+// TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus is the flagship claim of
+// amount.TestLeadingMinusIsReallyPositive, proved off the page: under poppler
+// the FY2017 row's 512,946 stands alone, and the "-512,946" that test quotes
+// — an empty column's dash glued on by xberg — is not in the corpus. The
+// arithmetic proves the sign, and a leading minus is still refused.
 func TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus(t *testing.T) {
-	rows := readACFRDebtSchedule(t)
-
-	var row acfrDebtRow
-	for _, r := range rows {
-		if r.year == 2017 {
-			row = r
-		}
-	}
-	if row.year != 2017 {
+	row, ok := acfrDebtGrid(t)[2017]
+	if !ok {
 		t.Fatal("no FY2017 row, which is the row the amount package reconciles")
 	}
 
@@ -174,7 +171,7 @@ func TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus(t *testing.T) {
 	// the glued dash destroyed: "absent is not zero" cuts both ways, and here
 	// the document prints the dash.
 	zeros := 0
-	for _, c := range row.parts {
+	for _, c := range row[:7] {
 		if c == 0 {
 			zeros++
 		}
@@ -185,17 +182,73 @@ func TestACFRDebtRowIsNotCorruptedInTheCommittedCorpus(t *testing.T) {
 	}
 
 	const stated amount.Cents = 8264398000
-	if row.stated != stated {
-		t.Errorf("got a printed total of %s, want %s", row.stated, stated)
+	if row[7] != stated {
+		t.Errorf("got a printed total of %s, want %s", row[7], stated)
 	}
-
-	// The token itself, read straight off the page rather than out of a
-	// comment. If a future extractor glues a dash onto it again, this fails
-	// here and amount.Parse fails there.
-	if got, want := row.parts[6], amount.Cents(51294600); got != want {
+	if got, want := row[6], amount.Cents(51294600); got != want {
 		t.Errorf("got %s in the column the glued dash landed on, want %s", got, want)
 	}
 	if _, err := amount.Parse("-512,946", amount.Dollars); err == nil {
 		t.Error("Parse accepted the corrupted form; it must still fail closed")
+	}
+}
+
+// TestACFRDebtPercentageColumnNeedsItsQuantity is fisc-oakx.2's second proof,
+// kept as a regression: delete col 9's quantity and the read goes red on
+// amount.Parse rejecting "2.5%" — checked by MESSAGE, not exit code, because a
+// failure for any other reason (an anchor, a count) would be the
+// green-because-the-gate-fired shape in red clothing.
+func TestACFRDebtPercentageColumnNeedsItsQuantity(t *testing.T) {
+	r, rule := acfrDebtResolver(t, func(rule *Rule) {
+		rule.Parts[0].Columns[8].Quantity = ""
+	})
+	_, _, err := r.Values(rule, &rule.Parts[0])
+	if err == nil {
+		t.Fatal("the read succeeded without col 9's quantity; it must fail on the percentage")
+	}
+	for _, want := range []string{`cannot parse amount "2.5%"`, "not a recognized number", `row "2016" column 9`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err, want)
+		}
+	}
+}
+
+// TestACFRDebtPerCapitaParsesCleanlyAsAmount is fisc-oakx.2's third proof, and
+// it proves an ABSENCE: delete col 10's quantity and nothing goes red, because
+// "$ 1,009" per capita is well-formed money. The YAML declaration is the only
+// gate, and the corroboration that could refuse a mis-declaration — the
+// cross-tie to p180's population — is fisc-54vn. If this test ever fails, a
+// guard has appeared; retire fisc-54vn against it.
+func TestACFRDebtPerCapitaParsesCleanlyAsAmount(t *testing.T) {
+	r, rule := acfrDebtResolver(t, func(rule *Rule) {
+		rule.Parts[0].Columns[9].Quantity = ""
+	})
+	values, _, err := r.Values(rule, &rule.Parts[0])
+	if err != nil {
+		t.Fatalf("Values with col 10 declared as money: %v — a guard has appeared; "+
+			"update this test and retire fisc-54vn against it", err)
+	}
+	if len(values) != 0 {
+		t.Fatalf("published %d values, want 0 (the skips still hold)", len(values))
+	}
+}
+
+// TestACFRDebtPageCannotCarryTheColumnGuard pins the measurement behind the
+// rule's missing column_headers: the footnote "(1)" is its own -layout line
+// but clusters into its sentence's geometry line, so the substrates disagree
+// 23 lines to 22 and the pairing refuses. The guard fails CLOSED here — the
+// page reads unguarded and says so, rather than guarded and wrong.
+func TestACFRDebtPageCannotCarryTheColumnGuard(t *testing.T) {
+	r, rule := acfrDebtResolver(t, func(rule *Rule) {
+		rule.Parts[0].ColumnHeaders = columnHeaders{
+			{Text: "Participation"}, {Text: "Payable"}, {Text: "SBITA"},
+			{Text: "Participation"}, {Text: "Purchases"}, {Text: "Loan"},
+			{Text: "SBITA"}, {Text: "Government"}, {Text: "Income"}, {Text: "Capita"},
+		}
+	})
+	_, _, err := r.Values(rule, &rule.Parts[0])
+	if err == nil || !strings.Contains(err.Error(), "23 non-blank lines but the geometry has 22") {
+		t.Fatalf("Values with column_headers: %v, want the pairing refusing "+
+			"23 text lines against 22 geometry lines", err)
 	}
 }

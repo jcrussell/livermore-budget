@@ -12,15 +12,11 @@ import (
 // the mark and the figure separated by a run of spaces, and a "$ -" published
 // zero among them.
 //
-// It is written inline rather than read from testdata/pages/acfr-p0177.txt for
-// a reason that is not this bead's: p177's rows carry eleven columns and the
-// tenth is a percentage ("2.5%"), which amount.Parse rejects as "not a
-// recognized number". A rule cannot stop short of it either, because the text
-// between one row's last mapped figure and the next row's label must be empty
-// (checkGap). So the real page stays unreadable end to end until the percentage
-// column has an answer -- recorded on fisc-4ua.4, which owns that page. The
-// spacing below is copied from it, and the offset assertion is the same
-// assertion either way.
+// It is written inline rather than read from testdata/pages/acfr-p0177.txt
+// because this test is about the mark-and-figure shape alone; the real page's
+// rows end in two non-amount columns, which the quantity channel reads and
+// acfr_p177_test.go proves. The spacing below is copied from the page, and the
+// offset assertion is the same assertion either way.
 const dollarPerToken = `     Fiscal      Column A          Column B          Column C          Column D
      2016      $ 60,193,384     $    2,566,738    $            -   $     619,257
      2017        56,386,950          2,440,343                 -         512,946
@@ -48,7 +44,7 @@ rules:
           - {fund_group: general, fiscal_year: 2019}
 `
 
-func acfrDebtResolver(t *testing.T) (*Resolver, *Rule) {
+func dollarTokenResolver(t *testing.T) (*Resolver, *Rule) {
 	t.Helper()
 	f, err := parse(strings.NewReader(acfrP177DebtRow), "acfr-debt.yaml")
 	if err != nil {
@@ -72,7 +68,7 @@ func acfrDebtResolver(t *testing.T) (*Resolver, *Rule) {
 // the dash is a PUBLISHED ZERO, not an absent cell. Conflating those is the
 // invariant this project is built on.
 func TestStandaloneDollarRowResolves(t *testing.T) {
-	r, ru := acfrDebtResolver(t)
+	r, ru := dollarTokenResolver(t)
 	vals, _, err := r.Values(ru, &ru.Parts[0])
 	if err != nil {
 		t.Fatalf("Values: %v", err)
@@ -100,7 +96,7 @@ func TestStandaloneDollarRowResolves(t *testing.T) {
 // one of the 236 pages that print the mark detached. Dropping the mark instead
 // leaves the figure's own token pointing at itself, which it already did.
 func TestOffsetStillPointsAtTheFigureWhenTheDollarIsItsOwnToken(t *testing.T) {
-	r, ru := acfrDebtResolver(t)
+	r, ru := dollarTokenResolver(t)
 	vals, _, err := r.Values(ru, &ru.Parts[0])
 	if err != nil {
 		t.Fatalf("Values: %v", err)

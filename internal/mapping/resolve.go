@@ -11,6 +11,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/geom"
+	"github.com/jcrussell/livermore-budget/internal/quantity"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -694,6 +695,18 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 	out := make([]Value, 0, len(toks))
 	for c, tk := range toks {
 		col := p.Columns[c]
+		// The quantity picks the grammar BEFORE skip is consulted, for the
+		// same reason amounts parse before skip: a skipped cell is still a
+		// cell. A recognized non-amount cell is READ — the row stays whole and
+		// checkGap stands — and never becomes a Value, so it cannot publish.
+		if q := row.EffectiveQuantity(col); q != QuantityAmount {
+			if err := recognize(q, tk.text); err != nil {
+				return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
+					Field: fmt.Sprintf("row %q column %d", row.PrintedLabel(), c+1),
+					Msg:   err.Error(), Err: err}
+			}
+			continue
+		}
 		cents, err := amount.Parse(tk.text, rule.Units)
 		if err != nil {
 			return nil, &resolveError{DocID: r.file.DocID, RuleID: rule.ID, Page: p.Page,
@@ -710,6 +723,24 @@ func (r *Resolver) parseRow(rule *Rule, p *Part, row Row, rowIndex int, toks []t
 			Offset: tk.off, Token: tk.text})
 	}
 	return out, nil
+}
+
+// recognize dispatches a non-amount cell to its grammar. This switch is the
+// one seam between the closed vocabulary and internal/quantity; a Quantity
+// with no arm here is a harness error, not a claim about the document.
+func recognize(q Quantity, tok string) error {
+	switch q {
+	case QuantityAmountPerUnit:
+		return quantity.AmountPerUnit(tok)
+	case QuantityPercentage:
+		return quantity.Percentage(tok)
+	case QuantityNumber:
+		return quantity.Number(tok)
+	case QuantityAmount:
+		// parseRow owns amounts, through amount.Parse at the rule's units;
+		// answering for them here would be a second money grammar.
+	}
+	return fmt.Errorf("no grammar recognizes quantity %q", q)
 }
 
 func (r *Resolver) positionalValues(rule *Rule, p *Part, blk *block, guard *columnGuard) ([]Value, error) {
@@ -1876,6 +1907,9 @@ func columnIdentity(c Column) string {
 	}
 	if c.Fund != 0 {
 		out += fmt.Sprintf(" fund %d", c.Fund)
+	}
+	if c.Quantity != "" {
+		out += " " + string(c.Quantity)
 	}
 	if c.Skip {
 		out += " (skipped)"

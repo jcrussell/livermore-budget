@@ -32,7 +32,7 @@ when the table prints dollar figures a rule could publish as integer cents (the
 | p174 | Property Tax Rates | 10y | 10 | all number (4dp rates per $1,000; one 3dp cell, 2024 LVJUSD "0.054") | no | per $1,000 | total row sums (2016: 1.1277) |
 | p175 | Principal Property Taxpayers | 2c | 5 | 2025: amount, number (rank), percentage; 2016: amount, number | yes | $ | both total rows sum (1,540,405,375 and 666,125,508 tie); sparse rows |
 | p176 | Property Tax Levies and Collections | 10y-T | 5 | amount, amount, percentage, amount, amount | yes | $ | per row: levied − collected = delinquent (2016 ties); % of levy = collected / levied |
-| p177 | Ratios of Outstanding Debt by Type | 10y-T | 11 | 9 amount, percentage, amount_per_unit | yes | $ | total = sum of 7 debt columns per row (2025 ties; 2024 short by exactly 176,292, its own Financed Purchases cell); % ties to p180 personal income; per capita ties to p180 population |
+| p177 | Ratios of Outstanding Debt by Type | 10y-T | 10 | 8 amount, percentage, amount_per_unit | yes | $ | total = sum of 7 debt columns per row (2025 ties; 2024 short by exactly 176,292, its own Financed Purchases cell); % ties to p180 personal income; per capita ties to p180 population |
 | p178 | Direct and Overlapping Governmental Activities Debt | snap | 3 | percentage, amount, amount | yes | $ | share = % × outstanding per row (Alameda ties ±1); subtotals and gross/net direct debt sum |
 | p179 | Legal Debt Margin Information | 10y | 10 | amount; last row percentage | yes | $ | margin = limit − applicable debt per column; side block: 15% × 26,264,328,578 = 3,939,649,287 ties |
 | p180 | Demographic and Economic Statistics | 10y-T | 4 | number, amount, amount_per_unit, percentage | yes | $k for Total Personal Income, **derived not declared**; calendar years 2015-2024 | per row: per capita = income × 1000 / population (2015 ties); cross-ties to p177 |
@@ -165,9 +165,16 @@ prints "2017(5)", both rejected by `amount.Parse`).
 The other 13 head their columns with text the parser accepts as headers: the
 transposed tables (p173, p176, p177, p180, p194), the snapshots (p178, p181,
 p186, p187, p188, p190-191, p193), and p192, whose headers are "FY2016-17"
-style — rejected by `amount.Parse`, hence declarable. p177 itself can carry
-the guard, which fisc-oakx.2 should use. The gap over the 14 is accepted and
-tracked as fisc-wiyg; arithmetic per the table above is their only guard.
+style — rejected by `amount.Parse`, hence declarable. Declarable is
+necessary, not sufficient: fisc-oakx.2 measured p177 and the page **cannot**
+carry the guard after all — its footnote "(1)" is its own `-layout` line but
+sits 2.6pt above its sentence, inside geometry's 4.66pt line tolerance, so the
+substrates disagree 23 lines to 22 and the pairing refuses. That is p41's
+failure mode, which header parseability cannot predict, so each of the other
+12 needs its pairing measured before a rule counts on the guard.
+`TestACFRDebtPageCannotCarryTheColumnGuard` re-measures p177's. The gap over
+the 14 is accepted and tracked as fisc-wiyg; arithmetic per the table above is
+their — and p177's — only guard.
 
 ## Recommendation: column quantity plus a whole-row override
 
@@ -211,12 +218,12 @@ ranges, p185's "NA" and p186's "exempt" are the test of.
   cents; **the only quantity that publishes**. Every committed rule keeps its
   meaning with no edit.
 - **`amount_per_unit`** — a dollar-shaped token whose unit is per-something:
-  per capita (p177 c11, p180 c3), per meter size or CCF or dwelling unit
+  per capita (p177 c10, p180 c3), per meter size or CCF or dwelling unit
   (p186, p187, p188). Read, never published. This is fisc-9tn4's Per Capita
   hazard as a class: probed, "$ 1,009", "32.50", "16.5", "2.8" and "1,044"
   all parse cleanly as dollars, so nothing downstream would catch one filed
   as `amount`.
-- **`percentage`** — trailing `%`: p171, p173 c5, p175 c3, p176 c3, p177 c10,
+- **`percentage`** — trailing `%`: p171, p173 c5, p175 c3, p176 c3, p177 c9,
   p178 c1, p180 c4, p181 c2, p182, p193, and the override rows on p169, p179,
   p192. `amount.Parse` rejects these loudly, which is the good failure.
 - **`number`** — a unitless figure, grouped or decimal: counts (p180 c1,
