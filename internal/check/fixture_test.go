@@ -363,9 +363,15 @@ func testSubject(t *testing.T, facts ...fact.Fact) *Subject {
 	if err != nil {
 		t.Fatalf("build the fixture projections: %v", err)
 	}
-	// Resolvers are left empty: nothing in tier 1 resolves a mapping rule. Docs
-	// are not — fact-offset-points-at-token reads page text, which is committed
-	// extraction and still not a PDF.
+	// Resolvers are left empty, and one tier-1 check DOES read them:
+	// fact-offset-is-not-a-stated-total resolves each rule's stated-total line
+	// through them. That is why it is pinned "vacuous over 0" here and has no
+	// fixture coverage — with no rule files there are no stated-total lines, so
+	// there is nothing a fact could collide with, which is the honest verdict
+	// rather than a gap. Its subjects are the committed corpus, in
+	// statedtotals_test.go. Docs are NOT left empty —
+	// fact-offset-points-at-token reads page text, which is committed extraction
+	// and still not a PDF.
 	return &Subject{
 		Root:               t.TempDir(),
 		Facts:              facts,

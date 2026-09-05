@@ -773,70 +773,78 @@ func declaredOmissions(p *Part) string {
 // because the next line's figures are whitespace-separated from these and
 // would otherwise extend the run.
 func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
+	_, _, totals, err := r.statedTotalLine(rule, p)
+	return totals, err
+}
+
+// statedTotalLine resolves this part's stated-total line and reads it: the byte
+// range its figures occupy in the page text, and the figures themselves.
+//
+// ANCHORING IS NOT ENOUGH AND THAT IS THE WHOLE REASON THIS IS ONE FUNCTION.
+// totalAnchor returns a position; whether the line at that position PRINTS a
+// total is a separate question, and for a label-less part the anchor is the
+// block TERMINATOR rather than a totals row. Three committed parts anchor that
+// way and land on text that is not a total at all: spine-transfers-in on p67
+// lands on the fund-group header line, and spine-transfers-out and
+// spine-fund-balance both land on the running footer "BUDGET FY 2025-27 Page
+// 63". A caller that took the anchor as a stated total would be pointing at a
+// header and a page number.
+//
+// So the amountRun test below is what MAKES a line a stated total, and every
+// caller gets it. [Resolver.TotalRowSpan] shipped without it and reported
+// exactly those three lines as stated totals (fisc-eaic's lane, second review
+// pass).
+func (r *Resolver) statedTotalLine(rule *Rule, p *Part) (lo, hi int, totals []amount.Cents, err error) {
 	blk, err := r.block(rule, p)
 	if err != nil {
-		return nil, err
+		return 0, 0, nil, err
 	}
 	text, err := r.page(p.Page)
 	if err != nil {
-		return nil, err
+		return 0, 0, nil, err
 	}
 
 	from, field, err := r.totalAnchor(rule, p, blk, text)
 	if err != nil {
-		return nil, err
+		return 0, 0, nil, err
 	}
 
-	line := text[from:]
-	if i := strings.IndexByte(line, '\n'); i >= 0 {
-		line = line[:i]
+	to := len(text)
+	if i := strings.IndexByte(text[from:], '\n'); i >= 0 {
+		to = from + i
 	}
+	line := text[from:to]
 	totals, ok := amountRun(line, len(p.Columns), rule.Units)
 	if !ok {
-		return nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
+		return 0, 0, nil, cmdutil.WithHint(&resolveError{DocID: r.file.DocID, RuleID: rule.ID,
 			Page: p.Page, Field: field, Err: ErrNotFound,
 			Msg: fmt.Sprintf("no run of %d consecutive amounts follows the anchor on %q",
 				len(p.Columns), strings.TrimSpace(line))},
 			"the totals row must print one figure per column; if the page prints "+
 				"them twice on one line, anchor past the first copy")
 	}
-	return totals, nil
+	return from, to, totals, nil
 }
 
 // TotalRowSpan is the byte range, within the part's page text, of the figures
 // the document prints on this part's stated-total line.
 //
-// It returns ErrNoStatedTotals where the part has no stated total, exactly as
-// [Resolver.StatedTotals] does, and the same resolution errors otherwise.
+// It is [Resolver.StatedTotals] over the same [Resolver.statedTotalLine], asking
+// for the position rather than the figures, so the two agree on which line is a
+// stated total and on every error by construction rather than by inspection.
 //
-// WHY IT IS EXPORTED WHEN StatedTotals ALREADY READS THAT LINE. StatedTotals
-// wants the figures and throws the POSITION away, and the position is the only
-// thing that can answer "is this fact republishing a total". A caller outside
-// this package cannot recompute it, because the anchor is narrowed by the
-// block: of the 152 committed parts whose stated total resolves, 50 print their
-// own total_row string more than once on the page, so a plain search finds the
-// wrong occurrence on a third of them. See fisc-eaic for the hazard.
+// WHY THE POSITION IS WORTH EXPORTING. It is the only thing that can answer "is
+// this fact republishing a total", and a caller outside this package cannot
+// recompute it, because the anchor is narrowed by the block: of the 149
+// committed parts whose stated total resolves, 50 print their own total_row
+// string more than once on the page, so a plain search finds the wrong
+// occurrence on a third of them. See fisc-eaic for the hazard.
 //
 // The span starts PAST the label, at the first byte of the figures, because a
 // fact's offset points at its token and never at a row label.
 func (r *Resolver) TotalRowSpan(rule *Rule, p *Part) (lo, hi int, err error) {
-	blk, err := r.block(rule, p)
-	if err != nil {
-		return 0, 0, err
-	}
-	text, err := r.page(p.Page)
-	if err != nil {
-		return 0, 0, err
-	}
-	from, _, err := r.totalAnchor(rule, p, blk, text)
-	if err != nil {
-		return 0, 0, err
-	}
-	to := len(text)
-	if i := strings.IndexByte(text[from:], '\n'); i >= 0 {
-		to = from + i
-	}
-	return from, to, nil
+	lo, hi, _, err = r.statedTotalLine(rule, p)
+	return lo, hi, err
 }
 
 // amountRun returns the first maximal run of exactly n parsable amounts in s.

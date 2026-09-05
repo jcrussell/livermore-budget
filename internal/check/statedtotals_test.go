@@ -100,40 +100,64 @@ func TestARepublishedTotalIsCaught(t *testing.T) {
 	}
 }
 
-// TestALabelLessPartsTotalIsCovered is the regression guard for a fail-open this
-// check SHIPPED WITH and a probe caught before it landed.
+// TestALabelLessPartWithNoTotalsRunContributesNoSpan is what replaced this
+// file's original regression guard, and the replacement is the finding.
 //
-// A label-less part has a stated total wherever its block ends, via stop_at,
-// whether or not its rule declares a total_row: totalAnchor tests LabelsFrom
-// BEFORE it tests TotalRow. The first draft of this check iterated only rules
-// with a total_row, which left unguarded the three label-less parts that
-// declare none -- and every other test here stayed green, because none of
-// them planted a fact on one. (Five parts are label-less in all; the other
-// two are TestALabelLessPartWithATotalRowNamesItsRealAnchor's subject.)
+// THE GUARD IT REPLACES WAS GREEN BECAUSE THE GATE FIRED. It planted a fact on
+// "a label-less part with no total_row", found one, and passed -- and the line
+// it planted on was p67 offset 2204, `Capital Funds  Debt Service Funds ...`,
+// a COLUMN HEADER. It proved the check flags a header line, which is a defect
+// rather than the property it was named for. Its two siblings landed on the
+// running footer "BUDGET FY 2025-27 Page 63". All three came from TotalRowSpan
+// returning an anchored position without asking whether that line prints a
+// total at all.
 //
-// So this test picks a part of exactly that shape and asserts the check sees it.
-// Restore `if rule.TotalRow == "" { continue }` to the rule loop and it goes red
-// while TestARepublishedTotalIsCaught still passes.
-func TestALabelLessPartsTotalIsCovered(t *testing.T) {
+// So the property now asserted is the one that was actually wrong: those three
+// parts must contribute NO span, because the terminator they anchor on prints
+// no totals run. Delete the amountRun test from statedTotalLine and this goes
+// red -- the three lines come back as stated totals and the check's own summary
+// over-counts them.
+func TestALabelLessPartWithNoTotalsRunContributesNoSpan(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	doc, page, off, ruleID := aStatedTotalLine(t, s, func(r *mapping.Rule, p *mapping.Part) bool {
-		return r.TotalRow == "" && p.LabelsFrom != 0
-	})
-	s.Facts = append(s.Facts, fact.Fact{
-		DocID: doc, Page: page, Offset: off, Token: "1,234",
-		RuleID: "some-other-rule", RowLabel: "A Row That Is Really A Total",
-	})
-
-	res := runStatedTotals(t, s)
-	if res.Status != StatusFail {
-		t.Fatalf("a fact citing label-less rule %q's stop_at total reported %s: %s",
-			ruleID, res.Status, res.Summary)
+	seen := 0
+	for _, f := range s.Files {
+		r := s.Resolvers[f.Path]
+		for i := range f.Rules {
+			rule := &f.Rules[i]
+			if rule.TotalRow != "" {
+				continue
+			}
+			for j := range rule.Parts {
+				p := &rule.Parts[j]
+				if p.LabelsFrom == 0 {
+					continue
+				}
+				seen++
+				lo, _, err := r.TotalRowSpan(rule, p)
+				if err == nil {
+					text, perr := s.Docs[f.DocID].Page(p.Page)
+					if perr != nil {
+						t.Fatalf("page %d: %v", p.Page, perr)
+					}
+					at := strings.LastIndexByte(text[:lo], '\n') + 1
+					line := strings.TrimSpace(text[at:])
+					if k := strings.IndexByte(line, '\n'); k >= 0 {
+						line = line[:k]
+					}
+					t.Errorf("rule %q p%d resolves a stated-total span at %d, and the line "+
+						"it names is %q -- if that is a printed totals row this test is "+
+						"stale; if it is a header or a footer the check will report a "+
+						"defect against a line the page never totalled",
+						rule.ID, p.Page, lo, line)
+				}
+			}
+		}
 	}
-	if got := findingDetails(res); !strings.Contains(got, "stop_at") {
-		t.Errorf("the finding does not say the total came from stop_at: %s", got)
+	if seen == 0 {
+		t.Fatal("no committed part is label-less with no total_row, so this test asserts nothing")
 	}
 }
 
