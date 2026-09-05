@@ -177,6 +177,7 @@ func All() []Check {
 		&factTokenReparses{},
 		&factOffsetPointsAtToken{},
 		&factCitationsAreDeclared{},
+		&factOffsetIsNotAStatedTotal{},
 		&factTransferOrientationIsDeclared{},
 		&factVocabulary{},
 		&factKindMatchesCategory{},

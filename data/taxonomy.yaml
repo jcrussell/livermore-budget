@@ -375,12 +375,20 @@ categories:
       entry the row would be silently dropped or mis-filed under
       `miscellaneous-revenue`.
     source_note: >-
-      Budget Book p. 139, Police Donations fund. UNGROUNDED: which of the ten
-      p66 categories absorbs this line in the citywide roll-up is not printed
-      anywhere in the document. It is non-zero only in the FY 2024-25 revised
-      column ($500) and zero in both budget years, so no arithmetic tie is
-      available to settle it. Do not assert a parent for this entry until a
-      schedule says so.
+      Budget Book p. 139, Police Donations fund. It is non-zero only in the
+      FY 2024-25 revised column ($500) and zero in both budget years, so
+      pp. 66-67 could never settle it: they print no revised column.
+      TWO CITYWIDE ROLL-UPS DO, AND THEY AGREE. The 38 printed `Total <fund>`
+      lines on pp. 135-139 sum to 19,666,619 in that column; p63 prints
+      19,666,119, and p192 prints 18,980,619 revenues plus 685,500 transfers
+      in, which is the same 19,666,119. Two schedules produced differently,
+      agreeing to the cent, both exactly $500 short of the funds they roll up.
+      So the answer is that NONE of the ten p66 categories absorbs this line --
+      the citywide roll-ups exclude it. Exclusion is the finding, and this
+      entry therefore still asserts NO PARENT: naming one would be the
+      inference it was written to refuse. The same arithmetic is derived
+      independently in docs/revenue-trends-contract.md, which keeps the line
+      because the city printed it on the page that document reads.
 
   # ==================================================================
   # EXPENDITURE — object categories

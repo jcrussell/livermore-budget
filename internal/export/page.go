@@ -423,12 +423,9 @@ type chartPageData struct {
 // trendsPageData is the revenue-trends template's input.
 //
 // IT CARRIES NO ConfigJSON AND THE PAGE LOADS NO SCRIPT, which is a decision
-// rather than an omission. site/app.js reads CONFIG.projections[CONFIG.primary]
-// and draws a Sankey; handing it a document of series would blank the page
-// through understands(). The table below is rendered entirely server-side, so
-// this view works with JavaScript off — which is the property the spine page
-// already defends for its headline, applied to a whole page. A chart for these
-// series is its own change (fisc-4ua.3).
+// rather than an omission. Everything below is rendered server-side, table and
+// mark alike, so this view works with JavaScript off — which is the property
+// the spine page already defends for its headline, applied to a whole page.
 type trendsPageData struct {
 	chrome
 	Columns []columnRef

@@ -803,6 +803,42 @@ func (r *Resolver) StatedTotals(rule *Rule, p *Part) ([]amount.Cents, error) {
 	return totals, nil
 }
 
+// TotalRowSpan is the byte range, within the part's page text, of the figures
+// the document prints on this part's stated-total line.
+//
+// It returns ErrNoStatedTotals where the part has no stated total, exactly as
+// [Resolver.StatedTotals] does, and the same resolution errors otherwise.
+//
+// WHY IT IS EXPORTED WHEN StatedTotals ALREADY READS THAT LINE. StatedTotals
+// wants the figures and throws the POSITION away, and the position is the only
+// thing that can answer "is this fact republishing a total". A caller outside
+// this package cannot recompute it, because the anchor is narrowed by the
+// block: measured over the committed rules, 53 of 150 resolvable parts print
+// their total_row string more than once on the page, so a plain search finds
+// the wrong occurrence on a third of them. See fisc-eaic for the hazard.
+//
+// The span starts PAST the label, at the first byte of the figures, because a
+// fact's offset points at its token and never at a row label.
+func (r *Resolver) TotalRowSpan(rule *Rule, p *Part) (lo, hi int, err error) {
+	blk, err := r.block(rule, p)
+	if err != nil {
+		return 0, 0, err
+	}
+	text, err := r.page(p.Page)
+	if err != nil {
+		return 0, 0, err
+	}
+	from, _, err := r.totalAnchor(rule, p, blk, text)
+	if err != nil {
+		return 0, 0, err
+	}
+	to := len(text)
+	if i := strings.IndexByte(text[from:], '\n'); i >= 0 {
+		to = from + i
+	}
+	return from, to, nil
+}
+
 // amountRun returns the first maximal run of exactly n parsable amounts in s.
 //
 // Where a maximal run is the wrong width but begins with a currency-marked

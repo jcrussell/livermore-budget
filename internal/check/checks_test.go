@@ -51,6 +51,11 @@ func TestFixtureVerdicts(t *testing.T) {
 		"fact-token-reparses":         "pass over 12",
 		"fact-offset-points-at-token": "pass over 12",
 		"fact-citations-are-declared": "pass over 12",
+		// Vacuous over the fixture, and correctly so: the fixture carries no rule
+		// files, so no stated-total line resolves and there is nothing a fact
+		// could collide with. Over the committed corpus it PASSES -- see
+		// TestNoCommittedFactCitesAStatedTotal, which is where it has subjects.
+		"fact-offset-is-not-a-stated-total": "vacuous over 0",
 		// Two of the fixture's twelve facts are transfers, and neither is
 		// printed against its kind's direction. The committed corpus has one
 		// that is: ACFR p41's Transfers (out).
@@ -121,7 +126,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 24, Vacuous: 21, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 22, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -143,8 +148,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 21 {
-		t.Fatalf("vacuous count = %d, want 21", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 22 {
+		t.Fatalf("vacuous count = %d, want 22", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
