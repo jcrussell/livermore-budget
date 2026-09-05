@@ -47,10 +47,12 @@ makes it a different arrangement rather than the same one under new names.
 
 ## What it cost to leave it alone
 
-AGENTS.md was 690 lines at `5794a60`. Seven days later it was 1,126 — **+63%** —
-and the only commit in that window that shrank it was `d6ff0c7`, by 32 lines. A
-five-pass review lane over the file itself (`6761254`..`f1d0815`) *added* 22 net
-lines. Nothing stopped the growth, and nothing yet stops it: a line-budget check
+AGENTS.md was **693** lines at `5794a60` — its own commit message says 690, which
+is why a count is read off the tree and not off a message. Seven days later it
+was 1,126, **+63%**, and the only commit in that window that shrank it was
+`d6ff0c7`, by 32 lines. A five-pass review lane over the file itself *added* 22
+net lines: the range is written `6761254^..f1d0815` because `a..b` excludes `a`,
+and the lane's first commit is one of the five. Nothing stopped the growth, and nothing yet stops it: a line-budget check
 is specified in `fisc-ak39` and has not been written, so what holds the size down
 today is only the habit this file is arguing for.
 

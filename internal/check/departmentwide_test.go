@@ -418,7 +418,7 @@ func TestEveryCommittedScopeIsPairedWithTheSpine(t *testing.T) {
 // `go test ./internal/check/...` entirely green. That is the shape AGENTS.md
 // names -- green because the gate fired, not because the defect was prevented --
 // arriving in a guard added by a review pass to close a review finding, which is
-// the shape the same file names one paragraph later.
+// the shape docs/review-loop-evidence.md counts four of.
 //
 // So this drives the arm the way the report does: it perturbs
 // fundingSourcesExceptions, the table that grounds the entry, and asserts Run

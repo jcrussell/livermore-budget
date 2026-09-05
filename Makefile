@@ -299,15 +299,15 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 		echo "  Run 'make pre-commit' yourself before committing; CI is the gate." >&2; \
 		exit 1; \
 	fi; \
-	mkdir -p "$$dir" || exit 1; \
-	printf '#!/bin/sh\nexec make pre-commit\n' > "$$dir/pre-commit.fisc"; \
-	chmod +x "$$dir/pre-commit.fisc"; \
-	if [ ! -e "$$hook" ]; then \
-		printf '#!/bin/sh\nexec "$$(dirname "$$0")/pre-commit.fisc"\n' > "$$hook"; \
-		chmod +x "$$hook"; \
+	ours=no; \
+	if [ ! -e "$$hook" ] && [ ! -L "$$hook" ]; then \
+		ours=new; \
+	elif [ -L "$$hook" ]; then \
+		case "$$(readlink "$$hook")" in pre-commit.fisc) ours=yes;; esac; \
 	elif grep -q 'pre-commit\.fisc' "$$hook" 2>/dev/null; then \
-		:; \
-	else \
+		ours=yes; \
+	fi; \
+	if [ "$$ours" = no ]; then \
 		echo "refusing: $$hook already exists and is not ours." >&2; \
 		echo "  Another tool owns it, and this target will not append to a hook" >&2; \
 		echo "  it did not write: an arm added after an 'exec' or an 'exit 0'" >&2; \
@@ -316,9 +316,21 @@ hooks: ## Install the local pre-commit hook where git reads it, or refuse and sa
 		echo "    \"\$$(dirname \"\$$0\")/pre-commit.fisc\" || exit \$$?" >&2; \
 		exit 1; \
 	fi; \
+	mkdir -p "$$dir" || exit 1; \
+	printf '#!/bin/sh\nexec make pre-commit\n' > "$$dir/pre-commit.fisc"; \
+	chmod +x "$$dir/pre-commit.fisc"; \
+	if [ "$$ours" = new ]; then \
+		printf '#!/bin/sh\nexec "$$(dirname "$$0")/pre-commit.fisc"\n' > "$$hook"; \
+	fi; \
 	chmod +x "$$hook" 2>/dev/null || true; \
 	back="$$(git rev-parse --git-path hooks)"; \
-	if [ ! -x "$$back/pre-commit" ] || ! grep -q 'pre-commit\.fisc' "$$back/pre-commit" 2>/dev/null; then \
+	reaches=no; \
+	if [ -L "$$back/pre-commit" ]; then \
+		case "$$(readlink "$$back/pre-commit")" in pre-commit.fisc) reaches=yes;; esac; \
+	elif grep -q 'pre-commit\.fisc' "$$back/pre-commit" 2>/dev/null; then \
+		reaches=yes; \
+	fi; \
+	if [ ! -x "$$back/pre-commit" ] || [ ! -x "$$back/pre-commit.fisc" ] || [ "$$reaches" = no ]; then \
 		echo "refusing to claim success: $$back/pre-commit does not invoke pre-commit.fisc" >&2; \
 		exit 1; \
 	fi; \

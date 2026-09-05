@@ -108,7 +108,7 @@ const nodeTransfersIn = "transfers/in"
 // (Two earlier versions of this comment were wrong in opposite directions --
 // one said this constant was on the production path, the next said neither was.
 // The second was written in the commit that fixed the first, which is the shape
-// AGENTS.md's review-loop table collects.)
+// docs/review-loop-evidence.md collects.)
 //
 // builtinLabels below spells both keys as bare literals, and an earlier version
 // of this comment defended that with two wrong facts -- that the table has

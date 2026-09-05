@@ -165,8 +165,9 @@
 #
 # So the only thing standing between these twenty figures and a wrong-column read
 # is the printed total each block anchors on, plus the fact that every block here
-# is label-anchored rather than positional. Said out loud because AGENTS.md calls
-# the geometry guard "the designed answer", and on this page it is absent.
+# is label-anchored rather than positional. Said out loud because
+# docs/extraction-substrate.md calls the geometry guard "the designed answer",
+# and on this page it is absent.
 #
 # AND THE GENERAL GOVERNMENT BLOCK IS THE WEAKEST POINT OF THAT, because it is
 # the one block whose printed total is reached through a TOLERANCE rather than

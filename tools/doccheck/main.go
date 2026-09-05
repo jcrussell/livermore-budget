@@ -12,10 +12,10 @@
 // fixtures; that is the wrong trade here, because the only other citation in
 // this file is the one the failure message prints, and it is worth checking.
 //
-// TWO OF THE CITATIONS ARE PRINTED TO A TERMINAL by a failing gate rather than
-// only sitting in a comment (Makefile's narration arm, and tools/memcheck), so a
-// stale one is a false claim the program makes to a user at the moment they are
-// already dealing with a failure.
+// THREE OF THE CITATIONS ARE PRINTED TO A TERMINAL by a failing gate rather than
+// only sitting in a comment -- the Makefile's narration arm, tools/memcheck and
+// tools/beadrefs -- so a stale one is a false claim the program makes to a user
+// at the moment they are already dealing with a failure.
 //
 // It resolves against the committed AGENTS.md and nothing else: no bd, no Dolt,
 // no node, no network. So it is a full gate in pre-commit and in CI both, unlike
@@ -91,6 +91,18 @@ func main() {
 	cites, err := citesUnder(os.Args[2:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "doccheck: %v\n", err)
+		os.Exit(2)
+	}
+	// A SCAN THAT FINDS NO CITATION AT ALL IS NOT A GREEN RUN, it is a broken
+	// pattern. citePattern has already lost a marker class once -- `>` was added
+	// to furniture and not to it -- and that failure is invisible from the exit
+	// code, because a command that matches nothing reports nothing dead. The
+	// committed tree carries thirteen, so zero means the matcher stopped working
+	// rather than that the tree got clean.
+	if len(cites) == 0 {
+		fmt.Fprintf(os.Stderr, "doccheck: no citation of %s found anywhere in the scanned paths\n", agents)
+		fmt.Fprintln(os.Stderr, "  The tree has always carried some, so this is citePattern failing to")
+		fmt.Fprintln(os.Stderr, "  match rather than a tree with nothing to check.")
 		os.Exit(2)
 	}
 	var dead []cite
@@ -170,9 +182,12 @@ func fold(s string) string {
 }
 
 // citesUnder collects every citation in the named files and directories. As in
-// beadrefs, a path that cannot be read is an error rather than a skip, so an
-// entry deleted from the Makefile's list takes this red rather than silently
-// narrowing the scan.
+// beadrefs, a path that cannot be READ is an error rather than a skip, so an
+// entry that has gone from the tree takes this red.
+//
+// A path DELETED FROM THE MAKEFILE'S LIST is a different thing and this cannot
+// see it: the path is simply never walked, and the scan gets quietly smaller.
+// Neither that list nor scannable can know about an entry nobody added.
 func citesUnder(paths []string) ([]cite, error) {
 	var cites []cite
 	for _, p := range paths {

@@ -545,10 +545,10 @@ func acfrLine(t *testing.T, want string) string {
 // internal/check's unprojectedScopes entry all make in prose: the twenty figures
 // this lane publishes are read with NO column-position guard over them.
 //
-// AGENTS.md calls that guard "the designed answer" for a token landing in the
-// wrong column, so a page that cannot have it is a real gap, and a gap asserted
-// only in a comment is one nobody re-measures. Both halves of the reason are
-// measured here.
+// docs/extraction-substrate.md calls that guard "the designed answer" for a
+// token landing in the wrong column, so a page that cannot have it is a real
+// gap, and a gap asserted only in a comment is one nobody re-measures. Both
+// halves of the reason are measured here.
 //
 // If this test starts failing because the pairing now SUCCEEDS, that is good
 // news and the rule file's paragraph about the missing guard has to be
