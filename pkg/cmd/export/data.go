@@ -624,10 +624,11 @@ func views(built result) []export.View {
 				{Heading: "Expenditures", Kind: "expenditure"},
 				{Heading: "Excess of revenues over (under) expenditures", Kind: "fund_balance"},
 			},
-			Title: "Ten years of Livermore's money, as audited",
+			Title: "Ten years of Livermore's money, as the city reports it",
 			Lede: "What the city's governmental funds actually took in and spent, " +
-				"FY2015-16 through FY2024-25, from the audit the city publishes each " +
-				"year — not budgets or intentions, but the money that moved.",
+				"FY2015-16 through FY2024-25, from the ten-year schedules in the " +
+				"city's annual financial report — not budgets or intentions, but " +
+				"the money that moved.",
 		})
 	}
 	if _, ok := projections[project.FundBalancesProjection]; ok {
@@ -641,9 +642,9 @@ func views(built result) []export.View {
 				{Heading: "All Other Governmental Funds", Kind: "fund_balance"},
 			},
 			Title: "What Livermore's funds held at each year's end",
-			Lede: "The audited balance of the General Fund and of all other governmental " +
+			Lede: "The balance of the General Fund and of all other governmental " +
 				"funds at each June 30, FY2015-16 through FY2024-25, split into the " +
-				"five categories that say how spendable each dollar is.",
+				"GASB 54 categories that say how spendable each dollar is.",
 		})
 	}
 	// THE CAVEATS INDEX, THE SECOND VIEW THAT NAMES NO PROJECTION. It lists

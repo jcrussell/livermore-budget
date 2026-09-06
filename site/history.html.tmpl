@@ -41,7 +41,7 @@
 <main>
 
 <p class="lede">
-  {{.Count}} printed rows across {{len .Columns}} audited years, {{.Facts}} figures in all.
+  {{.Count}} printed rows across {{len .Columns}} years, {{.Facts}} figures in all.
   Every one is a number the city printed; each links to the extracted text of the page it
   was read from. Nothing here is a total, a growth rate or a share — this page publishes
   what the document publishes and computes nothing of its own.
@@ -55,9 +55,9 @@
   <em>marks in different rows are not comparable with each other</em>. A
   <strong>dot</strong> on the line is a zero the city printed, and a bar hanging below the
   line is a printed negative; the smallest bar is a real figure too small to draw at this
-  scale, never a zero. All {{len .Columns}} columns are audited results of the same
-  process, so unlike this site's budget tables a comparison may be carried across any pair
-  of years.
+  scale, never a zero. All {{len .Columns}} columns report the same measurement of the
+  same funds, so unlike this site's budget tables a comparison may be carried across any
+  pair of years.
 </p>
 
 {{- if .Caveats}}
@@ -73,7 +73,7 @@
 
 <div class="table-scroll">
 <table class="series-table">
-  <caption>{{.Title}} — audited, {{.Scope}}</caption>
+  <caption>{{.Title}} — {{.Scope}}</caption>
   <thead>
     <tr>
       <th scope="col">Line</th>

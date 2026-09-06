@@ -197,6 +197,30 @@ func TestHistoryDocumentsShareTheTrendsShape(t *testing.T) {
 	}
 }
 
+// TestHistoryDocumentsShipTheUnauditedCaveat pins that both ten-year pages
+// disclose their section's own label -- p161 reads "Statistical Section
+// (Unaudited)" -- rather than each list carrying it by accident of the other.
+// Dropping the caveat from either list goes red here.
+func TestHistoryDocumentsShipTheUnauditedCaveat(t *testing.T) {
+	for name, caveats := range map[string][]Caveat{
+		"fundBalancesCaveats": fundBalancesCaveats(),
+		"changesCaveats":      changesCaveats(),
+	} {
+		found := false
+		for _, c := range caveats {
+			if c.ID == caveatStatisticalSectionIsUnaudited.ID {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s does not carry %q; the section's (Unaudited) label must reach that page", name, caveatStatisticalSectionIsUnaudited.ID)
+		}
+		if err := validateCaveats(caveats, map[string]struct{}{}); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
 // TestHistoryIsDeterministic is what lets a rebuild-and-diff mean anything.
 func TestHistoryIsDeterministic(t *testing.T) {
 	facts := balancesFixture(t)

@@ -10,6 +10,13 @@ from the pages before relying on them — this file does not re-measure itself.
 28 tables over pp.163-194. p162 is prose, p195 is blank. A page range in the
 first column is one logical table straddling pages.
 
+The section's divider, p161, reads in full: "Statistical Section (Unaudited)".
+The auditor's report (p29) disclaims the section by name: "Our opinions on the
+basic financial statements do not cover the other information, and we do not
+express an opinion or any form of assurance thereon." So no table below carries
+the audit opinion, whatever basis its figures were first published under — any
+page that publishes one owes the reader that label.
+
 ## The classification
 
 Column counts exclude the row-label column. "Years" is the table's year shape:

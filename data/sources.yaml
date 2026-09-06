@@ -54,6 +54,8 @@ sources:
     # FY2025 is the reporting year; the Statistical Section (pp.163-194)
     # prints ten years of history, and pp.167-169 of it are mapped.
     fiscal_years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+    # The Statistical Section carries its own label: p161 reads "Statistical
+    # Section (Unaudited)", and p29's opinion covers the basic statements only.
     basis: audited
     document_id: 13545
     url: "https://www.livermoreca.gov/home/showpublisheddocument/13545"

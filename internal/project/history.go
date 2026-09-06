@@ -170,6 +170,19 @@ var (
 			"under.",
 		AppliesTo: []string{},
 	}
+	caveatStatisticalSectionIsUnaudited = Caveat{
+		ID:      "statistical-section-unaudited",
+		Summary: "These ten-year schedules sit in the section the ACFR itself labels (Unaudited); the auditor's opinion does not cover them.",
+		Text: "p161, the section divider, reads \"Statistical Section (Unaudited)\", and " +
+			"the auditor's report (p29) says of this section: \"Our opinions on the " +
+			"basic financial statements do not cover the other information, and we do " +
+			"not express an opinion or any form of assurance thereon.\" One column can " +
+			"be checked against the audited statements anyway: p167's five 2025 General " +
+			"Fund components sum to $87,043,576, the very figure p54's audited " +
+			"governmental funds statement prints as the General Fund's ending balance. " +
+			"The other nine columns rest on this section alone.",
+		AppliesTo: []string{},
+	}
 	caveatVLFReclassification = Caveat{
 		ID:      "property-tax-reclassified",
 		Summary: "Property taxes and Intergovernmental change definition at FY2024-25, by the page's own footnote.",
@@ -183,10 +196,10 @@ var (
 
 // fundBalancesCaveats is every caveat the p167 document ships.
 func fundBalancesCaveats() []Caveat {
-	return []Caveat{caveatBalancesDoNotTieToP41, caveatNoAssignedRow, caveatGovernmentalFundsOnly}
+	return []Caveat{caveatStatisticalSectionIsUnaudited, caveatBalancesDoNotTieToP41, caveatNoAssignedRow, caveatGovernmentalFundsOnly}
 }
 
 // changesCaveats is every caveat the pp.168-169 document ships.
 func changesCaveats() []Caveat {
-	return []Caveat{caveatOtherFinancingNotPublished, caveatVLFReclassification, caveatGovernmentalFundsOnly}
+	return []Caveat{caveatStatisticalSectionIsUnaudited, caveatOtherFinancingNotPublished, caveatVLFReclassification, caveatGovernmentalFundsOnly}
 }
