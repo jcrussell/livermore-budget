@@ -1,4 +1,6 @@
-// Command doccheck refuses a citation that names no section of AGENTS.md.
+// Command doccheck refuses a pointer at nothing: a citation naming no section
+// of AGENTS.md, a citation of it written outside the canonical form, and a
+// docs/ path that resolves to no file.
 //
 // AGENTS.md is cited by name from Go, from the Makefile and from site/app.js: a
 // see-also naming a section of it in quotes. Nothing checked those strings, so
@@ -27,6 +29,20 @@
 // -- two in Go comments and one in a docs/ blockquote -- so the scan joins the
 // file and normalises markers out of the captured title rather than matching
 // line by line. See titleOf.
+//
+// ONLY THE CANONICAL FORM IS RESOLVED. A looser net catches the anchor followed
+// within a bounded run by a quoted title, and every hit the canonical pattern
+// did not claim is REFUSED AS MALFORMED rather than interpreted -- resolving
+// free prose means guessing, and a detector that guesses refuses true sentences
+// and teaches people to reword around them. A citation carrying no quoted title
+// at all is OUT OF REACH OF BOTH PATTERNS: prose that names a section without
+// quoting it passes this gate in silence, and that gap is declared here rather
+// than papered over.
+//
+// A DOCS/ PATH IS A CLAIM ABOUT THE TREE exactly as a section name is, so every
+// one cited in the scanned files must resolve. That is the narrow half of the
+// evidence-doc contract and deliberately no more of it: the declared map, the
+// opening markers and the backlinks belong to fisc-ak39.
 package main
 
 import (
@@ -63,6 +79,27 @@ var citePattern = regexp.MustCompile(`AGENTS\.md(?:'s|,)((?:[\s*>]|//|#)*(?:unde
 // section it belongs to -- wraps with a `>` at the head of the next line.
 var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 
+// loosePattern is the malformed-citation net: the anchor, a bounded run of
+// anything but a quote, then a quoted run that opens the way a section title
+// does. citePattern decides which of its hits are canonical, and every hit left
+// over is refused. Nothing here resolves a title.
+//
+// Both bounds are load-bearing, and neither is a measurement of the tree. The
+// gap is short enough that this file's own comments, which mention the anchor
+// and quote things only at a distance, stay out of the net; the quoted run must
+// OPEN like a title so that a list of quoted string literals with the anchor's
+// file name among them is not a hit -- the run such a list puts after the
+// anchor opens with a comma.
+var loosePattern = regexp.MustCompile("AGENTS\\.md[^\"]{0,40}\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
+
+// docPathPattern finds a docs/ markdown path cited as a root-relative claim
+// about this tree. The character before the anchor is part of the rule rather
+// than trivia: a slash or a word character in front means the path is the tail
+// of something longer -- a URL naming some other repository's docs directory --
+// and a claim about a different tree is not this gate's to check. Group 2 is
+// the path.
+var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])(docs/[A-Za-z0-9._/-]+\.md)`)
+
 // headingPattern and boldPattern are the two shapes an anchor takes in AGENTS.md.
 // Bold is an anchor and not only a decoration because the tree cites one:
 // "History's home is git" is a bolded lead phrase inside a section, not a
@@ -81,7 +118,7 @@ var (
 // Its own main.go is deliberately NOT here. The only citation in that file is the
 // one the failure message prints, and that one is worth checking.
 var exempt = map[string]string{
-	"tools/doccheck/main_test.go": "its fixtures are citations that must not resolve",
+	"tools/doccheck/main_test.go": "its fixtures are citations and paths that must not resolve",
 }
 
 // checkExemptions refuses a declaration that has outlived the file it exempts,
@@ -117,7 +154,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
 		os.Exit(2)
 	}
-	cites, err := citesUnder(os.Args[2:])
+	cites, malformed, docRefs, err := scanUnder(os.Args[2:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "doccheck: %v\n", err)
 		os.Exit(2)
@@ -140,33 +177,88 @@ func main() {
 		fmt.Fprintln(os.Stderr, "  match rather than a tree with nothing to check.")
 		os.Exit(2)
 	}
+	// The same floor for the same reason: the root files have always cited
+	// docs/ by path, so an empty sweep is docPathPattern failing to match
+	// rather than a tree with no claims to check.
+	if len(docRefs) == 0 {
+		fmt.Fprintln(os.Stderr, "doccheck: no docs/ path found anywhere in the scanned paths")
+		fmt.Fprintln(os.Stderr, "  The tree has always carried some, so this is docPathPattern failing")
+		fmt.Fprintln(os.Stderr, "  to match rather than a tree with nothing to check.")
+		os.Exit(2)
+	}
 	var dead []cite
 	for _, c := range cites {
 		if !anchors[fold(c.title)] {
 			dead = append(dead, c)
 		}
 	}
-	if len(dead) == 0 {
-		return
-	}
-	sort.Slice(dead, func(i, j int) bool {
-		if dead[i].file != dead[j].file {
-			return dead[i].file < dead[j].file
+	missing := missingDocs(".", docRefs)
+	fail := false
+	if len(dead) > 0 {
+		fail = true
+		sortCites(dead)
+		for _, c := range dead {
+			fmt.Fprintf(os.Stderr, "%s:%d: %q names no section of %s\n", c.file, c.line, c.title, agents)
 		}
-		return dead[i].line < dead[j].line
-	})
-	for _, c := range dead {
-		fmt.Fprintf(os.Stderr, "%s:%d: %q names no section of %s\n", c.file, c.line, c.title, agents)
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "doccheck: the citations above point at nothing.")
+		fmt.Fprintln(os.Stderr, "  A citation that names no section reads as though the rule is")
+		fmt.Fprintln(os.Stderr, "  written down, so the reader goes looking for a heading that is")
+		fmt.Fprintln(os.Stderr, "  gone. Re-point it at the section that carries the rule now, or")
+		fmt.Fprintln(os.Stderr, "  drop it. If you renamed a section, grep for its other citations")
+		fmt.Fprintln(os.Stderr, "  in the same commit.")
+		fmt.Fprintln(os.Stderr, "  See AGENTS.md, \"Before you quote a number\".")
 	}
-	fmt.Fprintln(os.Stderr, "")
-	fmt.Fprintln(os.Stderr, "doccheck: the citations above point at nothing.")
-	fmt.Fprintln(os.Stderr, "  A citation that names no section reads as though the rule is")
-	fmt.Fprintln(os.Stderr, "  written down, so the reader goes looking for a heading that is")
-	fmt.Fprintln(os.Stderr, "  gone. Re-point it at the section that carries the rule now, or")
-	fmt.Fprintln(os.Stderr, "  drop it. If you renamed a section, grep for its other citations")
-	fmt.Fprintln(os.Stderr, "  in the same commit.")
-	fmt.Fprintln(os.Stderr, "  See AGENTS.md, \"Before you quote a number\".")
-	os.Exit(1)
+	if len(malformed) > 0 {
+		fail = true
+		sortCites(malformed)
+		for _, c := range malformed {
+			fmt.Fprintf(os.Stderr, "%s:%d: %q is not the canonical citation form\n", c.file, c.line, c.title)
+		}
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintf(os.Stderr, "doccheck: the citations above cannot be resolved against %s.\n", agents)
+		fmt.Fprintln(os.Stderr, "  Only the canonical form is resolved against the section anchors,")
+		fmt.Fprintln(os.Stderr, "  so any other shape would survive a section rename in silence.")
+		fmt.Fprintln(os.Stderr, "  Rewrite each as the file name, then a comma or a possessive, then")
+		fmt.Fprintf(os.Stderr, "  the section title in quotes: %s\n", fmt.Sprintf("%s, %q", agents, "<section title>"))
+	}
+	if len(missing) > 0 {
+		fail = true
+		sortCites(missing)
+		// A markdown link writes its path twice on one line -- once as the
+		// visible text, once as the target -- and one report line is enough.
+		var prev cite
+		for _, c := range missing {
+			if c == prev {
+				continue
+			}
+			prev = c
+			fmt.Fprintf(os.Stderr, "%s:%d: cites %s, which is not in the tree\n", c.file, c.line, c.title)
+		}
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "doccheck: the docs/ paths above resolve to no file.")
+		fmt.Fprintln(os.Stderr, "  A path cited from a comment or a doc is a claim about the tree,")
+		fmt.Fprintln(os.Stderr, "  exactly as a section name is. Re-point it at the file that carries")
+		fmt.Fprintln(os.Stderr, "  the text now, or drop it. If you renamed a docs/ file, grep for")
+		fmt.Fprintln(os.Stderr, "  its other citations in the same commit.")
+	}
+	if fail {
+		os.Exit(1)
+	}
+}
+
+// sortCites orders findings for a stable report: by file, then line, then
+// title, so that equal findings sit together for the dedupe above.
+func sortCites(cs []cite) {
+	sort.Slice(cs, func(i, j int) bool {
+		if cs[i].file != cs[j].file {
+			return cs[i].file < cs[j].file
+		}
+		if cs[i].line != cs[j].line {
+			return cs[i].line < cs[j].line
+		}
+		return cs[i].title < cs[j].title
+	})
 }
 
 // cite is one citation: which section it names, and where it was written.
@@ -241,15 +333,15 @@ func fold(s string) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
-// citesUnder collects every citation in the named files and directories. As in
-// beadrefs, a path that cannot be READ is an error rather than a skip, so an
-// entry that has gone from the tree takes this red.
+// scanUnder collects every citation, malformed citation and docs/ path in the
+// named files and directories. As in beadrefs, a path that cannot be READ is an
+// error rather than a skip, so an entry that has gone from the tree takes this
+// red.
 //
 // A path DELETED FROM THE MAKEFILE'S LIST is a different thing and this cannot
 // see it: the path is simply never walked, and the scan gets quietly smaller.
 // Neither that list nor scannable can know about an entry nobody added.
-func citesUnder(paths []string) ([]cite, error) {
-	var cites []cite
+func scanUnder(paths []string) (cites, malformed, docRefs []cite, err error) {
 	for _, p := range paths {
 		// #nosec G703 -- the path list is this command's argument; it checks the
 		// paths it is asked to.
@@ -271,20 +363,30 @@ func citesUnder(paths []string) ([]cite, error) {
 				return err
 			}
 			cites = append(cites, found...)
+			bad, err := malformedIn(path)
+			if err != nil {
+				return err
+			}
+			malformed = append(malformed, bad...)
+			refs, err := docRefsIn(path)
+			if err != nil {
+				return err
+			}
+			docRefs = append(docRefs, refs...)
 			return nil
 		})
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, err
 		}
 	}
-	return cites, nil
+	return cites, malformed, docRefs, nil
 }
 
 // citesIn reads the whole file rather than scanning it line by line, because a
 // citation may wrap across two comment lines and a line-wise scan sees only the
 // half that carries the opening quote.
 func citesIn(path string) ([]cite, error) {
-	b, err := os.ReadFile(path) // #nosec G304,G703 -- see citesUnder.
+	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
 	if err != nil {
 		return nil, err
 	}
@@ -302,6 +404,76 @@ func citesIn(path string) ([]cite, error) {
 		})
 	}
 	return cites, nil
+}
+
+// malformedIn reports the loosePattern hits that citePattern did not claim. A
+// loose hit is claimed when a canonical match STARTS ANYWHERE INSIDE ITS SPAN,
+// not only at its own anchor: a passing mention of the anchor file shortly
+// before a canonical citation would otherwise capture that citation's quotes
+// and report prose that is fine. The mention itself carries no quoted title,
+// which is the class this gate declares out of reach.
+func malformedIn(path string) ([]cite, error) {
+	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
+	if err != nil {
+		return nil, err
+	}
+	text := string(b)
+	var claimed []int
+	for _, loc := range citePattern.FindAllStringIndex(text, -1) {
+		claimed = append(claimed, loc[0])
+	}
+	inSpan := func(start, end int) bool {
+		for _, p := range claimed {
+			if start <= p && p < end {
+				return true
+			}
+		}
+		return false
+	}
+	var out []cite
+	for _, loc := range loosePattern.FindAllStringIndex(text, -1) {
+		if inSpan(loc[0], loc[1]) {
+			continue
+		}
+		out = append(out, cite{
+			title: strings.TrimSpace(furniture.ReplaceAllString(text[loc[0]:loc[1]], " ")),
+			file:  norm(path),
+			line:  1 + strings.Count(text[:loc[0]], "\n"),
+		})
+	}
+	return out, nil
+}
+
+// docRefsIn collects every docs/ path the file cites. Group 2 of the pattern is
+// the path; group 1 is the guard character and is no part of the claim.
+func docRefsIn(path string) ([]cite, error) {
+	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
+	if err != nil {
+		return nil, err
+	}
+	text := string(b)
+	var out []cite
+	for _, loc := range docPathPattern.FindAllStringSubmatchIndex(text, -1) {
+		out = append(out, cite{
+			title: text[loc[4]:loc[5]],
+			file:  norm(path),
+			line:  1 + strings.Count(text[:loc[4]], "\n"),
+		})
+	}
+	return out, nil
+}
+
+// missingDocs returns the cited paths that resolve to nothing under root. A
+// path that exists is not examined further: its opening marker and its backlink
+// belong to the wider contract this arm deliberately leaves alone.
+func missingDocs(root string, refs []cite) []cite {
+	var missing []cite
+	for _, r := range refs {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(r.title))); err != nil {
+			missing = append(missing, r)
+		}
+	}
+	return missing
 }
 
 // titleOf normalises a captured title. A wrapped citation carries the next

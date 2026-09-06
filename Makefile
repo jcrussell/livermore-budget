@@ -168,8 +168,13 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 # Like beadrefs and unlike narration's memory arm, this is a real gate. It reads
 # the committed AGENTS.md and nothing else -- no bd, no Dolt, no node, no
 # network -- so CI runs it too.
+#
+# It also refuses a citation written outside the canonical form rather than
+# guessing what the prose meant, and a docs/ path that resolves to no file --
+# both are pointers at nothing wearing different clothes. The boundary each of
+# those arms declares for itself is in the tool's package comment.
 .PHONY: doccheck
-doccheck: ## Refuse citations that name no section of AGENTS.md
+doccheck: ## Refuse dead citations, malformed citations, and dead docs/ paths
 	@go run ./tools/doccheck AGENTS.md \
 		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
 		.github docs cmd internal pkg tools site mappings data testdata
@@ -241,8 +246,8 @@ pre-commit: fmt vet narration beadrefs doccheck test lint-if-available js-if-ava
 
 # A HOOK CANNOT BE COMMITTED. The hooks directory is not tracked, so "install
 # the pre-commit hook" is per-checkout setup somebody has to actually run -- and
-# until this target existed, CLAUDE.md and the since-merged docs/agents/workflow.md
-# both described the symlink as though it were already there. It was not, in any
+# until this target existed, CLAUDE.md and the workflow doc since merged into
+# AGENTS.md both described the symlink as though it were already there. It was not, in any
 # checkout anyone looked at, which made a workflow document assert a guard that
 # did not exist.
 #

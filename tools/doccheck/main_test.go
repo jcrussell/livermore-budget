@@ -243,6 +243,150 @@ func TestFoldDropsFurnitureAndTrailingPunctuation(t *testing.T) {
 	}
 }
 
+// The near-misses citePattern cannot see are REFUSED, not resolved: a verb
+// between the anchor and the quote, and an anchor wrapped in backticks. Both
+// shapes survived a section rename in the tree with every gate green. The
+// canonical citation in the same fixture must not be reported beside them.
+func TestANearMissCitationIsRefusedAndACanonicalOneIsNot(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, `package x
+
+// Canonical: see AGENTS.md, "The extraction boundary".
+//
+// A verb: AGENTS.md calls that guard "the designed answer".
+//
+// Backticks: `+"`AGENTS.md`"+` names it under "The node boundary".
+`)
+	got, err := malformedIn(path)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	var lines []int
+	for _, c := range got {
+		lines = append(lines, c.line)
+	}
+	if diff := cmp.Diff([]int{5, 7}, lines); diff != "" {
+		t.Fatalf("malformed lines (-want +got):\n%s", diff)
+	}
+	for _, c := range got {
+		if c.title == "" {
+			t.Errorf("a malformed finding at line %d carries no snippet to fix", c.line)
+		}
+	}
+}
+
+// A mention with no quoted title at all is out of reach, and this pins the
+// boundary the package comment declares rather than a wish: a possessive with
+// a bare phrase after it yields nothing from either arm.
+func TestACitationWithNoQuotedTitleIsOutOfReach(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, "package x\n\n// The table AGENTS.md's review-loop section describes has moved.\n")
+	bad, err := malformedIn(path)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	cites, err := citesIn(path)
+	if err != nil {
+		t.Fatalf("citesIn: %v", err)
+	}
+	if len(bad) != 0 || len(cites) != 0 {
+		t.Errorf("malformed = %v, cites = %v; want both empty", bad, cites)
+	}
+}
+
+// A list of quoted string literals with the anchor's file name among them is
+// not a citation, and the quoted-run-opens-like-a-title rule is what keeps it
+// out: the run after the anchor's own closing quote opens with a comma. The
+// tree carries exactly this shape in another tool's test fixture.
+func TestAQuotedStringListIsNotAMalformedCitation(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, "package x\n\nvar files = []string{\"AGENTS.md\", \"internal/x.go\"}\n")
+	got, err := malformedIn(path)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("malformedIn = %v, want empty", got)
+	}
+}
+
+// A passing mention of the anchor file shortly before a canonical citation
+// must not turn that citation's own quotes into a malformed finding: a loose
+// hit is claimed by any canonical match starting inside its span.
+func TestAMentionBeforeACanonicalCitationIsNotMalformed(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, "package x\n\n// It is in AGENTS.md; see AGENTS.md, \"Testing\".\n")
+	bad, err := malformedIn(path)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(bad) != 0 {
+		t.Errorf("malformedIn = %v, want empty", bad)
+	}
+	cites, err := citesIn(path)
+	if err != nil {
+		t.Fatalf("citesIn: %v", err)
+	}
+	if len(cites) != 1 {
+		t.Fatalf("read %d citations, want 1; the canonical one must still be resolved", len(cites))
+	}
+}
+
+// A docs/ path is found in a markdown link, in backticks and opening a line,
+// and a URL naming some other repository's docs directory is not a claim
+// about this tree.
+func TestDocRefsInFindsCitedPathsAndSkipsURLs(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.md")
+	write(t, path, `# T
+
+See [the charter](docs/agents-md-charter.md) and `+"`docs/m0-spike.md`"+`.
+
+docs/review-loop-evidence.md opens a line. Not ours:
+https://github.com/x/y/blob/main/docs/SYNC.md
+`)
+	got, err := docRefsIn(path)
+	if err != nil {
+		t.Fatalf("docRefsIn: %v", err)
+	}
+	var paths []string
+	for _, c := range got {
+		paths = append(paths, c.title)
+	}
+	want := []string{
+		"docs/agents-md-charter.md",
+		"docs/m0-spike.md",
+		"docs/review-loop-evidence.md",
+	}
+	if diff := cmp.Diff(want, paths); diff != "" {
+		t.Errorf("paths (-want +got):\n%s", diff)
+	}
+}
+
+// Renaming an evidence file reddens every pointer at it: the resolution arm
+// reports the path that no longer exists and stays silent about the one that
+// does.
+func TestAMissingDocPathReddens(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs"), 0o750); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	write(t, filepath.Join(root, "docs", "real.md"), "# real\n")
+	refs := []cite{
+		{title: "docs/real.md", file: "x.go", line: 3},
+		{title: "docs/gone.md", file: "x.go", line: 5},
+	}
+	got := missingDocs(root, refs)
+	want := []cite{{title: "docs/gone.md", file: "x.go", line: 5}}
+	if diff := cmp.Diff(want, got, cmp.AllowUnexported(cite{})); diff != "" {
+		t.Errorf("missingDocs (-want +got):\n%s", diff)
+	}
+}
+
 func write(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {

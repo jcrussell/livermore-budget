@@ -35,9 +35,9 @@ the four invariants entirely.
 
 `5794a60` (2026-08-29) deleted `docs/agents/` and merged it into AGENTS.md,
 having measured three kinds of duplication: 110 byte-identical hand-synced lines
-between the root files; 59 lines `CLAUDE.md` had that AGENTS.md lacked; and three
-sections of `docs/agents/workflow.md` restated in the root files, of which the
-review-loop justification checked out false. Its message accepted the cost:
+between the root files; 59 lines `CLAUDE.md` had that AGENTS.md lacked; and
+three sections of `workflow.md`, then under `docs/agents/`, restated in the
+root files, of which the review-loop justification checked out false. Its message accepted the cost:
 *"AGENTS.md is 36 KB and is now in context every session, where workflow.md and
 conventions.md were read on demand."*
 
