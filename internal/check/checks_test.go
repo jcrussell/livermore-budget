@@ -66,6 +66,11 @@ func TestFixtureVerdicts(t *testing.T) {
 		// lines. Both satisfy beginning + change == ending; neither did before
 		// this check was written. See fixtureCells.
 		"fund-balance-identity": "pass over 2",
+		// The fixture is a miniature of the SPINE and carries no ACFR
+		// Changes in Fund Balances fact, so there is no column to recompute.
+		// TestTheCommittedCorpusVacuitySplit is where its real verdict is
+		// pinned.
+		"excess-of-revenues-identity": "vacuous over 0",
 		// Vacuous over the FIXTURE and passing over the committed corpus, and
 		// the difference is the fixture's own shape rather than a gap: the
 		// miniature spine carries one scope, so there is no pair of scopes for
@@ -126,7 +131,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 24, Vacuous: 22, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 23, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -148,8 +153,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 22 {
-		t.Fatalf("vacuous count = %d, want 22", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 23 {
+		t.Fatalf("vacuous count = %d, want 23", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")

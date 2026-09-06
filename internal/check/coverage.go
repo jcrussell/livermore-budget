@@ -24,6 +24,11 @@ import (
 // elsewhere in this tree.
 const acfrGeneralFundScope = "acfr-general-fund-summary"
 
+// acfrFundBalancesScope is the scope ACFR p167's Fund Balances of Governmental
+// Funds schedule is mapped at. Its sibling schedule's scope, acfrChangesScope,
+// is declared in excessidentity.go beside the check that reads it.
+const acfrFundBalancesScope = "acfr-fund-balances"
+
 // unprojectedScopes are the scopes deliberately not drawn by any projection, each
 // with the reason it is not.
 //
@@ -185,6 +190,41 @@ var unprojectedScopes = map[string]string{
 		"$170,000 on top of that, seventeen units, which is why the tolerance that admits its " +
 		"$10,000 in FY2025 comes nowhere near admitting FY2024. The four blocks are the ones the " +
 		"PAGE prints, and General Government is inside one of them.",
+
+	acfrFundBalancesScope: "ACFR p167, Fund Balances of Governmental Funds: 90 audited " +
+		"facts over FY2016-FY2025 -- the five GASB 54 components of the General Fund's " +
+		"balance and the four of the aggregate All Other Governmental Funds, which spans " +
+		"fund types and so carries no fund_group. UNPROJECTED BECAUSE NOTHING DRAWS TEN " +
+		"AUDITED YEARS YET: the ten-year reader surface is fisc-oakx.4. Only the FY2025 " +
+		"audited column shares a (year, basis) with another scope, " +
+		"acfr-general-fund-summary, and the two DO NOT TIE -- p167's Total general fund " +
+		"2025 is 87,043,576 against p41's published ending balance of 87.10 million, " +
+		"$56,424 apart, 5.6 units of p41's own printed precision (fisc-y242) -- which is " +
+		"why no cross-scope check exists. WHAT ASSERTS THESE FACTS is each block's " +
+		"printed total at build time, tying exactly in all ten columns of both blocks " +
+		"(2016 General Fund: 47,139,536), plus the store-level witnesses; " +
+		"fund-balance-identity does not reach them, because the components are neither " +
+		"beginning, change nor ending and the page prints no beginning or change line. " +
+		"NOTHING GUARDS A WHOLE COLUMN FILED UNDER THE WRONG YEAR: bare-year headers " +
+		"refuse the geometry guard (fisc-wiyg), and unlike its sibling scope this page " +
+		"has no cross-block identity.",
+
+	acfrChangesScope: "ACFR pp.168-169, Changes in Fund Balances of Governmental Funds: " +
+		"220 audited facts over FY2016-FY2025, all governmental funds combined and so no " +
+		"fund_group -- 90 revenue, 120 expenditure on the ACFR's function axis, and the " +
+		"ten printed Excess of Revenues over (under) expenditures cells. UNPROJECTED for " +
+		"the reason acfr-fund-balances is: nothing draws audited history until " +
+		"fisc-oakx.4 lands. WHAT ASSERTS THEM: the revenue and expenditure blocks tie to " +
+		"their own printed totals at build time, exactly in every column, and " +
+		"excess-of-revenues-identity recomputes the printed excess from the published " +
+		"rows per column at verify time -- the batch's corroboration tie, measured to " +
+		"hold in all ten columns before the check was written. The cross-table ties " +
+		"fisc-oakx.3 planned are dead as printed: p167 fund-balance deltas match p169's " +
+		"Net change in 2017 only, and the p41 anchor is fisc-y242. p169's Other " +
+		"Financing block is READ AND NOT PUBLISHED (fisc-qyrw): its printed total's 2023 " +
+		"cell is a copy of 2022 -- components sum to 39,259,064 against a printed " +
+		"(1,767,367) -- and Net change 2023 is the same copy, so neither line has an " +
+		"honest total or identity to stand under yet.",
 
 	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
 		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +

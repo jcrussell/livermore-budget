@@ -104,9 +104,16 @@ Fail closed on every one; none may be read as a nearby plausible number.
 
 ## Printed defects, measured
 
-These are the city's arithmetic, not extraction error; the batches must declare
-them (`stated_total_deltas`, `internal/mapping/rule.go`) rather than absorb
-them. Every figure below was recomputed from the page named.
+These are the city's arithmetic, not extraction error, and the batches must not
+absorb them. This section originally said to declare them with
+`stated_total_deltas`, and batch one measured that instruction wrong:
+`fisc-2sd`'s mechanism is for the city's own ≤$5 rounding, and a totals row a
+whole year out of position, or a cell copied from the prior year, is not a
+rounding delta — a delta sized to one is the fabricated declaration
+`Rule.TotalSpansParts`' doc comment names. What batch one did instead is the
+precedent: p169's Other Financing block declares no total and stays read-only
+(`fisc-qyrw`), and pp.164-166 wait (`fisc-xd6r`). Every figure below was
+recomputed from the page named.
 
 - **p164 — the Total business-type activities expenses row is right-shifted
   one year for 2017-2023.** Each of those seven printed totals equals the
@@ -240,12 +247,14 @@ be trusted to be ranges.
 
 ## What this sizes
 
-Batch one (fisc-oakx.3, pp.163-169) needs: the quantity field with its row
-override (p169), `stated_total_deltas` for p164's seven shifted totals and the
-2023 copies, no geometry guard anywhere, and a decision on p163's kind
-(fisc-7jtl) — net position is not a `fund_balance`. Its planned p163↔p166 and
+Batch one (fisc-oakx.3, pp.163-169) needed: the quantity field with its row
+override (p169), no geometry guard anywhere, and a decision on p163's kind
+(fisc-7jtl) — net position is not a `fund_balance`, so p163 waits at
+fisc-311g and the defective pp.164-166 at fisc-xd6r. Its planned p163↔p166 and
 p167↔p169 corroboration ties do not hold as printed; the p167 FY2025 ↔ ACFR
-p41 tie remains the candidate worth measuring. The four all-non-amount tables
+p41 tie was then measured dead too (fisc-y242), and the tie the batch landed
+is within-page: p168's excess = revenues − expenditures, all ten columns
+(`excess-of-revenues-identity`). The four all-non-amount tables
 (p181, p183, p184, p185) publish zero facts under fisc-9tn4 and two of them
 also carry no arithmetic; mapping those is a reader-surface decision for
 fisc-oakx.4, not a default. p194's eight projected rows are the document's own

@@ -148,6 +148,17 @@ categories:
           no cell to reconcile.
         note: >-
           ACFR p41, not a Budget Book page.
+      #@cite p0168 (ACFR) "Property Taxes and special assessments (1)   $ 46,106,890"
+      - term: "Property Taxes and special assessments"
+        pages: [168]
+        derived: true
+        rationale: >-
+          The same special-assessments binding as the p41 alias, in the
+          ten-year statement's capitalisation. The "(1)" the page prints after
+          it is a footnote marker (the FY2024-25 VLF Comp reclassification),
+          layout rather than part of the term.
+        note: >-
+          ACFR p168, not a Budget Book page.
     # The p127 detail sums to the p66 figure only if the two parenthesized rows
     # are read as negative: 13 detail rows tie to 64,143,762 for FY 2025-26,
     # and to 98,114,440 — off by 33.97M — if the parentheses are ignored.
@@ -175,6 +186,12 @@ categories:
     parent: taxes
     kinds: [revenue]
     pages: [41, 66, 127]
+    aliases:
+      #@cite p0168 (ACFR) "Sales taxes   29,932,022   30,684,026"
+      - term: "Sales taxes"
+        pages: [168]
+        note: >-
+          ACFR p168, not a Budget Book page. Capitalisation only.
     note: >-
       PAGE 41 IS THE ACFR, not a Budget Book page — see the note on `pages` in
       this file's header. It is recorded on this list rather than as an alias
@@ -216,12 +233,13 @@ categories:
     pages: [66, 128]
     aliases:
       #@cite p0041 (ACFR) "Licenses and permits   7.78   3.40"
+      #@cite p0168 (ACFR) "Licenses and permits   3,375,139   2,587,073"
       - term: "Licenses and permits"
-        pages: [41]
+        pages: [41, 168]
         note: >-
-          ACFR p41, not a Budget Book page. The ACFR spells the conjunction
-          "and" where the Budget Book prints "&"; same two nouns, same line, so
-          no derivation.
+          ACFR pp.41 and 168, not Budget Book pages. The ACFR spells the
+          conjunction "and" where the Budget Book prints "&"; same two nouns,
+          same line, so no derivation.
     note: >-
       Zero in all six non-General fund groups, which is why spine.yaml has to
       declare it in `omitted_rows` for p67 — extraction emits no row for it
@@ -237,11 +255,12 @@ categories:
     pages: [66, 128, 131]
     aliases:
       #@cite p0041 (ACFR) "Fines and forfeitures   0.48   0.30"
+      #@cite p0168 (ACFR) "Fines and forfeitures   404,562   382,735"
       - term: "Fines and forfeitures"
-        pages: [41]
+        pages: [41, 168]
         note: >-
-          ACFR p41, not a Budget Book page. "and" for "&", and lower case; same
-          two nouns, so no derivation.
+          ACFR pp.41 and 168, not Budget Book pages. "and" for "&", and lower
+          case; same two nouns, so no derivation.
 
   #@cite p0066 "Intergovernmental 4,328,164 4,631,220"
   #@cite p0128 "Total Intergovernmental $4,522,641 $3,833,548 $4,328,164 $4,631,220"
@@ -249,11 +268,12 @@ categories:
     label: "Intergovernmental"
     document_term: "Intergovernmental"
     kinds: [revenue]
-    pages: [41, 66, 128, 131, 133, 134, 135, 136, 137, 138, 139, 140]
+    pages: [41, 66, 128, 131, 133, 134, 135, 136, 137, 138, 139, 140, 168]
     note: >-
-      PAGE 41 IS THE ACFR, not a Budget Book page — see the note on `pages` in
-      this file's header, and `taxes/sales` for why it is on this list rather
-      than in an alias (the ACFR prints the document_term exactly).
+      PAGES 41 AND 168 ARE THE ACFR, not Budget Book pages — see the note on
+      `pages` in this file's header, and `taxes/sales` for why they are on
+      this list rather than in an alias (the ACFR prints the document_term
+      exactly).
 
       Printed identically at both levels — no abbreviation in the narrow
       fund-level column. p128 shows it holds federal and state grants, state
@@ -269,10 +289,11 @@ categories:
     pages: [66, 129, 131, 132, 133, 134, 136, 137, 138, 140]
     aliases:
       #@cite p0041 (ACFR) "Charges for current services   6.25   9.40"
+      #@cite p0168 (ACFR) "Charges for current services   39,071,843"
       - term: "Charges for current services"
-        pages: [41]
+        pages: [41, 168]
         note: >-
-          ACFR p41, not a Budget Book page. "current services" is the GASB
+          ACFR pp.41 and 168, not Budget Book pages. "current services" is the GASB
           phrasing of the line the Budget Book prints as "Charges for
           Services"; the qualifier excludes nothing the Budget Book term
           included, so no derivation.
@@ -289,10 +310,11 @@ categories:
       - term: "Use of Money & Prop"
         pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
       #@cite p0041 (ACFR) "Use of money and property   12.81   10.40"
+      #@cite p0168 (ACFR) "Use of money and property   5,106,185"
       - term: "Use of money and property"
-        pages: [41]
+        pages: [41, 168]
         note: >-
-          ACFR p41, not a Budget Book page. Capitalisation only.
+          ACFR pp.41 and 168, not Budget Book pages. Capitalisation only.
     note: >-
       The capital A in "And" is the document's, on both p66 and p129. Do not
       normalize it in `document_term`; the mapping matches printed text.
@@ -312,8 +334,9 @@ categories:
       - term: "ContributionsOutSrce"
         pages: [131, 132, 135, 136, 138, 139]
       #@cite p0041 (ACFR) "Contributions from outside sources   -   0.10"
+      #@cite p0168 (ACFR) "Contributions from outside sources   1,492,046"
       - term: "Contributions from outside sources"
-        pages: [41]
+        pages: [41, 168]
         derived: true
         rationale: >-
           The Budget Book prints "Contributions Outsourced", which is not a
@@ -324,7 +347,7 @@ categories:
           alike -- and on nothing arithmetic: the ACFR prints a dash here in
           FY2025, so there is no figure to reconcile even in principle.
         note: >-
-          ACFR p41, not a Budget Book page.
+          ACFR pp.41 and 168, not Budget Book pages.
     note: >-
       Renamed from `contributions`. The short form is not a harmless
       abbreviation: this category has exactly one detail line, "Contribution
@@ -346,12 +369,14 @@ categories:
       - term: "Miscellaneous Rev"
         pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
       #@cite p0041 (ACFR) "Miscellaneous   1.26   0.60"
+      #@cite p0168 (ACFR) "Miscellaneous   8,218,597   2,754,329"
       - term: "Miscellaneous"
-        pages: [41]
+        pages: [41, 168]
         note: >-
-          ACFR p41, not a Budget Book page. The ACFR drops the noun the Budget
-          Book carries; it is the last line of a revenue block in both, so the
-          shorter form names the same line and the binding is still the words.
+          ACFR pp.41 and 168, not Budget Book pages. The ACFR drops the noun
+          the Budget Book carries; it is the last line of a revenue block in
+          both, so the shorter form names the same line and the binding is
+          still the words.
     note: >-
       Renamed from `miscellaneous` for the same reason as
       `contributions-outsourced`: the printed term has two words and the slug
@@ -424,6 +449,14 @@ categories:
     document_term: "Capital Outlay"
     kinds: [expenditure]
     pages: [66, 168, 169, 172, 173, 174, 178, 181, 182, 183]
+    aliases:
+      #@cite p0168 (ACFR) "Capital outlay   6,211,698   4,065,706"
+      - term: "Capital outlay"
+        pages: [168]
+        note: >-
+          ACFR p168, not a Budget Book page -- the Budget Book's own p168 is
+          already on the list above. Capitalisation only: the changes
+          statement prints the same object line among its functions.
 
   #@cite p0066 "Debt Services - - 694,054 697,350"
   #@cite p0183 "Debt Services 128,667 1,026,816 1,070,500 1,115,510" (Facilities Rehab)
@@ -492,6 +525,14 @@ categories:
     document_term: "General Government"
     kinds: [expenditure]
     pages: [41]
+    aliases:
+      #@cite p0168 (ACFR) "General government   14,343,118   13,531,789"
+      - term: "General government"
+        pages: [168]
+        note: >-
+          ACFR p168, not a Budget Book page. Capitalisation only: the ten-year
+          Changes in Fund Balances statement prints the same function line the
+          p41 statement subtotals.
     note: >-
       ACFR p41, not a Budget Book page — see the note on `pages` in this
       file's header. The page prints the label with a trailing colon
@@ -500,6 +541,87 @@ categories:
       punctuation of the layout rather than part of the term. The rule
       that reads it declares the colon form as its total_row, so the two
       spellings are both written down and neither is inferred.
+
+  # The rest of the function axis, from ACFR p168 (Changes in Fund Balances
+  # of Governmental Funds, mapped at scope acfr-changes-in-fund-balances).
+  # Every page below is the ACFR's. One slug is derived: the mechanical
+  # `library` is a division slug in data/departments.yaml and the registry
+  # refuses one string on both axes, because row_path joins them.
+  # `community-development` and `public-works` coincide with DEPARTMENT slugs,
+  # which enter no row_path and collide with nothing; they stay mechanical.
+
+  #@cite p0168 (ACFR) "Fire   17,593,133   18,160,089"
+  - slug: fire
+    label: "Fire"
+    document_term: "Fire"
+    kinds: [expenditure]
+    pages: [168]
+    note: >-
+      ACFR p168, not a Budget Book page.
+
+  #@cite p0168 (ACFR) "Police   31,248,269   32,611,631"
+  - slug: police
+    label: "Police"
+    document_term: "Police"
+    kinds: [expenditure]
+    pages: [168]
+    note: >-
+      ACFR p168, not a Budget Book page.
+
+  #@cite p0168 (ACFR) "Public Works   7,125,447   9,801,590"
+  - slug: public-works
+    label: "Public Works"
+    document_term: "Public Works"
+    kinds: [expenditure]
+    pages: [168]
+    note: >-
+      ACFR p168, not a Budget Book page.
+
+  #@cite p0168 (ACFR) "Community Development   26,435,968   22,366,625"
+  - slug: community-development
+    label: "Community Development"
+    document_term: "Community Development"
+    kinds: [expenditure]
+    pages: [168]
+    note: >-
+      ACFR p168, not a Budget Book page.
+
+  #@cite p0168 (ACFR) "Economic Development   -   2,355,266"
+  - slug: economic-development
+    label: "Economic Development"
+    document_term: "Economic Development"
+    kinds: [expenditure]
+    pages: [168]
+    note: >-
+      ACFR p168, not a Budget Book page. Dash-zero in 2016; the function
+      first spends in 2017.
+
+  #@cite p0168 (ACFR) "Library   4,540,660   5,287,778"
+  - slug: library-function
+    label: "Library"
+    document_term: "Library"
+    kinds: [expenditure]
+    pages: [168]
+    derived: true
+    rationale: >-
+      The mechanical slug is `library`, which is already a division slug in
+      data/departments.yaml, and the registry refuses a division/category
+      collision because a fact's row_path joins exactly those two axes. The
+      suffix names the axis this entry classifies.
+    source_note: >-
+      ACFR p168, not a Budget Book page; the Library row of the Changes in
+      Fund Balances statement.
+
+  #@cite p0168 (ACFR) "Redevelopment   -   -" (dash in all ten years)
+  - slug: redevelopment
+    label: "Redevelopment"
+    document_term: "Redevelopment"
+    kinds: [expenditure]
+    pages: [168]
+    note: >-
+      ACFR p168, not a Budget Book page. A dash in every year of the
+      statement: the line exists and is zero since the agency's dissolution.
+      The successor agency's own figures are pp.192-194's, unmapped.
 
   # ==================================================================
   # EXPENDITURE — the funding-source axis
@@ -829,3 +951,101 @@ categories:
       extraction caveat as fund-balance/ending: on pp. 69/71/73/75 the header
       appears in the page text as "Reserve" and "Increase/(Use)" separated by
       the other column labels.
+
+  # The GASB 54 components, from ACFR p167 (Fund Balances of Governmental
+  # Funds, mapped at scope acfr-fund-balances). The rows print bare
+  # adjectives; the head noun is the schedule title's, so the parent segment
+  # is a lift on every one.
+
+  #@cite p0167 (ACFR) "Nonspendable   $     5,220,875   $     5,191,768"
+  - slug: fund-balance/nonspendable
+    label: "Nonspendable Fund Balance"
+    document_term: "Nonspendable"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [167]
+    derived: true
+    rationale: >-
+      The row prints the bare adjective and `nonspendable` alone names no
+      axis, the argument that renamed `miscellaneous` to
+      `miscellaneous-revenue`; the fund-balance/ segment comes from the
+      schedule title rather than the row.
+    source_note: >-
+      ACFR p167, not a Budget Book page; both blocks of Fund Balances of
+      Governmental Funds print the row.
+
+  #@cite p0167 (ACFR) "Restricted   -   ...   6,758,239" (General Fund block)
+  - slug: fund-balance/restricted
+    label: "Restricted Fund Balance"
+    document_term: "Restricted"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [167]
+    derived: true
+    rationale: >-
+      Same lift as fund-balance/nonspendable, from the same schedule title.
+    source_note: >-
+      ACFR p167, not a Budget Book page; both blocks print the row.
+
+  #@cite p0167 (ACFR) "Committed   13,980,181   14,534,792"
+  - slug: fund-balance/committed
+    label: "Committed Fund Balance"
+    document_term: "Committed"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [167]
+    derived: true
+    rationale: >-
+      Same lift as fund-balance/nonspendable, from the same schedule title.
+    source_note: >-
+      ACFR p167, not a Budget Book page; both blocks print the row.
+
+  #@cite p0167 (ACFR) "Assigned   16,490,551   17,891,417"
+  - slug: fund-balance/assigned
+    label: "Assigned Fund Balance"
+    document_term: "Assigned"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [167]
+    derived: true
+    rationale: >-
+      Same lift as fund-balance/nonspendable, from the same schedule title.
+    source_note: >-
+      ACFR p167, not a Budget Book page; only the General Fund block prints
+      the row -- All Other Governmental Funds has no Assigned line, and that
+      absence is what catches the rule pointed at the wrong block.
+
+  #@cite p0167 (ACFR) "Unassigned   11,447,929   16,850,333"
+  - slug: fund-balance/unassigned
+    label: "Unassigned Fund Balance"
+    document_term: "Unassigned"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [167]
+    derived: true
+    rationale: >-
+      Same lift as fund-balance/nonspendable, from the same schedule title.
+    source_note: >-
+      ACFR p167, not a Budget Book page; both blocks print the row, negative
+      in four All Other Governmental Funds years.
+
+  #@cite p0168 (ACFR) "Excess of Revenues / over (under) / expenditures
+  #@cite     $ 34,874,048     $ 17,617,382" (the label wraps over three lines)
+  - slug: fund-balance/excess-of-revenues
+    label: "Excess of Revenues over (under) Expenditures"
+    document_term: "Excess of Revenues over (under) expenditures"
+    parent: fund-balance
+    kinds: [fund_balance]
+    pages: [168]
+    derived: true
+    rationale: >-
+      The slug abbreviates a three-line printed label, and classifying the
+      changes statement's pre-financing subtotal as fund_balance is the
+      judgment fund-balance/change already records for Net Change in Fund
+      Balances: a flow line of that statement, printed rather than computed
+      by us.
+    source_note: >-
+      ACFR p168, not a Budget Book page. The label wraps over three lines, so
+      the mapping anchors on its fragments. excess-of-revenues-identity
+      (internal/check) recomputes this row from the same statement's revenue
+      and expenditure facts, per column.

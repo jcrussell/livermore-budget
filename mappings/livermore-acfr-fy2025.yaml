@@ -97,9 +97,8 @@
 #     wrong is worse than none. See data/taxonomy.yaml's general-government
 #     entry.
 #
-# (3) THE FY2024 COLUMN IS PRESENT AND IS NOT PUBLISHED. data/sources.yaml
-#     declares this document carries fiscal_years: [2025], which would be reason
-#     enough. The stronger reason is that THREE OF THE PAGE'S FOUR BLOCKS do not
+# (3) THE FY2024 COLUMN IS PRESENT AND IS NOT PUBLISHED. The reason is that
+#     THREE OF THE PAGE'S FOUR BLOCKS do not
 #     reconcile in that column: its ten revenue rows sum to 145.70 against a
 #     printed 145.50; its expenditure rows to 122.80 against 122.90, at the top
 #     level, so it fails under either reading; and 83.90 + 8.10 = 92.00 against
@@ -518,3 +517,262 @@ rules:
       - {label: "2023", skip: true}
       - {label: "2024", skip: true}
       - {label: "2025", skip: true}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0167-general-fund-balances
+    kind: fund_balance
+    basis: audited
+    scope: acfr-fund-balances
+    units: dollars
+    total_row: "Total general fund"
+    note: >-
+      p167, Fund Balances of Governmental Funds, the General Fund block: the
+      five GASB 54 components over ten audited years, tying to the printed
+      Total general fund exactly in every column (2016: 47,139,536). No
+      column_headers -- the columns are headed by bare years, which the parser
+      refuses (fisc-wiyg) -- so the printed total is the only guard over a
+      wrong-column read, and nothing at all guards a whole column filed under
+      the wrong year. The totals line prints a detached "$" per column, which
+      is why amountRun drops detached marks; revert that and this rule reddens
+      with "no run of 10 consecutive amounts follows the anchor".
+    parts:
+      - page: 167
+        section: "General Fund"
+        stop_at: "Total general fund"
+        columns:
+          - {fund_group: general, fiscal_year: 2016}
+          - {fund_group: general, fiscal_year: 2017}
+          - {fund_group: general, fiscal_year: 2018}
+          - {fund_group: general, fiscal_year: 2019}
+          - {fund_group: general, fiscal_year: 2020}
+          - {fund_group: general, fiscal_year: 2021}
+          - {fund_group: general, fiscal_year: 2022}
+          - {fund_group: general, fiscal_year: 2023}
+          - {fund_group: general, fiscal_year: 2024}
+          - {fund_group: general, fiscal_year: 2025}
+    rows:
+      - {label: "Nonspendable", category: fund-balance/nonspendable}
+      - {label: "Restricted", category: fund-balance/restricted}
+      - {label: "Committed", category: fund-balance/committed}
+      - {label: "Assigned", category: fund-balance/assigned}
+      - {label: "Unassigned", category: fund-balance/unassigned}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0167-other-governmental-fund-balances
+    kind: fund_balance
+    basis: audited
+    scope: acfr-fund-balances
+    units: dollars
+    total_row: "Total all other governmental funds"
+    note: >-
+      p167's second block, All Other Governmental Funds: four components (the
+      page prints no Assigned row here) tying to the printed total exactly in
+      every column. The columns carry NO fund_group, which is the page rather
+      than an omission: the aggregate spans special-revenue, debt-service and
+      capital funds, and naming any one type would file the others' balances
+      under it. The two blocks print identical row labels, so a rule resolved
+      against the wrong section is caught by shape, not by luck: this rule
+      read against the General Fund block trips checkGap on the unmapped
+      Assigned row (pinned in acfr_changes_test.go).
+    parts:
+      - page: 167
+        section: "All Other Governmental Funds"
+        stop_at: "Total all other governmental funds"
+        columns:
+          - {fiscal_year: 2016}
+          - {fiscal_year: 2017}
+          - {fiscal_year: 2018}
+          - {fiscal_year: 2019}
+          - {fiscal_year: 2020}
+          - {fiscal_year: 2021}
+          - {fiscal_year: 2022}
+          - {fiscal_year: 2023}
+          - {fiscal_year: 2024}
+          - {fiscal_year: 2025}
+    rows:
+      - {label: "Nonspendable", category: fund-balance/nonspendable}
+      - {label: "Restricted", category: fund-balance/restricted}
+      - {label: "Committed", category: fund-balance/committed}
+      - {label: "Unassigned", category: fund-balance/unassigned}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0168-revenues
+    kind: revenue
+    basis: audited
+    scope: acfr-changes-in-fund-balances
+    units: dollars
+    total_row: "Total revenues"
+    note: >-
+      p168, Changes in Fund Balances of Governmental Funds, the revenue block:
+      nine lines over ten audited years, all governmental funds combined (so
+      no fund_group), tying to the printed Total revenues exactly in every
+      column. Same guard situation as p167: bare-year headers refuse the
+      geometry guard (fisc-wiyg), so the printed total and the
+      excess-of-revenues-identity check are what stand over these figures.
+    parts:
+      - page: 168
+        # "Revenues" is the block heading; the second occurrence is inside
+        # "Excess of Revenues" further down the page.
+        section: "Revenues"
+        section_ordinal: 1
+        stop_at: "Total revenues"
+        columns:
+          - {fiscal_year: 2016}
+          - {fiscal_year: 2017}
+          - {fiscal_year: 2018}
+          - {fiscal_year: 2019}
+          - {fiscal_year: 2020}
+          - {fiscal_year: 2021}
+          - {fiscal_year: 2022}
+          - {fiscal_year: 2023}
+          - {fiscal_year: 2024}
+          - {fiscal_year: 2025}
+    rows:
+      # The "(1)" is the page's own footnote marker, printed as part of the
+      # label; the footnote reclassifies VLF Comp from Intergovernmental in
+      # FY2024-25.
+      - {label: "Property Taxes and special assessments (1)", category: taxes/property}
+      - {label: "Sales taxes", category: taxes/sales}
+      - {label: "Licenses and permits", category: licenses-and-permits}
+      - {label: "Intergovernmental", category: intergovernmental}
+      - {label: "Contributions from outside sources", category: contributions-outsourced}
+      - {label: "Fines and forfeitures", category: fines-and-forfeitures}
+      - {label: "Charges for current services", category: charges-for-services}
+      - {label: "Use of money and property", category: use-of-money-and-property}
+      - {label: "Miscellaneous", category: miscellaneous-revenue}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0168-expenditures
+    kind: expenditure
+    basis: audited
+    scope: acfr-changes-in-fund-balances
+    units: dollars
+    total_row: "Total Expenditures"
+    note: >-
+      p168's expenditure block: the ACFR's function axis (data/taxonomy.yaml's
+      function categories), twelve lines tying to the printed Total
+      Expenditures exactly in every column. Redevelopment prints a dash in all
+      ten years -- a line that exists and is zero, published as such. The
+      three debt-service lines share the debt-services category and are told
+      apart by row_label, the taxonomy's doctrine for detail lines; the first
+      of them is a two-anchor row because the page prints the group label
+      "Debt service funds:" on its own line directly above "Principal".
+    parts:
+      - page: 168
+        # The block heading; the second occurrence is inside "Total
+        # Expenditures".
+        section: "Expenditures"
+        section_ordinal: 1
+        stop_at: "Total Expenditures"
+        columns:
+          - {fiscal_year: 2016}
+          - {fiscal_year: 2017}
+          - {fiscal_year: 2018}
+          - {fiscal_year: 2019}
+          - {fiscal_year: 2020}
+          - {fiscal_year: 2021}
+          - {fiscal_year: 2022}
+          - {fiscal_year: 2023}
+          - {fiscal_year: 2024}
+          - {fiscal_year: 2025}
+    rows:
+      - {label: "General government", category: general-government}
+      - {label: "Fire", category: fire}
+      - {label: "Police", category: police}
+      - {label: "Public Works", category: public-works}
+      - {label: "Community Development", category: community-development}
+      - {label: "Economic Development", category: economic-development}
+      - {label: "Library", category: library-function}
+      - {label: "Redevelopment", category: redevelopment}
+      - {label: "Capital outlay", category: capital-outlay}
+      - {label: "Debt service funds:", label_tail: "Principal", category: debt-services}
+      - {label: "Interest and fiscal charges", category: debt-services}
+      - {label: "Issuance cost", category: debt-services}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0168-excess-of-revenues
+    kind: fund_balance
+    basis: audited
+    scope: acfr-changes-in-fund-balances
+    units: dollars
+    note: >-
+      The statement's own subtotal, Excess of Revenues over (under)
+      expenditures. The page wraps the label over three lines, so the section
+      anchor is its first fragment and the row's two anchors are the second
+      and third. NO total_row -- this is one printed line -- and what asserts
+      it instead is excess-of-revenues-identity (internal/check): total
+      revenues minus total expenditures equals this row, per column, measured
+      to hold in all ten before the check was written. That is the batch's
+      corroboration tie; the cross-table candidates fisc-oakx.3 named were
+      measured dead (fisc-y242 and the bead's own notes).
+    parts:
+      - page: 168
+        section: "Excess of Revenues"
+        # The footnote line under the block; a stop_at may not be a figure,
+        # and "(1)" alone parses as a negative amount.
+        stop_at: "(1) VLF"
+        columns:
+          - {fiscal_year: 2016}
+          - {fiscal_year: 2017}
+          - {fiscal_year: 2018}
+          - {fiscal_year: 2019}
+          - {fiscal_year: 2020}
+          - {fiscal_year: 2021}
+          - {fiscal_year: 2022}
+          - {fiscal_year: 2023}
+          - {fiscal_year: 2024}
+          - {fiscal_year: 2025}
+    rows:
+      - {label: "over (under)", label_tail: "expenditures", category: fund-balance/excess-of-revenues}
+
+  # --------------------------------------------------------------------------
+  - id: acfr-p0169-other-financing
+    kind: transfer_in
+    basis: audited
+    scope: acfr-changes-in-fund-balances
+    units: dollars
+    note: >-
+      p169, the statement's Other Financing Sources (Uses) block and the two
+      lines that close it: read whole, publishing nothing yet (fisc-qyrw).
+      The block's printed total cannot be a total_row: its 2023 cell prints
+      (1,767,367), a copy of 2022, against components summing to 39,259,064
+      (41,558,955 of bond proceeds plus 6,672,696 in, less 8,972,587 out) --
+      the other nine columns tie -- and a stated_total_delta sized to a copied
+      cell would be the fabricated declaration Rule.TotalSpansParts' doc
+      comment warns against. Net change in fund balances 2023 is the same
+      copy, and publishing it as fund-balance/change would also trip
+      fund-balance-identity's completeness arm: no beginning or ending line
+      exists at this scope. The kind above is the schema's required field,
+      inert while every row is skipped. The last row is the whole-row quantity
+      channel's real-page consumer: remove its quantity and the read reddens
+      on 'cannot parse amount "6.6%"' (acfr_changes_test.go).
+    parts:
+      - page: 169
+        # The second line of the block heading; the total row prints the same
+        # words in lower case.
+        section: "Sources (Uses)"
+        # Only the page number follows the block; the blank line below the
+        # last row is the only boundary left, as on p41's fund-balance rule.
+        stop_at: "\n\n"
+        wrapped_labels: ["Debt service as a"]
+        columns:
+          - {fiscal_year: 2016}
+          - {fiscal_year: 2017}
+          - {fiscal_year: 2018}
+          - {fiscal_year: 2019}
+          - {fiscal_year: 2020}
+          - {fiscal_year: 2021}
+          - {fiscal_year: 2022}
+          - {fiscal_year: 2023}
+          - {fiscal_year: 2024}
+          - {fiscal_year: 2025}
+    rows:
+      - {label: "Proceeds from long term debt", skip: true}
+      - {label: "Payment to refunded bond escrow agent", skip: true}
+      - {label: "Refunding bonds issued", skip: true}
+      - {label: "Premium on refunding bonds issued", skip: true}
+      - {label: "Transfers in", skip: true}
+      - {label: "Transfers out", skip: true}
+      - {label: "Total other financing", label_tail: "sources (uses)", skip: true}
+      - {label: "Net change in", label_tail: "fund balances", skip: true}
+      - {label: "percentage of noncapital", label_tail: "expenditures", quantity: percentage}

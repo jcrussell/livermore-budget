@@ -219,8 +219,7 @@ func TestACFRp0041ExpendituresTieUnderTheTopLevelReading(t *testing.T) {
 // TestACFRp0041PriorYearColumnDoesNotReconcile is the arithmetic carrying the
 // decision to declare the FY2024 column skip: true rather than publish it.
 //
-// data/sources.yaml declares this document carries fiscal_years: [2025], which
-// would be reason enough. This is the stronger reason: three of the page's four
+// The reason is arithmetic: three of the page's four
 // PRINTED blocks do not reconcile in that column, by $200,000, $100,000 and
 // $100,000 on a page printed to the nearest $10,000. Those are twenty, ten and
 // ten printed units -- nowhere near the document's own rounding, and nothing a

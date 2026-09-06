@@ -57,6 +57,20 @@ var reconciledScopes = map[scopePair]string{
 // error, not a pass"). The reason is required and is checked against the corpus
 // by the measured arm below, so a declaration that stops being true goes red.
 var disjointScopes = map[scopePair]string{
+	pairOf(project.PublishedScope, acfrFundBalancesScope): "FY2016-FY2025 audited against " +
+		"FY2026-27 adopted: selectFacts admits one (fiscal_year, basis) per projection " +
+		"column, so no column holds both. And unlike acfr-general-fund-summary " +
+		"(fisc-tlbp), the pair shares zero keys even at netCells' own three-field grain " +
+		"(kind, category, fund_group), measured over the committed store: the GASB 54 " +
+		"component categories are ones the spine never writes",
+
+	pairOf(project.PublishedScope, acfrChangesScope): "FY2016-FY2025 audited against " +
+		"FY2026-27 adopted, and zero shared keys at netCells' three-field grain here " +
+		"too, for a different reason than its sibling: every fact of this scope carries " +
+		"no fund_group (ACFR pp.168-169 print all governmental funds combined), which " +
+		"netCells refuses outright, so no projection can merge one with a spine cell " +
+		"in any column",
+
 	pairOf(revenueDetailScope, expenditureDetailScope): "disjoint by KIND, and the disjointness " +
 		"is structural rather than lucky: pp.127-140 publish revenue and transfer_in and " +
 		"pp.167-170 publish expenditure, and every cell key internal/project builds carries " +

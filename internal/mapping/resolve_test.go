@@ -176,7 +176,7 @@ var fixturePages = map[string][]int{
 		167, 168, 169, 170,
 	},
 	cipFixtures.id:  {29, 40},
-	acfrFixtures.id: {41, 177},
+	acfrFixtures.id: {41, 167, 168, 169, 177},
 }
 
 // TestFixturesAreVerbatimCopies is what makes every other test in this package
@@ -700,6 +700,28 @@ func TestCurrencyMarkedTotalsRunSurvivesAGluedDataRow(t *testing.T) {
 	// A bare run is still read exactly as before: no "$" means no prefix rule.
 	if _, ok := amountRun("10 11 12 13 14", 3, amount.Dollars); ok {
 		t.Error("amountRun on a bare 5-run found a 3-run; the maximal-run rule must still hold")
+	}
+}
+
+// TestDetachedCurrencyMarkedTotalsRunIsReadable pins amountRun's detached-mark
+// handling, which ACFR p167's totals lines need: the page prints "$ 47,139,536"
+// per column, mark and figure as separate tokens, so without the drop every run
+// is one amount wide. TestACFRStatisticalRulesPublishAndTie carries the
+// real-page half of this proof.
+func TestDetachedCurrencyMarkedTotalsRunIsReadable(t *testing.T) {
+	got, ok := amountRun("$ 1,061,355   $ 969,934   $ 6,984,597", 3, amount.Dollars)
+	if !ok {
+		t.Fatal("amountRun did not read a 3-wide totals line with detached marks")
+	}
+	want := []amount.Cents{1_061_355_00, 969_934_00, 6_984_597_00}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("amountRun mismatch (-want +got):\n%s", diff)
+	}
+	// A mark with no figure after it fails the whole line, closed, even though
+	// a run of the asked-for width precedes it: that shape means the read has
+	// run off the end of the row, not that the row ends in punctuation.
+	if _, ok := amountRun("$ 1,061,355 $", 1, amount.Dollars); ok {
+		t.Error("amountRun read past a trailing currency mark; it must fail the line")
 	}
 }
 

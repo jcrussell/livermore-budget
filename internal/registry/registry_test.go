@@ -360,7 +360,7 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 
 	cats := r.Categories()
-	if got, want := len(cats), 27; got != want {
+	if got, want := len(cats), 40; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
 	if got, want := len(r.FundGroups()), 7; got != want {
@@ -396,7 +396,7 @@ func TestLoadRealRegistries(t *testing.T) {
 	if diff := cmp.Diff(wantUnassignable, unassignable); diff != "" {
 		t.Errorf("non-assignable slugs mismatch (-want +got):\n%s", diff)
 	}
-	if got, want := len(derived), 7; got != want {
+	if got, want := len(derived), 14; got != want {
 		t.Errorf("derived categories = %d %v, want %d", got, derived, want)
 	}
 

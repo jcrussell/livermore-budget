@@ -948,8 +948,16 @@ func (r *Resolver) RollupTotalSpan(ro *Rollup) (lo, hi int, err error) {
 // where before the bare one won. No line in the corpus does that, and reading
 // the marked run first is the better answer anyway — but it is a behaviour
 // change, not merely an addition.
+// A DETACHED mark is dropped before the run is sought, exactly as the labelled
+// read drops it: ACFR p167 prints its totals as "$ 47,139,536      $ 54,468,310"
+// per column, so without the drop every run is one amount wide and no width can
+// match. A mark with no figure after it fails the whole line, closed, through
+// dropCurrencyMarks' own refusal.
 func amountRun(s string, n int, u amount.Units) ([]amount.Cents, bool) {
-	toks := tokens(s, 0)
+	toks, err := dropCurrencyMarks(tokens(s, 0))
+	if err != nil {
+		return nil, false
+	}
 	for i := 0; i < len(toks); {
 		var run []amount.Cents
 		j := i
