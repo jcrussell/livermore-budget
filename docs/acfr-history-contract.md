@@ -90,9 +90,10 @@ holds the store to it on every `fisc verify`.
 ## Cross-page ties measured and found dead
 
 Recorded so nobody re-plans them: p167's year-over-year total deltas match
-p169's Net change in 2017 only; and p41's ending General Fund balance is
-$56,424 from p167's 2025 components ($87.10M printed against $87,043,576
-summed, `fisc-y242`). The p41 disagreement ships as a caveat on the
+p169's Net change in only 3 of the 9 comparable years -- 2017, 2020 and 2022,
+the last of them a column p169 copies into 2023; and p41's ending General Fund
+balance is $56,424 from p167's 2025 components ($87.10M printed against
+$87,043,576 summed, `fisc-y242`). The p41 disagreement ships as a caveat on the
 `fund-balances` document. The two ties that do hold in the Statistical Section
 (p187↔p189, p193↔p192) are between pages this lane does not publish; see
 `docs/acfr-statistical-section.md`.

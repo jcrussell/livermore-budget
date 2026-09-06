@@ -143,10 +143,16 @@ recomputed from the page named.
 Cross-table and cross-year ties that looked like guards and are not, measured:
 
 - **p163 year-over-year deltas do not equal p166's Change in Net Position**
-  except 2017 (2018: delta 6,840,766 vs printed 19,161,491; 2024: 7,628,754 vs
-  15,415,297; 2025: 41,770,382 vs 43,098,461). Restatements are not shown.
-- **p167 deltas vs p169's Net change**: ties 2017 only (2018 off 190,263, 2025
-  off 2,667).
+  except in 3 of the 9 comparable years: 2017 (15,880,225), 2020 (8,304,751)
+  and 2022 (10,611,708). Elsewhere they diverge (2018: delta 6,840,766 vs
+  printed 19,161,491; 2024: 7,628,754 vs 15,415,297; 2025: 41,770,382 vs
+  43,098,461). Restatements are not shown.
+- **p167 deltas vs p169's Net change**: ties in the same 3 of 9 years, 2017
+  (17,414,645), 2020 (4,868,219) and 2022 (-16,975,824), and not elsewhere
+  (2018 off 190,263, 2025 off 2,667).
+- **Both tables' 2022 tie is worth no confidence**: 2023 prints a copy of 2022
+  on p166 and on p169, the defect recorded above, so the matching column is
+  one the pages already disagree about downstream.
 - **p192 vs p194 gross tax revenues**: tie to the thousand for FY2016-17
   through FY2020-21, diverge after (FY2021-22: 8,746k vs 8,297,623).
 - **p177's footnote (1) says personal income is Alameda County's; the ratio
