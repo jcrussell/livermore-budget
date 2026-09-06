@@ -13,7 +13,7 @@
 // this file is the one the failure message prints, and it is worth checking.
 //
 // FOUR OF THE CITATIONS ARE PRINTED TO A TERMINAL by a failing gate rather than
-// only sitting in a comment -- the Makefile's narration arm, tools/memcheck,
+// only sitting in a comment -- tools/narration, tools/memcheck,
 // tools/beadrefs, and this command's own failure message below -- so a stale one
 // is a false claim the program makes to a user at the moment they are already
 // dealing with a failure.

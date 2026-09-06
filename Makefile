@@ -69,6 +69,15 @@ tidy: ## Tidy go.mod/go.sum
 # editing anyway rather than in a sweep, so this target's failure is the moment
 # you touch such a file, which is exactly when the rule says to fix it.
 #
+# THE GO ARM JUDGES COMMENT BLOCKS, NOT LINES. A refused phrase wraps wherever
+# gofmt put the wrap, and a bare interior line of a /* */ block carries no
+# marker for a line pattern to hold on to, so tools/narration gathers each run
+# of comment lines with no code and no blank line between them and matches over
+# the join, with every gap \s+ -- the same form tools/memcheck uses over the
+# memories, and for the same reason. It fails on a path it cannot read, so an
+# entry gone from the hand-maintained list below takes this red rather than
+# silently narrowing the scan.
+#
 # THE SECOND ARM READS THE MEMORIES, which bd prime injects into every session.
 # Same rule, worse placed: a memory's erratum arrives in context whether or not
 # anyone opens the file it is about. It is a second arm on this target rather
@@ -99,24 +108,7 @@ tidy: ## Tidy go.mod/go.sum
 # advisory check over the database.
 .PHONY: narration
 narration: ## Refuse review credits and comment errata in Go sources and memories
-	@hits=$$(grep -rnE '//.*(Found by /code-review|this comment used to say)' \
-		--include='*.go' ./cmd ./internal ./pkg ./site ./tools); \
-	status=$$?; \
-	if [ $$status -gt 1 ]; then \
-		if [ -n "$$hits" ]; then echo "$$hits" >&2; fi; \
-		echo "narration: grep failed with status $$status; the directory list above" >&2; \
-		echo "  is hand-maintained and one of its entries is probably gone." >&2; \
-		exit 1; \
-	fi; \
-	if [ -n "$$hits" ]; then \
-		echo "$$hits" >&2; \
-		echo "" >&2; \
-		echo "narration: the lines above put HISTORY in a source comment." >&2; \
-		echo "  A review credit belongs in the commit body; an erratum belongs" >&2; \
-		echo "  in git. Keep the rule the comment carries and delete the history" >&2; \
-		echo "  that argued for it. See AGENTS.md, \"History's home is git\"." >&2; \
-		exit 1; \
-	fi
+	@go run ./tools/narration ./cmd ./internal ./pkg ./site ./tools
 	@command -v bd >/dev/null 2>&1 || { \
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
 		exit 0; \
@@ -163,7 +155,7 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 # written down and sends the reader looking for a heading that is gone.
 #
 # SOME OF THEM ARE PRINTED TO A TERMINAL rather than only sitting in a comment --
-# narration's failure message above, tools/memcheck, tools/beadrefs and doccheck
+# tools/narration's failure message, tools/memcheck, tools/beadrefs and doccheck
 # itself -- so a stale one is a false claim made to a user already dealing with a
 # failure. tools/doccheck's package comment carries the count; it is not repeated
 # here, because this exact sentence has now been wrong at two, three and four in

@@ -573,9 +573,7 @@ type cellRef struct {
 	// are printed in parentheses and published signed — so the stylesheet can
 	// colour the cell and fill the mark's bar downward.
 	//
-	// THE CELL STILL RENDERS A MINUS SIGN, DELIBERATELY, and this comment used
-	// to say the opposite: that the flag existed "so the stylesheet can show it
-	// as the document does rather than as a minus sign in a table". Rendering
+	// THE CELL STILL RENDERS A MINUS SIGN, DELIBERATELY. Rendering
 	// (14,086,438) as the city prints it was considered and refused, because
 	// screen readers do not announce parentheses at default punctuation
 	// settings — the cell would be read aloud as a POSITIVE figure, and the
