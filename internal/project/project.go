@@ -204,6 +204,22 @@ func PublishedDocuments() []PublishedDocument {
 			Columns:    slices.Clone(o.Columns),
 		})
 	}
+
+	// The two ACFR ten-year schedules, one document each: two row axes, two
+	// scopes, and seriesSpec's one-schedule rule keeps them apart. Their
+	// columns are stated by [HistoryColumns], for TrendsColumns' reason.
+	out = append(out, PublishedDocument{
+		Projection: ChangesProjection,
+		Stem:       ChangesProjection,
+		Scopes:     []string{ChangesScope},
+		Columns:    HistoryColumns(),
+	})
+	out = append(out, PublishedDocument{
+		Projection: FundBalancesProjection,
+		Stem:       FundBalancesProjection,
+		Scopes:     []string{FundBalancesScope},
+		Columns:    HistoryColumns(),
+	})
 	return out
 }
 
@@ -607,5 +623,11 @@ type Sliced interface {
 // and every node is labelled "Use Of Money And Property" instead of the words
 // the city printed.
 func Registry(l labels) []Projection {
-	return []Projection{&sankey{Labels: l}, &Trends{Labels: l}, &fundFlows{Labels: l}}
+	return []Projection{
+		&sankey{Labels: l},
+		&Trends{Labels: l},
+		&fundFlows{Labels: l},
+		&FundBalanceChanges{Labels: l},
+		&FundBalances{Labels: l},
+	}
 }

@@ -609,6 +609,43 @@ func views(built result) []export.View {
 				"are intentions adopted together.",
 		})
 	}
+	// THE TWO ACFR TEN-YEAR TABLES, server-rendered like the trends page. The
+	// section headings are the blocks the schedules print, and each entry's
+	// Kind/FundGroup pair is what the document's own series carry —
+	// buildHistoryPage refuses a mismatch in either direction.
+	if _, ok := projections[project.ChangesProjection]; ok {
+		out = append(out, export.View{
+			Path:       "history.html",
+			Nav:        "Ten-year history",
+			Template:   export.HistoryTemplate,
+			Projection: project.ChangesProjection,
+			Sections: []export.Section{
+				{Heading: "Revenues", Kind: "revenue"},
+				{Heading: "Expenditures", Kind: "expenditure"},
+				{Heading: "Excess of revenues over (under) expenditures", Kind: "fund_balance"},
+			},
+			Title: "Ten years of Livermore's money, as audited",
+			Lede: "What the city's governmental funds actually took in and spent, " +
+				"FY2015-16 through FY2024-25, from the audit the city publishes each " +
+				"year — not budgets or intentions, but the money that moved.",
+		})
+	}
+	if _, ok := projections[project.FundBalancesProjection]; ok {
+		out = append(out, export.View{
+			Path:       "balances.html",
+			Nav:        "Fund balances",
+			Template:   export.HistoryTemplate,
+			Projection: project.FundBalancesProjection,
+			Sections: []export.Section{
+				{Heading: "General Fund", Kind: "fund_balance", FundGroup: "general"},
+				{Heading: "All Other Governmental Funds", Kind: "fund_balance"},
+			},
+			Title: "What Livermore's funds held at each year's end",
+			Lede: "The audited balance of the General Fund and of all other governmental " +
+				"funds at each June 30, FY2015-16 through FY2024-25, split into the " +
+				"five categories that say how spendable each dollar is.",
+		})
+	}
 	// THE CAVEATS INDEX, THE SECOND VIEW THAT NAMES NO PROJECTION. It lists
 	// every published document's caveats in full, so the other pages can show
 	// one line and link here instead of reprinting the whole paragraph

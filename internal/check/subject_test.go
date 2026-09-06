@@ -770,13 +770,16 @@ func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	if got := resultFor(t, rep, "counts-reconcile").Status; got != StatusPass {
 		t.Errorf("counts-reconcile = %s, want pass over the untouched spine", got)
 	}
-	// And the two trend checks go VACUOUS rather than failing, which is the
-	// silence this check exists to convert into a finding. If either of them
-	// ever fails here instead, this check has stopped being the only thing
-	// standing between a vanished document and a green run.
+	// And the two trend checks stay GREEN rather than failing: the ACFR history
+	// pair still builds, so they pass over those documents and say nothing about
+	// the vanished one. (Before that pair existed they went vacuous here.) That
+	// silence is what published-projection-built exists to convert into a
+	// finding; if either of them ever fails here instead, it has stopped being
+	// the only thing standing between a vanished document and a green run.
 	for _, id := range []string{"trend-points-tie-to-facts", "trend-series-are-complete"} {
-		if got := resultFor(t, rep, id).Status; got != StatusVacuous {
-			t.Errorf("%s = %s, want vacuous: it reads documents and there is no document", id, got)
+		if got := resultFor(t, rep, id).Status; got != StatusPass {
+			t.Errorf("%s = %s, want pass over the remaining series documents, with "+
+				"published-projection-built alone reporting the vanished one", id, got)
 		}
 	}
 }

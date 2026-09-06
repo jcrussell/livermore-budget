@@ -169,6 +169,14 @@ type View struct {
 	// single site-wide list could not say that.
 	YearStems []string
 
+	// Sections are the printed blocks a history table groups its rows under,
+	// in printed order. The caller's words, like Title and Lede: a heading is
+	// prose about the document, which this package may render and never
+	// compose. buildHistoryPage refuses a series no section claims and a
+	// section that claims no series, so the declaration cannot silently
+	// mislabel a block the schedule gained or lost.
+	Sections []Section
+
 	// RenderTiers is the node tiers this view's chart draws, coarsest first,
 	// shipped to the client as FISC_CONFIG.render_tiers. Empty draws the
 	// document whole.
@@ -390,6 +398,16 @@ type PageIndexEntry struct {
 	Bytes int
 	// Note is the caller's sentence about this page, rendered verbatim.
 	Note string
+}
+
+// Section is one printed block of a history document: the heading the schedule
+// prints, and the (kind, fund_group) its series carry. A series belongs to the
+// section both of whose fields equal its own — exact match, so two sections
+// cannot contest one series.
+type Section struct {
+	Heading   string
+	Kind      string
+	FundGroup string
 }
 
 // Drill is a view's chart opening one node into its parts.
@@ -685,6 +703,15 @@ func (v View) validate(built map[string][]byte) error {
 			"view %q lists %d year stems and renders template %q, which has no year "+
 				"control; the years would be dropped in silence",
 			v.Path, len(v.YearStems), v.Template)
+	case len(v.Sections) > 0 && !templateRendersSections(v.Template):
+		return fmt.Errorf(
+			"view %q declares %d sections and renders template %q, which groups nothing; "+
+				"the headings would be dropped in silence",
+			v.Path, len(v.Sections), v.Template)
+	case len(v.Sections) == 0 && templateRendersSections(v.Template):
+		return fmt.Errorf(
+			"view %q renders template %q and declares no sections, so every row would "+
+				"land under no printed heading", v.Path, v.Template)
 	case len(v.RenderTiers) > 0 && !templateRendersTiers(v.Template):
 		return fmt.Errorf(
 			"view %q asks for render tiers %v and renders template %q, which publishes "+
@@ -779,7 +806,7 @@ func (v View) validate(built map[string][]byte) error {
 // is louder than a page quietly not showing it.
 func templateRendersLede(name string) bool {
 	switch name {
-	case TrendsTemplate, ChartTemplate, ProvenanceTemplate, CaveatsTemplate:
+	case TrendsTemplate, HistoryTemplate, ChartTemplate, ProvenanceTemplate, CaveatsTemplate:
 		return true
 	default:
 		return false
@@ -847,7 +874,7 @@ func templateDrawsAChart(name string) bool {
 // template needs an arm in buildSite's exhaustive switch regardless.
 func templateRendersADocument(name string) bool {
 	switch name {
-	case SankeyTemplate, TrendsTemplate, ChartTemplate:
+	case SankeyTemplate, TrendsTemplate, HistoryTemplate, ChartTemplate:
 		return true
 	default:
 		return false
@@ -877,6 +904,14 @@ func templateRendersADocument(name string) bool {
 func templateIsKnown(name string) bool {
 	return templateRendersADocument(name) ||
 		name == ProvenanceTemplate || name == CaveatsTemplate
+}
+
+// templateRendersSections answers whether a template groups its rows under
+// [View.Sections] headings. The same family as the five around it, and both
+// directions are refused in validate: headings dropped in silence lose the
+// only thing telling p167's two same-labelled blocks apart.
+func templateRendersSections(name string) bool {
+	return name == HistoryTemplate
 }
 
 // templateRendersTiers answers whether a template publishes [View.RenderTiers]

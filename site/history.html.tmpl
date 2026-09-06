@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}}</title>
+<meta name="description" content="{{.Lede}}">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  // Stamp the saved theme before first paint, as trends.html does. This page
+  // ships no app.js, so this is the whole of its scripting: the theme BUTTON is
+  // deliberately absent rather than present and dead.
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall back to the OS setting */ }
+</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+{{- if gt (len .Nav) 1}}
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    {{- range .Nav}}
+    <li>{{if .Current}}<span aria-current="page">{{.Label}}</span>{{else}}<a href="{{.Path}}">{{.Label}}</a>{{end}}</li>
+    {{- end}}
+  </ul>
+</nav>
+{{- end}}
+
+<header class="page-head">
+  <div>
+    <h1>{{.Title}}</h1>
+    <p class="lede">{{.Lede}}</p>
+  </div>
+</header>
+
+<main>
+
+<p class="lede">
+  {{.Count}} printed rows across {{len .Columns}} audited years, {{.Facts}} figures in all.
+  Every one is a number the city printed; each links to the extracted text of the page it
+  was read from. Nothing here is a total, a growth rate or a share — this page publishes
+  what the document publishes and computes nothing of its own.
+</p>
+
+<!-- The scale limit is stated where a reader meets it, not in a caveat further
+     down: rows here span from a few thousand dollars to over $100 million. -->
+<p class="lede subtle">
+  The <strong>Shape</strong> column draws each row's own {{len .Columns}} figures at that
+  row's own scale, so the tallest bar in every row is that row's largest number —
+  <em>marks in different rows are not comparable with each other</em>. A
+  <strong>dot</strong> on the line is a zero the city printed, and a bar hanging below the
+  line is a printed negative; the smallest bar is a real figure too small to draw at this
+  scale, never a zero. All {{len .Columns}} columns are audited results of the same
+  process, so unlike this site's budget tables a comparison may be carried across any pair
+  of years.
+</p>
+
+{{- if .Caveats}}
+<section class="caveats" aria-label="Caveats">
+  <h2>What this table does not say</h2>
+  <ul>
+    {{- range .Caveats}}
+    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+    {{- end}}
+  </ul>
+</section>
+{{- end}}
+
+<div class="table-scroll">
+<table class="series-table">
+  <caption>{{.Title}} — audited, {{.Scope}}</caption>
+  <thead>
+    <tr>
+      <th scope="col">Line</th>
+      <th scope="col">Category</th>
+      <th scope="col" class="mark-head">Shape</th>
+      {{- range .Columns}}
+      <th scope="col" class="num{{if .New}} group-start{{end}}" data-comparable-group="{{.Group}}">
+        {{.Label}}<span class="basis">{{.Basis}}</span>
+      </th>
+      {{- end}}
+    </tr>
+  </thead>
+  {{- $span := .HeadSpan}}
+  {{- range .Sections}}
+  <tbody>
+    <tr class="block-head">
+      <th scope="colgroup" colspan="{{$span}}">{{.Heading}}</th>
+    </tr>
+    {{- range .Series}}
+    <tr data-fund-group="{{.Group}}">
+      <th scope="row">{{.Label}}</th>
+      <td class="subtle">{{.Category}}</td>
+      <td class="mark">
+        {{- with .Mark}}
+        <svg viewBox="0 0 {{.Width}} {{.Height}}" width="{{.Width}}" height="{{.Height}}"
+             role="img" aria-label="{{.Label}}" preserveAspectRatio="xMidYMid meet">
+          <line class="mark-base" x1="0" y1="{{.Baseline}}" x2="{{.Width}}" y2="{{.Baseline}}"/>
+          {{- $h := .Height}}
+          {{- range .Rules}}
+          <line class="mark-rule" x1="{{.}}" y1="0" x2="{{.}}" y2="{{$h}}"/>
+          {{- end}}
+          {{- range .Bars}}
+          {{- if .Zero}}
+          <circle cx="{{.CX}}" cy="{{.Y}}" r="{{.R}}" class="mark-zero"
+          ><title>{{.Title}}</title></circle>
+          {{- else}}
+          <rect x="{{.X}}" y="{{.Y}}" width="{{.Width}}" height="{{.Height}}"
+                class="mark-bar{{if .Negative}} contra{{end}}"
+          ><title>{{.Title}}</title></rect>
+          {{- end}}
+          {{- end}}
+        </svg>
+        {{- end}}
+      </td>
+      {{- range .Cells}}
+      <td class="num{{if .New}} group-start{{end}}{{if .Negative}} contra{{end}}{{if .Missing}} missing{{end}}">
+        {{- if .Missing}}
+        <span title="This row is not printed in this column">{{.Value}}</span>
+        {{- else}}
+        <a href="{{.Href}}" title="Read on page {{.Page}}">{{.Value}}</a>
+        {{- end}}
+      </td>
+      {{- end}}
+    </tr>
+    {{- end}}
+  </tbody>
+  {{- end}}
+</table>
+</div>
+
+</main>
+
+<footer>
+  <h3>Sources</h3>
+  <ul>
+    {{- range .Sources}}
+    <li>
+      {{if .PDFURL}}<a href="{{.PDFURL}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}{{if .Publisher}}, {{.Publisher}}{{end}}
+      {{- if .Pages}} —
+      {{- range $i, $p := .Pages}}{{if $i}}, {{end}}
+        <a href="{{$p.PDFURL}}">p{{$p.Number}} (PDF)</a> /
+        <a href="{{$p.TextURL}}">extracted text</a>
+      {{- end}}{{end}}
+    </li>
+    {{- end}}
+  </ul>
+  <p class="subtle">
+    Scope {{.Scope}}. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
+    This table is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.
+    Every data file the site publishes, each fetchable on its own:
+    {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
+  </p>
+</footer>
+
+</body>
+</html>

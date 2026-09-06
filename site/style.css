@@ -1138,6 +1138,16 @@ noscript p {
   text-align: right;
   white-space: nowrap;
 }
+/* A printed block heading on the history tables — "Revenues", "General Fund".
+   It carries the block's identity, which for p167's two same-labelled
+   component lists is the only thing telling them apart, so it takes full ink
+   and a heavier rule above rather than relying on spacing. */
+.series-table tr.block-head th {
+  color: var(--ink-1);
+  font-weight: 600;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+}
 /* The boundary between comparable groups. FY2023-24 is money that moved and
    FY2025-26 is an intention; a reader running an eye across the row should
    meet something where the measurement changes, and the rule is that

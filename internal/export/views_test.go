@@ -651,6 +651,18 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
 				Projection: "sankey", RenderTiers: []int{0, 2, 4}}},
 			"publishes none"},
+		// The sections family, both directions: headings dropped in silence
+		// lose the only thing telling p167's two same-labelled blocks apart,
+		// and a history table with none puts every row under no heading.
+		{"sections a template cannot group", []export.View{ok,
+			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
+				Projection: "sankey",
+				Sections:   []export.Section{{Heading: "Revenues", Kind: "revenue"}}}},
+			"groups nothing"},
+		{"a history view with no sections", []export.View{ok,
+			{Path: "extra.html", Nav: "Extra", Template: export.HistoryTemplate,
+				Projection: "sankey"}},
+			"under no printed heading"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

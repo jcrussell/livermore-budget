@@ -24,6 +24,10 @@ import (
 const (
 	SankeyTemplate = "index.html.tmpl"
 	TrendsTemplate = "trends.html.tmpl"
+	// HistoryTemplate is a server-rendered series table like TrendsTemplate,
+	// with the rows grouped under the printed block headings a [View.Sections]
+	// declares. It ships no script beyond the theme stamp.
+	HistoryTemplate = "history.html.tmpl"
 	// ChartTemplate is a chart page with no stat tiles: a lede, a Sankey, the
 	// apparatus, and nothing that claims a headline. It was ChartTemplate
 	// and named one page; it now renders Revenue and Spending, which are that
@@ -938,6 +942,8 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 		switch v.Template {
 		case TrendsTemplate:
 			data, err = buildTrendsPage(o, v, here, byID, pageTextBase)
+		case HistoryTemplate:
+			data, err = buildHistoryPage(o, v, here, byID, pageTextBase)
 		case SankeyTemplate:
 			data, err = buildSankeyPage(o, v, here, byID, pageTextBase)
 		case ChartTemplate:
@@ -1479,12 +1485,16 @@ type trendsMetadata struct {
 	Scope       string            `json:"scope"`
 	Sources     []sourceMeta      `json:"sources"`
 	Columns     []trendColumnMeta `json:"columns"`
-	Counts      struct {
-		Facts  int `json:"facts"`
-		Series int `json:"series"`
-		Points int `json:"points"`
-	} `json:"counts"`
-	Caveats []caveatMeta `json:"caveats"`
+	Counts      trendCountsMeta   `json:"counts"`
+	Caveats     []caveatMeta      `json:"caveats"`
+}
+
+// trendCountsMeta is the document's own accounting of itself, which
+// reconcileSeriesCounts holds the rendered page to.
+type trendCountsMeta struct {
+	Facts  int `json:"facts"`
+	Series int `json:"series"`
+	Points int `json:"points"`
 }
 
 // trendColumnMeta is one column as the document declares it.
@@ -1511,6 +1521,7 @@ type trendsBody struct {
 		Fund          int          `json:"fund"`
 		FundName      string       `json:"fund_name"`
 		FundGroup     string       `json:"fund_group"`
+		Kind          string       `json:"kind"`
 		CategoryLabel string       `json:"category_label"`
 		Points        []trendPoint `json:"points"`
 	} `json:"series"`
@@ -1584,49 +1595,8 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		})
 	}
 
-	// THE RECONCILIATION buildCells' COMMENT HAS ALWAYS PROMISED, performed at
-	// last. counts.points and counts.series were decoded and read nowhere, so a
-	// document could lose a figure between the projection and the page and still
-	// print a lede saying how many figures it had drawn -- a published page whose
-	// own prose contradicts what it shows, which is the class this project exists
-	// to refuse (fisc-4j5).
-	//
-	// THE RULE IS NARROW AND IT IS WORTH STATING, because `fisc export` runs no
-	// checks by design and this is the one thing it now insists on: a document
-	// whose counts disagree with its own series is refused. A series legitimately
-	// SHORT A COLUMN is not -- that is a state internal/check declares through
-	// incompleteSeries, and it reconciles here because a short series carries
-	// fewer points and says so in its own counts.
-	if rendered != meta.Counts.Points {
-		return trendsPageData{}, fmt.Errorf(
-			"%s declares counts.points %d and its series carry %d; the document has "+
-				"lost a figure between the projection that built it and this page",
-			v.Projection, meta.Counts.Points, rendered)
-	}
-	// AND AGAINST facts, WHICH IS THE NUMBER THE LEDE ACTUALLY PRINTS.
-	// trends.html.tmpl renders {{.Facts}} -- "N figures in all" -- fed from
-	// counts.facts, while the arm above reconciles against counts.points, and
-	// project.TrendCounts' doc comment says in so many words that the two are
-	// computed independently: facts off the selection, points off the series
-	// actually built, so "a document that dropped a series publishes points
-	// below facts".
-	//
-	// So counts.facts 924 / counts.points 920 / 920 rendered cells passed
-	// everything above and published a lede claiming 924 figures over a table
-	// carrying 920 -- the page whose own prose contradicts what it shows, which
-	// is the thing the comment above claims to have closed. Reconciling against
-	// facts rather than printing points in the lede is the direction that keeps
-	// the sentence meaning what it says (fisc-5tu).
-	if rendered != meta.Counts.Facts {
-		return trendsPageData{}, fmt.Errorf(
-			"%s prints counts.facts %d in its lede and its series carry %d cells; "+
-				"the page would claim more figures than it shows",
-			v.Projection, meta.Counts.Facts, rendered)
-	}
-	if len(body.Series) != meta.Counts.Series {
-		return trendsPageData{}, fmt.Errorf(
-			"%s declares counts.series %d and carries %d",
-			v.Projection, meta.Counts.Series, len(body.Series))
+	if err := reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
+		return trendsPageData{}, err
 	}
 
 	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
@@ -1653,6 +1623,180 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Series:  series,
 		Facts:   meta.Counts.Facts,
 		Count:   meta.Counts.Series,
+	}, nil
+}
+
+// reconcileSeriesCounts refuses a series document whose own counts disagree
+// with the cells the page just laid out (fisc-4j5).
+//
+// `fisc export` runs no checks by design and this is the one thing it insists
+// on. A series legitimately SHORT A COLUMN still reconciles: internal/check
+// declares that state through incompleteSeries, and a short series carries
+// fewer points and says so in its own counts.
+//
+// rendered IS HELD TO counts.facts AS WELL AS counts.points, because facts is
+// the number the lede prints and the two are computed independently -- facts
+// off the projection's selection, points off the series actually built. A
+// document that dropped a series publishes points below facts, and reconciling
+// only points once shipped a lede claiming 924 figures over a table carrying
+// 920 (fisc-5tu).
+func reconcileSeriesCounts(projection string, rendered, series int, counts trendCountsMeta) error {
+	if rendered != counts.Points {
+		return fmt.Errorf(
+			"%s declares counts.points %d and its series carry %d; the document has "+
+				"lost a figure between the projection that built it and this page",
+			projection, counts.Points, rendered)
+	}
+	if rendered != counts.Facts {
+		return fmt.Errorf(
+			"%s prints counts.facts %d in its lede and its series carry %d cells; "+
+				"the page would claim more figures than it shows",
+			projection, counts.Facts, rendered)
+	}
+	if series != counts.Series {
+		return fmt.Errorf(
+			"%s declares counts.series %d and carries %d",
+			projection, counts.Series, series)
+	}
+	return nil
+}
+
+// historyPageData is the history template's input. Like trendsPageData it
+// carries no ConfigJSON and its page loads no app.js: every figure is rendered
+// server-side, so the table works with JavaScript off.
+type historyPageData struct {
+	chrome
+	Columns []columnRef
+	// Sections are the printed blocks, in the order the view declares them,
+	// each holding its rows in document order.
+	Sections []historySection
+	// HeadSpan is every column a section heading spans: the label, category
+	// and mark columns plus one per printed column.
+	HeadSpan int
+	Facts    int
+	Count    int
+}
+
+// historySection is one printed block of the table.
+type historySection struct {
+	Heading string
+	Series  []seriesRef
+}
+
+// buildHistoryPage renders one ACFR ten-year view.
+//
+// buildTrendsPage's rules apply whole: every figure is read out of the
+// document, none is computed here, and the counts must reconcile. What is new
+// is the grouping — each series lands in the [View.Sections] entry matching
+// its (kind, fund_group) exactly, and both a series no section claims and a
+// section claiming no series are refused, because either one is a heading
+// telling a reader something the document does not say.
+func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
+	pageTextBase func(string) string,
+) (historyPageData, error) {
+	caveatsPath := caveatsPathOf(o)
+	raw := o.Projections[v.Projection]
+	doc, err := decodeDocument(v.Projection, raw)
+	if err != nil {
+		return historyPageData{}, err
+	}
+	var meta trendsMetadata
+	if err := json.Unmarshal(doc.Metadata, &meta); err != nil {
+		return historyPageData{}, fmt.Errorf("decode %s metadata: %w", v.Projection, err)
+	}
+	if len(meta.Columns) == 0 {
+		return historyPageData{}, fmt.Errorf("%s metadata publishes no columns", v.Projection)
+	}
+	var body trendsBody
+	if err := json.Unmarshal(raw, &body); err != nil {
+		return historyPageData{}, fmt.Errorf("decode %s series: %w", v.Projection, err)
+	}
+
+	columns := make([]columnRef, 0, len(meta.Columns))
+	for i, c := range meta.Columns {
+		columns = append(columns, columnRef{
+			Label: c.FiscalYearLabel,
+			Basis: c.Basis,
+			Group: c.ComparableGroup,
+			New:   i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
+		})
+	}
+
+	sections := make([]historySection, len(v.Sections))
+	at := make(map[Section]int, len(v.Sections))
+	for i, s := range v.Sections {
+		sections[i] = historySection{Heading: s.Heading}
+		key := Section{Kind: s.Kind, FundGroup: s.FundGroup}
+		if _, dup := at[key]; dup {
+			return historyPageData{}, fmt.Errorf(
+				"view %q declares two sections for kind %q fund group %q; a series "+
+					"cannot land under both headings", v.Path, s.Kind, s.FundGroup)
+		}
+		at[key] = i
+	}
+
+	rendered := 0
+	for _, s := range body.Series {
+		i, ok := at[Section{Kind: s.Kind, FundGroup: s.FundGroup}]
+		if !ok {
+			return historyPageData{}, fmt.Errorf(
+				"%s series %q is kind %q in fund group %q, which no section of view %q "+
+					"declares; a row under the wrong printed heading is a claim the "+
+					"schedule does not make", v.Projection, s.Label, s.Kind, s.FundGroup, v.Path)
+		}
+		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase)
+		if err != nil {
+			return historyPageData{}, fmt.Errorf("%s series %q: %w", v.Projection, s.Label, err)
+		}
+		rendered += placed
+		sections[i].Series = append(sections[i].Series, seriesRef{
+			Label:    s.Label,
+			Group:    s.FundGroup,
+			Category: s.CategoryLabel,
+			Cells:    cells,
+			Mark:     buildMark(cells, columns),
+		})
+	}
+	// The counts first: a document that disagrees with itself is refused before
+	// any question about how this view groups it.
+	if err := reconcileSeriesCounts(v.Projection, rendered, len(body.Series), meta.Counts); err != nil {
+		return historyPageData{}, err
+	}
+	for i, s := range sections {
+		if len(s.Series) == 0 {
+			return historyPageData{}, fmt.Errorf(
+				"view %q declares section %q (kind %q, fund group %q) and %s carries no "+
+					"such series; a heading over nothing says the schedule prints a block "+
+					"it does not", v.Path, s.Heading, v.Sections[i].Kind,
+				v.Sections[i].FundGroup, v.Projection)
+		}
+	}
+
+	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
+	refs := projectionRefs(o.Projections)
+	title := v.Title
+	if title == "" {
+		title = "City of Livermore ten-year history"
+	}
+	return historyPageData{
+		chrome: chrome{
+			Title:        title,
+			Lede:         v.Lede,
+			Nav:          nav,
+			Sources:      sources,
+			ProjectionBy: meta.GeneratedBy,
+			ExportedBy:   o.GeneratedBy,
+			Projections:  refs,
+			DataPath:     path.Join(dataDir, v.Projection+".json"),
+			Scope:        meta.Scope,
+			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
+			CaveatsPath:  caveatsPath,
+		},
+		Columns:  columns,
+		Sections: sections,
+		HeadSpan: 3 + len(columns),
+		Facts:    meta.Counts.Facts,
+		Count:    meta.Counts.Series,
 	}, nil
 }
 
@@ -1695,11 +1839,11 @@ type caveatDocument struct {
 	// and ships no app.js, so a caveat on that document can be listed and never
 	// chipped on a mark.
 	//
-	// FOUR OF THE SEVEN PUBLISHED DOCUMENTS ARE FALSE HERE: the three
-	// fund-flows columns unviewedDocuments declares, which no view renders at
-	// all, and revenue-trends, which one renders as a table. This page lists
-	// all of their caveats anyway, because a caveat is owed to whoever fetches
-	// the file. What it must not do is tell that reader the charts flag these
+	// False for every document no view renders (the fund-flows columns
+	// unviewedDocuments declares) and for every one rendered as a TABLE —
+	// revenue-trends and the two ACFR history documents. This page lists all
+	// of their caveats anyway, because a caveat is owed to whoever fetches the
+	// file. What it must not do is tell that reader the charts flag these
 	// marks.
 	Drawn bool
 }

@@ -818,6 +818,8 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	// the historical two by year AND basis because their basis is not the
 	// published one.
 	if diff := cmp.Diff([]string{
+		"changes-in-fund-balances",
+		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",
 	}, keys(got)); diff != "" {
@@ -904,6 +906,8 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 		t.Fatalf("buildProjections: %v", err)
 	}
 	want := []string{
+		"changes-in-fund-balances",
+		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",
 	}
@@ -1134,9 +1138,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	}
 	got := views(result{Projections: built})
 
-	if len(got) != 5 {
+	if len(got) != 7 {
 		t.Fatalf("got %d views over %v, want the spine, Revenue, Spending, the revenue "+
-			"trends and the caveats index", len(got), keys(built))
+			"trends, the two ACFR history tables and the caveats index", len(got), keys(built))
 	}
 	if got[0].Path != export.IndexPath || got[0].Projection != export.PrimaryProjection {
 		t.Errorf("the site opens on %+v, want the spine at %s", got[0], export.IndexPath)
@@ -1157,7 +1161,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	// EVERY VIEW THAT DRAWS SOMETHING SHIPS THE WORDS FOR IT. Titles and ledes
 	// are the caller's: a packager composing prose about a document would be
 	// making a claim about figures it may not recompute.
-	for _, path := range []string{"revenue.html", "spending.html", "trends.html"} {
+	for _, path := range []string{"revenue.html", "spending.html", "trends.html",
+		"history.html", "balances.html"} {
 		v, ok := byPath[path]
 		if !ok {
 			paths := make([]string, 0, len(got))
@@ -1283,9 +1288,11 @@ func TestAViewWhoseDocumentWasNotBuiltIsDropped(t *testing.T) {
 	// typed out.
 	dropped := map[string]bool{}
 	for _, v := range views(result{Projections: map[string][]byte{
-		export.PrimaryProjection:    {},
-		project.TrendsProjection:    {},
-		project.FundFlowsProjection: {},
+		export.PrimaryProjection:       {},
+		project.TrendsProjection:       {},
+		project.FundFlowsProjection:    {},
+		project.ChangesProjection:      {},
+		project.FundBalancesProjection: {},
 	}}) {
 		if v.Projection != "" && v.Projection != export.PrimaryProjection {
 			dropped[v.Path] = true

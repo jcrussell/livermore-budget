@@ -59,8 +59,8 @@ const acfrFundBalancesScope = "acfr-fund-balances"
 // what retires an entry automatically instead of leaving an exemption for whoever
 // forgets.
 //
-// IT HAS RETIRED ONE ENTRY ALREADY, WHICH IS THE MECHANISM WORKING RATHER THAN A
-// LOSS. revenue-by-fund (Budget Book pp.127-140) was declared here with a
+// A RETIREMENT IS THE MECHANISM WORKING RATHER THAN A LOSS.
+// revenue-by-fund (Budget Book pp.127-140) was declared here with a
 // paragraph explaining that drawing its 924 facts into the fund-group spine would
 // double the city's revenue. That is still true of the SPINE, and it is no longer
 // a reason nothing draws them: the revenue-trends document draws all 924, at their
@@ -149,10 +149,13 @@ var unprojectedScopes = map[string]string{
 		"every other entry in this map. The Budget Book spine is FY2026 and FY2027 adopted; " +
 		"this is FY2025 audited, and the spine prints no audited column, so these facts share " +
 		"no (kind, category, fund_group, fund, fiscal year, basis) key with anything published " +
-		"and no doubling is possible. The site draws budget years; adding an audited prior " +
-		"year to a chart of adopted figures is a decision nobody has made (fisc-awe answered " +
-		"the adjacent question -- one schedule gets one published view -- and that is about " +
-		"two views of ONE schedule, not about drawing this one at all). " +
+		"and no doubling is possible -- measured again when the ten-year documents landed: " +
+		"zero shared keys with either, at the full grain and at the mergeable one. The " +
+		"history pages draw ten audited years of the two statistical-section scopes, and " +
+		"this page can join neither table: it is the General Fund alone where pp.168-169 " +
+		"combine all governmental funds, and its ending balance does not tie to p167's " +
+		"components -- $56,424 apart in FY2025, 5.6 units of p41's own printed precision " +
+		"(fisc-y242). " +
 		"AND SO THIS SCOPE CARRIES NO DETAIL-TIES-TO-SPINE CHECK, which breaks the rule every " +
 		"other non-spine scope here follows. There is nothing on the spine to tie it to. What " +
 		"asserts these facts instead is fund-balance-identity, which reaches three of the 20 " +
@@ -190,41 +193,6 @@ var unprojectedScopes = map[string]string{
 		"$170,000 on top of that, seventeen units, which is why the tolerance that admits its " +
 		"$10,000 in FY2025 comes nowhere near admitting FY2024. The four blocks are the ones the " +
 		"PAGE prints, and General Government is inside one of them.",
-
-	acfrFundBalancesScope: "ACFR p167, Fund Balances of Governmental Funds: 90 audited " +
-		"facts over FY2016-FY2025 -- the five GASB 54 components of the General Fund's " +
-		"balance and the four of the aggregate All Other Governmental Funds, which spans " +
-		"fund types and so carries no fund_group. UNPROJECTED BECAUSE NOTHING DRAWS TEN " +
-		"AUDITED YEARS YET: the ten-year reader surface is fisc-oakx.4. Only the FY2025 " +
-		"audited column shares a (year, basis) with another scope, " +
-		"acfr-general-fund-summary, and the two DO NOT TIE -- p167's Total general fund " +
-		"2025 is 87,043,576 against p41's published ending balance of 87.10 million, " +
-		"$56,424 apart, 5.6 units of p41's own printed precision (fisc-y242) -- which is " +
-		"why no cross-scope check exists. WHAT ASSERTS THESE FACTS is each block's " +
-		"printed total at build time, tying exactly in all ten columns of both blocks " +
-		"(2016 General Fund: 47,139,536), plus the store-level witnesses; " +
-		"fund-balance-identity does not reach them, because the components are neither " +
-		"beginning, change nor ending and the page prints no beginning or change line. " +
-		"NOTHING GUARDS A WHOLE COLUMN FILED UNDER THE WRONG YEAR: bare-year headers " +
-		"refuse the geometry guard (fisc-wiyg), and unlike its sibling scope this page " +
-		"has no cross-block identity.",
-
-	acfrChangesScope: "ACFR pp.168-169, Changes in Fund Balances of Governmental Funds: " +
-		"220 audited facts over FY2016-FY2025, all governmental funds combined and so no " +
-		"fund_group -- 90 revenue, 120 expenditure on the ACFR's function axis, and the " +
-		"ten printed Excess of Revenues over (under) expenditures cells. UNPROJECTED for " +
-		"the reason acfr-fund-balances is: nothing draws audited history until " +
-		"fisc-oakx.4 lands. WHAT ASSERTS THEM: the revenue and expenditure blocks tie to " +
-		"their own printed totals at build time, exactly in every column, and " +
-		"excess-of-revenues-identity recomputes the printed excess from the published " +
-		"rows per column at verify time -- the batch's corroboration tie, measured to " +
-		"hold in all ten columns before the check was written. The cross-table ties " +
-		"fisc-oakx.3 planned are dead as printed: p167 fund-balance deltas match p169's " +
-		"Net change in 2017 only, and the p41 anchor is fisc-y242. p169's Other " +
-		"Financing block is READ AND NOT PUBLISHED (fisc-qyrw): its printed total's 2023 " +
-		"cell is a copy of 2022 -- components sum to 39,259,064 against a printed " +
-		"(1,767,367) -- and Net change 2023 is the same copy, so neither line has an " +
-		"honest total or identity to stand under yet.",
 
 	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
 		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +
