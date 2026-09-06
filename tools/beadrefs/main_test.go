@@ -44,6 +44,57 @@ func TestKnownIDsRefusesAnExportWithNoIDs(t *testing.T) {
 	}
 }
 
+func TestUnrecognisableFlagsAnIDTheScannerWouldSilentlyDrop(t *testing.T) {
+	// bd chooses the token and this repo does not. A two-hyphen id like
+	// fisc-drill-down is real in the export and invisible to citedIn, whose
+	// boundary refuses a match a hyphen runs into -- so every citation to it
+	// would be dropped with no report, inside the gate meant to report exactly
+	// that. This assertion is what turns the arrival of such an id into a red
+	// run instead of a blind spot.
+	known := map[string]bool{
+		"fisc-abc":        true,
+		"fisc-abc.1":      true,
+		"fisc-1wr.5.1":    true,
+		"byob-layout.1":   true, // out of the scanner's subject on purpose
+		"fisc-drill-down": true, // the shape citedIn drops
+		"fisc-Abc":        true, // idPattern never matches an uppercase token
+		"fisc-abc.x":      true, // citedIn returns only the fisc-abc prefix: not whole, not seen
+	}
+	want := []string{"fisc-Abc", "fisc-abc.x", "fisc-drill-down"}
+	if diff := cmp.Diff(want, unrecognisable(known)); diff != "" {
+		t.Errorf("unrecognisable (-want +got):\n%s", diff)
+	}
+}
+
+func TestUnrecognisableIsSilentOnAnExportOfTodaysShapes(t *testing.T) {
+	// Every id shape the export carries today, measured there: fisc-<token> with
+	// optional dotted children, and byob ids the scanner excludes on purpose. A
+	// false positive here would take every commit red for nothing.
+	known := map[string]bool{
+		"fisc-kc3j":     true,
+		"fisc-yj4w.7":   true,
+		"fisc-1wr.5.1":  true,
+		"byob-layout.1": true,
+		"byob-errors":   true,
+	}
+	if got := unrecognisable(known); got != nil {
+		t.Errorf("unrecognisable(recognisable ids) = %v, want nil", got)
+	}
+}
+
+func TestUnrecognisableJudgesTheRealExport(t *testing.T) {
+	// The committed export is the artifact the gate resolves against, so its ids
+	// are asserted here too: if bd mints a shape citedIn cannot see, this test
+	// and the gate go red together, in the commit that lands the export.
+	known, err := knownIDs(filepath.Join("..", "..", ".beads", "issues.jsonl"))
+	if err != nil {
+		t.Fatalf("knownIDs(committed export): %v", err)
+	}
+	if got := unrecognisable(known); got != nil {
+		t.Errorf("the committed export carries ids the citation scanner cannot see: %v", got)
+	}
+}
+
 func TestRefsInFindsEveryCitationWithItsLine(t *testing.T) {
 	path := write(t, "doc.md", `one fisc-abc here
 nothing on this line

@@ -103,6 +103,20 @@ func main() {
 		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
 		os.Exit(2)
 	}
+	if bad := unrecognisable(known); len(bad) > 0 {
+		for _, id := range bad {
+			fmt.Fprintf(os.Stderr, "beadrefs: %s is a real bead the citation scanner cannot see\n", id)
+		}
+		fmt.Fprintln(os.Stderr, "")
+		fmt.Fprintln(os.Stderr, "beadrefs: the ids above are in the export and outside what citedIn")
+		fmt.Fprintln(os.Stderr, "  recognises, so a citation to one would be dropped without a report")
+		fmt.Fprintln(os.Stderr, "  -- the dead-pointer failure this gate exists to prevent, inside the")
+		fmt.Fprintln(os.Stderr, "  gate. The ids are not wrong; bd mints them and this repo does not.")
+		fmt.Fprintln(os.Stderr, "  Teach idPattern and citedIn the new shape without unteaching the")
+		fmt.Fprintln(os.Stderr, "  boundaries: today the second hyphen is what tells a fact id")
+		fmt.Fprintln(os.Stderr, "  (fisc-f-<hash>) from a bead id.")
+		os.Exit(2)
+	}
 	refs, scanned, err := refsUnder(os.Args[2:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "beadrefs: %v\n", err)
@@ -245,6 +259,37 @@ func knownIDs(path string) (map[string]bool, error) {
 		return nil, fmt.Errorf("%s carries no ids at all, so every citation would be reported dead", path)
 	}
 	return known, nil
+}
+
+// unrecognisable returns the export ids citedIn could never return, sorted so a
+// failure reads the same way twice. bd chooses what a bead id looks like and
+// this repo does not, and citedIn refuses a match that runs into a hyphen
+// because the second hyphen is what tells a fact id from a bead id. An export
+// id on the wrong side of that boundary is not invalid -- it is INVISIBLE, and
+// every citation to it would be dropped with no report, which is this command's
+// own failure mode happening inside it. Failing at startup takes the run red in
+// the run where the export first carries such an id, before anyone writes a
+// citation nothing can check; the hyphen refusal is safe to keep because this
+// is watching it.
+//
+// The probe is citedIn itself, on the id alone on a line, rather than a second
+// pattern: a parallel regex would be a copy of the boundaries that nothing
+// keeps in step. Recognised means recognised WHOLE -- an id citedIn returns a
+// prefix of is as unseeable as one it drops. byob ids are skipped because
+// idPattern excludes them on purpose: they name reference material, and
+// nothing here should assert they exist.
+func unrecognisable(known map[string]bool) []string {
+	var bad []string
+	for id := range known {
+		if strings.HasPrefix(id, "byob-") {
+			continue
+		}
+		if got := citedIn(id); len(got) != 1 || got[0] != id {
+			bad = append(bad, id)
+		}
+	}
+	sort.Strings(bad)
+	return bad
 }
 
 // refsUnder collects every citation in the named files and directories. A
