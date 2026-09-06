@@ -1,10 +1,15 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
@@ -238,5 +243,113 @@ func TestHistoryIsDeterministic(t *testing.T) {
 	}
 	if strings.Contains(string(first), "null") {
 		t.Error("the document contains a null; absent strings are \"\" and absent slices []")
+	}
+}
+
+// fixturePage reads one page fixture: verbatim corpus bytes, sha256-equal to
+// the extraction manifest's record for the page it was copied from
+// (testdata/README.md), so a token read here is a token `fisc build` reads.
+func fixturePage(t *testing.T, name string) []string {
+	t.Helper()
+	b, err := os.ReadFile(filepath.Join("..", "..", "testdata", "pages", name))
+	if err != nil {
+		t.Fatalf("reading fixture: %v", err)
+	}
+	return strings.Split(string(b), "\n")
+}
+
+// firstAmountOnLine finds the first line of a fixture page containing label
+// and parses the first token amount.Parse accepts at the given units. On both
+// statements this test reads, the first amount column is the General Fund's.
+func firstAmountOnLine(t *testing.T, name, label string, u amount.Units) amount.Cents {
+	t.Helper()
+	for _, line := range fixturePage(t, name) {
+		if !strings.Contains(line, label) {
+			continue
+		}
+		for _, f := range strings.Fields(line) {
+			if c, err := amount.Parse(f, u); err == nil {
+				return c
+			}
+		}
+		t.Fatalf("%s: line %q carries no token amount.Parse accepts", name, label)
+	}
+	t.Fatalf("%s: no line contains %q", name, label)
+	return 0
+}
+
+// commaDollars renders whole-dollar cents the way these documents print them.
+func commaDollars(c amount.Cents) string {
+	s := strconv.FormatInt(int64(c)/100, 10)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "," + s[i:]
+	}
+	return s
+}
+
+// TestP167ComponentsTieToP54NotP41 re-derives the arithmetic behind the
+// p167-does-not-tie-to-p41 caveat from fixture pages through amount.Parse,
+// the parser every fact goes through. Three legs: p167's five 2025 General
+// Fund components sum to one figure, p54's audited statement prints that
+// figure to the dollar, and p41's in-millions condensation prints a balance
+// the figure is not. The caveat must quote that sum and name p54: a caveat
+// citing only p41 by the statement's bare name tells readers the audited ACFR
+// disagrees with the schedule it agrees with exactly.
+func TestP167ComponentsTieToP54NotP41(t *testing.T) {
+	components := []string{"Nonspendable", "Restricted", "Committed", "Assigned", "Unassigned"}
+	var sum amount.Cents
+	seen := 0
+	inGeneralFund := false
+	for _, line := range fixturePage(t, "acfr-p0167.txt") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "General Fund" {
+			inGeneralFund = true
+			continue
+		}
+		if strings.HasPrefix(trimmed, "Total general fund") {
+			break
+		}
+		fields := strings.Fields(trimmed)
+		if !inGeneralFund || len(fields) == 0 || !slices.Contains(components, fields[0]) {
+			continue
+		}
+		// 2025 is the schedule's last printed column.
+		c, err := amount.Parse(fields[len(fields)-1], amount.Dollars)
+		if err != nil {
+			t.Fatalf("p167 %s, 2025 column: %v", fields[0], err)
+		}
+		sum += c
+		seen++
+	}
+	if seen != len(components) {
+		t.Fatalf("found %d of p167's five General Fund component rows, want all five", seen)
+	}
+
+	p54 := firstAmountOnLine(t, "acfr-p0054.txt", "FUND BALANCES- ENDING", amount.Dollars)
+	if sum != p54 {
+		t.Errorf("p167's 2025 components sum to %d cents against p54's ending balance %d; "+
+			"the caveat says the audited statement agrees to the dollar", sum, p54)
+	}
+
+	p41 := firstAmountOnLine(t, "acfr-p0041.txt", "Fund Balances- Ending", amount.Millions)
+	if sum == p41 {
+		t.Errorf("p167's components sum equals p41's printed balance (%d cents); "+
+			"the caveat exists because MD&A's condensation does not tie", p41)
+	}
+
+	c := caveatBalancesDoNotTieToP41
+	if want := "$" + commaDollars(sum); !strings.Contains(c.Text, want) {
+		t.Errorf("caveat text does not quote %s, the figure p167's components and p54 share", want)
+	}
+	if !strings.Contains(c.Text, "(p54)") {
+		t.Error("caveat text does not name p54, the audited statement that agrees to the dollar")
+	}
+	for name, caveats := range map[string][]Caveat{
+		"fundBalancesCaveats": fundBalancesCaveats(),
+		"changesCaveats":      changesCaveats(),
+	} {
+		if err := validateCaveats(caveats, map[string]struct{}{}); err != nil {
+			t.Errorf("%s: %v", name, err)
+		}
 	}
 }

@@ -134,8 +134,8 @@ var unprojectedScopes = map[string]string{
 		"data/departments.yaml, whose six pp.85-125-only divisions this lane added, plus " +
 		"each division's own printed Division Total",
 
-	acfrGeneralFundScope: "ACFR p41, the General Fund's Statement of Revenues, Expenditures " +
-		"and Changes in Fund Balances: 20 audited FY2024-25 figures, and the only facts in " +
+	acfrGeneralFundScope: "ACFR MD&A p41, the General Fund's condensed Statement of Revenues, " +
+		"Expenditures and Changes in Fund Balances: 20 FY2024-25 figures, and the only facts in " +
 		"this store from a document other than the Budget Book. The page prints FOUR blocks " +
 		"and three of them are mapped WHOLE -- ten revenue rows tying to the printed Total " +
 		"Revenues of 157.20 exactly; two transfer legs, 0.53 in and (25.72) out, tying to the " +
@@ -154,8 +154,9 @@ var unprojectedScopes = map[string]string{
 		"history pages draw ten audited years of the two statistical-section scopes, and " +
 		"this page can join neither table: it is the General Fund alone where pp.168-169 " +
 		"combine all governmental funds, and its ending balance does not tie to p167's " +
-		"components -- $56,424 apart in FY2025, 5.6 units of p41's own printed precision " +
-		"(fisc-y242). " +
+		"components -- p41 is MD&A's condensed statement in millions, and its printed 87.10 " +
+		"is not where the components' 87,043,576 sum rounds; the audited statement of the " +
+		"same name, p54, prints that sum to the dollar (fisc-y242). " +
 		"AND SO THIS SCOPE CARRIES NO DETAIL-TIES-TO-SPINE CHECK, which breaks the rule every " +
 		"other non-spine scope here follows. There is nothing on the spine to tie it to. What " +
 		"asserts these facts instead is fund-balance-identity, which reaches three of the 20 " +

@@ -176,7 +176,7 @@ var fixturePages = map[string][]int{
 		167, 168, 169, 170,
 	},
 	cipFixtures.id:  {29, 40},
-	acfrFixtures.id: {41, 167, 168, 169, 177},
+	acfrFixtures.id: {41, 54, 167, 168, 169, 177},
 }
 
 // TestFixturesAreVerbatimCopies is what makes every other test in this package

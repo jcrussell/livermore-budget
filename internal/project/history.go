@@ -131,12 +131,15 @@ func (p *FundBalanceChanges) Document(facts []fact.Fact, o Options) (*TrendsDocu
 var (
 	caveatBalancesDoNotTieToP41 = Caveat{
 		ID:      "p167-does-not-tie-to-p41",
-		Summary: "The ACFR's own pages disagree about the 2025 General Fund balance, by $56,424.",
+		Summary: "MD&A's in-millions table (p41) does not tie to this schedule's 2025 General Fund balance; the audited statement (p54) does, to the dollar.",
 		Text: "This schedule's five General Fund components for 2025 sum to $87,043,576, " +
-			"while the ACFR's Statement of Revenues, Expenditures and Changes in Fund " +
-			"Balances (p41) prints an ending balance of $87.10 million — $56,424 " +
-			"apart. Both figures are published as printed; neither is corrected to the " +
-			"other.",
+			"and the ACFR's audited Statement of Revenues, Expenditures and Changes in " +
+			"Fund Balances (p54) prints exactly that ending balance for the General " +
+			"Fund. What does not tie is Management's Discussion and Analysis: p41 " +
+			"condenses the same statement in millions and prints the ending balance " +
+			"as $87.10, which is not where $87,043,576 rounds — MD&A drifts from the " +
+			"ACFR's own audited statement. All three figures are published as printed; " +
+			"none is corrected to another.",
 		AppliesTo: []string{},
 	}
 	caveatNoAssignedRow = Caveat{
