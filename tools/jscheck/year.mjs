@@ -102,6 +102,12 @@ function painted(app, year) {
   app.paintYearWords(year);
   const el = (id) => app.dom.byId.get(id);
   return {
+    // TWO CONTAINERS SINCE THE HERO ROSE ABOVE THE CHART, and collecting only
+    // one of them is how a client that paints the headline into the collapsed
+    // tile row stays green: #figures would hold one extra tile and every arm
+    // that counts by figures.length would still be arithmetic about the wrong
+    // element.
+    hero: el("hero") ? [...el("hero").children] : [],
     tiles: el("figures") ? [...el("figures").children] : [],
     // READ THROUGH THE ANCHOR, because a caveat is now <li><a>summary</a></li>
     // and the stub does NOT derive textContent from children (harness.mjs's
@@ -248,29 +254,38 @@ export async function checks() {
 
   // Flattened text of every tile, which is where a wrong field name shows up as
   // emptiness rather than as an error.
-  const tileText = got.tiles.map((t) => t.children.map((c) => c.textContent).join("|"));
+  const flatten = (t) => t.children.map((c) => c.textContent).join("|");
+  const tileText = got.tiles.map(flatten);
+  const heroText = got.hero.map(flatten);
 
   return [
     {
-      name: "a year switch paints one tile per figure, plus the hero",
-      ok: got.tiles.length === year.figures.length + 1,
-      detail: `${got.tiles.length} tiles for ${year.figures.length} figures and a hero`,
+      name: "a year switch paints one tile per figure and no more",
+      ok: got.tiles.length === year.figures.length,
+      detail: `${got.tiles.length} tiles in #figures for ${year.figures.length} figures`,
+    },
+    {
+      // THE ARM THAT NAMES THE SPLIT. index.html.tmpl puts #hero above the
+      // chart and #figures inside a closed <details> below it, so a client
+      // painting both into one container hides the headline behind a
+      // disclosure -- which looks like nothing at all until somebody opens it.
+      name: "the hero is painted into #hero, alone, and not into the tile row",
+      ok: got.hero.length === 1 &&
+          heroText[0].startsWith(year.hero.label) &&
+          tileText.every((t) => !t.startsWith(year.hero.label)),
+      detail: `#hero holds ${got.hero.length} tile(s): ${heroText.join(" / ") || "nothing"}`,
     },
     {
       // THE CHECK THIS FILE EXISTS FOR. Reading a field the packager does not
       // write yields undefined, which renders as an empty tile and throws
-      // nothing.
+      // nothing. BOTH containers, since the hero is now painted through a
+      // second call that could read a different set of field names.
       name: "every tile carries the label, value and note the packager wrote",
-      ok: tileText.length > 0 && tileText.every((t) => {
+      ok: heroText.length + tileText.length > 0 && heroText.concat(tileText).every((t) => {
         const parts = t.split("|");
         return parts.length === 3 && parts.every((x) => x !== "" && x !== "undefined");
       }),
-      detail: tileText.length ? tileText[0] : "no tiles were painted",
-    },
-    {
-      name: "the hero is painted first and is the hero figure",
-      ok: tileText.length > 0 && tileText[0].startsWith(year.hero.label),
-      detail: tileText.length ? tileText[0].split("|")[0] : "nothing",
+      detail: heroText.concat(tileText)[0] || "no tiles were painted",
     },
     {
       // THE SUMMARY IS SHOWN AND THE HREF IS THE YEAR'S OWN. Both halves
@@ -496,6 +511,10 @@ export async function checks() {
         // named for -- left every check in the file green. The detail string
         // below claimed otherwise. Measured, then fixed.
         return second.tiles.length === first.tiles.length &&
+               // THE HERO IS A SECOND CONTAINER AND CAN APPEND ON ITS OWN.
+               // Without this the arm below is about #figures only, and a hero
+               // that grew a tile per year switch would ship green.
+               second.hero.length === 1 && first.hero.length === 1 &&
                first.caveats.length === 2 &&
                second.caveats.length === year.caveats.length &&
                second.caveats.map((c) => c.text).join("|") === year.caveats.map((c) => c.summary).join("|") &&

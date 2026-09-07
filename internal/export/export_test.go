@@ -219,6 +219,86 @@ func TestPageShowsTheHeadlineAndTheErrorItAvoids(t *testing.T) {
 	}
 }
 
+// TestTheHeroLeadsAndTheRestOfTheTileRowIsDisclosed pins WHICH SIDE of the
+// #figures-view disclosure each headline figure is on, which the test above
+// cannot see: it asks only whether the page contains a figure, and a page that
+// tiled all seven above the chart and a page that hid all seven behind a
+// summary both satisfy it.
+//
+// The slice is taken between the disclosure's own markers and every marker is
+// Fatalf-guarded. Without that guard a renamed marker yields an empty slice,
+// and "the naive total is not above the chart" is then true of nothing.
+func TestTheHeroLeadsAndTheRestOfTheTileRowIsDisclosed(t *testing.T) {
+	dir, _ := writeGolden(t)
+	page := readPage(t, dir)
+
+	const open = `<details class="apparatus" id="figures-view">`
+	start := strings.Index(page, open)
+	if start < 0 {
+		t.Fatalf("page renders no %s", open)
+	}
+	end := strings.Index(page[start:], "</details>")
+	if end < 0 {
+		t.Fatalf("the %s disclosure is never closed", open)
+	}
+	disclosed := page[start : start+end]
+	above := page[:start]
+
+	// The disclosure ships closed. `<details ... open>` and `<details ...>` are
+	// one attribute apart and render identically until a reader arrives.
+	if strings.Contains(page[start:start+len(open)+8], " open") {
+		t.Errorf("the tile row disclosure ships open")
+	}
+	if !strings.Contains(above, "$254,095,412") {
+		t.Errorf("the hero figure is not above the disclosure")
+	}
+	if strings.Contains(disclosed, "$254,095,412") {
+		t.Errorf("the hero figure is inside the disclosure as well as above it")
+	}
+	if !strings.Contains(disclosed, "$313,708,146") {
+		t.Errorf("the naive column total is not inside the disclosure")
+	}
+	if strings.Contains(above, "$313,708,146") {
+		t.Errorf("the naive column total is still above the chart")
+	}
+}
+
+// TestTheFigureLeadsAndTheApparatusFollows pins the reading order the owner
+// asked for: one number, the chart, then everything that explains them.
+//
+// EVERY MARKER IS Fatalf-GUARDED ON -1, because strings.Index returns -1 for
+// absent and -1 is less than every offset -- so a renamed marker turns each
+// comparison below into a true statement about a string that is not there.
+func TestTheFigureLeadsAndTheApparatusFollows(t *testing.T) {
+	dir, _ := writeGolden(t)
+	page := readPage(t, dir)
+
+	// Ordered as the reader meets them. The prose reading of the chart is in
+	// the list because moving it back above the card is the exact regression
+	// this test exists to catch, and the three structural markers around it
+	// would not notice.
+	markers := []string{
+		`id="hero"`,
+		"<h2>The flow</h2>",
+		`id="chart"`,
+		"Revenue categories on the left",
+		`class="apparatus"`,
+	}
+	at := make([]int, len(markers))
+	for i, m := range markers {
+		at[i] = strings.Index(page, m)
+		if at[i] < 0 {
+			t.Fatalf("page renders no %s", m)
+		}
+	}
+	for i := 1; i < len(markers); i++ {
+		if at[i-1] >= at[i] {
+			t.Errorf("%s is at %d, which is not before %s at %d",
+				markers[i-1], at[i-1], markers[i], at[i])
+		}
+	}
+}
+
 func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 	dir, _ := writeGolden(t)
 	page := readPage(t, dir)

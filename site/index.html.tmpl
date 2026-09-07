@@ -83,28 +83,23 @@
 
 <main>
 
-<section class="figures" id="figures" aria-label="Headline figures">
+{{- /* THE HERO IS ABOVE THE CHART AND THE REST OF THE TILE ROW IS NOT. One
+       number and one diagram is what this page is for; the six figures behind
+       it open from "The figures behind it" below, and #figures moved with them.
+
+       BOTH CONTAINERS ARE PAINTED, and that is why there are two ids rather
+       than one section split by CSS. paintYearWords owns each wholesale, so a
+       per-year figure rendered anywhere it does not write goes stale on the
+       first year switch -- the fisc-kwq / fisc-yi4 / fisc-iyt defect. */}}
+<section class="figures" id="hero" aria-label="Headline figure">
   <div class="tile hero">
     <div class="label">{{.Hero.Label}}</div>
     <div class="value">{{.Hero.Value}}</div>
     <div class="note">{{.Hero.Note}}</div>
   </div>
-  {{- range .Figures}}
-  <div class="tile{{if .Kind}} {{.Kind}}{{end}}">
-    <div class="label">{{.Label}}</div>
-    <div class="value">{{.Value}}</div>
-    <div class="note">{{.Note}}</div>
-  </div>
-  {{- end}}
 </section>
 
 <h2>The flow</h2>
-<p class="lede">
-  Revenue categories on the left, the city's six fund groups in the middle, what the money
-  is spent on at the right. Transfers between funds and movements of accumulated fund
-  balance are drawn as their own endpoints, because they are not money crossing the city's
-  boundary — counting them as spending is exactly the error the headline avoids.
-</p>
 
 <div class="card">
   <div class="controls">
@@ -113,8 +108,6 @@
   <div class="legend" aria-label="How to read the marks">
     <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
     <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
-    <span class="subtle">Hover, tap or tab to a flow for its amount, fact ids and sources.
-      Click a node or a fund swatch to follow only that money; Escape puts the rest back.</span>
   </div>
   <div class="chart-wrap">
     <!-- role="group", not "img": an img is a leaf, and the marks inside carry
@@ -153,6 +146,22 @@
   </noscript>
 </div>
 
+{{- /* THE READING OF THE CHART SITS UNDER THE CHART, and it is deliberately
+       NOT disclosed. "Counting them as spending is exactly the error the
+       headline avoids" is this page's central argument, and it is the only
+       place that argument is made above a disclosure now that the tile row
+       has moved below one. */}}
+<p class="lede">
+  Revenue categories on the left, the city's six fund groups in the middle, what the money
+  is spent on at the right. Transfers between funds and movements of accumulated fund
+  balance are drawn as their own endpoints, because they are not money crossing the city's
+  boundary — counting them as spending is exactly the error the headline avoids.
+</p>
+<p class="lede subtle">
+  Hover, tap or tab to a flow for its amount, fact ids and sources.
+  Click a node or a fund swatch to follow only that money; Escape puts the rest back.
+</p>
+
 <!-- THE APPARATUS IS DISCLOSED, NOT DELETED. Everything below this line was a
      top-level <h2> on an open page, so a reader met four caveats -- 254 words
      between them, the longest 174 -- and a 58-row table before reaching the end
@@ -162,25 +171,47 @@
      than JavaScript: a closed <details> keeps its content in the DOM, so what
      is server-rendered survives with JavaScript off and is there to be opened.
 
-     "IN THE DOM" IS NOT "AVAILABLE", and an earlier version of this comment
-     ran the two together. A closed <details> is collapsed for assistive
-     technology as well as visually -- its content is out of the accessibility
-     tree and out of in-page find -- until the reader opens it. That is the
-     trade this section makes on purpose, and it is why the chart's <desc>
-     above no longer says the figures are simply "listed below".
+     "IN THE DOM" IS NOT "AVAILABLE". A closed <details> is collapsed for
+     assistive technology as well as visually -- its content is out of the
+     accessibility tree and out of in-page find -- until the reader opens it.
+     That is the trade this section makes on purpose, and it is why the chart's
+     <desc> above says the figures "open from" a heading rather than that they
+     are listed below.
 
-     THAT IS A CLAIM ABOUT THE DISCLOSURE, NOT ABOUT EVERY PANEL BEHIND IT, and
-     an earlier version of this comment did not distinguish them. The caveat
-     summaries below really are server-rendered. #derived-list ships a
+     THAT IS A CLAIM ABOUT THE DISCLOSURE, NOT ABOUT EVERY PANEL BEHIND IT. The
+     caveat summaries below really are server-rendered. #derived-list ships a
      "Loading..." placeholder and #flow-table an empty <tbody>; both are filled
-     by app.js, and both were like that before this section was folded. The
-     <noscript> block above the fold is what tells a reader so.
+     by app.js. The <noscript> block above the fold is what tells a reader so.
 
      What is NOT here at all is the caveats' full text -- that moved to
      caveats.html, and this page shows one-line summaries linking to it.
 
      The <h2>s stay inside the <summary>, so the document outline a screen
      reader walks is unchanged. -->
+<details class="apparatus" id="figures-view">
+  <summary>
+    <h2>The figures behind it</h2>
+    <span class="apparatus-hint">the working, including the column total that counts
+      transfers twice</span>
+  </summary>
+  {{- /* THE WRONG ANSWER IS STILL HERE, struck through, and it is first. A
+         figure a reader will otherwise compute for themselves is worth
+         printing beside its refutation; what it is not worth is a tile above
+         the chart. It stays inside .Figures rather than moving to a field of
+         its own so that a year switch repaints it with everything else --
+         headline-naive-expenditure checks the arithmetic behind it, and
+         data/sankey*.json carries the cents. */}}
+  <section class="figures" id="figures" aria-label="Headline figures">
+    {{- range .Figures}}
+    <div class="tile{{if .Kind}} {{.Kind}}{{end}}">
+      <div class="label">{{.Label}}</div>
+      <div class="value">{{.Value}}</div>
+      <div class="note">{{.Note}}</div>
+    </div>
+    {{- end}}
+  </section>
+</details>
+
 <details class="apparatus" id="derived-view">
   <summary>
     <h2>What we inferred</h2>

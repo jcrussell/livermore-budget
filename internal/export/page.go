@@ -677,13 +677,6 @@ type clientConfig struct {
 	Root string `json:"root,omitempty"`
 }
 
-// buildPage decodes the primary projection and assembles everything the
-// template and the client need, plus the citations it composed.
-//
-// pageTextBase resolves a doc id to the directory the page text is cited from,
-// with its trailing slash. It is a function and not a URL because the caller,
-// not this file, decides between a remote browse view and the copy the site
-// ships (see Write).
 // tilesFor renders one year's headline figures.
 //
 // The prose lives here and nowhere else. Each note is a claim about what the

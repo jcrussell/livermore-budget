@@ -2704,8 +2704,8 @@ async function showYear(year) {
 }
 
 /**
- * Replaces every word on the page that belongs to a year: the tiles, the
- * caveats, the caveat count in their summary, the lede, the flow count, the
+ * Replaces every word on the page that belongs to a year: the hero, the tiles,
+ * the caveats, the caveat count in their summary, the lede, the flow count, the
  * chart's accessible name and description (through paintChartName), the
  * footer's basis and its data-file citation, and the document title.
  *
@@ -2724,16 +2724,27 @@ async function showYear(year) {
  * @param {FiscYear} year
  */
 function paintYearWords(year) {
+  const tile = (f) => {
+    const el = h("div", "tile" + (f.kind ? " " + f.kind : ""));
+    el.appendChild(h("div", "label", f.label));
+    el.appendChild(h("div", "value", f.value));
+    el.appendChild(h("div", "note", f.note));
+    return el;
+  };
+
+  // TWO CONTAINERS, EACH OWNED WHOLE. The hero sits above the chart and the
+  // rest of the tile row inside a closed disclosure below it, so one
+  // replaceChildren over #figures would paint the headline into the collapsed
+  // panel and leave the tile above the chart reading the year the reader left.
+  //
+  // maybeEl for both: chart.html.tmpl renders neither, deliberately -- see the
+  // comment at the head of its <main>, which is about why a page drawing one
+  // grain of one document must publish no total.
+  const hero = maybeEl("hero");
+  if (hero) hero.replaceChildren(tile(year.hero));
+
   const figures = maybeEl("figures");
-  if (figures) {
-    figures.replaceChildren(...[year.hero].concat(year.figures).map((f) => {
-      const tile = h("div", "tile" + (f.kind ? " " + f.kind : ""));
-      tile.appendChild(h("div", "label", f.label));
-      tile.appendChild(h("div", "value", f.value));
-      tile.appendChild(h("div", "note", f.note));
-      return tile;
-    }));
-  }
+  if (figures) figures.replaceChildren(...year.figures.map(tile));
 
   const caveats = maybeEl("caveats");
   // THE SUMMARY, WRAPPED IN ITS LINK -- and the link is what makes showing a
