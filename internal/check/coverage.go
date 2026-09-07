@@ -135,8 +135,8 @@ var unprojectedScopes = map[string]string{
 		"each division's own printed Division Total",
 
 	acfrGeneralFundScope: "ACFR MD&A p41, the General Fund's condensed Statement of Revenues, " +
-		"Expenditures and Changes in Fund Balances: 20 FY2024-25 figures, and the only facts in " +
-		"this store from a document other than the Budget Book. The page prints FOUR blocks " +
+		"Expenditures and Changes in Fund Balances: 20 FY2024-25 figures at the millions " +
+		"grain, where the pp.167-169 schedules print dollars. The page prints FOUR blocks " +
 		"and three of them are mapped WHOLE -- ten revenue rows tying to the printed Total " +
 		"Revenues of 157.20 exactly; two transfer legs, 0.53 in and (25.72) out, tying to the " +
 		"printed Total Other Financing Sources (Uses) of (25.19) exactly; and the three " +

@@ -3930,14 +3930,6 @@ rules:
               the division blocks of pp.167-170. No page list is given: which
               pages carry a declaration moves whenever a block is mapped, so a
               list here is a second copy that goes stale silently.
-              FIVE of the 29 division blocks on pp.85-125 miss their own printed
-              Division Total by exactly one dollar -- risk-management, finance,
-              information-technology, airport and public-works-administration --
-              and every one is in the FY 2023-24 Actual column and nowhere else.
-              All five are short rather than over, which is the one way this
-              differs from the funding-sources block on these same pages, where
-              three are short and two over. The three later columns tie exactly
-              on all 29.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -3989,14 +3981,6 @@ rules:
               the division blocks of pp.167-170. No page list is given: which
               pages carry a declaration moves whenever a block is mapped, so a
               list here is a second copy that goes stale silently.
-              FIVE of the 29 division blocks on pp.85-125 miss their own printed
-              Division Total by exactly one dollar -- risk-management, finance,
-              information-technology, airport and public-works-administration --
-              and every one is in the FY 2023-24 Actual column and nowhere else.
-              All five are short rather than over, which is the one way this
-              differs from the funding-sources block on these same pages, where
-              three are short and two over. The three later columns tie exactly
-              on all 29.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4055,14 +4039,6 @@ rules:
               the division blocks of pp.167-170. No page list is given: which
               pages carry a declaration moves whenever a block is mapped, so a
               list here is a second copy that goes stale silently.
-              FIVE of the 29 division blocks on pp.85-125 miss their own printed
-              Division Total by exactly one dollar -- risk-management, finance,
-              information-technology, airport and public-works-administration --
-              and every one is in the FY 2023-24 Actual column and nowhere else.
-              All five are short rather than over, which is the one way this
-              differs from the funding-sources block on these same pages, where
-              three are short and two over. The three later columns tie exactly
-              on all 29.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4315,14 +4291,6 @@ rules:
               the division blocks of pp.167-170. No page list is given: which
               pages carry a declaration moves whenever a block is mapped, so a
               list here is a second copy that goes stale silently.
-              FIVE of the 29 division blocks on pp.85-125 miss their own printed
-              Division Total by exactly one dollar -- risk-management, finance,
-              information-technology, airport and public-works-administration --
-              and every one is in the FY 2023-24 Actual column and nowhere else.
-              All five are short rather than over, which is the one way this
-              differs from the funding-sources block on these same pages, where
-              three are short and two over. The three later columns tie exactly
-              on all 29.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
@@ -4499,14 +4467,6 @@ rules:
               the division blocks of pp.167-170. No page list is given: which
               pages carry a declaration moves whenever a block is mapped, so a
               list here is a second copy that goes stale silently.
-              FIVE of the 29 division blocks on pp.85-125 miss their own printed
-              Division Total by exactly one dollar -- risk-management, finance,
-              information-technology, airport and public-works-administration --
-              and every one is in the FY 2023-24 Actual column and nowhere else.
-              All five are short rather than over, which is the one way this
-              differs from the funding-sources block on these same pages, where
-              three are short and two over. The three later columns tie exactly
-              on all 29.
         column_headers: ["FY 2023-24", "FY 2024-25", "FY 2025-26", "FY 2026-27"]
         columns:
           - {fiscal_year: 2024, basis: actual}
