@@ -200,10 +200,14 @@
   </ul>
 </details>
 
-{{- /* NO #caveats-count IN THIS SUMMARY, unlike index.html.tmpl's. That id is
-       repainted per year and this template renders no year control, so a count
-       here would be server-rendered once and never corrected. app.js reaches it
-       with maybeEl precisely so that this page may omit it. */}}
+{{- /* NO #caveats-count IN THIS SUMMARY, unlike index.html.tmpl's, and NOT
+       because a count here could not be kept true: paintYearWords reaches that
+       id with maybeEl and would repaint it, and this template does render a
+       year control when it is handed more than one stem
+       (TestBothChartTemplatesAcceptYearStems). The hint says what the list is
+       FOR instead, because on a page whose caveats are the document's rather
+       than the chart's, how many there are is not what a reader is deciding
+       on. */}}
 <details class="apparatus" id="caveats-view">
   <summary>
     <h2>Caveats</h2>

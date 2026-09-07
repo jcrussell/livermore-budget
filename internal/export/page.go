@@ -868,6 +868,11 @@ type navItem struct {
 // follow it. Between a defect a reader cannot detect and one they can, this
 // takes the one they can -- and then says so on the page rather than leaving
 // them to infer the set, which is why the heading names the years.
+//
+// pageTextBase resolves a doc id to the directory the page text is cited from,
+// with its trailing slash. A FUNCTION AND NOT A URL because the caller, not
+// this file, decides between a remote browse view and the copy the site ships
+// -- see Write.
 func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, []Citation, error) {
 	views := o.views()
 	nav := make([]navItem, 0, len(views))

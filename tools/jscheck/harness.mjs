@@ -48,8 +48,8 @@ export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", ".."
 const TEMPLATE_IDS = new Set([
   "breadcrumb", "caveats", "chart-hint", "caveats-count", "caveats-view", "chart", "chart-desc",
   "chart-title", "counts-line", "derived-list", "derived-view", "detail", "figures",
-  "flow-table", "hero", "lede-year", "legend", "page-basis", "table-view", "theme-toggle",
-  "tooltip", "year-toggle",
+  "figures-view", "flow-table", "hero", "lede-year", "legend", "page-basis",
+  "sources-view", "table-view", "theme-toggle", "tooltip", "year-toggle",
 ]);
 
 /**

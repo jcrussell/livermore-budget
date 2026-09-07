@@ -711,8 +711,8 @@ func views(built result) []export.View {
 			// page: the locator rule it enumerated is stated at the top of
 			// provenance.html.tmpl, where a reader meets the links it governs,
 			// and repeating it in a header was the second copy.
-			Lede: "Every figure this site draws, with the document, page and byte offset " +
-				"it was read from — downloadable whole, or one page at a time.",
+			Lede: "Every figure this site publishes, with the document, page and byte " +
+				"offset it was read from — downloadable whole, or one page at a time.",
 		})
 	}
 	return out

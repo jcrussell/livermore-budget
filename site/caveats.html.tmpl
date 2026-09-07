@@ -107,17 +107,10 @@
        page's footer cites the pages its figures were read from; this page shows
        no figures, so the union of every document's pages would be the broadest
        false provenance claim on the site. Each document links to itself above. -->
-  <p class="subtle">
-    Packaged by {{.ExportedBy}}. This page draws no projection and publishes no figure: it
-    is what the other pages' figures do not say, collected so a reader can hold the whole set
-    at once. Each caveat ships inside the document it belongs to, so it travels with the data
-    rather than only with the page.
-  </p>
-  {{- /* THE FILE LIST FOLDS HERE TOO, and this page's disclosure holds ONLY the
-         file list. There is no sources list to put beside it, for the reason
-         above: this page shows no figures, so a union of every document's
-         pages would be the broadest false provenance claim on the site. */}}
-  <details class="apparatus" id="sources-view">
+  {{- /* SO THIS DISCLOSURE HOLDS ONLY THE FILE LIST, and its id says so. Every
+         other footer's holds a source list beside it; there is none to put
+         here, for the reason stated directly above. */}}
+  <details class="apparatus" id="data-view">
     <summary>
       <h3>The data</h3>
       <span class="apparatus-hint">{{len .Projections}} file{{if ne (len .Projections) 1}}s{{end}},
@@ -128,6 +121,12 @@
       {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
     </p>
   </details>
+  <p class="subtle">
+    Packaged by {{.ExportedBy}}. This page draws no projection and publishes no figure: it
+    is what the other pages' figures do not say, collected so a reader can hold the whole set
+    at once. Each caveat ships inside the document it belongs to, so it travels with the data
+    rather than only with the page.
+  </p>
 </footer>
 
 </body>
