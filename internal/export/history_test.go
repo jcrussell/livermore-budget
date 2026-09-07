@@ -218,3 +218,84 @@ func TestTheHistoryViewRefusesADocumentShortASeries(t *testing.T) {
 		t.Errorf("error %q does not reconcile the counts", err)
 	}
 }
+
+// changesFixture is p168 in miniature: an open revenue block, and the single
+// excess row whose printed label is the tail of a three-line wrap.
+func changesFixture() []historySeries {
+	return []historySeries{
+		{label: "Sales taxes", kind: "revenue", group: ""},
+		{label: "over (under) expenditures", kind: "fund_balance", group: ""},
+	}
+}
+
+// changesSections is the declaration the real view makes for that shape: the
+// revenue block open, the excess section closed on its one row with the whole
+// printed phrase as its display label.
+func changesSections() []export.Section {
+	return []export.Section{
+		{Heading: "Revenues", Kind: "revenue"},
+		{Heading: "Excess of revenues over (under) expenditures", Kind: "fund_balance",
+			Rows: map[string]string{
+				"over (under) expenditures": "Excess of Revenues over (under) expenditures",
+			}},
+	}
+}
+
+// TestTheHistoryViewDisplaysADeclaredRowLabel: a section's Rows may give a
+// wrap-fragment row its whole printed phrase, an empty value keeps the printed
+// label, and a section without Rows is untouched.
+func TestTheHistoryViewDisplaysADeclaredRowLabel(t *testing.T) {
+	sections := changesSections()
+	sections[0].Rows = map[string]string{"Sales taxes": ""}
+	dir, err := writeHistorySite(t, historyDoc(changesFixture()...), sections)
+	if err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, "balances.html"))
+	if err != nil {
+		t.Fatalf("read the page: %v", err)
+	}
+	html := string(b)
+	if !strings.Contains(html, `<th scope="row">Excess of Revenues over (under) expenditures</th>`) {
+		t.Error("the declared display label is not the row's visible name")
+	}
+	if strings.Contains(html, `<th scope="row">over (under) expenditures</th>`) {
+		t.Error("the wrap fragment is still a row's visible name")
+	}
+	if !strings.Contains(html, `<th scope="row">Sales taxes</th>`) {
+		t.Error("a row named with an empty display label lost its printed label")
+	}
+}
+
+// TestTheHistoryViewRefusesASeriesItsSectionDoesNotName is the swallow test: a
+// second fund_balance series with no fund group lands at the excess section's
+// (kind, fund_group) key, so the unclaimed-series refusal cannot see it, and
+// the section's Rows is the only thing standing between it and the wrong
+// heading.
+func TestTheHistoryViewRefusesASeriesItsSectionDoesNotName(t *testing.T) {
+	series := append(changesFixture(),
+		historySeries{label: "Net change in fund balances", kind: "fund_balance", group: ""})
+	_, err := writeHistorySite(t, historyDoc(series...), changesSections())
+	if err == nil {
+		t.Fatal("a fund_balance series the section does not name was accepted; it would " +
+			"render under the excess heading silently")
+	}
+	if !strings.Contains(err.Error(), "do not name it") {
+		t.Errorf("error %q does not name the absorbed series", err)
+	}
+}
+
+// TestTheHistoryViewRefusesARowNameMatchingNoSeries: a name that matches
+// nothing checks nothing, so a stale or typo'd Rows key is an error rather
+// than a silently inert declaration.
+func TestTheHistoryViewRefusesARowNameMatchingNoSeries(t *testing.T) {
+	sections := changesSections()
+	sections[1].Rows["Net change in fund balances"] = ""
+	_, err := writeHistorySite(t, historyDoc(changesFixture()...), sections)
+	if err == nil {
+		t.Fatal("a row name matching no series was accepted")
+	}
+	if !strings.Contains(err.Error(), "names row") {
+		t.Errorf("error %q does not name the unmatched row declaration", err)
+	}
+}

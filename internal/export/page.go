@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"maps"
 	"path"
 	"slices"
 	"strings"
@@ -1688,7 +1689,9 @@ type historySection struct {
 // is the grouping — each series lands in the [View.Sections] entry matching
 // its (kind, fund_group) exactly, and both a series no section claims and a
 // section claiming no series are refused, because either one is a heading
-// telling a reader something the document does not say.
+// telling a reader something the document does not say. A section that closes
+// itself with [Section.Rows] adds the refusal the key match cannot make: a
+// series its key claims but its rows do not name.
 func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	pageTextBase func(string) string,
 ) (historyPageData, error) {
@@ -1720,11 +1723,19 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		})
 	}
 
+	// sectionKey is the (kind, fund_group) a series is claimed by. It is not
+	// [Section] itself because Rows makes that struct uncomparable, and the
+	// identity of a section deliberately excludes both its heading and its
+	// rows: two sections may not share a key however differently they would
+	// render.
+	type sectionKey struct {
+		kind, fundGroup string
+	}
 	sections := make([]historySection, len(v.Sections))
-	at := make(map[Section]int, len(v.Sections))
+	at := make(map[sectionKey]int, len(v.Sections))
 	for i, s := range v.Sections {
 		sections[i] = historySection{Heading: s.Heading}
-		key := Section{Kind: s.Kind, FundGroup: s.FundGroup}
+		key := sectionKey{kind: s.Kind, fundGroup: s.FundGroup}
 		if _, dup := at[key]; dup {
 			return historyPageData{}, fmt.Errorf(
 				"view %q declares two sections for kind %q fund group %q; a series "+
@@ -1733,14 +1744,34 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		at[key] = i
 	}
 
+	named := make([]map[string]bool, len(v.Sections))
 	rendered := 0
 	for _, s := range body.Series {
-		i, ok := at[Section{Kind: s.Kind, FundGroup: s.FundGroup}]
+		i, ok := at[sectionKey{kind: s.Kind, fundGroup: s.FundGroup}]
 		if !ok {
 			return historyPageData{}, fmt.Errorf(
 				"%s series %q is kind %q in fund group %q, which no section of view %q "+
 					"declares; a row under the wrong printed heading is a claim the "+
 					"schedule does not make", v.Projection, s.Label, s.Kind, s.FundGroup, v.Path)
+		}
+		label := s.Label
+		if rows := v.Sections[i].Rows; rows != nil {
+			display, claims := rows[s.Label]
+			if !claims {
+				return historyPageData{}, fmt.Errorf(
+					"%s series %q is kind %q in fund group %q, which lands in section %q "+
+						"of view %q, and that section's rows do not name it; a heading "+
+						"that enumerates its rows must refuse a new one rather than "+
+						"absorb it", v.Projection, s.Label, s.Kind, s.FundGroup,
+					v.Sections[i].Heading, v.Path)
+			}
+			if display != "" {
+				label = display
+			}
+			if named[i] == nil {
+				named[i] = make(map[string]bool, len(rows))
+			}
+			named[i][s.Label] = true
 		}
 		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase)
 		if err != nil {
@@ -1748,7 +1779,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		rendered += placed
 		sections[i].Series = append(sections[i].Series, seriesRef{
-			Label:    s.Label,
+			Label:    label,
 			Group:    s.FundGroup,
 			Category: s.CategoryLabel,
 			Cells:    cells,
@@ -1767,6 +1798,16 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 					"such series; a heading over nothing says the schedule prints a block "+
 					"it does not", v.Path, s.Heading, v.Sections[i].Kind,
 				v.Sections[i].FundGroup, v.Projection)
+		}
+	}
+	for i, s := range v.Sections {
+		for _, key := range slices.Sorted(maps.Keys(s.Rows)) {
+			if !named[i][key] {
+				return historyPageData{}, fmt.Errorf(
+					"view %q section %q names row %q and %s carries no such series; "+
+						"a name that matches nothing checks nothing",
+					v.Path, s.Heading, key, v.Projection)
+			}
 		}
 	}
 

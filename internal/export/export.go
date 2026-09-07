@@ -402,12 +402,28 @@ type PageIndexEntry struct {
 
 // Section is one printed block of a history document: the heading the schedule
 // prints, and the (kind, fund_group) its series carry. A series belongs to the
-// section both of whose fields equal its own — exact match, so two sections
+// section whose Kind and FundGroup equal its own — exact match, so two sections
 // cannot contest one series.
 type Section struct {
 	Heading   string
 	Kind      string
 	FundGroup string
+	// Rows, when non-nil, closes the section: it is every printed row label the
+	// section claims, each mapped to the label its Line cell displays, where ""
+	// displays the printed label unchanged. The display label exists for the
+	// wrapped row — a fact's row_label is text the page prints, so a label the
+	// document wraps across lines arrives here as its printed tail, and the
+	// view is the layer allowed to say what a reader should call that row
+	// without touching what the page said. Both directions refuse: a series
+	// landing here that Rows does not name is an error, because a heading that
+	// enumerates its rows must not absorb a new one silently, and a name
+	// matching no series is an error, because a declaration that marks nothing
+	// never goes red. That is the opposite of the category and fund-name
+	// lookups, whose miss falls back so a newly mapped slug still renders;
+	// Rows is a small closed declaration about one printed block, so a miss
+	// is a defect rather than a gap. Nil leaves the section open: any series
+	// matching its key belongs, under its printed label.
+	Rows map[string]string
 }
 
 // Drill is a view's chart opening one node into its parts.

@@ -622,7 +622,17 @@ func views(built result) []export.View {
 			Sections: []export.Section{
 				{Heading: "Revenues", Kind: "revenue"},
 				{Heading: "Expenditures", Kind: "expenditure"},
-				{Heading: "Excess of revenues over (under) expenditures", Kind: "fund_balance"},
+				// CLOSED, unlike the two blocks above, because this heading
+				// names one printed row rather than a category: any other
+				// fund_balance series with no fund group reaching this
+				// projection must be refused, not absorbed under it. The
+				// display label is p168's own three wrapped lines joined —
+				// the fact's row_label stays the printed tail, and only the
+				// Line cell says the whole phrase.
+				{Heading: "Excess of revenues over (under) expenditures", Kind: "fund_balance",
+					Rows: map[string]string{
+						"over (under) expenditures": "Excess of Revenues over (under) expenditures",
+					}},
 			},
 			Title: "Ten years of Livermore's money, as the city reports it",
 			Lede: "What the city's governmental funds actually took in and spent, " +
