@@ -48,9 +48,9 @@ func TestTheMarkDrawsEveryFigureAndOnlyFigures(t *testing.T) {
 	if m.Baseline != markHeight {
 		t.Errorf("baseline = %d with no contra cell, want the bottom edge %d", m.Baseline, markHeight)
 	}
-	// The tallest bar is the row's largest figure and fills the box. That is
-	// what "the row's own scale" means, and it is the claim the page's caption
-	// makes to the reader.
+	// The tallest bar is the figure furthest from zero — in this all-positive
+	// row, also its largest — and fills the box. That is what "the row's own
+	// scale" means, and it is the claim the page's caption makes to the reader.
 	if got := m.Bars[3].Height; got != markHeight {
 		t.Errorf("the largest figure's bar is %d high, want the full %d", got, markHeight)
 	}
@@ -94,6 +94,46 @@ func TestAContraRowSplitsTheBaseline(t *testing.T) {
 		t.Errorf("the largest MAGNITUDE (-$100) is %d high, want the half-box %d; scaling "+
 			"against the largest VALUE would make a mostly-negative row draw nothing",
 			m.Bars[0].Height, markHeight/2)
+	}
+}
+
+// TestAnAllNegativeRowsTallestBarIsItsSmallestNumber: the mark scales by
+// magnitude, so in a row whose non-zero figures are all negative the tallest
+// bar belongs to the row's SMALLEST number, and its largest — zero — draws as
+// a dot on the line. That is what the pages' captions promise: the tallest bar
+// is "the figure furthest from zero", not the row's largest number. The
+// shipped witness is All Other Governmental Funds / Unassigned on
+// balances.html, whose tallest bar is its −$454,071.
+func TestAnAllNegativeRowsTallestBarIsItsSmallestNumber(t *testing.T) {
+	cols := fourColumns()
+	// The Unassigned row's shape in four columns: a published zero, then three
+	// figures the city printed in parentheses.
+	m := buildMark(cells(cents(0), cents(-157_775_00), cents(-337_703_00), cents(-454_071_00)), cols)
+
+	if len(m.Bars) != 4 {
+		t.Fatalf("bars = %d over four printed figures, want 4", len(m.Bars))
+	}
+	if m.Baseline != markHeight/2 {
+		t.Fatalf("baseline = %d with contra cells, want the middle %d", m.Baseline, markHeight/2)
+	}
+	// The full-height bar is the most negative cell — the row's smallest
+	// number — hanging the whole half-box below the line.
+	if got := m.Bars[3]; got.Height != markHeight/2 || !got.Negative || got.Y != m.Baseline {
+		t.Errorf("the figure furthest from zero (−$454,071) drew %+v, want the full "+
+			"half-box %d hanging from the baseline", got, markHeight/2)
+	}
+	// The row's LARGEST number is the zero, and it does not get the tallest
+	// bar — it gets no bar at all, only the dot a published zero always gets.
+	if got := m.Bars[0]; !got.Zero || got.Height != 0 {
+		t.Errorf("the row's largest number ($0) drew %+v, want a dot and no bar", got)
+	}
+	// And the other negatives are proportional to the largest magnitude, in
+	// integer arithmetic.
+	for i, want := range []int{5, 11} {
+		if got := m.Bars[i+1].Height; got != want {
+			t.Errorf("bar %d height = %d, want %d (its share of the row's largest magnitude)",
+				i+1, got, want)
+		}
 	}
 }
 
