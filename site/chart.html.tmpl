@@ -90,21 +90,6 @@
   {{- if .Drill}} <span id="chart-hint">Click a node in the right-hand column to open it into
   its parts, or tab to one and press Enter.</span>{{end}}
 </p>
-{{- /* THIS USED TO WARN THAT ADDING THE FLOWS UP DOUBLE-COUNTS, which was
-       true of the three-column page and is false of both pages that replaced
-       it: {0,2} and {3,4} are one grain each, and their ribbons sum. The
-       document still holds two grains -- that is why it publishes no headline
-       -- but a reader looking at either of these charts cannot reach the
-       second one from it. Warning about a trap the page does not have teaches
-       a reader to distrust a figure that is fine. */}}
-<p class="lede">
-  <strong>This page publishes no total.</strong> The document behind it holds the same money
-  at more than one grain — fund totals and the object rows beneath them — so no single number
-  covers it without counting part of it twice. Each chart here draws one pair of columns,
-  which do sum; the totals the city itself publishes are on
-  <a href="index.html">the budget flows page</a>.
-</p>
-
 <div class="card">
   <div class="controls">
     <div class="legend" id="legend" aria-label="Fund groups"></div>
@@ -157,7 +142,8 @@
              marks and check. The <desc> stays the view's words, served whole. */}}
       <title id="chart-title">{{.ChartTitle}}</title>
       <desc id="chart-desc">
-        {{.ChartDescription}} The same figures are listed in the table below.
+        {{.ChartDescription}} The same figures are in the flow table below, which opens
+        from the "Every flow the chart draws, as a table" heading.
       </desc>
     </svg>
     <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
@@ -175,28 +161,66 @@
   </noscript>
 </div>
 
-<h2>What we inferred</h2>
+{{- /* THIS USED TO WARN THAT ADDING THE FLOWS UP DOUBLE-COUNTS, which was
+       true of the three-column page and is false of both pages that replaced
+       it: {0,2} and {3,4} are one grain each, and their ribbons sum. The
+       document still holds two grains -- that is why it publishes no headline
+       -- but a reader looking at either of these charts cannot reach the
+       second one from it. Warning about a trap the page does not have teaches
+       a reader to distrust a figure that is fine. */}}
 <p class="lede">
-  A figure the city printed and a classification we made are different things, so they are
-  never drawn alike. Everything listed here is ours, with the reasoning and the row it came
-  from.
+  <strong>This page publishes no total.</strong> The document behind it holds the same money
+  at more than one grain — fund totals and the object rows beneath them — so no single number
+  covers it without counting part of it twice. Each chart here draws one pair of columns,
+  which do sum; the totals the city itself publishes are on
+  <a href="index.html">the budget flows page</a>.
 </p>
-<ul class="derived-list" id="derived-list">
-  <li class="subtle">Loading from {{.DataPath}}…</li>
-</ul>
 
-<h2>Caveats</h2>
-<p class="lede">
-  These are the reasons this chart will not reconcile row-for-row against the printed
-  schedules. They ship with the data, not in a footnote.
-</p>
-<ul class="caveats" id="caveats">
-  {{- range .Caveats}}
-  <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
-  {{- end}}
-</ul>
+{{- /* THE APPARATUS IS DISCLOSED HERE TOO, on index.html.tmpl's pattern and for
+       its reasons, which that file's comment sets out. The <h2>s stay inside
+       the <summary>, so the outline a screen reader walks is unchanged.
 
-<h2>Every flow the chart draws, as a table</h2>
+       AND THE CHART'S <desc> HAD TO MOVE WITH THEM. It said the same figures
+       were "listed in the table below", which stops being true the moment the
+       table ships closed: a collapsed <details> is out of the accessibility
+       tree and out of in-page find, so the sentence was a promise to exactly
+       the readers who cannot look and check. */}}
+<details class="apparatus" id="derived-view">
+  <summary>
+    <h2>What we inferred</h2>
+    <span class="apparatus-hint">the classifications that are ours, not the city's</span>
+  </summary>
+  <p class="lede">
+    A figure the city printed and a classification we made are different things, so they are
+    never drawn alike. Everything listed here is ours, with the reasoning and the row it came
+    from.
+  </p>
+  <ul class="derived-list" id="derived-list">
+    <li class="subtle">Loading from {{.DataPath}}…</li>
+  </ul>
+</details>
+
+{{- /* NO #caveats-count IN THIS SUMMARY, unlike index.html.tmpl's. That id is
+       repainted per year and this template renders no year control, so a count
+       here would be server-rendered once and never corrected. app.js reaches it
+       with maybeEl precisely so that this page may omit it. */}}
+<details class="apparatus" id="caveats-view">
+  <summary>
+    <h2>Caveats</h2>
+    <span class="apparatus-hint">why this chart will not reconcile row-for-row against
+      the printed schedules</span>
+  </summary>
+  <p class="lede">
+    These are the reasons this chart will not reconcile row-for-row against the printed
+    schedules. They ship with the data, not in a footnote.
+  </p>
+  <ul class="caveats" id="caveats">
+    {{- range .Caveats}}
+    <li>{{if .Href}}<a href="{{.Href}}">{{.Summary}}</a>{{else}}{{.Summary}}{{end}}</li>
+    {{- end}}
+  </ul>
+</details>
+
 <!-- THE TABLE IS THE CHART'S TWIN AND NOT THE FILE'S. app.js builds it from the
      FOLDED document, so it holds one row per ribbon.
 
@@ -213,9 +237,18 @@
      with a chart in front of them is told what the chart shows -- and since
      that repaint, both numbers, so the gap between them is stated rather than
      inferred. -->
-<p class="lede">
-  The chart's twin. Same numbers, no colour, no hovering — <span id="counts-line">{{.Links}} flows between
-  {{.Nodes}} nodes, from {{.Facts}} facts</span>.
+{{- /* #counts-line MOVED INTO THE SUMMARY and its words did not change.
+       paintCounts reaches it by id and tools/jscheck/year.mjs matches it by
+       regex in this file AND in index.html.tmpl, then asserts the two wordings
+       agree -- none of which cares where the span sits. A reader deciding
+       whether to open the table is who the sentence was written for. */}}
+<details class="apparatus" id="table-view">
+  <summary>
+    <h2>Every flow the chart draws, as a table</h2>
+    <span class="apparatus-hint">the chart's twin, same numbers —
+      <span id="counts-line">{{.Links}} flows between {{.Nodes}} nodes, from {{.Facts}} facts</span></span>
+  </summary>
+  <p class="lede">
   {{- /* THE OLD SENTENCE PROMISED that every fact behind a merged flow is
          listed on the row that carries it, "so nothing here is cited less
          precisely than the file cites it". True at the three-column tier set,
@@ -225,12 +258,10 @@
          document's 239 facts and the other page's the remaining 49. Nothing is
          lost -- the two pages partition it -- but this page cannot claim to
          carry it all. */}}
-  Every fact behind a flow drawn here is listed on its row. This page draws one side of the
-  document, so the facts behind the other side are cited on the page that draws it, and both
-  are in <a href="{{.DataPath}}">{{.DataPath}}</a>.
-</p>
-<details id="table-view" open>
-  <summary>Show the table</summary>
+    Every fact behind a flow drawn here is listed on its row. This page draws one side of the
+    document, so the facts behind the other side are cited on the page that draws it, and both
+    are in <a href="{{.DataPath}}">{{.DataPath}}</a>.
+  </p>
   <div class="table-scroll">
     <table id="flow-table">
       <thead>

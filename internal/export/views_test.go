@@ -130,13 +130,12 @@ func twoViews(t *testing.T, trendsPages ...int) string {
 // TestTwoViewsCitingDisjointPagesBothShip is fisc-fjy, and it is the acceptance
 // criterion that bead names.
 //
-// buildPage used to compose the shipped page-text set from the PRIMARY
-// projection's metadata alone, which was the whole set while there was one view.
-// A second view citing pages the first does not would have rendered citation
-// links styled exactly like the working ones beside them, resolving in the
-// template, and 404ing in the browser -- invisible to every check, because
-// fact-offset-points-at-token reads the committed corpus and nothing walks the
-// built tree.
+// A view citing pages another does not must still get them shipped. Composing
+// the page-text set from the primary projection's metadata alone renders
+// citation links styled exactly like the working ones beside them, resolving in
+// the template and 404ing in the browser -- invisible to every other check,
+// because fact-offset-points-at-token reads the committed corpus and nothing
+// else walks the built tree.
 func TestTwoViewsCitingDisjointPagesBothShip(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 
@@ -1302,6 +1301,106 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 // So both arms are asserted, and by rendering rather than by calling the
 // unexported helper: what matters is that a caller can hand either chart
 // template a year list and get a page.
+// chartAndSpine writes the two templates that draw a chart: the spine's
+// index.html and one ChartTemplate page. Both carry an apparatus, and the two
+// tests below are about what a reader can and cannot reach on either.
+func chartAndSpine(t *testing.T) string {
+	t.Helper()
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Projection: "sankey"},
+			{Path: "spending.html", Nav: "Spending", Template: export.ChartTemplate,
+				Projection: "fund-flows", RenderTiers: []int{0, 2, 4},
+				ChartSubject:     "by fund and division",
+				ChartDescription: "A description."},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	return dir
+}
+
+// TestTheApparatusShipsClosedOnEveryChartPage. A <details> and a <details open>
+// render identically to whoever wrote them -- the difference only shows on a
+// reader's first visit -- so the attribute needs an assertion rather than an
+// eye.
+//
+// IT IS A RULE OVER EVERY DISCLOSURE ON THE PAGE, not a list of three ids. A
+// list would say nothing about the next panel somebody folds, which is the one
+// likely to ship open by accident.
+func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
+	dir := chartAndSpine(t)
+	open := regexp.MustCompile(`<details[^>]*\sopen[\s>]`)
+
+	for _, page := range []string{export.IndexPath, "spending.html"} {
+		html := readFile(t, dir, page)
+		if n := strings.Count(html, "<details"); n < 3 {
+			t.Errorf("%s renders %d <details>, want the apparatus folded", page, n)
+		}
+		if m := open.FindString(html); m != "" {
+			t.Errorf("%s ships a disclosure open: %s", page, m)
+		}
+		for _, id := range []string{"derived-view", "caveats-view", "table-view"} {
+			if !strings.Contains(html, `<details class="apparatus" id="`+id+`">`) {
+				t.Errorf("%s does not fold #%s into an .apparatus disclosure", page, id)
+			}
+		}
+	}
+}
+
+// TestAClosedFlowTableIsNotDescribedAsListedBelow is the a11y claim
+// index.html.tmpl's disclosure comment argues, enforced rather than restated: a
+// closed <details> is collapsed for assistive technology as well as visually,
+// so its content is out of the accessibility tree and out of in-page find until
+// the reader opens it. A <desc> telling a screen-reader user that the figures
+// are "listed below" then sends them looking for a table that is not, from
+// their position, there.
+//
+// WRITTEN AS A RULE OVER THE PAGES THAT HAVE BOTH, so it covers whichever
+// template folds its table next rather than the two that already have. The
+// condition is the fold: a page whose #table-view ships open may say "below",
+// because there it is true.
+func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
+	dir := chartAndSpine(t)
+	desc := regexp.MustCompile(`(?s)<desc id="chart-desc">(.*?)</desc>`)
+	closedTable := regexp.MustCompile(`<details[^>]*id="table-view"[^>]*>`)
+
+	checked := 0
+	for _, page := range []string{export.IndexPath, "spending.html"} {
+		html := readFile(t, dir, page)
+		tag := closedTable.FindString(html)
+		if tag == "" || strings.Contains(tag, " open") {
+			continue
+		}
+		m := desc.FindStringSubmatch(html)
+		if m == nil {
+			t.Errorf("%s folds its flow table but renders no chart <desc>", page)
+			continue
+		}
+		checked++
+		if strings.Contains(m[1], "below") && !strings.Contains(m[1], "opens") {
+			t.Errorf("%s folds its flow table and its <desc> still says the figures are "+
+				"below without saying what opens them:\n%s", page, strings.TrimSpace(m[1]))
+		}
+	}
+	// Both pages fold their table today. Without this the loop above is green
+	// over zero pages, which is what a fold that stopped rendering #table-view
+	// would look like.
+	if checked != 2 {
+		t.Errorf("checked %d pages with a folded flow table, want 2", checked)
+	}
+}
+
 func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
