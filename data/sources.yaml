@@ -52,7 +52,8 @@ sources:
     title: "FY 2024-25 Annual Comprehensive Financial Report"
     publisher: "City of Livermore, California"
     # FY2025 is the reporting year; the Statistical Section (pp.163-194)
-    # prints ten years of history, and pp.167-169 of it are mapped.
+    # prints ten years of history, and pp.167-169 and p177 of it are mapped.
+    # p41, also mapped, is MD&A, outside the section.
     fiscal_years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
     # The Statistical Section carries its own label: p161 reads "Statistical
     # Section (Unaudited)", and p29's opinion covers the basic statements only.

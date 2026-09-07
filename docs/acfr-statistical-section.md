@@ -3,9 +3,11 @@
 The survey fisc-oakx.1 asked for: every table classified before any is mapped.
 All figures were measured off `data/extracted/livermore-acfr-fy2025/pages/pNNNN.txt`
 at commit cbd1e72, by reading the pages and re-computing the arithmetic quoted
-here; nothing is carried forward from a prose summary. `amount.Parse` behavior
-was probed against `internal/amount` at the same commit. Re-derive the counts
-from the pages before relying on them — this file does not re-measure itself.
+here; the p169, p187 and p192 entries were re-measured off the same pages at
+commit 3da39e1; nothing is carried forward from a prose summary.
+`amount.Parse` behavior was probed against `internal/amount` at cbd1e72.
+Re-derive the counts from the pages before relying on them — this file does
+not re-measure itself.
 
 28 tables over pp.163-194. p162 is prose, p195 is blank. A page range in the
 first column is one logical table straddling pages.
@@ -53,7 +55,7 @@ when the table prints dollar figures a rule could publish as integer cents (the
 | p188 | Sewer Connection Fees | snap | varies | fees amount_per_unit; DUE sub-table number | no | $/unit; mg, DUEs | DUE sub-table: all three columns sum (43,203 / 1,957 / 34,662 tie) |
 | p189 | Sewer System Historical Operating Results | 10y | 10 | amount; coverage row number | yes | $ | gross revenues total sums per column (2016 and 2025 tie); coverage = LAVWMA net revenues / debt service (2016: 2.73 ties); net after obligations recomputes; **defective, see below** |
 | p190-191 | Schedule of Insurance | snap | 5 | none — free text; dollar figures embedded in prose cells | no | — | **none** |
-| p192 | Redevelopment Historical Tax Revenues | 9 year-columns, FY2016-17 to FY2024-25 | 9 | amount; Percentage Change row percentage | yes | $k, declared "($ in 000s)" | five sum identities per column (total AV, incremental, gross, tax revenues, net all recompute); cross-tie to p194, five of nine years, see below |
+| p192 | Redevelopment Historical Tax Revenues | 9 year-columns, FY2016-17 to FY2024-25 | 9 | amount; Percentage Change row percentage | yes | $k, declared "($ in 000s)" | five sum identities per column: total AV, gross, tax revenues and net recompute in all nine years; incremental fails in four (FY2016-17 off 100, FY2018-19 and FY2020-21 off 1, FY2021-22 off 588 — see below); cross-tie to p194, five of nine years, see below |
 | p193 | Redevelopment Ten Largest Property Owners | snap | 3 | amount, percentage, percentage (+ appeals sub-table: number, percentage, amount) | yes | $ | top-ten total sums (418,308,954 ties); % recompute against the two printed denominators, which tie to p192's FY2024-25 row ×1000 |
 | p194 | Redevelopment Actual and Projected Tax Revenues | 17 year-rows: 9 actual + **8 projected** | 6 | 5 amount (2 parenthesized-negative), 1 number (coverage) | yes | $ | per row: tax revenues = gross − SB 2557 − 33676 (FY2016-17 ties); coverage = tax revenues / debt service (3.18 ties) |
 
@@ -135,17 +137,28 @@ recomputed from the page named.
 - **p166 — Change in Net Position, Governmental, 2023** prints 10,611,708, a
   copy of 2022; the totals row is consistent with the copy.
 - **p169 — Total other financing sources (uses), 2023** prints (1,767,367), a
-  copy of 2022; recomputed 6,672,696 − 8,972,587 = −2,299,891 (p166's
-  Transfers (net) 2023 agrees). **Net change in fund balances 2023** prints
-  (16,975,824), a copy of 2022; recomputed 21,438,989 − 2,299,891 = 19,139,098.
+  copy of 2022; the column's three components sum to 41,558,955 + 6,672,696 −
+  8,972,587 = 39,259,064. The transfers pair alone, 6,672,696 − 8,972,587 =
+  −2,299,891, is p166's Transfers (net) 2023 exactly — the pair, not the block
+  total, because 2023 is the one column that also prints Proceeds from long
+  term debt. **Net change in fund balances 2023** prints (16,975,824), a copy
+  of 2022; recomputed 21,438,989 + 39,259,064 = 60,698,053. The other nine
+  columns tie exactly on both rows.
 - **p189 — Total LAVWMA Debt Service 2023** prints 2,082,021, a copy of 2022;
   its own two components sum to 1,849,444. The coverage row is consistent with
   the copy.
-- **p192 — Incremental Assessed Values FY2016-17** prints 653,272; total −
-  base is 723,232 − 70,060 = 653,172. Off by 100 (thousand). All eight other
-  years recompute.
+- **p192 — Incremental Assessed Values** fail to recompute as total − base
+  (70,060) in four of nine years: FY2016-17 prints 653,272 against 723,232 −
+  70,060 = 653,172, off 100 (thousand); FY2018-19 prints 734,848 against
+  734,847, off 1; FY2020-21 prints 803,990 against 803,989, off 1; FY2021-22
+  prints 844,092 against 913,564 − 70,060 = 843,504, off 588. The two off-by-1
+  years are plausibly the page's own $000s rounding; the 588 — $588,000 — is
+  not rounding. The other five years recompute exactly, as do the page's other
+  four identities in all nine years.
 - **p187 — Recycled Water, Total Variable Cost** prints 2.77 against a City
-  Distribution Cost of 2.8 and a blank wholesale column.
+  Distribution Cost of 2.8 and a `-` in the wholesale column — a published
+  zero, not an absent cell, so the row claims 2.8 + 0 and prints 2.77. The
+  section's other five rate rows tie City + Zone 7 = Total exactly.
 
 Cross-table and cross-year ties that looked like guards and are not, measured:
 
