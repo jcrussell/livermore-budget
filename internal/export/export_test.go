@@ -1144,8 +1144,15 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 			t.Errorf("style.css still hand-writes %q beside the token that replaced it", gone)
 		}
 	}
-	if !strings.Contains(css, "max-width: 1180px") {
-		t.Error("style.css no longer sets the container to 1180px, so the measure has " +
-			"been applied to the chart's own column rather than to the prose in it")
+	// THE CONTAINER RULE ITSELF, not the number anywhere in the file. Grepping
+	// for "max-width: 1180px" passes over a stylesheet that split this rule in
+	// two and clamped `main` to the reading measure while leaving .page-head at
+	// 1180px -- which squeezes the chart, the exact defect this arm is for.
+	// Mutation-measured: that split was green.
+	const container = "main,\n.page-head {\n  max-width: 1180px;"
+	if !strings.Contains(css, container) {
+		t.Error("style.css no longer sets main and .page-head together to 1180px, so the " +
+			"measure has been applied to the chart's own column rather than to the " +
+			"prose in it")
 	}
 }

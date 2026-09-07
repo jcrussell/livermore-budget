@@ -2048,7 +2048,7 @@ func chartAndSpine(t *testing.T) string {
 			{Path: "spending.html", Nav: "Spending", Template: export.ChartTemplate,
 				Projection: "fund-flows", RenderTiers: []int{0, 2, 4},
 				ChartSubject:     "by fund and division",
-				ChartDescription: "A description."},
+				ChartDescription: chartDescription},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -2057,6 +2057,10 @@ func chartAndSpine(t *testing.T) string {
 	}
 	return dir
 }
+
+// chartDescription is what chartAndSpine hands the packager, named so a test
+// can tell the caller's half of a <desc> from the template's own.
+const chartDescription = "A description."
 
 // TestTheApparatusShipsClosedOnEveryChartPage. A <details> and a <details open>
 // render identically to whoever wrote them -- the difference only shows on a
@@ -2068,7 +2072,12 @@ func chartAndSpine(t *testing.T) string {
 // likely to ship open by accident.
 func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	dir := chartAndSpine(t)
-	open := regexp.MustCompile(`<details[^>]*\sopen[\s>]`)
+	// THE ATTRIBUTE HAS THREE SPELLINGS and this matched two. `open`, `open>`
+	// and `open=""` are one boolean attribute; the character class stopped at
+	// whitespace and `>`, so a disclosure written `open=""` shipped open past
+	// here. Mutation-measured on chart.html.tmpl: the whole Go suite stayed
+	// green.
+	open := regexp.MustCompile(`<details[^>]*\sopen(?:[\s>]|="")`)
 
 	for _, page := range []string{export.IndexPath, "spending.html"} {
 		html := readFile(t, dir, page)
@@ -2078,7 +2087,15 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 		if m := open.FindString(html); m != "" {
 			t.Errorf("%s ships a disclosure open: %s", page, m)
 		}
-		for _, id := range []string{"derived-view", "caveats-view", "table-view"} {
+		// EVERY DISCLOSURE THE PAGE RENDERS, not the three this lane folded.
+		// index.html carries #figures-view and both carry #sources-view; a list
+		// of three leaves those to the regex above alone, which says only that
+		// nothing is open and nothing at all about what exists.
+		want := []string{"derived-view", "caveats-view", "table-view", "sources-view"}
+		if page == export.IndexPath {
+			want = append(want, "figures-view")
+		}
+		for _, id := range want {
 			if !strings.Contains(html, `<details class="apparatus" id="`+id+`">`) {
 				t.Errorf("%s does not fold #%s into an .apparatus disclosure", page, id)
 			}
@@ -2115,10 +2132,26 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 			t.Errorf("%s folds its flow table but renders no chart <desc>", page)
 			continue
 		}
+		// THE TEMPLATE'S OWN WORDS, NOT THE CALLER'S. chart.html.tmpl renders
+		// {{.ChartDescription}} and then its own sentence, so a <desc> read
+		// whole lets a caller-supplied description carrying "opens" satisfy the
+		// escape hatch for a template suffix that reverted to "listed below".
+		// Stripping the description this fixture supplied leaves the suffix the
+		// assertion is actually about.
+		// Whitespace collapsed first: the templates wrap this sentence to fit
+		// their own margins, so "opens from" straddles a newline in one of them
+		// and a literal match reports a defect that is only a line break.
+		whole := strings.Join(strings.Fields(m[1]), " ")
+		suffix := strings.TrimSpace(strings.TrimPrefix(whole, chartDescription))
+		if suffix == "" {
+			t.Errorf("%s's <desc> is nothing but the caller's description, so the "+
+				"template says nothing about where the table is", page)
+			continue
+		}
 		checked++
-		if strings.Contains(m[1], "below") && !strings.Contains(m[1], "opens") {
+		if strings.Contains(suffix, "below") && !strings.Contains(suffix, "opens from") {
 			t.Errorf("%s folds its flow table and its <desc> still says the figures are "+
-				"below without saying what opens them:\n%s", page, strings.TrimSpace(m[1]))
+				"below without saying what opens them:\n%s", page, suffix)
 		}
 	}
 	// Both pages fold their table today. Without this the loop above is green
@@ -2145,7 +2178,8 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 // names, not what a reader arrives to.
 func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing.T) {
 	dir := twoViews(t, 127, 128)
-	open := regexp.MustCompile(`<details[^>]*id="sources-view"[^>]*\sopen[\s>]`)
+	// Three spellings, as above.
+	open := regexp.MustCompile(`<details[^>]*id="sources-view"[^>]*\sopen(?:[\s>]|="")`)
 
 	for _, page := range []string{export.IndexPath, "trends.html"} {
 		html := readFile(t, dir, page)
