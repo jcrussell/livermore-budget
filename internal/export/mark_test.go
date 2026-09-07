@@ -1,10 +1,13 @@
 package export
 
 import (
+	"io/fs"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/jcrussell/livermore-budget/site"
 )
 
 // fourColumns is the shape the real document has, which is what the mark is
@@ -306,5 +309,52 @@ func TestTheMarkPublishesItsOwnHeight(t *testing.T) {
 		if b.Y < 0 || b.Y+b.Height > m.Height {
 			t.Errorf("bar %d spans [%d,%d) in a box %d tall", i, b.Y, b.Y+b.Height, m.Height)
 		}
+	}
+}
+
+// TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans couples the captions'
+// superlative to the scaling it describes, which nothing else couples.
+//
+// history.html.tmpl and trends.html.tmpl each promise that the tallest bar in
+// every row is the figure furthest from zero. That sentence is buildMark's
+// magnitude scaling said in English: two spellings of one claim, one in a
+// template a copy editor owns and one in Go, with no seam between them. The
+// templates are read through site.FS() so the assertion is about the shipped
+// files, not a copy (AGENTS.md, "The node boundary" makes the same argument
+// for app.js).
+//
+// A PIN RATHER THAN A GUARD, for TestTheLedesProseNamesThePagesScope's reason:
+// the sentence's meaning cannot be checked mechanically, so both halves are
+// pinned and either drifting alone reddens a test named for the coupling. The
+// behaviour half re-derives the promise on the shipped witness row --
+// balances.html's All Other Governmental Funds / Unassigned, whose largest
+// number, zero, draws a dot while its most negative figure takes the tallest
+// bar. TestAnAllNegativeRowsTallestBarIsItsSmallestNumber pins that row's
+// exact geometry; this half asserts only the superlative the sentence states.
+func TestTheShapeSentenceAndTheMarkAgreeOnWhatTallestMeans(t *testing.T) {
+	const promise = "the tallest bar in every row is the figure furthest from zero"
+	for _, name := range []string{"history.html.tmpl", "trends.html.tmpl"} {
+		b, err := fs.ReadFile(site.FS(), name)
+		if err != nil {
+			t.Fatalf("read shipped %s: %v", name, err)
+		}
+		if !strings.Contains(string(b), promise) {
+			t.Errorf("%s no longer says %q; if buildMark's scaling changed, change the "+
+				"sentence with it -- if only the wording did, the page now claims a "+
+				"scaling the mark does not draw", name, promise)
+		}
+	}
+
+	m := buildMark(cells(cents(0), cents(-157_775_00), cents(-337_703_00), cents(-454_071_00)), fourColumns())
+	tallest := 0
+	for i, b := range m.Bars {
+		if b.Height > m.Bars[tallest].Height {
+			tallest = i
+		}
+	}
+	if tallest != 3 {
+		t.Errorf("the tallest bar belongs to cell %d, want cell 3: the figure furthest "+
+			"from zero no longer takes the tallest bar, so the promise both templates "+
+			"print is false as published", tallest)
 	}
 }
