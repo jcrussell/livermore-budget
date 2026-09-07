@@ -338,14 +338,68 @@ export async function checks() {
     },
     {
       // BOTH TEMPLATES RENDER THIS ELEMENT AND THE CLIENT REPAINTS IT ON BOTH
-      // PAGES, so the three wordings are one sentence or a page contradicts
-      // itself on the reader's first gesture. index.html.tmpl's is compared
-      // above; this holds chart.html.tmpl to the same sentence.
-      name: "chart.html.tmpl's counts sentence is the one the client repaints",
+      // PAGES. This arm and the index.html.tmpl comparison above witness only
+      // the state BEFORE a document arrives: painted() loads none, so
+      // paintCounts takes its undrawn branch -- the sentence a reader sees
+      // while the fetch is in flight, and the one a reader with JavaScript off
+      // keeps. The drawn page's sentence is a different one by design, and the
+      // check after this one is the arm that holds it.
+      name: "before a document arrives, chart.html.tmpl's counts sentence is the one the client paints",
       ok: got.counts === templateCounts("chart.html.tmpl", year.counts),
       detail: `the client paints "${got.counts}" and chart.html.tmpl renders ` +
         `"${templateCounts("chart.html.tmpl", year.counts)}"`,
     },
+    await (async () => {
+      // THE DRAWN SENTENCE, WHICH IS THE ONE EVERY SHIPPED PAGE SHOWS after
+      // its first draw and the state no counts check here reached: with
+      // ribbons on screen, paintCounts writes the templates' head with the
+      // DRAWN numbers, then "N of the document's M facts" whenever the ribbons
+      // cite fewer facts than the document holds -- true of both fund-flows
+      // pages. The undrawn comparisons above never leave that branch's other
+      // side, so a repaint drifting from the template post-draw is invisible
+      // to them.
+      //
+      // THE HEAD IS READ FROM THE TEMPLATES, NOT SPELLED HERE: rendering each
+      // span with a sentinel in its facts slot and cutting where the sentinel
+      // lands yields everything up to the tail without this file carrying a
+      // copy of the sentence. Rewording either template's head goes red in
+      // THIS state, the one readers are in.
+      //
+      // THE TAIL IS A PINNED LITERAL, AND THAT IS THE HONEST LIMIT: no
+      // template renders the drawn tail -- its words exist only in app.js --
+      // so there is nothing shipped to read it from. A literal for it is a
+      // pin against the client, not a copy of a template; fold.mjs pins both
+      // fund-flows pages' whole drawn sentences the same way.
+      const doc = goldenGraph();
+      const { app: a } = await drewWithTable({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": { doc },
+      });
+      const el = a.dom.byId.get("counts-line");
+      const drawn = el ? el.textContent : "(no counts-line)";
+      const headOf = (file) => {
+        const t = templateCounts(file, {
+          links: doc.links.length, nodes: doc.nodes.length, facts: "\u0000",
+        });
+        const cut = t.indexOf("\u0000");
+        if (cut < 0) throw new Error(file + "'s counts sentence renders no facts slot to cut at");
+        return t.slice(0, cut);
+      };
+      const cited = new Set();
+      for (const l of doc.links) for (const id of l.fact_ids) cited.add(id);
+      const total = twoYearConfig().years[0].counts.facts;
+      if (cited.size === total) {
+        throw new Error("the fixture's fact total equals the cited count, so the drawn tail cannot be witnessed");
+      }
+      const want = headOf("index.html.tmpl") +
+        cited.size + " of the document's " + total + " fact" + (total === 1 ? "" : "s");
+      return {
+        name: "after a draw, the repainted counts sentence still opens with the templates' own head",
+        ok: drawn === want && headOf("chart.html.tmpl") === headOf("index.html.tmpl"),
+        detail: `the drawn page's counts-line reads "${drawn}", want "${want}"; ` +
+          `chart.html.tmpl's head is "${headOf("chart.html.tmpl")}"`,
+      };
+    })(),
     {
       // THE CHART'S ACCESSIBLE NAME, WRITTEN WHOLE FROM THE PACKAGER'S FIELD.
       // It is a <title> inside the SVG, so drift here is invisible to every

@@ -47,6 +47,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -84,13 +85,25 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // does. citePattern decides which of its hits are canonical, and every hit left
 // over is refused. Nothing here resolves a title.
 //
+// THE GAP MAY CROSS A NEWLINE ONLY INTO CITATION FURNITURE, OR STRAIGHT INTO
+// THE OPENING QUOTE. A citation is allowed to wrap, so a gap that refused every
+// newline would let a wrapped near-miss escape the net -- but one that crosses
+// into an arbitrary next line walks off the anchor's own sentence and into the
+// following statement, where a string literal turns true prose into a finding.
+// This command is a required gate, and a detector that refuses true sentences
+// teaches people to reword around them. The markers are the set furniture
+// declares -- the gap classes here and there are halves of one rule, as with
+// citePattern's -- and the newline straight into the quote is written out as
+// its own optional branch, because Go's regexp has no lookahead to assert it
+// with.
+//
 // Both bounds are load-bearing, and neither is a measurement of the tree. The
 // gap is short enough that this file's own comments, which mention the anchor
 // and quote things only at a distance, stay out of the net; the quoted run must
 // OPEN like a title so that a list of quoted string literals with the anchor's
 // file name among them is not a hit -- the run such a list puts after the
 // anchor opens with a comma.
-var loosePattern = regexp.MustCompile("AGENTS\\.md[^\"]{0,40}\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
+var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\"\\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*){0,40}(?:\\n[ \t]*)?\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
 
 // docPathPattern finds a docs/ markdown path cited as a root-relative claim
 // about this tree. The character before the anchor is part of the rule rather
@@ -125,39 +138,51 @@ var exempt = map[string]string{
 // which is otherwise a hole nobody can see.
 func checkExemptions(root string) error {
 	for file, reason := range exempt {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(file))); err != nil {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(file))); err != nil { // #nosec G703 -- root is the directory of this command's AGENTS.md argument: it checks the tree it is asked to.
 			return fmt.Errorf("the exemption for %s (%q) names a file that is not there: %w", file, reason, err)
 		}
 	}
 	return nil
 }
 
-func main() {
-	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "usage: doccheck AGENTS.md path...")
-		os.Exit(2)
+func main() { os.Exit(run(os.Args[1:], os.Stderr)) }
+
+// treeRoot is the directory every root-relative claim resolves against: the one
+// holding the AGENTS.md argument, which the usage line makes the tree root by
+// construction. The process's working directory is no part of the interface --
+// the same arguments check the same tree from anywhere -- and a bare "AGENTS.md"
+// argument yields ".", so the Makefile's invocation keeps meaning what it meant.
+func treeRoot(agents string) string { return filepath.Dir(agents) }
+
+// run carries main's whole behaviour behind a testable seam: args is everything
+// after the command name, and the exit code is returned rather than taken.
+func run(args []string, stderr io.Writer) int {
+	if len(args) < 2 {
+		fmt.Fprintln(stderr, "usage: doccheck AGENTS.md path...")
+		return 2
 	}
-	agents := os.Args[1]
-	if err := checkExemptions("."); err != nil {
-		fmt.Fprintf(os.Stderr, "doccheck: %v\n", err)
-		os.Exit(2)
+	agents := args[0]
+	root := treeRoot(agents)
+	if err := checkExemptions(root); err != nil {
+		fmt.Fprintf(stderr, "doccheck: %v\n", err)
+		return 2
 	}
 	anchors, err := anchorsIn(agents)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "doccheck: %v\n", err)
-		os.Exit(2)
+		fmt.Fprintf(stderr, "doccheck: %v\n", err)
+		return 2
 	}
 	// An AGENTS.md with no anchors would pass every citation in the tree, so the
 	// one shape that must never be silent is the one where the substrate failed
 	// to parse.
 	if len(anchors) == 0 {
-		fmt.Fprintf(os.Stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
-		os.Exit(2)
+		fmt.Fprintf(stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
+		return 2
 	}
-	cites, malformed, docRefs, err := scanUnder(os.Args[2:])
+	cites, malformed, docRefs, err := scanUnder(args[1:])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "doccheck: %v\n", err)
-		os.Exit(2)
+		fmt.Fprintf(stderr, "doccheck: %v\n", err)
+		return 2
 	}
 	// A SCAN THAT FINDS NO CITATION AT ALL IS NOT A GREEN RUN, it is a broken
 	// pattern. citePattern has already lost a marker class once -- `>` was added
@@ -172,19 +197,19 @@ func main() {
 	// Exempting this command's own fixtures at least stops those standing in for
 	// a tree that is no longer being read.
 	if len(cites) == 0 {
-		fmt.Fprintf(os.Stderr, "doccheck: no citation of %s found anywhere in the scanned paths\n", agents)
-		fmt.Fprintln(os.Stderr, "  The tree has always carried some, so this is citePattern failing to")
-		fmt.Fprintln(os.Stderr, "  match rather than a tree with nothing to check.")
-		os.Exit(2)
+		fmt.Fprintf(stderr, "doccheck: no citation of %s found anywhere in the scanned paths\n", agents)
+		fmt.Fprintln(stderr, "  The tree has always carried some, so this is citePattern failing to")
+		fmt.Fprintln(stderr, "  match rather than a tree with nothing to check.")
+		return 2
 	}
 	// The same floor for the same reason: the root files have always cited
 	// docs/ by path, so an empty sweep is docPathPattern failing to match
 	// rather than a tree with no claims to check.
 	if len(docRefs) == 0 {
-		fmt.Fprintln(os.Stderr, "doccheck: no docs/ path found anywhere in the scanned paths")
-		fmt.Fprintln(os.Stderr, "  The tree has always carried some, so this is docPathPattern failing")
-		fmt.Fprintln(os.Stderr, "  to match rather than a tree with nothing to check.")
-		os.Exit(2)
+		fmt.Fprintln(stderr, "doccheck: no docs/ path found anywhere in the scanned paths")
+		fmt.Fprintln(stderr, "  The tree has always carried some, so this is docPathPattern failing")
+		fmt.Fprintln(stderr, "  to match rather than a tree with nothing to check.")
+		return 2
 	}
 	var dead []cite
 	for _, c := range cites {
@@ -192,35 +217,35 @@ func main() {
 			dead = append(dead, c)
 		}
 	}
-	missing := missingDocs(".", docRefs)
+	missing := missingDocs(root, docRefs)
 	fail := false
 	if len(dead) > 0 {
 		fail = true
 		sortCites(dead)
 		for _, c := range dead {
-			fmt.Fprintf(os.Stderr, "%s:%d: %q names no section of %s\n", c.file, c.line, c.title, agents)
+			fmt.Fprintf(stderr, "%s:%d: %q names no section of %s\n", c.file, c.line, c.title, agents)
 		}
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "doccheck: the citations above point at nothing.")
-		fmt.Fprintln(os.Stderr, "  A citation that names no section reads as though the rule is")
-		fmt.Fprintln(os.Stderr, "  written down, so the reader goes looking for a heading that is")
-		fmt.Fprintln(os.Stderr, "  gone. Re-point it at the section that carries the rule now, or")
-		fmt.Fprintln(os.Stderr, "  drop it. If you renamed a section, grep for its other citations")
-		fmt.Fprintln(os.Stderr, "  in the same commit.")
-		fmt.Fprintln(os.Stderr, "  See AGENTS.md, \"Before you quote a number\".")
+		fmt.Fprintln(stderr, "")
+		fmt.Fprintln(stderr, "doccheck: the citations above point at nothing.")
+		fmt.Fprintln(stderr, "  A citation that names no section reads as though the rule is")
+		fmt.Fprintln(stderr, "  written down, so the reader goes looking for a heading that is")
+		fmt.Fprintln(stderr, "  gone. Re-point it at the section that carries the rule now, or")
+		fmt.Fprintln(stderr, "  drop it. If you renamed a section, grep for its other citations")
+		fmt.Fprintln(stderr, "  in the same commit.")
+		fmt.Fprintln(stderr, "  See AGENTS.md, \"Before you quote a number\".")
 	}
 	if len(malformed) > 0 {
 		fail = true
 		sortCites(malformed)
 		for _, c := range malformed {
-			fmt.Fprintf(os.Stderr, "%s:%d: %q is not the canonical citation form\n", c.file, c.line, c.title)
+			fmt.Fprintf(stderr, "%s:%d: %q is not the canonical citation form\n", c.file, c.line, c.title)
 		}
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintf(os.Stderr, "doccheck: the citations above cannot be resolved against %s.\n", agents)
-		fmt.Fprintln(os.Stderr, "  Only the canonical form is resolved against the section anchors,")
-		fmt.Fprintln(os.Stderr, "  so any other shape would survive a section rename in silence.")
-		fmt.Fprintln(os.Stderr, "  Rewrite each as the file name, then a comma or a possessive, then")
-		fmt.Fprintf(os.Stderr, "  the section title in quotes: %s\n", fmt.Sprintf("%s, %q", agents, "<section title>"))
+		fmt.Fprintln(stderr, "")
+		fmt.Fprintf(stderr, "doccheck: the citations above cannot be resolved against %s.\n", agents)
+		fmt.Fprintln(stderr, "  Only the canonical form is resolved against the section anchors,")
+		fmt.Fprintln(stderr, "  so any other shape would survive a section rename in silence.")
+		fmt.Fprintln(stderr, "  Rewrite each as the file name, then a comma or a possessive, then")
+		fmt.Fprintf(stderr, "  the section title in quotes: %s\n", fmt.Sprintf("%s, %q", agents, "<section title>"))
 	}
 	if len(missing) > 0 {
 		fail = true
@@ -233,18 +258,19 @@ func main() {
 				continue
 			}
 			prev = c
-			fmt.Fprintf(os.Stderr, "%s:%d: cites %s, which is not in the tree\n", c.file, c.line, c.title)
+			fmt.Fprintf(stderr, "%s:%d: cites %s, which is not in the tree\n", c.file, c.line, c.title)
 		}
-		fmt.Fprintln(os.Stderr, "")
-		fmt.Fprintln(os.Stderr, "doccheck: the docs/ paths above resolve to no file.")
-		fmt.Fprintln(os.Stderr, "  A path cited from a comment or a doc is a claim about the tree,")
-		fmt.Fprintln(os.Stderr, "  exactly as a section name is. Re-point it at the file that carries")
-		fmt.Fprintln(os.Stderr, "  the text now, or drop it. If you renamed a docs/ file, grep for")
-		fmt.Fprintln(os.Stderr, "  its other citations in the same commit.")
+		fmt.Fprintln(stderr, "")
+		fmt.Fprintln(stderr, "doccheck: the docs/ paths above resolve to no file.")
+		fmt.Fprintln(stderr, "  A path cited from a comment or a doc is a claim about the tree,")
+		fmt.Fprintln(stderr, "  exactly as a section name is. Re-point it at the file that carries")
+		fmt.Fprintln(stderr, "  the text now, or drop it. If you renamed a docs/ file, grep for")
+		fmt.Fprintln(stderr, "  its other citations in the same commit.")
 	}
 	if fail {
-		os.Exit(1)
+		return 1
 	}
+	return 0
 }
 
 // sortCites orders findings for a stable report: by file, then line, then
@@ -469,7 +495,7 @@ func docRefsIn(path string) ([]cite, error) {
 func missingDocs(root string, refs []cite) []cite {
 	var missing []cite
 	for _, r := range refs {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(r.title))); err != nil {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(r.title))); err != nil { // #nosec G703 -- see checkExemptions: root comes from this command's own argument.
 			missing = append(missing, r)
 		}
 	}

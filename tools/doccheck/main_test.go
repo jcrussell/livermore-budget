@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -333,6 +334,78 @@ func TestAMentionBeforeACanonicalCitationIsNotMalformed(t *testing.T) {
 	}
 	if len(cites) != 1 {
 		t.Fatalf("read %d citations, want 1; the canonical one must still be resolved", len(cites))
+	}
+}
+
+// A true sentence that merely ends with the anchor is not a finding when the
+// next statement opens with a string literal. A gap crossing any newline
+// stitches the sentence to the literal below it and makes a required gate
+// refuse prose that cites nothing -- the refuses-true-sentences failure the
+// package comment promises to avoid. The second line opens with neither
+// citation furniture nor the quote itself, so it is outside the gap by the
+// rule loosePattern states.
+func TestATrueSentenceAboveAStringLiteralIsNotMalformed(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, "package x\n\n// The rule lives in AGENTS.md.\nvar basis = \"audited\"\n")
+	got, err := malformedIn(path)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("malformedIn = %v, want empty; the gap crossed the newline into an unrelated statement", got)
+	}
+}
+
+// The two wrap shapes the gap rule exists to keep: a near-miss whose gap
+// crosses a newline into comment furniture, and one whose next line opens with
+// the quote itself. A gap that refused every newline would pass both in
+// silence, which is what a flat no-newline rule gives up.
+func TestAWrappedNearMissIsStillRefused(t *testing.T) {
+	dir := t.TempDir()
+
+	goFile := filepath.Join(dir, "x.go")
+	write(t, goFile, "package x\n\n// A verb, wrapped: AGENTS.md names it\n// under \"The node boundary\".\n")
+	got, err := malformedIn(goFile)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 1 || got[0].line != 3 {
+		t.Errorf("comment-wrapped near-miss: malformedIn = %v, want one finding at line 3", got)
+	}
+
+	mdFile := filepath.Join(dir, "x.md")
+	write(t, mdFile, "# T\n\nSee AGENTS.md at\n\"The node boundary\".\n")
+	got, err = malformedIn(mdFile)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 1 || got[0].line != 3 {
+		t.Errorf("quote-led wrap: malformedIn = %v, want one finding at line 3", got)
+	}
+}
+
+// The scan resolves against the tree holding the AGENTS.md argument, not
+// against the process's working directory: with a hardcoded ".", a run from
+// anywhere else reports every cited docs/ path dead and every exemption's
+// file missing.
+func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
+	root := t.TempDir()
+	for _, d := range []string{"docs", filepath.Join("tools", "doccheck")} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o750); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+	write(t, filepath.Join(root, "AGENTS.md"), "# T\n\n## The extraction boundary\n")
+	write(t, filepath.Join(root, "docs", "real.md"), "# real\n")
+	write(t, filepath.Join(root, "tools", "doccheck", "main_test.go"), "package main\n")
+	src := filepath.Join(root, "x.go")
+	write(t, src, "package x\n\n// see AGENTS.md, \"The extraction boundary\". See docs/real.md.\n")
+
+	t.Chdir(t.TempDir())
+	var stderr strings.Builder
+	if code := run([]string{filepath.Join(root, "AGENTS.md"), src}, &stderr); code != 0 {
+		t.Errorf("run = %d from an unrelated working directory, want 0; stderr:\n%s", code, stderr.String())
 	}
 }
 
