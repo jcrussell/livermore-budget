@@ -362,8 +362,16 @@ type pageData struct {
 	chrome
 	FiscalYearLabel string
 	Basis           string
-	Hero            figure
-	Figures         []figure
+	// ChartTitle is the SVG's accessible name: the opening yearView's string,
+	// handed to the template rather than composed in it from FiscalYearLabel
+	// and Basis. app.js repaints the element from the same string on a year
+	// switch, so a template carrying its own composition is a second source
+	// for the one sentence a screen reader announces -- and an edit to either
+	// wording ships a name that silently reverts on the first toggle, to
+	// exactly the readers who cannot see the marks disagree.
+	ChartTitle string
+	Hero       figure
+	Figures    []figure
 	// Years is every published year, opening year first. The template renders
 	// Years[0]'s tiles and caveats into the HTML and lists the rest as a
 	// selector; app.js swaps between them without refetching the page.
@@ -405,14 +413,19 @@ type chartPageData struct {
 	// ConfigJSON is window.FISC_CONFIG, as on the spine page: this view draws a
 	// chart, so it ships app.js and the config app.js reads.
 	ConfigJSON template.JS
-	// ChartSubject is what the chart is OF, and ChartDescription how it reads.
+	// ChartTitle is the SVG's accessible name and ChartDescription how it
+	// reads, both server-rendered and not only in the config blob: with
+	// JavaScript off these words are all that say what the chart draws, to
+	// exactly the readers who cannot see the marks and check.
 	//
-	// SERVER-RENDERED AND NOT ONLY IN THE CONFIG BLOB. ChartSubject reached the
-	// client and stopped there, so <title id="chart-title"> shipped a literal --
-	// "by fund and division" -- that app.js only overwrote on the first paint.
-	// With JavaScript off both pages announced a chart neither draws, to the
-	// readers least able to tell.
-	ChartSubject     string
+	// ChartTitle IS THE OPENING yearView'S STRING, handed to the template
+	// rather than composed in it from FiscalYearLabel, Basis and the view's
+	// subject. app.js repaints the element from the same string on a year
+	// switch and appends to it on a drill, so a template carrying its own
+	// composition is a second source for the one sentence a screen reader
+	// announces -- and an edit to either wording ships a name that silently
+	// reverts on the first toggle.
+	ChartTitle       string
 	ChartDescription string
 	// Drill is whether this page's chart opens a node, so the template can say
 	// what a click does and render the breadcrumb that comes back out of one.
@@ -1292,12 +1305,16 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		},
 		FiscalYearLabel: meta.FiscalYearLabel,
 		Basis:           meta.Basis,
-		Hero:            hero,
-		Figures:         figures,
-		Years:           years,
-		Facts:           meta.Counts.Facts,
-		Nodes:           meta.Counts.Nodes,
-		Links:           meta.Counts.Links,
+		// years[0] is the opening year: validate refuses a YearStems whose
+		// first entry is not v.Projection, and the default stem list is
+		// [v.Projection] alone.
+		ChartTitle: years[0].ChartTitle,
+		Hero:       hero,
+		Figures:    figures,
+		Years:      years,
+		Facts:      meta.Counts.Facts,
+		Nodes:      meta.Counts.Nodes,
+		Links:      meta.Counts.Links,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a
@@ -1415,14 +1432,16 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
 			CaveatsPath:  caveatsPath,
 		},
-		FiscalYearLabel:  meta.FiscalYearLabel,
-		Basis:            meta.Basis,
-		Scopes:           meta.Scopes,
-		Years:            years,
-		Facts:            meta.Counts.Facts,
-		Nodes:            meta.Counts.Nodes,
-		Links:            meta.Counts.Links,
-		ChartSubject:     v.ChartSubject,
+		FiscalYearLabel: meta.FiscalYearLabel,
+		Basis:           meta.Basis,
+		Scopes:          meta.Scopes,
+		Years:           years,
+		Facts:           meta.Counts.Facts,
+		Nodes:           meta.Counts.Nodes,
+		Links:           meta.Counts.Links,
+		// years[0] is the opening year, as in buildSankeyPage: validate pins
+		// YearStems[0] to v.Projection.
+		ChartTitle:       years[0].ChartTitle,
 		ChartDescription: v.ChartDescription,
 		Drill:            v.Drill != nil,
 		// #nosec G203 -- see buildSankeyPage; blob is encoding/json's output.

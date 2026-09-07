@@ -10,7 +10,38 @@
 // internal/export pins the Go side of that contract (TestYearViewKeysAreTheOnes
 // TheClientReads). This pins the client side, against the same shipped app.js.
 
-import { loadApp, settle, twoYearConfig, plannedFetch, goldenGraph } from "./harness.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, repoRoot } from "./harness.mjs";
+
+/**
+ * The counts sentence exactly as a shipped template renders it, with `c` in
+ * its slots.
+ *
+ * READ FROM THE TEMPLATE, NOT RE-COMPOSED. paintCounts writes this element
+ * over the server-rendered sentence, so its words must be the template's own
+ * -- and an expectation spelled as a literal here is a third copy of the
+ * sentence, pinning the client to the checker while the template drifts free.
+ * Substituting the numbers into the template's span makes an edit to either
+ * wording go red. Verified by mutation: with the literal expectation,
+ * rewording index.html.tmpl's span left the whole suite at 0 FAILs.
+ *
+ * THE PLURAL SHAPE IS THE SHARED ONE. Neither template renders a singular --
+ * their numbers are a whole document's counts -- and paintCounts singularises
+ * only figures a drilled chart can reach, which no template renders. A field
+ * the template renames survives substitution as literal braces, so the
+ * comparison fails closed rather than matching an empty slot.
+ */
+function templateCounts(file, c) {
+  const src = readFileSync(join(repoRoot, "site", file), "utf8");
+  const m = src.match(/<span id="counts-line">([\s\S]*?)<\/span>/);
+  if (!m) throw new Error(file + " renders no #counts-line span to pin against");
+  return m[1].replace(/\s+/g, " ").trim()
+    .replaceAll("{{.Links}}", String(c.links))
+    .replaceAll("{{.Nodes}}", String(c.nodes))
+    .replaceAll("{{.Facts}}", String(c.facts));
+}
 
 /** A year as the packager emits it, with every key spelled the way Go tags it. */
 function fixtureYear(overrides) {
@@ -21,6 +52,12 @@ function fixtureYear(overrides) {
     path: "data/sankey-2027.json",
     basis: "adopted",
     title: "City of Livermore budget flows \u2014 FY 2026-27",
+    // A STRING NO CLIENT COMPOSITION REPRODUCES, for the reason the title is
+    // one: with the composed spine sentence here, a client rebuilding
+    // "Sankey diagram of the " + label + " " + basis + " budget" from a
+    // literal stays green against its own copy. The suffix is the part only
+    // the packager knows -- the chart pages' views really do carry one.
+    chart_title: "Sankey diagram of the FY 2026-27 adopted budget by a subject only the packager knows",
     hero: { label: "What the city actually spends", value: "$252,854,896", note: "note", kind: "hero" },
     figures: [
       { label: "Naive column total", value: "$325,241,780", note: "n", kind: "error" },
@@ -82,6 +119,7 @@ function painted(app, year) {
     lede: el("lede-year") ? el("lede-year").textContent : "",
     counts: el("counts-line") ? el("counts-line").textContent : "",
     basis: el("page-basis") ? el("page-basis").textContent : "",
+    chartTitle: el("chart-title") ? el("chart-title").textContent : "",
     title: app.dom.document.title,
   };
 }
@@ -290,10 +328,38 @@ export async function checks() {
       // this one pins that the client writes what it was handed, that one pins
       // that it was handed something. Neither covers fisc-rn0 alone.
       name: "the lede, the flow count and the document title follow the year",
+      // THE COUNTS EXPECTATION IS THE TEMPLATE'S SENTENCE, rendered by
+      // templateCounts above -- see its comment for why a literal here is the
+      // copy-checks-copy defect this suite exists to refuse.
       ok: got.lede === year.label + " " + year.basis &&
-          got.counts === `${year.counts.links} flows between ${year.counts.nodes} nodes, from ${year.counts.facts} facts` &&
+          got.counts === templateCounts("index.html.tmpl", year.counts) &&
           got.title === year.title,
       detail: `lede "${got.lede}", counts "${got.counts}", title "${got.title}"`,
+    },
+    {
+      // BOTH TEMPLATES RENDER THIS ELEMENT AND THE CLIENT REPAINTS IT ON BOTH
+      // PAGES, so the three wordings are one sentence or a page contradicts
+      // itself on the reader's first gesture. index.html.tmpl's is compared
+      // above; this holds chart.html.tmpl to the same sentence.
+      name: "chart.html.tmpl's counts sentence is the one the client repaints",
+      ok: got.counts === templateCounts("chart.html.tmpl", year.counts),
+      detail: `the client paints "${got.counts}" and chart.html.tmpl renders ` +
+        `"${templateCounts("chart.html.tmpl", year.counts)}"`,
+    },
+    {
+      // THE CHART'S ACCESSIBLE NAME, WRITTEN WHOLE FROM THE PACKAGER'S FIELD.
+      // It is a <title> inside the SVG, so drift here is invisible to every
+      // sighted reader: a client composing its own sentence repaints the
+      // template's server-rendered name with different words on the first
+      // year toggle, announced only through a screen reader (fisc-rn0, and
+      // fisc-m1uu for this element). The fixture's chart_title carries a
+      // suffix no label-and-basis composition reproduces -- measured: with
+      // the composed spine sentence in the fixture, reverting paintChartName
+      // to compose from year.label and year.basis leaves this check green.
+      name: "the chart's accessible name is the packager's chart_title, written whole",
+      ok: got.chartTitle === year.chart_title,
+      detail: `#chart-title reads "${got.chartTitle}", ` +
+        `want the packager's "${year.chart_title}"`,
     },
     {
       // The footer's "Scope X, basis Y" sentence is a claim about the document

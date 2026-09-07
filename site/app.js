@@ -2717,7 +2717,10 @@ async function showYear(year) {
  *
  * The page already carries the opening year's, rendered server-side so the
  * headline survives with JavaScript off. This swaps them for another year's,
- * and every string it writes was built by the packager.
+ * and every string it writes was built by the packager -- except the counts
+ * line, whose shape depends on what is drawn, so paintCounts composes it from
+ * the packager's counts and tools/jscheck/year.mjs pins its undrilled wording
+ * to the template's own sentence.
  * @param {FiscYear} year
  */
 function paintYearWords(year) {

@@ -122,7 +122,12 @@
          role="img" they are reachable but announced as nothing, which the
          "tab to a flow" instruction below would then be lying about. -->
     <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
-      <title id="chart-title">Sankey diagram of the {{.FiscalYearLabel}} {{.Basis}} budget</title>
+      {{- /* THE PACKAGER'S ONE STRING, not a composition of this template's
+             own. app.js repaints this element from the same yearView field on
+             a year switch, so a second wording composed here is an accessible
+             name that silently reverts on the first toggle -- announced only
+             to the readers who cannot see the marks and check. */}}
+      <title id="chart-title">{{.ChartTitle}}</title>
       {{- /* "OPENS FROM" AND NOT "IS LISTED BELOW". The flow table used to ship
              open and now ships inside a closed <details>, which takes it out of
              the accessibility tree until the reader expands it -- so a

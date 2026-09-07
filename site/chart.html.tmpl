@@ -149,12 +149,13 @@
   {{- end}}
   <div class="chart-wrap">
     <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
-      {{- /* THE VIEW'S WORDS, SERVER-RENDERED. Both were literals here,
-             describing the three-column page this template used to render, and
-             app.js rewrites only the <title> and only on its first paint -- so
-             with JavaScript off both pages announced a chart neither draws, to
-             exactly the readers who cannot see the marks and check. */}}
-      <title id="chart-title">Sankey diagram of the {{.FiscalYearLabel}} {{.Basis}} budget {{.ChartSubject}}</title>
+      {{- /* THE PACKAGER'S ONE STRING, not a composition of this template's
+             own. app.js repaints this element from the same yearView field on
+             a year switch and appends to it on a drill, so a second wording
+             composed here is an accessible name that silently reverts on the
+             first toggle -- announced only to the readers who cannot see the
+             marks and check. The <desc> stays the view's words, served whole. */}}
+      <title id="chart-title">{{.ChartTitle}}</title>
       <desc id="chart-desc">
         {{.ChartDescription}} The same figures are listed in the table below.
       </desc>

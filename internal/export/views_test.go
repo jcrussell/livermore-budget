@@ -3,6 +3,7 @@ package export_test
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1966,5 +1967,65 @@ func TestTheProvenancePageLinksBothHalvesOfEveryCitation(t *testing.T) {
 	if found < 6 {
 		t.Errorf("provenance.html has %d relative references, want its shards, its "+
 			"page text and its stylesheet", found)
+	}
+}
+
+// TestTheChartsAccessibleNameIsTheYearViewsOwnString pins the server-rendered
+// <title id="chart-title"> on both chart-bearing templates to the string the
+// client repaints on a year switch: the config blob's years[0].chart_title.
+//
+// THE ELEMENT IS AN ACCESSIBILITY LABEL, so drift here is the one wording
+// defect no sighted reader can see: a template composing its own copy of the
+// sentence renders one wording, and the first year toggle repaints the other,
+// announced only through a screen reader (fisc-rn0; this element is
+// fisc-m1uu). Comparing the markup against the blob fails whichever side
+// moves, including a template that regrows a hand-composed literal.
+func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	second := reyeared(t, goldenSankey(t), 2027, "FY 2026-27")
+
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey": goldenSankey(t), "sankey-2027": second, "fund-flows": fundFlows,
+		},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"}},
+			{Path: "drilldown.html", Nav: "Fund and division",
+				Template: export.ChartTemplate, Projection: "fund-flows",
+				RenderTiers:      []int{0, 2, 4},
+				ChartSubject:     "by fund and division",
+				ChartDescription: "A description."},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	for _, page := range []string{export.IndexPath, "drilldown.html"} {
+		src := readFile(t, dir, page)
+		var config struct {
+			Years []struct {
+				ChartTitle string `json:"chart_title"`
+			} `json:"years"`
+		}
+		if err := json.Unmarshal(configBlob(t, src), &config); err != nil {
+			t.Fatalf("%s: decode FISC_CONFIG: %v", page, err)
+		}
+		if len(config.Years) == 0 || config.Years[0].ChartTitle == "" {
+			t.Fatalf("%s: the config carries no opening chart_title to compare against", page)
+		}
+		const open = `<title id="chart-title">`
+		got := strings.TrimPrefix(between(t, readerVisible(t, src), open, "</title>"), open)
+		if want := template.HTMLEscapeString(config.Years[0].ChartTitle); got != want {
+			t.Errorf("%s renders chart title %q, but the client repaints %q on a year switch",
+				page, got, want)
+		}
 	}
 }
