@@ -1401,6 +1401,58 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 	}
 }
 
+// TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem covers the
+// footer's two halves, which are two different claims and belong on two
+// different sides of the disclosure.
+//
+// The source list is two links per cited page and grows with the corpus, so it
+// folds. The sentence under it names the scope, the basis and the file the page
+// is drawn from -- which is to say WHICH DOCUMENT THE READER IS LOOKING AT --
+// and a reader must not have to open anything to learn that. On index.html and
+// the chart pages the basis half of it is repainted per year, so folding it
+// would hide a string the client is still writing.
+//
+// TestEachViewsFooterCitesItsOwnSources stays green through the fold, which is
+// why this exists beside it rather than inside it: it asks what the footer
+// names, not what a reader arrives to.
+func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing.T) {
+	dir := twoViews(t, 127, 128)
+	open := regexp.MustCompile(`<details[^>]*id="sources-view"[^>]*\sopen[\s>]`)
+
+	for _, page := range []string{export.IndexPath, "trends.html"} {
+		html := readFile(t, dir, page)
+		start := strings.Index(html, "<footer>")
+		if start < 0 {
+			t.Fatalf("%s renders no footer", page)
+		}
+		foot := html[start:]
+		summary := strings.Index(foot, "<summary>")
+		heading := strings.Index(foot, "<h3>Sources")
+		basis := strings.Index(foot, "Projection:")
+		for name, at := range map[string]int{
+			"<summary>": summary, "<h3>Sources": heading, "Projection:": basis,
+		} {
+			if at < 0 {
+				t.Fatalf("%s's footer renders no %s", page, name)
+			}
+		}
+		if !strings.Contains(foot, `<details class="apparatus" id="sources-view">`) {
+			t.Errorf("%s does not fold its source list into an .apparatus disclosure", page)
+		}
+		if open.MatchString(foot) {
+			t.Errorf("%s ships its source list open", page)
+		}
+		if summary > heading {
+			t.Errorf("%s's Sources heading is not inside the summary", page)
+		}
+		// The disclosure closes BEFORE the scope sentence, which is what puts
+		// that sentence on the reader's side of the fold.
+		if closed := strings.Index(foot, "</details>"); closed < 0 || closed > basis {
+			t.Errorf("%s's scope-and-basis sentence is inside the folded source list", page)
+		}
+	}
+}
+
 func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {

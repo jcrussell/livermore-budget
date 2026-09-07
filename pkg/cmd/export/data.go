@@ -707,10 +707,12 @@ func views(built result) []export.View {
 			Nav:      "Sources and data",
 			Template: export.ProvenanceTemplate,
 			Title:    "Every figure this site publishes, and the page it came from",
-			Lede: "This site's other pages draw the city's budget. This one publishes the " +
-				"records they are drawn from — every figure with the document, page and " +
-				"byte offset it was read from, and the text it was parsed from, kept " +
-				"verbatim. Download the lot, or open one page at a time.",
+			// ONE SENTENCE, and the rest of what this lede said is still on the
+			// page: the locator rule it enumerated is stated at the top of
+			// provenance.html.tmpl, where a reader meets the links it governs,
+			// and repeating it in a header was the second copy.
+			Lede: "Every figure this site draws, with the document, page and byte offset " +
+				"it was read from — downloadable whole, or one page at a time.",
 		})
 	}
 	return out

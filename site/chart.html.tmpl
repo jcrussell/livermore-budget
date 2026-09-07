@@ -283,19 +283,38 @@
 </main>
 
 <footer>
-  <h3>Sources for every year this page can show</h3>
-  <ul>
-    {{- range .Sources}}
-    <li>
-      {{if .PDFURL}}<a href="{{.PDFURL}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}{{if .Publisher}}, {{.Publisher}}{{end}}
-      {{- if .Pages}} —
-      {{- range $i, $p := .Pages}}{{if $i}}, {{end}}
-        <a href="{{$p.PDFURL}}">p{{$p.Number}} (PDF)</a> /
-        <a href="{{$p.TextURL}}">extracted text</a>
-      {{- end}}{{end}}
-    </li>
-    {{- end}}
-  </ul>
+  {{- /* THE SOURCE LIST IS DISCLOSED AND THE SENTENCE BELOW IT IS NOT. The
+         list is two links per cited page and grows with the corpus; the
+         sentence under it names the scope, the basis and the document on
+         screen, and a reader must never have to open something to learn which
+         fiscal year they are reading. */}}
+  <details class="apparatus" id="sources-view">
+    <summary>
+      <h3>Sources for every year this page can show</h3>
+      <span class="apparatus-hint">{{len .Sources}} document{{if ne (len .Sources) 1}}s{{end}}, every page this view cites</span>
+    </summary>
+    <ul>
+      {{- range .Sources}}
+      <li>
+        {{if .PDFURL}}<a href="{{.PDFURL}}">{{.Title}}</a>{{else}}{{.Title}}{{end}}{{if .Publisher}}, {{.Publisher}}{{end}}
+        {{- if .Pages}} —
+        {{- range $i, $p := .Pages}}{{if $i}}, {{end}}
+          <a href="{{$p.PDFURL}}">p{{$p.Number}} (PDF)</a> /
+          <a href="{{$p.TextURL}}">extracted text</a>
+        {{- end}}{{end}}
+      </li>
+      {{- end}}
+    </ul>
+    <p class="subtle">
+      {{- /* THE FILE LIST FOLDS WITH THE SOURCE LIST because it is the same
+             kind of thing: a set of links that grows with the corpus, useful
+             to a reader who came for the data and furniture to one who did
+             not. What stays outside is the sentence naming the scope, the
+             basis and the file THIS page is drawn from. */}}
+      Every data file the site publishes, each fetchable on its own:
+      {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
+    </p>
+  </details>
   <p class="subtle">
     <!-- SCOPES, PLURAL, AND THAT IS THE ONE ENVELOPE DIFFERENCE THIS DOCUMENT
          CARRIES. Two schedules sit in one file because they are disjoint by
@@ -305,8 +324,6 @@
     {{- range $i, $s := .Scopes}}{{if $i}},{{end}} {{$s}}{{end}}, basis
     <span id="page-basis">{{.Basis}}</span>. Projection: {{.ProjectionBy}}. Packaged by {{.ExportedBy}}.
     <span data-year-path>This chart is drawn from <a href="{{.DataPath}}">{{.DataPath}}</a>.</span>
-    Every data file the site publishes, each fetchable on its own:
-    {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
   </p>
 </footer>
 

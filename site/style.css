@@ -967,11 +967,32 @@ details > summary {
   padding: 12px 0;
 }
 
-.apparatus > summary h2 {
+/* h2 AND h3 BECAUSE THE FOOTER'S DISCLOSURE IS AN h3. Its heading sits under
+   the page's <h2>s in the outline and must stay there; without display: inline
+   here it would drop the hint to its own line and take the summary's list
+   marker off the heading's line with it. */
+.apparatus > summary h2,
+.apparatus > summary h3 {
   display: inline;
   margin: 0;
   font-size: 18px;
   color: var(--ink-1);
+}
+
+/* The footer's disclosure is furniture, not a panel: it sits under a border the
+   <footer> already draws, so a second one above it reads as a rule with nothing
+   between the two. */
+footer > .apparatus {
+  margin-top: 0;
+  border-top: 0;
+}
+
+footer > .apparatus > summary {
+  padding: 0 0 8px;
+}
+
+footer > .apparatus > summary h3 {
+  font-size: 15px;
 }
 
 .apparatus-hint {

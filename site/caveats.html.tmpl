@@ -112,9 +112,22 @@
     is what the other pages' figures do not say, collected so a reader can hold the whole set
     at once. Each caveat ships inside the document it belongs to, so it travels with the data
     rather than only with the page.
-    Every data file the site publishes, each fetchable on its own:
-    {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
   </p>
+  {{- /* THE FILE LIST FOLDS HERE TOO, and this page's disclosure holds ONLY the
+         file list. There is no sources list to put beside it, for the reason
+         above: this page shows no figures, so a union of every document's
+         pages would be the broadest false provenance claim on the site. */}}
+  <details class="apparatus" id="sources-view">
+    <summary>
+      <h3>The data</h3>
+      <span class="apparatus-hint">{{len .Projections}} file{{if ne (len .Projections) 1}}s{{end}},
+        each fetchable on its own</span>
+    </summary>
+    <p class="subtle">
+      Every data file the site publishes:
+      {{- range $i, $p := .Projections}}{{if $i}},{{end}} <a href="{{$p.Path}}">{{$p.Path}}</a>{{end}}.
+    </p>
+  </details>
 </footer>
 
 </body>
