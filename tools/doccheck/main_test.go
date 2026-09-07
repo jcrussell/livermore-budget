@@ -357,10 +357,13 @@ func TestATrueSentenceAboveAStringLiteralIsNotMalformed(t *testing.T) {
 	}
 }
 
-// The two wrap shapes the gap rule exists to keep: a near-miss whose gap
-// crosses a newline into comment furniture, and one whose next line opens with
-// the quote itself. A gap that refused every newline would pass both in
-// silence, which is what a flat no-newline rule gives up.
+// The wrap shapes the gap rule keeps, and the one it refuses to read. A
+// near-miss wrapping into comment furniture is netted in any file; one wrapping
+// into a bare quote-led line is netted in markdown, where prose wraps with no
+// marker, and NOT in Go, where a wrapped comment's continuation carries `//` by
+// construction and a marker-less quote-led line is a string literal. A gap that
+// refused every newline would pass the first two in silence; one that crossed
+// the bare newline everywhere read code as the tail of the sentence above it.
 func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 	dir := t.TempDir()
 
@@ -381,7 +384,35 @@ func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 		t.Fatalf("malformedIn: %v", err)
 	}
 	if len(got) != 1 || got[0].line != 3 {
-		t.Errorf("quote-led wrap: malformedIn = %v, want one finding at line 3", got)
+		t.Errorf("markdown quote-led wrap: malformedIn = %v, want one finding at line 3", got)
+	}
+
+	goQuoteLed := filepath.Join(dir, "y.go")
+	write(t, goQuoteLed, "package y\n\n// See AGENTS.md at\n\"The node boundary\".\n")
+	got, err = malformedIn(goQuoteLed)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("Go quote-led line: malformedIn = %v, want empty; a marker-less quote-led line in Go is a string literal, not a wrapped sentence", got)
+	}
+}
+
+// The sibling the un-indented fixture hid: a comment ending with the anchor
+// inside a composite literal, with an INDENTED string element on the next line.
+// The bare-newline branch stitched the comment to the element and reported a
+// file carrying no citation at all, which took the required gate red on true
+// prose.
+func TestACommentAboveAnIndentedLiteralElementIsNotMalformed(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, "package geom\n\nvar names = []string{\n\t// The band names, in the order AGENTS.md.\n\t\"left\",\n\t\"right\",\n}\n")
+	got, err := malformedIn(path)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("malformedIn = %v, want empty; the file contains no citation", got)
 	}
 }
 

@@ -85,17 +85,14 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // does. citePattern decides which of its hits are canonical, and every hit left
 // over is refused. Nothing here resolves a title.
 //
-// THE GAP MAY CROSS A NEWLINE ONLY INTO CITATION FURNITURE, OR STRAIGHT INTO
-// THE OPENING QUOTE. A citation is allowed to wrap, so a gap that refused every
-// newline would let a wrapped near-miss escape the net -- but one that crosses
-// into an arbitrary next line walks off the anchor's own sentence and into the
-// following statement, where a string literal turns true prose into a finding.
-// This command is a required gate, and a detector that refuses true sentences
-// teaches people to reword around them. The markers are the set furniture
-// declares -- the gap classes here and there are halves of one rule, as with
-// citePattern's -- and the newline straight into the quote is written out as
-// its own optional branch, because Go's regexp has no lookahead to assert it
-// with.
+// THE GAP MAY CROSS A NEWLINE ONLY INTO CITATION FURNITURE. A citation is
+// allowed to wrap, so a gap that refused every newline would let a wrapped
+// near-miss escape the net -- but one that crosses into an arbitrary next line
+// walks off the anchor's own sentence and into the following statement, where a
+// string literal turns true prose into a finding. This command is a required
+// gate, and a detector that refuses true sentences teaches people to reword
+// around them. The markers are the set furniture declares -- the gap classes
+// here and there are halves of one rule, as with citePattern's.
 //
 // Both bounds are load-bearing, and neither is a measurement of the tree. The
 // gap is short enough that this file's own comments, which mention the anchor
@@ -103,7 +100,19 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // OPEN like a title so that a list of quoted string literals with the anchor's
 // file name among them is not a hit -- the run such a list puts after the
 // anchor opens with a comma.
-var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\"\\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*){0,40}(?:\\n[ \t]*)?\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
+var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\"\\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*){0,40}\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
+
+// looseProsePattern is loosePattern with one extra allowance: the gap may also
+// cross a bare newline straight into the opening quote. IT APPLIES TO MARKDOWN
+// AND NOTHING ELSE, because markdown is the only scanned format whose sentences
+// wrap with no marker at all -- a wrapped near-miss there can put the quote at
+// the head of the next line with nothing in front of it. In every other scanned
+// extension a wrapped comment's continuation carries a marker the furniture
+// branch already crosses, and a marker-less line opening with a quote is a
+// string literal or a quoted value: code, which this net must not read as the
+// tail of a sentence above it. The branch is written out as its own optional
+// group because Go's regexp has no lookahead to assert it with.
+var looseProsePattern = regexp.MustCompile("AGENTS\\.md(?:[^\"\\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*){0,40}(?:\\n[ \t]*)?\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
 
 // docPathPattern finds a docs/ markdown path cited as a root-relative claim
 // about this tree. The character before the anchor is part of the rule rather
@@ -443,6 +452,10 @@ func malformedIn(path string) ([]cite, error) {
 	if err != nil {
 		return nil, err
 	}
+	net := loosePattern
+	if filepath.Ext(path) == ".md" {
+		net = looseProsePattern
+	}
 	text := string(b)
 	var claimed []int
 	for _, loc := range citePattern.FindAllStringIndex(text, -1) {
@@ -457,7 +470,7 @@ func malformedIn(path string) ([]cite, error) {
 		return false
 	}
 	var out []cite
-	for _, loc := range loosePattern.FindAllStringIndex(text, -1) {
+	for _, loc := range net.FindAllStringIndex(text, -1) {
 		if inSpan(loc[0], loc[1]) {
 			continue
 		}
