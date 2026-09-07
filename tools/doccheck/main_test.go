@@ -244,10 +244,11 @@ func TestFoldDropsFurnitureAndTrailingPunctuation(t *testing.T) {
 	}
 }
 
-// The near-misses citePattern cannot see are REFUSED, not resolved: a verb
-// between the anchor and the quote, and an anchor wrapped in backticks. Both
-// shapes survived a section rename in the tree with every gate green. The
-// canonical citation in the same fixture must not be reported beside them.
+// The near-misses citePattern cannot see are REFUSED when their quoted title
+// resolves: a verb between the anchor and the quote, and an anchor wrapped in
+// backticks. Both shapes survived a section rename in the tree with every gate
+// green. The canonical citation in the same fixture must not be reported
+// beside them.
 func TestANearMissCitationIsRefusedAndACanonicalOneIsNot(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
@@ -259,7 +260,12 @@ func TestANearMissCitationIsRefusedAndACanonicalOneIsNot(t *testing.T) {
 //
 // Backticks: `+"`AGENTS.md`"+` names it under "The node boundary".
 `)
-	got, err := malformedIn(path)
+	anchors := map[string]bool{
+		"the extraction boundary": true,
+		"the designed answer":     true,
+		"the node boundary":       true,
+	}
+	got, err := malformedIn(path, anchors)
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -284,7 +290,9 @@ func TestACitationWithNoQuotedTitleIsOutOfReach(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
 	write(t, path, "package x\n\n// The table AGENTS.md's review-loop section describes has moved.\n")
-	bad, err := malformedIn(path)
+	// The phrase IS an anchor here, so the exclusion below can only come from
+	// the absence of quotes -- not from a failed resolution.
+	bad, err := malformedIn(path, map[string]bool{"review-loop section": true})
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -305,7 +313,10 @@ func TestAQuotedStringListIsNotAMalformedCitation(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
 	write(t, path, "package x\n\nvar files = []string{\"AGENTS.md\", \"internal/x.go\"}\n")
-	got, err := malformedIn(path)
+	// The neighbouring literal IS an anchor here, so the exclusion can only
+	// come from the shape rule -- the run after the anchor's own closing quote
+	// opens with a comma, and a quoted run cannot be crossed to reach further.
+	got, err := malformedIn(path, map[string]bool{"internal/x.go": true})
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -321,7 +332,7 @@ func TestAMentionBeforeACanonicalCitationIsNotMalformed(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
 	write(t, path, "package x\n\n// It is in AGENTS.md; see AGENTS.md, \"Testing\".\n")
-	bad, err := malformedIn(path)
+	bad, err := malformedIn(path, map[string]bool{"testing": true})
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -348,12 +359,110 @@ func TestATrueSentenceAboveAStringLiteralIsNotMalformed(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
 	write(t, path, "package x\n\n// The rule lives in AGENTS.md.\nvar basis = \"audited\"\n")
-	got, err := malformedIn(path)
+	// The literal IS an anchor here, so the exclusion can only come from the
+	// gap rule -- the sentence ends at the anchor and the next line opens with
+	// no citation furniture -- not from a failed resolution.
+	got, err := malformedIn(path, map[string]bool{"audited": true})
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
 	if len(got) != 0 {
 		t.Errorf("malformedIn = %v, want empty; the gap crossed the newline into an unrelated statement", got)
+	}
+}
+
+// What a near-miss IS, in both directions on one line: a quoted run that
+// resolves against the anchors is a citation written outside the canonical
+// form, and one that resolves against nothing is a sentence. No rule about
+// WHERE the quote may sit can tell these two apart, so the first shape here
+// is out of the net by resolution, not by distance.
+func TestProseQuotingANonSectionWordIsNotMalformed(t *testing.T) {
+	dir := t.TempDir()
+	anchors := map[string]bool{"the node boundary": true}
+
+	prose := filepath.Join(dir, "a.go")
+	write(t, prose, "package x\n\n// The rule in AGENTS.md forbids the word \"audited\" on these pages.\nvar X int\n")
+	got, err := malformedIn(prose, anchors)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("malformedIn = %v, want empty; the quoted word names no section", got)
+	}
+
+	nearMiss := filepath.Join(dir, "b.go")
+	write(t, nearMiss, "package x\n\n// AGENTS.md at \"The node boundary\".\nvar X int\n")
+	got, err = malformedIn(nearMiss, anchors)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 1 || got[0].line != 3 {
+		t.Errorf("malformedIn = %v, want one finding at line 3; the quoted run names a section through a non-canonical separator", got)
+	}
+}
+
+// The net has no length bound: a near-miss whose quoted title sits a long
+// clause after the anchor is still a citation of the section it names, and a
+// bounded gap let exactly this shape escape in silence.
+func TestALongSeparatorNamingARealSectionIsRefused(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, "package x\n\n// AGENTS.md is entirely clear about this particular matter, under \"The node boundary\".\n")
+	got, err := malformedIn(path, map[string]bool{"the node boundary": true})
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 1 || got[0].line != 3 {
+		t.Errorf("malformedIn = %v, want one finding at line 3; distance is not what makes a citation", got)
+	}
+}
+
+// What replaced the length bound: the gap may not cross a sentence end. Both
+// fixtures are the shape of real comment blocks in this tree -- a mention of
+// the anchor file whose PARAGRAPH later quotes a genuine section title -- and
+// their titles resolve, so only the sentence rule keeps them out of the net.
+func TestASentenceEndBetweenAnchorAndQuoteIsNotACitation(t *testing.T) {
+	dir := t.TempDir()
+	anchors := map[string]bool{"history's home is git": true}
+
+	sameLine := filepath.Join(dir, "x.go")
+	write(t, sameLine, "package x\n\n// the shapes an anchor takes in AGENTS.md. Bold is an anchor because the tree cites one: \"History's home is git\".\n")
+	got, err := malformedIn(sameLine, anchors)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("same line: malformedIn = %v, want empty; a sentence ended between the anchor and the quote", got)
+	}
+
+	wrapped := filepath.Join(dir, "y.go")
+	write(t, wrapped, "package y\n\n// It is mentioned in AGENTS.md.\n// \"History's home is git\" is quoted afterwards.\n")
+	got, err = malformedIn(wrapped, anchors)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("across furniture: malformedIn = %v, want empty; the sentence ended before the wrap", got)
+	}
+}
+
+// The declared misspelling gap: the net catches a near-SEPARATOR of a real
+// title, never a near-MISSPELLING of one -- a title one letter off resolves
+// against nothing, so neither arm sees it, and the package comment says so.
+func TestANearMisspelledTitleEscapesBothArms(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.go")
+	write(t, path, "package x\n\n// AGENTS.md is entirely clear about this particular matter, under \"The node boundry\".\n")
+	bad, err := malformedIn(path, map[string]bool{"the node boundary": true})
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	cites, err := citesIn(path)
+	if err != nil {
+		t.Fatalf("citesIn: %v", err)
+	}
+	if len(bad) != 0 || len(cites) != 0 {
+		t.Errorf("malformed = %v, cites = %v; want both empty -- this gap is declared, not covered", bad, cites)
 	}
 }
 
@@ -366,9 +475,11 @@ func TestATrueSentenceAboveAStringLiteralIsNotMalformed(t *testing.T) {
 func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 	dir := t.TempDir()
 
+	anchors := map[string]bool{"the node boundary": true}
+
 	goFile := filepath.Join(dir, "x.go")
 	write(t, goFile, "package x\n\n// A verb, wrapped: AGENTS.md names it\n// under \"The node boundary\".\n")
-	got, err := malformedIn(goFile)
+	got, err := malformedIn(goFile, anchors)
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -378,7 +489,7 @@ func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 
 	mdFile := filepath.Join(dir, "x.md")
 	write(t, mdFile, "# T\n\nSee AGENTS.md at\n\"The node boundary\".\n")
-	got, err = malformedIn(mdFile)
+	got, err = malformedIn(mdFile, anchors)
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -388,7 +499,7 @@ func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 
 	goQuoteLed := filepath.Join(dir, "y.go")
 	write(t, goQuoteLed, "package y\n\n// See AGENTS.md at\n\"The node boundary\".\n")
-	got, err = malformedIn(goQuoteLed)
+	got, err = malformedIn(goQuoteLed, anchors)
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -407,7 +518,10 @@ func TestProseEndingWithTheAnchorAboveAQuoteLedSentenceIsNotMalformed(t *testing
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.md")
 	write(t, path, "# Doc\n\nThe rule lives in AGENTS.md.\n\"Absent is not zero\" is a phrase this file uses loosely.\n")
-	got, err := malformedIn(path)
+	// The phrase IS an anchor here: the exclusion must come from the gap rule
+	// -- the sentence ends at the anchor, and the bare newline carries no
+	// furniture -- which is the shape this test pins.
+	got, err := malformedIn(path, map[string]bool{"absent is not zero": true})
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -425,7 +539,10 @@ func TestACommentAboveAnIndentedLiteralElementIsNotMalformed(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.go")
 	write(t, path, "package geom\n\nvar names = []string{\n\t// The band names, in the order AGENTS.md.\n\t\"left\",\n\t\"right\",\n}\n")
-	got, err := malformedIn(path)
+	// The element IS an anchor here: the exclusion must come from the gap rule
+	// -- the sentence ends at the anchor, and the indented element line carries
+	// no furniture -- which is the shape this test pins.
+	got, err := malformedIn(path, map[string]bool{"left": true})
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
@@ -466,9 +583,11 @@ func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	}
 }
 
-// A docs/ path is found in a markdown link, in backticks and opening a line,
-// and a URL naming some other repository's docs directory is not a claim
-// about this tree.
+// A docs/ path is found in a markdown link, in backticks, opening a line, and
+// behind the ./ and ../ a link written from a subdirectory carries -- the
+// tree's own README under testdata/ reaches docs/ that way, and a guard that
+// refused every dot and slash never collected those links at all. A URL naming
+// some other repository's docs directory is still not a claim about this tree.
 func TestDocRefsInFindsCitedPathsAndSkipsURLs(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "x.md")
@@ -478,6 +597,9 @@ See [the charter](docs/agents-md-charter.md) and `+"`docs/m0-spike.md`"+`.
 
 docs/review-loop-evidence.md opens a line. Not ours:
 https://github.com/x/y/blob/main/docs/SYNC.md
+
+Relative, from a subdirectory: [contract](../docs/sankey-contract.md) and
+./docs/local.md too.
 `)
 	got, err := docRefsIn(path)
 	if err != nil {
@@ -491,6 +613,8 @@ https://github.com/x/y/blob/main/docs/SYNC.md
 		"docs/agents-md-charter.md",
 		"docs/m0-spike.md",
 		"docs/review-loop-evidence.md",
+		"../docs/sankey-contract.md",
+		"./docs/local.md",
 	}
 	if diff := cmp.Diff(want, paths); diff != "" {
 		t.Errorf("paths (-want +got):\n%s", diff)
@@ -512,6 +636,36 @@ func TestAMissingDocPathReddens(t *testing.T) {
 	}
 	got := missingDocs(root, refs)
 	want := []cite{{title: "docs/gone.md", file: "x.go", line: 5}}
+	if diff := cmp.Diff(want, got, cmp.AllowUnexported(cite{})); diff != "" {
+		t.Errorf("missingDocs (-want +got):\n%s", diff)
+	}
+}
+
+// A ./ or ../ path resolves against the CITING FILE'S directory, as a reader
+// following the link would, and only a bare docs/ path is a root-relative
+// claim. Resolving the relative ones against root would report the tree's own
+// working links as dead: the third ref here is the same path as the first but
+// written from root, and it must redden while the first stays green.
+func TestARelativeDocPathResolvesAgainstTheCitingFile(t *testing.T) {
+	root := t.TempDir()
+	for _, d := range []string{"docs", "testdata"} {
+		if err := os.MkdirAll(filepath.Join(root, d), 0o750); err != nil {
+			t.Fatalf("mkdir %s: %v", d, err)
+		}
+	}
+	write(t, filepath.Join(root, "docs", "real.md"), "# real\n")
+	fromTestdata := filepath.Join(root, "testdata", "README.md")
+	refs := []cite{
+		{title: "../docs/real.md", file: fromTestdata, line: 3},
+		{title: "./docs/gone.md", file: fromTestdata, line: 5},
+		{title: "../docs/real.md", file: filepath.Join(root, "x.md"), line: 7},
+		{title: "docs/real.md", file: fromTestdata, line: 9},
+	}
+	got := missingDocs(root, refs)
+	want := []cite{
+		{title: "./docs/gone.md", file: fromTestdata, line: 5},
+		{title: "../docs/real.md", file: filepath.Join(root, "x.md"), line: 7},
+	}
 	if diff := cmp.Diff(want, got, cmp.AllowUnexported(cite{})); diff != "" {
 		t.Errorf("missingDocs (-want +got):\n%s", diff)
 	}

@@ -31,13 +31,17 @@
 // line by line. See titleOf.
 //
 // ONLY THE CANONICAL FORM IS RESOLVED. A looser net catches the anchor followed
-// within a bounded run by a quoted title, and every hit the canonical pattern
-// did not claim is REFUSED AS MALFORMED rather than interpreted -- resolving
-// free prose means guessing, and a detector that guesses refuses true sentences
-// and teaches people to reword around them. A citation carrying no quoted title
-// at all is OUT OF REACH OF BOTH PATTERNS: prose that names a section without
-// quoting it passes this gate in silence, and that gap is declared here rather
-// than papered over.
+// within one sentence by a quoted run, and a hit the canonical pattern did not
+// claim is REFUSED AS MALFORMED only when that run resolves against the section
+// anchors --
+// resolution is what separates a citation from a sentence, because prose may
+// mention the anchor file and quote a word for any reason at all, and a
+// required gate that refuses true sentences teaches people to reword around
+// it. THREE SHAPES ARE OUT OF REACH OF BOTH PATTERNS, declared here rather
+// than papered over: prose that names a section without quoting it; a
+// malformed citation naming a section that has since been renamed away, which
+// resolves against nothing; and a near-misspelling of a section title, which
+// resolves against nothing either. loosePattern's comment argues the exchange.
 //
 // A DOCS/ PATH IS A CLAIM ABOUT THE TREE exactly as a section name is, so every
 // one cited in the scanned files must resolve. That is the narrow half of the
@@ -80,10 +84,15 @@ var citePattern = regexp.MustCompile(`AGENTS\.md(?:'s|,)((?:[\s*>]|//|#)*(?:unde
 // section it belongs to -- wraps with a `>` at the head of the next line.
 var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 
-// loosePattern is the malformed-citation net: the anchor, a bounded run of
-// anything but a quote, then a quoted run that opens the way a section title
-// does. citePattern decides which of its hits are canonical, and every hit left
-// over is refused. Nothing here resolves a title.
+// loosePattern is the malformed-citation net: the anchor, a run of anything
+// but a quote, then a quoted run that opens the way a section title does and
+// is captured as group 1. citePattern decides which of its hits are canonical;
+// of the hits left over, malformedIn refuses exactly those whose captured run
+// RESOLVES against the section anchors. Resolution is the rule, not proximity:
+// what makes a hit a citation rather than a sentence is that its quoted run
+// names a section, so prose that mentions the anchor file and quotes a word
+// that names no section is out of the net BY CONSTRUCTION, at any distance,
+// on one line or several.
 //
 // THE GAP MAY CROSS A NEWLINE ONLY INTO CITATION FURNITURE. A citation is
 // allowed to wrap, so a gap that refused every newline would let a wrapped
@@ -94,32 +103,51 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // around them. The markers are the set furniture declares -- the gap classes
 // here and there are halves of one rule, as with citePattern's.
 //
-// Both bounds are load-bearing, and neither is a measurement of the tree. The
-// gap is short enough that this file's own comments, which mention the anchor
-// and quote things only at a distance, stay out of the net; the quoted run must
-// OPEN like a title so that a list of quoted string literals with the anchor's
-// file name among them is not a hit -- the run such a list puts after the
-// anchor opens with a comma.
+// THE GAP MAY NOT CROSS A SENTENCE END -- a full stop followed by whitespace,
+// on the line or closing it. A citation and its separator live inside one
+// sentence, while a mention of the anchor file whose paragraph quotes a real
+// section title sentences later is true prose, and this tree carries comment
+// blocks shaped exactly that way whose quoted titles resolve, so no
+// resolution test tells them apart. There is no length bound: a bounded gap
+// lets a near-miss whose quote sits past the bound escape in silence, and
+// distance guards against a false-positive class the sentence rule and the
+// anchors test remove between them. A quoted run cannot be crossed either, so
+// the net reads the first quote after each anchor and no other; the run must
+// still OPEN like a title so that a list of string literals with the anchor's
+// file name among them is not even a hit. The costs, declared: a near-miss whose
+// separator itself contains a full sentence escapes, as does one whose
+// sentence ends in ? or ! -- shapes no separator in this tree has taken.
+//
+// TWO NEAR-MISS SHAPES ARE GIVEN UP TO GET THAT, both resolving against
+// nothing: a malformed citation of a section that has since been RENAMED
+// AWAY, which the canonical arm never matches and this arm no longer
+// resolves; and a near-MISSPELLING of a section title -- the net catches a
+// near-separator of a real title, never a near-misspelling of one. The
+// exchange is worth it because a required gate that refuses true prose is
+// worse than one that misses a malformed citation of a heading that is
+// already gone: the reader following either one finds no such section, while
+// the refused sentence teaches people to reword around the gate.
 //
 // ONE WRAP SHAPE IS GIVEN UP: a near-miss whose quote sits at the head of the
 // next line with no marker in front of it -- the anchor's line ends bare, and
 // the title's quote opens the following one. Netting it means crossing a bare
 // newline, and whatever opens the next line then -- a string literal, a quoted
-// value, a new sentence of prose that happens to open with a quote -- reads as
-// the tail of the sentence above it. This command is a required gate, and a
-// gate that refuses true sentences is worse than one that lets a wrapped
-// near-miss by: the near-miss still fails to resolve anywhere, while the
-// refused sentence teaches people to reword around the gate. Every wrap whose
-// continuation carries a marker is still netted by the furniture branch.
-var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\"\\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*){0,40}\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
+// value, a new sentence of prose that happens to quote a real section title --
+// reads as the tail of the sentence above it. Every wrap whose continuation
+// carries a marker is still netted by the furniture branch.
+var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*)*\\\\?\"([A-Za-z0-9`][^\"]{0,79})\"")
 
-// docPathPattern finds a docs/ markdown path cited as a root-relative claim
-// about this tree. The character before the anchor is part of the rule rather
-// than trivia: a slash or a word character in front means the path is the tail
-// of something longer -- a URL naming some other repository's docs directory --
-// and a claim about a different tree is not this gate's to check. Group 2 is
-// the path.
-var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])(docs/[A-Za-z0-9._/-]+\.md)`)
+// docPathPattern finds a docs/ markdown path cited as a claim about this
+// tree, bare or behind a run of ./ and ../ -- a markdown link written from a
+// subdirectory reaches docs/ relatively, and a guard class that refused every
+// dot and slash refused the relative form with the URL tails, so those links
+// were never collected and a dead one passed in silence. The character before
+// the whole path is still part of the rule rather than trivia: a slash or a
+// word character in front means the path is the tail of something longer -- a
+// URL naming some other repository's docs directory -- and a claim about a
+// different tree is not this gate's to check. Group 2 is the path, prefix
+// included; missingDocs decides what a prefixed one resolves against.
+var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
 
 // headingPattern and boldPattern are the two shapes an anchor takes in AGENTS.md.
 // Bold is an anchor and not only a decoration because the tree cites one:
@@ -187,7 +215,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
 		return 2
 	}
-	cites, malformed, docRefs, err := scanUnder(root, args[1:])
+	cites, malformed, docRefs, err := scanUnder(root, args[1:], anchors)
 	if err != nil {
 		fmt.Fprintf(stderr, "doccheck: %v\n", err)
 		return 2
@@ -249,9 +277,9 @@ func run(args []string, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "%s:%d: %q is not the canonical citation form\n", c.file, c.line, c.title)
 		}
 		fmt.Fprintln(stderr, "")
-		fmt.Fprintf(stderr, "doccheck: the citations above cannot be resolved against %s.\n", agents)
-		fmt.Fprintln(stderr, "  Only the canonical form is resolved against the section anchors,")
-		fmt.Fprintln(stderr, "  so any other shape would survive a section rename in silence.")
+		fmt.Fprintf(stderr, "doccheck: the citations above each name a section of %s\n", agents)
+		fmt.Fprintln(stderr, "  outside the canonical form. Only the canonical form is resolved")
+		fmt.Fprintln(stderr, "  against the section anchors, so a rename would orphan these in silence.")
 		fmt.Fprintln(stderr, "  Rewrite each as the file name, then a comma or a possessive, then")
 		fmt.Fprintf(stderr, "  the section title in quotes: %s\n", fmt.Sprintf("%s, %q", agents, "<section title>"))
 	}
@@ -380,7 +408,7 @@ func fold(s string) string {
 // lookup, so the same arguments exempt the same file from anywhere -- the
 // working directory is no part of the interface here any more than it is in
 // treeRoot.
-func scanUnder(root string, paths []string) (cites, malformed, docRefs []cite, err error) {
+func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs []cite, err error) {
 	for _, p := range paths {
 		// #nosec G703 -- the path list is this command's argument; it checks the
 		// paths it is asked to.
@@ -402,7 +430,7 @@ func scanUnder(root string, paths []string) (cites, malformed, docRefs []cite, e
 				return err
 			}
 			cites = append(cites, found...)
-			bad, err := malformedIn(path)
+			bad, err := malformedIn(path, anchors)
 			if err != nil {
 				return err
 			}
@@ -445,13 +473,15 @@ func citesIn(path string) ([]cite, error) {
 	return cites, nil
 }
 
-// malformedIn reports the loosePattern hits that citePattern did not claim. A
-// loose hit is claimed when a canonical match STARTS ANYWHERE INSIDE ITS SPAN,
-// not only at its own anchor: a passing mention of the anchor file shortly
-// before a canonical citation would otherwise capture that citation's quotes
-// and report prose that is fine. The mention itself carries no quoted title,
-// which is the class this gate declares out of reach.
-func malformedIn(path string) ([]cite, error) {
+// malformedIn reports the loosePattern hits that citePattern did not claim and
+// whose quoted title resolves against anchors. A loose hit is claimed when a
+// canonical match STARTS ANYWHERE INSIDE ITS SPAN, not only at its own anchor:
+// a passing mention of the anchor file shortly before a canonical citation
+// would otherwise capture that citation's quotes and report prose that is
+// fine. A hit whose title resolves against no anchor is a sentence rather
+// than a citation and is not a finding at all -- along with the mention
+// carrying no quoted title, that is the class this gate declares out of reach.
+func malformedIn(path string, anchors map[string]bool) ([]cite, error) {
 	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
 	if err != nil {
 		return nil, err
@@ -470,8 +500,11 @@ func malformedIn(path string) ([]cite, error) {
 		return false
 	}
 	var out []cite
-	for _, loc := range loosePattern.FindAllStringIndex(text, -1) {
+	for _, loc := range loosePattern.FindAllStringSubmatchIndex(text, -1) {
 		if inSpan(loc[0], loc[1]) {
+			continue
+		}
+		if !anchors[fold(titleOf(text[loc[2]:loc[3]]))] {
 			continue
 		}
 		out = append(out, cite{
@@ -502,13 +535,21 @@ func docRefsIn(path string) ([]cite, error) {
 	return out, nil
 }
 
-// missingDocs returns the cited paths that resolve to nothing under root. A
-// path that exists is not examined further: its opening marker and its backlink
-// belong to the wider contract this arm deliberately leaves alone.
+// missingDocs returns the cited paths that resolve to nothing. A bare docs/
+// path is a root-relative claim and resolves under root; one opening with ./
+// or ../ is a markdown-style relative link and resolves against the CITING
+// FILE'S directory, exactly as a reader following it would -- resolving those
+// against root would report a link that works on the page as dead. A path that
+// exists is not examined further: its opening marker and its backlink belong
+// to the wider contract this arm deliberately leaves alone.
 func missingDocs(root string, refs []cite) []cite {
 	var missing []cite
 	for _, r := range refs {
-		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(r.title))); err != nil { // #nosec G703 -- see checkExemptions: root comes from this command's own argument.
+		base := root
+		if strings.HasPrefix(r.title, "./") || strings.HasPrefix(r.title, "../") {
+			base = filepath.Dir(filepath.FromSlash(r.file))
+		}
+		if _, err := os.Stat(filepath.Join(base, filepath.FromSlash(r.title))); err != nil { // #nosec G703 -- see checkExemptions: root and the walked files come from this command's own arguments.
 			missing = append(missing, r)
 		}
 	}
