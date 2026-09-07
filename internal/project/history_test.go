@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -287,12 +288,59 @@ func commaDollars(c amount.Cents) string {
 	return s
 }
 
+// printedDollars is commaDollars with the statements' sign convention:
+// negatives print in parentheses, never with a minus sign.
+func printedDollars(c amount.Cents) string {
+	if c < 0 {
+		return "(" + commaDollars(-c) + ")"
+	}
+	return commaDollars(c)
+}
+
+// millionsCell renders cents the way p41's in-millions table prints them:
+// two decimals, so a cell's unit is $10,000.
+func millionsCell(c amount.Cents) string {
+	h := int64(c) / 1_000_000
+	return fmt.Sprintf("%d.%02d", h/100, h%100)
+}
+
+// lastAmountBelowLabel finds the first fixture line containing label, then the
+// first line at or below it carrying any token amount.Parse accepts, and
+// returns that line's last such token. Below, not on: pp.168-169 wrap a total's
+// label onto lines of its own, so the amounts can sit a line or two under the
+// words. The last token, because on every statement read here the wanted
+// column prints last -- 2025 on pp.168-169, Total Governmental Funds on p54.
+func lastAmountBelowLabel(t *testing.T, name, label string, u amount.Units) amount.Cents {
+	t.Helper()
+	lines := fixturePage(t, name)
+	for i, line := range lines {
+		if !strings.Contains(line, label) {
+			continue
+		}
+		for _, below := range lines[i:] {
+			var last amount.Cents
+			found := false
+			for _, f := range strings.Fields(below) {
+				if c, err := amount.Parse(f, u); err == nil {
+					last, found = c, true
+				}
+			}
+			if found {
+				return last
+			}
+		}
+		t.Fatalf("%s: no amounts at or below the %q line", name, label)
+	}
+	t.Fatalf("%s: no line contains %q", name, label)
+	return 0
+}
+
 // TestP167ComponentsTieToP54NotP41 re-derives the arithmetic behind the
 // p167-does-not-tie-to-p41 caveat from fixture pages through amount.Parse,
 // the parser every fact goes through. Three legs: p167's five 2025 General
 // Fund components sum to one figure, p54's audited statement prints that
-// figure to the dollar, and p41's in-millions condensation prints a balance
-// the figure is not. The caveat must quote that sum and name p54: a caveat
+// figure to the dollar, and p41's in-millions condensation prints $87.10,
+// which is not where the sum rounds. The caveat must quote that sum and name p54: a caveat
 // citing only p41 by the statement's bare name tells readers the audited ACFR
 // disagrees with the schedule it agrees with exactly.
 func TestP167ComponentsTieToP54NotP41(t *testing.T) {
@@ -331,15 +379,27 @@ func TestP167ComponentsTieToP54NotP41(t *testing.T) {
 			"the caveat says the audited statement agrees to the dollar", sum, p54)
 	}
 
+	// The p41 leg pins the printed figure, not a mere difference: a difference
+	// is satisfied by any token at all, including the dash amount.Parse reads
+	// as zero, so it could not witness the caveat's claim.
 	p41 := firstAmountOnLine(t, "acfr-p0041.txt", "Fund Balances- Ending", amount.Millions)
-	if sum == p41 {
-		t.Errorf("p167's components sum equals p41's printed balance (%d cents); "+
-			"the caveat exists because MD&A's condensation does not tie", p41)
+	if want := amount.Cents(8_710_000_000); p41 != want {
+		t.Errorf("p41's condensed statement prints an ending balance of %d cents, want %d "+
+			"-- the printed $87.10; a drifted fixture and a dash read as zero both land here", p41, want)
+	}
+	// A cell of p41's table is $10,000, so rounding the sum to the nearest
+	// 1,000,000 cents is what "where the sum rounds" means on that page.
+	if rounded := (sum + 500_000) / 1_000_000 * 1_000_000; rounded == p41 {
+		t.Errorf("p167's components sum (%d cents) rounds to p41's printed balance %d; "+
+			"the caveat exists because MD&A's condensation does not tie", sum, p41)
 	}
 
 	c := caveatBalancesDoNotTieToP41
 	if want := "$" + commaDollars(sum); !strings.Contains(c.Text, want) {
 		t.Errorf("caveat text does not quote %s, the figure p167's components and p54 share", want)
+	}
+	if want := "$" + millionsCell(p41); !strings.Contains(c.Text, want) {
+		t.Errorf("caveat text does not quote %s, the balance p41 prints", want)
 	}
 	if !strings.Contains(c.Text, "(p54)") {
 		t.Error("caveat text does not name p54, the audited statement that agrees to the dollar")
@@ -351,5 +411,56 @@ func TestP167ComponentsTieToP54NotP41(t *testing.T) {
 		if err := validateCaveats(caveats, map[string]struct{}{}); err != nil {
 			t.Errorf("%s: %v", name, err)
 		}
+	}
+}
+
+// TestChanges2025ColumnTiesToP54 re-derives the pp168-169-tie-to-p54 caveat
+// from fixture pages through amount.Parse: on five printed lines the
+// schedule's 2025 column equals p54's Total Governmental Funds column, and
+// the caveat quotes each figure as the pages print it -- parenthesised
+// negative included, so a sign flip on either page goes red here. The caveat
+// ships on the changes document alone, because balances.html publishes p167
+// and this is a claim about a table that page does not show; and the shared
+// unaudited caveat may name neither schedule's corroboration, which is the
+// split this test guards -- history.html once shipped p167 arithmetic its own
+// pages nowhere print.
+func TestChanges2025ColumnTiesToP54(t *testing.T) {
+	c := caveatChangesTieToP54
+	ties := []struct{ row, page, label, p54Label string }{
+		{"Total revenues", "acfr-p0168.txt", "Total revenues", "Total Revenues"},
+		{"Total Expenditures", "acfr-p0168.txt", "Total Expenditures", "Total Expenditures"},
+		{"excess", "acfr-p0168.txt", "Excess of Revenues", "OVER EXPENDITURES"},
+		{"other financing", "acfr-p0169.txt", "Total other financing", "Total Other Financing Sources (Uses)"},
+		{"net change", "acfr-p0169.txt", "Net change in", "Net Change in Fund Balance"},
+	}
+	for _, tc := range ties {
+		schedule := lastAmountBelowLabel(t, tc.page, tc.label, amount.Dollars)
+		audited := lastAmountBelowLabel(t, "acfr-p0054.txt", tc.p54Label, amount.Dollars)
+		if schedule != audited {
+			t.Errorf("%s: the schedule's 2025 column prints %d cents against p54's %d; "+
+				"the caveat says the five lines tie to the dollar", tc.row, schedule, audited)
+		}
+		if want := "$" + printedDollars(schedule); !strings.Contains(c.Text, want) {
+			t.Errorf("%s: caveat text does not quote %s, the figure both pages print", tc.row, want)
+		}
+	}
+
+	found := false
+	for _, cv := range changesCaveats() {
+		if cv.ID == c.ID {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("changesCaveats does not carry %q; history.html's 2025 column would go uncorroborated", c.ID)
+	}
+	for _, cv := range fundBalancesCaveats() {
+		if cv.ID == c.ID {
+			t.Errorf("fundBalancesCaveats carries %q, a claim about pp.168-169, which balances.html does not show", c.ID)
+		}
+	}
+	if strings.Contains(caveatStatisticalSectionIsUnaudited.Text, "p167") {
+		t.Error("the shared unaudited caveat names p167; it ships on history.html, whose " +
+			"pages are pp.168-169, so a corroboration must live per document")
 	}
 }

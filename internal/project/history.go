@@ -179,11 +179,22 @@ var (
 		Text: "p161, the section divider, reads \"Statistical Section (Unaudited)\", and " +
 			"the auditor's report (p29) says of this section: \"Our opinions on the " +
 			"basic financial statements do not cover the other information, and we do " +
-			"not express an opinion or any form of assurance thereon.\" One column can " +
-			"be checked against the audited statements anyway: p167's five 2025 General " +
-			"Fund components sum to $87,043,576, the very figure p54's audited " +
-			"governmental funds statement prints as the General Fund's ending balance. " +
-			"The other nine columns rest on this section alone.",
+			"not express an opinion or any form of assurance thereon.\" The audited " +
+			"statements cover the year just ended, so at most a schedule's 2025 column " +
+			"can be checked against them; the other nine rest on this section alone.",
+		AppliesTo: []string{},
+	}
+	caveatChangesTieToP54 = Caveat{
+		ID:      "pp168-169-tie-to-p54",
+		Summary: "The audited statement (p54) corroborates this schedule's 2025 column: five printed lines, Total revenues through Net change, tie to the dollar.",
+		Text: "The 2025 column can be checked against the audited Statement of Revenues, " +
+			"Expenditures and Changes in Fund Balances (p54): on five printed lines — " +
+			"Total revenues $221,212,743, Total Expenditures $186,516,649, the excess " +
+			"$34,696,094, Total other financing sources (uses) $(18,458,098) and Net " +
+			"change in fund balances $16,237,996 — the schedule and p54's Total " +
+			"Governmental Funds column agree to the dollar. That includes the Other " +
+			"financing and Net change lines this table withholds: what disqualifies " +
+			"them is their 2023 column, not their 2025 one.",
 		AppliesTo: []string{},
 	}
 	caveatVLFReclassification = Caveat{
@@ -204,5 +215,5 @@ func fundBalancesCaveats() []Caveat {
 
 // changesCaveats is every caveat the pp.168-169 document ships.
 func changesCaveats() []Caveat {
-	return []Caveat{caveatStatisticalSectionIsUnaudited, caveatOtherFinancingNotPublished, caveatVLFReclassification, caveatGovernmentalFundsOnly}
+	return []Caveat{caveatStatisticalSectionIsUnaudited, caveatOtherFinancingNotPublished, caveatChangesTieToP54, caveatVLFReclassification, caveatGovernmentalFundsOnly}
 }
