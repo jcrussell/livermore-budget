@@ -151,8 +151,9 @@ var unprojectedScopes = map[string]string{
 		"no (kind, category, fund_group, fund, fiscal year, basis) key with anything published " +
 		"and no doubling is possible -- measured again when the ten-year documents landed: " +
 		"zero shared keys with either, at the full grain and at the mergeable one. The " +
-		"history pages draw ten audited years of the two statistical-section scopes, and " +
-		"this page can join neither table: it is the General Fund alone where pp.168-169 " +
+		"history pages draw ten years of the two statistical-section scopes -- a section " +
+		"the ACFR itself labels (Unaudited) -- and this page can join neither table: it " +
+		"is the General Fund alone where pp.168-169 " +
 		"combine all governmental funds, and its ending balance does not tie to p167's " +
 		"components -- p41 is MD&A's condensed statement in millions, and its printed 87.10 " +
 		"is not where the components' 87,043,576 sum rounds; the audited statement of the " +

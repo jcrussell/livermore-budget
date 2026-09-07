@@ -527,7 +527,7 @@ rules:
     total_row: "Total general fund"
     note: >-
       p167, Fund Balances of Governmental Funds, the General Fund block: the
-      five GASB 54 components over ten audited years, tying to the printed
+      five GASB 54 components over ten years, tying to the printed
       Total general fund exactly in every column (2016: 47,139,536). No
       column_headers -- the columns are headed by bare years, which the parser
       refuses (fisc-wiyg) -- so the printed total is the only guard over a
@@ -604,7 +604,7 @@ rules:
     total_row: "Total revenues"
     note: >-
       p168, Changes in Fund Balances of Governmental Funds, the revenue block:
-      nine lines over ten audited years, all governmental funds combined (so
+      nine lines over ten years, all governmental funds combined (so
       no fund_group), tying to the printed Total revenues exactly in every
       column. Same guard situation as p167: bare-year headers refuse the
       geometry guard (fisc-wiyg), so the printed total and the

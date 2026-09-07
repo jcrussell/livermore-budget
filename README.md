@@ -32,7 +32,7 @@ against something the city itself printed:
 | pp. 167–170 | 196 | General Fund department × object category | the same four |
 | p. 76 | 88 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
 | pp. 85–125 | 312 | which funds pay for each department | 2024 actual, 2025 revised, 2026 + 2027 adopted |
-| ACFR p. 41 | 20 | the General Fund's revenues, transfers, General Government divisions and fund balances, audited | 2025 audited |
+| ACFR p. 41 | 20 | the General Fund's revenues, transfers, General Government divisions and fund balances | 2025 audited |
 
 The spine gives the all-funds picture the chart draws:
 

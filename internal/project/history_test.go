@@ -95,7 +95,7 @@ func TestFundBalancesKeepsTheTwoBlocksApart(t *testing.T) {
 	}
 	for _, s := range d.Series {
 		if len(s.Points) != 10 {
-			t.Errorf("series %s has %d points, want all ten audited years", s.SeriesID, len(s.Points))
+			t.Errorf("series %s has %d points, want all ten years", s.SeriesID, len(s.Points))
 		}
 	}
 }

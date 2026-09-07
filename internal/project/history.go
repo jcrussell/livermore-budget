@@ -21,7 +21,7 @@ const ChangesScope = "acfr-changes-in-fund-balances"
 const ChangesProjection = "changes-in-fund-balances"
 
 // HistoryColumns is the ten columns both ACFR ten-year schedules print:
-// FY2016 through FY2025, every one audited.
+// FY2016 through FY2025, every one carrying the audited basis.
 //
 // STATED AND NOT DERIVED, for [TrendsColumns]' reason: Slices reads its columns
 // off the store exhaustively, so a corpus that silently lost FY2016 would build
@@ -40,7 +40,7 @@ func HistoryColumns() []Column {
 
 // FundBalances is ACFR p167 as one series per printed row: the GASB 54
 // components of the General Fund's balance and of the aggregate All Other
-// Governmental Funds, across ten audited years. Every fact carries fund 0 --
+// Governmental Funds, across ten years. Every fact carries fund 0 --
 // the rows are a fund's components or an aggregate, never a numbered fund.
 // The contract is docs/acfr-history-contract.md.
 type FundBalances struct {
@@ -84,7 +84,7 @@ func (p *FundBalances) Document(facts []fact.Fact, o Options) (*TrendsDocument, 
 
 // FundBalanceChanges is ACFR pp.168-169 as one series per printed row: nine
 // revenue rows, twelve expenditure rows on the ACFR's function axis, and the
-// printed excess line, across ten audited years, all governmental funds
+// printed excess line, across ten years, all governmental funds
 // combined. The contract is docs/acfr-history-contract.md.
 type FundBalanceChanges struct {
 	// Labels resolves category labels; see Trends.Labels for the nil rule.
