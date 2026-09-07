@@ -191,12 +191,30 @@ func scanSource(path string, src []byte) ([]finding, error) {
 
 // commentText drops the comment markers and nothing else, so that \s+ in a
 // pattern is what bridges the remaining line breaks and indentation.
+//
+// The markers include the decorative `*` a block comment's interior lines may
+// each open with: two blocks with identical prose must match identically
+// however they are decorated, and a leading `*` glued to a phrase's next word
+// is a gap \s+ cannot bridge. It is stripped line by line rather than with
+// tools/doccheck's furniture set because only `*` decorates a Go block
+// interior -- `//` and `#` open lines in the formats doccheck reads, not
+// continuation lines here -- and stripping a marker mid-line would eat prose.
+// Newlines are preserved so the line accounting in scanSource and lineAt
+// stays exact.
 func commentText(lit string) string {
 	if strings.HasPrefix(lit, "//") {
 		return lit[2:]
 	}
 	lit = strings.TrimPrefix(lit, "/*")
-	return strings.TrimSuffix(lit, "*/")
+	lit = strings.TrimSuffix(lit, "*/")
+	lines := strings.Split(lit, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimLeft(line, " \t")
+		if strings.HasPrefix(trimmed, "*") {
+			lines[i] = strings.TrimPrefix(trimmed, "*")
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 // matchBlock joins one block's segments and reports each refused phrase at the

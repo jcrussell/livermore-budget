@@ -100,19 +100,18 @@ var furniture = regexp.MustCompile(`(?:[\s]|//|#|\*|>)+`)
 // OPEN like a title so that a list of quoted string literals with the anchor's
 // file name among them is not a hit -- the run such a list puts after the
 // anchor opens with a comma.
+//
+// ONE WRAP SHAPE IS GIVEN UP: a near-miss whose quote sits at the head of the
+// next line with no marker in front of it -- the anchor's line ends bare, and
+// the title's quote opens the following one. Netting it means crossing a bare
+// newline, and whatever opens the next line then -- a string literal, a quoted
+// value, a new sentence of prose that happens to open with a quote -- reads as
+// the tail of the sentence above it. This command is a required gate, and a
+// gate that refuses true sentences is worse than one that lets a wrapped
+// near-miss by: the near-miss still fails to resolve anywhere, while the
+// refused sentence teaches people to reword around the gate. Every wrap whose
+// continuation carries a marker is still netted by the furniture branch.
 var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\"\\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*){0,40}\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
-
-// looseProsePattern is loosePattern with one extra allowance: the gap may also
-// cross a bare newline straight into the opening quote. IT APPLIES TO MARKDOWN
-// AND NOTHING ELSE, because markdown is the only scanned format whose sentences
-// wrap with no marker at all -- a wrapped near-miss there can put the quote at
-// the head of the next line with nothing in front of it. In every other scanned
-// extension a wrapped comment's continuation carries a marker the furniture
-// branch already crosses, and a marker-less line opening with a quote is a
-// string literal or a quoted value: code, which this net must not read as the
-// tail of a sentence above it. The branch is written out as its own optional
-// group because Go's regexp has no lookahead to assert it with.
-var looseProsePattern = regexp.MustCompile("AGENTS\\.md(?:[^\"\\n]|\\n[ \t]*(?://|#|\\*|>)+[ \t]*){0,40}(?:\\n[ \t]*)?\\\\?\"[A-Za-z0-9`][^\"]{0,79}\"")
 
 // docPathPattern finds a docs/ markdown path cited as a root-relative claim
 // about this tree. The character before the anchor is part of the rule rather
@@ -188,7 +187,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
 		return 2
 	}
-	cites, malformed, docRefs, err := scanUnder(args[1:])
+	cites, malformed, docRefs, err := scanUnder(root, args[1:])
 	if err != nil {
 		fmt.Fprintf(stderr, "doccheck: %v\n", err)
 		return 2
@@ -376,7 +375,12 @@ func fold(s string) string {
 // A path DELETED FROM THE MAKEFILE'S LIST is a different thing and this cannot
 // see it: the path is simply never walked, and the scan gets quietly smaller.
 // Neither that list nor scannable can know about an entry nobody added.
-func scanUnder(paths []string) (cites, malformed, docRefs []cite, err error) {
+//
+// root is what a walked path is made repo-relative against before the exempt
+// lookup, so the same arguments exempt the same file from anywhere -- the
+// working directory is no part of the interface here any more than it is in
+// treeRoot.
+func scanUnder(root string, paths []string) (cites, malformed, docRefs []cite, err error) {
 	for _, p := range paths {
 		// #nosec G703 -- the path list is this command's argument; it checks the
 		// paths it is asked to.
@@ -390,7 +394,7 @@ func scanUnder(paths []string) (cites, malformed, docRefs []cite, err error) {
 			if norm(path) != norm(p) && !scannable(path) {
 				return nil
 			}
-			if _, ok := exempt[norm(path)]; ok {
+			if _, ok := exempt[relTo(root, path)]; ok {
 				return nil
 			}
 			found, err := citesIn(path)
@@ -452,10 +456,6 @@ func malformedIn(path string) ([]cite, error) {
 	if err != nil {
 		return nil, err
 	}
-	net := loosePattern
-	if filepath.Ext(path) == ".md" {
-		net = looseProsePattern
-	}
 	text := string(b)
 	var claimed []int
 	for _, loc := range citePattern.FindAllStringIndex(text, -1) {
@@ -470,7 +470,7 @@ func malformedIn(path string) ([]cite, error) {
 		return false
 	}
 	var out []cite
-	for _, loc := range net.FindAllStringIndex(text, -1) {
+	for _, loc := range loosePattern.FindAllStringIndex(text, -1) {
 		if inSpan(loc[0], loc[1]) {
 			continue
 		}
@@ -524,6 +524,29 @@ func titleOf(raw string) string {
 }
 
 func norm(path string) string { return filepath.ToSlash(filepath.Clean(path)) }
+
+// relTo puts a walked path in the repo-relative slash form exempt's keys are
+// written in, whatever mix of relative and absolute the invocation used. Both
+// sides go through Abs first because filepath.Rel refuses to relate a relative
+// path to an absolute one, and the walk hands back paths shaped like the
+// argument they came from. On any error the path is returned in norm's form,
+// which can only fail toward scanning a file the exemption meant to skip --
+// reported, not hidden.
+func relTo(root, path string) string {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return norm(path)
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return norm(path)
+	}
+	rel, err := filepath.Rel(absRoot, absPath)
+	if err != nil {
+		return norm(path)
+	}
+	return filepath.ToSlash(rel)
+}
 
 // scannable says whether a file found by walking a directory can carry a
 // citation. It is deliberately the same list beadrefs uses, minus the data

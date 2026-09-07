@@ -357,13 +357,12 @@ func TestATrueSentenceAboveAStringLiteralIsNotMalformed(t *testing.T) {
 	}
 }
 
-// The wrap shapes the gap rule keeps, and the one it refuses to read. A
-// near-miss wrapping into comment furniture is netted in any file; one wrapping
-// into a bare quote-led line is netted in markdown, where prose wraps with no
-// marker, and NOT in Go, where a wrapped comment's continuation carries `//` by
-// construction and a marker-less quote-led line is a string literal. A gap that
-// refused every newline would pass the first two in silence; one that crossed
-// the bare newline everywhere read code as the tail of the sentence above it.
+// The wrap shape the gap rule keeps, and the one it gives up. A near-miss
+// wrapping into comment furniture is netted in any file; one wrapping into a
+// bare quote-led line is out of reach EVERYWHERE, which loosePattern's doc
+// comment declares -- crossing a bare newline reads whatever opens the next
+// line, a string literal or a fresh sentence of prose alike, as the tail of
+// the sentence above it, and a required gate must not refuse true sentences.
 func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 	dir := t.TempDir()
 
@@ -383,8 +382,8 @@ func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 	if err != nil {
 		t.Fatalf("malformedIn: %v", err)
 	}
-	if len(got) != 1 || got[0].line != 3 {
-		t.Errorf("markdown quote-led wrap: malformedIn = %v, want one finding at line 3", got)
+	if len(got) != 0 {
+		t.Errorf("markdown quote-led wrap: malformedIn = %v, want empty; this shape is the gap loosePattern declares", got)
 	}
 
 	goQuoteLed := filepath.Join(dir, "y.go")
@@ -395,6 +394,25 @@ func TestAWrappedNearMissIsStillRefused(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Errorf("Go quote-led line: malformedIn = %v, want empty; a marker-less quote-led line in Go is a string literal, not a wrapped sentence", got)
+	}
+}
+
+// A true markdown sentence that ends with the anchor, above a fresh sentence
+// that opens with a quoted phrase, is prose citing nothing. A gap crossing the
+// bare newline stitched the two sentences together and made a required gate
+// report ordinary writing as a malformed citation -- the refuses-true-sentences
+// failure, this time on the markdown side of the extension switch that was
+// supposed to confine it.
+func TestProseEndingWithTheAnchorAboveAQuoteLedSentenceIsNotMalformed(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x.md")
+	write(t, path, "# Doc\n\nThe rule lives in AGENTS.md.\n\"Absent is not zero\" is a phrase this file uses loosely.\n")
+	got, err := malformedIn(path)
+	if err != nil {
+		t.Fatalf("malformedIn: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("malformedIn = %v, want empty; the file contains no citation", got)
 	}
 }
 
@@ -420,6 +438,12 @@ func TestACommentAboveAnIndentedLiteralElementIsNotMalformed(t *testing.T) {
 // against the process's working directory: with a hardcoded ".", a run from
 // anywhere else reports every cited docs/ path dead and every exemption's
 // file missing.
+//
+// The exempt file must be a real fixture, not an empty placeholder, and the
+// scan must be pointed AT it with absolute paths: its citation names no
+// section and its docs/ path names no file, so the run stays green only if
+// the exempt lookup actually skipped it. A placeholder outside the scanned
+// paths leaves the lookup unexercised -- green because nothing was examined.
 func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
 	for _, d := range []string{"docs", filepath.Join("tools", "doccheck")} {
@@ -429,13 +453,15 @@ func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	}
 	write(t, filepath.Join(root, "AGENTS.md"), "# T\n\n## The extraction boundary\n")
 	write(t, filepath.Join(root, "docs", "real.md"), "# real\n")
-	write(t, filepath.Join(root, "tools", "doccheck", "main_test.go"), "package main\n")
+	write(t, filepath.Join(root, "tools", "doccheck", "main_test.go"),
+		"package main\n\n// AGENTS.md calls that guard \"the designed answer\". See docs/gone.md.\n")
 	src := filepath.Join(root, "x.go")
 	write(t, src, "package x\n\n// see AGENTS.md, \"The extraction boundary\". See docs/real.md.\n")
 
 	t.Chdir(t.TempDir())
 	var stderr strings.Builder
-	if code := run([]string{filepath.Join(root, "AGENTS.md"), src}, &stderr); code != 0 {
+	code := run([]string{filepath.Join(root, "AGENTS.md"), src, filepath.Join(root, "tools")}, &stderr)
+	if code != 0 {
 		t.Errorf("run = %d from an unrelated working directory, want 0; stderr:\n%s", code, stderr.String())
 	}
 }

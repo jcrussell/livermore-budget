@@ -47,6 +47,23 @@ func TestScanSource(t *testing.T) {
 			want: []finding{{file: "fix.go", line: 4, phrase: "this comment used to say"}},
 		},
 		{
+			// Two blocks with identical prose must match identically however
+			// they are decorated: the interior `*` is a marker, and leaving it
+			// glued to the wrap's next word is a gap \s+ cannot bridge.
+			name: "erratum wrapped inside a star-decorated block interior is found",
+			src: "package p\n\n" +
+				"/*\n * The grid is fixed. Note that this comment\n * used to say the opposite.\n */\n" +
+				"var x int\n",
+			want: []finding{{file: "fix.go", line: 4, phrase: "this comment used to say"}},
+		},
+		{
+			name: "review credit on a star-decorated interior line is found",
+			src: "package p\n\n" +
+				"/*\n * The grid is fixed at extraction.\n * Found by /code-review.\n */\n" +
+				"var x int\n",
+			want: []finding{{file: "fix.go", line: 5, phrase: "Found by /code-review"}},
+		},
+		{
 			name: "trailing comment continuing onto the next line is found",
 			src: "package p\n\n" +
 				"var x = 1 // Note that this comment\n" +
