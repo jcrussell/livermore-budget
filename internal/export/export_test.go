@@ -1150,6 +1150,16 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	// 1180px -- which squeezes the chart, the exact defect this arm is for.
 	// Mutation-measured: that split was green.
 	const container = "main,\n.page-head {\n  max-width: 1180px;"
+	// THE PRINT BLOCK OPENS WHAT THE PAGE FOLDS. Declared only -- this cannot
+	// say a folded panel prints, which is fisc-yj4w.18 -- but a fold added
+	// without it silently drops the caveats from a printed copy, and the print
+	// block's own comment about the banner argues that is a defect.
+	for _, rule := range []string{"details > *:not(summary)", "details::details-content"} {
+		if !strings.Contains(css, rule) {
+			t.Errorf("style.css no longer carries %q, so a printed copy loses whatever "+
+				"the page folds", rule)
+		}
+	}
 	if !strings.Contains(css, container) {
 		t.Error("style.css no longer sets main and .page-head together to 1180px, so the " +
 			"measure has been applied to the chart's own column rather than to the " +

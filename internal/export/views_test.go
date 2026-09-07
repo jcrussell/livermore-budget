@@ -2121,10 +2121,15 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 	closedTable := regexp.MustCompile(`<details[^>]*id="table-view"[^>]*>`)
 
 	checked := 0
+	var withTable []string
 	for _, page := range []string{export.IndexPath, "spending.html"} {
 		html := readFile(t, dir, page)
 		tag := closedTable.FindString(html)
-		if tag == "" || strings.Contains(tag, " open") {
+		if tag == "" {
+			continue
+		}
+		withTable = append(withTable, page)
+		if strings.Contains(tag, " open") {
 			continue
 		}
 		m := desc.FindStringSubmatch(html)
@@ -2152,13 +2157,36 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 		if strings.Contains(suffix, "below") && !strings.Contains(suffix, "opens from") {
 			t.Errorf("%s folds its flow table and its <desc> still says the figures are "+
 				"below without saying what opens them:\n%s", page, suffix)
+			continue
+		}
+		// AND THE HEADING IT NAMES HAS TO EXIST. The sentence navigates a
+		// screen-reader user by quoting the table's own <h2> verbatim, and two
+		// copies of one string in one file is how a renamed heading ships a
+		// pointer to nothing -- green, because "opens from" is still there.
+		_, afterQuote, opened := strings.Cut(suffix, `"`)
+		quoted, _, shut := strings.Cut(afterQuote, `"`)
+		if !opened || !shut || quoted == "" {
+			t.Errorf("%s's <desc> promises a heading without naming one: %s", page, suffix)
+			continue
+		}
+		if !strings.Contains(html, "<h2>"+quoted+"</h2>") {
+			t.Errorf("%s's <desc> sends a reader to a heading %q that the page does not "+
+				"render", page, quoted)
 		}
 	}
-	// Both pages fold their table today. Without this the loop above is green
-	// over zero pages, which is what a fold that stopped rendering #table-view
-	// would look like.
-	if checked != 2 {
-		t.Errorf("checked %d pages with a folded flow table, want 2", checked)
+	// ANTI-VACUITY, AND IT MUST NOT CONTRADICT THE ESCAPE HATCH ABOVE. The loop
+	// deliberately skips a page whose #table-view ships open, because there
+	// "below" is true -- so counting folded pages would turn that allowance
+	// into a failure. What is asserted instead is that both pages render a
+	// #table-view AT ALL, which is what makes the skip meaningful: a template
+	// that stopped rendering one would otherwise leave the loop green over
+	// nothing.
+	if len(withTable) != 2 {
+		t.Errorf("%d of 2 pages render a #table-view: %v; the assertion above is about "+
+			"the pages that have one", len(withTable), withTable)
+	}
+	if checked == 0 {
+		t.Error("no page folds its flow table, so nothing above was checked")
 	}
 }
 
@@ -2212,5 +2240,70 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		if closed := strings.Index(foot, "</details>"); closed < 0 || closed > basis {
 			t.Errorf("%s's scope-and-basis sentence is inside the folded source list", page)
 		}
+	}
+}
+
+// TestTheCaveatsPageFoldsItsFileListAndNotItsReason. caveats.html is the one
+// page whose footer holds no source list -- it shows no figures, so a union of
+// every document's pages would be the broadest false provenance claim on the
+// site -- so its disclosure holds only the data files and carries a different
+// id saying so.
+//
+// THE PARAGRAPH BELOW IT MUST STAY OUT. It says this page draws no projection
+// and publishes no figure, which is the sentence that makes the missing source
+// list read as deliberate rather than as an omission.
+func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			export.PrimaryProjection: goldenSankey(t),
+			"revenue-trends":         trendsDoc(127),
+		},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: export.PrimaryProjection},
+			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
+				Title: "Caveats", Lede: "A lede."},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		PageText:    twoViewPageText(127),
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	html := readFile(t, dir, "caveats.html")
+
+	start := strings.Index(html, "<footer>")
+	if start < 0 {
+		t.Fatal("caveats.html renders no footer")
+	}
+	foot := html[start:]
+
+	if !strings.Contains(foot, `<details class="apparatus" id="data-view">`) {
+		t.Error("caveats.html does not fold its data-file list into an .apparatus " +
+			"disclosure")
+	}
+	if regexp.MustCompile(`<details[^>]*\sopen(?:[\s>]|="")`).MatchString(foot) {
+		t.Error("caveats.html ships its footer disclosure open")
+	}
+	// The id is the claim: this one holds no sources, and naming it sources-view
+	// would say it does.
+	if strings.Contains(foot, `id="sources-view"`) {
+		t.Error("caveats.html's footer claims a sources-view; that page cites no pages, " +
+			"which is what the comment above its footer is about")
+	}
+	if !strings.Contains(foot, "Every data file the site publishes") {
+		t.Error("caveats.html's disclosure holds no data-file list, so it folds nothing")
+	}
+	shut := strings.Index(foot, "</details>")
+	reason := strings.Index(foot, "publishes no figure")
+	if shut < 0 || reason < 0 {
+		t.Fatalf("caveats.html's footer is missing its disclosure (%d) or its "+
+			"reason (%d)", shut, reason)
+	}
+	if shut > reason {
+		t.Error("caveats.html folded the sentence saying it publishes no figure, which " +
+			"is what makes the absent source list read as deliberate")
 	}
 }

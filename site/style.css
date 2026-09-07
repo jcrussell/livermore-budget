@@ -1108,6 +1108,25 @@ noscript p {
     position: static;
     margin: 0;
   }
+
+  /* AND THE DISCLOSURES OPEN, for the banner's own reason one paragraph up. A
+     reader holding a sheet of paper cannot click, so a closed <details> takes
+     the sources, the caveats, the derived list, the flow table and index.html's
+     tile row off the copy without saying it did.
+
+     TWO RULES BECAUSE ENGINES USE TWO MECHANISMS: one hides the non-summary
+     children with a UA display:none, the other hides a ::details-content slot
+     with content-visibility. Whether either override works is NOT witnessed by
+     anything here -- nothing in this tree renders CSS -- so it is confirmed in
+     a browser's print preview and nowhere else. fisc-yj4w.18. */
+  details > *:not(summary) {
+    display: block;
+  }
+
+  details::details-content {
+    content-visibility: visible;
+    block-size: auto;
+  }
 }
 
 /* ---- The site nav, and the revenue table --------------------------------
