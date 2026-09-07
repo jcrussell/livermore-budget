@@ -1041,6 +1041,51 @@ func sorted(in []string) []string {
 // what ships. Deliberately NOT a recomputed ratio: nothing in this tree parses
 // or renders CSS (fisc-6at), so a second hand-computed figure would double the
 // unpinned surface rather than close it.
+// TestTheStylesheetHasOneTextMeasure witnesses ONE DECLARATION, NOT ONE
+// RENDERING, and the distinction is the whole of what this test is worth.
+//
+// Nothing in this tree parses or renders CSS (fisc-6at): tools/jscheck reads
+// style.css only to harvest custom-property names, and the two tests below this
+// one match selector strings. So this cannot say that --measure applies to any
+// element a template renders, that a line comes out at 68 characters, or that
+// the chart and the wide tables stayed at the container width. Those are read
+// in a browser after `make site` and nowhere else.
+//
+// What it CAN say is that the three hand-written measures became one token and
+// stay one: 68ch on .lede, 46em on .caveat and main's 1180px inherited by
+// everything else were three answers to one question, and the way that comes
+// back is a fourth literal added beside the token rather than the token being
+// deleted.
+//
+// THE 1180px ARM IS THE ANTI-VACUITY ONE. Without it a stylesheet that clamped
+// main itself to the reading measure -- squeezing the chart, which is the exact
+// defect this rule is written to avoid -- satisfies every other arm here.
+func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
+	b, err := fs.ReadFile(site.FS(), "style.css")
+	if err != nil {
+		t.Fatalf("read embedded style.css: %v", err)
+	}
+	css := string(b)
+
+	if n := strings.Count(css, "--measure:"); n != 1 {
+		t.Errorf("style.css declares --measure %d times, want exactly 1; a second "+
+			"declaration is a second answer to the question the token replaced", n)
+	}
+	if n := strings.Count(css, "max-width: var(--measure)"); n < 3 {
+		t.Errorf("style.css points %d rules at var(--measure), want at least the lede, "+
+			"the caveat and the prose that had no measure at all", n)
+	}
+	for _, gone := range []string{"max-width: 68ch", "max-width: 46em"} {
+		if strings.Contains(css, gone) {
+			t.Errorf("style.css still hand-writes %q beside the token that replaced it", gone)
+		}
+	}
+	if !strings.Contains(css, "max-width: 1180px") {
+		t.Error("style.css no longer sets the container to 1180px, so the measure has " +
+			"been applied to the chart's own column rather than to the prose in it")
+	}
+}
+
 func TestTheDisabledYearToggleDoesNotDimItsOwnSelectionRing(t *testing.T) {
 	b, err := fs.ReadFile(site.FS(), "style.css")
 	if err != nil {

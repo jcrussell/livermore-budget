@@ -56,6 +56,16 @@
   --link-opacity: 0.42;
   --link-opacity-derived: 0.24;
   --radius: 8px;
+  /* ONE MEASURE FOR PROSE, and it is a token because it was three numbers.
+     .lede carried 68ch, .caveat carried 46em, and everything else -- list
+     items, the footer, provenance's rows -- inherited main's 1180px, which is
+     the width the CHART needs. Three measures applied by hand is what a reader
+     sees as lines of three different lengths on one page.
+
+     DECLARED ONCE, IN :root ONLY. The dark blocks below redeclare colour
+     tokens on purpose; a second --measure there would be a second answer to a
+     question that has nothing to do with the surface. */
+  --measure: 68ch;
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -173,7 +183,7 @@ h3 {
 
 .lede {
   color: var(--ink-2);
-  max-width: 68ch;
+  max-width: var(--measure);
   margin: 0 0 4px;
 }
 
@@ -908,7 +918,7 @@ details > summary {
   border-left: 3px solid var(--rule);
   padding: 2px 0 2px 14px;
   margin: 16px 0;
-  max-width: 46em;
+  max-width: var(--measure);
 }
 
 .caveat > h3 {
@@ -944,6 +954,33 @@ details > summary {
 
 .caveat:target > h3 {
   color: var(--ink-1);
+}
+
+/* ---------- the measure ---------- */
+
+/* THE PROSE THAT HAD NO MEASURE. Everything below inherited main's 1180px,
+   which is the width the CHART needs -- app.js lays every diagram out at
+   1180x820 -- and is roughly twice a comfortable line for reading.
+
+   WHAT IS DELIBERATELY NOT HERE, because these are figures rather than prose
+   and clamping them would be the defect this rule is meant to fix: main and
+   .page-head keep 1180px, .figures keeps its auto-fit grid, and .card,
+   .chart-wrap, .table-scroll and table keep the full container. A chart or a
+   seven-column table narrowed to a reading measure is unreadable in a
+   different way.
+
+   NOTHING IN THIS TREE RENDERS OR PARSES CSS (fisc-6at), so no check can say
+   this rule matched an element. TestTheStylesheetHasOneTextMeasure witnesses
+   ONE DECLARATION, not one rendering. */
+.caveats li,
+.derived-list li,
+.downloads li,
+.caveat-doc > p,
+.detail p,
+.apparatus > p,
+.apparatus > ul,
+footer > p {
+  max-width: var(--measure);
 }
 
 /* ---------- the disclosed apparatus ---------- */
