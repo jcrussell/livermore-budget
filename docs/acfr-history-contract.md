@@ -33,6 +33,15 @@ new check. Differences of content, not of shape:
   `comparable_group: "audited"` — one group, where the trends document has
   three. A comparison may be carried across any pair of years, and the pages
   say so.
+
+  The **pages do not print that word.** `basis` is component 7 of the fact id,
+  so these figures cannot be re-based without rewriting every one of their ids
+  and moving `facts/facts.jsonl`; but both schedules sit in the section p161
+  heads "Statistical Section (Unaudited)", which each document says in its own
+  `statistical-section-unaudited` caveat. `internal/export` reads that caveat
+  and labels the column chips and cell tooltips `unaudited` instead. The
+  document's basis and the page's label are two different claims and this is the
+  one place they diverge.
 - **`fund` is 0 on every series and `fund_name` is `""`.** These schedules'
   rows are a fund's components or an aggregate across funds, never a numbered
   fund. The tables render no Fund column; the printed block headings carry the

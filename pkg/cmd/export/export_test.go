@@ -1267,7 +1267,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) {
 	built := builtStemsForTest(t)
 
-	const disclaimer = "statistical-section-unaudited"
+	const disclaimer = export.UnauditedCaveatID
 	shipping := map[string]bool{}
 	for _, v := range views(result{Projections: built}) {
 		if v.Projection == "" {
@@ -1310,8 +1310,122 @@ func TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse(t *testing.T) 
 	for _, path := range []string{"history.html", "balances.html"} {
 		if !shipping[path] {
 			t.Errorf("%s's document no longer ships the %s caveat; the prose scan above "+
-				"is checking nothing on the page it was written for", path, disclaimer)
+				"and TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws are both "+
+				"checking nothing on the page they were written for", path, disclaimer)
 		}
+	}
+}
+
+// basisChipPattern and markTitlePattern are the two surfaces a column's basis
+// word reaches a reader through: the chip in the column head
+// (site/history.html.tmpl, `<span class="basis">`) and the native SVG tooltip on
+// every drawn mark, which internal/export composes as label + basis + value.
+var (
+	basisChipPattern = regexp.MustCompile(`<span class="basis">([^<]*)</span>`)
+	markTitlePattern = regexp.MustCompile(`<(?:circle|rect)\b[^>]*>\s*<title>([^<]*)</title>`)
+)
+
+// TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws is the second half of
+// the audit-claim refusal, and it exists because the first half could not see
+// the defect it was written for.
+//
+// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse reads each view's
+// Title and Lede. Both ACFR ten-year pages passed it while heading all ten
+// columns `audited` and repeating the word in every cell tooltip, because those
+// are rendered from the document's column data and not from the view's prose --
+// a page making two contradictory claims about the same ten columns, with the
+// caveat quoting p161's "(Unaudited)" a few paragraphs below (fisc-97n8).
+//
+// IT WALKS THE RENDERED PAGES, for TestEveryCaveatSummaryLinksToAnAnchorThatExists'
+// reason: the word is chosen in internal/export and printed by a template, and
+// the page is the only place the two meet. Scanning the Go structs would let a
+// template start printing the document's raw basis again with this green.
+//
+// The match counts are asserted because a regex that has stopped matching is
+// indistinguishable by exit code from a page that has stopped offending.
+func TestAPageDoesNotLabelAColumnWithAWordItsCaveatWithdraws(t *testing.T) {
+	built := builtStemsForTest(t)
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	io, _, _, _ := iostreams.Test()
+	opts := &Options{
+		IO:        io,
+		RepoRoot:  func() (string, error) { return root, nil },
+		OutputDir: filepath.Join(t.TempDir(), "dist"),
+		Build:     func(string) (result, error) { return result{Projections: built}, nil },
+	}
+	if err = exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+
+	scanned := 0
+	for _, v := range views(result{Projections: built}) {
+		if v.Projection == "" {
+			continue
+		}
+		doc, ok := built[v.Projection]
+		if !ok {
+			continue
+		}
+		var d struct {
+			Metadata struct {
+				Caveats []struct {
+					ID string `json:"id"`
+				} `json:"caveats"`
+			} `json:"metadata"`
+		}
+		if err = json.Unmarshal(doc, &d); err != nil {
+			t.Fatalf("unmarshal %s's document %s: %v", v.Path, v.Projection, err)
+		}
+		if !slices.ContainsFunc(d.Metadata.Caveats, func(c struct {
+			ID string `json:"id"`
+		},
+		) bool {
+			return c.ID == export.UnauditedCaveatID
+		}) {
+			continue
+		}
+		scanned++
+
+		b, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(v.Path)))
+		if err != nil {
+			t.Fatalf("read rendered %s: %v", v.Path, err)
+		}
+		page := string(b)
+
+		for _, surface := range []struct {
+			what string
+			re   *regexp.Regexp
+		}{
+			{what: "column chip", re: basisChipPattern},
+			{what: "cell tooltip", re: markTitlePattern},
+		} {
+			hits := surface.re.FindAllStringSubmatch(page, -1)
+			if len(hits) == 0 {
+				t.Errorf("%s renders no %s this scan can read; the surface moved and "+
+					"this half of the refusal is checking nothing", v.Path, surface.what)
+				continue
+			}
+			for _, h := range hits {
+				// "unaudited" contains "audited", so it is removed before the
+				// question is asked rather than special-cased after it.
+				if strings.Contains(strings.ReplaceAll(strings.ToLower(h[1]), "unaudited", ""), "audit") {
+					t.Errorf("%s prints %q in a %s while its document ships the %s caveat: "+
+						"the auditor's opinion does not cover these columns, and the page "+
+						"withdraws its own label a few paragraphs below",
+						v.Path, h[1], surface.what, export.UnauditedCaveatID)
+					break
+				}
+			}
+		}
+	}
+	// The anchor, for the prose scan's reason: if no page ships the caveat the
+	// loop above never runs, and a scan over nothing passes.
+	if scanned != 2 {
+		t.Errorf("scanned %d pages shipping the %s caveat, want 2 (history.html and "+
+			"balances.html); this refusal has lost its subject", scanned, export.UnauditedCaveatID)
 	}
 }
 

@@ -455,6 +455,8 @@ type trendsPageData struct {
 // columnRef is one printed column as the table heads it.
 type columnRef struct {
 	Label string
+	// Basis is the word the chip and every cell tooltip print, which is
+	// [basisLabelFor]'s answer and not the document's basis enum.
 	Basis string
 	// Group is the column's comparable_group, rendered as a data attribute so
 	// the boundary between measurements is in the markup rather than only in a
@@ -1492,6 +1494,49 @@ func dollars(cents int64) string {
 	return strings.TrimSuffix(s, ".00")
 }
 
+// UnauditedCaveatID is the caveat a document ships to say its figures come from
+// the ACFR section headed "Statistical Section (Unaudited)", which the auditor's
+// report explicitly declines to give an opinion on.
+//
+// It is a second copy of the producer's caveat id and not an import of it, for
+// [SchemaVersion]'s reason: this package does not import internal/project. What
+// keeps the two in step is the anchor half of
+// TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse, which fails when
+// no page ships this id at all -- so a rename on the producer's side takes the
+// gate red rather than quietly switching it off.
+const UnauditedCaveatID = "statistical-section-unaudited"
+
+// basisAudited is mapping.BasisAudited's value, duplicated here for
+// [UnauditedCaveatID]'s reason and pinned by TestBasisAuditedIsPinnedToTheEnum.
+const basisAudited = "audited"
+
+// basisLabelFor is the word a column chip and a cell tooltip print for a basis.
+//
+// It is deliberately NOT the basis itself. Basis is component 7 of fact.MakeID,
+// so every figure in the ACFR's ten-year schedules carries mapping.BasisAudited
+// in its identity and cannot be re-based without rewriting every one of those
+// fact ids and moving facts/facts.jsonl. The page is a different question from
+// the identity: those schedules sit in the section the document's own caveat
+// quotes the ACFR calling "(Unaudited)", and a page may not print a word one of
+// its own caveats withdraws two paragraphs below.
+//
+// The document's caveats decide, so the label and the refusal read one source
+// rather than a list of page names that would have to be kept in step by hand.
+// Only the audited basis is rewritten: a document may ship this caveat over a
+// column on some other basis, and relabelling that one would be the same defect
+// pointing the other way.
+func basisLabelFor(caveats []caveatMeta, basis string) string {
+	if basis != basisAudited {
+		return basis
+	}
+	for _, c := range caveats {
+		if c.ID == UnauditedCaveatID {
+			return "unaudited"
+		}
+	}
+	return basis
+}
+
 // trendsMetadata is as much of a revenue-trends document as the page renders.
 //
 // It is a separate struct from projectionMetadata rather than a superset of it,
@@ -1580,7 +1625,7 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	for i, c := range meta.Columns {
 		columns = append(columns, columnRef{
 			Label: c.FiscalYearLabel,
-			Basis: c.Basis,
+			Basis: basisLabelFor(meta.Caveats, c.Basis),
 			Group: c.ComparableGroup,
 			// The FIRST column of a group does not start a boundary a reader
 			// could carry a comparison across; every later one does.
@@ -1736,7 +1781,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	for i, c := range meta.Columns {
 		columns = append(columns, columnRef{
 			Label: c.FiscalYearLabel,
-			Basis: c.Basis,
+			Basis: basisLabelFor(meta.Caveats, c.Basis),
 			Group: c.ComparableGroup,
 			New:   i > 0 && c.ComparableGroup != meta.Columns[i-1].ComparableGroup,
 		})

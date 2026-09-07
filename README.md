@@ -45,17 +45,20 @@ one, because naively summing the expenditure column double-counts transfers by
 23%, and showing the error you are avoiding is more useful than quietly avoiding
 it.
 
-The site publishes **six pages**. `index.html` is the fund-group spine as a
+The site publishes **eight pages**. `index.html` is the fund-group spine as a
 Sankey, with a toggle between the two adopted years. `revenue.html` and
 `spending.html` draw pp.127-140 and pp.167-170 as two charts rather than one:
 revenue categories into the six fund groups, and the General Fund into its 23
 divisions. **Click a node on either and it opens** — a fund group into its own
 funds, a division into what it spends on — rescaled to that node's own total,
 because the citywide chart cannot show them at all. `trends.html` draws all
-**924** of pp.127-140 — 231 printed rows across four columns, every figure a link
-to the extracted text of the page it was read from, and a per-row mark whose
-scale is that row's own. `provenance.html` is the record store itself: every
-fact, its page, and the text it was read from. `caveats.html` is every published
+**924** of pp.127-140 — 231 printed rows across four columns, every figure a
+link to the extracted text of the page it was read from, and a per-row mark
+whose scale is that row's own. `history.html` and `balances.html` are the ACFR's
+two ten-year schedules — p168's changes in fund balances and p167's balances
+themselves — a decade a column, in the section the ACFR heads "(Unaudited)" and
+each page says so. `provenance.html` is the record store itself: every fact, its
+page, and the text it was read from. `caveats.html` is every published
 document's caveats in full — the other pages show each as one line and link
 here, so a reader meets the chart before the apparatus rather than scrolling
 past 254 words of it.
