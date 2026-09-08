@@ -91,7 +91,7 @@
        than one section split by CSS. paintYearWords owns each wholesale, so a
        per-year figure rendered anywhere it does not write goes stale on the
        first year switch -- the fisc-kwq / fisc-yi4 / fisc-iyt defect. */}}
-<section class="figures" id="hero" aria-label="Headline figure">
+<section class="figures" id="hero" aria-label="What the city spends">
   <div class="tile hero">
     <div class="label">{{.Hero.Label}}</div>
     <div class="value">{{.Hero.Value}}</div>
@@ -142,7 +142,8 @@
       This page draws its chart in the browser from
       <a href="{{.DataPath}}">{{.DataPath}}</a>. With JavaScript off, that file and the
       figures on this page are still the whole story: every amount, fact id and source page
-      is in it, and the panels below open without a script.
+      is in it. The panels below open without a script, but two of them are FILLED by one:
+      "What we inferred" and "Every flow, as a table" will be empty, and the file has both.
     </p>
   </noscript>
 </div>
@@ -183,7 +184,8 @@
      THAT IS A CLAIM ABOUT THE DISCLOSURE, NOT ABOUT EVERY PANEL BEHIND IT. The
      caveat summaries below really are server-rendered. #derived-list ships a
      "Loading..." placeholder and #flow-table an empty <tbody>; both are filled
-     by app.js. The <noscript> block above the fold is what tells a reader so.
+     by app.js, and the <noscript> above names those two panels so a reader who
+     opens an empty one knows why.
 
      What is NOT here at all is the caveats' full text -- that moved to
      caveats.html, and this page shows one-line summaries linking to it.
@@ -203,7 +205,7 @@
          its own so that a year switch repaints it with everything else --
          headline-naive-expenditure checks the arithmetic behind it, and
          data/sankey*.json carries the cents. */}}
-  <section class="figures" id="figures" aria-label="Headline figures">
+  <section class="figures" id="figures" aria-label="The figures behind the headline">
     {{- range .Figures}}
     <div class="tile{{if .Kind}} {{.Kind}}{{end}}">
       <div class="label">{{.Label}}</div>
@@ -306,7 +308,8 @@
   <details class="apparatus" id="sources-view">
     <summary>
       <h3>Sources for every year this page can show</h3>
-      <span class="apparatus-hint">{{len .Sources}} document{{if ne (len .Sources) 1}}s{{end}}, every page this view cites</span>
+      <span class="apparatus-hint">{{len .Sources}} document{{if ne (len .Sources) 1}}s{{end}},
+        every page this view cites, and {{len .Projections}} data file{{if ne (len .Projections) 1}}s{{end}}</span>
     </summary>
     <ul>
       {{- range .Sources}}

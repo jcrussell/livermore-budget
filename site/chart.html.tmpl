@@ -156,7 +156,9 @@
       This page draws its chart in the browser from
       <a href="{{.DataPath}}">{{.DataPath}}</a>. With JavaScript off, that file is the whole
       story: every amount, fact id and source page is in it, at a finer grain than the chart
-      draws.
+      draws. The panels below open without a script, but two of them are FILLED by one:
+      "What we inferred" and "Every flow the chart draws, as a table" will be empty, and the
+      file has both.
     </p>
   </noscript>
 </div>
@@ -295,7 +297,8 @@
   <details class="apparatus" id="sources-view">
     <summary>
       <h3>Sources for every year this page can show</h3>
-      <span class="apparatus-hint">{{len .Sources}} document{{if ne (len .Sources) 1}}s{{end}}, every page this view cites</span>
+      <span class="apparatus-hint">{{len .Sources}} document{{if ne (len .Sources) 1}}s{{end}},
+        every page this view cites, and {{len .Projections}} data file{{if ne (len .Projections) 1}}s{{end}}</span>
     </summary>
     <ul>
       {{- range .Sources}}

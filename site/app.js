@@ -640,6 +640,22 @@ let shownYear = null;
  */
 let baseDescription = "";
 /**
+ * The pointer to the flow table, lifted off the shipped description so a drill
+ * can keep it.
+ *
+ * WHY IT HAS TO SURVIVE: the flow table ships inside a closed <details>, which
+ * is out of the accessibility tree until it is opened, so this sentence is the
+ * only route to it a reader who cannot see the page has. Replacing the whole
+ * <desc> on a drill dropped it.
+ *
+ * TAKEN BY POSITION, NOT BY ITS WORDS. Matching the sentence here would be a
+ * second copy of wording the templates own, and the two would drift the first
+ * time either was edited. Both templates put it last;
+ * TestTheTablePointerIsTheLastSentenceOfEveryChartDescription pins that.
+ * @type {string}
+ */
+let tablePointer = "";
+/**
  * The nodes as laid out, so columnShare can total the column a mark is in.
  *
  * SEPARATE FROM projection, which holds the FOLDED document and carries no
@@ -1074,11 +1090,30 @@ function paintChartName() {
   }
   const desc = maybeEl("chart-desc");
   if (!desc) return;
-  if (!baseDescription) baseDescription = desc.textContent;
+  if (!baseDescription) {
+    baseDescription = desc.textContent;
+    tablePointer = lastSentence(baseDescription);
+  }
   desc.textContent = drilledInto
     ? labelOf(drilledInto) + " on the left, and what it is made of on the right. " +
-      "Use the breadcrumb above the chart, or press Escape, to go back."
+      "Use the breadcrumb above the chart, or press Escape, to go back. " + tablePointer
     : baseDescription;
+}
+
+/**
+ * The last sentence of a server-rendered description, with the template's own
+ * line wrapping collapsed.
+ *
+ * Returns "" for a description of one sentence, which is what a caller-supplied
+ * ChartDescription with no template suffix would be -- appending nothing beats
+ * appending half of the chart's own sentence.
+ *
+ * @param {string} s
+ * @returns {string}
+ */
+function lastSentence(s) {
+  const parts = String(s).replace(/\s+/g, " ").trim().split(". ");
+  return parts.length < 2 ? "" : parts[parts.length - 1].trim();
 }
 
 /**

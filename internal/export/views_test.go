@@ -2173,6 +2173,18 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 			t.Errorf("%s's <desc> sends a reader to a heading %q that the page does not "+
 				"render", page, quoted)
 		}
+		// AND IT IS THE LAST SENTENCE, which is a claim about POSITION that the
+		// client depends on. app.js keeps this pointer through a drill by
+		// lifting the description's last sentence off the served markup --
+		// deliberately by position, because matching its words there would be a
+		// second copy of a sentence these templates own. Move the pointer into
+		// the middle of a <desc> and a drilled reader silently loses the only
+		// route they have to a table that ships closed.
+		sentences := strings.Split(whole, ". ")
+		if last := strings.TrimSpace(sentences[len(sentences)-1]); !strings.Contains(last, "opens from") {
+			t.Errorf("%s's table pointer is not the last sentence of its <desc>, which is "+
+				"where app.js looks for it; the last sentence is %q", page, last)
+		}
 	}
 	// ANTI-VACUITY, AND IT MUST NOT CONTRADICT THE ESCAPE HATCH ABOVE. The loop
 	// deliberately skips a page whose #table-view ships open, because there
@@ -2217,10 +2229,13 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		}
 		foot := html[start:]
 		summary := strings.Index(foot, "<summary>")
+		summaryEnd := strings.Index(foot, "</summary>")
 		heading := strings.Index(foot, "<h3>Sources")
 		basis := strings.Index(foot, "Projection:")
+		closed := strings.Index(foot, "</details>")
 		for name, at := range map[string]int{
-			"<summary>": summary, "<h3>Sources": heading, "Projection:": basis,
+			"<summary>": summary, "</summary>": summaryEnd, "<h3>Sources": heading,
+			"Projection:": basis, "</details>": closed,
 		} {
 			if at < 0 {
 				t.Fatalf("%s's footer renders no %s", page, name)
@@ -2228,6 +2243,23 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		}
 		if !strings.Contains(foot, `<details class="apparatus" id="sources-view">`) {
 			t.Errorf("%s does not fold its source list into an .apparatus disclosure", page)
+		}
+		// THE SUMMARY DESCRIBES THE WHOLE PANEL. It counts documents AND files
+		// because the fold swept the data-file list in beside the sources, and
+		// a summary naming only half of what is behind it gives a reader no
+		// reason to open it for the other half.
+		folded := foot[summary:closed]
+		if !strings.Contains(folded, "Every data file the site publishes") {
+			t.Errorf("%s's summary counts data files that are not inside the panel", page)
+		}
+		// THE SUMMARY ALONE, and the first draft of this arm read the whole
+		// folded panel -- which contains the phrase "data file" in the list
+		// itself, so a summary that stopped mentioning files stayed green.
+		// Caught by the mutation, not by reading it.
+		head := foot[summary:summaryEnd]
+		if !strings.Contains(head, "data file") {
+			t.Errorf("%s's sources summary does not say the panel also holds the data "+
+				"files it hides: %s", page, strings.Join(strings.Fields(head), " "))
 		}
 		if open.MatchString(foot) {
 			t.Errorf("%s ships its source list open", page)
@@ -2237,7 +2269,7 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		}
 		// The disclosure closes BEFORE the scope sentence, which is what puts
 		// that sentence on the reader's side of the fold.
-		if closed := strings.Index(foot, "</details>"); closed < 0 || closed > basis {
+		if closed > basis {
 			t.Errorf("%s's scope-and-basis sentence is inside the folded source list", page)
 		}
 	}

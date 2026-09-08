@@ -145,7 +145,8 @@
   <details class="apparatus" id="sources-view">
     <summary>
       <h3>Sources</h3>
-      <span class="apparatus-hint">{{len .Sources}} document{{if ne (len .Sources) 1}}s{{end}}, every page this view cites</span>
+      <span class="apparatus-hint">{{len .Sources}} document{{if ne (len .Sources) 1}}s{{end}},
+        every page this view cites, and {{len .Projections}} data file{{if ne (len .Projections) 1}}s{{end}}</span>
     </summary>
     <ul>
       {{- range .Sources}}

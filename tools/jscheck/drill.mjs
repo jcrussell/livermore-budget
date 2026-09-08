@@ -19,7 +19,10 @@
 // numbers pkg/cmd/export/data.go's comments quote to justify the tier sets and
 // the cap.
 
-import { loadApp, goldenFundFlows, plannedFetch, settle } from "./harness.mjs";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { loadApp, goldenFundFlows, plannedFetch, settle, repoRoot } from "./harness.mjs";
 
 /**
  * The two views the site ships, verbatim from pkg/cmd/export/data.go's views().
@@ -635,7 +638,66 @@ export async function checks() {
             `closed: counts "${closed.counts}"`,
   });
 
+  // THE FLOW TABLE SHIPS CLOSED, so the chart's <desc> is the only route to it
+  // a reader who cannot see the page has -- a closed <details> is out of the
+  // accessibility tree until it is opened. Before that fold the table shipped
+  // open on the chart pages and this sentence was a convenience; it is now the
+  // pointer, and a drill used to replace the whole description with one naming
+  // no table.
+  //
+  // THE EXPECTATION IS THE SERVED SENTENCE, not a literal. The check reads the
+  // description the page shipped, takes its last sentence the way app.js does,
+  // and asserts the drilled description still ends with THAT -- so a reworded
+  // template moves both sides together and this cannot pin the client to the
+  // checker.
+  // THE SERVED SENTENCE IS READ FROM THE TEMPLATE, not typed here, for the
+  // reason year.mjs reads the counts span the same way: an expectation spelled
+  // as a literal is a third copy of a sentence the template owns, and it pins
+  // the client to the checker while the template drifts free. The stub ships an
+  // empty <desc>, so what the browser would have been served is planted.
+  const descApp = appFor(PAGES[0]);
+  const descEl = descApp.dom.document.getElementById("chart-desc");
+  const served = templateDesc("chart.html.tmpl", "A chart of something.");
+  descEl.textContent = served;
+  const descBody = descApp.dom.document.node();
+  descApp.dom.document.getElementById("flow-table").selectable = { tbody: descBody };
+  descApp.dom.document.plant("main", descApp.dom.document.node());
+  await settle();
+
+  const descOf = () => String(descEl.textContent).replace(/\s+/g, " ").trim();
+  const servedParts = served.split(". ");
+  const pointer = servedParts.length < 2 ? "" : servedParts[servedParts.length - 1].trim();
+  descApp.drillTo("fund-group/general");
+  const drilledDesc = descOf();
+  descApp.drillTo("");
+  const restored = descOf();
+  out.push({
+    name: "revenue: opening a node keeps the chart description's pointer to the flow table",
+    ok: pointer !== "" && pointer.toLowerCase().includes("table") &&
+        drilledDesc.endsWith(pointer) && drilledDesc !== served &&
+        restored === served,
+    detail: `the served description ends "${pointer}"; drilled it reads ` +
+            `"${drilledDesc}"; closing the drill ` +
+            `${restored === served ? "restores it" : "does NOT restore it"}`,
+  });
+  void descBody;
+
   return out;
+}
+
+/**
+ * A template's chart <desc> as the browser receives it, with the packager's slot
+ * filled and the template's line wrapping collapsed.
+ *
+ * READ FROM THE TEMPLATE for year.mjs's reason: an expectation typed here is a
+ * copy of a sentence the template owns, and the copy is what stays green while
+ * the original drifts.
+ */
+function templateDesc(file, description) {
+  const src = readFileSync(join(repoRoot, "site", file), "utf8");
+  const m = src.match(/<desc id="chart-desc">([\s\S]*?)<\/desc>/);
+  if (!m) throw new Error(file + " renders no #chart-desc to pin against");
+  return m[1].replace(/\s+/g, " ").trim().replaceAll("{{.ChartDescription}}", description);
 }
 
 /** The counts line a page's overview shows, composed the way paintCounts does. */
