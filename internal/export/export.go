@@ -757,6 +757,14 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q describes a chart and renders template %q, which has no <desc> of "+
 				"its own to fill; the sentence would be dropped in silence", v.Path, v.Template)
+	case v.ChartDescription != "" && !endsASentence(v.ChartDescription):
+		return fmt.Errorf(
+			"view %q gives its chart a description ending %q rather than in a sentence "+
+				"terminator; the template appends the pointer to the flow table after it, "+
+				"and app.js re-appends that pointer on a drill by taking the description's "+
+				"LAST SENTENCE -- so an unterminated one runs into it and a drilled reader "+
+				"loses the only route they have to a table that ships closed",
+			v.Path, lastRune(v.ChartDescription))
 	case v.Drill != nil && v.Drill.Tail == "":
 		return fmt.Errorf(
 			"view %q declares a drill with no tail noun, so a capped column would be "+
@@ -959,6 +967,30 @@ func templateRendersTiers(name string) bool {
 // no breadcrumb and no way back would make that a trapdoor.
 func templateRendersDrill(name string) bool {
 	return name == ChartTemplate
+}
+
+// endsASentence reports whether s closes with a terminator, which is what keeps
+// a caller's chart description separable from the template's own sentence after
+// it. The validate arm that calls this says what depends on the separation.
+func endsASentence(s string) bool {
+	if s == "" {
+		return false
+	}
+	switch s[len(s)-1] {
+	case '.', '!', '?':
+		return true
+	}
+	return false
+}
+
+// lastRune is the final character of s as a string, so a refusal can show what
+// a description actually ended with rather than quoting the whole sentence.
+func lastRune(s string) string {
+	r := []rune(s)
+	if len(r) == 0 {
+		return ""
+	}
+	return string(r[len(r)-1])
 }
 
 // assetPath screens one [Options.Files] key. The output tree is a web root

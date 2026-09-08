@@ -1112,7 +1112,14 @@ function paintChartName() {
  * @returns {string}
  */
 function lastSentence(s) {
-  const parts = String(s).replace(/\s+/g, " ").trim().split(". ");
+  // ANY TERMINATOR, not just a period: export.View accepts ".", "!" and "?" as
+  // the close of a caller's description, and splitting on ". " alone let the
+  // other two run into the template's sentence.
+  //
+  // AN UNTERMINATED DESCRIPTION CANNOT REACH HERE. The packager refuses one --
+  // see export.View.validate's endsASentence arm, which exists because every
+  // fixture in this repo happened to end in a period and hid the case.
+  const parts = String(s).replace(/\s+/g, " ").trim().split(/[.!?]\s+/);
   return parts.length < 2 ? "" : parts[parts.length - 1].trim();
 }
 

@@ -657,7 +657,7 @@ export async function checks() {
   // empty <desc>, so what the browser would have been served is planted.
   const descApp = appFor(PAGES[0]);
   const descEl = descApp.dom.document.getElementById("chart-desc");
-  const served = templateDesc("chart.html.tmpl", "A chart of something.");
+  const served = templateDesc("chart.html.tmpl", DESCRIPTION);
   descEl.textContent = served;
   const descBody = descApp.dom.document.node();
   descApp.dom.document.getElementById("flow-table").selectable = { tbody: descBody };
@@ -665,8 +665,14 @@ export async function checks() {
   await settle();
 
   const descOf = () => String(descEl.textContent).replace(/\s+/g, " ").trim();
-  const servedParts = served.split(". ");
-  const pointer = servedParts.length < 2 ? "" : servedParts[servedParts.length - 1].trim();
+  // THE POINTER IS THE TEMPLATE'S SUFFIX, taken by subtracting the description
+  // the packager supplied -- not by re-splitting the sentence the way app.js
+  // does. A second copy of that split here IS the client's implementation
+  // asserted against itself: measured, a description closing with "!" made this
+  // check fail while app.js was doing the right thing. Whether the template's
+  // pointer is one sentence, and the last, is the Go side's claim
+  // (TestAClosedFlowTableIsNotDescribedAsListedBelow).
+  const pointer = served.slice(DESCRIPTION.length).trim();
   descApp.drillTo("fund-group/general");
   const drilledDesc = descOf();
   descApp.drillTo("");
@@ -684,6 +690,14 @@ export async function checks() {
 
   return out;
 }
+
+/**
+ * A stand-in for the ChartDescription a view supplies. Terminated, because
+ * export.View.validate refuses one that is not -- app.js separates this from
+ * the template's own sentence after it, and an unterminated description runs
+ * into it.
+ */
+const DESCRIPTION = "A chart of something.";
 
 /**
  * A template's chart <desc> as the browser receives it, with the packager's slot

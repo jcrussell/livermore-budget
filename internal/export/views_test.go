@@ -599,6 +599,15 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a chart that gives itself no description", []export.View{ok,
 			chartView(func(v *export.View) { v.ChartDescription = "" })},
 			"is told nothing about what the marks mean"},
+		// THE FIXTURES ALL END IN A PERIOD, WHICH IS WHAT HID THIS. app.js keeps
+		// the pointer to the closed flow table through a drill by taking the
+		// description's last sentence, so a caller's description that does not
+		// close runs into the template's pointer and the drilled reader loses
+		// it. Every test and jscheck fixture supplied a terminated sentence, so
+		// the whole suite was green over a description shape a caller can send.
+		{"a chart description that does not close its sentence", []export.View{ok,
+			chartView(func(v *export.View) { v.ChartDescription = "A description" })},
+			"loses the only route they have to a table that ships closed"},
 		{"a drill with no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.Drill.Tiers = nil })},
 			"drawn by the same tier set it was closed under"},
@@ -2264,8 +2273,14 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 		if open.MatchString(foot) {
 			t.Errorf("%s ships its source list open", page)
 		}
-		if summary > heading {
-			t.Errorf("%s's Sources heading is not inside the summary", page)
+		// BOTH BOUNDS. Asserting only that the heading comes AFTER <summary>
+		// leaves it free to sit anywhere below, including inside the collapsed
+		// panel -- which takes it out of the heading outline a screen reader
+		// navigates by, the one thing keeping the folded list findable.
+		// Measured: moved past </summary>, this test stayed green.
+		if summary > heading || heading > summaryEnd {
+			t.Errorf("%s's Sources heading is at %d, not between <summary> at %d and "+
+				"</summary> at %d", page, heading, summary, summaryEnd)
 		}
 		// The disclosure closes BEFORE the scope sentence, which is what puts
 		// that sentence on the reader's side of the fold.
@@ -2327,6 +2342,19 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 	}
 	if !strings.Contains(foot, "Every data file the site publishes") {
 		t.Error("caveats.html's disclosure holds no data-file list, so it folds nothing")
+	}
+	// The heading is in the outline here for the same reason it is on every
+	// other page: it is what makes a folded panel findable without opening it.
+	head := strings.Index(foot, "<summary>")
+	headEnd := strings.Index(foot, "</summary>")
+	title := strings.Index(foot, "<h3>The data</h3>")
+	if head < 0 || headEnd < 0 || title < 0 {
+		t.Fatalf("caveats.html's footer is missing its summary (%d, %d) or its "+
+			"heading (%d)", head, headEnd, title)
+	}
+	if title < head || title > headEnd {
+		t.Errorf("caveats.html's data heading is at %d, not between <summary> at %d "+
+			"and </summary> at %d", title, head, headEnd)
 	}
 	shut := strings.Index(foot, "</details>")
 	reason := strings.Index(foot, "publishes no figure")
