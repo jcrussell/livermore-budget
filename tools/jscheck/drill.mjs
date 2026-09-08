@@ -692,12 +692,20 @@ export async function checks() {
 }
 
 /**
- * A stand-in for the ChartDescription a view supplies. Terminated, because
- * export.View.validate refuses one that is not -- app.js separates this from
- * the template's own sentence after it, and an unterminated description runs
- * into it.
+ * A stand-in for the ChartDescription a view supplies.
+ *
+ * TERMINATED, because export.View.validate refuses one that is not: app.js
+ * separates this from the template's own sentence after it, and an unterminated
+ * description runs into it.
+ *
+ * AND TERMINATED WITH "!", NOT ".", WHICH IS THE POINT. validate accepts three
+ * terminators and lastSentence splits on all three; with a period here both the
+ * broadened split and two of the three accepted terminators are unwitnessed --
+ * measured, reverting lastSentence to ". " left this whole file green. A
+ * fixture that uses the COMMON shape cannot see a check written for the
+ * uncommon one, which is the shape that hid the defect this fixture is for.
  */
-const DESCRIPTION = "A chart of something.";
+const DESCRIPTION = "A chart of something!";
 
 /**
  * A template's chart <desc> as the browser receives it, with the packager's slot

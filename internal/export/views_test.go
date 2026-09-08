@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 	"testing/fstest"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/site"
 )
 
 // trendsDoc is a minimal revenue-trends document citing pages the SPINE does
@@ -2189,7 +2191,7 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 		// second copy of a sentence these templates own. Move the pointer into
 		// the middle of a <desc> and a drilled reader silently loses the only
 		// route they have to a table that ships closed.
-		sentences := strings.Split(whole, ". ")
+		sentences := sentenceSplit.Split(whole, -1)
 		if last := strings.TrimSpace(sentences[len(sentences)-1]); !strings.Contains(last, "opens from") {
 			t.Errorf("%s's table pointer is not the last sentence of its <desc>, which is "+
 				"where app.js looks for it; the last sentence is %q", page, last)
@@ -2365,5 +2367,115 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 	if shut > reason {
 		t.Error("caveats.html folded the sentence saying it publishes no figure, which " +
 			"is what makes the absent source list read as deliberate")
+	}
+}
+
+// sentenceSplit is app.js's own sentence boundary. Spelled once here because
+// this file asserts WHERE the client looks; a hand-written ". " was a stale copy
+// of it the moment lastSentence learned the other two terminators, and a copy
+// that has stopped agreeing asserts the wrong thing while reading correctly.
+var sentenceSplit = regexp.MustCompile(`[.!?]\s+`)
+
+// TestAChartDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn. validate refuses
+// an unterminated description because app.js separates it from the template's
+// pointer by sentence; the set it accepts therefore has to be the set
+// lastSentence splits on, and no wider.
+//
+// THE ACCEPTING HALF IS THE HALF THAT WAS MISSING. Only "." was ever exercised,
+// so narrowing validate to a period alone -- which would refuse a description a
+// reader-facing caller may legitimately write -- was measured green.
+func TestAChartDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
+	for _, tc := range []struct {
+		desc   string
+		accept bool
+	}{
+		{"A description.", true},
+		{"What does it draw?", true},
+		{"Look at this!", true},
+		{"A description", false},
+		{"A description;", false},
+		{"A description ", false},
+	} {
+		fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+		if err != nil {
+			t.Fatalf("read fund-flows golden: %v", err)
+		}
+		_, err = export.Write(export.Options{
+			Dir:         t.TempDir(),
+			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+			Views: []export.View{
+				{Path: export.IndexPath, Nav: "Budget flows",
+					Template: export.SankeyTemplate, Projection: "sankey"},
+				{Path: "spending.html", Nav: "Spending", Template: export.ChartTemplate,
+					Projection: "fund-flows", RenderTiers: []int{0, 2, 4},
+					ChartSubject: "by fund and division", ChartDescription: tc.desc},
+			},
+			Docs:        budgetDocs(),
+			GeneratedBy: "fisc test",
+		})
+		switch {
+		case tc.accept && err != nil:
+			t.Errorf("Write refused the description %q: %v", tc.desc, err)
+		case !tc.accept && err == nil:
+			t.Errorf("Write accepted the description %q, which does not close a "+
+				"sentence; app.js would run the template's pointer into it", tc.desc)
+		}
+	}
+}
+
+// TestEveryFooterDisclosureKeepsItsHeadingInTheOutline asserts the rule on the
+// TEMPLATES rather than on two rendered pages, which is where it belongs: five
+// of them carry a byte-identical sources footer (fisc-yj4w.17) and the rendered
+// assertions reached two of the six. Measured before this test existed: moving
+// <h3>Sources...</h3> past </summary> in chart, provenance and history at once
+// left the package green.
+//
+// WHY IT MATTERS AT ALL. A <summary> stays in the accessibility tree when the
+// panel is closed and its content does not, so a heading inside the summary is
+// the only thing that keeps a folded list findable by heading navigation
+// without opening it. Below the summary it is inside the fold with everything
+// else.
+func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
+	entries, err := fs.ReadDir(site.FS(), ".")
+	if err != nil {
+		t.Fatalf("read embedded site: %v", err)
+	}
+	found := 0
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasSuffix(name, ".html.tmpl") {
+			continue
+		}
+		b, err := fs.ReadFile(site.FS(), name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		src := string(b)
+		disclosure := strings.Index(src, `<details class="apparatus" id="sources-view">`)
+		if disclosure < 0 {
+			disclosure = strings.Index(src, `<details class="apparatus" id="data-view">`)
+		}
+		if disclosure < 0 {
+			continue
+		}
+		found++
+		rest := src[disclosure:]
+		summary := strings.Index(rest, "<summary>")
+		summaryEnd := strings.Index(rest, "</summary>")
+		heading := strings.Index(rest, "<h3>")
+		if summary < 0 || summaryEnd < 0 || heading < 0 {
+			t.Errorf("%s's footer disclosure has no summary (%d, %d) or no heading (%d)",
+				name, summary, summaryEnd, heading)
+			continue
+		}
+		if heading < summary || heading > summaryEnd {
+			t.Errorf("%s puts its footer heading outside the <summary>, which takes it "+
+				"out of the outline while the panel is closed", name)
+		}
+	}
+	// Anti-vacuity: six templates ship and every one of them folds a footer
+	// list. A loop that found none would report nothing at all.
+	if found != 6 {
+		t.Errorf("found %d templates folding a footer list, want 6", found)
 	}
 }
