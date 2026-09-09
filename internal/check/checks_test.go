@@ -88,15 +88,18 @@ func TestFixtureVerdicts(t *testing.T) {
 		"node-tiers-are-declared": "pass over 9",
 		// The drill-down's two checks are vacuous over the miniature spine,
 		// which carries neither of the schedules it draws.
-		"fund-flows-counts-reconcile":     "vacuous over 0",
-		"derived-nodes-justified":         "pass over 2",
-		"link-locators-match-their-facts": "pass over 7",
-		"link-values-tie-to-facts":        "pass over 7",
-		"link-kinds-match-their-facts":    "pass over 7",
-		"counts-reconcile":                "pass over 1",
-		"headline-ties-to-facts":          "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
-		"headline-transfer-residual":      "pass over 2",
-		"headline-naive-expenditure":      "pass over 1",
+		"fund-flows-counts-reconcile": "vacuous over 0",
+		// And the cross-document identity with them: the miniature spine has
+		// no drill-down to pair a column with.
+		"drill-reconciles-across-documents": "vacuous over 0",
+		"derived-nodes-justified":           "pass over 2",
+		"link-locators-match-their-facts":   "pass over 7",
+		"link-values-tie-to-facts":          "pass over 7",
+		"link-kinds-match-their-facts":      "pass over 7",
+		"counts-reconcile":                  "pass over 1",
+		"headline-ties-to-facts":            "pass over 5", // 3 revenue + 1 expenditure + 1 transfer out
+		"headline-transfer-residual":        "pass over 2",
+		"headline-naive-expenditure":        "pass over 1",
 		// Nothing to check: no link carries a transfer_id, no node a parent or a
 		// constraint tier, no fact a department or a fund number.
 		"transfer-legs-pair": "vacuous over 0",
@@ -131,7 +134,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 24, Vacuous: 23, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 24, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -153,8 +156,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 23 {
-		t.Fatalf("vacuous count = %d, want 23", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 24 {
+		t.Fatalf("vacuous count = %d, want 24", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
@@ -174,11 +177,12 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 	rep := runChecks(t, testSubject(t))
 	for id, want := range map[string]string{
-		"transfer-legs-pair":         "no link carries a transfer_id",
-		"node-hierarchy-well-formed": "no node carries a parent",
-		"constraint-tier-vocabulary": "no node carries a constraint_tier",
-		"fact-departments-resolve":   "no fact carries a department",
-		"fact-funds-resolve":         "no fact names a fund",
+		"transfer-legs-pair":                "no link carries a transfer_id",
+		"node-hierarchy-well-formed":        "no node carries a parent",
+		"constraint-tier-vocabulary":        "no node carries a constraint_tier",
+		"fact-departments-resolve":          "no fact carries a department",
+		"fact-funds-resolve":                "no fact names a fund",
+		"drill-reconciles-across-documents": "no fiscal column is published by both the spine and the drill-down",
 	} {
 		res := resultFor(t, rep, id)
 		if res.Status != StatusVacuous {

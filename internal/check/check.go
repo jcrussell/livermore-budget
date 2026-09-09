@@ -209,6 +209,7 @@ func All() []Check {
 		&linkKindsMatchTheirFacts{},
 		&countsReconcile{},
 		&fundFlowsCountsReconcile{},
+		&drillReconcilesAcrossDocuments{},
 		&headlineTiesToFacts{},
 		&headlineTransferResidual{},
 		&headlineNaiveExpenditure{},
