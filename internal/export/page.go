@@ -664,14 +664,13 @@ type clientConfig struct {
 	// declares nothing is laid out by exactly the code that laid it out before
 	// the fold existed, and the spine's config blob is unchanged byte for byte.
 	RenderTiers []int `json:"render_tiers,omitempty"`
-	// Drill is how the page opens one node, omitted on a page that does not.
+	// Steps is how the page opens a node, one hop per step, omitted on a page
+	// that opens none.
 	//
-	// OMITTED AND NOT A ZERO VALUE, for RenderTiers' reason and with a sharper
-	// consequence: app.js reads `CONFIG.drill && Array.isArray(CONFIG.drill.tiers)`,
-	// so a present-but-empty object would leave DRILL null anyway -- but the
-	// spine's config blob has to stay byte-identical, and a "drill":null key
-	// would move it.
-	Drill *Drill `json:"drill,omitempty"`
+	// OMITTED AND NOT [] WHEN ABSENT, for RenderTiers' reason: app.js reads an
+	// absent key as "this page isolates on a click", and an empty list would
+	// be a second spelling of the same state for the client to get wrong.
+	Steps []DrillStep `json:"steps,omitempty"`
 	// Root is the node whose subtree the page draws, omitted when it draws the
 	// whole document.
 	Root string `json:"root,omitempty"`
@@ -1176,6 +1175,44 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 	return out
 }
 
+// stepSources is every page a view's steps draw from beyond the documents its
+// year loop already decoded: the metadata.sources of each step that names a
+// document of its own.
+//
+// IT FEEDS THE SAME UNION THE YEARS DO, and for the same reason, one layer
+// further in. The footer's Sources and the client's docs map are built from
+// one list, and a step that switches document draws figures from pages that
+// list would otherwise not carry. The client's half is the sharper one:
+// citations() in site/app.js skips a doc_id the map has no entry for, so a
+// step document's citations would VANISH WITH NO ERROR. Both documents the
+// site publishes today share a doc_id, so nothing drops -- which is luck, and
+// this is where it stops being relied on.
+//
+// Shape-blind through documentSources, like citationsOf: which tiers a step's
+// document holds is the client's business, and its pages are not.
+func stepSources(v View, projections map[string][]byte) ([]sourceMeta, error) {
+	var out []sourceMeta
+	for i, s := range v.Steps {
+		if s.Projection == "" {
+			continue
+		}
+		raw, ok := projections[s.Projection]
+		if !ok {
+			return nil, fmt.Errorf("view %q's step %d renders projection %q, which was not built",
+				v.Path, i, s.Projection)
+		}
+		if _, err := decodeDocument(s.Projection, raw); err != nil {
+			return nil, err
+		}
+		var src documentSources
+		if err := json.Unmarshal(raw, &src); err != nil {
+			return nil, fmt.Errorf("decode %s sources: %w", s.Projection, err)
+		}
+		out = append(out, src.Metadata.Sources...)
+	}
+	return out, nil
+}
+
 // projectionRefs is every data file the site publishes, which is the whole set
 // on every page: they are downloadable provenance, not this view's figures.
 func projectionRefs(projections map[string][]byte) []projectionRef {
@@ -1267,6 +1304,11 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		})
 	}
 	hero, figures := tilesFor(meta)
+	stepped, err := stepSources(v, o.Projections)
+	if err != nil {
+		return pageData{}, err
+	}
+	cited = append(cited, stepped...)
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
@@ -1282,6 +1324,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Metadata:      doc.Metadata,
 		Years:         years,
 		Docs:          clientDocs,
+		Steps:         v.Steps,
 	}
 	blob, err := json.Marshal(cfg)
 	if err != nil {
@@ -1395,6 +1438,11 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			},
 		})
 	}
+	stepped, err := stepSources(v, o.Projections)
+	if err != nil {
+		return chartPageData{}, err
+	}
+	cited = append(cited, stepped...)
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
@@ -1411,7 +1459,7 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Years:         years,
 		Docs:          clientDocs,
 		RenderTiers:   v.RenderTiers,
-		Drill:         v.Drill,
+		Steps:         v.Steps,
 		Root:          v.Root,
 	}
 	blob, err := json.Marshal(cfg)
@@ -1443,7 +1491,7 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// YearStems[0] to v.Projection.
 		ChartTitle:       years[0].ChartTitle,
 		ChartDescription: v.ChartDescription,
-		Drill:            v.Drill != nil,
+		Drill:            len(v.Steps) > 0,
 		// #nosec G203 -- see buildSankeyPage; blob is encoding/json's output.
 		ConfigJSON: template.JS(blob),
 	}, nil

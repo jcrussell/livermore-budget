@@ -143,8 +143,29 @@
  * @property {FiscMetadata} metadata
  * @property {Record<string, FiscDoc>} docs
  * @property {number[]} [render_tiers]
- * @property {FiscDrill} [drill]
+ * @property {FiscDrillStep[]} [steps]
  * @property {string} [root]
+ */
+
+/**
+ * @typedef {Object} FiscTierCap
+ * @property {number} tier
+ * @property {number} cap  how many nodes the tier may hold before its tail is
+ *   folded into one aggregate; see capColumn for why a cap is needed at all.
+ */
+
+/**
+ * One hop of the chain the packager ships, verbatim from export.DrillStep.
+ *
+ * @typedef {Object} FiscDrillStep
+ * @property {number} from  the tier whose nodes open, in the chart on screen
+ *   before they do
+ * @property {string} [projection]  the document this step draws; absent means
+ *   the same one as the step before
+ * @property {number[]} tiers  the tier set drawn once one has
+ * @property {FiscTierCap[]} [caps]  per tier; a tier with none is drawn whole
+ * @property {string} back  what the breadcrumb's return control says
+ * @property {string} tail  the plural noun a capped aggregate is counted in
  */
 
 /**
@@ -270,8 +291,27 @@ const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.rende
  *   tail is folded into one aggregate; see capColumn for why a cap is needed at
  *   all.
  */
-/** @type {FiscDrill | null} */
-const DRILL = CONFIG && CONFIG.drill && Array.isArray(CONFIG.drill.tiers) ? CONFIG.drill : null;
+/**
+ * ONE HOP, READ OFF THE FIRST STEP OF THE CHAIN. The packager ships a list and
+ * this file still drives one hop of it: the first step's tiers, its words, and
+ * the cap declared on its finest tier -- Infinity when it declares none, which
+ * capColumn draws whole. THE CAP IS LOOKED UP BY THE TIER IT NAMES and not by
+ * its position, because the list is in declaration order and a step may cap
+ * a coarse tier before its fine one. Steps after the first are not read here;
+ * fisc-ko1j.3 is the stack that reads them.
+ *
+ * @type {FiscDrill | null}
+ */
+const DRILL = (() => {
+  const step = CONFIG && Array.isArray(CONFIG.steps) ? CONFIG.steps[0] : null;
+  if (!step || !Array.isArray(step.tiers) || step.tiers.length === 0) return null;
+  const fine = step.tiers[step.tiers.length - 1];
+  const capped = (step.caps || []).find((c) => c.tier === fine);
+  return {
+    from: step.from, tiers: step.tiers, back: step.back, tail: step.tail,
+    cap: capped ? capped.cap : Infinity,
+  };
+})();
 
 /**
  * The node whose subtree this page draws, or "" for the whole document.

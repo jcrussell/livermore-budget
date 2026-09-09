@@ -233,20 +233,27 @@ type View struct {
 	// has a spending side; Root is where it says so to the client.
 	Root string
 
-	// Drill is how this view's chart opens one node, or nil for a view whose
-	// chart does not open at all. Shipped to the client as FISC_CONFIG.drill.
+	// Steps is how this view's chart opens a node, one hop per step, or empty
+	// for a view whose chart does not open at all. Shipped to the client as
+	// FISC_CONFIG.steps.
 	//
 	// PER VIEW FOR RenderTiers' REASON, AND THEN SOME: it declares what
 	// activating a node MEANS on this page. Without it a node click isolates,
-	// which is what the spine has always done and wants to keep; with it a node
-	// at Drill.From opens into Drill.Tiers instead. Those are two interaction
-	// contracts and no page has both, because a page that drills has two drawn
-	// columns and isolating on two columns dims a column the reader was not
-	// looking at (fisc-ppkq).
+	// which is what the spine has always done; with it a node at Steps[0].From
+	// opens into Steps[0].Tiers, and a node at Steps[1].From in THAT chart
+	// opens into Steps[1].Tiers. Those are two interaction contracts and no
+	// page has both, because a page that drills has two drawn columns and
+	// isolating on two columns dims a column the reader was not looking at
+	// (fisc-ppkq).
+	//
+	// A CHAIN IS A LINE. validateSteps reads it as one -- each step opens from
+	// a tier the step before it drew -- and the type carries one From per step,
+	// so two openable tiers at one depth have nowhere to go. That is a limit
+	// declared, not a property proved; see validateSteps.
 	//
 	// The behaviour is entirely the client's, like the fold. This package ships
 	// the declaration.
-	Drill *Drill
+	Steps []DrillStep
 }
 
 // Doc describes one source document the page cites. The caller supplies these
@@ -426,7 +433,7 @@ type Section struct {
 	Rows map[string]string
 }
 
-// Drill is a view's chart opening one node into its parts.
+// DrillStep is one hop of a view's chart opening a node into its parts.
 //
 // WHY FILTER-AND-RESCALE AND NOT EXPAND-IN-PLACE. Measured, and recorded on
 // fisc-ppkq: the vendored d3-sankey derives its column count from topology and
@@ -435,14 +442,37 @@ type Section struct {
 // ribbons span two -- which tools/jscheck/layout.mjs's bands() refuses outright.
 // Filtering to one node keeps every tier set uniform, which is the only shape
 // this build lays out.
-type Drill struct {
-	// From is the tier whose nodes open, and no other. One tier rather than a
-	// set, because a drill is one hop by construction: a node in the drilled
-	// view is never itself drillable, so there is no depth to model.
+//
+// FROM AND TIERS ARE NOT NECESSARILY TIERS OF THE SAME DOCUMENT. From is a tier
+// of the chart on screen when the reader opens a node -- the step before this
+// one, or the view's own document for the first step -- and Tiers are tiers of
+// the document THIS step draws. On a step that switches document the two
+// hierarchies are unrelated: From: 2 is the spine's fund-group tier while
+// Tiers: {0, 3, 4} are fund-flows'. So validateSteps places From against the
+// step before and Tiers against this step's caps, and cannot relate From to
+// Tiers at all. A reader expecting it to has read the struct as one document.
+type DrillStep struct {
+	// From is the tier whose nodes open, in the chart on screen before they do.
+	// One tier rather than a set: a step is one hop, and the next hop is the
+	// next step.
 	From int `json:"from"`
-	// Tiers is the tier set drawn once a node has opened -- the drilled view's
-	// RenderTiers, and a different declaration from the overview's.
+	// Projection is the filename stem of the document this step draws, or ""
+	// to draw the same document as the step before it -- the view's own, for
+	// the first step. A named one must be a key of [Options.Projections].
+	//
+	// Omitted from the JSON when empty, so the client reads an absent key as
+	// "the same document" rather than as a stem named "".
+	Projection string `json:"projection,omitempty"`
+	// Tiers is the tier set drawn once a node has opened -- this step's
+	// RenderTiers, and a different declaration from the chart's before it.
 	Tiers []int `json:"tiers"`
+	// Caps bounds the columns this step draws, one per tier that needs one; a
+	// tier with no cap is drawn whole.
+	//
+	// A SLICE AND NOT A MAP. The shipped JSON then has one order whatever the
+	// declaration's, and validateSteps can refuse a cap on a tier the step does
+	// not draw, which a map keyed by tier would carry in silence.
+	Caps []TierCap `json:"caps,omitempty"`
 	// Back is what the breadcrumb's return control says, e.g. "All fund
 	// groups". Declared rather than derived from From, because a tier number
 	// does not know what the reader calls the things in it.
@@ -456,16 +486,20 @@ type Drill struct {
 	// drilling into a third tier would have been given "categories" and nothing
 	// would have said so.
 	Tail string `json:"tail"`
-	// Cap is how many nodes the fine column may hold before the tail is folded
-	// into one aggregate node.
-	//
-	// IT IS NOT A TIDINESS SETTING. fisc-ppkq claims rescaling to a group's own
-	// total is what makes its funds legible, and that is measured false: the
-	// special-revenue group rescaled to itself still puts 22 of its 49 ribbons
-	// under one pixel, because the concentration is WITHIN the group -- one fund
-	// is 34.9% of it and the smallest two are 0.034%. Rescaling cannot fix a
-	// distribution. At cap 8 the same graph draws 2 sub-pixel ribbons.
-	Cap int `json:"cap"`
+}
+
+// TierCap is how many nodes one drawn tier may hold before its tail, by value,
+// is folded into one aggregate node.
+//
+// IT IS NOT A TIDINESS SETTING. fisc-ppkq claims rescaling to a group's own
+// total is what makes its funds legible, and that is measured false: the
+// special-revenue group rescaled to itself still puts 22 of its 49 ribbons
+// under one pixel, because the concentration is WITHIN the group -- one fund
+// is 34.9% of it and the smallest two are 0.034%. Rescaling cannot fix a
+// distribution. At cap 8 the same graph draws 2 sub-pixel ribbons.
+type TierCap struct {
+	Tier int `json:"tier"`
+	Cap  int `json:"cap"`
 }
 
 // Download is one whole-store artifact a page offers.
@@ -732,16 +766,12 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q asks for render tiers %v and renders template %q, which publishes "+
 				"none; the chart would draw every tier", v.Path, v.RenderTiers, v.Template)
-	case v.Drill != nil && !templateRendersDrill(v.Template):
+	case len(v.Steps) > 0 && !templateRendersSteps(v.Template):
 		return fmt.Errorf(
-			"view %q declares a drill and renders template %q, which publishes none; "+
+			"view %q declares a drill chain and renders template %q, which publishes none; "+
 				"the chart would isolate on a click while this view believes it opens",
 			v.Path, v.Template)
-	case v.Drill != nil && len(v.Drill.Tiers) == 0:
-		return fmt.Errorf(
-			"view %q declares a drill with no tiers, so a node opened on it would be "+
-				"drawn by the same tier set it was closed under", v.Path)
-	case v.ChartSubject != "" && !templateRendersDrill(v.Template):
+	case v.ChartSubject != "" && !templateRendersChartDeclarations(v.Template):
 		return fmt.Errorf(
 			"view %q names a chart subject and renders template %q, which composes its "+
 				"own; the phrase would be dropped in silence", v.Path, v.Template)
@@ -753,7 +783,7 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf(
 			"view %q renders a chart and gives it no description, so a screen reader "+
 				"reaches its <desc> and is told nothing about what the marks mean", v.Path)
-	case v.ChartDescription != "" && !templateRendersDrill(v.Template):
+	case v.ChartDescription != "" && !templateRendersChartDeclarations(v.Template):
 		return fmt.Errorf(
 			"view %q describes a chart and renders template %q, which has no <desc> of "+
 				"its own to fill; the sentence would be dropped in silence", v.Path, v.Template)
@@ -765,33 +795,32 @@ func (v View) validate(built map[string][]byte) error {
 				"LAST SENTENCE -- so an unterminated one runs into it and a drilled reader "+
 				"loses the only route they have to a table that ships closed",
 			v.Path, lastRune(v.ChartDescription))
-	case v.Drill != nil && v.Drill.Tail == "":
-		return fmt.Errorf(
-			"view %q declares a drill with no tail noun, so a capped column would be "+
-				"labelled \"24 smaller\" and stop there", v.Path)
-	case v.Drill != nil && v.Drill.Back == "":
-		return fmt.Errorf(
-			"view %q declares a drill with no back label, so the breadcrumb out of an "+
-				"opened node would be a button with no words in it", v.Path)
-	case v.Root != "" && !templateRendersDrill(v.Template):
+	case v.Root != "" && !templateRendersChartDeclarations(v.Template):
 		return fmt.Errorf(
 			"view %q declares root %q and renders template %q, which publishes none; the "+
 				"chart would draw the whole document", v.Path, v.Root, v.Template)
-	// NO `len(v.RenderTiers) > 0 &&` GUARD. It was there, and it made this arm
-	// skippable by the one configuration it most needs to refuse: a
-	// ChartTemplate view with a drill and NO tier set passes outright, shipping
-	// the breadcrumb and the "click to open" hint over an unfolded 61-node
-	// column that lays every node out at zero height. An empty RenderTiers
-	// contains no tier, so the plain test is the right one.
-	case v.Drill != nil && !slices.Contains(v.RenderTiers, v.Drill.From):
+	// TWO ARMS, NOT ONE ARM BEHIND A `len(v.RenderTiers) > 0 &&` GUARD, and
+	// not one plain arm either. RenderTiers empty means the document is drawn
+	// WHOLE, every tier on screen, so the first step's From is drawn by
+	// definition: the spine draws whole and its tier 2 IS drawn. Without the
+	// guard, `!slices.Contains(v.RenderTiers, From)` refuses exactly that view.
+	// With the guard wrapping the only arm, the configuration that most needs
+	// refusing passes outright: a view on a template whose documents need
+	// folding, with a chain and NO tier set, ships the breadcrumb and the
+	// "click to open" hint over an unfolded 61-node column that lays every
+	// node out at zero height. So the first arm says only what it can know,
+	// and the hazard the guard hid is the second arm's, stated on its own.
+	case len(v.Steps) > 0 && len(v.RenderTiers) > 0 && !slices.Contains(v.RenderTiers, v.Steps[0].From):
 		return fmt.Errorf(
 			"view %q drills from tier %d and draws tiers %v, which do not include it; the "+
 				"page would ship the breadcrumb and the words about opening a node while no "+
-				"node on it is ever openable", v.Path, v.Drill.From, v.RenderTiers)
-	case v.Drill != nil && v.Drill.Cap < 1:
+				"node on it is ever openable", v.Path, v.Steps[0].From, v.RenderTiers)
+	case len(v.Steps) > 0 && len(v.RenderTiers) == 0 && templateRendersTiers(v.Template):
 		return fmt.Errorf(
-			"view %q declares a drill with cap %d; the cap is what keeps a fine column "+
-				"drawable and a column of one node is not a chart", v.Path, v.Drill.Cap)
+			"view %q drills and declares no render tiers on template %q, which publishes "+
+				"render tiers because its documents cannot be drawn whole; the page would "+
+				"ship the breadcrumb over an unfolded column that lays every node out at "+
+				"zero height", v.Path, v.Template)
 	}
 	if _, ok := built[v.Projection]; !ok && v.Projection != "" {
 		// Named rather than "a projection is missing": the fix differs by which
@@ -812,6 +841,80 @@ func (v View) validate(built map[string][]byte) error {
 				return fmt.Errorf("view %q lists year stem %q twice", v.Path, stem)
 			}
 		}
+	}
+	return v.validateSteps(built)
+}
+
+// validateSteps refuses a drill chain a reader could not walk, and a step that
+// would fold nothing, say nothing, or draw a document that was not built.
+//
+// THE CHAIN IS READ AS A PATH, AND THAT IS AN ASSUMPTION, NOT A PROOF. Each
+// step is placed against the one before it -- its From must be a tier the
+// previous step draws -- which is what makes every breadcrumb rung reachable
+// from the one above it. It says nothing about two openable tiers at one
+// depth, because []DrillStep cannot declare them: a second edge out of one
+// chart is not a longer path (fisc-ko1j.12). This arm passing is not evidence
+// the shape is a line; a line is the only shape the type can carry.
+func (v View) validateSteps(built map[string][]byte) error {
+	// The tiers on screen before a step opens, and the document they belong
+	// to. For the first step that is the view's own chart, and RenderTiers
+	// empty means the whole document -- which is why the first step's From is
+	// placed by validate's two arms above rather than here.
+	prevTiers, prevDoc := v.RenderTiers, v.Projection
+	for i, s := range v.Steps {
+		doc := s.Projection
+		if doc == "" {
+			doc = prevDoc
+		}
+		switch {
+		case len(s.Tiers) == 0:
+			return fmt.Errorf(
+				"view %q declares step %d with no tiers, so a node opened on it would be "+
+					"drawn by the same tier set it was closed under", v.Path, i)
+		case s.Tail == "":
+			return fmt.Errorf(
+				"view %q declares step %d with no tail noun, so a capped column would be "+
+					"labelled \"24 smaller\" and stop there", v.Path, i)
+		case s.Back == "":
+			return fmt.Errorf(
+				"view %q declares step %d with no back label, so the breadcrumb out of an "+
+					"opened node would be a button with no words in it", v.Path, i)
+		case i > 0 && !slices.Contains(prevTiers, s.From):
+			return fmt.Errorf(
+				"view %q's step %d opens from tier %d, and the step before it draws tiers "+
+					"%v, which do not include it; the breadcrumb would carry a rung nothing "+
+					"on the chart can reach", v.Path, i, s.From, prevTiers)
+		// THE SAME DOCUMENT ONLY. Across a document switch the two tier sets
+		// are numbered by different hierarchies, and equal numbers are not the
+		// same chart -- the DrillStep doc comment says why validate cannot do
+		// better than skip.
+		case i > 0 && doc == prevDoc && slices.Equal(prevTiers, s.Tiers):
+			return fmt.Errorf(
+				"view %q's step %d draws tiers %v of %q, the set the step before it "+
+					"already draws; opening a node would redraw the chart it was opened "+
+					"from", v.Path, i, s.Tiers, doc)
+		}
+		for j, c := range s.Caps {
+			switch {
+			case c.Cap < 1:
+				return fmt.Errorf(
+					"view %q's step %d caps tier %d at %d; the cap is what keeps a fine "+
+						"column drawable and a column of one node is not a chart",
+					v.Path, i, c.Tier, c.Cap)
+			case !slices.Contains(s.Tiers, c.Tier):
+				return fmt.Errorf(
+					"view %q's step %d caps tier %d and draws tiers %v, which do not include "+
+						"it; the cap would fold nothing, in silence", v.Path, i, c.Tier, s.Tiers)
+			case slices.ContainsFunc(s.Caps[:j], func(o TierCap) bool { return o.Tier == c.Tier }):
+				return fmt.Errorf("view %q's step %d caps tier %d twice", v.Path, i, c.Tier)
+			}
+		}
+		if _, ok := built[doc]; s.Projection != "" && !ok {
+			// Named for the same reason v.Projection's refusal is.
+			return fmt.Errorf("view %q's step %d renders projection %q, which was not built",
+				v.Path, i, s.Projection)
+		}
+		prevTiers, prevDoc = s.Tiers, doc
 	}
 	return nil
 }
@@ -952,20 +1055,35 @@ func templateRendersTiers(name string) bool {
 	return name == ChartTemplate
 }
 
-// templateRendersDrill answers whether a template publishes [View.Drill] to the
+// templateRendersSteps answers whether a template publishes [View.Steps] to the
 // client.
 //
 // THE FOURTH FIELD OF THE FAMILY, and it exists for the same reason as the
-// third. Only buildChartPage puts Drill in the config blob; buildSankeyPage
-// omits the key, and app.js reads `CONFIG.drill && ...`, so a drill asked for on
-// the spine is not refused, not reported, and not applied. The page would then
-// isolate on a click while its view believed it opened -- which looks like a
-// chart rather than like a defect.
+// third. app.js reads `CONFIG.steps`, so a chain asked for on a template whose
+// builder omits the key is not refused, not reported, and not applied. The page
+// would then isolate on a click while its view believed it opened -- which
+// looks like a chart rather than like a defect.
 //
-// It is also the arm that keeps the two interaction contracts apart. A view
-// that sets Drill is declaring that activating a node OPENS it; a template with
-// no breadcrumb and no way back would make that a trapdoor.
-func templateRendersDrill(name string) bool {
+// BOTH CHART TEMPLATES, because both builders put Steps in the config blob and
+// both templates ship the #breadcrumb and #chart-hint a chain comes back out of
+// a node by. It is the arm that keeps the two interaction contracts apart: a
+// view that sets Steps is declaring that activating a node OPENS it, and a
+// template with no breadcrumb and no way back would make that a trapdoor.
+func templateRendersSteps(name string) bool {
+	return name == ChartTemplate || name == SankeyTemplate
+}
+
+// templateRendersChartDeclarations answers whether a template publishes
+// [View.ChartSubject], [View.ChartDescription] and [View.Root].
+//
+// THREE FIELDS, ONE PREDICATE, AND NOT THE ONE Steps USES. Only buildChartPage
+// renders a subject into the chart's accessible name, fills its <desc> from the
+// caller and puts a root in the config blob; buildSankeyPage composes its own
+// name, ships its own <desc> and draws its document whole. Sharing Steps'
+// predicate would widen these three with it, and a Root on the spine would
+// then pass validate and be dropped -- the silence this family exists to
+// refuse.
+func templateRendersChartDeclarations(name string) bool {
 	return name == ChartTemplate
 }
 

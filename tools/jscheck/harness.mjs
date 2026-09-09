@@ -73,9 +73,10 @@ const TEMPLATE_IDS = new Set([
 const TEMPLATE_ATTRIBUTES = {
   // site/index.html.tmpl: <fieldset id="year-toggle" ... disabled>
   "year-toggle": { disabled: "" },
-  // site/chart.html.tmpl: <nav id="breadcrumb" ... hidden>. Shipped hidden for
-  // the year toggle's reason -- there is no drill to come back from until the
-  // reader opens one, and with JavaScript off there never is.
+  // site/chart.html.tmpl and site/index.html.tmpl: <nav id="breadcrumb" ...
+  // hidden>. Shipped hidden for the year toggle's reason -- there is no drill
+  // to come back from until the reader opens one, and with JavaScript off
+  // there never is.
   "breadcrumb": { hidden: "" },
 };
 

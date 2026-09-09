@@ -12,6 +12,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/site"
 )
@@ -249,11 +251,23 @@ func chartView(breaks func(*export.View)) export.View {
 		Path: "extra.html", Template: export.ChartTemplate, Projection: "sankey",
 		RenderTiers: []int{0, 2}, ChartSubject: "by something",
 		ChartDescription: "A description.",
-		Drill: &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "All groups",
-			Tail: "funds", Cap: 8},
+		Steps: []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Back: "All groups",
+			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}}},
 	}
 	breaks(&v)
 	return v
+}
+
+// chainView is chartView with a second step: tier 3's nodes open into {3, 4},
+// on the same document. The cases about the chain break the second step,
+// because a refusal that fires on the first alone is the one-drill guard
+// restated rather than the chain's.
+func chainView(breaks func(*export.View)) export.View {
+	return chartView(func(v *export.View) {
+		v.Steps = append(v.Steps, export.DrillStep{From: 3, Tiers: []int{3, 4},
+			Back: "All funds", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}}})
+		breaks(v)
+	})
 }
 
 // TestTheCaveatsPageRefusesWhatWouldRender covers buildCaveatsPage's five
@@ -579,9 +593,13 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// `chart` below is a well-formed ChartTemplate view; each case breaks
 		// exactly one thing about it, so the message named is the one that arm
 		// produces rather than whichever fires first.
+		// ON THE TRENDS TEMPLATE, because the spine now publishes steps: the
+		// case is about a template with no breadcrumb to come back by, and
+		// SankeyTemplate stopped being one.
 		{"a drill on a template that publishes none", []export.View{ok,
-			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
-				Drill: &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t", Cap: 8}}},
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
+				Projection: "sankey",
+				Steps:      []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t"}}}},
 			"the chart would isolate on a click while this view believes it opens"},
 		{"a root on a template that publishes none", []export.View{ok,
 			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
@@ -611,27 +629,59 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chartView(func(v *export.View) { v.ChartDescription = "A description" })},
 			"loses the only route they have to a table that ships closed"},
 		{"a drill with no tiers", []export.View{ok,
-			chartView(func(v *export.View) { v.Drill.Tiers = nil })},
+			chartView(func(v *export.View) { v.Steps[0].Tiers = nil })},
 			"drawn by the same tier set it was closed under"},
 		{"a drill with no tail noun", []export.View{ok,
-			chartView(func(v *export.View) { v.Drill.Tail = "" })},
+			chartView(func(v *export.View) { v.Steps[0].Tail = "" })},
 			"labelled \"24 smaller\" and stop there"},
 		{"a drill with no back label", []export.View{ok,
-			chartView(func(v *export.View) { v.Drill.Back = "" })},
+			chartView(func(v *export.View) { v.Steps[0].Back = "" })},
 			"a button with no words in it"},
 		{"a drill from a tier the page does not draw", []export.View{ok,
-			chartView(func(v *export.View) { v.Drill.From = 5 })},
+			chartView(func(v *export.View) { v.Steps[0].From = 5 })},
 			"no node on it is ever openable"},
-		// THE SAME ARM WITH NO TIER SET AT ALL, which is the configuration it
-		// most needs to refuse and the one a `len(RenderTiers) > 0` guard let
-		// through: a chart that folds nothing, drawing a 61-node column at zero
-		// height, under a breadcrumb offering to open it.
+		// ITS OWN ARM WITH NO TIER SET AT ALL, which is the configuration the
+		// From arm most needed to refuse and the one a `len(RenderTiers) > 0`
+		// guard on it let through: a chart that folds nothing, drawing a
+		// 61-node column at zero height, under a breadcrumb offering to open
+		// it. Its own arm because the From arm cannot say it -- an empty tier
+		// set draws every tier, and the spine drills from one of them.
 		{"a drill on a page that declares no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.RenderTiers = nil })},
-			"no node on it is ever openable"},
+			"lays every node out at zero height"},
 		{"a drill with no cap", []export.View{ok,
-			chartView(func(v *export.View) { v.Drill.Cap = 0 })},
+			chartView(func(v *export.View) { v.Steps[0].Caps[0].Cap = 0 })},
 			"a column of one node is not a chart"},
+		// THE CHAIN'S OWN ARMS, each broken on the SECOND step so the refusal
+		// is the chain's and not the first hop's restated.
+		{"a second step with no tiers", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].Tiers = nil })},
+			"step 1 with no tiers"},
+		{"a second step with no tail noun", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].Tail = "" })},
+			"step 1 with no tail noun"},
+		{"a second step with no back label", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].Back = "" })},
+			"step 1 with no back label"},
+		// A rung nothing can reach: the first step draws {0, 3} and the second
+		// opens from tier 5, so no node the reader can see is openable.
+		{"a chain that cannot be walked", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].From = 5 })},
+			"a rung nothing on the chart can reach"},
+		{"a step that redraws the tiers it opened from", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].Tiers = []int{0, 3}; v.Steps[1].Caps = nil })},
+			"the set the step before it already draws"},
+		{"a cap on a tier the step does not draw", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
+			"the cap would fold nothing, in silence"},
+		{"a cap declared twice for one tier", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Caps = []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 3, Cap: 24}}
+			})},
+			"caps tier 3 twice"},
+		{"a step naming a projection that was not built", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Projection = "nope" })},
+			"step 0 renders projection \"nope\", which was not built"},
 		{"a projection that was not built", []export.View{ok, {Path: "trends.html",
 			Template: export.SankeyTemplate, Projection: "nope"}}, "which was not built"},
 		{"no template", []export.View{ok, {Path: "trends.html", Projection: "sankey"}},
@@ -654,12 +704,12 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"empty link"},
 		// THE THIRD FIELD OF THE SAME FAMILY, missing when the first two were
 		// closed. Only the drill-down publishes render_tiers
-		// to the client; buildSankeyPage omits the key and app.js reads
+		// to the client; the other builders omit the key and app.js reads
 		// `CONFIG.render_tiers ?? []`, so a fold asked for here was not
 		// refused, not reported and not applied -- the chart drew every tier
 		// and looked like a chart rather than like a defect.
 		{"render tiers a template does not publish", []export.View{ok,
-			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
+			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey", RenderTiers: []int{0, 2, 4}}},
 			"publishes none"},
 		// The sections family, both directions: headings dropped in silence
@@ -2478,4 +2528,156 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 	if found != 6 {
 		t.Errorf("found %d templates folding a footer list, want 6", found)
 	}
+}
+
+// TestAStepsDocumentIsCitedByThePageThatOpensIt pins the union one layer in
+// from unionSources: a step that switches document draws figures from pages
+// the view's own year loop never decodes, and both the footer and the client's
+// docs map have to carry them.
+//
+// THE DOC MAP IS THE ARM THAT MATTERS. citations() in site/app.js skips a
+// doc_id the map has no entry for, so a missing entry makes a step's citations
+// vanish with no error. The two documents the site publishes share one doc_id,
+// which is why the fixture restamps the step's: on the real corpus this test
+// could only ever pass by luck.
+func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	steps := []export.DrillStep{{From: 2, Projection: "fund-flows", Tiers: []int{0, 3, 4},
+		Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
+		Back: "All fund groups", Tail: "funds"}}
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey": goldenSankey(t), "fund-flows": recited(t, fundFlows, "another-doc"),
+		},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Projection: "sankey", Steps: steps}},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused a spine that opens into a second document: %v", err)
+	}
+	page := readPage(t, dir)
+	if _, ok := configDocs(t, page)["another-doc"]; !ok {
+		t.Error("the client's docs map has no entry for the step's document, so app.js " +
+			"would drop every citation drawn from it without a word")
+	}
+	if !strings.Contains(readerVisible(t, page), "another-doc") {
+		t.Error("the footer does not cite the step's document; the page advertises the " +
+			"spine's pages under a chart drawn from another document's")
+	}
+
+	// AND THE CHAIN REACHED THE BLOB, decoded back through the same type so
+	// the round trip is the claim rather than a substring.
+	var cfg struct {
+		Steps []export.DrillStep `json:"steps"`
+	}
+	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
+		t.Fatalf("decode window.FISC_CONFIG: %v", err)
+	}
+	if diff := cmp.Diff(steps, cfg.Steps); diff != "" {
+		t.Errorf("FISC_CONFIG.steps (-want +got):\n%s", diff)
+	}
+}
+
+// TestTheSpineShipsAChainOnlyWhenItDeclaresOne is the pure-refactor half: a
+// spine with no steps ships no steps key, and the elements a chain needs are
+// in the page either way, hidden and empty.
+//
+// THE KEY'S ABSENCE IS PINNED because app.js reads an absent key as "this page
+// isolates on a click", and a present-but-empty list would be a second
+// spelling of that state for the client to get wrong.
+func TestTheSpineShipsAChainOnlyWhenItDeclaresOne(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Projection: "sankey"}},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readPage(t, dir)
+	var cfg map[string]json.RawMessage
+	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
+		t.Fatalf("decode window.FISC_CONFIG: %v", err)
+	}
+	if _, ok := cfg["steps"]; ok {
+		t.Errorf("a spine with no steps ships %s, want no steps key at all", cfg["steps"])
+	}
+	visible := readerVisible(t, page)
+	for _, want := range []string{
+		`<nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>`,
+		`<span id="chart-hint"></span>`,
+	} {
+		if !strings.Contains(visible, want) {
+			t.Errorf("the spine does not carry %s; a chain declared on it would have "+
+				"nowhere to paint its way back out of a node", want)
+		}
+	}
+}
+
+// TestAStepThatSwitchesDocumentMayRepeatTierNumbers pins the one thing
+// validateSteps cannot check and must not pretend to. Tier numbers belong to
+// a document's hierarchy, so a step that draws {0, 3} of another document is
+// a different chart from the {0, 3} it opened from -- while the same numbers
+// of the SAME document would redraw what the reader just left.
+func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	write := func(secondStepDoc string) error {
+		_, err := export.Write(export.Options{
+			Dir:         t.TempDir(),
+			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey",
+				Steps: []export.DrillStep{
+					{From: 2, Projection: "fund-flows", Tiers: []int{0, 3},
+						Back: "All fund groups", Tail: "funds"},
+					{From: 3, Projection: secondStepDoc, Tiers: []int{0, 3},
+						Back: "All funds", Tail: "things"},
+				}}},
+			Docs:        budgetDocs(),
+			GeneratedBy: "fisc test",
+		})
+		return err
+	}
+	if err := write("sankey"); err != nil {
+		t.Errorf("a step switching back to the spine at tiers {0, 3} was refused: %v; "+
+			"those are the spine's tiers, not fund-flows', and validate cannot relate them", err)
+	}
+	if err := write(""); err == nil {
+		t.Error("a step redrawing fund-flows' own {0, 3} was accepted; opening a node " +
+			"would redraw the chart it was opened from")
+	} else if !strings.Contains(err.Error(), "already draws") {
+		t.Errorf("got %v, want the same-tiers refusal", err)
+	}
+}
+
+// recited restamps every source a projection cites onto one document id, so a
+// fixture can cite a document the rest of the site does not.
+func recited(t *testing.T, raw []byte, docID string) []byte {
+	t.Helper()
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta := doc["metadata"].(map[string]any)
+	srcs := meta["sources"].([]any)
+	for _, s := range srcs {
+		s.(map[string]any)["doc_id"] = docID
+	}
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	return out
 }

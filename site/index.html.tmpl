@@ -47,6 +47,11 @@
       The <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span> budget, all funds, gross — read out of the city's
       published schedule and traced back to it. Figures the city printed are drawn solid;
       the two things we inferred are drawn dashed and labelled.
+      {{- /* EMPTY UNTIL THE VIEW DECLARES STEPS. app.js's paintChartHint owns
+             the words and says nothing on a page with no chain; the element
+             is here so the two chart templates put the hint in the same place
+             and the client reaches for one id on both. */}}
+      <span id="chart-hint"></span>
     </p>
   </div>
   <div class="head-controls">
@@ -109,6 +114,12 @@
     <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
     <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
   </div>
+  {{- /* SHIPPED EMPTY AND hidden, filled by app.js, on a page that declares
+         no steps as much as on one that does. chart.html.tmpl says why it
+         cannot be rendered server-side; unconditional here because the spine
+         is the page a chain is declared on and the element has to be there
+         before the declaration is. Hidden, it is not a control that lies. */}}
+  <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
   <div class="chart-wrap">
     <!-- role="group", not "img": an img is a leaf, and the marks inside carry
          tabindex and aria-label so a keyboard reader can walk the flows. Under

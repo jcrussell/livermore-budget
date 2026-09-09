@@ -304,8 +304,8 @@ ribbons still lay out under one pixel, because the concentration is *within* the
 group — `fund/200` alone is 34.9% of it and the smallest two are 0.034%.
 Rescaling cannot fix a distribution.
 
-**So a drill also caps its fine column.** Above `Drill.Cap` nodes, the tail by
-value folds into one aggregate. At cap 8 special revenue draws 2 sub-pixel
+**So a drill also caps its fine column.** Above the step's `TierCap.Cap` for
+that tier, the tail by value folds into one aggregate. At cap 8 special revenue draws 2 sub-pixel
 ribbons instead of 22, and capital 1 instead of 4. The cap is inert on Spending,
 whose widest division spends on two object categories.
 

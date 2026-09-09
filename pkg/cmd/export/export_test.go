@@ -1199,26 +1199,28 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		// AND BOTH DRILL. That is the whole reason there are two of them: a
 		// two-column overview that could not be opened would publish less than
 		// the drilldown page they replace, not more.
-		if v.Drill == nil {
-			t.Errorf("%s declares no drill, so its detail column is unreachable", path)
+		if len(v.Steps) == 0 {
+			t.Errorf("%s declares no drill step, so its detail column is unreachable", path)
 			continue
 		}
 		// THE ACTUAL VALUES, because tools/jscheck/drill.mjs carries a COPY of
 		// them -- there is no seam between Go and node, so the copy is a claim
 		// and this is the only thing that can keep it honest. Asserting merely
-		// that a drill EXISTS left drill.mjs free to measure a configuration no
+		// that a step EXISTS left drill.mjs free to measure a configuration no
 		// page ships: change a cap or a tier set here and every gate stayed
 		// green while the checks went on pinning the old one.
-		want, ok := map[string]export.Drill{
-			"revenue.html":  {From: 2, Tiers: []int{0, 3}, Back: "All fund groups", Tail: "funds", Cap: 8},
-			"spending.html": {From: 4, Tiers: []int{4, 5}, Back: "All divisions", Tail: "categories", Cap: 8},
+		want, ok := map[string][]export.DrillStep{
+			"revenue.html": {{From: 2, Tiers: []int{0, 3}, Caps: []export.TierCap{{Tier: 3, Cap: 8}},
+				Back: "All fund groups", Tail: "funds"}},
+			"spending.html": {{From: 4, Tiers: []int{4, 5}, Caps: []export.TierCap{{Tier: 5, Cap: 8}},
+				Back: "All divisions", Tail: "categories"}},
 		}[path]
 		if !ok {
-			t.Fatalf("no expected drill declared for %s; a new drilling page needs its "+
+			t.Fatalf("no expected steps declared for %s; a new drilling page needs its "+
 				"declaration mirrored in tools/jscheck/drill.mjs's PAGES too", path)
 		}
-		if diff := cmp.Diff(want, *v.Drill); diff != "" {
-			t.Errorf("%s's drill (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGES "+
+		if diff := cmp.Diff(want, v.Steps); diff != "" {
+			t.Errorf("%s's steps (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGES "+
 				"carries a copy of this and measures against it", path, diff)
 		}
 		wantTiers := map[string][]int{"revenue.html": {0, 2}, "spending.html": {3, 4}}[path]

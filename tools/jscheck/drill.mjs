@@ -30,11 +30,11 @@ import { loadApp, goldenFundFlows, plannedFetch, settle, repoRoot } from "./harn
  * COPIED RATHER THAN IMPORTED because there is no seam: views() is Go and this
  * is node. So the copy is a claim, and TestViewsOpensOnTheSpineAndGivesYears
  * ToItAlone is what keeps it honest from the other side -- it asserts these
- * exact tier sets and these exact Drill values off the real view list, field by
+ * exact tier sets and these exact step values off the real view list, field by
  * field.
  *
  * IT DID NOT USED TO. That test asserted only that RenderTiers was non-empty
- * and Drill non-nil, which left this file free to measure a configuration no
+ * and the drill non-nil, which left this file free to measure a configuration no
  * page ships: change a cap or a tier set in data.go and every gate stayed green
  * while these checks went on pinning the old one. If you change either, both
  * sides go red and that is the point.
@@ -44,7 +44,7 @@ const PAGES = [
     name: "revenue",
     render_tiers: [0, 2],
     root: "",
-    drill: { from: 2, tiers: [0, 3], back: "All fund groups", tail: "funds", cap: 8 },
+    steps: [{ from: 2, tiers: [0, 3], caps: [{ tier: 3, cap: 8 }], back: "All fund groups", tail: "funds" }],
     // Measured: 11 revenue categories into 6 fund groups.
     // facts IS THE COUNT ITS OWN RIBBONS CITE, not the document's 280. The two
     // pages partition the document's 239 cited facts exactly, 190 and 49, which
@@ -64,7 +64,7 @@ const PAGES = [
     render_tiers: [3, 4],
     // WITHOUT THIS THE PAGE DRAWS NOTHING. See the root check below.
     root: "fund/100",
-    drill: { from: 4, tiers: [4, 5], back: "All divisions", tail: "categories", cap: 8 },
+    steps: [{ from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 8 }], back: "All divisions", tail: "categories" }],
     // Measured: the General Fund into its 23 divisions.
     overview: { nodes: 24, links: 23, facts: 49 },
     // NO DIVISION SPENDS ON MORE THAN A HANDFUL OF OBJECT CATEGORIES, so the
@@ -87,7 +87,7 @@ function appFor(page, overrides) {
       projections: { "fund-flows": "data/fund-flows.json" },
       render_tiers: page.render_tiers,
       root: page.root,
-      drill: page.drill,
+      steps: page.steps,
       years: [{
         year: 2026, label: "FY 2025-26", stem: "fund-flows",
         path: "data/fund-flows.json", basis: "adopted",
@@ -166,7 +166,7 @@ export async function checks() {
     // EVERY DRILLABLE NODE, not a sample. The reason is the two defects above:
     // one showed up on every drill and one on none of them, and a sample would
     // have caught the first and missed the second.
-    const openable = raw.nodes.filter((n) => n.tier === page.drill.from);
+    const openable = raw.nodes.filter((n) => n.tier === page.steps[0].from);
     const drawn = [];
     let refused = "";
     for (const n of openable) {
@@ -217,9 +217,11 @@ export async function checks() {
     const worst = drawn.find((d) => d.id === page.worst);
     const uncapped = await (async () => {
       const wide = Object.assign({}, page, {
-        drill: Object.assign({}, page.drill, { cap: 1000 }),
+        steps: [Object.assign({}, page.steps[0], {
+          caps: page.steps[0].caps.map((c) => ({ tier: c.tier, cap: 1000 })),
+        })],
       });
-      const { app: noCap } = await opened(wide, { drill: wide.drill });
+      const { app: noCap } = await opened(wide, { steps: wide.steps });
       noCap.drillTo(page.worst);
       // THE SAME GUARD THE MAIN LOOP HAS, and it was missing here. drillTo
       // swallows its own throw, so a refusal would leave this measuring the
@@ -246,6 +248,44 @@ export async function checks() {
     });
   }
 
+  // THE CAP IS READ OFF THE TIER IT NAMES, NOT OFF ITS POSITION. The packager
+  // ships a step's caps as a list in declaration order, and a step may cap a
+  // coarse tier before its fine one. Two decoys, each refuting one wrong
+  // reading: caps listed coarse-first must draw exactly the declared page, so
+  // a client taking caps[0] folds Revenue's fund column at the wrong number
+  // and fails here; and a step capping ONLY a coarse tier must draw its fine
+  // column whole, so a client taking any cap it finds folds when nothing
+  // asked it to.
+  {
+    const page = PAGES[0];
+    const step = page.steps[0];
+    const fine = step.tiers[step.tiers.length - 1];
+    const declared = step.caps.find((c) => c.tier === fine);
+    const opensWorst = async (caps) => {
+      const steps = [Object.assign({}, step, { caps })];
+      const { app } = await opened(Object.assign({}, page, { steps }), { steps });
+      app.drillTo(page.worst);
+      if (app.drilledInto !== page.worst) {
+        throw new Error("the cap-order check could not open " + page.worst);
+      }
+      return measure(app, app.projection);
+    };
+    const asDeclared = await opensWorst(step.caps);
+    const coarseFirst = await opensWorst([{ tier: step.tiers[0], cap: 1000 }, declared]);
+    const coarseOnly = await opensWorst([{ tier: step.tiers[0], cap: declared.cap }]);
+    const uncapped = await opensWorst([]);
+    out.push({
+      name: `${page.name}: a step's cap is looked up by the tier it names, not by its position`,
+      ok: Boolean(declared) && page.capEngages &&
+          coarseFirst.links === asDeclared.links &&
+          coarseOnly.links === uncapped.links &&
+          uncapped.links > asDeclared.links,
+      detail: `${page.worst} at the declared caps: ${asDeclared.links} ribbons; coarse tier ` +
+        `listed first: ${coarseFirst.links}; only the coarse tier capped: ${coarseOnly.links}; ` +
+        `no caps: ${uncapped.links}`,
+    });
+  }
+
   // EVERY MARK KNOWS ITS FUND GROUP, which is what colours it. Built from the
   // DRAWN nodes alone this returned "" for every node on Spending's overview
   // and on all six opened Revenue views -- filterToNode keeps only what the
@@ -269,7 +309,7 @@ export async function checks() {
       return d.nodes.filter((n) => onTheFundSide(n) && app.fundGroupOf(n) === "");
     };
     const bad = unresolved(app.projection).map((n) => n.id);
-    const openable = raw.nodes.filter((n) => n.tier === page.drill.from);
+    const openable = raw.nodes.filter((n) => n.tier === page.steps[0].from);
     for (const n of openable) {
       app.drillTo(n.id);
       bad.push(...unresolved(app.projection).map((x) => n.id + ">" + x.id));
@@ -323,7 +363,7 @@ export async function checks() {
   const ones = [];
   for (const page of PAGES) {
     const { app } = await opened(page);
-    for (const n of raw.nodes.filter((x) => x.tier === page.drill.from)) {
+    for (const n of raw.nodes.filter((x) => x.tier === page.steps[0].from)) {
       app.drillTo(n.id);
       if (app.drilledInto !== n.id) continue;
       const a = app.projection.nodes.find((x) => x.id === "aggregate/tail");
@@ -556,7 +596,7 @@ export async function checks() {
         }
       };
       scan(page.name + " overview");
-      for (const n of raw.nodes.filter((x) => x.tier === page.drill.from)) {
+      for (const n of raw.nodes.filter((x) => x.tier === page.steps[0].from)) {
         app.drillTo(n.id);
         if (app.drilledInto !== n.id) continue;
         scan(page.name + " opened " + n.id);

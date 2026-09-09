@@ -518,12 +518,13 @@ func views(built result) []export.View {
 		// the same concentration problem one level down from the one that made
 		// this document need a fold in the first place.
 		out = append(out, export.View{
-			Path:         "revenue.html",
-			Nav:          "Revenue",
-			Template:     export.ChartTemplate,
-			Projection:   project.FundFlowsProjection,
-			RenderTiers:  []int{0, 2},
-			Drill:        &export.Drill{From: 2, Tiers: []int{0, 3}, Back: "All fund groups", Tail: "funds", Cap: 8},
+			Path:        "revenue.html",
+			Nav:         "Revenue",
+			Template:    export.ChartTemplate,
+			Projection:  project.FundFlowsProjection,
+			RenderTiers: []int{0, 2},
+			Steps: []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Caps: []export.TierCap{{Tier: 3, Cap: 8}},
+				Back: "All fund groups", Tail: "funds"}},
 			ChartSubject: "by revenue category and the fund group it lands in",
 			ChartDescription: "Eleven revenue categories on the left flow into the six " +
 				"fund groups on the right. Opening a fund group replaces the right-hand " +
@@ -563,8 +564,9 @@ func views(built result) []export.View {
 			// It is also where this page's central claim stops being prose:
 			// only the General Fund has a spending side, and this is the line
 			// that says so to the client.
-			Root:         "fund/100",
-			Drill:        &export.Drill{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Tail: "categories", Cap: 8},
+			Root: "fund/100",
+			Steps: []export.DrillStep{{From: 4, Tiers: []int{4, 5}, Caps: []export.TierCap{{Tier: 5, Cap: 8}},
+				Back: "All divisions", Tail: "categories"}},
 			ChartSubject: "by General Fund division",
 			ChartDescription: "The General Fund on the left flows into the 23 divisions " +
 				"that spend it, on the right. Opening a division replaces the right-hand " +
