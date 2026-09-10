@@ -338,6 +338,19 @@ type yearView struct {
 	Figures []figure    `json:"figures"`
 	Caveats []caveatRef `json:"caveats"`
 	Counts  countsRef   `json:"counts"`
+	// Steps is what this year's rungs draw, one entry per [View.Steps] entry:
+	// the document a node opens into at that depth, resolved for THIS year,
+	// with the caveat refs that document's marks link to. Omitted on a view
+	// that opens nothing.
+	//
+	// PER YEAR AND NOT PER PAGE, because the step document is per year. The
+	// client used to read one file per stem out of FISC_CONFIG.projections
+	// and draw FY2025-26's funds under FY2026-27's chart; and it looked a
+	// caveat on a depth-1 mark up in the YEAR's refs, which are the spine's,
+	// so every caveat on a switched document lost its link (fisc-ko1j.13).
+	// Both are the same fact: which file a rung draws is a property of the
+	// year on screen, and this is where the year's properties live.
+	Steps []stepView `json:"steps,omitempty"`
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
 	// and a different string from Title, which is the document's.
 	//
@@ -347,6 +360,15 @@ type yearView struct {
 	// diagram by fund and division, and the first year repaint replaced it, so
 	// two different charts announced themselves identically to a screen reader.
 	ChartTitle string `json:"chart_title"`
+}
+
+// stepView is one rung's document for one year: where to fetch it and what
+// its caveats link to. A same-document step resolves to the step before it,
+// so the client reads one entry per step whatever the step declared.
+type stepView struct {
+	Stem    string      `json:"stem"`
+	Path    string      `json:"path"`
+	Caveats []caveatRef `json:"caveats"`
 }
 
 // countsRef is the "N flows between M nodes, from K facts" line, per year.
@@ -379,6 +401,10 @@ type pageData struct {
 	Facts int
 	Nodes int
 	Links int
+	// Drill is whether this page's chart opens a node, for chartPageData.Drill's
+	// reason: the lede's sentence about what a click does is per view, and the
+	// spine's used to promise that every node isolates.
+	Drill bool
 	// ConfigJSON is window.FISC_CONFIG. json.Marshal escapes <, > and & to
 	// their \u form, so the blob cannot close the script element it sits in.
 	ConfigJSON template.JS
@@ -1175,42 +1201,84 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 	return out
 }
 
-// stepSources is every page a view's steps draw from beyond the documents its
-// year loop already decoded: the metadata.sources of each step that names a
-// document of its own.
+// stepDocument is as much of ANY document as a rung needs: who built it, what
+// it cites and what it discloses. Shape-blind like documentSources, and for
+// the same reason -- which tiers a step's document holds is the client's
+// business.
+type stepDocument struct {
+	Metadata struct {
+		GeneratedBy string       `json:"generated_by"`
+		Sources     []sourceMeta `json:"sources"`
+		Caveats     []caveatMeta `json:"caveats"`
+	} `json:"metadata"`
+}
+
+// stepDocuments is what one year's rungs will draw: the document each step
+// resolves to for that year, with its own caveat refs, and the pages those
+// documents cite.
 //
-// IT FEEDS THE SAME UNION THE YEARS DO, and for the same reason, one layer
-// further in. The footer's Sources and the client's docs map are built from
-// one list, and a step that switches document draws figures from pages that
-// list would otherwise not carry. The client's half is the sharper one:
-// citations() in site/app.js skips a doc_id the map has no entry for, so a
-// step document's citations would VANISH WITH NO ERROR. Both documents the
-// site publishes today share a doc_id, so nothing drops -- which is luck, and
-// this is where it stops being relied on.
+// THE JOIN IS APPLIED HERE, ONCE. A step that names a projection draws its
+// YearProjections entry for this year -- validate has already refused a year
+// with none -- and a step that names none draws the document of the step
+// before it, so the list is one entry per step whatever each declared. The
+// client reads it and never resolves a stem.
 //
-// Shape-blind through documentSources, like citationsOf: which tiers a step's
-// document holds is the client's business, and its pages are not.
-func stepSources(v View, projections map[string][]byte) ([]sourceMeta, error) {
-	var out []sourceMeta
+// THE PAGES FEED THE SAME UNION THE YEARS DO, one layer further in. The
+// footer's Sources and the client's docs map are built from one list, and a
+// step that switches document draws figures from pages that list would
+// otherwise not carry. The client's half is the sharper one: citations() in
+// site/app.js skips a doc_id the map has no entry for, so a step document's
+// citations would VANISH WITH NO ERROR. Both documents the site publishes today
+// share a doc_id, so nothing drops -- which is luck, and this is where it stops
+// being relied on.
+//
+// builtBy is the view's own projection's generated_by, and a step document
+// built by another is refused for the reason a year built by another is: the
+// footer credits one builder for every figure on the page.
+func stepDocuments(v View, year, builtBy string, projections map[string][]byte,
+	caveatsPath string,
+) ([]stepView, []sourceMeta, error) {
+	var (
+		out   []stepView
+		cited []sourceMeta
+	)
+	prev := year
 	for i, s := range v.Steps {
-		if s.Projection == "" {
-			continue
+		stem := prev
+		if s.Projection != "" {
+			stem = s.Projection
+			if y, ok := s.YearProjections[year]; ok {
+				stem = y
+			}
 		}
-		raw, ok := projections[s.Projection]
+		raw, ok := projections[stem]
 		if !ok {
-			return nil, fmt.Errorf("view %q's step %d renders projection %q, which was not built",
-				v.Path, i, s.Projection)
+			return nil, nil, fmt.Errorf(
+				"view %q's step %d renders projection %q for year stem %q, which was not built",
+				v.Path, i, stem, year)
 		}
-		if _, err := decodeDocument(s.Projection, raw); err != nil {
-			return nil, err
+		if _, err := decodeDocument(stem, raw); err != nil {
+			return nil, nil, err
 		}
-		var src documentSources
-		if err := json.Unmarshal(raw, &src); err != nil {
-			return nil, fmt.Errorf("decode %s sources: %w", s.Projection, err)
+		var doc stepDocument
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			return nil, nil, fmt.Errorf("decode %s metadata: %w", stem, err)
 		}
-		out = append(out, src.Metadata.Sources...)
+		if doc.Metadata.GeneratedBy != builtBy {
+			return nil, nil, fmt.Errorf(
+				"view %q opens on %q built by %q but step %d's document %q for year stem %q "+
+					"was built by %q; the footer credits one projection for figures drawn "+
+					"from both", v.Path, v.Projection, builtBy, i, stem, year, doc.Metadata.GeneratedBy)
+		}
+		cited = append(cited, doc.Metadata.Sources...)
+		out = append(out, stepView{
+			Stem:    stem,
+			Path:    path.Join(dataDir, stem+".json"),
+			Caveats: caveatRefs(doc.Metadata.Caveats, stem, caveatsPath),
+		})
+		prev = stem
 	}
-	return out, nil
+	return out, cited, nil
 }
 
 // projectionRefs is every data file the site publishes, which is the whole set
@@ -1286,6 +1354,11 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
+		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, o.Projections, caveatsPath)
+		if stepErr != nil {
+			return pageData{}, stepErr
+		}
+		cited = append(cited, stepped...)
 		hero, figures := tilesFor(m)
 		years = append(years, yearView{
 			Year:       m.FiscalYear,
@@ -1301,14 +1374,10 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Counts: countsRef{
 				Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links,
 			},
+			Steps: steps,
 		})
 	}
 	hero, figures := tilesFor(meta)
-	stepped, err := stepSources(v, o.Projections)
-	if err != nil {
-		return pageData{}, err
-	}
-	cited = append(cited, stepped...)
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
@@ -1358,6 +1427,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Facts:      meta.Counts.Facts,
 		Nodes:      meta.Counts.Nodes,
 		Links:      meta.Counts.Links,
+		Drill:      len(v.Steps) > 0,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a
@@ -1414,6 +1484,11 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
+		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, o.Projections, caveatsPath)
+		if stepErr != nil {
+			return chartPageData{}, stepErr
+		}
+		cited = append(cited, stepped...)
 		years = append(years, yearView{
 			Year:  m.FiscalYear,
 			Label: m.FiscalYearLabel,
@@ -1436,13 +1511,9 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Counts: countsRef{
 				Facts: m.Counts.Facts, Nodes: m.Counts.Nodes, Links: m.Counts.Links,
 			},
+			Steps: steps,
 		})
 	}
-	stepped, err := stepSources(v, o.Projections)
-	if err != nil {
-		return chartPageData{}, err
-	}
-	cited = append(cited, stepped...)
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
@@ -2176,9 +2247,9 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	caveatsPath := caveatsPathOf(o)
 	// WHICH DOCUMENTS A VIEW ACTUALLY RENDERS, by the same rule
 	// assertPublishedReachable uses one package up: a document is reached
-	// through a view's projection or through its year stems. This page is not
-	// one of them -- it names no projection, and listing a document is not
-	// drawing it.
+	// through a view's projection, through its year stems, or through a
+	// step's documents. This page is not one of them -- it names no
+	// projection, and listing a document is not drawing it.
 	drawn := map[string]bool{}
 	for _, v := range o.views() {
 		// A VIEW THAT DRAWS NO CHART FLAGS NOTHING, whatever it renders.
@@ -2195,6 +2266,19 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		}
 		for _, stem := range v.YearStems {
 			drawn[stem] = true
+		}
+		// A DOCUMENT A CHART OPENS INTO IS DRAWN: its marks are chipped and
+		// its caveats linked one rung down, and both fund-flows documents the
+		// site draws are reached that way alone. Built from projections and
+		// year stems only, this told every reader of the caveats page that
+		// the charts do not flag fund-flows' marks, while they do.
+		for _, s := range v.Steps {
+			if s.Projection != "" {
+				drawn[s.Projection] = true
+			}
+			for _, stem := range s.YearProjections {
+				drawn[stem] = true
+			}
 		}
 	}
 	anchors := map[string]string{}

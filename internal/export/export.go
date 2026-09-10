@@ -463,6 +463,23 @@ type DrillStep struct {
 	// Omitted from the JSON when empty, so the client reads an absent key as
 	// "the same document" rather than as a stem named "".
 	Projection string `json:"projection,omitempty"`
+	// YearProjections is the document this step draws for each year the view
+	// lists, keyed by the view's year stem: the step's own per-year join. One
+	// entry per [View.YearStems] entry, the opening year's equal to Projection,
+	// and none at all on a view that lists no years or a step that names no
+	// projection.
+	//
+	// NOT SHIPPED AS THIS MAP. The client never joins: the packager resolves
+	// each year's step documents into that year's config entry, beside the
+	// year's own path and caveat refs, so a year on screen already knows the
+	// files its rungs will draw. A map on the wire would be a second join for
+	// the client to spell.
+	//
+	// DECLARED BY THE CALLER, NOT DERIVED HERE, for [View.YearStems]'s reason:
+	// which document of one projection is the same fiscal year as which
+	// document of another is the composition root's knowledge, and this package
+	// does not import internal/project to find out.
+	YearProjections map[string]string `json:"-"`
 	// Tiers is the tier set drawn once a node has opened -- this step's
 	// RenderTiers, and a different declaration from the chart's before it.
 	Tiers []int `json:"tiers"`
@@ -486,6 +503,18 @@ type DrillStep struct {
 	// drilling into a third tier would have been given "categories" and nothing
 	// would have said so.
 	Tail string `json:"tail"`
+	// Description is the chart's long description once a node has opened on
+	// this step: what the columns are and what the marks mean, in the caller's
+	// words, like [View.ChartDescription] is for a chart's opening state. The
+	// client writes it into the SVG's <desc> at that depth and appends how to
+	// get back and where the flow table is.
+	//
+	// REQUIRED AND TERMINATED. An opened chart with no description of its own
+	// announces the opening state's -- "revenue categories flow into six fund
+	// groups" over a chart of one group's funds -- and only to the readers who
+	// cannot see the marks disagree. Terminated for ChartDescription's reason:
+	// the client appends its own sentences after it.
+	Description string `json:"description"`
 }
 
 // TierCap is how many nodes one drawn tier may hold before its tail, by value,
@@ -846,7 +875,8 @@ func (v View) validate(built map[string][]byte) error {
 }
 
 // validateSteps refuses a drill chain a reader could not walk, and a step that
-// would fold nothing, say nothing, or draw a document that was not built.
+// would fold nothing, say nothing, draw a document that was not built, or draw
+// one year's document under another year's chart.
 //
 // THE CHAIN IS READ AS A PATH, AND THAT IS AN ASSUMPTION, NOT A PROOF. Each
 // step is placed against the one before it -- its From must be a tier the
@@ -879,6 +909,31 @@ func (v View) validateSteps(built map[string][]byte) error {
 			return fmt.Errorf(
 				"view %q declares step %d with no back label, so the breadcrumb out of an "+
 					"opened node would be a button with no words in it", v.Path, i)
+		case s.Description == "":
+			return fmt.Errorf(
+				"view %q declares step %d with no description, so a reader who cannot see "+
+					"the chart would be told the opening state's over a chart it no longer "+
+					"draws", v.Path, i)
+		case !endsASentence(s.Description):
+			return fmt.Errorf(
+				"view %q gives step %d a description ending %q rather than in a sentence "+
+					"terminator; the client appends the way back and the table pointer after "+
+					"it, and an unterminated one runs into them", v.Path, i, lastRune(s.Description))
+		// THE PER-YEAR JOIN IS EXACT OR REFUSED. A year with no entry would
+		// have the client open the year's chart into a file it was never
+		// told about; an entry for no year is a claim about a document the
+		// page cannot show; and an opening-year entry disagreeing with
+		// Projection is two answers to which file the first drill fetches.
+		case s.Projection == "" && len(s.YearProjections) > 0:
+			return fmt.Errorf(
+				"view %q's step %d names no projection and maps %d year(s) to one; a step "+
+					"drawing the document before it draws that document's every year, so the "+
+					"map would be ignored", v.Path, i, len(s.YearProjections))
+		case s.Projection != "" && len(v.YearStems) == 0 && len(s.YearProjections) > 0:
+			return fmt.Errorf(
+				"view %q's step %d maps %d year(s) and the view lists no year stems; there "+
+					"is no year on screen for the map to be read against",
+				v.Path, i, len(s.YearProjections))
 		case i > 0 && !slices.Contains(prevTiers, s.From):
 			return fmt.Errorf(
 				"view %q's step %d opens from tier %d, and the step before it draws tiers "+
@@ -893,6 +948,34 @@ func (v View) validateSteps(built map[string][]byte) error {
 				"view %q's step %d draws tiers %v of %q, the set the step before it "+
 					"already draws; opening a node would redraw the chart it was opened "+
 					"from", v.Path, i, s.Tiers, doc)
+		}
+		if s.Projection != "" && len(v.YearStems) > 0 {
+			for _, stem := range v.YearStems {
+				got, ok := s.YearProjections[stem]
+				switch {
+				case !ok:
+					return fmt.Errorf(
+						"view %q's step %d names no document for year stem %q; a reader on "+
+							"that year would open a node into nothing", v.Path, i, stem)
+				case stem == v.Projection && got != s.Projection:
+					return fmt.Errorf(
+						"view %q's step %d renders %q and maps the opening year %q to %q; one "+
+							"step cannot draw two documents for one year",
+						v.Path, i, s.Projection, stem, got)
+				}
+				if _, built := built[got]; !built {
+					return fmt.Errorf(
+						"view %q's step %d renders projection %q for year stem %q, which was "+
+							"not built", v.Path, i, got, stem)
+				}
+			}
+			for stem := range s.YearProjections {
+				if !slices.Contains(v.YearStems, stem) {
+					return fmt.Errorf(
+						"view %q's step %d maps year stem %q, which the view does not list; "+
+							"the entry describes a year no reader can switch to", v.Path, i, stem)
+				}
+			}
 		}
 		for j, c := range s.Caps {
 			switch {
@@ -945,10 +1028,9 @@ func templateRendersLede(name string) bool {
 //
 // The same shape as templateRendersLede above and for the same reason, but the
 // trap it closes is a step worse: a lede dropped in silence loses a sentence,
-// and year stems dropped in silence lose whole documents. The trends page --
-// trends.html, and revenue.html when the defect was found -- took a four-stem
-// list and rendered one year, with every check green, because the only thing
-// that reads YearStems is a template arm that page does not have.
+// and year stems dropped in silence lose whole documents. The trends page took
+// a four-stem list and rendered one year, with every check green, because the
+// only thing that reads YearStems is a template arm that page does not have.
 //
 // TWO TEMPLATES, NOT ONE. The drill-down grew a year control after the bead
 // that named this defect was filed, so a guard spelled

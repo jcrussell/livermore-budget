@@ -45,13 +45,13 @@ one, because naively summing the expenditure column double-counts transfers by
 23%, and showing the error you are avoiding is more useful than quietly avoiding
 it.
 
-The site publishes **eight pages**. `index.html` is the fund-group spine as a
-Sankey, with a toggle between the two adopted years. `revenue.html` and
-`spending.html` draw pp.127-140 and pp.167-170 as two charts rather than one:
-revenue categories into the six fund groups, and the General Fund into its 23
-divisions. **Click a node on either and it opens** — a fund group into its own
-funds, a division into what it spends on — rescaled to that node's own total,
-because the citywide chart cannot show them at all. `trends.html` draws all
+The site publishes **six pages**. `index.html` is the fund-group spine as a
+Sankey, with a toggle between the two adopted years, and it is the one chart
+page: **click a fund group and it opens** into that group's own funds from
+pp.127-140 and pp.167-170, drawn for the same fiscal year; click a General Fund
+division and it opens again into what that division spends on — each rescaled
+to the opened node's own total, because the citywide chart cannot show them at
+all. `trends.html` draws all
 **924** of pp.127-140 — 231 printed rows across four columns, every figure a
 link to the extracted text of the page it was read from, and a per-row mark
 whose scale is that row's own. `history.html` and `balances.html` are the ACFR's

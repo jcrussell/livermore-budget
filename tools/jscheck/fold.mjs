@@ -14,42 +14,25 @@
 // test pins to what `fisc export` writes. See testdata/README.md for why that
 // fixture is a capture rather than a derivation, and what the Go test buys.
 
-import { loadApp, goldenGraph, goldenFundFlows, plannedFetch, settle, refusals } from "./harness.mjs";
+import { loadApp, goldenGraph, goldenFundFlows, plannedFetch, settle } from "./harness.mjs";
 
 /**
- * The tiers each fund-flows page draws, and the root Spending needs.
+ * The tier set the fold's own CLAUSES are exercised at, which is not a view.
  *
- * THESE ARE THE SHIPPED SETS, not an example. drilldown.html drew {0,2,4} --
- * revenue source, fund group, division -- across both sides at once, and
- * Revenue and Spending are that page split at its seam. A check pinned to a
- * tier set no view declares proves foldDocument works on a configuration the
- * site does not have, which is a weaker claim than it reads as.
+ * NO VIEW DECLARES {0,2,4}. The site draws this document only by opening the
+ * spine into it, and each rung filters to one node before it folds (see
+ * drill.mjs). The set is kept because it is the only three-tier fold over the
+ * WHOLE document -- it places every node without a filter -- and three tiers
+ * is what several of the rules below need to be visible at all: a link whose
+ * ends fold together, a drawn tier no folded link touches, and a re-pointed
+ * parent all need a middle column to fold through.
  *
- * SPENDING NEEDS A ROOT AND REVENUE DOES NOT. fund-flows carries eleven tier-0
- * revenue nodes with no ancestor at tier 3 or 4, and foldDocument refuses a
- * node it cannot place -- so {3,4} over the whole document draws nothing at
- * all. {0,2} places every node.
- */
-const REVENUE = { tiers: [0, 2], root: "" };
-const SPENDING = { tiers: [3, 4], root: "fund/100" };
-
-/**
- * The tier set the fold's own CLAUSES are exercised at, which is not a page.
- *
- * {0,2,4} is what drilldown.html drew, and no view declares it now. It is kept
- * because it is the only three-tier set over this document, and three tiers is
- * what several of the rules below need to be visible at all: a link whose ends
- * fold together, a drawn tier no folded link touches, and a re-pointed parent
- * all need a middle column to fold through. The shipped sets are two-tier and
- * would leave those clauses untested.
- *
- * IT ALSO HAS A PROPERTY THE SHIPPED SETS DO NOT, deliberately: at {0,2,4} the
- * fold cites nothing away, because the fund-to-division link that survives
- * carries the same facts as the object rows that fold into it. At {0,2} it does
- * not -- 190 of 239 facts, since the whole spending side folds to self-loops --
- * and that is correct rather than a loss: Revenue is a page about revenue, and
- * the spending facts are cited on Spending. The counts line says so; see
- * app.js's paintCounts.
+ * IT ALSO HAS A PROPERTY THE RUNGS DO NOT, deliberately: at {0,2,4} the fold
+ * cites nothing away, because the fund-to-division link that survives carries
+ * the same facts as the object rows that fold into it. A rung cites a slice,
+ * since it filtered first -- the General Fund at {0,3,4} cites 141 of 280 --
+ * and that is correct rather than a loss: the counts line says so (app.js's
+ * paintCounts), and drill.mjs pins it.
  */
 const DRAWN = [0, 2, 4];
 
@@ -74,11 +57,7 @@ function appDrawing(tiers, fetch, extra) {
         hero: { label: "l", value: "v", note: "n", kind: "hero" },
         figures: [], caveats: [],
         counts: { facts: 280, nodes: 145, links: 175 },
-        // THE PACKAGER'S STRING, and the check below reads it back. It is
-        // buildDrilldownPage's wording verbatim rather than a placeholder,
-        // because what that check is about is the client writing what it was
-        // handed instead of composing the spine's literal.
-        chart_title: "Sankey diagram of the FY 2025-26 adopted budget by revenue category and the fund group it lands in",
+        chart_title: "Sankey diagram of the FY 2025-26 adopted budget",
       }],
       docs: {},
     }, extra || {}),
@@ -181,44 +160,22 @@ function attempt(fn) {
 }
 
 /**
- * The drill-down page opened for real: main() fetches the committed document,
- * folds it, lays it out and repaints, and this reads back what the DOM was told
- * to show.
+ * The spine opened for real -- main() fetches the committed document, lays it
+ * out and repaints -- and the legend the repaint built, read back from the DOM.
  *
- * THIS IS THE CLOSEST THING IN THE TREE TO LOOKING AT THE PAGE, and it exists
- * because looking is what the zero-height bug needed and nothing else does. No
- * Go check can see a chart, and the four fund-flows documents shipped for four
- * days with every Go check green. Driving showYear rather than layOut is the
- * difference: the legend, the flow table and the counts line are all repaints
- * that happen after the layout, from the FOLDED document, and each of them is a
- * statement about what the reader is looking at.
+ * THE ONE PAGE WITH A LEGEND. Every opened view is legend-less by rule, which
+ * drill.mjs pins, so the spine's overview is where the palette's order meets
+ * the DOM and the only place buildLegend's output can be read.
  */
-async function opened(page) {
-  const app = appDrawing(page.tiers, plannedFetch({
-    "data/fund-flows.json": { doc: goldenFundFlows() },
-  }), page.root ? { root: page.root } : {});
-  // main() plants nothing; buildTable returns at its first line without a
-  // <tbody> to fill, which is the one step of the repaint that would otherwise
-  // execute in no check here. Same seam lifecycle.mjs's page() uses.
-  const body = app.dom.document.node();
-  app.dom.document.getElementById("flow-table").selectable = { tbody: body };
-  const main = app.dom.document.node();
-  app.dom.document.plant("main", main);
+async function spineLegend() {
+  const app = loadApp({ fetch: plannedFetch({ "data/sankey.json": { doc: goldenGraph() } }) });
   await settle();
-  const el = (id) => app.dom.byId.get(id);
-  return {
-    counts: el("counts-line") ? el("counts-line").textContent : "",
-    lede: el("lede-year") ? el("lede-year").textContent : "",
-    legend: el("legend") ? el("legend").children.map((b) => b.dataset.node) : [],
-    rows: body.children.length,
-    banners: refusals(main).length,
-    chartTitle: el("chart-title") ? el("chart-title").textContent : "",
-  };
+  const legend = app.dom.byId.get("legend");
+  return legend ? legend.children.map((b) => b.dataset.node) : [];
 }
 
 export async function checks() {
-  const revenuePage = await opened(REVENUE);
-  const spendingPage = await opened(SPENDING);
+  const legend = await spineLegend();
   const whole = loadApp();
   const drill = appDrawing(DRAWN);
 
@@ -479,45 +436,6 @@ export async function checks() {
               "fundGroupOf is isFundGroup by another name there",
     },
     {
-      // NOT DERIVED FROM THE FOLD, READ OFF THE PAGE. Every check above this
-      // one asks foldDocument what it returns; this one opens each fund-flows
-      // page through main(), fetches the committed document and reads back what
-      // the DOM was told to show. It is the closest thing in the tree to
-      // looking at the page, and looking is what this document needed: it
-      // shipped for four days with every Go check green over a chart nobody
-      // could see.
-      //
-      // BOTH PAGES, AND THE COUNTS ARE EACH PAGE'S OWN. This pinned one page
-      // and one tier set, {0,2,4}, which no view declares any more -- Revenue
-      // and Spending are that page split at its seam. The two counts below
-      // differ from each other and from the file's 175 links over 145 nodes,
-      // which is the property the counts line exists to have: it describes the
-      // chart beside it rather than the document behind it.
-      name: "each fund-flows page opens, and every word on it describes the chart beside it",
-      ok: revenuePage.banners === 0 && spendingPage.banners === 0 &&
-          revenuePage.lede === "FY 2025-26 adopted" &&
-          spendingPage.lede === "FY 2025-26 adopted" &&
-          revenuePage.counts === "29 flows between 17 nodes, from 190 of the document's 280 facts" &&
-          revenuePage.rows === 29 &&
-          // SPENDING'S ROOT IS DOING THE WORK HERE. Without it this page draws
-          // nothing: foldDocument refuses the document's eleven tier-0 revenue
-          // nodes, which have no ancestor at tier 3 or 4, and the reader gets a
-          // banner instead of a chart.
-          spendingPage.counts === "23 flows between 24 nodes, from 49 of the document's 280 facts" &&
-          spendingPage.rows === 23 &&
-          // THE CHART'S ACCESSIBLE NAME IS THIS CHART'S. paintYearWords composed
-          // it from a literal naming a Sankey "of the <year> <basis> budget",
-          // which is the SPINE's wording -- so the first repaint replaced the
-          // page's own <title> with it and two different charts announced
-          // themselves identically. The template alone cannot catch that: it
-          // renders the right string and the client overwrites it.
-          revenuePage.chartTitle.includes("by revenue category"),
-      detail: `revenue: ${revenuePage.banners} banner(s), counts ` +
-              `"${revenuePage.counts}", ${revenuePage.rows} rows, chart ` +
-              `"${revenuePage.chartTitle}"; spending: ${spendingPage.banners} banner(s), ` +
-              `counts "${spendingPage.counts}", ${spendingPage.rows} rows`,
-    },
-    {
       // THE PALETTE WAS WHOLLY DEAD ON THIS DOCUMENT and this is what says it
       // is not any more. Unfolded, 0 of 175 links have a fund-group end, so
       // linkColor returned --muted for every ribbon and buildLegend rendered
@@ -550,10 +468,14 @@ export async function checks() {
               "through parent, which is the only thing that would colour or rank them",
     },
     {
+      // READ OFF THE PAGE, NOT DERIVED FROM THE FOLD: main() drew the spine and
+      // buildLegend built these buttons, one per fund group the chart touches,
+      // so equality with FUND_ORDER says both that all six have flows and that
+      // they are keyed in the palette's order.
       name: "the legend is the six fund groups, in the palette's order, and each has flows",
-      ok: JSON.stringify(revenuePage.legend) === JSON.stringify(whole.FUND_ORDER),
-      detail: revenuePage.legend.length
-        ? revenuePage.legend.map((id) => id.replace("fund-group/", "")).join(", ")
+      ok: JSON.stringify(legend) === JSON.stringify(whole.FUND_ORDER),
+      detail: legend.length
+        ? legend.map((id) => id.replace("fund-group/", "")).join(", ")
         : "the legend is empty",
     },
   ];

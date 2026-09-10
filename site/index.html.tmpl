@@ -173,7 +173,15 @@
 </p>
 <p class="lede subtle">
   Hover, tap or tab to a flow for its amount, fact ids and sources.
-  Click a node or a fund swatch to follow only that money; Escape puts the rest back.
+  {{- /* WHAT A CLICK DOES IS PER VIEW, so what this sentence promises has to
+         be too: on a spine that declares steps, a node at the step's tier
+         OPENS and every other node isolates. Which column opens is
+         app.js's, painted into #chart-hint from the chart on screen; this
+         sentence says only what is true of every node. */}}
+  {{if .Drill}}Click a node that opens to see its parts; click any other node, or a fund
+  swatch, to follow only that money. Escape closes an opened node, or puts the rest
+  back.{{else}}Click a node or a fund swatch to follow only that money; Escape puts the
+  rest back.{{end}}
 </p>
 
 <!-- THE APPARATUS IS DISCLOSED, NOT DELETED. Three of the four panels below

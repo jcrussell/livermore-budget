@@ -192,7 +192,7 @@ Tier 1 does not exist; see `docs/sankey-contract.md`.
   published columns carry six fund groups, of which five stop short, except
   FY2023-24, which carries a seventh — permanent — and stops six. The caveat in
   each document computes its own, and this is the third place that literal was
-  found, after the caveat itself and spending.html's lede.
+  found, after the caveat itself and a page lede.
 - **Transfers between funds.** p76's legs are scope `transfers-by-fund` and no
   projection selects it, because it overlaps `revenue-by-fund` on `transfer_in`.
   It needs a document of its own (fisc-9gh).
@@ -244,9 +244,9 @@ So the client folds. The rule, in full:
   the document's own 18 pages identically on every row — 1,872 anchors saying
   nothing about the row they sat in — and became 237, each naming the pages that
   row's figure came from. Those figures are kept as the measurement that
-  justified the union; the two pages that now draw this document fold it
-  differently and carry their own row counts, which `tools/jscheck/drill.mjs`
-  pins.
+  justified the union; the chain's rungs, which now draw this document, fold
+  it differently and carry their own row counts, which
+  `tools/jscheck/drill.mjs` pins.
 - **A link whose ends fold to the same node is dropped.** It was a flow inside
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
@@ -264,30 +264,48 @@ So the client folds. The rule, in full:
   loses a column silently, keeping it leaves a node with no column to be drawn
   in.
 
-### Two pages draw it, and neither draws tiers 0, 2 and 4
+### One page draws it: the spine opens into it
 
-**That set was `drilldown.html`, which no longer exists.** It drew revenue
-source, fund group and division in one chart — 52 links over columns of
-11 / 6 / 23 — and it is now two pages, split where the money changes hands:
+**`drilldown.html` drew tiers 0, 2 and 4 whole, and no view draws that set
+now.** It became two pages split where the money changes hands, and those
+became the rungs of one chain under `index.html`, the site's one chart page
+(`fisc-ko1j`, owner decisions of 2026-09-08). The chain is declared once, in
+`views()`, and `tools/jscheck/drill.mjs` carries a copy that a Go test holds
+to it field by field:
 
-| page | draws | opening a node draws | root |
-|---|---|---|---|
-| `revenue.html` | `{0,2}` — 11 categories into 6 fund groups, 29 links | `{0,3}` — that group's own funds | — |
-| `spending.html` | `{3,4}` — the General Fund into 23 divisions, 23 links | `{4,5}` — that division's object categories | `fund/100` |
+| depth | document | draws | opening a node draws | caps |
+|---|---|---|---|---|
+| 0 | `sankey` | the spine, whole | a fund group (tier 2) — the row below | — |
+| 1 | `fund-flows` | `{0,3,4}` filtered to the opened group: its revenue categories, its funds, and under the General Fund its divisions | a division (tier 4) — the row below | tier 3 at 8, tier 4 at 24 |
+| 2 | `fund-flows` | `{4,5}` filtered to the opened division: its object categories | nothing | tier 5 at 8 |
 
-**Spending needs a root and Revenue does not**, and that is a refusal rather
-than a preference. This document carries eleven tier-0 revenue nodes with no
-ancestor at tier 3 or 4, and the fold refuses a node it cannot place — so
-`{3,4}` over the whole document draws *nothing*, not a partial chart. `{0,2}`
-places every node.
+**Only the General Fund draws a tier-4 column.** pp.167-170 decompose that
+fund alone, so the other five groups' charts end at their funds, and the
+only-the-General-Fund caveat is a property of the drawn chart rather than a
+sentence beside it. Measured through the chain: 6 fund groups open, and under
+them 23 divisions, all of the General Fund — 29 opened views.
 
-**Neither page has the property that the old tier set had**, and it is worth
-saying which one: at `{0,2,4}` the fold cites nothing away, because the
-surviving fund-to-division link carries the same facts as the object rows that
-fold into it. At `{0,2}` the whole spending side folds to self-loops and is
-dropped — Revenue's ribbons cite 190 of the document's 239 facts and Spending's
-the other 49. They partition it exactly; neither page can claim to carry it all,
-and both say so.
+**The step document is the spine year's, joined on column.** A spine stem
+opens into the `fund-flows` stem carrying the same fiscal year on the same
+basis: `sankey` into `fund-flows`, `sankey-2027` into `fund-flows-2027`. The
+join is on `Columns`, not on the order `project.PublishedDocuments` declares
+— which puts the bare `fund-flows` stem third among its four — and the packager
+resolves it per year into the page's config, beside that document's own caveat
+links, so the client joins nothing. `fund-flows-2024-actual` and
+`fund-flows-2025-revised` have no spine year to be opened from, because
+pp.66-67 print no actual and no revised column; they stay declared in
+`unviewedDocuments`.
+
+**A rung places the document only because it filtered first**, and that is a
+refusal rather than a preference. This document carries eleven tier-0 revenue
+nodes with no ancestor at tier 3 or 4, and the fold refuses a node it cannot
+place — so `{4,5}` over the whole document draws *nothing*, not a partial
+chart. Filtering to the opened node is what leaves a set the fold can place.
+
+**A rung cites a slice, and says so.** At `{0,2,4}` the fold cites nothing
+away; a rung filtered to one node cannot, and the counts line names both
+numbers — the General Fund at depth 1 reads "33 flows between 34 nodes, from
+141 of the document's 280 facts". `drill.mjs`'s chain walk pins it.
 
 ### Opening a node: filter, cap, fold
 
@@ -306,8 +324,8 @@ Rescaling cannot fix a distribution.
 
 **So a drill also caps its fine column.** Above the step's `TierCap.Cap` for
 that tier, the tail by value folds into one aggregate. At cap 8 special revenue draws 2 sub-pixel
-ribbons instead of 22, and capital 1 instead of 4. The cap is inert on Spending,
-whose widest division spends on two object categories.
+ribbons instead of 22, and capital 1 instead of 4. The cap is inert at depth 2,
+where the widest division spends on two object categories.
 
 **The aggregate node is `derived: true`**, with a rationale and a source note.
 Its *value* is every cent a printed figure, summed exactly as the fold sums a
@@ -323,24 +341,24 @@ ribbons from one source to the aggregate and the fold is what merges them,
 summing the values and unioning the fact ids and locators.
 
 `tools/jscheck/drill.mjs` re-measures all of this on every `make js`, opening
-every node both pages offer — 6 fund groups and 23 divisions — rather than a
-sample.
+every node the chain offers — 6 fund groups and, under the General Fund, 23
+divisions — rather than a sample.
 
 **Tier 5 is not a one-constant alternative.** Drawing `{0,2,4,5}` puts 29 of the
 44 object nodes under one pixel (smallest 0.030px), and that column's labels are
 23× "Services & Supplies" and 21× "Wages & Benefits". The object grain is not
 *hidden* by the fold; it is unrenderable at this canvas, and offering it needs a
 view that rescales to one division rather than a fourth column — which is what
-Spending's drill is. Measured over all 23 divisions, the smallest ribbon in any
-opened view is 51.4px.
+the second step is. Measured over all 23 divisions, the smallest ribbon in any
+opened view is 51.38px, at Patrol, and `drill.mjs` pins it there.
 
 **What the fold does not fix.** At the `{0,2,4}` set, seven of the 52 ribbons
 laid out under 1px and four of the 40 node rects under 2px, and `render()` floors
 both — `Math.max(1, width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those
 marks do not encode their values. `tools/jscheck/fold.mjs` pins **both** counts,
-so neither can grow unnoticed. The shipped pages are better on this and not
-free of it: Revenue's overview draws 5 sub-pixel ribbons of 29 and Spending's
-1 of 23.
+so neither can grow unnoticed. The chain's rungs are better on this and not
+free of it: the General Fund at depth 1 draws 2 sub-pixel ribbons of 33, and
+special revenue, capped, 2 of 22 — both pinned in `drill.mjs`.
 
 **The page describes the folded document, not the fetched one.** The legend, the
 flow table, the inferred list and the flow count are all statements about what

@@ -1125,28 +1125,22 @@ func builtStemsForTest(t *testing.T) map[string][]byte {
 }
 
 // TestViewsOpensOnTheSpineAndGivesYearsToItAlone pins the shape of the view
-// list: which page the site opens on, and that the year control belongs to the
-// spine and to no other view.
+// list: which page the site opens on, that the year control belongs to the
+// spine and to no other view, and that the spine is the one chart page.
 func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
-	if err != nil {
-		t.Fatalf("resolve repo root: %v", err)
-	}
-	built, err := buildProjections(root)
-	if err != nil {
-		t.Fatalf("buildProjections: %v", err)
-	}
+	built := builtStemsForTest(t)
 	got := views(result{Projections: built})
 
-	if len(got) != 7 {
-		t.Fatalf("got %d views over %v, want the spine, Revenue, Spending, the revenue "+
-			"trends, the two ACFR history tables and the caveats index", len(got), keys(built))
+	if len(got) != 5 {
+		t.Fatalf("got %d views over %v, want the spine, the revenue trends, the two ACFR "+
+			"history tables and the caveats index", len(got), keys(built))
 	}
-	if got[0].Path != export.IndexPath || got[0].Projection != export.PrimaryProjection {
-		t.Errorf("the site opens on %+v, want the spine at %s", got[0], export.IndexPath)
+	spine := got[0]
+	if spine.Path != export.IndexPath || spine.Projection != export.PrimaryProjection {
+		t.Errorf("the site opens on %+v, want the spine at %s", spine, export.IndexPath)
 	}
-	if len(got[0].YearStems) != 2 {
-		t.Errorf("the spine view lists %d year stems, want both adopted years", len(got[0].YearStems))
+	if len(spine.YearStems) != 2 {
+		t.Errorf("the spine view lists %d year stems, want both adopted years", len(spine.YearStems))
 	}
 
 	// ASSERTED BY PATH RATHER THAN BY INDEX from here down. The nav order is a
@@ -1161,8 +1155,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	// EVERY VIEW THAT DRAWS SOMETHING SHIPS THE WORDS FOR IT. Titles and ledes
 	// are the caller's: a packager composing prose about a document would be
 	// making a claim about figures it may not recompute.
-	for _, path := range []string{"revenue.html", "spending.html", "trends.html",
-		"history.html", "balances.html"} {
+	for _, path := range []string{"trends.html", "history.html", "balances.html"} {
 		v, ok := byPath[path]
 		if !ok {
 			paths := make([]string, 0, len(got))
@@ -1176,76 +1169,144 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		}
 	}
 
-	// NEITHER FUND-FLOWS VIEW LISTS YEAR STEMS, and for a different reason from
-	// the trends view's: that document has four published columns and these
-	// reach one. That is what the three surviving unviewedDocuments entries
-	// declare, and pinning it here is what makes the day it changes a decision
-	// rather than a diff.
-	for _, path := range []string{"revenue.html", "spending.html"} {
-		v := byPath[path]
-		if v.Projection != project.FundFlowsProjection {
-			t.Errorf("%s renders %q, want %q", path, v.Projection, project.FundFlowsProjection)
+	// THE RETIRED PAGES STAY RETIRED. revenue.html and spending.html were
+	// fund-flows split at its seam, and drilldown.html the page they split;
+	// the spine now opens into that document, and a second view over it would
+	// publish the same money a second time with a nav entry to find it under.
+	for _, path := range []string{"revenue.html", "spending.html", "drilldown.html"} {
+		if _, ok := byPath[path]; ok {
+			t.Errorf("%s is in the nav; the spine's chain is where that document is drawn now", path)
 		}
-		if len(v.YearStems) != 0 {
-			t.Errorf("%s lists year stems %v; giving it a year control is the work "+
-				"unviewedDocuments still declares", path, v.YearStems)
-		}
-		// The tier set is what makes the view drawable, so an empty one is not
-		// a smaller page -- it is a blank chart. See tools/jscheck/fold.mjs.
-		if len(v.RenderTiers) == 0 {
-			t.Errorf("%s declares no render tiers, so app.js would draw the 61-node fund "+
-				"column whole and every node at zero height", path)
-		}
-		// AND BOTH DRILL. That is the whole reason there are two of them: a
-		// two-column overview that could not be opened would publish less than
-		// the drilldown page they replace, not more.
-		if len(v.Steps) == 0 {
-			t.Errorf("%s declares no drill step, so its detail column is unreachable", path)
-			continue
-		}
-		// THE ACTUAL VALUES, because tools/jscheck/drill.mjs carries a COPY of
-		// them -- there is no seam between Go and node, so the copy is a claim
-		// and this is the only thing that can keep it honest. Asserting merely
-		// that a step EXISTS left drill.mjs free to measure a configuration no
-		// page ships: change a cap or a tier set here and every gate stayed
-		// green while the checks went on pinning the old one.
-		want, ok := map[string][]export.DrillStep{
-			"revenue.html": {{From: 2, Tiers: []int{0, 3}, Caps: []export.TierCap{{Tier: 3, Cap: 8}},
-				Back: "All fund groups", Tail: "funds"}},
-			"spending.html": {{From: 4, Tiers: []int{4, 5}, Caps: []export.TierCap{{Tier: 5, Cap: 8}},
-				Back: "All divisions", Tail: "categories"}},
-		}[path]
-		if !ok {
-			t.Fatalf("no expected steps declared for %s; a new drilling page needs its "+
-				"declaration mirrored in tools/jscheck/drill.mjs's PAGES too", path)
-		}
-		if diff := cmp.Diff(want, v.Steps); diff != "" {
-			t.Errorf("%s's steps (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGES "+
-				"carries a copy of this and measures against it", path, diff)
-		}
-		wantTiers := map[string][]int{"revenue.html": {0, 2}, "spending.html": {3, 4}}[path]
-		if diff := cmp.Diff(wantTiers, v.RenderTiers); diff != "" {
-			t.Errorf("%s's render tiers (-want +got):\n%s\nsame copy, same reason", path, diff)
+	}
+	for _, v := range got {
+		if v.Projection == project.FundFlowsProjection {
+			t.Errorf("view %q renders fund-flows as its own page; it is drawn by opening the spine", v.Path)
 		}
 	}
 
-	// SPENDING DECLARES A ROOT AND REVENUE DOES NOT, which is not a stylistic
-	// difference. fund-flows carries eleven tier-0 revenue nodes with no
-	// ancestor at tier 3 or 4, and foldDocument refuses a node it cannot place,
-	// so Spending's {3,4} over the whole document draws NOTHING. Revenue's
-	// {0,2} places every node and needs no root.
-	if byPath["spending.html"].Root == "" {
-		t.Error("the spending view declares no root; its tier set cannot place the " +
-			"document's revenue nodes, so the page would refuse to draw at all")
+	// THE CHAIN'S ACTUAL VALUES, because tools/jscheck/drill.mjs carries a COPY
+	// of them -- there is no seam between Go and node, so the copy is a claim
+	// and this is the only thing that can keep it honest. Asserting merely
+	// that a step EXISTS would leave drill.mjs free to measure a configuration
+	// no page ships: change a cap, a tier set or a description here and every
+	// gate stays green while the checks go on pinning the old one.
+	//
+	// THE PER-YEAR JOIN IS PINNED TO ITS COLUMNS, not to its declared order:
+	// fund-flows' bare stem is THIRD among that projection's published
+	// documents, and it is the spine's opening year's step document because
+	// both are FY2026 adopted. TestStepStemsJoinsOnColumnNotOnDeclaredOrder
+	// measures the order; this pins what the join came to.
+	want := []export.DrillStep{
+		{
+			From:            2,
+			Projection:      project.FundFlowsProjection,
+			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
+			Tiers:           []int{0, 3, 4},
+			Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
+			Back:            "All fund groups",
+			Tail:            "funds",
+			Description: "The revenue categories on the left flow into this fund group's own " +
+				"funds, rescaled to the group's total \u2014 the citywide chart cannot show " +
+				"them, because the General Fund alone is half the fund column and the " +
+				"smallest fund is a thirty-thousandth of it. Only the General Fund continues " +
+				"into the divisions that spend it: Budget Book pp.167-170 decompose that " +
+				"fund alone, so every other group's money ends at its funds \u2014 not " +
+				"missing, but not broken down in any published schedule.",
+		},
+		{
+			From:  4,
+			Tiers: []int{4, 5},
+			Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
+			Back:  "All divisions",
+			Tail:  "categories",
+			Description: "The division on the left flows into the object categories it " +
+				"spends on, on the right \u2014 that division's cells of Budget Book " +
+				"pp.167-170, rescaled to its total.",
+		},
 	}
-	if byPath["revenue.html"].Root != "" {
-		t.Errorf("the revenue view declares root %q; its tier set places every node and "+
-			"a root would silently narrow the page", byPath["revenue.html"].Root)
+	if diff := cmp.Diff(want, spine.Steps); diff != "" {
+		t.Errorf("the spine's steps (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGE "+
+			"carries a copy of this and measures against it", diff)
 	}
-	if _, ok := byPath["drilldown.html"]; ok {
-		t.Error("drilldown.html is still in the nav; Revenue and Spending are that page " +
-			"split at its seam, and shipping all three would publish the same document " +
-			"three times")
+	if len(spine.RenderTiers) != 0 || spine.Root != "" {
+		t.Errorf("the spine declares render tiers %v and root %q; it is drawn whole, "+
+			"and its template publishes neither", spine.RenderTiers, spine.Root)
+	}
+}
+
+// TestStepStemsJoinsOnColumnNotOnDeclaredOrder is fisc-zojk's first obstacle
+// dissolving, measured rather than asserted.
+//
+// THE ORDER IS READ OFF PublishedDocuments HERE, so the premise cannot go
+// stale in silence: yearStems walks that list in declared order, which puts
+// fund-flows' bare stem third among its projection's documents, and a view
+// opening on it through a YearStems list is refused by View.validate. The
+// join is on Column instead, and the stem's position in the list is not an
+// input to it -- the mutation that proves it is the one this test's third
+// arm names: a join on declared order pairs sankey with fund-flows-2024-actual.
+func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
+	built := builtStemsForTest(t)
+
+	position := -1
+	var declared []string
+	for _, d := range project.PublishedDocuments() {
+		if d.Projection != project.FundFlowsProjection {
+			continue
+		}
+		if d.Stem == project.FundFlowsProjection {
+			position = len(declared)
+		}
+		declared = append(declared, d.Stem)
+	}
+	if position != 2 {
+		t.Errorf("fund-flows' bare stem is declared at position %d of %v, want 2; the "+
+			"premise that yearStems would put it third has moved", position, declared)
+	}
+
+	got := stepStems(export.PrimaryProjection, project.FundFlowsProjection, built)
+	want := map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("stepStems (-want +got):\n%s", diff)
+	}
+	if got["sankey"] != declared[position] {
+		t.Errorf("the opening year joins to %q, want the bare stem at position %d",
+			got["sankey"], position)
+	}
+
+	// A YEAR WHOSE STEP DOCUMENT WAS NOT BUILT GETS NO ENTRY, and the view is
+	// then refused by NAME rather than dropped: assertPublishedBuilt refuses
+	// this state in the real pipeline, and under a custom Builder the refusal
+	// is what stops a site shipping one year's drill and not the other's in
+	// silence.
+	short := map[string][]byte{}
+	for k, v := range built {
+		if k != "fund-flows-2027" {
+			short[k] = v
+		}
+	}
+	if diff := cmp.Diff(map[string]string{"sankey": "fund-flows"},
+		stepStems(export.PrimaryProjection, project.FundFlowsProjection, short)); diff != "" {
+		t.Errorf("stepStems without fund-flows-2027 (-want +got):\n%s", diff)
+	}
+	opts, _, _, _ := testOptions(t)
+	opts.Build = func(string) (result, error) { return result{Projections: short}, nil }
+	if err := exportRun(opts); err == nil {
+		t.Error("exportRun accepted a spine whose second year has no step document")
+	} else if !strings.Contains(err.Error(), `names no document for year stem "sankey-2027"`) {
+		t.Errorf("got %v, want the refusal naming the year", err)
+	}
+
+	// AND NO DRILL AT ALL WHEN THE OPENING YEAR'S DOCUMENT WAS NOT BUILT, for
+	// the reason a view whose document was not built is dropped: a chain
+	// pointing at a file that was not written is a click that 404s.
+	none := map[string][]byte{}
+	for k, v := range built {
+		if !strings.HasPrefix(k, project.FundFlowsProjection) {
+			none[k] = v
+		}
+	}
+	if steps := views(result{Projections: none})[0].Steps; len(steps) != 0 {
+		t.Errorf("the spine declares %d step(s) with no fund-flows document built", len(steps))
 	}
 }
 

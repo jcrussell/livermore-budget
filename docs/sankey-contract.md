@@ -223,6 +223,13 @@ each states its own below rather than inheriting the spine's.
 which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
 neither a fund nor a department axis.
 
+**The six tier-2 nodes open.** `index.html` declares a two-step chain in
+`views()`: a clicked fund group draws `fund-flows` for the same fiscal year
+beneath it, and a clicked General Fund division draws its object categories.
+What those rungs draw, and how the year is joined, is stated in
+`docs/general-fund-drilldown-contract.md`. Depth 0 is this document drawn
+whole, unchanged by the chain.
+
 Those counts are per TIER and include the flow endpoints, which is why they are
 larger than the id-form counts a reader might tally from the table above: tier 0
 is 10 `revenue/` nodes plus `transfers/in` and `fund-balance/draw`, and tier 5 is

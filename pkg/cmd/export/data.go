@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -362,30 +363,25 @@ func yearStems(name string, projections map[string][]byte) []string {
 // false statement about the site, so assertPublishedReachable refuses it and
 // the entry is deleted rather than left for whoever forgets.
 //
-// WHY THE THREE REMAINING ENTRIES ARE NOT A CHART PROBLEM ANY MORE. They were:
+// WHY THE TWO REMAINING ENTRIES ARE NOT A CHART PROBLEM ANY MORE. They were:
 // the drill-down's 61-node fund column laid every node and every ribbon out at
-// zero height, and c3a337d landed the fold that fixes it. revenue.html and
-// spending.html render fund-flows now, between them. What the other three
-// columns still lack is a YEAR CONTROL, and that is a different piece of work
-// with a trap of its own (fisc-zojk) -- see the const.
+// zero height, and c3a337d landed the fold that fixes it. index.html opens the
+// spine into fund-flows now, joining the two documents on Column -- see
+// stepStems -- and that join is what these two cannot satisfy: see the const.
 var unviewedDocuments = map[string]string{
-	project.FundFlowsProjection + "-2024-actual":  fundFlowsUnviewed,
-	project.FundFlowsProjection + "-2025-revised": fundFlowsUnviewed,
-	project.FundFlowsProjection + "-2027":         fundFlowsUnviewed,
+	project.FundFlowsProjection + "-2024-actual":  fundFlowsNoSpineColumn,
+	project.FundFlowsProjection + "-2025-revised": fundFlowsNoSpineColumn,
 }
 
-const fundFlowsUnviewed = "a published column of the General Fund drill-down that no page " +
-	"can yet reach. revenue.html and spending.html render fund-flows (FY2025-26) and " +
-	"neither lists a year control, so these three ship as data no reader can open. Note " +
-	"that caveats.html DOES list their caveats -- it indexes every published document " +
-	"rather than drawing one -- which is not the same as rendering them and does not " +
-	"retire this entry. Giving them a year control is not a " +
-	"line in views(): yearStems walks PublishedDocuments() in declared order, which puts " +
-	"2024-actual first, and View.validate refuses a view whose first stem is not its own " +
-	"projection -- so the opening year has to be hoisted deliberately. FY2023-24 also " +
-	"carries a seventh fund group, permanent, which FUND_ORDER has no hue for and " +
-	"buildLegend no entry for, and site/style.css records that a seventh hue would " +
-	"invalidate a measured CVD result (fisc-zojk)"
+const fundFlowsNoSpineColumn = "a published column of the General Fund drill-down that the chart " +
+	"cannot reach. index.html opens the spine into fund-flows one fiscal year at a time, " +
+	"joining the two documents on Column, and pp.66-67 print no actual and no revised " +
+	"column -- so there is no spine year to open this one from. Note that caveats.html " +
+	"DOES list its caveats -- it indexes every published document rather than drawing " +
+	"one -- which is not the same as rendering it and does not retire this entry. " +
+	"Reaching it means a spine-less way into fund-flows, and FY2023-24 also carries a " +
+	"seventh fund group, permanent, which FUND_ORDER has no hue for and buildLegend no " +
+	"entry for (fisc-zojk)"
 
 // assertPublishedReachable is the half of the published-document contract that
 // assertPublishedBuilt does not make: a document a reader can open.
@@ -393,15 +389,26 @@ const fundFlowsUnviewed = "a published column of the General Fund drill-down tha
 // It takes the views rather than reading them, for assertPublishedBuilt's
 // reason -- a test can hand it a set the real repository is never in.
 //
-// A DOCUMENT IS REACHABLE THROUGH A VIEW'S PROJECTION OR THROUGH ITS YEAR
-// STEMS, and both arms are needed: the spine's second year has no view of its
-// own and is reached only from the first view's year control.
+// A DOCUMENT IS REACHABLE THROUGH A VIEW'S PROJECTION, THROUGH ITS YEAR STEMS,
+// OR THROUGH A STEP'S DOCUMENTS, and all three arms are needed: the spine's
+// second year has no view of its own and is reached only from the first
+// view's year control, and both fund-flows documents the site draws are
+// reached only by opening a node -- fund-flows-2027 through the step's
+// per-year join alone.
 func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	reachable := make(map[string]struct{}, len(vs))
 	for _, v := range vs {
 		reachable[v.Projection] = struct{}{}
 		for _, stem := range v.YearStems {
 			reachable[stem] = struct{}{}
+		}
+		for _, s := range v.Steps {
+			if s.Projection != "" {
+				reachable[s.Projection] = struct{}{}
+			}
+			for _, stem := range s.YearProjections {
+				reachable[stem] = struct{}{}
+			}
 		}
 	}
 	for _, d := range project.PublishedDocuments() {
@@ -450,6 +457,50 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	return nil
 }
 
+// stepStems is the per-year join a drill step declares: for each of the
+// spine projection's built documents, the built document of the step's
+// projection that covers the same Column, keyed spine stem -> step stem.
+//
+// ON COLUMN, NOT ON DECLARED ORDER, and that is what dissolves fisc-zojk's
+// first obstacle. yearStems walks PublishedDocuments() in declared order,
+// which for fund-flows is 2024-actual, 2025-revised, 2026, 2027 -- so the bare
+// stem is THIRD, and a view opening on it through a YearStems list is refused
+// by View.validate. A step is not a YearStems list: nothing here asks which
+// document comes first, only which document is the same fiscal year on the
+// same basis as the one on screen, and PublishedDocuments states that.
+//
+// A SPINE YEAR WITH NO MATCH GETS NO ENTRY, and View.validate refuses the
+// view by naming that year rather than this function guessing a document for
+// it. A spine year with TWO matches is not a state PublishedDocuments can
+// produce -- buildProjections refuses two documents at one stem, and a
+// projection declares each Column once -- so the first is taken and the
+// second would be a defect in that declaration, not here.
+//
+// Only built documents on both sides, for yearStems' reason: the join must
+// name files the site has, not files it means to have.
+func stepStems(spine, step string, projections map[string][]byte) map[string]string {
+	docs := project.PublishedDocuments()
+	out := map[string]string{}
+	for _, d := range docs {
+		if d.Projection != spine {
+			continue
+		}
+		if _, ok := projections[d.Stem]; !ok {
+			continue
+		}
+		for _, e := range docs {
+			if e.Projection != step || !slices.Equal(d.Columns, e.Columns) {
+				continue
+			}
+			if _, ok := projections[e.Stem]; ok {
+				out[d.Stem] = e.Stem
+				break
+			}
+		}
+	}
+	return out
+}
+
 // views is the site's pages, in nav order, the page it opens on first.
 //
 // IT LIVES IN THE COMMAND, not in internal/export, and that is what keeps that
@@ -467,126 +518,91 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 // that was not written, and dropping the view is exactly what prevents that.
 func views(built result) []export.View {
 	projections := built.Projections
-	out := []export.View{{
+	spine := export.View{
 		Path:       export.IndexPath,
 		Nav:        "Budget flows",
 		Template:   export.SankeyTemplate,
 		Projection: export.PrimaryProjection,
 		YearStems:  yearStems(export.PrimaryProjection, projections),
-	}}
-	// REVENUE AND SPENDING ARE ONE DOCUMENT SPLIT AT ITS SEAM, and they replace
-	// the single drilldown.html that drew tiers {0,2,4} across both sides at
-	// once. The owner's report was that the detail was buried; two pages, each
-	// answering one question and each able to open a node, is what that asked
-	// for.
-	//
-	// NOTHING REFUSES TWO VIEWS OVER ONE PROJECTION. Options.validate refuses
-	// duplicate PATHS, assertPublishedReachable builds a SET, and buildSite's
-	// collect says in as many words that two views citing one page is the
-	// ordinary case.
-	//
-	// EVERY TIER SET AND EVERY CAP BELOW IS MEASURED, laying the graph out with
-	// the shipped vendor/d3-sankey at app.js's own constants against
-	// dist/data/fund-flows.json. tools/jscheck/fold.mjs re-measures both
-	// OVERVIEWS on each run, and drill.mjs both DRILLS -- the figures in these
-	// comments and the ones those checks pin are the same measurements.
-	// NEITHER OPENS ON ANYTHING BUT FY2025-26, AND NEITHER LISTS YEAR STEMS,
-	// which is a smaller pair of views than the four published columns could
-	// support and is deliberate. See unviewedDocuments for the two things a
-	// year control here has to solve first.
-	//
-	// (This paragraph was left behind by the reordering that moved the trends
-	// view below these two: it ended up above the caveats index, describing a
-	// drill-down that no longer had a view there at all.)
-	if _, ok := projections[project.FundFlowsProjection]; ok {
-		// REVENUE opens at {0,2}: 11 revenue categories into 6 fund groups, 29
-		// links, 5 ribbons under a pixel. Opening a group redraws at {0,3} --
-		// that group's own funds, rescaled to its own total.
-		//
-		// A CITYWIDE {0,3} OVERVIEW -- revenue categories straight into named
-		// funds -- is the obvious alternative and is DECLINED AS UNBUILT rather
-		// than on a measurement, because the measurement it was declined on was
-		// wrong. An early probe used a hand-written fold that silently skipped
-		// nodes it could not place and reported 8 sub-pixel ribbons; the real
-		// foldDocument REFUSES that set, because the document's six tier-2
-		// fund-group nodes have no ancestor at tier 0 or 3. So the option does
-		// not draw at all without a cap and something to say about those nodes,
-		// and what it would cost is not known. Filed rather than guessed at.
-		//
-		// What is true and reproducible: fund/100 is 49.18% of citywide revenue,
-		// fund/620 10.61% and fund/640 6.46%, so a column of 61 named funds is
-		// the same concentration problem one level down from the one that made
-		// this document need a fold in the first place.
-		out = append(out, export.View{
-			Path:        "revenue.html",
-			Nav:         "Revenue",
-			Template:    export.ChartTemplate,
-			Projection:  project.FundFlowsProjection,
-			RenderTiers: []int{0, 2},
-			Steps: []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Caps: []export.TierCap{{Tier: 3, Cap: 8}},
-				Back: "All fund groups", Tail: "funds"}},
-			ChartSubject: "by revenue category and the fund group it lands in",
-			ChartDescription: "Eleven revenue categories on the left flow into the six " +
-				"fund groups on the right. Opening a fund group replaces the right-hand " +
-				"column with that group's own funds, rescaled to its total.",
-			Title: "Where Livermore's money comes from, and which fund it lands in",
-			Lede: "Eleven revenue categories, and the six fund groups they land in. " +
-				"Open a fund group to see its own funds, rescaled to that group's " +
-				"total \u2014 the citywide chart cannot show them, because the General " +
-				"Fund alone is half the column and the smallest fund is a " +
-				"thirty-thousandth of it.",
-		})
-		// SPENDING opens at {3,4}: the General Fund into its 23 divisions, one
-		// ribbon under a pixel. Opening a division redraws at {4,5}, its object
-		// categories -- where the worst case measures a 51px smallest ribbon,
-		// because a division spends on two or three things.
-		//
-		// {3,4,5} UNDRILLED IS THE ONE THAT DOES NOT WORK: 68 nodes, 11 ribbons
-		// under a pixel, and a column whose labels are two strings repeated.
-		// That is what the drill is for.
-		//
-		// {0,3,4} -- revenue category into the General Fund into its divisions
-		// -- lays out nearly as well (33 links, 2 sub-pixel) and is declined
-		// rather than impossible: a revenue column on the SPENDING page is the
-		// conflation this split exists to undo.
-		out = append(out, export.View{
-			Path:        "spending.html",
-			Nav:         "Spending",
-			Template:    export.ChartTemplate,
-			Projection:  project.FundFlowsProjection,
-			RenderTiers: []int{3, 4},
-			// ROOT IS WHAT MAKES THIS PAGE DRAW AT ALL, not a narrowing of one
-			// that already did. fund-flows carries eleven tier-0 revenue nodes
-			// with no ancestor at tier 3 or 4, and foldDocument refuses a node
-			// it cannot place -- so {3,4} over the whole document produces no
-			// chart and a banner reading "node revenue/charges-for-services is
-			// tier 0 and no ancestor of it is a tier this page draws (3, 4)".
-			// It is also where this page's central claim stops being prose:
-			// only the General Fund has a spending side, and this is the line
-			// that says so to the client.
-			Root: "fund/100",
-			Steps: []export.DrillStep{{From: 4, Tiers: []int{4, 5}, Caps: []export.TierCap{{Tier: 5, Cap: 8}},
-				Back: "All divisions", Tail: "categories"}},
-			ChartSubject: "by General Fund division",
-			ChartDescription: "The General Fund on the left flows into the 23 divisions " +
-				"that spend it, on the right. Opening a division replaces the right-hand " +
-				"column with the object categories it spends on.",
-			Title: "Which division spends Livermore's General Fund, and on what",
-			// NO COUNT OF THE OTHER GROUPS. This said "the other six fund
-			// groups", the exact literal 75814db corrected inside the document
-			// -- so the page contradicted the caveat it draws. The count is not
-			// six and it is not fixed either: fund-flows carries six groups and
-			// five stop short, while fund-flows-2024-actual carries seven and
-			// six do. A lede is composed here, where no document is in hand, so
-			// the honest thing is to name none. The caveat carries the number,
-			// computed per column.
-			Lede: "The General Fund, and the 23 divisions it pays for. Open a division " +
-				"to see what it spends on. ONLY THE GENERAL FUND IS HERE: Budget Book " +
-				"pp.167-170 decompose that fund alone, so every other fund group's money " +
-				"ends at its funds \u2014 the money is not missing, the schedule that " +
-				"would break it down is not published.",
-		})
 	}
+	// THE SPINE OPENS INTO FUND-FLOWS, AND FUND-FLOWS INTO ITSELF: one page
+	// where there were three. revenue.html drew fund-flows at {0,2} and opened
+	// a group into {0,3}; spending.html drew fund/100 at {3,4} and opened a
+	// division into {4,5}; index.html drew the spine and opened nothing. Those
+	// were the levels of one chain laid side by side, and a reader following a
+	// dollar from Property Taxes to Patrol had to notice three nav entries and
+	// know which was which (fisc-ko1j, owner decisions of 2026-09-08).
+	//
+	// EVERY TIER SET AND EVERY CAP BELOW IS MEASURED, laying the graph out
+	// with the shipped vendor/d3-sankey at app.js's own constants against the
+	// two committed goldens. tools/jscheck/drill.mjs walks the chain on every
+	// run and pins the figures: the depth-1 General Fund at 34 nodes and 33
+	// links with 2 sub-pixel ribbons; special-revenue's 32 funds folded to 8
+	// (uncapped, 22 of its 49 ribbons are under a pixel, and the cap is what
+	// makes the column drawable rather than the rescaling); the division
+	// column's 23 under its cap of 24, so that cap is inert on the corpus and
+	// pinned inert; and the worst depth-2 ribbon at 51px.
+	//
+	// CAPS ARE PER TIER because a single cap on the finest tier leaves
+	// special-revenue's fund column uncapped at {0,3,4}: 40 nodes, 22
+	// sub-pixel ribbons, 9 zero-height nodes -- undrawable.
+	//
+	// ONLY THE GENERAL FUND HAS TIER-4 NODES, so the other five groups' charts
+	// end at their funds. spending.html said that in its lede; here it is a
+	// property of the drawn chart, and step 0's description says it in fewer
+	// words for the reader who cannot see the column stop.
+	//
+	// THE JOIN IS PER YEAR AND ON COLUMN -- see stepStems. Both spine years
+	// reach their own fund-flows column, which is what makes fund-flows-2027
+	// reachable and retired its unviewedDocuments entry; the actual and
+	// revised columns have no spine year and stay declared there.
+	//
+	// STEPS ARE DECLARED ONLY WHEN THE OPENING YEAR'S DOCUMENT WAS BUILT, for
+	// the reason a view whose document was not built is dropped: a chain
+	// pointing at a file that was not written is a click that 404s. A second
+	// year missing its document is not dropped but REFUSED, by View.validate
+	// naming the year -- a site that built one year's drill-down and not the
+	// other's is a state assertPublishedBuilt already refuses in the real
+	// pipeline, and hiding it under a custom Builder would be the silence
+	// unviewedDocuments exists to refuse.
+	if years := stepStems(export.PrimaryProjection, project.FundFlowsProjection, projections); years[export.PrimaryProjection] != "" {
+		spine.Steps = []export.DrillStep{
+			{
+				From:            2,
+				Projection:      years[export.PrimaryProjection],
+				YearProjections: years,
+				Tiers:           []int{0, 3, 4},
+				Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
+				Back:            "All fund groups",
+				Tail:            "funds",
+				// THE FIGURES IN THIS SENTENCE ARE MEASURED off
+				// testdata/fund-flows.golden.json: fund/100 takes 49.18% of
+				// the fund column's inflow, and the smallest fund, fund/550
+				// at $5,000, is 1/31,575 of fund/100's -- the reason a
+				// citywide fund column is not drawn and a group is opened
+				// instead.
+				Description: "The revenue categories on the left flow into this fund " +
+					"group's own funds, rescaled to the group's total \u2014 the citywide " +
+					"chart cannot show them, because the General Fund alone is half the " +
+					"fund column and the smallest fund is a thirty-thousandth of it. Only " +
+					"the General Fund continues into the divisions that spend it: Budget " +
+					"Book pp.167-170 decompose that fund alone, so every other group's " +
+					"money ends at its funds \u2014 not missing, but not broken down in " +
+					"any published schedule.",
+			},
+			{
+				From:  4,
+				Tiers: []int{4, 5},
+				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
+				Back:  "All divisions",
+				Tail:  "categories",
+				Description: "The division on the left flows into the object categories " +
+					"it spends on, on the right \u2014 that division's cells of Budget " +
+					"Book pp.167-170, rescaled to its total.",
+			},
+		}
+	}
+	out := []export.View{spine}
 
 	// THE TABLES COME AFTER THE CHARTS THEY BELONG TO. Listed before them the
 	// nav read "Revenue tables" and then "Revenue" -- two entries beginning

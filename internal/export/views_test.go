@@ -252,7 +252,7 @@ func chartView(breaks func(*export.View)) export.View {
 		RenderTiers: []int{0, 2}, ChartSubject: "by something",
 		ChartDescription: "A description.",
 		Steps: []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Back: "All groups",
-			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}}},
+			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: "Opened."}},
 	}
 	breaks(&v)
 	return v
@@ -265,7 +265,8 @@ func chartView(breaks func(*export.View)) export.View {
 func chainView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
 		v.Steps = append(v.Steps, export.DrillStep{From: 3, Tiers: []int{3, 4},
-			Back: "All funds", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}}})
+			Back: "All funds", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}},
+			Description: "Opened again."})
 		breaks(v)
 	})
 }
@@ -436,6 +437,63 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	}
 }
 
+// TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument is the promise one
+// rung down: a document a chart OPENS INTO is drawn -- its marks are chipped
+// and its caveats linked at depth 1, which tools/jscheck/drill.mjs measures --
+// and on the merged site both fund-flows documents are reached that way
+// alone.
+//
+// THE SECOND YEAR'S DOCUMENT IS THE SHARPER ARM: no step's Projection names
+// it, only the per-year join does, so a drawn map reading Projection alone
+// would promise the flag on one fund-flows column and withhold it on the
+// other.
+func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	spine := goldenSankey(t)
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey":          spine,
+			"sankey-2027":     reyeared(t, spine, 2027, "FY 2026-27"),
+			"fund-flows":      builtLike(t, spine, fundFlows),
+			"fund-flows-2027": builtLike(t, spine, reyeared(t, fundFlows, 2027, "FY 2026-27")),
+		},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+				Steps: []export.DrillStep{{From: 2, Projection: "fund-flows",
+					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
+					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."}}},
+			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
+				Title: "Caveats", Lede: "A lede."},
+		},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readFile(t, dir, "caveats.html")
+	const promise = "the charts flag these marks"
+	for _, stem := range []string{"fund-flows", "fund-flows-2027"} {
+		i := strings.Index(page, "<h2>"+stem)
+		if i < 0 {
+			t.Fatalf("caveats.html carries no section for %q", stem)
+		}
+		section := page[i+1:]
+		if j := strings.Index(section, "<section"); j >= 0 {
+			section = section[:j]
+		}
+		if !strings.Contains(section, promise) {
+			t.Errorf("the %s section does not promise a chart flag, and the spine opens into "+
+				"that document -- its marks are chipped at depth 1", stem)
+		}
+	}
+}
+
 // TestASingleViewSiteShowsCaveatsWithNoLink is the configuration the caveat
 // summaries have to survive, and it is a real one rather than a hypothetical:
 // Options.views()'s default is a single view at IndexPath, and writeGolden
@@ -599,7 +657,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill on a template that publishes none", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey",
-				Steps:      []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t"}}}},
+				Steps: []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t",
+					Description: "d."}}}},
 			"the chart would isolate on a click while this view believes it opens"},
 		{"a root on a template that publishes none", []export.View{ok,
 			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
@@ -637,6 +696,15 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill with no back label", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Back = "" })},
 			"a button with no words in it"},
+		// THE OPENED CHART'S OWN WORDS, for ChartDescription's reason one
+		// rung down: without them the <desc> a screen reader hears at depth 1
+		// is the opening state's, over a chart that no longer draws it.
+		{"a drill with no description", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Description = "" })},
+			"told the opening state's over a chart it no longer draws"},
+		{"a drill whose description does not close its sentence", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Description = "Opened" })},
+			"an unterminated one runs into them"},
 		{"a drill from a tier the page does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].From = 5 })},
 			"no node on it is ever openable"},
@@ -2547,12 +2615,13 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	}
 	steps := []export.DrillStep{{From: 2, Projection: "fund-flows", Tiers: []int{0, 3, 4},
 		Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
-		Back: "All fund groups", Tail: "funds"}}
+		Back: "All fund groups", Tail: "funds", Description: "Opened."}}
 	dir := t.TempDir()
 	if _, err := export.Write(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
-			"sankey": goldenSankey(t), "fund-flows": recited(t, fundFlows, "another-doc"),
+			"sankey":     goldenSankey(t),
+			"fund-flows": builtLike(t, goldenSankey(t), recited(t, fundFlows, "another-doc")),
 		},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey", Steps: steps}},
@@ -2635,15 +2704,17 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 	}
 	write := func(secondStepDoc string) error {
 		_, err := export.Write(export.Options{
-			Dir:         t.TempDir(),
-			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+			Dir: t.TempDir(),
+			Projections: map[string][]byte{
+				"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows),
+			},
 			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey",
 				Steps: []export.DrillStep{
 					{From: 2, Projection: "fund-flows", Tiers: []int{0, 3},
-						Back: "All fund groups", Tail: "funds"},
+						Back: "All fund groups", Tail: "funds", Description: "One."},
 					{From: 3, Projection: secondStepDoc, Tiers: []int{0, 3},
-						Back: "All funds", Tail: "things"},
+						Back: "All funds", Tail: "things", Description: "Two."},
 				}}},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
@@ -2659,6 +2730,218 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 			"would redraw the chart it was opened from")
 	} else if !strings.Contains(err.Error(), "already draws") {
 		t.Errorf("got %v, want the same-tiers refusal", err)
+	}
+}
+
+// builtLike restamps a document's generated_by to another document's, so the
+// two committed goldens -- one hand-derived, one captured -- can be paired on
+// one page. stepDocuments refuses a step document built by a different
+// projection for the reason buildSankeyPage refuses a year built by one: the
+// footer credits a single builder for every figure on the page.
+func builtLike(t *testing.T, like, raw []byte) []byte {
+	t.Helper()
+	var src, doc map[string]any
+	if err := json.Unmarshal(like, &src); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	doc["metadata"].(map[string]any)["generated_by"] =
+		src["metadata"].(map[string]any)["generated_by"]
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	return out
+}
+
+// TestAStepsPerYearJoinIsExactOrRefused covers every arm of validateSteps that
+// reads YearProjections, each broken on its own from one well-formed two-year
+// chain -- so the message named is the arm's rather than whichever fires first.
+//
+// THE CONTROL PASSES FIRST. A refusal table over a fixture that is refused for
+// some other reason proves nothing about any arm in it.
+func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	spine := goldenSankey(t)
+	projections := func() map[string][]byte {
+		return map[string][]byte{
+			"sankey":          spine,
+			"sankey-2027":     reyeared(t, spine, 2027, "FY 2026-27"),
+			"fund-flows":      builtLike(t, spine, fundFlows),
+			"fund-flows-2027": builtLike(t, spine, reyeared(t, fundFlows, 2027, "FY 2026-27")),
+		}
+	}
+	chain := func(breaks func(*export.View)) export.View {
+		v := export.View{
+			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+			Steps: []export.DrillStep{
+				{From: 2, Projection: "fund-flows",
+					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
+					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
+				{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Tail: "categories", Description: "Two."},
+			},
+		}
+		breaks(&v)
+		return v
+	}
+	write := func(v export.View, projections map[string][]byte) error {
+		_, err := export.Write(export.Options{
+			Dir: t.TempDir(), Projections: projections, Views: []export.View{v},
+			Docs: budgetDocs(), GeneratedBy: "fisc test",
+		})
+		return err
+	}
+	if err := write(chain(func(*export.View) {}), projections()); err != nil {
+		t.Fatalf("the control chain was refused, so no case below is evidence: %v", err)
+	}
+	for _, c := range []struct {
+		name   string
+		breaks func(*export.View)
+		built  map[string][]byte
+		want   string
+	}{
+		{"a year with no step document", func(v *export.View) {
+			delete(v.Steps[0].YearProjections, "sankey-2027")
+		}, projections(), `names no document for year stem "sankey-2027"`},
+		{"an entry for a year the view does not list", func(v *export.View) {
+			v.Steps[0].YearProjections["sankey-2099"] = "fund-flows"
+		}, projections(), `maps year stem "sankey-2099", which the view does not list`},
+		{"an opening-year entry disagreeing with the projection", func(v *export.View) {
+			v.Steps[0].YearProjections["sankey"] = "fund-flows-2027"
+		}, projections(), "one step cannot draw two documents for one year"},
+		{"a same-document step carrying a map", func(v *export.View) {
+			v.Steps[1].YearProjections = map[string]string{"sankey": "fund-flows"}
+		}, projections(), "the map would be ignored"},
+		{"a map on a view that lists no years", func(v *export.View) {
+			v.YearStems = nil
+		}, projections(), "no year on screen for the map to be read against"},
+		{"a year's step document that was not built", func(v *export.View) {
+			v.Steps[0].YearProjections["sankey-2027"] = "nope"
+		}, projections(), `renders projection "nope" for year stem "sankey-2027", which was not built`},
+		// THE BUILDER CHECK, one rung down from the year loop's: a step
+		// document built by another projection would have the footer credit
+		// one builder for figures drawn from two.
+		{"a year's step document built by another projection", func(*export.View) {},
+			func() map[string][]byte {
+				p := projections()
+				p["fund-flows-2027"] = reyeared(t, fundFlows, 2027, "FY 2026-27")
+				return p
+			}(), "the footer credits one projection for figures drawn from both"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			err := write(chain(c.breaks), c.built)
+			if err == nil {
+				t.Fatalf("Write accepted %s", c.name)
+			}
+			if !strings.Contains(err.Error(), c.want) {
+				t.Errorf("error %q does not contain %q", err, c.want)
+			}
+		})
+	}
+}
+
+// TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks is the per-year
+// join on the wire, and the fix for fisc-ko1j.13 with it.
+//
+// TWO CLAIMS, READ BACK FROM THE CONFIG BLOB. Each year's config entry names
+// the file its first rung draws -- FY2026-27's names fund-flows-2027, not the
+// one file the stem maps to -- and carries that document's caveat refs with
+// the anchor composed per (stem, caveat), so a caveat on a depth-1 mark links
+// to ITS document's paragraph rather than losing its link because the year's
+// refs are the spine's. The same-document second step resolves to the first's
+// document, so the client reads one entry per step. And the second year's step
+// document is cited: its doc_id reaches the docs map and the footer, or app.js
+// would drop every citation drawn from it under that year.
+func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	const secondYearDoc = "another-doc-2027"
+	spine := goldenSankey(t)
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey":      spine,
+			"sankey-2027": reyeared(t, spine, 2027, "FY 2026-27"),
+			"fund-flows":  builtLike(t, spine, fundFlows),
+			"fund-flows-2027": builtLike(t, spine,
+				recited(t, reyeared(t, fundFlows, 2027, "FY 2026-27"), secondYearDoc)),
+		},
+		Views: []export.View{
+			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
+				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+				Steps: []export.DrillStep{
+					{From: 2, Projection: "fund-flows",
+						YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
+						Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
+					{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Tail: "categories", Description: "Two."},
+				}},
+			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
+				Title: "What these figures do not say", Lede: "A lede."},
+		},
+		Docs: append(budgetDocs(), export.Doc{ID: secondYearDoc, Title: "Another document",
+			Publisher: "City of Livermore"}),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	page := readPage(t, dir)
+	var cfg struct {
+		Years []struct {
+			Stem  string `json:"stem"`
+			Steps []struct {
+				Stem    string `json:"stem"`
+				Path    string `json:"path"`
+				Caveats []struct {
+					ID   string `json:"id"`
+					Href string `json:"href"`
+				} `json:"caveats"`
+			} `json:"steps"`
+		} `json:"years"`
+	}
+	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
+		t.Fatalf("decode window.FISC_CONFIG: %v", err)
+	}
+	if len(cfg.Years) != 2 {
+		t.Fatalf("got %d years, want 2", len(cfg.Years))
+	}
+	const caveat = "only-the-general-fund-is-decomposed"
+	for i, want := range []string{"fund-flows", "fund-flows-2027"} {
+		y := cfg.Years[i]
+		if len(y.Steps) != 2 {
+			t.Fatalf("year %s carries %d step entries, want one per declared step", y.Stem, len(y.Steps))
+		}
+		for k, s := range y.Steps {
+			if s.Stem != want || s.Path != "data/"+want+".json" {
+				t.Errorf("year %s step %d draws %s at %s, want %s", y.Stem, k, s.Stem, s.Path, want)
+			}
+			href := ""
+			for _, c := range s.Caveats {
+				if c.ID == caveat {
+					href = c.Href
+				}
+			}
+			if wantHref := "caveats.html#caveat-" + want + "--" + caveat; href != wantHref {
+				t.Errorf("year %s step %d links %s to %q, want %q: a caveat on a depth-%d "+
+					"mark would land on the wrong document's paragraph, or on none",
+					y.Stem, k, caveat, href, wantHref, k+1)
+			}
+		}
+	}
+	if _, ok := configDocs(t, page)[secondYearDoc]; !ok {
+		t.Errorf("the client's docs map has no entry for the second year's step document %q, "+
+			"so app.js would drop every citation drawn from it under that year", secondYearDoc)
+	}
+	if !strings.Contains(readerVisible(t, page), "Another document") {
+		t.Error("the footer does not cite the second year's step document")
 	}
 }
 

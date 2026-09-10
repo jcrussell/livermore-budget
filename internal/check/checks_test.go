@@ -1256,8 +1256,7 @@ func TestAConstraintTierWithoutItsDisclosureIsAFinding(t *testing.T) {
 				s.Projections[0].Graph.Metadata.Caveats = []project.Caveat{c}
 			}, "not the disclosure internal/project declares"},
 		// AND SUMMARY DRIFT, which is the one a reader is most likely to meet:
-		// index.html, revenue.html and spending.html print the summary and link
-		// to the text,
+		// index.html prints the summary and links to the text,
 		// so a document whose text is word-perfect and whose summary says
 		// something else misleads everyone who does not follow the link.
 		{"the summary is not the one internal/project declares",

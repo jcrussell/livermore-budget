@@ -130,7 +130,19 @@
  * @property {FiscFigure[]} figures
  * @property {FiscCaveatRef[]} caveats
  * @property {{facts:number, nodes:number, links:number}} counts
+ * @property {FiscStepDoc[]} [steps]  what this year's rungs draw, one per
+ *   declared step, resolved for this year by the packager
  * @property {string} chart_title
+ */
+
+/**
+ * One rung's document for one year: where to fetch it and what its caveats
+ * link to, verbatim from export.stepView.
+ *
+ * @typedef {Object} FiscStepDoc
+ * @property {string} stem
+ * @property {string} path
+ * @property {FiscCaveatRef[]} caveats
  */
 
 /**
@@ -166,6 +178,8 @@
  * @property {FiscTierCap[]} [caps]  per tier; a tier with none is drawn whole
  * @property {string} back  what the breadcrumb's return control says
  * @property {string} tail  the plural noun a capped aggregate is counted in
+ * @property {string} description  the chart's long description once a node
+ *   has opened on this step, in the packager's words
  */
 
 /**
@@ -434,10 +448,10 @@ function fundGroupOf(node) {
   // for the folded document, whose well-formedness is about nodes it carries,
   // and it stops this walk dead: `if (!at.parent) return ""` on the first hop.
   //
-  // Measured before the fix: every fund on every opened view and every division
-  // on spending.html resolved to "", so both rendered entirely in --muted and
-  // buildLegend drew no swatches. groupIndex prefers the FETCHED document, so
-  // what is walked here is where the node really sits.
+  // Measured before the fix: every fund and every division on every opened
+  // view resolved to "", so each rendered entirely in --muted. groupIndex
+  // prefers the FETCHED document, so what is walked here is where the node
+  // really sits.
   let at = groupIndex.get(node.id) || node;
   // Bounded by the hierarchy's depth; the guard is against a parent cycle in a
   // malformed document, which node-hierarchy-well-formed rejects Go-side but
@@ -1021,11 +1035,11 @@ function paintCounts() {
   // BOTH NUMBERS, ALWAYS, and the gap between them stated rather than implied.
   //
   // This printed the document's fact total on every undrilled page, justified
-  // by "a page showing the whole document" -- a condition that is false for
-  // both pages this lane shipped. spending.html read "23 flows between 24
-  // nodes, from 280 facts" over ribbons citing 49, and revenue.html the same
-  // over 190. Naming one number and meaning the other is the failure; naming
-  // one when there are two is what let it happen twice.
+  // by "a page showing the whole document" -- a condition that is false of any
+  // chart that filters or folds before it draws: a rung of the chain reads
+  // "33 flows between 34 nodes" over ribbons citing 141 of 280. Naming one
+  // number and meaning the other is the failure; naming one when there are
+  // two is what lets it happen.
   //
   // Saying both keeps what project.Counts.Facts is built on -- "the gap between
   // Facts and Links is the part of the schedule the chart cannot show, and
@@ -1090,20 +1104,24 @@ function focusInChart() {
 }
 
 /**
- * The path a step's document is fetched from, or "" for a step that draws the
- * document of the chart it opens from.
+ * The year's entry for the rung a step at `depth` opens: the file it draws and
+ * the caveat refs its marks link to, or null when the year on screen was
+ * packaged with none.
  *
- * ONE RESOLVER, because the join is a claim about the packager's config and
- * fisc-ko1j.4 changes it: a step document is per year, and CONFIG.projections
- * is one path per stem. Until that join ships, a step naming a projection draws
- * the one file the stem maps to.
- * @param {FiscDrillStep} step
- * @returns {string}
+ * READ OFF THE YEAR, NEVER JOINED HERE. A step's document is per fiscal year --
+ * FY2026-27's fund groups open into fund-flows-2027, not into the one file a
+ * stem maps to in CONFIG.projections -- and which file that is belongs to the
+ * packager, which resolves every step for every year into the year's own
+ * config entry. This file resolves nothing: it reads the entry for the year on
+ * screen at the depth being opened, and refuses when there is none rather than
+ * draw a file the year was never told about.
+ * @param {number} depth
+ * @returns {FiscStepDoc | null}
  */
-function stepPath(step) {
-  if (!step.projection) return "";
-  const path = CONFIG.projections ? CONFIG.projections[step.projection] : undefined;
-  return typeof path === "string" ? path : "";
+function stepDocAt(depth) {
+  const steps = shownYear && Array.isArray(shownYear.steps) ? shownYear.steps : [];
+  const entry = steps[depth];
+  return entry && typeof entry.path === "string" && entry.path ? entry : null;
 }
 
 /**
@@ -1117,20 +1135,22 @@ function stepPath(step) {
  * draw at depth 1 a document the year control would refuse at depth 0.
  * loadDocument is the one place they are sequenced.
  * @param {FiscDrillStep} step
+ * @param {number} depth  the depth the step opens from
  * @param {FiscProjection} from  the document of the chart the step opens from
  * @param {() => boolean} superseded
  * @returns {Promise<FiscProjection | null>}
  */
-async function stepDocument(step, from, superseded) {
+async function stepDocument(step, depth, from, superseded) {
   if (!step.projection) return from;
-  const path = stepPath(step);
-  if (!path) {
+  const entry = stepDocAt(depth);
+  if (!entry) {
     if (!superseded()) {
       fail("That could not be opened: this page's step names a document, " +
-        step.projection + ", that the page was not packaged with.");
+        step.projection + ", that the year on screen was not packaged with.");
     }
     return null;
   }
+  const path = entry.path;
   const cached = stepDocs.get(path);
   if (cached) return cached;
   const doc = await loadDocument(path, superseded);
@@ -1229,7 +1249,7 @@ async function drillDown(id) {
   const mine = ++opening;
   const token = switching;
   const overtaken = () => mine !== opening || token !== switching;
-  const doc = await stepDocument(step, from, overtaken);
+  const doc = await stepDocument(step, depth, from, overtaken);
   if (overtaken()) return SUPERSEDED;
   if (!doc) return FAILED;
   return redrawStack(drilled.concat([{ id: id, doc: doc, step: step }])) ? DREW : FAILED;
@@ -1317,10 +1337,8 @@ function restoreFocus(hadFocus) {
  *
  * A DRILL CHANGES WHAT THE CHART IS OF as completely as a year switch changes
  * which document it is, and nothing rewrote these two elements on one. After
- * opening a fund group, revenue.html still announced itself as a chart "by
- * revenue category and the fund group it lands in" and described "six fund
- * groups on the right" that were no longer drawn -- which is the defect the
- * page split had just been fixed for, one gesture over, and only to the readers
+ * opening a fund group the chart still announced its opening state and
+ * described "six fund groups" that were no longer drawn -- only to the readers
  * who cannot see the marks disagree.
  *
  * IT APPENDS RATHER THAN REPLACES the name, so the page's own words survive:
@@ -1347,10 +1365,24 @@ function paintChartName() {
   // rung's: it is captured once from the served sentence and the closed flow
   // table is out of the accessibility tree, so this sentence is the only route
   // to it a reader who cannot see the page has, however deep they are.
-  desc.textContent = drilled.length
-    ? trail + " on the left, and what it is made of on the right. " +
-      "Use the breadcrumb above the chart, or press Escape, to go back. " + tablePointer
-    : baseDescription;
+  //
+  // THE STEP'S OWN WORDS SAY WHAT THE COLUMNS ARE. A sentence composed here
+  // read "<node> on the left, and what it is made of on the right", which is
+  // false of the first rung of the shipped chain: opening a fund group draws
+  // revenue categories on the left and the group's funds beside them, and the
+  // group itself is gone from the chart. The packager ships a description per
+  // step, in the caller's words, and this file adds only what it owns -- the
+  // rung's name, the way back and the table pointer.
+  if (drilled.length) {
+    const step = drilled[drilled.length - 1].step;
+    const said = step && typeof step.description === "string" && step.description
+      ? step.description
+      : trail + " on the left, and what it is made of on the right.";
+    desc.textContent = "Opened into " + trail + ". " + said +
+      " Use the breadcrumb above the chart, or press Escape, to go back. " + tablePointer;
+    return;
+  }
+  desc.textContent = baseDescription;
 }
 
 /**
@@ -1387,10 +1419,16 @@ function lastSentence(s) {
  * where nothing opened, and the swatch sentence was worse: conditional on the
  * OPENING state's legend, and buildLegend draws no swatches in any opened view.
  *
- * "RIGHT-HAND COLUMN" IS A CLAIM ABOUT THE DECLARED STEPS, not something this
- * file checks: every step the site declares opens the finest tier its chart
- * draws. A step opening a middle column would make the sentence wrong and
- * nothing here would say so.
+ * THE COLUMN IS READ OFF THE CHART, NOT ASSUMED. This said "right-hand column"
+ * unconditionally, which held while every declared step opened the finest tier
+ * its chart drew and stopped holding on the spine, whose fund groups are its
+ * MIDDLE column. openableColumn names the column the step's tier is drawn in.
+ *
+ * AND WHETHER ANYTHING OPENS IS ASKED OF THE DRAWN NODES, not of the chain: a
+ * step exists below depth 1 for every fund group, and only the General Fund
+ * draws a node at its `from` tier -- the other five groups' charts end at their
+ * funds. Telling a reader to click a column that is not there is the same
+ * defect as telling them to click one that does not open.
  *
  * Server-rendered for the opening state, so it survives with JavaScript off --
  * where it is also true, because without a script nothing can be opened at all.
@@ -1398,19 +1436,44 @@ function lastSentence(s) {
 function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint || !STEPS.length) return;
-  const below = stepAt(drilled.length);
+  const anyOpens = Boolean(projection) && projection.nodes.some(drillable);
+  const column = anyOpens ? openableColumn() : "";
   if (drilled.length) {
     hint.textContent = "This is " + labelOfRung(drilled.length - 1) +
       ", broken into its parts. " +
-      (below
-        ? "Click a node in the right-hand column to open it further, or tab to one and press Enter."
+      (anyOpens
+        ? "Click a node in the " + column + " column to open it further, or tab to one and press Enter."
         : "Nothing here opens further; go back to open another.");
     return;
   }
   const swatches = buildLegendCount();
-  hint.textContent = "Click a node in the right-hand column to open it into its parts, " +
-    "or tab to one and press Enter." +
+  hint.textContent = (anyOpens
+    ? "Click a node in the " + column + " column to open it into its parts, " +
+      "or tab to one and press Enter."
+    : "Nothing on this chart opens.") +
     (swatches ? " A fund swatch follows one group's money without opening anything." : "");
+}
+
+/**
+ * Which column of the chart on screen the next step's nodes are in --
+ * "left-hand", "middle" or "right-hand" -- or "" when no step opens here.
+ *
+ * BY TIER, WHICH IS WHAT PLACES A COLUMN. layOut aligns columns on the tier
+ * set the document was shaped by, so the drawn tiers in ascending order are
+ * the columns left to right, and a step's `from` is one of them. Two drawn
+ * tiers have no middle; more than three would make "middle" ambiguous, and
+ * no document here draws more than three at once.
+ * @returns {string}
+ */
+function openableColumn() {
+  const step = stepAt(drilled.length);
+  if (!step || !projection) return "";
+  const tiers = [...new Set(projection.nodes.map((n) => n.tier))].sort((a, b) => a - b);
+  const at = tiers.indexOf(step.from);
+  if (at < 0 || tiers.length < 2) return "";
+  if (at === 0) return "left-hand";
+  if (at === tiers.length - 1) return "right-hand";
+  return "middle";
 }
 
 /** How many fund-group swatches the legend is showing. */
@@ -1973,13 +2036,11 @@ function layOut(doc) {
   // so fundGroupOf never walks a parent chain belonging to another document.
   // BUILT FROM THE FETCHED DOCUMENT AS WELL AS THE DRAWN ONE, because a colour
   // is a property of where a node sits in the real hierarchy and not of what
-  // this page happens to draw. Built from the drawn nodes alone, every drilled
-  // view and the whole of spending.html rendered in --muted: filterToNode keeps
-  // only what the drawn tiers need, so a fund's fund-group ancestor is absent
-  // and fundGroupOf's walk stops at the first parent it cannot resolve.
-  // Measured before the fix: fundGroupOf returned "" for every node on
-  // Spending's overview and on all six opened Revenue views, and buildLegend
-  // drew no swatches at all.
+  // this page happens to draw. Built from the drawn nodes alone, every opened
+  // view rendered in --muted: filterToNode keeps only what the drawn tiers
+  // need, so a fund's fund-group ancestor is absent and fundGroupOf's walk
+  // stops at the first parent it cannot resolve. Measured before the fix:
+  // fundGroupOf returned "" for every node on all six opened fund groups.
   //
   // THE FETCHED HIERARCHY WINS, and the drawn nodes only fill ids it does not
   // have. foldDocument RE-POINTS a retained node's parent at its folded
@@ -2289,9 +2350,9 @@ function nodeDescription(d) {
   // whole chart and one that dims the rest of it.
   // EVERY NODE SAYS WHAT ACTIVATING IT DOES. This gave the opening sentence to
   // drillable nodes and nothing at all to the others on the same page -- so
-  // revenue.html's eleven revenue categories, which still isolate and still
-  // carry a toggling aria-pressed, announced no action whatever while the mark
-  // beside them announced one.
+  // the eleven revenue categories, which still isolate and still carry a
+  // toggling aria-pressed, announced no action whatever while the mark beside
+  // them announced one.
   const what = drillable(d) ? ", opens into its parts" : ", follow this money";
   return d.label + ", total " + fmt(d.value) +
     (d.derived ? ", inferred by us" : ", printed by the city") + what;
@@ -2300,19 +2361,29 @@ function nodeDescription(d) {
 /**
  * Where a caveat's full text is, or "" when this site has no caveats page.
  *
- * COMPOSED FROM THE YEAR'S OWN SUMMARIES rather than from the id, because the
- * anchor is per (document, caveat) -- one id carries different text in
- * different documents -- and the packager is the only party that knows which
- * stem the year on screen came from. Looking the id up in what the page was
- * handed is exact; rebuilding the fragment here would be a second speller of a
- * rule internal/export owns.
+ * COMPOSED FROM THE DRAWN DOCUMENT'S OWN SUMMARIES rather than from the id,
+ * because the anchor is per (document, caveat) -- one id carries different
+ * text in different documents -- and the packager is the only party that
+ * knows which stem the document on screen came from. Looking the id up in
+ * what the page was handed is exact; rebuilding the fragment here would be a
+ * second speller of a rule internal/export owns.
+ *
+ * THE DRAWN DOCUMENT'S REFS, NOT THE YEAR'S. caveatsFor reads the drawn
+ * document's metadata.caveats, and at a rung over a switched document the
+ * year's refs are the spine's -- so every caveat on a depth-1 mark resolved
+ * to "" here, which is indistinguishable from a site with no caveats page,
+ * and the panel rendered the summary with no link (fisc-ko1j.13). The year's
+ * entry for the rung carries that document's refs; this reads them.
  *
  * @param {string} id
  * @returns {string}
  */
 function caveatHref(id) {
-  if (!shownYear || !Array.isArray(shownYear.caveats)) return "";
-  const ref = shownYear.caveats.find((c) => c.id === id);
+  const refs = drilled.length
+    ? (stepDocAt(drilled.length - 1) || { caveats: [] }).caveats
+    : shownYear ? shownYear.caveats : [];
+  if (!Array.isArray(refs)) return "";
+  const ref = refs.find((c) => c.id === id);
   return ref && ref.href ? ref.href : "";
 }
 
@@ -2379,8 +2450,8 @@ function columnShare(d) {
       siblings++;
     }
   }
-  // NO SHARE OF A COLUMN OF ONE. spending.html's left column is the General
-  // Fund alone, so this printed "our 100.0% of this column" on the page's
+  // NO SHARE OF A COLUMN OF ONE. An opened division's left column is that
+  // division alone, so this printed "our 100.0% of this column" on the rung's
   // headline mark -- a derived chip carrying a figure that is 100% by
   // construction rather than by measurement. A share says how a column divides,
   // and an undivided one has nothing to say.

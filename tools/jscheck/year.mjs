@@ -590,14 +590,27 @@ export async function checks() {
 /**
  * A two-year spine whose tier 2 opens into fund-flows, with the flow table
  * reachable and every path planned -- `plan` overrides any of them.
+ *
+ * THE STEP DOCUMENT IS THE YEAR'S, as the packager ships it: each year's
+ * config entry carries a `steps` list naming the file its rung draws, and
+ * app.js joins nothing. `paths` is that file per spine stem; by default BOTH
+ * years name the same file, which is the only shape under which a step cache
+ * surviving a year switch can be seen at all -- with the shipped per-year
+ * paths a stale cache would simply miss.
  */
-async function chainedYears(plan) {
+async function chainedYears(plan, paths) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   config.steps = [{
     from: 2, projection: "fund-flows", tiers: [0, 3, 4],
     caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24 }], back: "All fund groups", tail: "funds",
+    description: "Opened.",
   }];
+  const stepPaths = Object.assign(
+    { sankey: "data/fund-flows.json", "sankey-2027": "data/fund-flows.json" }, paths || {});
+  config.years = config.years.map((y) => Object.assign({}, y, {
+    steps: [{ stem: stepPaths[y.stem].replace(/^data\/|\.json$/g, ""), path: stepPaths[y.stem], caveats: [] }],
+  }));
   const doc = goldenGraph();
   const fetch = plannedFetch(Object.assign({
     "data/sankey.json": { doc },
@@ -612,21 +625,54 @@ async function chainedYears(plan) {
 }
 
 /**
- * A year switch closes every rung and forgets the step document, and a drill
- * still in flight when the year changes stands down.
+ * A year switch closes every rung and forgets the step document, a drill
+ * still in flight when the year changes stands down, and the year on screen
+ * opens into ITS OWN step document.
  *
- * TWO DIFFERENT DEFECTS. Keeping the stack would draw the new year folded to a
- * node that may not exist in it -- FY2023-24 carries a seventh fund group
- * (fisc-zojk) -- and keeping the step document would open the next rung on a
- * file fetched for the year the reader left. The second arm is the race: the
- * step fetch is held open, the year is switched under it, and only then is it
- * allowed to resolve. Without the token check between the fetch and the
- * repaint the drill lands on the new year's empty stack and the page shows
- * FY 2026-27 in the control over FY 2025-26's General Fund.
+ * THREE DIFFERENT DEFECTS. Keeping the stack would draw the new year folded to
+ * a node that may not exist in it -- FY2023-24 carries a seventh fund group
+ * (fisc-zojk) -- and keeping the step document would hand the next rung a
+ * cached file rather than the one the year names. The second arm is the race:
+ * the step fetch is held open, the year is switched under it, and only then
+ * is it allowed to resolve. Without the token check between the fetch and
+ * the repaint the drill lands on the new year's empty stack and the page
+ * shows FY 2026-27 in the control over FY 2025-26's General Fund. The third
+ * arm is the per-year join on the wire: FY 2026-27's fund groups open into
+ * fund-flows-2027, the file the packager put in that year's entry, and not
+ * into the one file CONFIG.projections maps the stem to -- which is what the
+ * client used to read, and drew FY2025-26's funds under FY2026-27's chart.
  * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
  */
 async function yearSwitchClosesTheDrill() {
   const out = [];
+  {
+    const other = goldenFundFlows();
+    other.nodes.find((n) => n.id === "fund/100").label = "General Fund, the other year";
+    const { app, fetch } = await chainedYears(
+      { "data/fund-flows-2027.json": { doc: other } },
+      { "sankey-2027": "data/fund-flows-2027.json" },
+    );
+    const first = await app.drillDown("fund-group/general");
+    await settle();
+    clickYear(app, "sankey-2027");
+    await settle();
+    const second = await app.drillDown("fund-group/general");
+    await settle();
+    const asked = (p) => fetch.asked.filter((x) => x === p).length;
+    const drawn = app.projection.nodes.find((n) => n.id === "fund/100");
+    const label = drawn ? drawn.label : "";
+    out.push({
+      name: "the year on screen opens into its own step document, not the one the stem maps to",
+      ok: first === "drew" && second === "drew" &&
+          asked("data/fund-flows.json") === 1 && asked("data/fund-flows-2027.json") === 1 &&
+          label === "General Fund, the other year",
+      detail: `FY 2025-26 opened from data/fund-flows.json (${asked("data/fund-flows.json")} fetch); ` +
+        `after the switch FY 2026-27 opened from data/fund-flows-2027.json ` +
+        `(${asked("data/fund-flows-2027.json")} fetch) and drew fund/100 labelled "${label}" -- ` +
+        `a client joining on CONFIG.projections would fetch the first file twice and draw ` +
+        `"General Fund" under the wrong year`,
+    });
+  }
   {
     const { app, fetch } = await chainedYears();
     const drew = await app.drillDown("fund-group/general");

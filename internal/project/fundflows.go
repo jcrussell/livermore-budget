@@ -527,8 +527,9 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			// the one group that continues. A reader wondering why five columns
 			// stop short is pointing at one of the five, and found nothing.
 			//
-			// Both halves are named, so each page marks what it draws:
-			// spending.html draws fund/100 and revenue.html the six groups.
+			// Both halves are named, so each rung of the chart marks what it
+			// draws: the opened General Fund draws fund/100, and the spine
+			// the six groups.
 			//
 			// The other two caveats here stay document-wide and correctly carry
 			// an empty list: a constraint tier is on every fund in the column,
@@ -610,10 +611,9 @@ func truncatedGroups(nodes []Node) []string {
 // THE EXCEPTION IS NAMED AS A FUND, NOT AS A GROUP, and that is what keeps the
 // list and the sentence in step. fund-group/general was in here, so a caveat
 // counting the groups that stop printed an About list with the exception among
-// them. fund/100 marks the same thing without being counted -- and on
-// revenue.html, where that fund is folded away, caveatsFor resolves it to
-// fund-group/general anyway, so the exception is still marked where a reader
-// can see it.
+// them. fund/100 marks the same thing without being counted -- and on a chart
+// where that fund is folded away, caveatsFor resolves it to fund-group/general
+// anyway, so the exception is still marked where a reader can see it.
 //
 // DERIVED FROM THE DOCUMENT, and a hard-coded list is what taught me why.
 // ValidateCaveats refuses an id the document does not carry, and the smaller
