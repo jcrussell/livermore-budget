@@ -13,7 +13,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, repoRoot } from "./harness.mjs";
+import {
+  loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, goldenFundFlows, repoRoot,
+} from "./harness.mjs";
 
 /**
  * The counts sentence exactly as a shipped template renders it, with `c` in
@@ -581,5 +583,98 @@ export async function checks() {
     })(),
     ...(await restoredSelection()),
     ...(await themeFollowsTheOS()),
+    ...(await yearSwitchClosesTheDrill()),
   ];
+}
+
+/**
+ * A two-year spine whose tier 2 opens into fund-flows, with the flow table
+ * reachable and every path planned -- `plan` overrides any of them.
+ */
+async function chainedYears(plan) {
+  const config = twoYearConfig();
+  config.projections["fund-flows"] = "data/fund-flows.json";
+  config.steps = [{
+    from: 2, projection: "fund-flows", tiers: [0, 3, 4],
+    caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24 }], back: "All fund groups", tail: "funds",
+  }];
+  const doc = goldenGraph();
+  const fetch = plannedFetch(Object.assign({
+    "data/sankey.json": { doc },
+    "data/sankey-2027.json": { doc },
+    "data/fund-flows.json": { doc: goldenFundFlows() },
+  }, plan || {}));
+  const app = loadApp({ config, fetch });
+  app.dom.document.getElementById("flow-table").selectable = { tbody: app.dom.document.node() };
+  app.dom.document.plant("main", app.dom.document.node());
+  await settle();
+  return { app, fetch };
+}
+
+/**
+ * A year switch closes every rung and forgets the step document, and a drill
+ * still in flight when the year changes stands down.
+ *
+ * TWO DIFFERENT DEFECTS. Keeping the stack would draw the new year folded to a
+ * node that may not exist in it -- FY2023-24 carries a seventh fund group
+ * (fisc-zojk) -- and keeping the step document would open the next rung on a
+ * file fetched for the year the reader left. The second arm is the race: the
+ * step fetch is held open, the year is switched under it, and only then is it
+ * allowed to resolve. Without the token check between the fetch and the
+ * repaint the drill lands on the new year's empty stack and the page shows
+ * FY 2026-27 in the control over FY 2025-26's General Fund.
+ * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
+ */
+async function yearSwitchClosesTheDrill() {
+  const out = [];
+  {
+    const { app, fetch } = await chainedYears();
+    const drew = await app.drillDown("fund-group/general");
+    await settle();
+    const depthBefore = app.drilled.length;
+    const askedBefore = fetch.asked.filter((p) => p === "data/fund-flows.json").length;
+    clickYear(app, "sankey-2027");
+    await settle();
+    const crumb = app.dom.byId.get("breadcrumb");
+    // READ NOW, before the second drill below shows the breadcrumb again.
+    const crumbHidden = crumb.getAttribute("hidden") !== null;
+    const depthAfter = app.drilled.length;
+    const lede = app.dom.byId.get("lede-year").textContent;
+    const again = await app.drillDown("fund-group/general");
+    await settle();
+    const askedAfter = fetch.asked.filter((p) => p === "data/fund-flows.json").length;
+    out.push({
+      name: "a year switch closes every rung and drops the step document",
+      ok: drew === "drew" && depthBefore === 1 && depthAfter === 0 &&
+          crumbHidden && lede === "FY 2026-27 adopted" &&
+          askedBefore === 1 && again === "drew" && askedAfter === 2,
+      detail: `opened to depth ${depthBefore}, switched year and read "${lede}" at depth ` +
+        `${depthAfter} with the breadcrumb ${crumbHidden ? "hidden" : "SHOWING"}; ` +
+        `the step document was fetched ${askedBefore} time(s) before the switch and ${askedAfter} ` +
+        `after the next drill -- a cache that survived the year would read ${askedBefore}`,
+    });
+  }
+  {
+    let release = null;
+    const { app } = await chainedYears({
+      "data/fund-flows.json": { settle: (pair) => { release = pair; } },
+    });
+    const inFlight = app.drillDown("fund-group/general");
+    await settle();
+    clickYear(app, "sankey-2027");
+    await settle();
+    const lede = app.dom.byId.get("lede-year").textContent;
+    if (!release) throw new Error("the step fetch was never asked for");
+    release.resolve(goldenFundFlows());
+    const outcome = await inFlight;
+    await settle();
+    out.push({
+      name: "a drill overtaken by a year switch stands down rather than landing on the new year",
+      ok: lede === "FY 2026-27 adopted" && outcome === "superseded" && app.drilled.length === 0,
+      detail: `the year switched to "${lede}" while the step fetch was open; when it resolved the ` +
+        `drill came to "${outcome}" and left ${app.drilled.length} rung(s) -- a drill that ` +
+        `landed would read "drew" and 1`,
+    });
+  }
+  return out;
 }

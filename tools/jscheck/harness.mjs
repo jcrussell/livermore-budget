@@ -136,6 +136,13 @@ function domStub(ids = TEMPLATE_IDS) {
         if (i >= 0) self.parent.children.splice(i, 1);
       },
       parent: null,
+      // focus() RECORDS WHERE FOCUS WENT, on the stub and on
+      // document.activeElement, so a check can ask which control restoreFocus
+      // chose. While nodes had no focus method the function's `typeof
+      // el.focus === "function"` test made every call a no-op, and "focus
+      // lands on the innermost rung's control" was not a claim any check could
+      // make.
+      focus() { focused = self; document.activeElement = self; },
       querySelector: (sel) => {
         const planted = self.selectable && self.selectable[sel];
         if (planted) return Array.isArray(planted) ? planted[0] : planted;
@@ -165,10 +172,16 @@ function domStub(ids = TEMPLATE_IDS) {
     return self;
   };
 
+  /** The element focus() was last called on; see node().focus. */
+  let focused = null;
   const document = {
     title: "",
     documentElement: node(),
     body: node(),
+    // SETTABLE, because focusInChart reads it before a repaint and a check that
+    // wants restoreFocus to act has to put focus in the chart first -- exactly
+    // what a reader who tabbed to a mark and pressed Enter has done.
+    activeElement: null,
     // Ids are REMEMBERED, so a check can ask what the page was told to show.
     // A fresh node per call would make every read return an empty element and
     // every assertion below vacuously true.
@@ -231,6 +244,7 @@ function domStub(ids = TEMPLATE_IDS) {
     byId,
     document,
     documentListeners,
+    get focused() { return focused; },
     // Switches the OS theme and notifies whoever is following it, which is what
     // a reader's machine does at sunset.
     setOSDark(dark) {
@@ -305,10 +319,14 @@ const NAMES = [
   // to match it.
   "layOut", "foldDocument", "fundGroupOf", "RENDER_TIERS",
   // THE DRILL, WHICH SHIPPED WITH NO CHECK TOUCHING IT AT ALL; drill.mjs's
-  // header says how that happened and what it cost. drill.mjs drives drillTo and
-  // shapeFor, which are the real entry points; the rest are here so a check can
-  // measure one stage without the repaint.
-  "shapeFor", "filterToNode", "capColumn", "drillable", "drillTo", "DRILL", "ROOT",
+  // header says how that happened and what it cost. drill.mjs drives drillDown
+  // and drillUp, which are the real entry points -- what a click, a breadcrumb
+  // control and Escape call -- and shapeFor; the rest are here so a check can
+  // measure one stage without the repaint. STEPS is the chain as app.js read it
+  // off the config, and stepAt is its one reader.
+  "shapeFor", "filterToNode", "capColumn", "drillable", "drillDown", "drillUp",
+  "STEPS", "stepAt", "ROOT", "aggregateID", "isAggregate", "docAt", "drawnDoc",
+  "loadDocument", "labelOfRung",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
   "paintBreadcrumb",
   // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
@@ -447,17 +465,22 @@ export function loadApp(opts = {}) {
   }
 
   const src = readFileSync(join(repoRoot, "site", "app.js"), "utf8");
-  // projection AND drilledInto ARE `let` BINDINGS, and a check has to be able to
-  // ask what is on SCREEN rather than what a function returned. They are not in
-  // NAMES above for that reason -- a name in that list is copied into an object
-  // literal, which captures the value at load time. They are
-  // exported through getters, because assigning the binding into an object
-  // literal captures the value at load time -- which for both of them is the
-  // empty state, so every check reading them would have been reading a
-  // constant. That is the shape this directory exists to refuse.
+  // projection, drilled AND fetched ARE `let` BINDINGS, and a check has to be
+  // able to ask what is on SCREEN rather than what a function returned. They are
+  // not in NAMES above for that reason -- a name in that list is copied into an
+  // object literal, which captures the value at load time. They are exported
+  // through getters, because assigning the binding into an object literal
+  // captures the value at load time -- which for all of them is the empty
+  // state, so every check reading them would have been reading a constant. That
+  // is the shape this directory exists to refuse.
+  //
+  // drilled IS THE STACK ITSELF, outermost rung first: a check reads the depth
+  // off its length and the opened node off its last rung's id, and tells the
+  // year's document from a rung's by comparing `doc` against `fetched`.
   const exported = `\n;globalThis.__harness = { ${NAMES.join(", ")},` +
     ` get projection() { return projection; },` +
-    ` get drilledInto() { return drilledInto; } };\n`;
+    ` get drilled() { return drilled; },` +
+    ` get fetched() { return fetched; } };\n`;
   runInContext(src + exported, ctx, { filename: "app.js" });
 
   const app = sandbox.__harness;
@@ -466,7 +489,7 @@ export function loadApp(opts = {}) {
   }
   // The getters answer undefined only if the binding vanished; null and "" are
   // their legitimate empty states, so they are checked for presence separately.
-  for (const n of ["projection", "drilledInto"]) {
+  for (const n of ["projection", "drilled", "fetched"]) {
     if (!(n in app)) throw new Error(`app.js no longer defines ${n}`);
   }
   app.d3 = sandbox.d3;

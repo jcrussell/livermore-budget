@@ -275,43 +275,35 @@ const FUND_COLOR_VAR = {
 const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.render_tiers : [];
 
 /**
- * How this page drills, or null for a page that does not.
+ * How this page drills: the chain of steps the packager declared, empty for a
+ * page that opens nothing.
  *
  * PER VIEW AND NEVER A CONSTANT HERE, for render_tiers' reason: the spine and
  * the two fund-flows pages are drawn by the same script from different
  * hierarchies, and a page that declares nothing keeps the isolate-on-click
  * behaviour it has always had.
  *
- * @typedef {Object} FiscDrill
- * @property {number} from  the tier whose nodes open, and no other
- * @property {number[]} tiers  the tier set drawn once one has
- * @property {string} back  what the breadcrumb's return control says
- * @property {string} tail  the plural noun a capped aggregate is counted in
- * @property {number} cap  how many nodes the fine column may hold before the
- *   tail is folded into one aggregate; see capColumn for why a cap is needed at
- *   all.
- */
-/**
- * ONE HOP, READ OFF THE FIRST STEP OF THE CHAIN. The packager ships a list and
- * this file still drives one hop of it: the first step's tiers, its words, and
- * the cap declared on its finest tier -- Infinity when it declares none, which
- * capColumn draws whole. THE CAP IS LOOKED UP BY THE TIER IT NAMES and not by
- * its position, because the list is in declaration order and a step may cap
- * a coarse tier before its fine one. Steps after the first are not read here;
- * fisc-ko1j.3 is the stack that reads them.
+ * A CHAIN, READ AS A PATH. Step k opens a node of the chart k rungs deep, so a
+ * node in an opened view is itself openable exactly when a step exists at the
+ * next depth; stepAt is the one reader of that rule. The packager validates the
+ * chain as a path (export.validateSteps), and this file assumes no more than
+ * that: fisc-ko1j.12 is the shape it cannot express.
  *
- * @type {FiscDrill | null}
+ * @type {FiscDrillStep[]}
  */
-const DRILL = (() => {
-  const step = CONFIG && Array.isArray(CONFIG.steps) ? CONFIG.steps[0] : null;
-  if (!step || !Array.isArray(step.tiers) || step.tiers.length === 0) return null;
-  const fine = step.tiers[step.tiers.length - 1];
-  const capped = (step.caps || []).find((c) => c.tier === fine);
-  return {
-    from: step.from, tiers: step.tiers, back: step.back, tail: step.tail,
-    cap: capped ? capped.cap : Infinity,
-  };
-})();
+const STEPS = CONFIG && Array.isArray(CONFIG.steps)
+  ? CONFIG.steps.filter((s) => s && Array.isArray(s.tiers) && s.tiers.length > 0)
+  : [];
+
+/**
+ * The step that opens a node of the chart at this depth, or null when nothing
+ * at that depth opens.
+ * @param {number} depth  how many nodes are open, 0 on the overview
+ * @returns {FiscDrillStep | null}
+ */
+function stepAt(depth) {
+  return depth >= 0 && depth < STEPS.length ? STEPS[depth] : null;
+}
 
 /**
  * The node whose subtree this page draws, or "" for the whole document.
@@ -648,24 +640,68 @@ let projection = null;
 /** Node id whose flows are isolated, or "" for all of them. */
 let isolated = "";
 /**
- * The node the chart is opened into, or "" for the overview.
+ * One opened node: which it is, the document its chart is shaped FROM, and the
+ * step that opened it.
  *
- * ONE LEVEL, NOT A STACK, because the drill is one hop by construction:
- * DRILL.from names a single tier, so a node in the drilled view is never itself
- * drillable. A stack would model a depth this chart cannot reach and would need
- * a breadcrumb with more than two rungs to show it.
+ * THE DOCUMENT IS ON THE RUNG AND NOT LOOKED UP, because two rungs can draw two
+ * documents: a step that names a projection opens a node of one file into a
+ * chart of another. Everything that has to know which file is on screen --
+ * the counts line, the hue walk, the caveats, the citations -- asks the rung
+ * rather than the page.
+ * @typedef {Object} Rung
+ * @property {string} id  the node opened
+ * @property {FiscProjection} doc  the document this rung's chart is shaped from,
+ *   unfolded
+ * @property {FiscDrillStep} step  the step that opened it
  */
-let drilledInto = "";
+
 /**
- * The document as fetched, before any fold.
+ * The nodes the chart is opened into, outermost first; empty on the overview.
+ *
+ * A STACK, BECAUSE THE DRILL IS A CHAIN. Step k opens a node of the chart k
+ * rungs deep, so a node in an opened view is itself openable whenever a step
+ * exists at the next depth -- drillable asks exactly that -- and the breadcrumb
+ * shows one rung per step taken. The chain is read as a path: depth k was
+ * opened by STEPS[k] and by nothing else.
+ * @type {Rung[]}
+ */
+let drilled = [];
+/**
+ * The year's document as fetched, before any fold: what the overview is shaped
+ * from, and what the first step opens a node of.
  *
  * A DRILL RESHAPES FROM THE FILE, not from what is on screen. Folding a folded
  * document would ask for tier 3 in a document whose tier 3 has already been
  * collapsed into tier 2 -- the nodes are gone, and the fold would throw or, if
  * it did not, draw the overview again with a breadcrumb over it.
+ *
+ * ONE DOCUMENT PER DEPTH, and this is depth 0's. A rung carries its own, which
+ * is this one for a step that names no projection and a fetched file for a
+ * step that does; docAt reads them as one sequence.
  * @type {FiscProjection | null}
  */
 let fetched = null;
+/**
+ * Step documents already fetched this year, by path, so returning to a rung and
+ * opening it again does not fetch its file twice.
+ *
+ * FETCHED LAZILY ON THE FIRST DRILL, not eagerly with the year: a reader who
+ * never opens a node never pays for the file. DROPPED BY showYear, because a
+ * step's document belongs to the year it was opened in and the path a step
+ * resolves to is a claim about the year on screen.
+ * @type {Map<string, FiscProjection>}
+ */
+let stepDocs = new Map();
+/**
+ * The drill's own gesture token, bumped by every push and pop of the stack.
+ *
+ * A DRILL THAT FETCHES CAN BE OVERTAKEN, by a second click while its file is in
+ * flight or by a pop of the rung it was opened from, and a drill that lands
+ * after either would push onto a stack that is no longer the one it was opened
+ * against. Compared after the await, beside the year token: a year switch
+ * mid-drill bumps that one, and the drill stands down for it too.
+ */
+let opening = 0;
 /**
  * The year on screen, so paintCounts can be called without one in hand.
  * @type {FiscYear | null}
@@ -877,19 +913,44 @@ function filterToNode(doc, id, tiers) {
 }
 
 /**
+ * The document the chart at one depth is shaped from: the year's at depth 0,
+ * and the rung's own below that.
+ *
+ * WHY DEPTH AND NOT RUNG: a rung's label lives in the document it was opened
+ * FROM, which is the chart one depth up -- the node a reader clicked is gone
+ * from the chart it opened into, and across a document switch it may not exist
+ * there at all. paintBreadcrumb asks for depth k's document to name rung k.
+ * @param {number} depth
+ * @returns {FiscProjection | null}
+ */
+function docAt(depth) {
+  return depth <= 0 ? fetched : (drilled[depth - 1] ? drilled[depth - 1].doc : null);
+}
+
+/**
+ * The document the chart on screen is shaped from.
+ * @returns {FiscProjection | null}
+ */
+function drawnDoc() {
+  return docAt(drilled.length);
+}
+
+/**
  * The tier set the document on screen was shaped by.
  *
- * ONE READER FOR TWO DECLARATIONS. Everything downstream of the shaping -- the
+ * ONE READER FOR EVERY DECLARATION. Everything downstream of the shaping -- the
  * column alignment, and anything else that has to know which tier is which
  * column -- needs the set the document was actually folded to, and that is
- * RENDER_TIERS on an overview and DRILL.tiers on an opened node. Asking for
- * RENDER_TIERS directly is right in exactly one of those two states, which is
- * how the drill first shipped a chart that could not be laid out at all.
+ * RENDER_TIERS on an overview and the opening step's tiers on a rung. Asking
+ * for RENDER_TIERS directly is right in exactly one of those states, which is
+ * how the drill first shipped a chart that could not be laid out at all: a
+ * wrong answer here is not a wrong-looking chart, it is a throw inside
+ * d3-sankey's ordering pass.
  *
  * @returns {number[]}
  */
 function activeTiers() {
-  return DRILL && drilledInto ? DRILL.tiers : RENDER_TIERS;
+  return drilled.length ? drilled[drilled.length - 1].step.tiers : RENDER_TIERS;
 }
 
 /**
@@ -902,15 +963,22 @@ function activeTiers() {
  * Revenue chart draws 29 over 17, and printing the file's figures there would
  * have the page miscount what the reader can see.
  *
- * THE FACT TOTAL IS THE DOCUMENT'S, AND STAYS SO, but not for the reason this
- * comment used to give. It said "the fact total stays the document's, because
- * folding cites nothing away" -- and that is true only at tiers {0,2,4}, where
- * the fund-to-division link that survives carries the same facts as the object
- * rows folding into it. Neither shipped page folds that way. Measured: Revenue
- * at {0,2} folds the whole spending side into self-loops and drops them, so 190
- * of the document's 239 cited facts are behind what it draws; Spending at {3,4}
- * carries the other 49. They partition it exactly, which is what two pages
- * splitting one document should do.
+ * THE FACT TOTAL IS THE DRAWN DOCUMENT'S, and the word "drawn" is what two
+ * documents add to the rule. "The document's" was one number while a page had
+ * one file; a step that names a projection opens a node of one file into a
+ * chart of another, and shownYear.counts.facts is the first file's total. Read
+ * at depth 1 it would print "from 33 of the document's 120 facts" over a chart
+ * of fund flows -- weighing one document's ribbons against another's file. So
+ * the total comes from the document the chart was shaped from: the year's own
+ * figure, which the packager stamped from that document, while the year's
+ * document is the one drawn, and the drawn document's own metadata.counts
+ * below that. Folding cites nothing away is NOT why the total holds; it is true
+ * only at tiers {0,2,4}, where the fund-to-division link that survives carries
+ * the same facts as the object rows folding into it, and no shipped page folds
+ * that way. Measured: Revenue at {0,2} folds the whole spending side into
+ * self-loops and drops them, so 190 of the document's 239 cited facts are
+ * behind what it draws; Spending at {3,4} carries the other 49. They partition
+ * it exactly, which is what two pages splitting one document should do.
  *
  * The number is still the document's ON A PAGE SHOWING THE WHOLE DOCUMENT,
  * because THE GAP IS THE POINT -- the claim project.Counts.Facts is built on:
@@ -926,6 +994,12 @@ function activeTiers() {
  * a chart against the whole file, which is not a gap that means anything. So a
  * drilled chart counts the facts its own ribbons cite, and the sentence gains
  * the words that say which of the two it is doing.
+ *
+ * A DOCUMENT THAT CARRIES NO metadata.counts IS COUNTED BY ITS RIBBONS ALONE,
+ * rather than dereferenced: this runs mid-repaint, after the breadcrumb and the
+ * chart name, and a throw here is the split page fisc-bsg is about. Every
+ * document `fisc export` writes carries the block; the guard is for a file that
+ * is not one of those.
  *
  * SEPARATE FROM paintYearWords BECAUSE A DRILL CHANGES IT TOO. It was inline
  * there while a year switch was the only thing that could change what is drawn;
@@ -965,10 +1039,14 @@ function paintCounts() {
     for (const l of projection.links) {
       for (const id of l.fact_ids) cited.add(id);
     }
-    from = cited.size === shownYear.counts.facts
+    const doc = drawnDoc();
+    const own = doc && doc !== fetched && doc.metadata && doc.metadata.counts
+      ? doc.metadata.counts.facts : undefined;
+    const total = doc === fetched || !doc ? shownYear.counts.facts
+      : typeof own === "number" ? own : cited.size;
+    from = cited.size === total
       ? ", from " + plural(cited.size, "fact")
-      : ", from " + cited.size + " of the document's " +
-        plural(shownYear.counts.facts, "fact");
+      : ", from " + cited.size + " of the document's " + plural(total, "fact");
   }
   counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") + from;
 }
@@ -976,76 +1054,140 @@ function paintCounts() {
 /**
  * Whether activating this node opens it.
  *
- * ONE TIER AND NO OTHER. A node at DRILL.from opens; everything else on the
- * page is an endpoint of the flow rather than a container of it, and offering
- * to open a revenue category would promise a decomposition the document does
- * not carry. The aggregate is excluded by construction -- it sits in the fine
- * column, never at DRILL.from -- and would have nothing to open into anyway,
- * being several documents' worth of small funds rather than one thing.
+ * ONE TIER PER DEPTH AND NO OTHER. A node at the next step's `from` opens;
+ * everything else on the page is an endpoint of the flow rather than a
+ * container of it, and offering to open a revenue category would promise a
+ * decomposition the document does not carry. Where no step exists at this
+ * depth nothing opens, which is every node of a chain's last rung. An
+ * aggregate is excluded by name -- it can sit at a step's `from` tier now that
+ * caps are per tier -- and would have nothing to open into anyway, being
+ * several documents' worth of small funds rather than one thing.
  *
  * @param {{id: string, tier: number}} d
  * @returns {boolean}
  */
 function drillable(d) {
-  return Boolean(DRILL) && !drilledInto && d.tier === DRILL.from && d.id !== AGGREGATE_ID;
+  const step = stepAt(drilled.length);
+  return Boolean(step) && d.tier === step.from && !isAggregate(d.id);
 }
 
 /**
- * Opens one node, or returns to the overview when id is "".
+ * Whether focus is inside the chart or its breadcrumb, asked while the element
+ * it is on still exists.
  *
- * IT RESHAPES FROM THE FETCHED FILE and repaints everything the shape decides,
- * which is the same set showYear repaints on a year switch and for the same
- * reason: the legend, the flow table, the inferred list and the counts line are
- * all statements about what the reader is looking at, and a drill changes what
- * that is as completely as a year does.
+ * IN THE CHART, not merely "not the body". Escape pressed from the flow
+ * table's <summary> or from the footer while drilled would otherwise yank
+ * focus into the chart -- which is the outcome restoreFocus's own comment
+ * calls a defect, produced by the test that was supposed to prevent it.
+ * @returns {boolean}
+ */
+function focusInChart() {
+  const active = document.activeElement;
+  const chart = maybeEl("chart");
+  return Boolean(active) && Boolean(chart) &&
+    (active === chart || (typeof chart.contains === "function" && chart.contains(active)) ||
+      (typeof active.closest === "function" && active.closest(".breadcrumb") !== null));
+}
+
+/**
+ * The path a step's document is fetched from, or "" for a step that draws the
+ * document of the chart it opens from.
+ *
+ * ONE RESOLVER, because the join is a claim about the packager's config and
+ * fisc-ko1j.4 changes it: a step document is per year, and CONFIG.projections
+ * is one path per stem. Until that join ships, a step naming a projection draws
+ * the one file the stem maps to.
+ * @param {FiscDrillStep} step
+ * @returns {string}
+ */
+function stepPath(step) {
+  if (!step.projection) return "";
+  const path = CONFIG.projections ? CONFIG.projections[step.projection] : undefined;
+  return typeof path === "string" ? path : "";
+}
+
+/**
+ * The document a step draws, fetched and vetted on the first drill that needs
+ * it and cached for the rest of the year; null when it could not be had, with
+ * the reader told unless `superseded` says nobody is waiting.
+ *
+ * EVERY GUARD showYear RUNS, RUN HERE TOO. isDocument, understands and
+ * drawableSankey each fail closed for a reason that is about the file rather
+ * than about which gesture asked for it, and a click that skipped one would
+ * draw at depth 1 a document the year control would refuse at depth 0.
+ * loadDocument is the one place they are sequenced.
+ * @param {FiscDrillStep} step
+ * @param {FiscProjection} from  the document of the chart the step opens from
+ * @param {() => boolean} superseded
+ * @returns {Promise<FiscProjection | null>}
+ */
+async function stepDocument(step, from, superseded) {
+  if (!step.projection) return from;
+  const path = stepPath(step);
+  if (!path) {
+    if (!superseded()) {
+      fail("That could not be opened: this page's step names a document, " +
+        step.projection + ", that the page was not packaged with.");
+    }
+    return null;
+  }
+  const cached = stepDocs.get(path);
+  if (cached) return cached;
+  const doc = await loadDocument(path, superseded);
+  if (doc) stepDocs.set(path, doc);
+  return doc;
+}
+
+/**
+ * Replaces the stack with `next` and repaints everything the shape decides,
+ * or leaves the page exactly as it was and tells the reader why.
+ *
+ * IT RESHAPES FROM THE RUNG'S FILE and repaints the same set showYear repaints
+ * on a year switch, for the same reason: the legend, the flow table, the
+ * inferred list and the counts line are all statements about what the reader
+ * is looking at, and a drill changes what that is as completely as a year does.
+ *
+ * SHAPE AND LAY OUT BEFORE MUTATING ANYTHING, which is showYear's contract
+ * (fisc-bsg) and was not the drill's. layOut ran LAST here, inside the render
+ * call, after the counts line, the breadcrumb, the legend, the inferred list
+ * and the table had all been rewritten -- so a throw from it left the page
+ * describing a chart it had not drawn: counts reading "0 flows between 0
+ * nodes", an empty table, and a breadcrumb naming the node the reader had
+ * opened, over the previous chart. Everything that can throw is in the two
+ * lines inside the try, and both run while the page is still wholly the one
+ * the reader was looking at. THE STACK IS SWAPPED FIRST because shapeFor and
+ * layOut read it, and swapped back on a throw: the restore is of the whole
+ * stack, not of one id.
  *
  * THE PIN AND THE ISOLATION ARE CLEARED, because both hold a node id and a
  * drill can remove the node they name -- opening a fund group deletes the group
  * itself from the drawn set. showYear clears them for exactly this reason on a
  * year switch; this is the same hazard one gesture over.
  *
- * @param {string} id
+ * @param {Rung[]} next
+ * @returns {boolean} whether the new depth is on screen
  */
-function drillTo(id) {
-  if (!fetched || !DRILL) return;
-  const was = drilledInto;
+function redrawStack(next) {
   // ASKED BEFORE ANYTHING IS REPAINTED. The element focus is on is one the
   // repaint below removes, so after it there is nothing left to ask about.
-  // IN THE CHART, not merely "not the body". Escape pressed from the flow
-  // table's <summary> or from the footer while drilled would otherwise yank
-  // focus into the chart -- which is the outcome restoreFocus's own comment
-  // calls a defect, produced by the test that was supposed to prevent it.
-  const active = document.activeElement;
-  const chart = maybeEl("chart");
-  const hadFocus = Boolean(active) && Boolean(chart) &&
-    (active === chart || (typeof chart.contains === "function" && chart.contains(active)) ||
-      (typeof active.closest === "function" && active.closest(".breadcrumb") !== null));
-  drilledInto = id;
-
-  // SHAPE AND LAY OUT BEFORE MUTATING ANYTHING, which is showYear's contract
-  // (fisc-bsg) and was not this function's. layOut ran LAST here, inside the
-  // render call, after the counts line, the breadcrumb, the legend, the
-  // inferred list and the table had all been rewritten -- so a throw from it
-  // left the page describing a chart it had not drawn: counts reading "0 flows
-  // between 0 nodes", an empty table, and a breadcrumb naming the node the
-  // reader had opened, over the previous chart. And because drillTo is called
-  // straight from a click handler, the exception escaped with no banner at all.
-  //
-  // Everything that can throw is in these two lines, and both run while the
-  // page is still wholly the one the reader was looking at.
+  const hadFocus = focusInChart();
+  const was = drilled;
+  drilled = next;
   let drawn;
   let laid;
   try {
-    drawn = shapeFor(fetched);
+    const doc = drawnDoc();
+    if (!doc) throw new Error("no document to open");
+    drawn = shapeFor(doc);
     laid = layOut(drawn);
   } catch (e) {
     // BACK TO WHERE THE READER WAS, not to a blank page. shapeFor throws on a
     // document its tier set cannot describe, which is a fault in this view's
     // declaration rather than in the reader's click, and leaving the chart
     // drawn as it was is the only outcome that does not punish them for it.
-    drilledInto = was;
+    drilled = was;
     fail("That could not be opened: " + (e instanceof Error ? e.message : String(e)));
-    return;
+    return false;
   }
   clearRefusal();
   projection = drawn;
@@ -1062,6 +1204,62 @@ function drillTo(id) {
   buildTable();
   render(laid);
   restoreFocus(hadFocus);
+  return true;
+}
+
+/**
+ * Opens one node of the chart on screen, one rung deeper.
+ *
+ * ASYNC BECAUSE THE FIRST RUNG OF A DOCUMENT-SWITCHING CHAIN FETCHES, and that
+ * gives every guard in loadDocument a caller that is a click. The await sits
+ * between the fetch and the repaint and nothing is mutated before it; after it
+ * the gesture asks whether it has been overtaken -- by a later drill, a pop, or
+ * a year switch -- and stands down rather than push a rung onto a stack that is
+ * no longer the one it was opened against. A year switch mid-drill would
+ * otherwise draw the year the reader left.
+ *
+ * @param {string} id
+ * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
+ */
+async function drillDown(id) {
+  const depth = drilled.length;
+  const step = stepAt(depth);
+  const from = docAt(depth);
+  if (!step || !from) return FAILED;
+  const mine = ++opening;
+  const token = switching;
+  const overtaken = () => mine !== opening || token !== switching;
+  const doc = await stepDocument(step, from, overtaken);
+  if (overtaken()) return SUPERSEDED;
+  if (!doc) return FAILED;
+  return redrawStack(drilled.concat([{ id: id, doc: doc, step: step }])) ? DREW : FAILED;
+}
+
+/**
+ * Closes rungs until `depth` remain: 0 is the overview.
+ *
+ * SYNCHRONOUS, because every document a shallower rung needs is already on the
+ * stack. It bumps the drill token so a drill in flight from a rung being closed
+ * stands down instead of landing on the shorter stack.
+ * @param {number} depth
+ */
+function drillUp(depth) {
+  if (depth < 0 || depth >= drilled.length) return;
+  opening++;
+  redrawStack(drilled.slice(0, depth));
+}
+
+/**
+ * What a click or a key does to a node that opens: drills, and banners a
+ * rejection rather than losing it.
+ *
+ * The rejection path is the last resort, as wireYears' is. drillDown catches
+ * the throws it knows -- the fetch, the shape, the layout -- so what reaches
+ * here is a repaint that threw, and a click handler has nowhere else to put it.
+ * @param {string} id
+ */
+function openNode(id) {
+  void drillDown(id).catch((e) => fail("The chart failed to draw: " + String(e)));
 }
 
 /**
@@ -1100,8 +1298,16 @@ function restoreFocus(hadFocus) {
     el.focus();
     return true;
   };
+  // THE INNERMOST RUNG'S CONTROL, NOT THE FIRST CHILD. Under N rungs the bar
+  // holds N return controls, and children[0] is the outermost -- the way back
+  // to the overview -- which is not where a reader two rungs deep came from.
+  // The last control is the one that closes the rung just opened.
   const bar = maybeEl("breadcrumb");
-  if (drilledInto && bar && focus(bar.children[0])) return;
+  if (drilled.length && bar) {
+    const controls = Array.from(bar.children || []).filter((c) =>
+      String(/** @type {any} */ (c).tagName || "").toLowerCase() === "button");
+    if (focus(controls[controls.length - 1] || null)) return;
+  }
   const chart = maybeEl("chart");
   focus(chart ? chart.querySelector("g.node") : null);
 }
@@ -1122,10 +1328,13 @@ function restoreFocus(hadFocus) {
  * screen. Returning to the overview puts both back.
  */
 function paintChartName() {
+  // EVERY RUNG, OUTERMOST FIRST, so a reader two deep hears the whole path:
+  // "opened into General Fund, then Patrol". One rung reads as it always did.
+  const trail = drilled.map((_, k) => labelOfRung(k)).join(", then ");
   const title = maybeEl("chart-title");
   if (title && shownYear && shownYear.chart_title) {
-    title.textContent = drilledInto
-      ? shownYear.chart_title + ", opened into " + labelOf(drilledInto)
+    title.textContent = drilled.length
+      ? shownYear.chart_title + ", opened into " + trail
       : shownYear.chart_title;
   }
   const desc = maybeEl("chart-desc");
@@ -1134,8 +1343,12 @@ function paintChartName() {
     baseDescription = desc.textContent;
     tablePointer = lastSentence(baseDescription);
   }
-  desc.textContent = drilledInto
-    ? labelOf(drilledInto) + " on the left, and what it is made of on the right. " +
+  // THE TABLE POINTER CLOSES EVERY DEPTH'S DESCRIPTION, not only the first
+  // rung's: it is captured once from the served sentence and the closed flow
+  // table is out of the accessibility tree, so this sentence is the only route
+  // to it a reader who cannot see the page has, however deep they are.
+  desc.textContent = drilled.length
+    ? trail + " on the left, and what it is made of on the right. " +
       "Use the breadcrumb above the chart, or press Escape, to go back. " + tablePointer
     : baseDescription;
 }
@@ -1166,22 +1379,32 @@ function lastSentence(s) {
 /**
  * Says what a click does, for the state the chart is actually in.
  *
- * THE INSTRUCTION GOES FALSE THE MOMENT A READER FOLLOWS IT. The drill is one
- * hop -- DRILL.from names a single tier, so no node in an opened view is itself
- * openable -- and the page went on saying "click a node in the right-hand
- * column to open it" over a chart where nothing opened. The swatch sentence was
- * worse: conditional on the OPENING state's legend, and buildLegend draws no
- * swatches in any opened view.
+ * THE INSTRUCTION GOES FALSE THE MOMENT A READER FOLLOWS IT. On a chain the
+ * question is whether a step exists BELOW this depth, not whether one is open:
+ * "nothing here opens further" was true of every opened view while the drill
+ * was one hop, and is false of depth 1 on a two-step chain. The page went on
+ * saying "click a node in the right-hand column to open it" over a chart
+ * where nothing opened, and the swatch sentence was worse: conditional on the
+ * OPENING state's legend, and buildLegend draws no swatches in any opened view.
+ *
+ * "RIGHT-HAND COLUMN" IS A CLAIM ABOUT THE DECLARED STEPS, not something this
+ * file checks: every step the site declares opens the finest tier its chart
+ * draws. A step opening a middle column would make the sentence wrong and
+ * nothing here would say so.
  *
  * Server-rendered for the opening state, so it survives with JavaScript off --
  * where it is also true, because without a script nothing can be opened at all.
  */
 function paintChartHint() {
   const hint = maybeEl("chart-hint");
-  if (!hint || !DRILL) return;
-  if (drilledInto) {
-    hint.textContent = "This is " + labelOf(drilledInto) +
-      ", broken into its parts. Nothing here opens further; go back to open another.";
+  if (!hint || !STEPS.length) return;
+  const below = stepAt(drilled.length);
+  if (drilled.length) {
+    hint.textContent = "This is " + labelOfRung(drilled.length - 1) +
+      ", broken into its parts. " +
+      (below
+        ? "Click a node in the right-hand column to open it further, or tab to one and press Enter."
+        : "Nothing here opens further; go back to open another.");
     return;
   }
   const swatches = buildLegendCount();
@@ -1207,35 +1430,49 @@ function buildLegendCount() {
 function paintBreadcrumb() {
   const bar = maybeEl("breadcrumb");
   if (!bar) return;
-  if (!drilledInto) {
+  if (!drilled.length) {
     bar.replaceChildren();
     bar.setAttribute("hidden", "");
     return;
   }
   bar.removeAttribute("hidden");
-  const back = h("button", "crumb-back");
+  // ONE RETURN CONTROL PER RUNG, EACH CLOSING TO ITS OWN DEPTH. Rung k's
+  // control says what the chart k deep is -- the step's `back` -- and pops the
+  // stack to k rungs, so a reader two deep can return one rung or two.
+  //
   // THE WORDS ARE THE VIEW'S, not derived from the tier number. A first draft
-  // read `DRILL.from === 2 ? "fund groups" : "divisions"`, which is a mapping
-  // this file has no way to keep true: a third page drilling from a third tier
+  // read `from === 2 ? "fund groups" : "divisions"`, which is a mapping this
+  // file has no way to keep true: a third page drilling from a third tier
   // would get "divisions" and nobody would find out from a test.
-  back.textContent = "\u2190 " + ((DRILL && DRILL.back) || "Back");
-  back.setAttribute("type", "button");
-  back.addEventListener("click", () => drillTo(""));
-  const here = h("span", "crumb-here", labelOf(drilledInto));
-  bar.replaceChildren(back, here);
+  const controls = drilled.map((rung, k) => {
+    const back = h("button", "crumb-back");
+    back.textContent = "\u2190 " + (rung.step.back || "Back");
+    back.setAttribute("type", "button");
+    back.addEventListener("click", () => drillUp(k));
+    return back;
+  });
+  const here = h("span", "crumb-here", labelOfRung(drilled.length - 1));
+  bar.replaceChildren(...controls, here);
 }
 
 /**
- * A node's printed label, from the FETCHED document.
+ * The printed label of the node rung k opened, from the document it was opened
+ * FROM.
  *
  * NOT FROM THE DRAWN ONE, which is the point: the breadcrumb names the node the
- * reader opened, and opening it is what removes it from the drawn set.
- * @param {string} id
+ * reader opened, and opening it is what removes it from the drawn set. And not
+ * from the rung's own document either: across a document switch the node was
+ * clicked in the chart one depth up, and that chart's file is the one that
+ * prints its label.
+ * @param {number} k
  * @returns {string}
  */
-function labelOf(id) {
-  const n = fetched ? fetched.nodes.find((x) => x.id === id) : null;
-  return n ? n.label : id;
+function labelOfRung(k) {
+  const rung = drilled[k];
+  if (!rung) return "";
+  const doc = docAt(k);
+  const n = doc ? doc.nodes.find((x) => x.id === rung.id) : null;
+  return n ? n.label : rung.id;
 }
 
 /**
@@ -1257,18 +1494,33 @@ function labelOf(id) {
  * @returns {FiscProjection}
  */
 function shapeFor(doc) {
-  if (!DRILL || !drilledInto) {
+  const rung = drilled.length ? drilled[drilled.length - 1] : null;
+  if (!rung) {
     // THE ROOT IS A FILTER TOO, and the same one: a page that draws one node's
     // subtree is a page permanently opened into it. Composing them would be
     // wrong -- the node a reader opens is already inside the root -- so a drill
     // filters to what was clicked and an overview to what was declared.
     return foldDocument(ROOT ? filterToNode(doc, ROOT, RENDER_TIERS) : doc);
   }
-  const fine = DRILL.tiers[DRILL.tiers.length - 1];
-  const drawn = foldDocument(
-    capColumn(filterToNode(doc, drilledInto, DRILL.tiers), fine, DRILL.cap), DRILL.tiers);
+  // ROOT DOES NOT REACH HERE. It is the spine's vocabulary -- the node whose
+  // subtree THIS PAGE's overview draws -- and a rung filters to the node the
+  // reader opened, which is inside the root on a page that has one and is a
+  // node of another document entirely on a step that switched.
+  const step = rung.step;
+  let shaped = filterToNode(doc, rung.id, step.tiers);
+  // EVERY CAP THE STEP DECLARES, COARSEST TIER FIRST. Folding a coarse node
+  // removes its descendants (capColumn's orphaned()), which changes which fine
+  // nodes are left to rank; capping the fine tier first would rank divisions
+  // of a fund about to be folded away. The order is the step's tier order, not
+  // the caps' declaration order, for the same reason the cap is looked up by
+  // the tier it names.
+  for (const tier of step.tiers) {
+    const cap = (step.caps || []).find((c) => c.tier === tier);
+    if (cap) shaped = capColumn(shaped, tier, cap.cap, rung.id, step.tail);
+  }
+  const drawn = foldDocument(shaped, step.tiers);
 
-  // THE AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, and it has to be here
+  // EVERY AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, and it has to be here
   // rather than in capColumn. capColumn runs first and parents the aggregate at
   // the node being opened, which is true; foldDocument then re-points every
   // retained node's parent at its folded ancestor and blanks the ones whose
@@ -1276,24 +1528,53 @@ function shapeFor(doc) {
   // opening it is what filtered it away. So the aggregate came out of the fold
   // parentless and drew in --muted among its coloured siblings.
   //
+  // AT THE CURRENT RUNG, NOT THE FIRST: two rungs deep the folded tail is
+  // inside the node opened last, and parenting it at the outer rung would be a
+  // claim about the hierarchy the walk cannot confirm.
+  //
   // It is restored rather than exempted from the fold, because the fold's rule
   // is about the document's own well-formedness and this is a claim about the
   // FILE's hierarchy, which is what fundGroupOf walks.
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) =>
-      (n.id === AGGREGATE_ID ? Object.assign({}, n, { parent: drilledInto }) : n)),
+      (isAggregate(n.id) ? Object.assign({}, n, { parent: rung.id }) : n)),
   });
 }
 
 /**
- * The id of the node a capped tail is folded into.
+ * The prefix every capped tail's id carries.
  *
  * NOT A FIGURE THE CITY PRINTED, and the label says so in words rather than
  * relying on this comment: it reads "N smaller funds", which is a count of rows
  * and not a line item. The amount on its ribbons is a sum of printed figures,
  * exactly as every folded ribbon's is.
  */
-const AGGREGATE_ID = "aggregate/tail";
+const AGGREGATE_PREFIX = "aggregate/tail/";
+
+/**
+ * The id of the node one tier's capped tail is folded into.
+ *
+ * PER TIER, BECAUSE A STEP CAN CAP TWO. One id for every fold put two
+ * aggregates in one document the moment both a step's caps engaged -- two
+ * nodes with one id, which d3-sankey keys by id and the fold merges by id, so
+ * the second tail's ribbons landed on the first tail's node. Latent on the
+ * committed corpus, where the division column never exceeds its cap while the
+ * fund column does, and latent is how it ships.
+ * @param {number} tier
+ * @returns {string}
+ */
+function aggregateID(tier) {
+  return AGGREGATE_PREFIX + tier;
+}
+
+/**
+ * Whether an id names a capped tail of any tier.
+ * @param {string} id
+ * @returns {boolean}
+ */
+function isAggregate(id) {
+  return id.startsWith(AGGREGATE_PREFIX);
+}
 
 /**
  * Folds all but the largest `cap` nodes of one tier into a single node.
@@ -1322,9 +1603,12 @@ const AGGREGATE_ID = "aggregate/tail";
  * @param {FiscProjection} doc
  * @param {number} tier
  * @param {number} cap
+ * @param {string} opened  the node the column is inside, which the aggregate is
+ *   parented to
+ * @param {string} noun  the step's plural noun for the tier's rows
  * @returns {FiscProjection}
  */
-function capColumn(doc, tier, cap) {
+function capColumn(doc, tier, cap, opened, noun) {
   const atTier = doc.nodes.filter((n) => n.tier === tier);
   // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE. This engaged at cap + 1, so
   // a column of 9 against a cap of 8 folded a single fund into a node labelled
@@ -1355,9 +1639,9 @@ function capColumn(doc, tier, cap) {
   // Pluralised even though the threshold above now guarantees at least two,
   // because the two rules are in different functions and only one of them is
   // about grammar. paintCounts learned the same lesson one function away.
-  const noun = (DRILL && DRILL.tail) || "items";
+  const word = noun || "items";
   const label = folded.length + " smaller " +
-    (folded.length === 1 ? noun.replace(/s$/, "") : noun);
+    (folded.length === 1 ? word.replace(/s$/, "") : word);
   // derived: true, AND IT IS THE INVARIANT RATHER THAN A FLAG. The city printed
   // no line item called "24 smaller funds"; this node is ours, and shipping it
   // as printed made the page state the opposite in four places at once -- a
@@ -1370,11 +1654,11 @@ function capColumn(doc, tier, cap) {
   // sums a merged ribbon. What is inferred is the GROUPING, and that is what
   // the rationale says.
   const aggregate = {
-    id: AGGREGATE_ID, label: label, tier: tier,
+    id: aggregateID(tier), label: label, tier: tier,
     // PARENTED TO THE NODE BEING OPENED, which is true -- every item folded
     // into it is inside that node -- and is what gives the mark its group's
     // hue instead of --muted. It was "" and drew grey among coloured siblings.
-    parent: drilledInto,
+    parent: opened,
     constraint_tier: "",
     // A ROLE, because an empty one renders as a bordered empty .chip in both
     // the tooltip and the detail panel: a box with nothing in it, beside chips
@@ -1393,14 +1677,14 @@ function capColumn(doc, tier, cap) {
     folds: [],
     derived: true,
     rationale: "Our grouping, not a line the city printed: the " + folded.length +
-      " smallest " + ((DRILL && DRILL.tail) || "items") + " in this column are drawn as one " +
+      " smallest " + word + " in this column are drawn as one " +
       "mark because they cannot be drawn separately. Every figure inside it is printed; " +
       "the box around them is ours.",
     source_note: "The " + folded.length + " smallest of " + atTier.length +
       " by value, at this page's cap of " + cap + ".",
   };
   const tail = new Set(folded.map((n) => n.id));
-  const remap = (/** @type {string} */ id) => (tail.has(id) ? AGGREGATE_ID : id);
+  const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
 
   // A FOLDED NODE'S DESCENDANTS GO WITH IT. Removing a tail node while leaving
   // anything parented to it produces a document whose child names a parent it
@@ -1705,9 +1989,17 @@ function layOut(doc) {
   // sits. Taking the drawn parent leaves the walk stopping at the first "".
   // The aggregate is the node the drawn set contributes: the file has never
   // heard of it.
+  //
+  // THE FETCHED HIERARCHY IS THE DRAWN DOCUMENT'S, NOT THE YEAR'S. A rung can
+  // be shaped from a different file than depth 0, and merging the year's
+  // document over it would resolve the hue walk against the other document's
+  // parents -- the failure fundGroupOf's comment records as every mark in
+  // --muted, reached from the other side.
+  const previous = groupIndex;
   groupIndex = new Map(doc.nodes.map((n) => [n.id, n]));
-  if (fetched) {
-    for (const n of fetched.nodes) groupIndex.set(n.id, n);
+  const source = drawnDoc();
+  if (source) {
+    for (const n of source.nodes) groupIndex.set(n.id, n);
   }
 
   // WHICH COLUMN A NODE IS DRAWN IN IS A PROPERTY OF ITS TIER ONCE THIS PAGE
@@ -1720,7 +2012,7 @@ function layOut(doc) {
   //
   // THE TIER SET IS THE ONE THE DOCUMENT WAS SHAPED BY, not the page's own, and
   // that distinction only exists because a page can open a node. A drilled
-  // document is folded to DRILL.tiers -- {0,3} on Revenue against the page's
+  // document is folded to its step's tiers -- {0,3} on Revenue against the page's
   // {0,2} -- so aligning on RENDER_TIERS gives every tier-3 fund
   // indexOf === -1, which d3 clamps to column 0. Measured: that leaves the
   // layer array with a hole and d3-sankey dies inside its own ordering pass
@@ -1747,10 +2039,21 @@ function layOut(doc) {
   // d3-sankey mutates its input, so it gets a copy and the fetched document
   // stays the thing the table and the detail panel read from.
   /** @type {{nodes:LaidNode[], links:LaidLink[]}} */
-  const graph = sankey({
-    nodes: doc.nodes.map((n) => Object.assign({}, n)),
-    links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
-  });
+  let graph;
+  try {
+    graph = sankey({
+      nodes: doc.nodes.map((n) => Object.assign({}, n)),
+      links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
+    });
+  } catch (e) {
+    // THE INDEX GOES BACK WITH THE THROW. It has to be assigned before the
+    // sankey runs, because nodeRank walks it from inside d3's sort -- and a
+    // document that will not lay out must not leave it describing that
+    // document, or paint() on the next theme change recolours the chart still
+    // on screen against a hierarchy it was never drawn from.
+    groupIndex = previous;
+    throw e;
+  }
   restackLinks(graph);
   // Held for columnShare, which needs the LAID nodes: a share is of the column
   // d3-sankey put a mark in, and only this graph knows which that is.
@@ -1856,7 +2159,7 @@ function render(laid) {
       const echo = d.id === keyActivation.id && e.timeStamp - keyActivation.at < 500;
       if (echo) return;
       if (drillable(d)) {
-        drillTo(d.id);
+        openNode(d.id);
         return;
       }
       setIsolated(isolated === d.id ? "" : d.id);
@@ -1870,7 +2173,7 @@ function render(laid) {
       // empty here even though focus already pinned this node once.
       pin(d);
       if (drillable(d)) {
-        drillTo(d.id);
+        openNode(d.id);
         return;
       }
       setIsolated(isolated === d.id ? "" : d.id);
@@ -2278,10 +2581,28 @@ function pin(d) {
  * Legend, derived list, table
  * ------------------------------------------------------------------ */
 
+/**
+ * Draws one swatch per fund group on the chart, each a toggle for that group's
+ * isolation.
+ *
+ * EMPTY ON EVERY OPENED VIEW, BY RULE AND NOT BY ACCIDENT. It was empty there
+ * already, because filterToNode keeps no fund-group node once a group is
+ * opened -- but that is a side effect, and on a page that opens the spine the
+ * legend vanishing on the first click is a decision the code has to own. The
+ * decision: an opened view is one node's subtree, every mark in it resolves
+ * to the one fund group above that node, and a key that distinguishes groups
+ * has nothing to distinguish. The breadcrumb names the group and every ribbon
+ * wears its hue. And the swatch is a toggle on a NODE id -- setIsolated dims
+ * whatever is not adjacent to it -- so a swatch for a group not on the chart
+ * would dim the whole chart. fisc-ko1j.11, which opens a revenue category
+ * whose subtree spans groups, is where this rule would have to change, and
+ * with it the isolation it rests on.
+ */
 function buildLegend() {
   if (!projection) return;
   const legend = el("legend");
   legend.replaceChildren();
+  if (drilled.length) return;
   const byID = new Map(projection.nodes.map((n) => [n.id, n]));
   for (const id of FUND_ORDER) {
     const node = byID.get(id);
@@ -2652,6 +2973,72 @@ function drawableSankey(doc, what) {
 }
 
 /**
+ * Fetches one document and vets it, returning it, or null with the reader told
+ * why -- unless `superseded` says nobody is waiting, in which case nothing is
+ * painted and null is returned without a word.
+ *
+ * ONE FETCH PATH FOR THE YEAR AND FOR A STEP. Every guard here -- the HTTP
+ * status, the body that will not parse, isDocument, understands, drawableSankey
+ * -- has two callers now, and a click's fetch that skipped one would draw at
+ * depth 1 a file the year control refuses at depth 0. `superseded` IS
+ * CONSULTED BEFORE EVERY BANNER: without that, a reader who switched away
+ * while a fetch was failing got the file:// remediation banner -- role="alert"
+ * -- pasted over a year that drew correctly, the page asserting something
+ * untrue about what is on screen.
+ *
+ * BOTH AWAITS ARE INSIDE THE TRY. response.json() used to sit outside it, so a
+ * 200 with a truncated or malformed body rejected out of this function entirely
+ * -- into main()'s .catch on the opening path, and into nothing at all from the
+ * year control, which is a page half-repainted between two years with no
+ * banner.
+ *
+ * @param {string} path
+ * @param {() => boolean} superseded
+ * @returns {Promise<FiscProjection | null>}
+ */
+async function loadDocument(path, superseded) {
+  let doc;
+  try {
+    const response = await fetch(path);
+    if (superseded()) return null;
+    if (!response.ok) {
+      fail("Could not load " + path + ": HTTP " + response.status);
+      return null;
+    }
+    doc = /** @type {FiscProjection} */ (await response.json());
+  } catch (e) {
+    if (superseded()) return null;
+    // For a rejected fetch the overwhelmingly likely cause is file:// -- Chrome
+    // blocks fetch from a file: origin, so the page loads and the chart never
+    // arrives. Say the fix rather than the error. A body that will not parse is
+    // a different fault and gets its own sentence, because "serve it over HTTP"
+    // is useless advice to someone already doing that.
+    // `e.name` and not `e instanceof SyntaxError`: instanceof compares against
+    // THIS realm's constructor, and an error thrown by a response body parsed
+    // in another one is not an instance of it. In a browser the two realms are
+    // the same and both work, which is what makes the difference invisible --
+    // under tools/jscheck's vm they are not, the instanceof arm was dead, and
+    // the branch below could never have been shown to work at all.
+    fail(e && e.name === "SyntaxError"
+      ? "Could not read " + path + ": the file is not valid JSON, so it is " +
+        "truncated or was not the document this page expected."
+      : "Could not load " + path + ". If you opened this file directly, the browser " +
+        "blocks the request: serve the directory over HTTP instead, e.g. " +
+        "python3 -m http.server -d dist 8000");
+    return null;
+  }
+  if (superseded()) return null;
+  // The fetched file is what actually gets drawn, and it is a separate
+  // document from the config: the packager stamps the config from the
+  // projection it was handed, so agreeing with the config is not evidence the
+  // file on the wire agrees too.
+  if (!isDocument(doc, path)) return null;
+  if (!understands(doc.schema_version, path)) return null;
+  if (!drawableSankey(doc, path)) return null;
+  return doc;
+}
+
+/**
  * What one showYear attempt came to.
  *
  * THREE OUTCOMES AND NOT A BOOLEAN, because "did not draw" was two different
@@ -2681,56 +3068,12 @@ let switching = 0;
 async function showYear(year) {
   // A switch token, because two switches can be in flight at once: a reader who
   // clicks twice gets two fetches, and without this the SLOWER one wins and the
-  // page draws a year the control does not show. Compared after every await.
+  // page draws a year the control does not show. Compared after every await,
+  // inside loadDocument and once more here.
   const token = ++switching;
-
-  // BOTH AWAITS ARE INSIDE THE TRY. response.json() used to sit outside it, so
-  // a 200 with a truncated or malformed body rejected out of this function
-  // entirely -- into main()'s .catch on the opening path, and into nothing at
-  // all from the year control, which is a page half-repainted between two years
-  // with no banner.
-  let doc;
-  try {
-    const response = await fetch(year.path);
-    if (token !== switching) return SUPERSEDED;
-    if (!response.ok) {
-      fail("Could not load " + year.path + ": HTTP " + response.status);
-      return FAILED;
-    }
-    doc = /** @type {FiscProjection} */ (await response.json());
-  } catch (e) {
-    // THE TOKEN IS CHECKED BEFORE THE BANNER, as it is at every other exit.
-    // Without it, a reader who switched away while a fetch was failing got the
-    // file:// remediation banner -- role="alert" -- pasted over a year that drew
-    // correctly: the page asserting something untrue about what is on screen.
-    if (token !== switching) return SUPERSEDED;
-    // For a rejected fetch the overwhelmingly likely cause is file:// -- Chrome
-    // blocks fetch from a file: origin, so the page loads and the chart never
-    // arrives. Say the fix rather than the error. A body that will not parse is
-    // a different fault and gets its own sentence, because "serve it over HTTP"
-    // is useless advice to someone already doing that.
-    // `e.name` and not `e instanceof SyntaxError`: instanceof compares against
-    // THIS realm's constructor, and an error thrown by a response body parsed
-    // in another one is not an instance of it. In a browser the two realms are
-    // the same and both work, which is what makes the difference invisible --
-    // under tools/jscheck's vm they are not, the instanceof arm was dead, and
-    // the branch below could never have been shown to work at all.
-    fail(e && e.name === "SyntaxError"
-      ? "Could not read " + year.path + ": the file is not valid JSON, so it is " +
-        "truncated or was not the document this page expected."
-      : "Could not load " + year.path + ". If you opened this file directly, the browser " +
-        "blocks the request: serve the directory over HTTP instead, e.g. " +
-        "python3 -m http.server -d dist 8000");
-    return FAILED;
-  }
+  const doc = await loadDocument(year.path, () => token !== switching);
   if (token !== switching) return SUPERSEDED;
-  // The fetched file is what actually gets drawn, and it is a separate
-  // document from the config: the packager stamps the config from the
-  // projection it was handed, so agreeing with the config is not evidence the
-  // file on the wire agrees too.
-  if (!isDocument(doc, year.path)) return FAILED;
-  if (!understands(doc.schema_version, year.path)) return FAILED;
-  if (!drawableSankey(doc, year.path)) return FAILED;
+  if (!doc) return FAILED;
 
   // LAY OUT BEFORE MUTATING ANYTHING. Every throw left in the draw is in here
   // -- a link naming a node the document does not carry is the realistic one --
@@ -2750,7 +3093,12 @@ async function showYear(year) {
   // new document to a subtree of nothing and hand d3-sankey an empty graph.
   // The pin and the isolation are cleared after the draw because they only
   // decorate it; this decides what is drawn.
-  drilledInto = "";
+  //
+  // THE WHOLE STACK, AND THE STEP DOCUMENTS WITH IT. A step's file was fetched
+  // for the year it was opened in, and the next drill fetches it again for
+  // this one rather than draw the year the reader left one rung down.
+  drilled = [];
+  stepDocs = new Map();
   const drawn = shapeFor(doc);
   const laid = layOut(drawn);
 
@@ -3029,10 +3377,12 @@ async function main() {
       // claimed the opposite, which is how it got written. Two presses close
       // both, in the order a reader made them.
       // AN OPENED NODE IS CLOSED ONLY WHEN THERE IS NOTHING INSIDE IT TO
-      // CLEAR. drillTo repaints everything and clears the pin and the isolation
-      // itself, so this branch does nothing else.
-      if (!pinned && !isolated && drilledInto) {
-        drillTo("");
+      // CLEAR, AND ONE RUNG AT A TIME. drillUp repaints everything and clears
+      // the pin and the isolation itself, so this branch does nothing else;
+      // two rungs deep, one press closes the inner rung and leaves the outer,
+      // which is the order the reader opened them in.
+      if (!pinned && !isolated && drilled.length) {
+        drillUp(drilled.length - 1);
         return;
       }
       hideTip();
