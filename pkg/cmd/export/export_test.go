@@ -1208,7 +1208,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Description: "The revenue categories on the left flow into this fund group's own " +
 				"funds, rescaled to the group's total \u2014 the citywide chart cannot show " +
 				"them, because the General Fund alone is half the fund column and the " +
-				"smallest fund is a thirty-thousandth of it. Only the General Fund continues " +
+				"smallest fund is less than a thirty-thousandth of it. Only the General Fund continues " +
 				"into the divisions that spend it: Budget Book pp.167-170 decompose that " +
 				"fund alone, so every other group's money ends at its funds \u2014 not " +
 				"missing, but not broken down in any published schedule.",
@@ -1783,11 +1783,32 @@ func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
 // and cannot lay out a document it is not handed. What this test buys is that
 // the document it lays out is the one `fisc export` writes -- without it, the
 // fold could be proved to work on a drill-down that stopped being ours.
+func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, project.FundFlowsProjection, "fund-flows.golden.json")
+}
+
+// TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws is the same claim over
+// the other column the merged page reaches.
+//
+// THE SPINE PUBLISHES TWO YEARS AND EACH OPENS INTO ITS OWN DOCUMENT
+// (stepStems), so a drill measured over FY2026's capture alone leaves FY2027's
+// with nothing able to see it go wrong -- and the two are not the same shape:
+// fund/207 prints a dash in the FY2027 column and is not a node there. The
+// stem is spelled rather than computed for TestStepStemsJoinsOnColumnNotOn
+// DeclaredOrder's reason: it is the file the join names, and a test deriving
+// it the way the code does would agree with the code by construction.
+func TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, "fund-flows-2027", "fund-flows-2027.golden.json")
+}
+
+// fixtureIsTheDocumentExported compares one committed capture line for line
+// with what buildProjections writes at `stem`.
 //
 // metadata.generated_by is excluded because it carries the commit and the build
 // time, which no committed file can match. Nothing else is excluded: the nodes,
 // the links, the counts, the caveats and the key order are all compared.
-func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
+	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatalf("resolve repo root: %v", err)
@@ -1796,11 +1817,11 @@ func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildProjections: %v", err)
 	}
-	got, ok := built[project.FundFlowsProjection]
+	got, ok := built[stem]
 	if !ok {
-		t.Fatalf("buildProjections did not build %q", project.FundFlowsProjection)
+		t.Fatalf("buildProjections did not build %q", stem)
 	}
-	want, err := os.ReadFile(filepath.Join(root, "testdata", "fund-flows.golden.json"))
+	want, err := os.ReadFile(filepath.Join(root, "testdata", fixture))
 	if err != nil {
 		t.Fatalf("read fixture: %v", err)
 	}
@@ -1811,8 +1832,8 @@ func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 		strings.Split(string(stamp.ReplaceAll(want, blank)), "\n"),
 		strings.Split(string(stamp.ReplaceAll(got, blank)), "\n"),
 	); diff != "" {
-		t.Errorf("testdata/fund-flows.golden.json is no longer what fisc export writes "+
+		t.Errorf("testdata/%s is no longer what fisc export writes at %s.json "+
 			"(-fixture +built); re-capture it with `fisc export` and restore the "+
-			"generated_by line:\n%s", diff)
+			"generated_by line:\n%s", fixture, stem, diff)
 	}
 }

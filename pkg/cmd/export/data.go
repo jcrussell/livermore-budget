@@ -575,16 +575,21 @@ func views(built result) []export.View {
 				Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
 				Back:            "All fund groups",
 				Tail:            "funds",
-				// THE FIGURES IN THIS SENTENCE ARE MEASURED off
-				// testdata/fund-flows.golden.json: fund/100 takes 49.18% of
-				// the fund column's inflow, and the smallest fund, fund/550
-				// at $5,000, is 1/31,575 of fund/100's -- the reason a
-				// citywide fund column is not drawn and a group is opened
-				// instead.
+				// THE FIGURES IN THIS SENTENCE ARE MEASURED off both
+				// committed goldens, and tools/jscheck/drill.mjs pins them
+				// per column: fund/100 takes 49.18% of the fund column's
+				// inflow in FY2026 and 50.79% in FY2027, and the smallest
+				// fund -- fund/550 at $5,000, then fund/202 at $3,000 -- is
+				// 1/31,575 and 1/54,786 of fund/100's. "Less than a
+				// thirty-thousandth" is the bound both columns clear; the
+				// exact ratio belongs to the check, not to a sentence that is
+				// shown under either year. That gap is the reason a citywide
+				// fund column is not drawn and a group is opened instead.
 				Description: "The revenue categories on the left flow into this fund " +
 					"group's own funds, rescaled to the group's total \u2014 the citywide " +
 					"chart cannot show them, because the General Fund alone is half the " +
-					"fund column and the smallest fund is a thirty-thousandth of it. Only " +
+					"fund column and the smallest fund is less than a thirty-thousandth " +
+					"of it. Only " +
 					"the General Fund continues into the divisions that spend it: Budget " +
 					"Book pp.167-170 decompose that fund alone, so every other group's " +
 					"money ends at its funds \u2014 not missing, but not broken down in " +

@@ -587,17 +587,31 @@ export function selectorsIn(source) {
   return found;
 }
 
-/** The committed worked example, which is FY2026 and is what the claims are about. */
 /**
  * The committed drill-down document, FY2025-26 -- 145 nodes, 175 links.
  *
  * SEPARATE FROM goldenGraph RATHER THAN A PARAMETER ON IT, so that every
  * existing caller keeps meaning what it meant. It is a capture of what `fisc
- * export` writes, pinned to that by a Go test; testdata/README.md says why it
- * is the one fixture in the tree that is not derived by hand.
+ * export` writes, pinned to that by a Go test; testdata/README.md says why the
+ * two fund-flows fixtures are the only ones in the tree not derived by hand.
  */
 export function goldenFundFlows() {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", "fund-flows.golden.json"), "utf8"));
+}
+
+/**
+ * The other column the merged page reaches: FY2026-27's drill-down, 144
+ * nodes, 173 links, captured and pinned the way goldenFundFlows' is.
+ *
+ * A SECOND LOADER RATHER THAN A YEAR PARAMETER, for goldenFundFlows' own
+ * reason: a check that names the year it measures cannot be handed the other
+ * one by a default. The two documents are the same 280 facts read down a
+ * different printed column, and they differ in shape -- fund/207 prints a
+ * dash in this column and is not a node here -- which is why every drill pin
+ * is taken over both rather than one standing in for the other.
+ */
+export function goldenFundFlows2027() {
+  return JSON.parse(readFileSync(join(repoRoot, "testdata", "fund-flows-2027.golden.json"), "utf8"));
 }
 
 export function goldenGraph() {

@@ -10,11 +10,32 @@
 // before it runs out of anything else). The measurements below are the same
 // claims where a wrong one fails.
 //
-// The document laid out here is testdata/fund-flows.golden.json, which a Go
-// test pins to what `fisc export` writes. See testdata/README.md for why that
-// fixture is a capture rather than a derivation, and what the Go test buys.
+// The documents laid out here are testdata/fund-flows.golden.json and
+// testdata/fund-flows-2027.golden.json, each pinned by a Go test to what
+// `fisc export` writes. See testdata/README.md for why those two fixtures are
+// captures rather than derivations, and what the Go tests buy.
 
-import { loadApp, goldenGraph, goldenFundFlows, plannedFetch, settle } from "./harness.mjs";
+import {
+  loadApp, goldenGraph, goldenFundFlows, goldenFundFlows2027, plannedFetch, settle,
+} from "./harness.mjs";
+
+/**
+ * The two fund-flows columns the page reaches and what the fold measures on
+ * each: how many marks the {0,2,4} fold lays out below the size render()
+ * floors them at.
+ *
+ * BOTH COLUMNS, BECAUSE THEY FOLD DIFFERENTLY. The same 280 facts read down
+ * two printed columns give 145 nodes in FY2025-26 and 144 in FY2026-27 --
+ * fund/207 prints a dash in the second and is not a node there -- and the
+ * fold's marks-too-small count moves with the money: 7 ribbons and 4 rects
+ * in one year, 8 and 5 in the other. A pin taken over one column would have
+ * stayed green while the other's chart changed underneath it (fisc-ko1j.6).
+ * Measured 2026-09-10 through the shipped foldDocument and layOut.
+ */
+const COLUMNS = [
+  { label: "FY 2025-26", golden: goldenFundFlows, hairlines: 7, slivers: 4 },
+  { label: "FY 2026-27", golden: goldenFundFlows2027, hairlines: 8, slivers: 5 },
+];
 
 /**
  * The tier set the fold's own CLAUSES are exercised at, which is not a view.
@@ -183,32 +204,33 @@ export async function checks() {
   const mini = folding.ok ? folding.value : { nodes: [], links: [] };
   const byPair = new Map(mini.links.map((l) => [l.source + " -> " + l.target, l]));
 
-  const raw = goldenFundFlows();
-  const foldingReal = attempt(() => drill.foldDocument(raw));
-  const folded = foldingReal.ok ? foldingReal.value : { nodes: [], links: [] };
-
-  const unfolded = attempt(() => smallest(whole.layOut(raw)));
-  const laid = attempt(() => drill.layOut(folded));
-  const drawn = laid.ok ? smallest(laid.value) : null;
-  // BOTH FLOORS, NOT JUST THE RIBBON ONE. render() floors a ribbon at 1px
-  // (Math.max(1, width - RIBBON_GAP)) and a node rect at 2px (Math.max(2, y1 -
-  // y0)), and the first version of this pin counted only ribbons -- so four
-  // node rects were being drawn at a size that does not encode their value,
-  // under a check whose whole claim is that such marks "cannot grow unnoticed".
-  const hairlines = laid.ok ? laid.value.links.filter((l) => l.width < 1).length : -1;
-  const slivers = laid.ok ? laid.value.nodes.filter((n) => n.y1 - n.y0 < 2).length : -1;
-  const flat = unfolded.ok ? unfolded.value : null;
-
   // The spine, laid out by the function the page ships, against the same graph
   // laid out by layout.mjs's local rebuild of it.
   const spine = attempt(() => whole.layOut(goldenGraph()));
 
-  return [
+  const out = [];
+  for (const col of COLUMNS) {
+    const raw = col.golden();
+    const foldingReal = attempt(() => drill.foldDocument(raw));
+    const folded = foldingReal.ok ? foldingReal.value : { nodes: [], links: [] };
+
+    const unfolded = attempt(() => smallest(whole.layOut(raw)));
+    const laid = attempt(() => drill.layOut(folded));
+    const drawn = laid.ok ? smallest(laid.value) : null;
+    // BOTH FLOORS, NOT JUST THE RIBBON ONE. render() floors a ribbon at 1px
+    // (Math.max(1, width - RIBBON_GAP)) and a node rect at 2px (Math.max(2, y1 -
+    // y0)), and the first version of this pin counted only ribbons -- so four
+    // node rects were being drawn at a size that does not encode their value,
+    // under a check whose whole claim is that such marks "cannot grow unnoticed".
+    const hairlines = laid.ok ? laid.value.links.filter((l) => l.width < 1).length : -1;
+    const slivers = laid.ok ? laid.value.nodes.filter((n) => n.y1 - n.y0 < 2).length : -1;
+    const flat = unfolded.ok ? unfolded.value : null;
+    out.push(
     {
       // THE CLAIM THE WHOLE EPIC RESTS ON. Not "the chart is cramped": every
       // node and every ribbon measures exactly zero, so a view added without
       // the fold publishes a blank chart with every other check green.
-      name: "the drill-down cannot be drawn unfolded, and that is not a matter of degree",
+      name: `${col.label}: the drill-down cannot be drawn unfolded, and that is not a matter of degree`,
       ok: Boolean(flat) && flat.node === 0 && flat.ribbon === 0,
       detail: flat
         ? `unfolded: ${raw.nodes.length} nodes over ${flat.columns.size} columns ` +
@@ -222,7 +244,7 @@ export async function checks() {
       // holds at 308 < 796 for the tier set below AND at 602 < 796 for one that
       // puts 29 of 44 nodes under a pixel. What makes a chart drawable is the
       // size of its marks.
-      name: "folded, every node has height and every ribbon has width",
+      name: `${col.label}: folded, every node has height and every ribbon has width`,
       ok: Boolean(drawn) && drawn.node > 0 && drawn.ribbon > 0,
       detail: drawn
         ? `folded to tiers ${DRAWN.join("/")}: ${folded.nodes.length} nodes over ` +
@@ -237,12 +259,62 @@ export async function checks() {
       // so they are drawn at a size that no longer encodes their value. The
       // page has to say so; this counts how many it has to say it about, and
       // fails if that number grows.
-      name: "the count of marks too small to encode their value is pinned",
-      ok: hairlines === 7 && slivers === 4,
+      name: `${col.label}: the count of marks too small to encode their value is pinned`,
+      ok: hairlines === col.hairlines && slivers === col.slivers,
       detail: `${hairlines} of ${folded.links.length} ribbons lay out under 1px and are ` +
-              `drawn at 1px; ${slivers} of ${folded.nodes.length} node rects lay out ` +
-              "under 2px and are drawn at 2px",
+              `drawn at 1px (want ${col.hairlines}); ${slivers} of ${folded.nodes.length} ` +
+              `node rects lay out under 2px and are drawn at 2px (want ${col.slivers})`,
     },
+    {
+      // The whole justification for dropping 44 links: the fund-to-department
+      // link that survives carries the same money AND the same facts, over
+      // every cell including the printed zeros. If that ever stops being true
+      // the page starts citing less than it draws.
+      name: `${col.label}: the fold cites nothing away`,
+      ok: (() => {
+        const before = cited(raw);
+        const after = cited(folded);
+        return before.size === after.size && [...before].every((id) => after.has(id));
+      })(),
+      detail: `${cited(raw).size} facts cited by ${raw.links.length} links before the fold, ` +
+              `${cited(folded).size} by ${folded.links.length} after`,
+    },
+    {
+      // THE PALETTE WAS WHOLLY DEAD ON THIS DOCUMENT and this is what says it
+      // is not any more. Unfolded, 0 of 175 links have a fund-group end, so
+      // linkColor returned --muted for every ribbon and buildLegend rendered
+      // six swatches over nodes with no flows to isolate. Folded, the fund
+      // groups ARE the middle column: 52 of 52 links touch one.
+      // THE INHERITANCE IS DORMANT AT THE TIER SET THE PAGE SHIPS, and this is
+      // the check that keeps it honest rather than merely present. At {0,2,4}
+      // every folded link already has a fund-group END, so linkColor and
+      // nodeRank never reach the parent walk: reverting nodeRank to
+      // FUND_ORDER.indexOf(other.id) leaves every other check in this tree
+      // green. Measured, 2026-08-28.
+      //
+      // It is not dead code -- it is what the fold's re-pointed parents are
+      // FOR, and the moment tier 5 is drawn every department-to-object link
+      // depends on it -- so it is exercised here at the tier set that reaches
+      // it. Without this check the whole of fisc-5miz.3 would be unfalsifiable.
+      name: `${col.label}: a node inherits its fund group through parent, at a tier set that needs it`,
+      ok: (() => {
+        const deep = appDrawing([0, 2, 4, 5]);
+        const doc = deep.foldDocument(col.golden());
+        // layOut is what populates the index fundGroupOf walks.
+        deep.layOut(doc);
+        const objects = doc.nodes.filter((n) => n.id.startsWith("expenditure/"));
+        const depts = doc.nodes.filter((n) => n.id.startsWith("dept/"));
+        return objects.length === 44 && depts.length === 23 &&
+               objects.every((n) => deep.fundGroupOf(n) === "fund-group/general") &&
+               depts.every((n) => deep.fundGroupOf(n) === "fund-group/general");
+      })(),
+      detail: "all 44 object cells and all 23 divisions resolve to fund-group/general " +
+              "through parent, which is the only thing that would colour or rank them",
+    },
+    );
+  }
+
+  out.push(
     {
       name: "the fold merges two funds of one group onto one ribbon, keeping both facts",
       ok: (() => {
@@ -336,20 +408,6 @@ export async function checks() {
       detail: mini.nodes.map((n) => n.id + "<-" + (n.parent || "root")).join(", "),
     },
     {
-      // The whole justification for dropping 44 links: the fund-to-department
-      // link that survives carries the same money AND the same facts, over
-      // every cell including the printed zeros. If that ever stops being true
-      // the page starts citing less than it draws.
-      name: "the fold cites nothing away",
-      ok: (() => {
-        const before = cited(raw);
-        const after = cited(folded);
-        return before.size === after.size && [...before].every((id) => after.has(id));
-      })(),
-      detail: `${cited(raw).size} facts cited by ${raw.links.length} links before the fold, ` +
-              `${cited(folded).size} by ${folded.links.length} after`,
-    },
-    {
       name: "a node the tier set cannot place stops the draw rather than vanishing from it",
       ok: (() => {
         const orphan = miniature();
@@ -436,38 +494,6 @@ export async function checks() {
               "fundGroupOf is isFundGroup by another name there",
     },
     {
-      // THE PALETTE WAS WHOLLY DEAD ON THIS DOCUMENT and this is what says it
-      // is not any more. Unfolded, 0 of 175 links have a fund-group end, so
-      // linkColor returned --muted for every ribbon and buildLegend rendered
-      // six swatches over nodes with no flows to isolate. Folded, the fund
-      // groups ARE the middle column: 52 of 52 links touch one.
-      // THE INHERITANCE IS DORMANT AT THE TIER SET THE PAGE SHIPS, and this is
-      // the check that keeps it honest rather than merely present. At {0,2,4}
-      // every folded link already has a fund-group END, so linkColor and
-      // nodeRank never reach the parent walk: reverting nodeRank to
-      // FUND_ORDER.indexOf(other.id) leaves every other check in this tree
-      // green. Measured, 2026-08-28.
-      //
-      // It is not dead code -- it is what the fold's re-pointed parents are
-      // FOR, and the moment tier 5 is drawn every department-to-object link
-      // depends on it -- so it is exercised here at the tier set that reaches
-      // it. Without this check the whole of fisc-5miz.3 would be unfalsifiable.
-      name: "a node inherits its fund group through parent, at a tier set that needs it",
-      ok: (() => {
-        const deep = appDrawing([0, 2, 4, 5]);
-        const doc = deep.foldDocument(goldenFundFlows());
-        // layOut is what populates the index fundGroupOf walks.
-        deep.layOut(doc);
-        const objects = doc.nodes.filter((n) => n.id.startsWith("expenditure/"));
-        const depts = doc.nodes.filter((n) => n.id.startsWith("dept/"));
-        return objects.length === 44 && depts.length === 23 &&
-               objects.every((n) => deep.fundGroupOf(n) === "fund-group/general") &&
-               depts.every((n) => deep.fundGroupOf(n) === "fund-group/general");
-      })(),
-      detail: "all 44 object cells and all 23 divisions resolve to fund-group/general " +
-              "through parent, which is the only thing that would colour or rank them",
-    },
-    {
       // READ OFF THE PAGE, NOT DERIVED FROM THE FOLD: main() drew the spine and
       // buildLegend built these buttons, one per fund group the chart touches,
       // so equality with FUND_ORDER says both that all six have flows and that
@@ -478,7 +504,8 @@ export async function checks() {
         ? legend.map((id) => id.replace("fund-group/", "")).join(", ")
         : "the legend is empty",
     },
-  ];
+  );
+  return out;
 }
 
 /**

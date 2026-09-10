@@ -24,7 +24,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  loadApp, goldenFundFlows, goldenGraph, plannedFetch, settle, refusals, twoYearConfig, repoRoot,
+  loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, plannedFetch, settle, refusals,
+  twoYearConfig, repoRoot,
 } from "./harness.mjs";
 
 /**
@@ -52,7 +53,8 @@ const PAGE = {
       description: "The revenue categories on the left flow into this fund group's own " +
         "funds, rescaled to the group's total — the citywide chart cannot show " +
         "them, because the General Fund alone is half the fund column and the " +
-        "smallest fund is a thirty-thousandth of it. Only the General Fund continues " +
+        "smallest fund is less than a thirty-thousandth of it. Only the General Fund " +
+        "continues " +
         "into the divisions that spend it: Budget Book pp.167-170 decompose that " +
         "fund alone, so every other group's money ends at its funds — not " +
         "missing, but not broken down in any published schedule.",
@@ -84,6 +86,49 @@ const PAGE = {
   openedViews: 29,
 };
 
+/**
+ * The two fund-flows columns the page reaches, one per spine year, and the
+ * figures each measured pin below takes over them.
+ *
+ * ONE ENTRY PER PUBLISHED SPINE YEAR, AND EVERY MEASURED PIN RUNS OVER BOTH.
+ * The packager joins each year to its own fund-flows document (stepStems), so
+ * a check that serves one year's capture under both paths pins that year's
+ * figures twice over and leaves the other year's drill with nothing able to
+ * see it go wrong (fisc-ko1j.6). The two documents are the same 280 facts
+ * read down different printed columns and they differ in shape: fund/207
+ * prints a dash in FY2026-27 and is not a node there, so special-revenue has
+ * 31 funds against 32 and its tail folds 23. Where a figure differs it is
+ * stated here as two numbers rather than one.
+ *
+ * EVERY FIGURE IS PINNED, NOT BOUNDED, for the file's reason. Measured
+ * 2026-09-10 through the shipped entry points over the two committed
+ * captures. The General Fund's depth-1 tuple -- 34 nodes, 33 links, 2
+ * sub-pixel ribbons, citing 141 of 280 -- is the same in both years, and
+ * walkChain pins it once per column.
+ */
+const COLUMNS = [
+  {
+    stem: "sankey", label: "FY 2025-26", step: "fund-flows", golden: goldenFundFlows,
+    // The narrowest depth-2 ribbon, which is Patrol's in both years.
+    worstDeep: "51.38",
+    // PAGE.worst at the declared caps and uncapped: ribbons, and how many of
+    // them lay out under a pixel.
+    capped: { links: 22, hairlines: 2 }, uncapped: { links: 49, hairlines: 22 },
+    tail: "24 smaller funds",
+    // fund/100's share of the fund column's inflow, and how many times the
+    // smallest fund's inflow it is: the two figures step 0's description
+    // rounds to "half" and "less than a thirty-thousandth".
+    share: "49.18", ratio: 31575,
+  },
+  {
+    stem: "sankey-2027", label: "FY 2026-27", step: "fund-flows-2027", golden: goldenFundFlows2027,
+    worstDeep: "67.02",
+    capped: { links: 22, hairlines: 1 }, uncapped: { links: 47, hairlines: 18 },
+    tail: "23 smaller funds",
+    share: "50.79", ratio: 54786,
+  },
+];
+
 /** The caveat ids each committed golden carries, for the refs a year ships. */
 const SPINE_CAVEATS = [
   "transfer-legs-unpaired", "internal-service-is-outside-the-external-headline",
@@ -111,14 +156,17 @@ function stepDocsFor(stem) {
 }
 
 /**
- * The spine page carrying the chain, opened through main() over the two
- * committed documents -- `plan` overriding what any path answers, `tweak`
- * editing the config before app.js reads it.
+ * The spine page carrying the chain, opened through main() on `column`'s year
+ * over the committed documents -- `plan` overriding what any path answers,
+ * `tweak` editing the config before app.js reads it.
  *
- * TWO YEARS, EACH WITH ITS OWN STEP DOCUMENTS. FY2026-27 answers with the same
- * goldens under its own paths, because only FY2025-26 has a committed golden
- * (fisc-ko1j.6); what the year arms measure is WHICH path a drill asks for,
- * not what comes back.
+ * TWO YEARS, EACH WITH ITS OWN STEP DOCUMENT, AND EACH ANSWERED WITH ITS OWN
+ * CAPTURE. The spine golden is FY2025-26's under both paths, because the
+ * drill reads nothing off it but the clicked node's id and label, and both
+ * years' spines carry the same six groups; the fund-flows path is the year's
+ * own. The page opens on `column` the way a restored radio would (checkedStem),
+ * so a check runs over the second column without switching to it -- the
+ * switch is year.mjs's subject.
  *
  * THE SPINE'S LABEL FOR THE GROUP IS MADE DISTINCT, because both committed
  * documents print "General Fund" for fund-group/general and a rung named
@@ -126,7 +174,7 @@ function stepDocsFor(stem) {
  * and the hint name the node the reader clicked in the words of the chart
  * they clicked it on -- the spine's -- and not the step document's.
  */
-async function opened(plan, tweak) {
+async function opened(plan, tweak, column = COLUMNS[0]) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   config.projections["fund-flows-2027"] = "data/fund-flows-2027.json";
@@ -144,9 +192,9 @@ async function opened(plan, tweak) {
     "data/sankey.json": { doc: spine },
     "data/sankey-2027.json": { doc: spine },
     "data/fund-flows.json": { doc: goldenFundFlows() },
-    "data/fund-flows-2027.json": { doc: goldenFundFlows() },
+    "data/fund-flows-2027.json": { doc: goldenFundFlows2027() },
   }, plan || {}));
-  const app = loadApp({ config, fetch });
+  const app = loadApp({ config, fetch, checkedStem: column.stem });
   const body = app.dom.document.node();
   app.dom.document.getElementById("flow-table").selectable = { tbody: body };
   const main = app.dom.document.node();
@@ -261,17 +309,17 @@ async function at(app, ...ids) {
 
 export async function checks() {
   const out = [];
-  const raw = goldenFundFlows();
 
-  {
-    const { app, body } = await opened();
+  for (const col of COLUMNS) {
+    const { app, body, fetch } = await opened(null, null, col);
     const before = shown(app, body);
     out.push({
-      name: "the overview draws the spine whole, and its counts line describes it",
+      name: `${col.label}: the overview draws the spine whole, from its own year's file, and its counts line describes it`,
       ok: before.counts === PAGE.overview.counts && before.rows === PAGE.overview.links &&
-          before.crumbHidden,
+          before.crumbHidden && fetch.asked.join() === `data/${col.stem}.json`,
       detail: `counts "${before.counts}", ${before.rows} table rows, breadcrumb ` +
-              (before.crumbHidden ? "hidden" : "SHOWING with nothing opened"),
+              (before.crumbHidden ? "hidden" : "SHOWING with nothing opened") +
+              `; main() asked for ${JSON.stringify(fetch.asked)}`,
     });
 
     const drawn = [];
@@ -283,16 +331,22 @@ export async function checks() {
     // node because it is the worst, not a division picked at random.
     const deep = drawn.filter((d) => d.depth === 2);
     const worstDeep = deep.length ? deep.reduce((a, b) => (b.smallest < a.smallest ? b : a)) : null;
+    // THE STEP FILE IS THE COLUMN'S OWN, asserted on the wire: a walk that
+    // drew every view from the other year's file would pin that year twice.
+    const stepAsked = fetch.asked.filter((p) => p.startsWith("data/fund-flows"));
     out.push({
-      name: "every node the chain offers to open draws when opened, at both depths",
+      name: `${col.label}: every node the chain offers to open draws when opened, at both depths`,
       ok: walk.refused === "" && walk.visited === PAGE.openedViews && drawn.length === walk.visited &&
           Boolean(worstDeep) && worstDeep.where.endsWith(" > " + PAGE.inert) &&
-          worstDeep.smallest.toFixed(2) === "51.38",
+          worstDeep.smallest.toFixed(2) === col.worstDeep &&
+          stepAsked.join() === `data/${col.step}.json`,
       detail: walk.refused
         ? `after ${walk.visited} view(s), refused: ${walk.refused}`
-        : `${walk.visited} views opened (want ${PAGE.openedViews}); smallest ribbon over all ` +
-          `of them ${Math.min(...drawn.map((d) => d.smallest)).toFixed(3)}px; the narrowest ` +
-          `depth-2 ribbon is ${worstDeep ? `${worstDeep.where} at ${worstDeep.smallest.toFixed(2)}px` : "nowhere"}`,
+        : `${walk.visited} views opened (want ${PAGE.openedViews}) from ${JSON.stringify(stepAsked)}; ` +
+          `smallest ribbon over all of them ${Math.min(...drawn.map((d) => d.smallest)).toFixed(3)}px; ` +
+          `the narrowest depth-2 ribbon is ` +
+          `${worstDeep ? `${worstDeep.where} at ${worstDeep.smallest.toFixed(2)}px` : "nowhere"} ` +
+          `(want ${col.worstDeep})`,
     });
 
     // THE CAP IS THE POINT OF THIS FILE, and it does not engage at both
@@ -309,29 +363,32 @@ export async function checks() {
     const uncappedSteps = PAGE.steps.map((s) => Object.assign({}, s, {
       caps: s.caps.map((c) => ({ tier: c.tier, cap: 1000 })),
     }));
-    const { app: noCap } = await opened(null, (c) => { c.steps = uncappedSteps; });
+    const { app: noCap } = await opened(null, (c) => { c.steps = uncappedSteps; }, col);
     await at(app, PAGE.worst);
     const worst = measure(app, app.projection);
     await at(noCap, PAGE.worst);
     const worstUncapped = measure(noCap, noCap.projection);
     const engaged = worst.links < worstUncapped.links;
     out.push({
-      name: "the fund cap is what makes the worst group's column drawable",
-      // PINNED, NOT BOUNDED: 32 funds uncapped lay 22 of 49 ribbons under a
-      // pixel, and capped at 8 they lay 2 of 22. These are the figures
+      name: `${col.label}: the fund cap is what makes the worst group's column drawable`,
+      // PINNED, NOT BOUNDED: in FY2025-26, 32 funds uncapped lay 22 of 49
+      // ribbons under a pixel and capped at 8 they lay 2 of 22; in FY2026-27,
+      // 31 funds lay 18 of 47 and then 1 of 22. The first pair is the figure
       // pkg/cmd/export/data.go quotes for the cap.
-      ok: engaged && worstUncapped.links === 49 && worstUncapped.hairlines === 22 &&
-          worst.links === 22 && worst.hairlines === 2,
-      detail: `${PAGE.worst} capped: ${worst.links} ribbons, ${worst.hairlines} under 1px; ` +
-        `uncapped: ${worstUncapped.links} ribbons, ${worstUncapped.hairlines} under 1px; the cap ` +
-        `${engaged ? "folded a tail" : "folded nothing"}`,
+      ok: engaged && worstUncapped.links === col.uncapped.links &&
+          worstUncapped.hairlines === col.uncapped.hairlines &&
+          worst.links === col.capped.links && worst.hairlines === col.capped.hairlines,
+      detail: `${PAGE.worst} capped: ${worst.links} ribbons, ${worst.hairlines} under 1px ` +
+        `(want ${col.capped.links}, ${col.capped.hairlines}); uncapped: ${worstUncapped.links} ` +
+        `ribbons, ${worstUncapped.hairlines} under 1px (want ${col.uncapped.links}, ` +
+        `${col.uncapped.hairlines}); the cap ${engaged ? "folded a tail" : "folded nothing"}`,
     });
     await at(app, "fund-group/general", PAGE.inert);
     const inert = measure(app, app.projection);
     await at(noCap, "fund-group/general", PAGE.inert);
     const inertUncapped = measure(noCap, noCap.projection);
     out.push({
-      name: "the category cap is inert two rungs deep, because no division is wide enough to need it",
+      name: `${col.label}: the category cap is inert two rungs deep, because no division is wide enough to need it`,
       ok: inert.links === inertUncapped.links && inert.hairlines === inertUncapped.hairlines &&
           inert.links > 0,
       detail: `${PAGE.inert} capped: ${inert.links} ribbons, ${inert.hairlines} under 1px; ` +
@@ -339,6 +396,34 @@ export async function checks() {
     });
     app.drillUp(0);
     noCap.drillUp(0);
+
+    // THE SENTENCE UNDER THE CHART IS MEASURED ON BOTH YEARS. Step 0's
+    // description says the General Fund is "half the fund column" and the
+    // smallest fund "less than a thirty-thousandth of it", and it is shown
+    // under whichever year is on screen. The exact figures are the column's
+    // -- fund/550 at $5,000 is 1/31,575 of fund/100 in FY2025-26, and fund/202
+    // at $3,000 is 1/54,786 in FY2026-27 -- so the sentence carries the bound
+    // both clear and this pins the two numbers it rounds.
+    const raw = col.golden();
+    const inflow = new Map();
+    for (const l of raw.links) {
+      if (l.target.startsWith("fund/")) inflow.set(l.target, (inflow.get(l.target) || 0) + l.value_cents);
+    }
+    const column = [...inflow.values()].reduce((a, b) => a + b, 0);
+    const general = inflow.get("fund/100") || 0;
+    const [smallestFund, smallestIn] = [...inflow.entries()].reduce((a, b) => (b[1] < a[1] ? b : a));
+    const share = (100 * general) / column;
+    const ratio = general / smallestIn;
+    out.push({
+      name: `${col.label}: the step's description rounds figures this column still supports`,
+      ok: share.toFixed(2) === col.share && Math.round(ratio) === col.ratio &&
+          share > 45 && share < 55 && ratio > 30000 &&
+          PAGE.steps[0].description.includes("is half the fund column") &&
+          PAGE.steps[0].description.includes("less than a thirty-thousandth of it"),
+      detail: `fund/100 takes ${share.toFixed(2)}% of the fund column's inflow (want ${col.share}), ` +
+        `and ${smallestFund} at ${smallestIn / 100} dollars is 1/${Math.round(ratio)} of it ` +
+        `(want 1/${col.ratio})`,
+    });
   }
 
   // THE CAP IS READ OFF THE TIER IT NAMES, NOT OFF ITS POSITION. The packager
@@ -389,10 +474,10 @@ export async function checks() {
   // parent. Read off the goldens' parent field rather than an id prefix,
   // because the spine's uses share the expenditure/ prefix with fund-flows'
   // object cells and belong to no group.
-  {
-    const { app } = await opened();
+  for (const col of COLUMNS) {
+    const { app } = await opened(null, null, col);
     const parentOf = new Map();
-    for (const n of [...goldenGraph().nodes, ...raw.nodes]) parentOf.set(n.id, n.parent);
+    for (const n of [...goldenGraph().nodes, ...col.golden().nodes]) parentOf.set(n.id, n.parent);
     const onTheFundSide = (/** @type {{id: string}} */ n) =>
       app.isFundGroup(n) || app.isAggregate(n.id) || Boolean(parentOf.get(n.id));
     const unresolved = (/** @type {{nodes: any[]}} */ d) => {
@@ -406,7 +491,7 @@ export async function checks() {
     const groups = [...new Set(app.projection.nodes.map((n) => app.fundGroupOf(n)))]
       .filter(Boolean).sort();
     out.push({
-      name: "every mark on the fund side knows its group, on the overview and in every opened view",
+      name: `${col.label}: every mark on the fund side knows its group, on the overview and in every opened view`,
       ok: walk.refused === "" && bad.length === 0 && groups.length === 6,
       detail: bad.length
         ? `${bad.length} mark(s) resolve to no group: ${bad.slice(0, 4).join(", ")}`
@@ -423,21 +508,24 @@ export async function checks() {
   // exists to be complete. That is the published-is-not-derived invariant
   // broken in output, and stated most plainly to the readers who cannot see the
   // mark.
-  {
-    const { app } = await opened();
+  //
+  // THE TAIL'S SIZE IS THE COLUMN'S: 24 smaller funds in FY2025-26 and 23 in
+  // FY2026-27, where fund/207 prints a dash and is not there to fold.
+  for (const col of COLUMNS) {
+    const { app } = await opened(null, null, col);
     await at(app, PAGE.worst);
     const agg = app.projection.nodes.find((n) => n.id === app.aggregateID(3));
     out.push({
-      name: "the capped tail is marked as ours, not as something the city printed",
+      name: `${col.label}: the capped tail is marked as ours, not as something the city printed`,
       // THE COUNT IS ASSERTED AT TWO OR MORE, not just matched as digits.
       // capColumn engaged at cap + 1, so a column of 9 against a cap of 8 folded
       // ONE city-printed fund into a derived node labelled "1 smaller funds" --
       // and this regex accepted it. fund-group/enterprise has exactly 9.
       ok: Boolean(agg) && agg.derived === true && agg.rationale !== "" &&
           agg.source_note !== "" && /^(\d+) smaller funds$/.test(agg.label) &&
-          Number(agg.label.split(" ")[0]) >= 2,
+          Number(agg.label.split(" ")[0]) >= 2 && agg.label === col.tail,
       detail: agg
-        ? `"${agg.label}" derived=${agg.derived}, rationale ` +
+        ? `"${agg.label}" (want "${col.tail}") derived=${agg.derived}, rationale ` +
           (agg.rationale ? `"${agg.rationale.slice(0, 48)}..."` : "MISSING") +
           (agg.source_note ? ", source note present" : ", SOURCE NOTE MISSING")
         : "no aggregate node: the cap folded nothing on the view it is needed for",
@@ -454,7 +542,7 @@ export async function checks() {
       }
     });
     out.push({
-      name: "no opened view folds a single printed figure into an aggregate of one",
+      name: `${col.label}: no opened view folds a single printed figure into an aggregate of one`,
       ok: walk.refused === "" && ones.length === 0,
       detail: ones.length
         ? ones.join("; ")
@@ -476,8 +564,8 @@ export async function checks() {
   // is gone from its own chart, so its funds inherit nothing -- the detail
   // line says how many depth-1 views carry a mark, and fisc-ko1j.5's residual
   // node is where the truncation becomes visible on those.
-  {
-    const { app } = await opened();
+  for (const col of COLUMNS) {
+    const { app } = await opened(null, null, col);
     app.layOut(app.projection);
     const marks = (/** @type {any} */ a) =>
       a.projection.nodes.filter((n) => a.caveatsFor(n.id).length > 0).map((n) => n.id);
@@ -491,7 +579,7 @@ export async function checks() {
     const general = perGroup["fund-group/general"] || [];
     const markedGroups = Object.keys(perGroup).filter((g) => perGroup[g].length > 0);
     out.push({
-      name: "a caveat about one node reaches that node at depth 0 and, over the other document, at depth 1",
+      name: `${col.label}: a caveat about one node reaches that node at depth 0 and, over the other document, at depth 1`,
       ok: spineMarks.includes("fund-group/internal-service") && spineMarks.includes("transfers/in") &&
           general.includes("fund/100"),
       detail: `spine marks ${JSON.stringify(spineMarks)}; opened into general ` +
@@ -675,11 +763,11 @@ export async function checks() {
   // denies is the shape the suppression exists to prevent, reached by
   // arithmetic instead of by topology.
   //
-  // THE OVERVIEW AND EVERY OPENED VIEW, because the shape occurs on one column
-  // of one year and a sample would miss it.
-  {
+  // THE OVERVIEW AND EVERY OPENED VIEW OF BOTH COLUMNS, because the shape
+  // occurs on one column of one year and a sample would miss it.
+  for (const col of COLUMNS) {
     const hundreds = [];
-    const { app } = await opened();
+    const { app } = await opened(null, null, col);
     const scan = (/** @type {string} */ where) => {
       for (const n of app.layOut(app.projection).nodes) {
         const share = app.columnShare(n);
@@ -690,13 +778,14 @@ export async function checks() {
     };
     scan("overview");
     const walk = await everyOpenedView(app, (where) => scan(where));
-    // AND THE CASE THE SHIPPED FIXTURE CANNOT REACH. The rounding happens on
-    // fund-flows-2024-actual, opened on debt-service, and these checks fetch the
-    // FY2025-26 golden -- the only fund-flows document committed. Removing the
-    // ceiling left the scan above green for that reason alone, which is a check
-    // passing because its fixture is the wrong year. So the split is built:
-    // 99.9943% of a two-node column, the real proportion, laid out by the real
-    // layOut.
+    // AND THE CASE NEITHER SHIPPED FIXTURE CAN REACH. The rounding happens on
+    // fund-flows-2024-actual, opened on debt-service, and these checks fetch
+    // the two adopted columns' captures -- the actual column is not committed
+    // and has no spine year to open it from (fundFlowsNoSpineColumn). Removing
+    // the ceiling left the scan above green for that reason alone, which is a
+    // check passing because its fixture is the wrong year. So the split is
+    // built: 99.9943% of a two-node column, the real proportion, laid out by
+    // the real layOut.
     const near = {
       nodes: [
         { id: "a", label: "a", tier: 0, parent: "", constraint_tier: "", role: "",
@@ -717,7 +806,7 @@ export async function checks() {
     const big = laid.nodes.find((n) => n.id === "big");
     const rounded = app.columnShare(big);
     out.push({
-      name: "no share on any view claims 100% of a column that has more than one mark",
+      name: `${col.label}: no share on any view claims 100% of a column that has more than one mark`,
       ok: walk.refused === "" && hundreds.length === 0 && !rounded.includes("100"),
       detail: hundreds.length
         ? hundreds.slice(0, 3).join("; ")
@@ -732,7 +821,10 @@ export async function checks() {
   // committed documents at once, each depth read back from the DOM: the
   // stack, the fetches, the counts line, the chart's name and description,
   // the breadcrumb, the hint, the legend, the flow table and where focus went.
-  out.push(...(await walkChain()));
+  // ONCE PER COLUMN: the words carry the year, and the General Fund's depth-1
+  // tuple happens to be the same in both, which is asserted rather than
+  // assumed.
+  for (const col of COLUMNS) out.push(...(await walkChain(col)));
 
   // FIVE REFUSAL PATHS, EACH WITH ITS NEW CALLER. isDocument, understands,
   // drawableSankey and the fetch's own two failures had exactly one caller --
@@ -974,9 +1066,9 @@ function words(app) {
  * split asserted against itself. That the pointer IS the last sentence is
  * the Go side's claim (TestAClosedFlowTableIsNotDescribedAsListedBelow).
  */
-async function walkChain() {
+async function walkChain(col) {
   const out = [];
-  const { app, fetch, body } = await opened();
+  const { app, fetch, body } = await opened(null, null, col);
   const desc = app.dom.document.getElementById("chart-desc");
   const served = templateDesc("index.html.tmpl", "");
   desc.textContent = served;
@@ -1062,15 +1154,16 @@ async function walkChain() {
   const capitalOpens = app.projection.nodes.some((n) => app.drillable(n));
   app.drillUp(0);
 
+  const stepFile = `data/${col.step}.json`;
   out.push({
-    name: "chain: the step document is fetched on the first drill and not before",
-    ok: asked0.length === 1 && !asked0.includes("data/fund-flows.json") &&
-        asked1.length === 2 && asked1[1] === "data/fund-flows.json",
+    name: `${col.label} chain: the year's own step document is fetched on the first drill and not before`,
+    ok: asked0.length === 1 && asked0[0] === `data/${col.stem}.json` &&
+        asked1.length === 2 && asked1[1] === stepFile,
     detail: `main() asked for ${JSON.stringify(asked0)}; the first drill added ` +
       `${JSON.stringify(asked1.slice(asked0.length))}`,
   });
   out.push({
-    name: "chain: the overview's hint names the column that opens, which is the spine's middle one",
+    name: `${col.label} chain: the overview's hint names the column that opens, which is the spine's middle one`,
     // "MIDDLE", READ OFF THE CHART. The spine draws tiers 0, 2 and 5 and its
     // fund groups are tier 2; a hint saying "right-hand column" here would
     // send the reader to the uses, which do not open.
@@ -1080,15 +1173,17 @@ async function walkChain() {
     detail: `hint "${at0.hint}"; legend ${at0.legend} swatches`,
   });
   out.push({
-    name: "chain: depth 1 draws the General Fund at {0,3,4} from the other document, and every sentence says so",
+    name: `${col.label} chain: depth 1 draws the General Fund at {0,3,4} from the other document, and every sentence says so`,
     // 34 nodes, 33 links and 2 sub-pixel ribbons is fisc-ko1j's own
-    // measurement of this view, reproduced here through the shipped functions.
+    // measurement of this view, reproduced here through the shipped functions
+    // -- and measured the same in FY2026-27, whose General Fund has the same
+    // one fund, ten sources and 23 divisions.
     ok: open1 === "drew" && at1.depth === 1 && !at1.drawnIsYears &&
         Boolean(m1) && m1.nodes === 34 && m1.links === 33 && m1.hairlines === 2 &&
         divisions1 === 23 && !foldedDivisions1 &&
         at1.counts === `33 flows between 34 nodes, from ${cited1.size} of the document's 280 facts` &&
         rows1 === 33 &&
-        at1.title === "Sankey diagram of the FY 2025-26 adopted budget, opened into General Fund group" &&
+        at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into General Fund group` &&
         at1.crumbControls.join("|") === "← All fund groups" && at1.crumbHere === "General Fund group" &&
         at1.hint === "This is General Fund group, broken into its parts. Click a node in the " +
           "right-hand column to open it further, or tab to one and press Enter." &&
@@ -1111,7 +1206,7 @@ async function walkChain() {
       : `opening the General Fund came to "${open1}"`,
   });
   out.push({
-    name: "chain: depth 2 draws Patrol at {4,5}, names both rungs, keeps the table pointer, and opens nothing further",
+    name: `${col.label} chain: depth 2 draws Patrol at {4,5}, names both rungs, keeps the table pointer, and opens nothing further`,
     ok: open2 === "drew" && at2.depth === 2 && Boolean(m2) && m2.links > 0 &&
         asked2.length === asked1.length &&
         at2.title.endsWith(", opened into General Fund group, then Patrol") &&
@@ -1130,7 +1225,7 @@ async function walkChain() {
       : `opening Patrol came to "${open2}"`,
   });
   out.push({
-    name: "chain: Escape closes one rung at a time, and each depth comes back as it was",
+    name: `${col.label} chain: Escape closes one rung at a time, and each depth comes back as it was`,
     ok: back1.depth === 1 && back1.counts === at1.counts && back1.title === at1.title &&
         back1.crumbControls.join("|") === at1.crumbControls.join("|") &&
         back1.hint === at1.hint && back1.desc === at1.desc &&
@@ -1144,7 +1239,7 @@ async function walkChain() {
       `breadcrumb ${back0.crumbHidden ? "hidden" : "SHOWING"}`,
   });
   out.push({
-    name: "chain: reopening fetches nothing, and each breadcrumb control closes to its own depth",
+    name: `${col.label} chain: reopening fetches nothing, and each breadcrumb control closes to its own depth`,
     ok: asked4.length === asked1.length &&
         inner.depth === 1 && inner.counts === at1.counts &&
         back0b.depth === 0 && back0b.counts === at0.counts && back0b.crumbHidden,
@@ -1153,7 +1248,7 @@ async function walkChain() {
       `${back0b.depth} reading "${back0b.counts}"`,
   });
   out.push({
-    name: "chain: a group with no divisions says nothing opens further, rather than naming a column that is not there",
+    name: `${col.label} chain: a group with no divisions says nothing opens further, rather than naming a column that is not there`,
     ok: capital.depth === 1 && !capitalOpens &&
         capital.hint === "This is Capital Funds, broken into its parts. Nothing here opens further; go back to open another." &&
         capital.desc.startsWith("Opened into Capital Funds. " + step0.description),
