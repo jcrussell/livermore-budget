@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/jcrussell/livermore-budget/internal/check"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -1205,6 +1206,10 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
 			Back:            "All fund groups",
 			Tail:            "funds",
+			// READ OFF THE CHECK, NOT SPELLED, because the check is the
+			// declaration: a literal here would be the second copy the
+			// declaration exists to prevent, kept green by nothing.
+			Residual: check.ResidualNodes(),
 			Description: "The revenue categories on the left flow into this fund group's own " +
 				"funds, rescaled to the group's total \u2014 the citywide chart cannot show " +
 				"them, because the General Fund alone is half the fund column and the " +
@@ -1799,6 +1804,21 @@ func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 // it the way the code does would agree with the code by construction.
 func TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "fund-flows-2027", "fund-flows-2027.golden.json")
+}
+
+// TestTheSankey2027FixtureIsTheDocumentTheSiteDraws pins the second spine
+// column's capture the way the drill-down's is pinned.
+//
+// IT EXISTS BECAUSE THE RESIDUAL READS THE SPINE. Until the chart carried the
+// residual, tools/jscheck could serve FY2026's spine under both years' paths --
+// the drill read nothing off it but the clicked node's id -- and one spine
+// golden was enough. The residual node copies the spine's own links into the
+// opened group, and the two columns differ exactly where the declared set
+// says they do: FY2027 general's change in working capital is a contribution
+// out, not a draw in. A check over FY2026's spine twice would never see
+// fund-balance/contribution carried at all.
+func TestTheSankey2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, "sankey-2027", "sankey-2027.golden.json")
 }
 
 // fixtureIsTheDocumentExported compares one committed capture line for line

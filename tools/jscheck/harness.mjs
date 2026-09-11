@@ -325,7 +325,8 @@ const NAMES = [
   // measure one stage without the repaint. STEPS is the chain as app.js read it
   // off the config, and stepAt is its one reader.
   "shapeFor", "filterToNode", "capColumn", "drillable", "drillDown", "drillUp",
-  "STEPS", "stepAt", "ROOT", "aggregateID", "isAggregate", "docAt", "drawnDoc",
+  "STEPS", "stepAt", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
+  "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
   "loadDocument", "labelOfRung",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
   "paintBreadcrumb",
@@ -616,6 +617,63 @@ export function goldenFundFlows2027() {
 
 export function goldenGraph() {
   return JSON.parse(readFileSync(join(repoRoot, "testdata", "sankey.golden.json"), "utf8"));
+}
+
+/**
+ * The second spine column, FY2026-27's: a capture pinned to `fisc export` by
+ * TestTheSankey2027FixtureIsTheDocumentTheSiteDraws, the way goldenFundFlows2027
+ * is.
+ *
+ * IT EXISTS FOR THE RESIDUAL. The drill read nothing off the spine but the
+ * clicked node's id and label, so one spine golden served both years' paths.
+ * The residual node copies the spine's own links onto the opened group, and
+ * the two columns differ exactly where the declared set says they do --
+ * FY2026-27 general's change in working capital is a contribution out where
+ * FY2025-26's is a draw in -- so a check over FY2025-26's spine twice would
+ * never see fund-balance/contribution carried at all.
+ */
+export function goldenGraph2027() {
+  return JSON.parse(readFileSync(join(repoRoot, "testdata", "sankey-2027.golden.json"), "utf8"));
+}
+
+/**
+ * The residual set as internal/check/drillreconcile.go declares it: spine
+ * endpoint id to the reason a fund-level schedule cannot decompose it.
+ *
+ * READ OFF THE GO SOURCE RATHER THAN SPELLED HERE. The set has one
+ * declaration, in the check that proves the identity it closes; the packager
+ * ships it to the client as steps[0].residual, and a literal here would be the
+ * second copy that declaration exists to prevent -- a fixture driving the
+ * client under a set the site may no longer ship, kept green by nothing.
+ * There is no seam from Go to node, so this is a parse of the map literal:
+ * a key, then one or more concatenated interpreted string literals, then a
+ * comma. It throws on a shape it does not recognise rather than return a
+ * partial set, because a partial set would have every residual check measure
+ * a client the site does not run.
+ */
+export function residualDeclaration() {
+  const src = readFileSync(join(repoRoot, "internal", "check", "drillreconcile.go"), "utf8");
+  const m = src.match(/var residualNodes = map\[string\]string\{\n([\s\S]*?)\n\}\n/);
+  if (!m) throw new Error("internal/check/drillreconcile.go declares no residualNodes map literal to read");
+  const out = {};
+  const entry = /"((?:[^"\\]|\\.)*)":\s*((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+),/g;
+  let e;
+  while ((e = entry.exec(m[1])) !== null) {
+    const pieces = e[2].match(/"(?:[^"\\]|\\.)*"/g) || [];
+    out[JSON.parse(`"${e[1]}"`)] = pieces.map((p) => JSON.parse(p)).join("");
+  }
+  // Every entry accounted for, counted by the literal's own key lines, so a
+  // reason written in a shape the regex cannot follow is a throw and not a
+  // missing endpoint.
+  const keys = (m[1].match(/^\t"[^"]+": /gm) || []).length;
+  const got = Object.keys(out).length;
+  if (got === 0 || got !== keys) {
+    throw new Error(`parsed ${got} residual entries from a literal with ${keys} keys`);
+  }
+  for (const [id, reason] of Object.entries(out)) {
+    if (!reason) throw new Error(`residual endpoint ${id} parsed with an empty reason`);
+  }
+  return out;
 }
 
 /**

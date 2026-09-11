@@ -12,6 +12,7 @@ import (
 	yaml "go.yaml.in/yaml/v3"
 
 	"github.com/jcrussell/livermore-budget/internal/build"
+	"github.com/jcrussell/livermore-budget/internal/check"
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
@@ -575,6 +576,22 @@ func views(built result) []export.View {
 				Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
 				Back:            "All fund groups",
 				Tail:            "funds",
+				// THE RESIDUAL IS THE CHECK'S DECLARATION, READ, NOT COPIED.
+				// drill-reconciles-across-documents declares which spine
+				// endpoints pp.127-140 and 167-170 cannot decompose, each
+				// with its reason, and proves the identity that set closes;
+				// the chart carries the same set onto one derived node per
+				// opened group. Two spellings of a set that must agree
+				// drift, so this is the one place the client's set comes
+				// from, and check.ResidualNodes exists for this line.
+				//
+				// THIS IMPORT IS NOT THE COUPLING joinComma REFUSES. That
+				// rule is about a command and a check sharing a helper for
+				// nothing; this is the command shipping a declaration the
+				// check owns because the check is the only thing that can
+				// fail on it. Spelling the five ids here instead would give
+				// the site a set nothing verifies.
+				Residual: check.ResidualNodes(),
 				// THE FIGURES IN THIS SENTENCE ARE MEASURED off both
 				// committed goldens, and tools/jscheck/drill.mjs pins them
 				// per column: fund/100 takes 49.18% of the fund column's

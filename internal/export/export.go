@@ -515,6 +515,26 @@ type DrillStep struct {
 	// cannot see the marks disagree. Terminated for ChartDescription's reason:
 	// the client appends its own sentences after it.
 	Description string `json:"description"`
+	// Residual is the set of endpoints of the chart this step opens FROM whose
+	// flow into or out of the opened node the document this step DRAWS does
+	// not decompose, each with the reason it cannot: node id to reason. The
+	// client copies those links verbatim onto one derived node beside the
+	// opened node's parts, so a reader sees the money the finer document does
+	// not carry rather than a total that silently fell short.
+	//
+	// ONLY ON A STEP THAT SWITCHES DOCUMENT. A residual is what one document
+	// prints at a grain the other does not, and a step drawing the document
+	// before it has no second grain for anything to be residual between;
+	// validateSteps refuses one there rather than let the client carry a set
+	// that nothing on that step could match.
+	//
+	// DECLARED BY THE CALLER FROM ONE PLACE, not composed here or in the
+	// client. The composition root reads it off the check that guards the
+	// identity it states (check.ResidualNodes), and the reasons ride along
+	// because they are what the node's rationale says to a reader. Omitted
+	// from the JSON when empty, so the client reads an absent key as "this
+	// step carries nothing across", which is every same-document step.
+	Residual map[string]string `json:"residual,omitempty"`
 }
 
 // TierCap is how many nodes one drawn tier may hold before its tail, by value,
@@ -919,6 +939,19 @@ func (v View) validateSteps(built map[string][]byte) error {
 				"view %q gives step %d a description ending %q rather than in a sentence "+
 					"terminator; the client appends the way back and the table pointer after "+
 					"it, and an unterminated one runs into them", v.Path, i, lastRune(s.Description))
+		// A RESIDUAL NEEDS TWO DOCUMENTS AND A REASON. On a same-document
+		// step there is no second grain, so a set declared there would be
+		// carried by the client against a document that decomposes every
+		// one of its own links -- a node of nothing, or worse, a copy of a
+		// link the chart already draws. And an endpoint with no reason
+		// draws a mark whose rationale explains nothing, which is the
+		// derived-node rule broken in output.
+		case s.Projection == "" && len(s.Residual) > 0:
+			return fmt.Errorf(
+				"view %q's step %d carries a residual of %d endpoint(s) and draws the "+
+					"document before it; a residual is what one document prints at a grain "+
+					"the other does not, and a step that switches no document has no second "+
+					"grain", v.Path, i, len(s.Residual))
 		// THE PER-YEAR JOIN IS EXACT OR REFUSED. A year with no entry would
 		// have the client open the year's chart into a file it was never
 		// told about; an entry for no year is a claim about a document the
@@ -948,6 +981,15 @@ func (v View) validateSteps(built map[string][]byte) error {
 				"view %q's step %d draws tiers %v of %q, the set the step before it "+
 					"already draws; opening a node would redraw the chart it was opened "+
 					"from", v.Path, i, s.Tiers, doc)
+		}
+		for _, id := range slices.Sorted(maps.Keys(s.Residual)) {
+			if id == "" || s.Residual[id] == "" {
+				return fmt.Errorf(
+					"view %q's step %d declares residual endpoint %q with reason %q; the node "+
+						"that carries it tells the reader why no part of the opened node "+
+						"receives that flow in the reason's words, and an empty one draws a "+
+						"mark that explains nothing", v.Path, i, id, s.Residual[id])
+			}
 		}
 		if s.Projection != "" && len(v.YearStems) > 0 {
 			for _, stem := range v.YearStems {

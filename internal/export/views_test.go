@@ -739,6 +739,23 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step that redraws the tiers it opened from", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].Tiers = []int{0, 3}; v.Steps[1].Caps = nil })},
 			"the set the step before it already draws"},
+		// A RESIDUAL NEEDS A SECOND DOCUMENT AND A REASON. The first case
+		// declares one on the chain's same-document step, where nothing could
+		// be residual between two grains of one file; the second names a
+		// projection so the step switches, and gives an endpoint no reason --
+		// the node that carries it would draw a mark whose rationale says
+		// nothing.
+		{"a residual on a step that switches no document", []export.View{ok,
+			chainView(func(v *export.View) {
+				v.Steps[1].Residual = map[string]string{"transfers/in": "a reason"}
+			})},
+			"a step that switches no document has no second grain"},
+		{"a residual endpoint with no reason", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Residual = map[string]string{"transfers/in": ""}
+			})},
+			"declares residual endpoint \"transfers/in\" with reason \"\""},
 		{"a cap on a tier the step does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
 			"the cap would fold nothing, in silence"},

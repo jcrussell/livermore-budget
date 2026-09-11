@@ -180,6 +180,10 @@
  * @property {string} tail  the plural noun a capped aggregate is counted in
  * @property {string} description  the chart's long description once a node
  *   has opened on this step, in the packager's words
+ * @property {Record<string,string>} [residual]  the endpoints of the chart
+ *   this step opens FROM whose flow the document it draws does not
+ *   decompose, id to reason -- the check's declaration as the packager
+ *   shipped it; absent on a step that switches no document
  */
 
 /**
@@ -881,21 +885,7 @@ function filterToNode(doc, id, tiers) {
       ", which the document does not carry");
   }
   const drawn = new Set(tiers);
-
-  // The subtree: the node and everything whose parent chain reaches it. Walked
-  // upward per node rather than downward from the root, because a node names
-  // its parent and nothing names its children.
-  const inside = new Set();
-  for (const n of doc.nodes) {
-    let at = n;
-    for (let hops = 0; at && hops < 9; hops++) {
-      if (at.id === id) {
-        inside.add(n.id);
-        break;
-      }
-      at = at.parent ? byID.get(at.parent) : undefined;
-    }
-  }
+  const inside = withinNode(doc, id);
 
   const links = doc.links.filter((l) => {
     if (!inside.has(l.target)) return false;
@@ -924,6 +914,30 @@ function filterToNode(doc, id, tiers) {
     nodes: doc.nodes.filter((n) => keep.has(n.id)),
     links: links,
   });
+}
+
+/**
+ * The subtree of one node: its id and every id whose parent chain reaches it.
+ * Walked upward per node rather than downward from the root, because a node
+ * names its parent and nothing names its children.
+ * @param {FiscProjection} doc
+ * @param {string} id
+ * @returns {Set<string>}
+ */
+function withinNode(doc, id) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const inside = new Set();
+  for (const n of doc.nodes) {
+    let at = n;
+    for (let hops = 0; at && hops < 9; hops++) {
+      if (at.id === id) {
+        inside.add(n.id);
+        break;
+      }
+      at = at.parent ? byID.get(at.parent) : undefined;
+    }
+  }
+  return inside;
 }
 
 /**
@@ -1050,7 +1064,15 @@ function paintCounts() {
   let from = ", from " + plural(shownYear.counts.facts, "fact");
   if (projection) {
     const cited = new Set();
+    let carried = 0;
     for (const l of projection.links) {
+      // A CARRIED FLOW CITES THE CHART ABOVE, NOT THIS DOCUMENT. Its facts are
+      // the other document's, and counting them here would report one
+      // document's facts as a share of another's total.
+      if (isResidual(l.source) || isResidual(l.target)) {
+        carried++;
+        continue;
+      }
       for (const id of l.fact_ids) cited.add(id);
     }
     const doc = drawnDoc();
@@ -1061,6 +1083,7 @@ function paintCounts() {
     from = cited.size === total
       ? ", from " + plural(cited.size, "fact")
       : ", from " + cited.size + " of the document's " + plural(total, "fact");
+    if (carried) from += ", and " + plural(carried, "flow") + " carried unchanged from the chart above";
   }
   counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") + from;
 }
@@ -1075,14 +1098,18 @@ function paintCounts() {
  * depth nothing opens, which is every node of a chain's last rung. An
  * aggregate is excluded by name -- it can sit at a step's `from` tier now that
  * caps are per tier -- and would have nothing to open into anyway, being
- * several documents' worth of small funds rather than one thing.
+ * several documents' worth of small funds rather than one thing. So are the
+ * residual node and the endpoints carried with it: an endpoint that leaves
+ * the group is placed at the last drawn tier, which is exactly where the
+ * next step opens from, and it is a flow's end rather than a container of
+ * anything.
  *
  * @param {{id: string, tier: number}} d
  * @returns {boolean}
  */
 function drillable(d) {
   const step = stepAt(drilled.length);
-  return Boolean(step) && d.tier === step.from && !isAggregate(d.id);
+  return Boolean(step) && d.tier === step.from && !isAggregate(d.id) && !isCarried(d.id);
 }
 
 /**
@@ -1598,10 +1625,14 @@ function shapeFor(doc) {
   // It is restored rather than exempted from the fold, because the fold's rule
   // is about the document's own well-formedness and this is a claim about the
   // FILE's hierarchy, which is what fundGroupOf walks.
-  return Object.assign({}, drawn, {
+  const reparented = Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) =>
       (isAggregate(n.id) ? Object.assign({}, n, { parent: rung.id }) : n)),
   });
+  // LAST, AFTER THE CAP AND THE FOLD, because neither may touch it: the cap
+  // ranks the group's own parts and the residual is not one of them, and the
+  // fold merges by folded ends and these ends are the chart above's.
+  return carryResidual(reparented, docAt(drilled.length - 1), rung);
 }
 
 /**
@@ -1637,6 +1668,235 @@ function aggregateID(tier) {
  */
 function isAggregate(id) {
   return id.startsWith(AGGREGATE_PREFIX);
+}
+
+/**
+ * The prefix the residual node's id carries, followed by the opened node's id.
+ *
+ * PER OPENED NODE, as the aggregate's is per tier: one rung draws one
+ * residual, beside the node it opened, and naming it after that node is what
+ * keeps two rungs' residuals from ever sharing an id in one document.
+ */
+const RESIDUAL_PREFIX = "residual/";
+
+/**
+ * The id of the node an opened node's undecomposed flows are carried onto.
+ * @param {string} opened
+ * @returns {string}
+ */
+function residualID(opened) {
+  return RESIDUAL_PREFIX + opened;
+}
+
+/**
+ * Whether an id names a residual node.
+ * @param {string} id
+ * @returns {boolean}
+ */
+function isResidual(id) {
+  return id.startsWith(RESIDUAL_PREFIX);
+}
+
+/**
+ * Whether an id names the residual node or an endpoint carried with it: a
+ * mark the rung on screen added from the chart it was opened from, which is
+ * not the step document's and opens into nothing.
+ * @param {string} id
+ * @returns {boolean}
+ */
+function isCarried(id) {
+  if (isResidual(id)) return true;
+  const rung = drilled.length ? drilled[drilled.length - 1] : null;
+  return Boolean(rung && rung.step.residual &&
+    Object.prototype.hasOwnProperty.call(rung.step.residual, id));
+}
+
+/**
+ * Adds to a rung's drawn document the flows the chart it was opened from
+ * prints for the opened node and the document it draws does not decompose,
+ * copied verbatim onto one derived node beside the node's parts.
+ *
+ * THE DRILL PUTS ONE DOCUMENT INSIDE THE OTHER, AND THE TOTALS DO NOT MATCH.
+ * The spine prints a fund group's inflow and outflow whole; the fund-level
+ * schedule prints the same money by fund and by division and carries no row
+ * for a fund-balance draw, a reserve increase or a transfer out. Drawn as is,
+ * the opened General Fund shows 144,650,802 flowing out of a group the chart
+ * above said takes in 159,388,024 (FY2025-26, dollars), and nothing tells the
+ * reader why. The difference is the RESIDUAL: money the city printed at group
+ * grain and nowhere finer. `fisc verify`'s drill-reconciles-across-documents
+ * proves it is exactly the declared endpoints' share; this is what makes it
+ * visible.
+ *
+ * CARRIED, NOT COMPUTED. Every link added here is a link of the chart above
+ * with its value_cents, fact_ids, locators, kind and derived flag untouched --
+ * only the group end is re-pointed, onto the residual node. Those links are
+ * already covered by link-values-tie-to-facts and
+ * link-locators-match-their-facts, so the figure on screen is a published one
+ * with its provenance intact. Nothing here sums, subtracts or allocates, and
+ * tools/jscheck/drill.mjs holds each carried link byte-equal to its original.
+ *
+ * NOT RE-POINTED ONTO A FUND. Capital has 11 funds and internal-service 5,
+ * and pp.127-140 do not say which one a draw belongs to; attributing it would
+ * invent an allocation. So the residual sits BESIDE the funds, parented to
+ * the group, and the rule is the same for general, whose group has one fund:
+ * its transfers out and reserve increase leave beside fund/100 rather than
+ * through it. Conservative, never wrong, and free of a branch for the
+ * one-fund case that nothing published would justify.
+ *
+ * THE NODE SET IS THE CHECK'S DECLARATION, READ OFF THE STEP. step.residual is
+ * check.ResidualNodes() as the packager shipped it, ids to reasons; this file
+ * spells no endpoint, and it carries each reason into the node's rationale so
+ * the reader is told why a flow has no fund in the words the check declares
+ * it in. Which of those endpoints are residual for THIS group is the
+ * documents' own answer, under the same whole-or-nothing rule the check
+ * applies: a declared endpoint's link into the group is carried only where
+ * the step document carries NOTHING from that endpoint into the group's
+ * parts, because where it carries any it carries all of it -- transfers in
+ * reach eight funds of three groups to the cent, and copying those links too
+ * would draw 21,045,597 twice (FY2025-26, dollars). A split is a finding the
+ * check reports; this file does not look for one.
+ *
+ * THE OUTFLOW SIDE ONLY WHERE THE STEP DOCUMENT DECOMPOSES THE GROUP -- where
+ * it carries a flow out of one of the group's parts. Every other group's money
+ * ends at its funds, which publish no outflow; absent is not zero, and drawing
+ * capital's transfers out as residual against an outflow of nothing would
+ * state an identity no document holds. On the committed corpus that is
+ * general alone, in both columns.
+ *
+ * THE IMBALANCE IS THE POINT. The node's inflow and outflow differ by
+ * construction -- general's in FY2025-26 is 1,514,554 in and 14,737,222 out --
+ * and d3-sankey sizes a node at the larger of the two, so the difference
+ * shows on the mark rather than being balanced away. drill.mjs re-measures
+ * both figures over both columns.
+ *
+ * WHY A CLIENT-SIDE DERIVED NODE IS RIGHT HERE, because the next reader will
+ * ask. The capped tail is the precedent: derived: true, a rationale, a source
+ * note, checked by drill.mjs and not by derived-nodes-justified. This is a
+ * weaker claim than that one, because the aggregate SUMS and this COPIES.
+ * The derived-node rule binds projections, and this page is neither a
+ * projection nor a scenario; and the residual is a statement about the PAIR
+ * of documents, which neither document can hold -- the page is the only place
+ * both exist at once. Putting it in the fund-flows projection is refused on
+ * its own grounds: it would put all-funds-gross and revenue-by-fund in one
+ * scope set, which projection-scopes-are-disjoint refuses by name, and it
+ * would read as capital being decomposed and silently drop the
+ * only-the-General-Fund caveat.
+ *
+ * A GROUP WITH NOTHING TO CARRY DRAWS NOTHING. Three groups' transfers in are
+ * decomposed whole and they draw no fund-balance row, so no node is added and
+ * no endpoint is copied; a residual node with no links would be the
+ * aggregate-of-nothing one tier up.
+ *
+ * @param {FiscProjection} drawn  the rung's document, shaped and folded
+ * @param {FiscProjection | null} from  the document of the chart the rung was
+ *   opened from
+ * @param {Rung} rung
+ * @returns {FiscProjection}
+ */
+function carryResidual(drawn, from, rung) {
+  const step = rung.step;
+  const residual = step.projection && from && step.residual && typeof step.residual === "object"
+    ? step.residual : null;
+  if (!residual) return drawn;
+  const opened = rung.id;
+  const inside = withinNode(rung.doc, opened);
+  // The group node itself carries no flow in any published document -- it
+  // exists to hold the hierarchy -- and is excluded by name rather than by
+  // assumption.
+  const decomposed = rung.doc.links.some((l) => inside.has(l.source) && l.source !== opened);
+  const carriesFrom = (/** @type {string} */ e) =>
+    rung.doc.links.some((l) => l.source === e && inside.has(l.target));
+  const carriesTo = (/** @type {string} */ e) =>
+    rung.doc.links.some((l) => l.target === e && inside.has(l.source));
+
+  const id = residualID(opened);
+  /** @type {FiscLink[]} */
+  const links = [];
+  /** @type {Map<string, boolean>} endpoint id to whether its flow arrives */
+  const ends = new Map();
+  // Endpoints in id order, so the rationale reads the same on every build.
+  for (const e of Object.keys(residual).sort()) {
+    for (const l of from.links) {
+      if (l.source === e && l.target === opened && !carriesFrom(e)) {
+        links.push(Object.assign({}, l, { target: id }));
+        ends.set(e, true);
+      } else if (l.source === opened && l.target === e && decomposed && !carriesTo(e)) {
+        links.push(Object.assign({}, l, { source: id }));
+        ends.set(e, false);
+      }
+    }
+  }
+  if (!links.length) return drawn;
+
+  // THE ENDPOINTS COME WITH THEIR LINKS, placed at the first drawn tier when
+  // the flow arrives and the last when it leaves. Their own tiers are the
+  // chart above's columns, which the step's tier set need not contain, and a
+  // tier layOut's align cannot place is clamped to the first column -- the
+  // shape drill.mjs records d3-sankey dying on.
+  const tiers = step.tiers;
+  const have = new Set(drawn.nodes.map((n) => n.id));
+  const fromByID = new Map(from.nodes.map((n) => [n.id, n]));
+  /** @type {FiscNode[]} */
+  const added = [];
+  for (const [e, arrives] of ends) {
+    const node = fromByID.get(e);
+    if (!node || have.has(e)) continue;
+    added.push(Object.assign({}, node, {
+      tier: arrives ? tiers[0] : tiers[tiers.length - 1], parent: "",
+    }));
+  }
+
+  // THE RESIDUAL STANDS AT THE TIER THE GROUP'S PARTS ARE DRAWN AT: the
+  // shallowest drawn tier of any node inside the group, read off the step
+  // document rather than named, because "the fund tier" is that document's
+  // vocabulary and not this file's.
+  let tier = Infinity;
+  for (const n of rung.doc.nodes) {
+    if (n.id !== opened && inside.has(n.id) && tiers.includes(n.tier) && n.tier < tier) tier = n.tier;
+  }
+  if (!Number.isFinite(tier)) {
+    throw new Error("cannot draw " + rung.doc.projection + ": " + opened +
+      " has no part at a tier this step draws to stand the residual beside");
+  }
+
+  const labels = new Map(from.nodes.map((n) => [n.id, n.label]));
+  const reasons = Array.from(ends.keys()).map((e) => (labels.get(e) || e) + ": " + residual[e] + ".");
+  /** @type {Map<string, Set<number>>} */
+  const cited = new Map();
+  for (const l of links) {
+    for (const s of l.locators || []) {
+      const pages = cited.get(s.doc_id) || new Set();
+      for (const p of s.pages) pages.add(p);
+      cited.set(s.doc_id, pages);
+    }
+  }
+  const where = Array.from(cited.keys()).sort().map((docID) => {
+    const doc = CONFIG && CONFIG.docs ? CONFIG.docs[docID] : undefined;
+    const pages = Array.from(cited.get(docID) || []).sort((a, b) => a - b);
+    return (doc && doc.title ? doc.title : docID) + " " +
+      (pages.length === 1 ? "p." : "pp.") + pages.join(", ");
+  }).join("; ");
+
+  const node = {
+    id: id,
+    label: "Not broken down by fund",
+    tier: tier,
+    parent: opened,
+    constraint_tier: "",
+    role: "residual",
+    derived: true,
+    rationale: "Money the chart above prints for " + (labels.get(opened) || opened) +
+      " as a whole and that the schedule this chart is drawn from does not split by fund, so " +
+      "no fund here receives or pays it. It is drawn beside the funds rather than attributed " +
+      "to one, and what flows in and what flows out need not balance: the difference is what " +
+      "that schedule does not break down. " + reasons.join(" "),
+    source_note: "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
+      " of the chart above with figures and citations unchanged \u2014 " + where + ".",
+  };
+  return Object.assign({}, drawn, {
+    nodes: drawn.nodes.concat(added, [node]),
+    links: drawn.links.concat(links),
+  });
 }
 
 /**

@@ -51,7 +51,7 @@ import (
 // outside the hierarchy, and sitting outside the hierarchy is exactly what
 // makes it undecomposable by a schedule that IS the hierarchy.
 var residualNodes = map[string]string{
-	"fund-balance/draw": "a negative change in working capital, inferred from p67's " +
+	"fund-balance/draw": "a negative change in working capital, inferred from pp.66-67's " +
 		"Change in Working Capital row and drawn into the group. pp.127-140 print no " +
 		"fund-balance row at all, so no fund receives it: measured, general 1,034,154, " +
 		"capital 2,500,213 and internal-service 6,147,533 in FY2026 adopted, and every " +
@@ -64,18 +64,18 @@ var residualNodes = map[string]string{
 		"where it turns positive -- a set measured on one column alone would have " +
 		"missed it",
 
-	"fund-balance/reserve-increase": "a printed row of p67 that the city books against " +
+	"fund-balance/reserve-increase": "a printed row of pp.66-67 that the city books against " +
 		"the group as a whole: general's 4,699,425 in FY2026 adopted has no division " +
 		"and no object category on pp.167-170, which decompose expenditure and nothing " +
 		"else",
 
-	"transfers/in": "p66 prints Transfers In per fund group and pp.127-140 print it per " +
+	"transfers/in": "pp.66-67 print Transfers In per fund group and pp.127-140 print it per " +
 		"fund for eight funds in three groups, to the cent. The general group has no " +
 		"such fund, so its 480,400 is residual and the other groups' is decomposed " +
 		"whole -- which is why the rule is per group and the exception " +
 		"revenue-detail-ties-to-spine declares is this one",
 
-	"transfers/out": "p67 prints Transfers Out per fund group and no fund-level " +
+	"transfers/out": "pp.66-67 print Transfers Out per fund group and no fund-level " +
 		"schedule prints it from any fund: pp.167-170 decompose the General Fund's " +
 		"expenditure and stop there, so general's 10,037,797 in FY2026 adopted leaves " +
 		"the group beside its divisions rather than through one",

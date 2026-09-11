@@ -24,8 +24,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, plannedFetch, settle, refusals,
-  twoYearConfig, repoRoot,
+  loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, goldenGraph2027, plannedFetch,
+  settle, refusals, twoYearConfig, repoRoot, residualDeclaration,
 } from "./harness.mjs";
 
 /**
@@ -43,6 +43,11 @@ import {
  * packager resolves them into each year's `steps` entries; the client reads
  * those and joins nothing. stepDocsFor below is what the packager ships for
  * one year, and the year check in year.mjs is where the join is measured.
+ *
+ * THE RESIDUAL IS NOT COPIED EITHER. views() reads it off check.ResidualNodes
+ * and the Go test pins that; this side reads the same declaration out of the
+ * Go source (residualDeclaration), so the client is measured under the set
+ * the site ships and no third spelling of five ids exists to drift.
  */
 const PAGE = {
   steps: [
@@ -50,6 +55,7 @@ const PAGE = {
       from: 2, projection: "fund-flows", tiers: [0, 3, 4],
       caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24 }],
       back: "All fund groups", tail: "funds",
+      residual: residualDeclaration(),
       description: "The revenue categories on the left flow into this fund group's own " +
         "funds, rescaled to the group's total — the citywide chart cannot show " +
         "them, because the General Fund alone is half the fund column and the " +
@@ -109,6 +115,7 @@ const PAGE = {
 const COLUMNS = [
   {
     stem: "sankey", label: "FY 2025-26", step: "fund-flows", golden: goldenFundFlows,
+    spine: goldenGraph,
     // The narrowest depth-2 ribbon, which is Patrol's in both years.
     worstDeep: "51.38",
     // PAGE.worst at the declared caps and uncapped: ribbons, and how many of
@@ -119,13 +126,48 @@ const COLUMNS = [
     // smallest fund's inflow it is: the two figures step 0's description
     // rounds to "half" and "less than a thirty-thousandth".
     share: "49.18", ratio: 31575,
+    // The General Fund's depth-1 tuple with the residual drawn: nodes, links
+    // and sub-pixel ribbons. 34 / 33 / 2 before the residual; the five marks
+    // and four ribbons added are the residual node, its four endpoints and
+    // the four spine links carried onto it.
+    general: { nodes: 39, links: 37, hairlines: 2 },
+    // THE RESIDUAL PER GROUP, IN CENTS, MEASURED OFF fisc export's OWN
+    // sankey.json AND fund-flows.json (2026-09-11) under the check's
+    // whole-or-nothing rule and independently of app.js: a declared
+    // endpoint's spine link is residual where the fund-level document
+    // carries nothing from it into the group's funds, and the outflow side is
+    // stated only for the group the fund-level document decomposes. A group
+    // absent here draws no residual node at all: special-revenue, enterprise
+    // and debt-service have their transfers in decomposed to the cent and
+    // draw no fund-balance row.
+    residual: {
+      // 1,034,154 draw + 480,400 transfers in; 4,699,425 reserve increase +
+      // 10,037,797 transfers out.
+      "fund-group/general": { in: 151455400, out: 1473722200, carried: 4 },
+      "fund-group/capital": { in: 250021300, out: 0, carried: 1 },
+      "fund-group/internal-service": { in: 614753300, out: 0, carried: 1 },
+    },
   },
   {
     stem: "sankey-2027", label: "FY 2026-27", step: "fund-flows-2027", golden: goldenFundFlows2027,
+    spine: goldenGraph2027,
     worstDeep: "67.02",
     capped: { links: 22, hairlines: 1 }, uncapped: { links: 47, hairlines: 18 },
     tail: "23 smaller funds",
     share: "50.79", ratio: 54786,
+    // One more hairline than FY2025-26: transfers in at 486,735 lays out
+    // under a pixel beside the draw's absence.
+    general: { nodes: 39, links: 37, hairlines: 3 },
+    residual: {
+      // 486,735 transfers in and NO draw -- general's change in working
+      // capital turns positive this year, so it leaves as 2,351,098 of
+      // fund-balance/contribution, beside 3,332,607 reserve increase and
+      // 10,146,598 transfers out. The endpoint a FY2025-26-only set would
+      // have missed.
+      "fund-group/general": { in: 48673500, out: 1583030300, carried: 4 },
+      "fund-group/capital": { in: 1012941600, out: 0, carried: 1 },
+      "fund-group/internal-service": { in: 716064500, out: 0, carried: 1 },
+    },
   },
 ];
 
@@ -160,13 +202,14 @@ function stepDocsFor(stem) {
  * over the committed documents -- `plan` overriding what any path answers,
  * `tweak` editing the config before app.js reads it.
  *
- * TWO YEARS, EACH WITH ITS OWN STEP DOCUMENT, AND EACH ANSWERED WITH ITS OWN
- * CAPTURE. The spine golden is FY2025-26's under both paths, because the
- * drill reads nothing off it but the clicked node's id and label, and both
- * years' spines carry the same six groups; the fund-flows path is the year's
- * own. The page opens on `column` the way a restored radio would (checkedStem),
- * so a check runs over the second column without switching to it -- the
- * switch is year.mjs's subject.
+ * TWO YEARS, EACH WITH ITS OWN SPINE AND ITS OWN STEP DOCUMENT, AND EACH
+ * ANSWERED WITH ITS OWN CAPTURE. The spine used to be FY2025-26's under both
+ * paths, because the drill read nothing off it but the clicked node's id and
+ * label; the residual node copies the spine's own links, and the columns
+ * differ exactly where the declared set says they do, so each path now
+ * answers its year's capture. The page opens on `column` the way a restored
+ * radio would (checkedStem), so a check runs over the second column without
+ * switching to it -- the switch is year.mjs's subject.
  *
  * THE SPINE'S LABEL FOR THE GROUP IS MADE DISTINCT, because both committed
  * documents print "General Fund" for fund-group/general and a rung named
@@ -186,11 +229,14 @@ async function opened(plan, tweak, column = COLUMNS[0]) {
     steps: stepDocsFor(i === 0 ? "fund-flows" : "fund-flows-2027"),
   }));
   if (tweak) tweak(config);
-  const spine = goldenGraph();
-  spine.nodes.find((n) => n.id === "fund-group/general").label = "General Fund group";
+  const spineOf = (/** @type {() => any} */ load) => {
+    const spine = load();
+    spine.nodes.find((n) => n.id === "fund-group/general").label = "General Fund group";
+    return spine;
+  };
   const fetch = plannedFetch(Object.assign({
-    "data/sankey.json": { doc: spine },
-    "data/sankey-2027.json": { doc: spine },
+    "data/sankey.json": { doc: spineOf(goldenGraph) },
+    "data/sankey-2027.json": { doc: spineOf(goldenGraph2027) },
     "data/fund-flows.json": { doc: goldenFundFlows() },
     "data/fund-flows-2027.json": { doc: goldenFundFlows2027() },
   }, plan || {}));
@@ -600,9 +646,12 @@ export async function checks() {
   // returns -- so the panel rendered the summary with no "Read it in full"
   // (fisc-ko1j.13). The packager now ships each rung's refs beside the year's,
   // and the anchor asserted here is fund-flows', not sankey's.
+  // THE GENERAL FUND'S COLUMN DIVIDES SINCE THE RESIDUAL: fund/100 is no
+  // longer alone in it -- "Not broken down by fund" stands beside it -- so
+  // its share is expected there too, and it is a share of what is drawn.
   for (const where of [
     { open: [], sharesColumn: true, stem: "sankey" },
-    { open: ["fund-group/general"], sharesColumn: false, stem: "fund-flows" },
+    { open: ["fund-group/general"], sharesColumn: true, stem: "fund-flows" },
   ]) {
     const { app } = await opened();
     await at(app, ...where.open);
@@ -641,9 +690,10 @@ export async function checks() {
       // arithmetic over two printed figures and sits beside "printed by the
       // city", which is the one adjacency this project's premise is about.
       // The spine's marked node is one of twelve sources; the General Fund's
-      // is fund/100, alone in its column, where a share would read "our
-      // 100.0% of this column" -- a derived chip carrying a figure that is
-      // 100% by construction.
+      // is fund/100, which shared its column with nothing until the residual
+      // stood beside it -- and a share of a column of one would read "our
+      // 100.0% of this column", a derived chip carrying a figure that is
+      // 100% by construction, which columnShare suppresses.
       ok: tip.includes("caveat") &&
           (where.sharesColumn
             ? tip.includes("◇ our ") && tip.includes("of this column")
@@ -812,6 +862,219 @@ export async function checks() {
         ? hundreds.slice(0, 3).join("; ")
         : `every share across the overview and all ${walk.visited} opened views is under 100%; ` +
           `a 99.9943% mark of a two-node column reads "${rounded}"`,
+    });
+  }
+
+  // ------------------------------------------------------------ the residual
+  //
+  // THE RESIDUAL, MEASURED OVER BOTH COLUMNS. Every figure below is pinned in
+  // COLUMNS[].residual off fisc export's own documents, independently of
+  // app.js; the arms add that the marks reach the DOM, that each carried link
+  // is the spine's own byte for byte, and that the set drawn is the declared
+  // one read off the step and nothing this file or app.js spelled.
+  for (const col of COLUMNS) {
+    const declared = PAGE.steps[0].residual;
+    const spine = col.spine();
+    const stepDoc = col.golden();
+    const stepHas = new Set(stepDoc.nodes.map((n) => n.id));
+    const spineLink = new Map(spine.links.map((l) => [l.source + "|" + l.target, l]));
+    const groups = spine.nodes.filter((n) => n.tier === PAGE.steps[0].from).map((n) => n.id).sort();
+    const general = "fund-group/general";
+    const want = col.residual;
+    const { app } = await opened(null, null, col);
+    const residualOf = (/** @type {string} */ g) => {
+      const id = app.residualID(g);
+      const node = app.projection.nodes.find((n) => n.id === id);
+      const links = app.projection.links.filter((l) => l.source === id || l.target === id);
+      return { id, node, links,
+        in: links.filter((l) => l.target === id).reduce((sum, l) => sum + l.value_cents, 0),
+        out: links.filter((l) => l.source === id).reduce((sum, l) => sum + l.value_cents, 0) };
+    };
+
+    // WHERE IT IS DRAWN AND WHERE IT IS NOT, over all six groups. A group the
+    // pins name draws one node with exactly the pinned sums; a group they do
+    // not draws no residual node AND no endpoint copied in beside its funds
+    // -- transfers/in drawn under enterprise is the step document's own node,
+    // carrying the decomposed flows, and is told apart by the step golden.
+    const seen = {};
+    const stray = [];
+    for (const g of groups) {
+      await at(app, g);
+      const r = residualOf(g);
+      if (r.node || r.links.length) seen[g] = { in: r.in, out: r.out, carried: r.links.length };
+      for (const n of app.projection.nodes) {
+        if (Object.hasOwn(declared, n.id) && !stepHas.has(n.id) && !r.node) stray.push(g + ": " + n.id);
+      }
+      if (r.node && !r.links.length) stray.push(g + ": a residual node with no flow");
+    }
+    const asSeen = JSON.stringify(seen, Object.keys(seen).sort());
+    const asWant = JSON.stringify(want, Object.keys(want).sort());
+    // AND WITH THE DECLARATION REMOVED FROM THE STEP, NOTHING IS DRAWN: the
+    // client spells no endpoint of its own, so the shipped set is the only
+    // source of the marks.
+    const { app: undeclared } = await opened(null, (c) => {
+      c.steps = PAGE.steps.map((st) => { const t = Object.assign({}, st); delete t.residual; return t; });
+    }, col);
+    await at(undeclared, general);
+    const none = residualOf.call(null, general);
+    const noneDrawn = !undeclared.projection.nodes.some((n) => app.isResidual(n.id)) &&
+      undeclared.projection.links.length === col.general.links - want[general].carried &&
+      !undeclared.projection.nodes.some((n) => Object.hasOwn(declared, n.id) && !stepHas.has(n.id));
+    void none;
+    out.push({
+      name: `${col.label}: the residual is drawn beside the funds of exactly the groups whose flows the fund-level document does not decompose, and only from the declared set`,
+      ok: asSeen === asWant && stray.length === 0 && noneDrawn,
+      detail: (asSeen === asWant
+        ? `drawn on ${Object.keys(seen).map((g) => g.replace("fund-group/", "")).join(", ")} with the ` +
+          `pinned sums, and on no other group`
+        : `drawn ${asSeen}, want ${asWant}`) +
+        (stray.length ? `; stray carried marks: ${stray.join("; ")}` : "") +
+        `; with residual deleted from the step, the General Fund draws ` +
+        `${noneDrawn ? "no carried mark" : "CARRIED MARKS FROM NOWHERE"}`,
+    });
+
+    // CARRIED, NOT COMPUTED. Each link on a residual node is the spine's link
+    // between that endpoint and the group with its value_cents, fact_ids,
+    // locators, kind and derived flag byte-equal -- three named fields, three
+    // mutations -- and its far end is a declared endpoint, never a fund.
+    const mismatches = [];
+    let compared = 0;
+    for (const g of Object.keys(want)) {
+      await at(app, g);
+      const r = residualOf(g);
+      for (const l of r.links) {
+        const arrives = l.target === r.id;
+        const e = arrives ? l.source : l.target;
+        const original = spineLink.get(arrives ? e + "|" + g : g + "|" + e);
+        compared++;
+        if (!Object.hasOwn(declared, e)) { mismatches.push(`${g}: ${e} is not a declared endpoint`); continue; }
+        if (!original) { mismatches.push(`${g}: the spine has no link ${arrives ? e + " -> " + g : g + " -> " + e}`); continue; }
+        for (const field of ["value_cents", "fact_ids", "locators", "kind", "derived"]) {
+          if (JSON.stringify(l[field]) !== JSON.stringify(original[field])) {
+            mismatches.push(`${g}: ${e} ${field} ${JSON.stringify(l[field])} != ${JSON.stringify(original[field])}`);
+          }
+        }
+        const end = app.projection.nodes.find((n) => n.id === e);
+        if (!end || !PAGE.steps[0].tiers.includes(end.tier)) {
+          mismatches.push(`${g}: endpoint ${e} is ${end ? "at undrawn tier " + end.tier : "not drawn"}`);
+        }
+      }
+    }
+    out.push({
+      name: `${col.label}: every carried flow is the spine's own link byte for byte, and ends at a declared endpoint rather than a fund`,
+      ok: compared > 0 && mismatches.length === 0,
+      detail: mismatches.length
+        ? mismatches.slice(0, 4).join("; ")
+        : `${compared} carried flows over ${Object.keys(want).length} groups, each equal to its spine ` +
+          `link in value_cents, fact_ids, locators, kind and derived`,
+    });
+
+    // THE IMBALANCE IS DRAWN. The General Fund's residual takes in the draw
+    // and the transfer in and pays out the transfer out and the reserve
+    // increase, and the two sums differ; d3-sankey sizes the node at the
+    // larger, in the fund column, with its endpoints in the first and last.
+    await at(app, general);
+    const r = residualOf(general);
+    const laid = app.layOut(app.projection);
+    const laidNode = laid.nodes.find((n) => n.id === r.id);
+    const tiers = PAGE.steps[0].tiers;
+    const layers = r.links.map((l) => {
+      const e = l.target === r.id ? l.source : l.target;
+      const n = laid.nodes.find((x) => x.id === e);
+      return e + "@" + (n ? n.layer : "?") + (l.target === r.id ? " in" : " out");
+    });
+    const endsRight = layers.every((x) => (x.endsWith(" in") ? x.includes("@0 ") : x.includes("@" + (tiers.length - 1) + " ")));
+    out.push({
+      name: `${col.label}: the General Fund's residual takes in less than it pays out, and both are drawn rather than balanced`,
+      ok: Boolean(r.node) && r.in === want[general].in && r.out === want[general].out && r.in !== r.out &&
+          Boolean(laidNode) && laidNode.value === Math.max(r.in, r.out) &&
+          laidNode.layer === tiers.indexOf(r.node.tier) && r.node.tier === 3 &&
+          endsRight && app.fundGroupOf(r.node) === general,
+      detail: r.node
+        ? `in ${r.in} out ${r.out} cents (want ${want[general].in} / ${want[general].out}); laid at ` +
+          `${laidNode ? laidNode.value : "nowhere"} in column ${laidNode ? laidNode.layer : "?"} of tier ` +
+          `${r.node.tier}; ends ${layers.join(", ")}; hue from ${app.fundGroupOf(r.node) || "no group"}`
+        : "no residual node on the General Fund",
+    });
+
+    // MARKED AS OURS AND REACHING THE READER: derived, a rationale carrying
+    // every reason the check declares for the endpoints it carries, a source
+    // note naming the pages the carried links cite, an entry in "What we
+    // inferred", and the derived chip in the tooltip and the panel. Read
+    // back from the DOM, because a field set and a renderer that ignores it
+    // are indistinguishable by any other route.
+    const text = (/** @type {any} */ el) => {
+      const parts = [];
+      const walk = (/** @type {any} */ n) => {
+        if (n.textContent) parts.push(n.textContent);
+        for (const c of n.children || []) walk(c);
+      };
+      walk(el);
+      return parts.join(" ");
+    };
+    const carriedEnds = r.links.map((l) => (l.target === r.id ? l.source : l.target));
+    // THE PAGES ARE THE CARRIED LINKS' OWN, read off their locators rather
+    // than typed: the General Fund's four spine links all cite p.66, which
+    // testdata/README.md's rule for the OTHER groups (p.67) would not predict.
+    const citedPages = [...new Set(r.links.flatMap((l) => l.locators.flatMap((s) => s.pages)))];
+    const missingReasons = carriedEnds.filter((e) => !r.node || !r.node.rationale.includes(declared[e]));
+    const listed = text(app.dom.byId.get("derived-list"));
+    app.showTip({ target: app.dom.byId.get("chart"), clientX: 0, clientY: 0 }, laidNode);
+    const tip = text(app.dom.byId.get("tooltip"));
+    app.pin(laidNode);
+    const panel = text(app.dom.byId.get("detail"));
+    const opens = app.projection.nodes.filter((n) => app.isCarried(n.id) && app.drillable(n)).map((n) => n.id);
+    out.push({
+      name: `${col.label}: the residual is marked as ours, says why in the check's words, and reaches the inferred list, the tooltip and the panel; nothing carried opens`,
+      ok: Boolean(r.node) && r.node.derived === true && r.node.label === "Not broken down by fund" &&
+          r.node.rationale !== "" && missingReasons.length === 0 &&
+          r.node.source_note.includes("Carried, not computed") &&
+          citedPages.every((pg) => r.node.source_note.includes(String(pg))) &&
+          listed.includes("Not broken down by fund") && listed.includes(r.node.rationale) &&
+          tip.includes("◇ inferred") && tip.includes(r.node.rationale) &&
+          panel.includes("◇ our inference") && panel.includes(r.node.rationale) &&
+          panel.includes(r.node.source_note) && opens.length === 0,
+      detail: r.node
+        ? `derived=${r.node.derived}, label "${r.node.label}"; rationale carries ` +
+          `${carriedEnds.length - missingReasons.length} of ${carriedEnds.length} declared reasons` +
+          (missingReasons.length ? ` (missing ${missingReasons.join(", ")})` : "") +
+          `; source note names ${citedPages.every((pg) => r.node.source_note.includes(String(pg))) ? "" : "NOT "}` +
+          `every cited page (${citedPages.join(", ")}); inferred list ` +
+          `${listed.includes("Not broken down by fund") ? "lists it" : "OMITS it"}; tooltip ` +
+          `${tip.includes("◇ inferred") ? "chips it inferred" : "chips it PRINTED"}; panel ` +
+          `${panel.includes("◇ our inference") ? "chips it ours" : "chips it PRINTED"}; ` +
+          `${opens.length ? opens.join(", ") + " WRONGLY open" : "no carried mark opens"}`
+        : "no residual node on the General Fund",
+    });
+
+    // WHOLE OR NOTHING, ON THE GENERAL FUND, WHICH THE CORPUS CANNOT SHOW: the
+    // three groups whose transfers in are decomposed witness the "carries
+    // any, copies nothing" branch, and general witnesses the other. This
+    // builds the step document that decomposes general's transfer in whole
+    // -- one link, transfers/in -> fund/100, at the spine's own figure -- and
+    // expects the residual to drop exactly that link and keep the rest.
+    const transferIn = spineLink.get("transfers/in|" + general);
+    const decomposedIn = JSON.parse(JSON.stringify(stepDoc));
+    decomposedIn.links.push(Object.assign({}, transferIn, { target: "fund/100" }));
+    const { app: split } = await opened({ [`data/${col.step}.json`]: { doc: decomposedIn } }, null, col);
+    await at(split, general);
+    const sr = (() => {
+      const id = split.residualID(general);
+      const links = split.projection.links.filter((l) => l.source === id || l.target === id);
+      return { node: split.projection.nodes.find((n) => n.id === id), links,
+        in: links.filter((l) => l.target === id).reduce((sum, l) => sum + l.value_cents, 0),
+        out: links.filter((l) => l.source === id).reduce((sum, l) => sum + l.value_cents, 0) };
+    })();
+    const stillCarried = sr.links.some((l) => l.source === "transfers/in");
+    out.push({
+      name: `${col.label}: an endpoint the fund-level document decomposes whole is not carried, even on the General Fund`,
+      ok: Boolean(sr.node) && !stillCarried && sr.in === want[general].in - transferIn.value_cents &&
+          sr.out === want[general].out && sr.links.length === want[general].carried - 1,
+      detail: sr.node
+        ? `with transfers/in -> fund/100 at ${transferIn.value_cents} in the step document, the residual ` +
+          `${stillCarried ? "STILL carries transfers/in" : "drops transfers/in"} and reads in ${sr.in} ` +
+          `(want ${want[general].in - transferIn.value_cents}) out ${sr.out} over ${sr.links.length} flows`
+        : "no residual node on the General Fund",
     });
   }
 
@@ -1098,15 +1361,24 @@ async function walkChain(col) {
   const fund100 = app.projection.nodes.find((n) => n.id === "fund/100");
   const patrolOpens = Boolean(patrol) && app.drillable(patrol);
   const fund100Opens = Boolean(fund100) && app.drillable(fund100);
+  // A CARRIED ENDPOINT BELONGS TO NO GROUP, exactly as it does on the spine
+  // it was copied from: a transfer out is money leaving, not money held.
   const muted1 = app.projection.nodes
-    .filter((n) => !n.id.startsWith("revenue/") && app.fundGroupOf(n) === "").map((n) => n.id);
+    .filter((n) => !n.id.startsWith("revenue/") && !app.isCarried(n.id) && app.fundGroupOf(n) === "")
+    .map((n) => n.id);
   // THE DIVISION CAP IS INERT ON THE CORPUS AND PINNED INERT: 23 divisions
   // under a cap of 24, so no aggregate at tier 4 -- the day a 24th division
   // appears the column starts folding, and this is what says so.
   const divisions1 = app.projection.nodes.filter((n) => n.id.startsWith("dept/")).length;
   const foldedDivisions1 = app.projection.nodes.some((n) => n.id === app.aggregateID(4));
+  // THE DOCUMENT'S OWN FACTS, which is what the counts line claims a share
+  // of: a carried flow cites the spine, and its facts are counted apart.
   const cited1 = new Set();
-  for (const l of app.projection.links) for (const id of l.fact_ids) cited1.add(id);
+  let carried1 = 0;
+  for (const l of app.projection.links) {
+    if (app.isResidual(l.source) || app.isResidual(l.target)) { carried1++; continue; }
+    for (const id of l.fact_ids) cited1.add(id);
+  }
 
   withFocus();
   const open2 = await openInto(app, "dept/patrol");
@@ -1177,12 +1449,17 @@ async function walkChain(col) {
     // 34 nodes, 33 links and 2 sub-pixel ribbons is fisc-ko1j's own
     // measurement of this view, reproduced here through the shipped functions
     // -- and measured the same in FY2026-27, whose General Fund has the same
-    // one fund, ten sources and 23 divisions.
+    // one fund, ten sources and 23 divisions. The residual adds five marks
+    // and four ribbons to both, and one hairline to FY2026-27 alone; the
+    // counts line names the carried flows apart from the document's facts.
     ok: open1 === "drew" && at1.depth === 1 && !at1.drawnIsYears &&
-        Boolean(m1) && m1.nodes === 34 && m1.links === 33 && m1.hairlines === 2 &&
-        divisions1 === 23 && !foldedDivisions1 &&
-        at1.counts === `33 flows between 34 nodes, from ${cited1.size} of the document's 280 facts` &&
-        rows1 === 33 &&
+        Boolean(m1) && m1.nodes === col.general.nodes && m1.links === col.general.links &&
+        m1.hairlines === col.general.hairlines &&
+        divisions1 === 23 && !foldedDivisions1 && carried1 === col.residual["fund-group/general"].carried &&
+        at1.counts === `${col.general.links} flows between ${col.general.nodes} nodes, from ` +
+          `${cited1.size} of the document's 280 facts, and ${carried1} flows carried unchanged ` +
+          "from the chart above" &&
+        rows1 === col.general.links &&
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into General Fund group` &&
         at1.crumbControls.join("|") === "← All fund groups" && at1.crumbHere === "General Fund group" &&
         at1.hint === "This is General Fund group, broken into its parts. Click a node in the " +
