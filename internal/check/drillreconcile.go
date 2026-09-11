@@ -325,27 +325,57 @@ func (f *flowSum) add(end string, cents int64) {
 //
 // ONE FINDING PER SUBJECT, MOST SPECIFIC FIRST. A declared endpoint the
 // drill-down carries in part is reported as the split it is, and the identity
-// is not then restated over the same money: the split IS the unaccounted
-// amount, and two findings for one defect read as two defects.
+// is not then restated over the same money: two findings for one defect read
+// as two defects.
+//
+// THE SPLIT IS NOT NECESSARILY THE WHOLE DRIFT, and saying it was printed a
+// wrong figure. The early return here named sp-fd as "unaccounted", which is
+// this endpoint's share; the SIDE's unaccounted amount is the identity's
+// residue and the two are equal only when the split is the side's sole drift.
+// Measured on a fixture with a dropped transfer and a re-parented fund, the
+// finding read "$20.00 is unaccounted" where the side's identity left $220.00
+// -- so a reader who fixed the $20 met a second finding on the next run. Both
+// figures are now named and distinguished. Found by pass two of /code-review.
 func reconcileSide(subject, preposition string, spine, fund flowSum,
 	residual map[string]string, named *int64) []Finding {
-	var sideResidual int64
+	var sideResidual, splitDiff int64
+	var split string
 	for _, id := range sortedStrings(residual) {
 		sp, fd := spine.by[id], fund.by[id]
 		switch {
 		case fd == 0:
 			sideResidual += sp
 		case fd != sp:
-			return []Finding{finding(subject,
-				"%s %s the group is %s on the spine and %s at fund level. A declared "+
-					"residual endpoint is carried whole or decomposed whole, never split, so "+
-					"one document holds a row of it the other lacks, and %s is unaccounted",
-				id, preposition, amount.Cents(sp), amount.Cents(fd), amount.Cents(sp-fd))}
+			// A split endpoint is neither carried nor decomposed, so it joins
+			// neither total; the loop runs on so the other endpoints' residual
+			// is still accumulated and the side's identity can be stated.
+			if split == "" {
+				splitDiff = sp - fd
+				split = fmt.Sprintf(
+					"%s %s the group is %s on the spine and %s at fund level. A declared "+
+						"residual endpoint is carried whole or decomposed whole, never split, "+
+						"so one document holds a row of it the other lacks",
+					id, preposition, amount.Cents(sp), amount.Cents(fd))
+			}
 		}
 	}
 	*named += sideResidual
 
 	unaccounted := spine.total - fund.total - sideResidual
+	if split != "" {
+		// THE TWO FIGURES ARE THE SAME ONLY WHEN THE SPLIT IS THE SOLE DRIFT,
+		// which is the common case and gets the sentence that says so. When
+		// they differ, naming only the split would send a reader to fix an
+		// amount that does not close the identity.
+		if unaccounted == splitDiff {
+			return []Finding{finding(subject, "%s, and %s is unaccounted",
+				split, amount.Cents(splitDiff))}
+		}
+		return []Finding{finding(subject,
+			"%s. That endpoint differs by %s and this side is %s unaccounted in total, so "+
+				"the split is one of several drifts here",
+			split, amount.Cents(splitDiff), amount.Cents(unaccounted))}
+	}
 	if unaccounted == 0 {
 		return nil
 	}

@@ -25,7 +25,7 @@ import { join } from "node:path";
 
 import {
   loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, goldenGraph2027, plannedFetch,
-  stepDescriptions,
+  stepDescriptions, stepShapes,
   settle, refusals, twoYearConfig, repoRoot, residualDeclaration,
 } from "./harness.mjs";
 
@@ -34,19 +34,23 @@ import {
  * views(): the spine, drawn whole, whose fund groups open into fund-flows and
  * whose divisions open into their object categories.
  *
- * THE TIER SETS AND CAPS ARE COPIED because there is no seam: views() is Go and
- * this is node. So that copy is a claim, and TestViewsOpensOnTheSpineAndGives
- * YearsToItAlone is what keeps it honest from the other side -- it asserts
- * these exact steps off the real view list, field by field. If you change
- * either, both sides go red and that is the point.
+ * NOTHING HERE THAT views() DECLARES IS SPELLED TWICE. The tier sets, the caps
+ * and each step's `from` are read out of the Go source (stepShapes), the
+ * descriptions likewise (stepDescriptions), and the residual set out of the
+ * check that declares it (residualDeclaration).
  *
- * THE DESCRIPTIONS ARE NOT COPIED, AND THAT TEST IS NOT WHAT HOLDS THEM. It
- * pins views() against a literal in the test file and reads nothing in this
- * directory, so a rewording applied to data.go and to that literal together
- * left this file measuring the client under a sentence the site had stopped
- * shipping -- with `make js` green and the new wording in dist/index.html.
- * They are read out of the Go source now (stepDescriptions), the way the
- * residual set is. fisc-vsu8.
+ * A COPY WOULD BE HELD BY NOTHING, and was. TestViewsOpensOnTheSpineAndGives
+ * YearsToItAlone pins views() against a literal in the Go TEST file and reads
+ * nothing in this directory, so a change made to data.go and to that literal
+ * together -- which is how a real change is made -- left this file measuring
+ * the client under a shape the site had stopped shipping. Measured twice, one
+ * field set at a time: a reworded description (fisc-vsu8), and `{Tier: 3, Cap:
+ * 8}` changed to 9, which left `go test` and `make js` green while jscheck went
+ * on folding special-revenue under the old cap.
+ *
+ * WHAT IS STILL SPELLED HERE is what views() does NOT declare -- `back` and
+ * `tail` are the packager's, but the stems and the per-year join are resolved
+ * at build time and stepDocsFor below stands in for them.
  *
  * THE PER-YEAR JOIN IS NOT HERE. The Go side declares YearProjections and the
  * packager resolves them into each year's `steps` entries; the client reads
@@ -65,18 +69,19 @@ import {
 // measuring the client under a sentence the site no longer shipped, with every
 // gate green. fisc-vsu8, and the same argument as residualDeclaration's.
 const STEP_DESCRIPTIONS = stepDescriptions();
+const STEP_SHAPES = stepShapes();
 
 const PAGE = {
   steps: [
     {
-      from: 2, projection: "fund-flows", tiers: [0, 3, 4],
-      caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24 }],
+      from: STEP_SHAPES[0].from, projection: "fund-flows",
+      tiers: STEP_SHAPES[0].tiers, caps: STEP_SHAPES[0].caps,
       back: "All fund groups", tail: "funds",
       residual: residualDeclaration(),
       description: STEP_DESCRIPTIONS[0],
     },
     {
-      from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 8 }],
+      from: STEP_SHAPES[1].from, tiers: STEP_SHAPES[1].tiers, caps: STEP_SHAPES[1].caps,
       back: "All divisions", tail: "categories",
       description: STEP_DESCRIPTIONS[1],
     },

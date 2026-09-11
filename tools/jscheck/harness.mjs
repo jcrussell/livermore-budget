@@ -692,6 +692,52 @@ export function parseResidualLiteral(src) {
 }
 
 /**
+ * The step shape the packager declares, in declaration order, read out of
+ * pkg/cmd/export/data.go: `from`, `tiers` and `caps` for each step.
+ *
+ * THE SAME ARGUMENT AS [stepDescriptions], ONE FIELD SET OVER. drill.mjs held
+ * these as a hand-kept literal and nothing compared it to views() -- the Go
+ * test pins views() against a literal in the Go test file and reads nothing in
+ * this directory. Measured: changing `{Tier: 3, Cap: 8}` to `Cap: 9` in
+ * data.go AND in that test literal left `go test` and `make js` green, with
+ * jscheck still measuring special-revenue's fold under a cap of 8 while the
+ * site would ship 9. The tier sets are what decide whether a rung can be laid
+ * out at all, so a drifted copy measures a chart the reader is not shown.
+ *
+ * Found by pass two of /code-review, one commit after the description half was
+ * closed and the contract doc was edited to claim a Go test held these.
+ */
+export function stepShapes() {
+  const src = readFileSync(join(repoRoot, "pkg", "cmd", "export", "data.go"), "utf8");
+  const block = src.match(/spine\.Steps = \[\]export\.DrillStep\{\n([\s\S]*?)\n\t\t\}\n/);
+  if (!block) throw new Error("pkg/cmd/export/data.go declares no spine.Steps literal to read");
+  const out = [];
+  // One entry per `From:`; each step's fields are read between its own From and
+  // the next one, so a field gained by one step cannot be attributed to another.
+  const starts = [...block[1].matchAll(/^\t{4}From:\s*(\d+),/gm)];
+  for (const [i, m] of starts.entries()) {
+    const body = block[1].slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
+    const tiers = body.match(/Tiers:\s*\[\]int\{([\d,\s]*)\}/);
+    const caps = [...body.matchAll(/\{Tier:\s*(\d+),\s*Cap:\s*(\d+)\}/g)];
+    if (!tiers) throw new Error(`step ${i} in data.go declares no Tiers literal this can read`);
+    out.push({
+      from: Number(m[1]),
+      tiers: tiers[1].split(",").map((x) => x.trim()).filter(Boolean).map(Number),
+      caps: caps.map((c) => ({ tier: Number(c[1]), cap: Number(c[2]) })),
+    });
+  }
+  // Counted against the field that opens a step, for parseResidualLiteral's
+  // reason: a count sharing the entry pattern's assumption cannot disagree with
+  // it. `From:` is required on every step -- validate refuses a step without a
+  // walkable one -- so it is the honest thing to count.
+  const declared = (block[1].match(/^\t{4}From:/gm) || []).length;
+  if (out.length === 0 || out.length !== declared) {
+    throw new Error(`parsed ${out.length} steps from a literal declaring ${declared}`);
+  }
+  return out;
+}
+
+/**
  * The step descriptions the packager declares, in declaration order, read out of
  * pkg/cmd/export/data.go.
  *

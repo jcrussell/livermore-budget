@@ -216,6 +216,36 @@ func TestDrillReconcileIsFailable(t *testing.T) {
 			},
 		},
 		{
+			// A SPLIT THAT IS NOT THE WHOLE DRIFT, which the row above cannot
+			// distinguish because there the two figures coincide. The finding
+			// named the ENDPOINT's difference as the side's unaccounted amount,
+			// so a reader who fixed the $20.00 would rerun and meet the rest of
+			// the gap as a second finding. Both figures are named now, and this
+			// row is what tells them apart. Found by pass two of /code-review.
+			name: "a split alongside a second drift names the endpoint's difference and the side's",
+			damage: func(s *Subject, _ map[string]string) {
+				d := s.Projections[1].FundFlows
+				d.Links = slices.DeleteFunc(d.Links, func(l project.Link) bool {
+					return l.Target == "fund/301"
+				})
+				for i := range d.Nodes {
+					if d.Nodes[i].ID == "fund/302" {
+						d.Nodes[i].Parent = "fund-group/general"
+					}
+				}
+			},
+			wantSubjects: 3,
+			want: []string{
+				"fund-group/capital inflow: transfers/in into the group is $60.00 on the " +
+					"spine and $40.00 at fund level. A declared residual endpoint is carried " +
+					"whole or decomposed whole, never split, so one document holds a row of it " +
+					"the other lacks. That endpoint differs by $20.00 and this side is $220.00 " +
+					"unaccounted in total, so the split is one of several drifts here",
+				"fund-group/general inflow: spine flow into the group is $1,075.00, fund-level " +
+					"flow is $1,200.00, named residual is $75.00, unaccounted -$200.00",
+			},
+		},
+		{
 			// The group set is the union: a group one document carries and the
 			// other does not is a subject, and it is red.
 			name: "a group only the spine carries is unaccounted whole",

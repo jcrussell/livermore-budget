@@ -270,10 +270,12 @@ So the client folds. The rule, in full:
 now.** It became two pages split where the money changes hands, and those
 became the rungs of one chain under `index.html`, the site's one chart page
 (`fisc-ko1j`, owner decisions of 2026-09-08). The chain is declared once, in
-`views()`. `tools/jscheck/drill.mjs` copies the tier sets and caps, which a Go
-test holds to it field by field; it reads each step's *description* out of the
-Go source instead, because nothing held those two spellings equal
-(`fisc-vsu8`):
+`views()`, and `tools/jscheck/drill.mjs` spells none of it a second time: the
+`from`, the tier sets, the caps and each step's description are read out of the
+Go source, and the residual set out of the check that declares it. Nothing here
+is held by a Go test — that test pins `views()` against a literal in the *test
+file* and reads nothing in `tools/jscheck`, which is how both a reworded
+description (`fisc-vsu8`) and a changed cap went green on both sides at once:
 
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
@@ -362,9 +364,10 @@ laid out under 1px and four of the 40 node rects under 2px, and `render()` floor
 both — `Math.max(1, width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those
 marks do not encode their values. `tools/jscheck/fold.mjs` pins **both** counts,
 so neither can grow unnoticed. The chain's rungs are better on this and not
-free of it: the General Fund at depth 1 draws 2 sub-pixel ribbons of 37 in
-FY2025-26 and 3 of 37 in FY2026-27, and special revenue, capped, 2 of 22 — all
-pinned per column in `drill.mjs`.
+free of it, and neither count is the same in both years: the General Fund at
+depth 1 draws 2 sub-pixel ribbons of 37 in FY2025-26 and 3 of 37 in FY2026-27,
+and special revenue, capped, 2 of 22 and then 1 of 22. All four are pinned per
+column in `drill.mjs`, which is the only reason the difference is visible.
 
 **The page describes the folded document, not the fetched one.** The legend, the
 flow table, the inferred list and the flow count are all statements about what
