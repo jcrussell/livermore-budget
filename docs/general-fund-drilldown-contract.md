@@ -270,8 +270,10 @@ So the client folds. The rule, in full:
 now.** It became two pages split where the money changes hands, and those
 became the rungs of one chain under `index.html`, the site's one chart page
 (`fisc-ko1j`, owner decisions of 2026-09-08). The chain is declared once, in
-`views()`, and `tools/jscheck/drill.mjs` carries a copy that a Go test holds
-to it field by field:
+`views()`. `tools/jscheck/drill.mjs` copies the tier sets and caps, which a Go
+test holds to it field by field; it reads each step's *description* out of the
+Go source instead, because nothing held those two spellings equal
+(`fisc-vsu8`):
 
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
@@ -304,8 +306,11 @@ chart. Filtering to the opened node is what leaves a set the fold can place.
 
 **A rung cites a slice, and says so.** At `{0,2,4}` the fold cites nothing
 away; a rung filtered to one node cannot, and the counts line names both
-numbers — the General Fund at depth 1 reads "33 flows between 34 nodes, from
-141 of the document's 280 facts". `drill.mjs`'s chain walk pins it.
+numbers — the General Fund at depth 1 reads "37 flows between 39 nodes, from
+141 of the document's 280 facts, and 4 flows carried unchanged from the chart
+above". `drill.mjs`'s chain walk pins it per column. Five of those nodes and
+four of those flows are the residual: one derived node, the four spine
+endpoints carried onto it, and the four links that carry them.
 
 ### Opening a node: filter, cap, fold
 
@@ -357,8 +362,9 @@ laid out under 1px and four of the 40 node rects under 2px, and `render()` floor
 both — `Math.max(1, width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those
 marks do not encode their values. `tools/jscheck/fold.mjs` pins **both** counts,
 so neither can grow unnoticed. The chain's rungs are better on this and not
-free of it: the General Fund at depth 1 draws 2 sub-pixel ribbons of 33, and
-special revenue, capped, 2 of 22 — both pinned in `drill.mjs`.
+free of it: the General Fund at depth 1 draws 2 sub-pixel ribbons of 37 in
+FY2025-26 and 3 of 37 in FY2026-27, and special revenue, capped, 2 of 22 — all
+pinned per column in `drill.mjs`.
 
 **The page describes the folded document, not the fetched one.** The legend, the
 flow table, the inferred list and the flow count are all statements about what

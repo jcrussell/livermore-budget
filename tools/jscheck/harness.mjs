@@ -652,7 +652,22 @@ export function goldenGraph2027() {
  * a client the site does not run.
  */
 export function residualDeclaration() {
-  const src = readFileSync(join(repoRoot, "internal", "check", "drillreconcile.go"), "utf8");
+  return parseResidualLiteral(
+    readFileSync(join(repoRoot, "internal", "check", "drillreconcile.go"), "utf8"));
+}
+
+/**
+ * The parse behind residualDeclaration, over source text rather than the file,
+ * so seam.mjs can hand it a literal the file does not contain.
+ *
+ * THE KEY COUNT DOES NOT PRESUPPOSE THE QUOTING, and that is the whole point of
+ * counting twice. Counting `^\t"` would be the entry pattern's own assumption
+ * spelled a second way: a key neither pattern follows would be skipped by both,
+ * got would equal keys, and the partial set would be returned in silence -- a
+ * guard vacuous for exactly the shape it exists for. An entry begins at one tab
+ * and a non-space; continuations are indented further. fisc-0flg.
+ */
+export function parseResidualLiteral(src) {
   const m = src.match(/var residualNodes = map\[string\]string\{\n([\s\S]*?)\n\}\n/);
   if (!m) throw new Error("internal/check/drillreconcile.go declares no residualNodes map literal to read");
   const out = {};
@@ -662,16 +677,53 @@ export function residualDeclaration() {
     const pieces = e[2].match(/"(?:[^"\\]|\\.)*"/g) || [];
     out[JSON.parse(`"${e[1]}"`)] = pieces.map((p) => JSON.parse(p)).join("");
   }
-  // Every entry accounted for, counted by the literal's own key lines, so a
-  // reason written in a shape the regex cannot follow is a throw and not a
-  // missing endpoint.
-  const keys = (m[1].match(/^\t"[^"]+": /gm) || []).length;
+  // Every entry accounted for, counted by the literal's own entry lines, so a
+  // key or a reason in a shape the entry pattern cannot follow is a throw and
+  // not a missing endpoint.
+  const keys = (m[1].match(/^\t(?!\/\/)\S/gm) || []).length;
   const got = Object.keys(out).length;
   if (got === 0 || got !== keys) {
     throw new Error(`parsed ${got} residual entries from a literal with ${keys} keys`);
   }
   for (const [id, reason] of Object.entries(out)) {
     if (!reason) throw new Error(`residual endpoint ${id} parsed with an empty reason`);
+  }
+  return out;
+}
+
+/**
+ * The step descriptions the packager declares, in declaration order, read out of
+ * pkg/cmd/export/data.go.
+ *
+ * THE SENTENCE THE CLIENT IS MEASURED UNDER HAS TO BE THE SENTENCE THE SITE
+ * SHIPS. drill.mjs used to spell its own copy, and nothing held the two equal:
+ * the Go test pins views() against a literal in the test and never reads this
+ * directory, so rewording data.go and its test together left `make js` green
+ * and put the new wording in front of readers. fisc-vsu8.
+ *
+ * Same shape and same reason as [parseResidualLiteral]: a parse of the Go
+ * source, because there is no seam from Go to node, and a throw rather than a
+ * partial answer.
+ */
+export function stepDescriptions() {
+  const src = readFileSync(join(repoRoot, "pkg", "cmd", "export", "data.go"), "utf8");
+  const out = [];
+  const decl = /Description:\s*((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+),/g;
+  let d;
+  while ((d = decl.exec(src)) !== null) {
+    const pieces = d[1].match(/"(?:[^"\\]|\\.)*"/g) || [];
+    out.push(pieces.map((x) => JSON.parse(x)).join(""));
+  }
+  // Counted twice, and the second count does NOT presuppose the first pattern's
+  // shape -- that was fisc-0flg, where both counts made the same assumption and
+  // the guard could not see the case it existed for.
+  const declared = (src.match(/^\s*Description:/gm) || []).length;
+  if (out.length === 0 || out.length !== declared) {
+    throw new Error(
+      `parsed ${out.length} step descriptions from a file declaring ${declared}`);
+  }
+  for (const [i, text] of out.entries()) {
+    if (!text) throw new Error(`step description ${i} parsed empty`);
   }
   return out;
 }

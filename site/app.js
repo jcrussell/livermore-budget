@@ -1051,7 +1051,7 @@ function paintCounts() {
   // This printed the document's fact total on every undrilled page, justified
   // by "a page showing the whole document" -- a condition that is false of any
   // chart that filters or folds before it draws: a rung of the chain reads
-  // "33 flows between 34 nodes" over ribbons citing 141 of 280. Naming one
+  // "37 flows between 39 nodes" over ribbons citing 141 of 280. Naming one
   // number and meaning the other is the failure; naming one when there are
   // two is what lets it happen.
   //
@@ -1843,6 +1843,14 @@ function carryResidual(drawn, from, rung) {
     if (!node || have.has(e)) continue;
     added.push(Object.assign({}, node, {
       tier: arrives ? tiers[0] : tiers[tiers.length - 1], parent: "",
+      // WHICH DOCUMENT THIS MARK IS OF, because it is no longer the one being
+      // drawn. Its caveats, and the anchors for them, belong to the chart it
+      // was carried from; caveatsFor and caveatHref read this to go and get
+      // them. Without it a figure lost the qualification its own document
+      // attaches to it the moment it was carried -- transfers/in and
+      // transfers/out carry transfer-legs-unpaired on the spine and arrived
+      // here unmarked. fisc-bccu.
+      carried_from: from.projection || "",
     }));
   }
 
@@ -2635,11 +2643,21 @@ function nodeDescription(d) {
  * and the panel rendered the summary with no link (fisc-ko1j.13). The year's
  * entry for the rung carries that document's refs; this reads them.
  *
+ * EXCEPT FOR A CARRIED MARK, WHOSE CAVEAT CAME FROM THE SPINE. The step
+ * document declares nothing about a mark it does not carry, so resolving a
+ * carried mark's caveat against the rung lands back on fisc-ko1j.13's symptom
+ * by the other route: a summary with no link. `carried` is the caller's,
+ * because the id here is a CAVEAT's and the question is about the NODE the
+ * caveat was read off -- one caveat can mark a carried node and a drawn one on
+ * the same chart. fisc-bccu.
+ *
  * @param {string} id
+ * @param {boolean} [carried]  the mark this caveat was read off was carried
+ *   from the chart above, so its anchor is that chart's
  * @returns {string}
  */
-function caveatHref(id) {
-  const refs = drilled.length
+function caveatHref(id, carried) {
+  const refs = drilled.length && !carried
     ? (stepDocAt(drilled.length - 1) || { caveats: [] }).caveats
     : shownYear ? shownYear.caveats : [];
   if (!Array.isArray(refs)) return "";
@@ -2666,7 +2684,14 @@ function caveatHref(id) {
  * @returns {FiscCaveat[]}
  */
 function caveatsFor(id) {
-  if (!projection || !projection.metadata || !Array.isArray(projection.metadata.caveats)) {
+  if (!projection) return [];
+  // A CARRIED MARK IS OF THE CHART ABOVE, AND SO ARE ITS CAVEATS. carryResidual
+  // copies the spine's endpoints onto the rung; the rung's own document has
+  // never heard of them, so filtering its caveats returns nothing however the
+  // walk below resolves. fisc-bccu.
+  const carried = projection.nodes.find((n) => n.id === id && n.carried_from);
+  const source = carried ? carriedSource() : projection;
+  if (!source || !source.metadata || !Array.isArray(source.metadata.caveats)) {
     return [];
   }
   // THE AGGREGATE STANDS FOR THE IDS IT SWALLOWED. capColumn folds by VALUE,
@@ -2683,8 +2708,23 @@ function caveatsFor(id) {
     }
     return false;
   };
-  return projection.metadata.caveats.filter((c) =>
+  return source.metadata.caveats.filter((c) =>
     Array.isArray(c.applies_to) && c.applies_to.some(reaches));
+}
+
+/**
+ * The document a carried mark came from: the chart the reader opened, which is
+ * always the spine at depth 0 of the stack.
+ *
+ * NOT drilled[0].doc, WHICH IS THE STEP DOCUMENT. carryResidual's `from` is the
+ * document of the chart the rung was opened from, and for the first rung that
+ * is the fetched spine. Only step 0 carries a residual, so one accessor covers
+ * every carried mark on the page.
+ *
+ * @returns {FiscProjection | null}
+ */
+function carriedSource() {
+  return docAt(0);
 }
 
 /**
@@ -2877,7 +2917,7 @@ function pin(d) {
     for (const c of caveatsFor(n.id)) {
       const why = h("p", "why");
       why.append(document.createTextNode("\u26a0 " + c.summary + " "));
-      const href = caveatHref(c.id);
+      const href = caveatHref(c.id, Boolean(n.carried_from));
       if (href) why.append(link("Read it in full", href));
       panel.append(why);
     }

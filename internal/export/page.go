@@ -1208,6 +1208,8 @@ func unionSources(srcs []sourceMeta) []sourceMeta {
 type stepDocument struct {
 	Metadata struct {
 		GeneratedBy string       `json:"generated_by"`
+		FiscalYear  int          `json:"fiscal_year"`
+		Basis       string       `json:"basis"`
 		Sources     []sourceMeta `json:"sources"`
 		Caveats     []caveatMeta `json:"caveats"`
 	} `json:"metadata"`
@@ -1235,8 +1237,8 @@ type stepDocument struct {
 // builtBy is the view's own projection's generated_by, and a step document
 // built by another is refused for the reason a year built by another is: the
 // footer credits one builder for every figure on the page.
-func stepDocuments(v View, year, builtBy string, projections map[string][]byte,
-	caveatsPath string,
+func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
+	projections map[string][]byte, caveatsPath string,
 ) ([]stepView, []sourceMeta, error) {
 	var (
 		out   []stepView
@@ -1269,6 +1271,26 @@ func stepDocuments(v View, year, builtBy string, projections map[string][]byte,
 				"view %q opens on %q built by %q but step %d's document %q for year stem %q "+
 					"was built by %q; the footer credits one projection for figures drawn "+
 					"from both", v.Path, v.Projection, builtBy, i, stem, year, doc.Metadata.GeneratedBy)
+		}
+		// THE JOIN IS OF ONE COLUMN, AND THE DOCUMENT SAYS WHICH IT IS.
+		//
+		// validateSteps checks that every year stem has an entry, that the entry
+		// was built, and that the opening year's agrees with Projection -- all of
+		// which a map pointing a year at the WRONG year's document satisfies. The
+		// opening year is covered only incidentally, by the two-documents-for-one-
+		// year arm; every other year was covered by nothing, and the reader met it
+		// as a fund column from a year they were not looking at. fisc-p1ae.
+		//
+		// Compared against the year's own decoded column rather than against the
+		// stem's spelling: a stem is a filename and two of them here differ by a
+		// suffix, so agreeing on the name is not agreeing on the column.
+		if doc.Metadata.FiscalYear != fiscalYear || doc.Metadata.Basis != basis {
+			return nil, nil, fmt.Errorf(
+				"view %q's step %d draws %q for year stem %q, and that document is FY%d %s "+
+					"where the year on screen is FY%d %s; opening a node would answer with "+
+					"another year's figures under this year's heading",
+				v.Path, i, stem, year, doc.Metadata.FiscalYear, doc.Metadata.Basis,
+				fiscalYear, basis)
 		}
 		cited = append(cited, doc.Metadata.Sources...)
 		out = append(out, stepView{
@@ -1354,7 +1376,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
-		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, o.Projections, caveatsPath)
+		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, m.FiscalYear, m.Basis, o.Projections, caveatsPath)
 		if stepErr != nil {
 			return pageData{}, stepErr
 		}
@@ -1484,7 +1506,7 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
-		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, o.Projections, caveatsPath)
+		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, m.FiscalYear, m.Basis, o.Projections, caveatsPath)
 		if stepErr != nil {
 			return chartPageData{}, stepErr
 		}

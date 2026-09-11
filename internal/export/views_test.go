@@ -2841,6 +2841,20 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 		{"a year's step document that was not built", func(v *export.View) {
 			v.Steps[0].YearProjections["sankey-2027"] = "nope"
 		}, projections(), `renders projection "nope" for year stem "sankey-2027", which was not built`},
+		// THE WRONG YEAR'S DOCUMENT, WHICH EVERY ARM ABOVE ACCEPTS.
+		//
+		// The entry is present, names a built document, and leaves the opening
+		// year alone, so the key-set arms and the two-documents-for-one-year arm
+		// are all satisfied -- the join was exact about its KEYS and said nothing
+		// about the column behind each value. A reader on FY2026-27 opened a fund
+		// group and was shown FY2025-26's funds. fisc-p1ae.
+		//
+		// The mirror case, the opening year pointed at the other column, is the
+		// "disagreeing with the projection" row above; it is refused by a
+		// different arm and for a different reason, which is why both rows exist.
+		{"a year pointed at the other column's step document", func(v *export.View) {
+			v.Steps[0].YearProjections["sankey-2027"] = "fund-flows"
+		}, projections(), "where the year on screen is FY2027 adopted"},
 		// THE BUILDER CHECK, one rung down from the year loop's: a step
 		// document built by another projection would have the footer credit
 		// one builder for figures drawn from two.

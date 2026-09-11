@@ -25,6 +25,7 @@ import { join } from "node:path";
 
 import {
   loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, goldenGraph2027, plannedFetch,
+  stepDescriptions,
   settle, refusals, twoYearConfig, repoRoot, residualDeclaration,
 } from "./harness.mjs";
 
@@ -33,11 +34,19 @@ import {
  * views(): the spine, drawn whole, whose fund groups open into fund-flows and
  * whose divisions open into their object categories.
  *
- * COPIED RATHER THAN IMPORTED because there is no seam: views() is Go and this
- * is node. So the copy is a claim, and TestViewsOpensOnTheSpineAndGivesYears
- * ToItAlone is what keeps it honest from the other side -- it asserts these
- * exact steps off the real view list, field by field, descriptions included.
- * If you change either, both sides go red and that is the point.
+ * THE TIER SETS AND CAPS ARE COPIED because there is no seam: views() is Go and
+ * this is node. So that copy is a claim, and TestViewsOpensOnTheSpineAndGives
+ * YearsToItAlone is what keeps it honest from the other side -- it asserts
+ * these exact steps off the real view list, field by field. If you change
+ * either, both sides go red and that is the point.
+ *
+ * THE DESCRIPTIONS ARE NOT COPIED, AND THAT TEST IS NOT WHAT HOLDS THEM. It
+ * pins views() against a literal in the test file and reads nothing in this
+ * directory, so a rewording applied to data.go and to that literal together
+ * left this file measuring the client under a sentence the site had stopped
+ * shipping -- with `make js` green and the new wording in dist/index.html.
+ * They are read out of the Go source now (stepDescriptions), the way the
+ * residual set is. fisc-vsu8.
  *
  * THE PER-YEAR JOIN IS NOT HERE. The Go side declares YearProjections and the
  * packager resolves them into each year's `steps` entries; the client reads
@@ -49,6 +58,14 @@ import {
  * Go source (residualDeclaration), so the client is measured under the set
  * the site ships and no third spelling of five ids exists to drift.
  */
+// THE SENTENCES ARE READ OUT OF THE PACKAGER, NOT SPELLED HERE.
+//
+// A copy would check the copy: the Go test pins views() against a literal in
+// the test, so rewording data.go and that literal together left this file
+// measuring the client under a sentence the site no longer shipped, with every
+// gate green. fisc-vsu8, and the same argument as residualDeclaration's.
+const STEP_DESCRIPTIONS = stepDescriptions();
+
 const PAGE = {
   steps: [
     {
@@ -56,21 +73,12 @@ const PAGE = {
       caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24 }],
       back: "All fund groups", tail: "funds",
       residual: residualDeclaration(),
-      description: "The revenue categories on the left flow into this fund group's own " +
-        "funds, rescaled to the group's total — the citywide chart cannot show " +
-        "them, because the General Fund alone is half the fund column and the " +
-        "smallest fund is less than a thirty-thousandth of it. Only the General Fund " +
-        "continues " +
-        "into the divisions that spend it: Budget Book pp.167-170 decompose that " +
-        "fund alone, so every other group's money ends at its funds — not " +
-        "missing, but not broken down in any published schedule.",
+      description: STEP_DESCRIPTIONS[0],
     },
     {
       from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 8 }],
       back: "All divisions", tail: "categories",
-      description: "The division on the left flows into the object categories it " +
-        "spends on, on the right — that division's cells of Budget Book " +
-        "pp.167-170, rescaled to its total.",
+      description: STEP_DESCRIPTIONS[1],
     },
   ],
   // Measured: the spine's 58 links over 25 nodes cite 58 of its 120 facts;
@@ -657,7 +665,13 @@ export async function checks() {
     await at(app, ...where.open);
     const name = where.open.length ? "opened into " + where.open.join(" > ") : "the overview";
     app.layOut(app.projection);
-    const marked = app.projection.nodes.find((n) => app.caveatsFor(n.id).length > 0);
+    // A DRAWN MARK, EXPLICITLY. Since fisc-bccu a carried mark carries its own
+    // document's caveats too, and it sorts into this list -- so `find` without
+    // the filter would silently start measuring a node whose right anchor is
+    // the SPINE's, and this arm's wantHref is the step document's. The carried
+    // side is the arm below, which is the one that would go red.
+    const marked = app.projection.nodes.find(
+      (n) => !n.carried_from && app.caveatsFor(n.id).length > 0);
     if (!marked) {
       out.push({
         name: `${name}: a marked node reaches the tooltip and the panel`,
@@ -705,6 +719,47 @@ export async function checks() {
                 : "no share, which is right for a column of one"}; panel ` +
               `${panel.includes("Read it in full") ? "links to the full text" : "does NOT link"}; ` +
               `href "${href}" (want "${wantHref}")`,
+    });
+  }
+
+  // A CARRIED MARK KEEPS THE CAVEAT OF THE DOCUMENT IT CAME FROM.
+  //
+  // carryResidual copies the spine's endpoints onto the rung, and the rung's
+  // document has never heard of them -- so caveatsFor, filtering the DRAWN
+  // document's metadata.caveats, returned [] for a figure the spine qualifies.
+  // Measured before the fix, both columns: transfers/in and transfers/out carry
+  // transfer-legs-unpaired at depth 0 and arrived at depth 1 with nothing.
+  // fisc-bccu.
+  //
+  // THE ANCHOR IS THE OTHER HALF. A caveat that resolves but links nowhere is
+  // fisc-ko1j.13's symptom by the other route, so this pins the href too -- and
+  // pins it per column, because the packager composes one anchor per (document,
+  // caveat) and the two years are two documents.
+  for (const column of COLUMNS) {
+    const { app } = await opened(null, null, column);
+    await at(app, "fund-group/general");
+    const carried = app.projection.nodes.filter((n) => n.carried_from);
+    const withCaveat = carried.filter((n) => app.caveatsFor(n.id).length > 0);
+    const ids = withCaveat.map((n) => n.id).sort();
+    const first = withCaveat[0];
+    const caveat = first ? app.caveatsFor(first.id)[0].id : "";
+    const href = first ? app.caveatHref(caveat, true) : "";
+    const wantHref = `caveats.html#caveat-${column.stem}--${caveat}`;
+    // The drawn mark beside it must STILL resolve to the step document's
+    // anchor: the fix must not have moved every caveat onto the spine.
+    const drawnCaveat = app.caveatsFor("fund/100")[0];
+    const drawnHref = drawnCaveat ? app.caveatHref(drawnCaveat.id, false) : "";
+    const wantDrawn = `caveats.html#caveat-${column.step}--${drawnCaveat ? drawnCaveat.id : ""}`;
+    out.push({
+      name: `${column.label}: a carried mark keeps the spine's caveat and links to the spine's copy of it`,
+      ok: carried.length > 0 && ids.length === 2 &&
+          ids[0] === "transfers/in" && ids[1] === "transfers/out" &&
+          caveat === "transfer-legs-unpaired" && href === wantHref &&
+          drawnHref === wantDrawn,
+      detail: `${carried.length} carried mark(s), of which ${ids.length} carry a caveat ` +
+        `(${ids.join(", ")}); ${first ? first.id : "none"} -> ${caveat} at "${href}" ` +
+        `(want "${wantHref}"); the drawn fund/100 still resolves to "${drawnHref}" ` +
+        `(want "${wantDrawn}"), so the carried case did not drag the drawn one with it`,
     });
   }
 

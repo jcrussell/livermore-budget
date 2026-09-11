@@ -18,7 +18,7 @@
 
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
-  KNOWN_SELECTORS, selectorsIn,
+  KNOWN_SELECTORS, selectorsIn, parseResidualLiteral,
 } from "./harness.mjs";
 
 export async function checks() {
@@ -179,6 +179,42 @@ export async function checks() {
       ok: shown === 1 && before === 1 && after === 0,
       detail: `a refused fetch paints ${shown} banner(s); a recovering year switch takes ` +
         `${before} down to ${after}, which is what makes asserting a banner's ABSENCE mean something`,
+    });
+  }
+
+
+  // THE RESIDUAL PARSE COUNTS TWICE, AND BOTH COUNTS MUST BE ABLE TO DISAGREE.
+  //
+  // parseResidualLiteral returns the set every residual check drives the client
+  // under, so a PARTIAL set would measure a client the site does not run -- and
+  // silently, since each entry it did parse is well-formed. The guard against
+  // that is counting the literal's entry lines and comparing.
+  //
+  // It counted `^\t"` until fisc-0flg: the same assumption the entry pattern
+  // makes, spelled a second way. A key neither pattern followed was skipped by
+  // BOTH, so got === keys held and the partial set was returned. The mutation
+  // is the third case below -- an unquoted key, which is what a Go const key
+  // looks like -- and it parses 1 of 2 entries.
+  {
+    const lit = (body) => `var residualNodes = map[string]string{\n${body}\n}\n`;
+    const good = lit('\t"a/b": "one",\n\n\t"c/d": "two",');
+    const unquoted = lit('\t"a/b": "one",\n\n\tconstKey: "two",');
+    const emptyReason = lit('\t"a/b": "",');
+    const threw = (src) => {
+      try {
+        parseResidualLiteral(src);
+        return false;
+      } catch {
+        return true;
+      }
+    };
+    const parsed = Object.keys(parseResidualLiteral(good)).length;
+    out.push({
+      name: "the residual literal's entry count refuses a key the entry pattern cannot follow",
+      ok: parsed === 2 && threw(unquoted) && threw(emptyReason) && !threw(good),
+      detail: `a well-formed literal parses ${parsed} of 2 entries and does not throw; an ` +
+        `unquoted key throws rather than returning 1 of 2, which is what the old ` +
+        `count could not see; an empty reason throws`,
     });
   }
 

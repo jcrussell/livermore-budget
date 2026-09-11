@@ -537,8 +537,10 @@ func views(built result) []export.View {
 	// EVERY TIER SET AND EVERY CAP BELOW IS MEASURED, laying the graph out
 	// with the shipped vendor/d3-sankey at app.js's own constants against the
 	// two committed goldens. tools/jscheck/drill.mjs walks the chain on every
-	// run and pins the figures: the depth-1 General Fund at 34 nodes and 33
-	// links with 2 sub-pixel ribbons; special-revenue's 32 funds folded to 8
+	// run and pins the figures: the depth-1 General Fund at 39 nodes and 37
+	// links, of which the residual is one derived node, its four carried
+	// endpoints and their four links, with 2 sub-pixel ribbons in FY2025-26
+	// and 3 in FY2026-27; special-revenue's 32 funds folded to 8
 	// (uncapped, 22 of its 49 ribbons are under a pixel, and the cap is what
 	// makes the column drawable rather than the rescaling); the division
 	// column's 23 under its cap of 24, so that cap is inert on the corpus and
