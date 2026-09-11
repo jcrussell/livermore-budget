@@ -1284,6 +1284,26 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 		// Compared against the year's own decoded column rather than against the
 		// stem's spelling: a stem is a filename and two of them here differ by a
 		// suffix, so agreeing on the name is not agreeing on the column.
+		// ABSENT IS NOT ZERO, AND TWO ABSENCES ARE NOT A MATCH. The comparison
+		// below is ==, so a year document and a step document that both omit
+		// these fields agree at 0 and "" and the arm says nothing -- the shape
+		// this project refuses by name, here in the guard that exists to stop a
+		// column being wrong. Neither side's decoder requires them, so both are
+		// checked rather than assumed. Found by pass two of /code-review over
+		// pass one's own fix.
+		switch {
+		case fiscalYear == 0 || basis == "":
+			return nil, nil, fmt.Errorf(
+				"view %q's year stem %q declares fiscal_year %d and basis %q; a step "+
+					"document can only be checked against a column the year itself states",
+				v.Path, year, fiscalYear, basis)
+		case doc.Metadata.FiscalYear == 0 || doc.Metadata.Basis == "":
+			return nil, nil, fmt.Errorf(
+				"view %q's step %d draws %q for year stem %q, and that document declares "+
+					"fiscal_year %d and basis %q; a document that does not say which column "+
+					"it is of cannot be shown under a year that does",
+				v.Path, i, stem, year, doc.Metadata.FiscalYear, doc.Metadata.Basis)
+		}
 		if doc.Metadata.FiscalYear != fiscalYear || doc.Metadata.Basis != basis {
 			return nil, nil, fmt.Errorf(
 				"view %q's step %d draws %q for year stem %q, and that document is FY%d %s "+

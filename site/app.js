@@ -1265,6 +1265,12 @@ function redrawStack(next) {
  * no longer the one it was opened against. A year switch mid-drill would
  * otherwise draw the year the reader left.
  *
+ * IT ASKS TWICE, ABOUT DIFFERENT THINGS. The tokens catch a gesture that
+ * STARTED after this one; the document identity catches a year switch that was
+ * already in flight when this one started, which no token can see because the
+ * bump happened first. Both orderings end in a chart whose parts come from two
+ * fiscal years, so neither check is redundant.
+ *
  * @param {string} id
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
@@ -1277,7 +1283,17 @@ async function drillDown(id) {
   const token = switching;
   const overtaken = () => mine !== opening || token !== switching;
   const doc = await stepDocument(step, depth, from, overtaken);
-  if (overtaken()) return SUPERSEDED;
+  // THE TOKEN CANNOT SEE A SWITCH THAT WAS ALREADY IN FLIGHT. `switching` is
+  // bumped when showYear STARTS, so a drill begun while a year fetch is
+  // outstanding captures the already-bumped value and compares equal when the
+  // new spine lands. The stack then rebuilds from `from`, the document the
+  // reader clicked on, under the new year's title: measured, an FY2026-27
+  // title and residual over FY2025-26 fund figures, in one chart.
+  //
+  // ASKING ABOUT THE DOCUMENT ANSWERS BOTH ORDERINGS, because it is the thing
+  // the gesture was actually opened against rather than a count of gestures.
+  // fisc-bccu's neighbour, found by pass two of /code-review.
+  if (overtaken() || docAt(depth) !== from) return SUPERSEDED;
   if (!doc) return FAILED;
   return redrawStack(drilled.concat([{ id: id, doc: doc, step: step }])) ? DREW : FAILED;
 }
@@ -1843,13 +1859,19 @@ function carryResidual(drawn, from, rung) {
     if (!node || have.has(e)) continue;
     added.push(Object.assign({}, node, {
       tier: arrives ? tiers[0] : tiers[tiers.length - 1], parent: "",
-      // WHICH DOCUMENT THIS MARK IS OF, because it is no longer the one being
-      // drawn. Its caveats, and the anchors for them, belong to the chart it
-      // was carried from; caveatsFor and caveatHref read this to go and get
-      // them. Without it a figure lost the qualification its own document
-      // attaches to it the moment it was carried -- transfers/in and
-      // transfers/out carry transfer-legs-unpaired on the spine and arrived
-      // here unmarked. fisc-bccu.
+      // THAT THIS MARK IS NOT OF THE DRAWN DOCUMENT. Its caveats, and the
+      // anchors for them, belong to the chart it was carried from, and
+      // caveatsFor and caveatHref branch on this. Without it a figure lost the
+      // qualification its own document attaches to it the moment it was
+      // carried -- transfers/in and transfers/out carry transfer-legs-unpaired
+      // on the spine and arrived here unmarked. fisc-bccu.
+      //
+      // THE STEM IS RECORDED AND NOT READ. carriedSource resolves to docAt(0)
+      // rather than to this value, because only step 0 carries a residual and
+      // its `from` is always the spine. A residual on a later step would make
+      // that false, and this field is what the resolution would have to start
+      // reading; it is a flag today and says so rather than promising a lookup
+      // nothing performs.
       carried_from: from.projection || "",
     }));
   }
@@ -2936,12 +2958,24 @@ function pin(d) {
   // to be noticed: a node is an aggregation point and cites no facts, so there
   // is nothing narrower to show.
   //
+  // BUT "THE DOCUMENT'S" MEANS THE ONE THE MARK IS OF. A carried endpoint and
+  // the residual beside it are of the chart above, so falling back to the drawn
+  // document sent a reader to pp.127-140 for a figure printed on p.66 -- and
+  // the residual's own source_note names p.66 two lines higher, so the panel
+  // contradicted itself. Measured before this: 54 anchors, none of them p.66,
+  // on every carried mark in both columns. Same seam as the caveats, and for
+  // the same reason. fisc-bccu's sibling, found by pass two of /code-review.
+  //
   // The label stays "Sources:" and not "Records:" -- citations() emits PDF,
   // extracted-text AND records anchors, so naming it for the last would name a
   // third of the row.
   const prov = h("div", "prov");
   prov.append(h("span", "subtle", "Sources:"));
-  for (const c of citations(asLink ? /** @type {LaidLink} */ (d).locators : projection.metadata.sources)) {
+  const mark = asLink ? null : /** @type {LaidNode} */ (d);
+  const ofDocument = mark && (mark.carried_from || isResidual(mark.id))
+    ? ((carriedSource() || projection).metadata.sources || projection.metadata.sources)
+    : projection.metadata.sources;
+  for (const c of citations(asLink ? /** @type {LaidLink} */ (d).locators : ofDocument)) {
     prov.append(link(c.label, c.href));
   }
   panel.append(prov);

@@ -115,10 +115,11 @@ const PAGE = {
  * stated here as two numbers rather than one.
  *
  * EVERY FIGURE IS PINNED, NOT BOUNDED, for the file's reason. Measured
- * 2026-09-10 through the shipped entry points over the two committed
- * captures. The General Fund's depth-1 tuple -- 34 nodes, 33 links, 2
- * sub-pixel ribbons, citing 141 of 280 -- is the same in both years, and
- * walkChain pins it once per column.
+ * through the shipped entry points over the two committed captures. The
+ * General Fund's depth-1 tuple is 39 nodes and 37 links citing 141 of 280 in
+ * both years, and the sub-pixel count is NOT the same in both -- 2 in
+ * FY2025-26 and 3 in FY2026-27 -- which is why COLUMNS carries it per column
+ * and walkChain pins it once per column rather than once.
  */
 const COLUMNS = [
   {
@@ -741,25 +742,88 @@ export async function checks() {
     const carried = app.projection.nodes.filter((n) => n.carried_from);
     const withCaveat = carried.filter((n) => app.caveatsFor(n.id).length > 0);
     const ids = withCaveat.map((n) => n.id).sort();
+
+    // THE PANEL, NOT caveatHref. Reading the anchor off caveatHref(id, true)
+    // hands the function the very argument the defect is about, so the arm
+    // passed with the call site's `Boolean(n.carried_from)` deleted -- the
+    // check tested the function and nobody tested the caller. Driving pin()
+    // and reading the rendered panel is what a reader actually gets, and it is
+    // the only route that goes red on that deletion. Found by pass two of
+    // /code-review over its own pass-one fix.
+    const laid = app.layOut(app.projection);
+    const textOf = (/** @type {any} */ el) => {
+      const parts = [];
+      const walk = (/** @type {any} */ n) => {
+        if (n.textContent) parts.push(n.textContent);
+        for (const c of n.children || []) walk(c);
+      };
+      walk(el);
+      return parts.join(" ");
+    };
+    const panelFor = (/** @type {string} */ id) => {
+      app.pin(laid.nodes.find((n) => n.id === id));
+      return textOf(app.dom.byId.get("detail"));
+    };
+    const hrefsIn = (/** @type {any} */ el) => {
+      const found = [];
+      const walk = (/** @type {any} */ n) => {
+        // link() in app.js assigns a.href as a PROPERTY, so the stub's
+        // getAttribute("href") answers null and a walker reading attributes
+        // finds nothing -- which is a check that would pass on a panel with no
+        // link at all. Read what app.js actually sets.
+        if (n.href) found.push(n.href);
+        for (const c of n.children || []) walk(c);
+      };
+      walk(el);
+      return found;
+    };
     const first = withCaveat[0];
     const caveat = first ? app.caveatsFor(first.id)[0].id : "";
-    const href = first ? app.caveatHref(caveat, true) : "";
     const wantHref = `caveats.html#caveat-${column.stem}--${caveat}`;
-    // The drawn mark beside it must STILL resolve to the step document's
-    // anchor: the fix must not have moved every caveat onto the spine.
+    let carriedPanel = "";
+    let carriedHrefs = [];
+    if (first) {
+      carriedPanel = panelFor(first.id);
+      carriedHrefs = hrefsIn(app.dom.byId.get("detail"));
+    }
+    // The drawn mark beside it must STILL reach the step document's anchor by
+    // the same route: the fix must not have moved every caveat onto the spine.
     const drawnCaveat = app.caveatsFor("fund/100")[0];
-    const drawnHref = drawnCaveat ? app.caveatHref(drawnCaveat.id, false) : "";
+    const drawnPanel = panelFor("fund/100");
+    const drawnHrefs = hrefsIn(app.dom.byId.get("detail"));
+
+    // AND THE PAGES THE PANEL SENDS A READER TO. A carried mark falls back to
+    // its document's sources, not the drawn document's -- the residual's own
+    // source_note names p.66 and the Sources row cited pp.127-140 beneath it.
+    // Read as page numbers off whatever anchor shapes citations() emits, so
+    // this does not pin the anchor format as well.
+    const pagesIn = (/** @type {string[]} */ hs) => [...new Set(hs
+      .filter((h) => !h.startsWith("caveats"))
+      .map((h) => (h.match(/p(?:age=)?0*(\d+)/) || [])[1])
+      .filter(Boolean))].map(Number).sort((a, b) => a - b);
+    panelFor(first.id);
+    const carriedPages = pagesIn(hrefsIn(app.dom.byId.get("detail")));
+    panelFor("fund/100");
+    const drawnPages = pagesIn(hrefsIn(app.dom.byId.get("detail")));
     const wantDrawn = `caveats.html#caveat-${column.step}--${drawnCaveat ? drawnCaveat.id : ""}`;
     out.push({
-      name: `${column.label}: a carried mark keeps the spine's caveat and links to the spine's copy of it`,
+      name: `${column.label}: a carried mark's panel links to the spine's copy of the caveat, and the drawn mark beside it still links to the step document's`,
       ok: carried.length > 0 && ids.length === 2 &&
           ids[0] === "transfers/in" && ids[1] === "transfers/out" &&
-          caveat === "transfer-legs-unpaired" && href === wantHref &&
-          drawnHref === wantDrawn,
+          caveat === "transfer-legs-unpaired" &&
+          carriedPanel.includes("Read it in full") && carriedHrefs.includes(wantHref) &&
+          drawnPanel.includes("Read it in full") && drawnHrefs.includes(wantDrawn) &&
+          carriedPages.join() === "66,67" && drawnPages.includes(127) && !drawnPages.includes(66),
       detail: `${carried.length} carried mark(s), of which ${ids.length} carry a caveat ` +
-        `(${ids.join(", ")}); ${first ? first.id : "none"} -> ${caveat} at "${href}" ` +
-        `(want "${wantHref}"); the drawn fund/100 still resolves to "${drawnHref}" ` +
-        `(want "${wantDrawn}"), so the carried case did not drag the drawn one with it`,
+        `(${ids.join(", ")}); ${first ? first.id : "none"}'s panel ` +
+        `${carriedPanel.includes("Read it in full") ? "links" : "does NOT link"} to ` +
+        `${JSON.stringify(carriedHrefs.find((h) => h.startsWith("caveats.html")) || "")} ` +
+        `(want "${wantHref}"); fund/100's panel ` +
+        `${drawnPanel.includes("Read it in full") ? "links" : "does NOT link"} to ` +
+        `${JSON.stringify(drawnHrefs.find((h) => h.startsWith("caveats.html")) || "")} ` +
+        `(want "${wantDrawn}"), so the carried case did not drag the drawn one with it; ` +
+        `the carried mark's Sources cite pp.${carriedPages.join(",")} (the chart above) and ` +
+        `fund/100's cite ${drawnPages.length} pages starting p.${drawnPages[0]} (the drawn document)`,
     });
   }
 

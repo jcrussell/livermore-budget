@@ -2779,6 +2779,29 @@ func builtLike(t *testing.T, like, raw []byte) []byte {
 //
 // THE CONTROL PASSES FIRST. A refusal table over a fixture that is refused for
 // some other reason proves nothing about any arm in it.
+// columnless strips fiscal_year and basis from a document's metadata, which is
+// what a document that never declared them looks like -- neither decodeSankey
+// nor stepDocument requires either field, so this is a shape the packager can
+// really be handed rather than one invented for the test.
+func columnless(t *testing.T, raw []byte) []byte {
+	t.Helper()
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("columnless: %v", err)
+	}
+	meta, ok := doc["metadata"].(map[string]any)
+	if !ok {
+		t.Fatalf("columnless: no metadata object")
+	}
+	delete(meta, "fiscal_year")
+	delete(meta, "basis")
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("columnless: %v", err)
+	}
+	return out
+}
+
 func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
@@ -2855,6 +2878,22 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 		{"a year pointed at the other column's step document", func(v *export.View) {
 			v.Steps[0].YearProjections["sankey-2027"] = "fund-flows"
 		}, projections(), "where the year on screen is FY2027 adopted"},
+		// TWO ABSENCES ARE NOT A MATCH, and the arm above compares with ==, so
+		// a year and a step document that both omit the column agree at 0 and
+		// "". Neither decoder requires the fields, so both sides get a row.
+		{"a step document that does not say which column it is of", func(*export.View) {},
+			func() map[string][]byte {
+				p := projections()
+				p["fund-flows-2027"] = builtLike(t, goldenSankey(t),
+					columnless(t, reyeared(t, fundFlows, 2027, "FY 2026-27")))
+				return p
+			}(), "a document that does not say which column it is of"},
+		{"a year that does not state its own column", func(*export.View) {},
+			func() map[string][]byte {
+				p := projections()
+				p["sankey-2027"] = columnless(t, reyeared(t, spine, 2027, "FY 2026-27"))
+				return p
+			}(), "can only be checked against a column the year itself states"},
 		// THE BUILDER CHECK, one rung down from the year loop's: a step
 		// document built by another projection would have the footer credit
 		// one builder for figures drawn from two.

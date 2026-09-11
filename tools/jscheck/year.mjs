@@ -14,7 +14,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, goldenFundFlows, repoRoot,
+  loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, goldenGraph2027, goldenFundFlows,
+  repoRoot,
 } from "./harness.mjs";
 
 /**
@@ -720,6 +721,50 @@ async function yearSwitchClosesTheDrill() {
       detail: `the year switched to "${lede}" while the step fetch was open; when it resolved the ` +
         `drill came to "${outcome}" and left ${app.drilled.length} rung(s) -- a drill that ` +
         `landed would read "drew" and 1`,
+    });
+  }
+
+  // THE OTHER ORDERING, WHICH THE ARM ABOVE DOES NOT REACH. There the drill
+  // starts first and the switch overtakes it, so `switching` moves after the
+  // drill captured it and the token comparison fires. Here the SWITCH starts
+  // first: showYear bumps `switching` before drillDown ever reads it, so the
+  // token compares equal when the spine lands and no token can see the
+  // collision. What lands is the old year's document under the new year's
+  // heading -- measured before the fix as an FY2026-27 title and residual over
+  // FY2025-26 fund figures in one chart.
+  //
+  // It is also the LIKELIER ordering at a reader's hands: the step document is
+  // larger than the spine, so a click during a year switch usually resolves in
+  // exactly this order.
+  {
+    let spine = null;
+    let step = null;
+    const { app } = await chainedYears({
+      "data/sankey-2027.json": { settle: (pair) => { spine = pair; } },
+      "data/fund-flows.json": { settle: (pair) => { step = pair; } },
+    });
+    clickYear(app, "sankey-2027");
+    await settle();
+    if (!spine) throw new Error("the year fetch was never asked for");
+    // The reader clicks a group on the chart still in front of them, so BOTH
+    // are open at once. The spine lands first -- it is the smaller file, which
+    // is why this is the ordering a reader meets.
+    const inFlight = app.drillDown("fund-group/general");
+    await settle();
+    if (!step) throw new Error("the step fetch was never asked for");
+    spine.resolve(goldenGraph2027());
+    await settle();
+    step.resolve(goldenFundFlows());
+    const outcome = await inFlight;
+    await settle();
+    const lede = app.dom.byId.get("lede-year").textContent;
+    out.push({
+      name: "a drill begun while a year switch is already in flight stands down rather than drawing two years at once",
+      ok: lede === "FY 2026-27 adopted" && outcome === "superseded" && app.drilled.length === 0,
+      detail: `the drill was begun on the old chart while the new year's spine was open; it came ` +
+        `to "${outcome}" leaving ${app.drilled.length} rung(s), with the page reading "${lede}" -- ` +
+        `a drill that landed would read "drew" and 1, and the chart would carry the new year's ` +
+        `title over the old year's figures`,
     });
   }
   return out;
