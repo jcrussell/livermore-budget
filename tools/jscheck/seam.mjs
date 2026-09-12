@@ -18,7 +18,7 @@
 
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
-  KNOWN_SELECTORS, selectorsIn, parseResidualLiteral,
+  KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes,
 } from "./harness.mjs";
 
 export async function checks() {
@@ -215,6 +215,55 @@ export async function checks() {
       detail: `a well-formed literal parses ${parsed} of 2 entries and does not throw; an ` +
         `unquoted key throws rather than returning 1 of 2, which is what the old ` +
         `count could not see; an empty reason throws`,
+    });
+  }
+
+
+  // THE STEP PARSE COUNTS TWO DIFFERENT MARKERS, for the reason the residual
+  // parse does -- and it did not, at first. Both its entry pattern and its
+  // count were `^\t{4}From:`, so a step whose From sat anywhere else was
+  // skipped by BOTH and the counts agreed with each other while the set was
+  // short. The second case below is the measured shape: reflowing a step's
+  // opener to `{From: 4,`, which gofmt accepts, dropped that step and moved its
+  // cap onto the one before it. fisc-0flg is the same defect in the residual
+  // parse; this is it repeated in the fix that cited it.
+  {
+    const lit = (body) => `\t\tspine.Steps = []export.DrillStep{\n${body}\n\t\t}\n`;
+    const step = (from, tiers, cap) =>
+      `\t\t\t{\n\t\t\t\tFrom:  ${from},\n\t\t\t\tTiers: []int{${tiers}},\n` +
+      `\t\t\t\tCaps:  []export.TierCap{{Tier: ${cap[0]}, Cap: ${cap[1]}}},\n\t\t\t},`;
+    const two = lit(step(2, "0, 3, 4", [3, 8]) + "\n" + step(4, "4, 5", [5, 8]));
+    const reflowed = two.replace("\t\t\t{\n\t\t\t\tFrom:  4,", "\t\t\t{From: 4,");
+    const noFrom = two.replace("\t\t\t\tFrom:  4,\n", "");
+    const threw = (src) => {
+      try {
+        parseStepShapes(src);
+        return false;
+      } catch {
+        return true;
+      }
+    };
+    const base = parseStepShapes(two);
+    let reflowedSteps = [];
+    let reflowedThrew = false;
+    try {
+      reflowedSteps = parseStepShapes(reflowed);
+    } catch {
+      reflowedThrew = true;
+    }
+    // A reflow must not lose a step. Either reading it correctly or throwing is
+    // acceptable; returning one step with two steps' caps is not.
+    const survived = reflowedThrew || (reflowedSteps.length === 2 &&
+      reflowedSteps[1].from === 4 && reflowedSteps[0].caps.length === 1);
+    out.push({
+      name: "a reflowed step is read or refused, never dropped with its caps moved onto the step before it",
+      ok: base.length === 2 && base[0].caps.length === 1 && base[1].from === 4 &&
+          survived && threw(noFrom),
+      detail: `two well-formed steps parse as ${base.length} with ${base[0].caps.length} cap(s) on ` +
+        `the first; the gofmt-legal reflow ` +
+        `${reflowedThrew ? "throws" : `parses ${reflowedSteps.length} step(s) with ` +
+          `${reflowedSteps[0] ? reflowedSteps[0].caps.length : 0} cap(s) on the first`}; ` +
+        `a step with no From throws`,
     });
   }
 

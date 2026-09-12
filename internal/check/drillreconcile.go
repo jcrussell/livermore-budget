@@ -340,6 +340,7 @@ func reconcileSide(subject, preposition string, spine, fund flowSum,
 	residual map[string]string, named *int64) []Finding {
 	var sideResidual, splitDiff int64
 	var split string
+	splits := 0
 	for _, id := range sortedStrings(residual) {
 		sp, fd := spine.by[id], fund.by[id]
 		switch {
@@ -349,6 +350,7 @@ func reconcileSide(subject, preposition string, spine, fund flowSum,
 			// A split endpoint is neither carried nor decomposed, so it joins
 			// neither total; the loop runs on so the other endpoints' residual
 			// is still accumulated and the side's identity can be stated.
+			splits++
 			if split == "" {
 				splitDiff = sp - fd
 				split = fmt.Sprintf(
@@ -363,18 +365,21 @@ func reconcileSide(subject, preposition string, spine, fund flowSum,
 
 	unaccounted := spine.total - fund.total - sideResidual
 	if split != "" {
-		// THE TWO FIGURES ARE THE SAME ONLY WHEN THE SPLIT IS THE SOLE DRIFT,
-		// which is the common case and gets the sentence that says so. When
-		// they differ, naming only the split would send a reader to fix an
-		// amount that does not close the identity.
-		if unaccounted == splitDiff {
+		// EQUAL FIGURES ARE NOT PROOF OF A SOLE DRIFT, and a second split must
+		// not be hidden behind the first. Two +$20 splits against an unrelated
+		// +$20 at fund level leave unaccounted == splitDiff == $20 while three
+		// things are wrong, so the count is asked as well as the arithmetic.
+		// Only the first split is named either way; the sentence says how many
+		// there are so a reader is not told the one they see is all of them.
+		if splits == 1 && unaccounted == splitDiff {
 			return []Finding{finding(subject, "%s, and %s is unaccounted",
 				split, amount.Cents(splitDiff))}
 		}
 		return []Finding{finding(subject,
-			"%s. That endpoint differs by %s and this side is %s unaccounted in total, so "+
-				"the split is one of several drifts here",
-			split, amount.Cents(splitDiff), amount.Cents(unaccounted))}
+			"%s. That endpoint differs by %s, %d declared endpoint(s) on this side are split, "+
+				"and the side is %s unaccounted in total -- so what is named here is one "+
+				"drift of several",
+			split, amount.Cents(splitDiff), splits, amount.Cents(unaccounted))}
 	}
 	if unaccounted == 0 {
 		return nil

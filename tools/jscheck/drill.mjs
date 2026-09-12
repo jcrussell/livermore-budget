@@ -802,12 +802,20 @@ export async function checks() {
     // source_note names p.66 and the Sources row cited pp.127-140 beneath it.
     // Read as page numbers off whatever anchor shapes citations() emits, so
     // this does not pin the anchor format as well.
+    // GUARDED, SO A REGRESSION IS A RED ROW AND NOT A CRASH. `first` is
+    // undefined when no carried mark carries a caveat -- which is exactly the
+    // regression this arm exists to catch -- and an unguarded pin() on it threw
+    // a TypeError out of checks(), reported as "a whole check module threw"
+    // rather than as this arm failing. Found by pass three of /code-review.
     const pagesIn = (/** @type {string[]} */ hs) => [...new Set(hs
       .filter((h) => !h.startsWith("caveats"))
       .map((h) => (h.match(/p(?:age=)?0*(\d+)/) || [])[1])
       .filter(Boolean))].map(Number).sort((a, b) => a - b);
-    panelFor(first.id);
-    const carriedPages = pagesIn(hrefsIn(app.dom.byId.get("detail")));
+    let carriedPages = [];
+    if (first) {
+      panelFor(first.id);
+      carriedPages = pagesIn(hrefsIn(app.dom.byId.get("detail")));
+    }
     panelFor("fund/100");
     const drawnPages = pagesIn(hrefsIn(app.dom.byId.get("detail")));
     const wantDrawn = `caveats.html#caveat-${column.step}--${drawnCaveat ? drawnCaveat.id : ""}`;

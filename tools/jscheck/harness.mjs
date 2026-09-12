@@ -708,31 +708,50 @@ export function parseResidualLiteral(src) {
  * closed and the contract doc was edited to claim a Go test held these.
  */
 export function stepShapes() {
-  const src = readFileSync(join(repoRoot, "pkg", "cmd", "export", "data.go"), "utf8");
+  return parseStepShapes(
+    readFileSync(join(repoRoot, "pkg", "cmd", "export", "data.go"), "utf8"));
+}
+
+/**
+ * The parse behind [stepShapes], over source text rather than the file, so
+ * seam.mjs can drive it over literals data.go does not contain -- including the
+ * reflow that used to drop a step in silence.
+ */
+export function parseStepShapes(src) {
   const block = src.match(/spine\.Steps = \[\]export\.DrillStep\{\n([\s\S]*?)\n\t\t\}\n/);
   if (!block) throw new Error("pkg/cmd/export/data.go declares no spine.Steps literal to read");
   const out = [];
-  // One entry per `From:`; each step's fields are read between its own From and
-  // the next one, so a field gained by one step cannot be attributed to another.
-  const starts = [...block[1].matchAll(/^\t{4}From:\s*(\d+),/gm)];
+  // ENTRIES ARE SLICED ON THE BRACE THAT OPENS ONE, not on a field inside it,
+  // and the cross-check counts a DIFFERENT marker. Slicing on `From:` made the
+  // parse and its guard ask the same question: a step whose From was not at
+  // exactly four tabs was skipped by both, so the count agreed with itself and
+  // nothing threw. Measured -- reflowing step 1's opener to `{From: 4,`, which
+  // gofmt accepts, dropped that step and attributed its `{Tier: 5, Cap: 8}` to
+  // step 0, silently. That is the defect this function cited fisc-0flg for and
+  // then repeated; found by pass three of /code-review.
+  const starts = [...block[1].matchAll(/^\t{3}\{/gm)];
   for (const [i, m] of starts.entries()) {
     const body = block[1].slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
+    const from = body.match(/From:\s*(\d+),/);
     const tiers = body.match(/Tiers:\s*\[\]int\{([\d,\s]*)\}/);
     const caps = [...body.matchAll(/\{Tier:\s*(\d+),\s*Cap:\s*(\d+)\}/g)];
+    if (!from) throw new Error(`step ${i} in data.go declares no From this can read`);
     if (!tiers) throw new Error(`step ${i} in data.go declares no Tiers literal this can read`);
     out.push({
-      from: Number(m[1]),
+      from: Number(from[1]),
       tiers: tiers[1].split(",").map((x) => x.trim()).filter(Boolean).map(Number),
       caps: caps.map((c) => ({ tier: Number(c[1]), cap: Number(c[2]) })),
     });
   }
-  // Counted against the field that opens a step, for parseResidualLiteral's
-  // reason: a count sharing the entry pattern's assumption cannot disagree with
-  // it. `From:` is required on every step -- validate refuses a step without a
-  // walkable one -- so it is the honest thing to count.
-  const declared = (block[1].match(/^\t{4}From:/gm) || []).length;
-  if (out.length === 0 || out.length !== declared) {
-    throw new Error(`parsed ${out.length} steps from a literal declaring ${declared}`);
+  // THE TWO MARKERS ARE INDEPENDENT, which is the whole point: braces say how
+  // many entries the literal has, `From:` says how many steps declare one, and
+  // they can disagree. An entry whose brace this missed, or a From this read
+  // into the wrong entry, moves one count and not the other. The From count is
+  // deliberately loose on indentation so that a reflow changes the PARSE and
+  // not the CHECK.
+  const froms = (block[1].match(/From:\s*\d+,/g) || []).length;
+  if (out.length === 0 || out.length !== froms) {
+    throw new Error(`parsed ${out.length} steps from a literal declaring ${froms} From fields`);
   }
   return out;
 }

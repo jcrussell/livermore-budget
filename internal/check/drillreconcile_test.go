@@ -198,6 +198,34 @@ func TestDrillReconcileIsFailable(t *testing.T) {
 			},
 		},
 		{
+			// TWO SPLITS WHOSE ARITHMETIC COINCIDES WITH THE SIDE TOTAL, which is
+			// the case an equality test alone cannot tell from a sole drift.
+			// Capital's inflow: fund-balance/draw $40 on the spine against $10 at
+			// fund level (split, difference $30), transfers/in $60 against $40
+			// (split), and $20 of charges re-pointed at fund/301 -- so the side is
+			// 600-570 = $30 unaccounted, EQUAL to the first split's difference
+			// while three things are wrong. Before the count was asked this printed
+			// "and $30.00 is unaccounted" and named one of the two splits. Found by
+			// pass three of /code-review.
+			name: "two splits whose difference equals the side total still say there are two",
+			damage: func(s *Subject, _ map[string]string) {
+				d := s.Projections[1].FundFlows
+				d.Nodes = append(d.Nodes, project.Node{ID: "fund-balance/draw"})
+				d.Links = slices.DeleteFunc(d.Links, func(l project.Link) bool {
+					return l.Source == "transfers/in" && l.Target == "fund/301"
+				})
+				d.Links = append(d.Links,
+					project.Link{Source: "fund-balance/draw", Target: "fund/300", ValueCents: 1000},
+					project.Link{Source: "revenue/charges-for-services", Target: "fund/301",
+						ValueCents: 2000})
+			},
+			wantSubjects: 3,
+			want: []string{
+				"2 declared endpoint(s) on this side are split, and the side is $30.00 " +
+					"unaccounted in total",
+			},
+		},
+		{
 			// A declared endpoint carried in part is the drift a subtraction
 			// rule would have absorbed as residual.
 			name: "one fund's transfer in dropped is a split, not a residual",
@@ -239,8 +267,9 @@ func TestDrillReconcileIsFailable(t *testing.T) {
 				"fund-group/capital inflow: transfers/in into the group is $60.00 on the " +
 					"spine and $40.00 at fund level. A declared residual endpoint is carried " +
 					"whole or decomposed whole, never split, so one document holds a row of it " +
-					"the other lacks. That endpoint differs by $20.00 and this side is $220.00 " +
-					"unaccounted in total, so the split is one of several drifts here",
+					"the other lacks. That endpoint differs by $20.00, 1 declared endpoint(s) " +
+					"on this side are split, and the side is $220.00 unaccounted in total -- " +
+					"so what is named here is one drift of several",
 				"fund-group/general inflow: spine flow into the group is $1,075.00, fund-level " +
 					"flow is $1,200.00, named residual is $75.00, unaccounted -$200.00",
 			},
