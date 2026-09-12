@@ -229,18 +229,40 @@ export async function checks() {
   // parse; this is it repeated in the fix that cited it.
   {
     const lit = (body) => `\t\tspine.Steps = []export.DrillStep{\n${body}\n\t\t}\n`;
-    const step = (from, tiers, cap) =>
-      `\t\t\t{\n\t\t\t\tFrom:  ${from},\n\t\t\t\tTiers: []int{${tiers}},\n` +
+    const step = (key, after, from, tiers, cap) =>
+      `\t\t\t{\n\t\t\t\tKey:   ${JSON.stringify(key)},\n` +
+      `\t\t\t\tAfter: ${JSON.stringify(after)},\n` +
+      `\t\t\t\tFrom:  ${from},\n\t\t\t\tTiers: []int{${tiers}},\n` +
       `\t\t\t\tCaps:  []export.TierCap{{Tier: ${cap[0]}, Cap: ${cap[1]}}},\n\t\t\t},`;
-    const two = lit(step(2, "0, 3, 4", [3, 8]) + "\n" + step(4, "4, 5", [5, 8]));
-    const reflowed = two.replace("\t\t\t{\n\t\t\t\tFrom:  4,", "\t\t\t{From: 4,");
+    const two = lit(step("group", "", 2, "0, 3, 4", [3, 8]) + "\n" +
+      step("division", "group", 4, "4, 5", [5, 8]));
+    const reflowed = two.replace("\t\t\t{\n\t\t\t\tKey:   \"division\",", "\t\t\t{Key: \"division\",");
     const noFrom = two.replace("\t\t\t\tFrom:  4,\n", "");
-    const threw = (src) => {
+    // A STEP WITH NO KEY IS A STEP THIS PARSE DID NOT READ. The Go type
+    // requires one on every step, so the shape cannot reach data.go -- which
+    // is exactly why the parse has to refuse it rather than return a list one
+    // field short and let a check measure it.
+    const noKey = two.replace("\t\t\t\tKey:   \"division\",\n", "");
+    // A NESTED STEP IS THE SHAPE THIS PARSE MUST NOT HALF-READ. Parentage is
+    // declared by key and the list stays flat for exactly this reason: an
+    // entry indented as a child is invisible to the brace pattern, so the
+    // parse would return the outer step alone and every check would measure a
+    // chain the site does not ship. What catches it is the entry count
+    // disagreeing with the field counts, which is why those are counted at
+    // all.
+    const nested = lit(step("group", "", 2, "0, 3, 4", [3, 8]) + "\n" +
+      step("division", "group", 4, "4, 5", [5, 8]).replace(/^\t{3}/gm, "\t\t\t\t"));
+    // THE REFUSAL IS READ, NOT COUNTED. `did it throw` is satisfied by a
+    // TypeError off an unguarded dereference, which is green for a reason that
+    // has nothing to do with the guard -- measured: deleting the `if (!key)`
+    // throw left a bare `key[1]` that threw anyway and the arm stayed green.
+    // Matching the message is what tells a refusal from a crash.
+    const refusal = (/** @type {string} */ src) => {
       try {
         parseStepShapes(src);
-        return false;
-      } catch {
-        return true;
+        return "";
+      } catch (e) {
+        return String((e && e.message) || e);
       }
     };
     // THE CONTROL IS GUARDED TOO. An unguarded call here threw out of checks()
@@ -268,23 +290,28 @@ export async function checks() {
     // a slice-end regression drops the final entry's fields, so both entries'
     // caps are asserted rather than only the first's.
     const survived = reflowedThrew || (reflowedSteps.length === 2 &&
-      reflowedSteps[1].from === 4 &&
+      reflowedSteps[1].from === 4 && reflowedSteps[1].after === "group" &&
       reflowedSteps[0].caps.length === 1 && reflowedSteps[1].caps.length === 1);
     out.push({
       name: "a reflowed step is read or refused, never dropped with its caps moved onto the step before it",
       ok: !control.threw && base.length === 2 && base[1].from === 4 &&
+          base[0].key === "group" && base[1].after === "group" && base[0].after === "" &&
           caps(base, 0) === 1 && caps(base, 1) === 1 &&
-          survived && threw(noFrom),
+          survived && /From/.test(refusal(noFrom)) && /Key/.test(refusal(noKey)) &&
+          /Key/.test(refusal(nested)),
       // THE DETAIL DEREFERENCES NOTHING EITHER. Guarding only `ok` left this
       // string reading base[0].caps on a control that threw, so the arm still
       // took the module down -- the same defect one line lower than where it
       // was fixed. Every index here goes through caps().
       detail: `${control.threw ? "THE CONTROL LITERAL DID NOT PARSE, so nothing below is evidence"
         : `two well-formed steps parse as ${base.length} with ${caps(base, 0)} and ` +
-          `${caps(base, 1)} cap(s)`}; the gofmt-legal reflow ` +
+          `${caps(base, 1)} cap(s), the second declared after ` +
+          `${JSON.stringify(base[1] ? base[1].after : null)}`}; the gofmt-legal reflow ` +
         `${reflowedThrew ? "throws" : `parses ${reflowedSteps.length} step(s) with ` +
           `${caps(reflowedSteps, 0)} and ${caps(reflowedSteps, 1)} cap(s)`}; ` +
-        `a step with no From throws`,
+        `a step with no From is refused with ${JSON.stringify(refusal(noFrom))}, one ` +
+        `with no Key with ${JSON.stringify(refusal(noKey))}, and a step indented as a ` +
+        `nested literal with ${JSON.stringify(refusal(nested))}`,
     });
   }
 

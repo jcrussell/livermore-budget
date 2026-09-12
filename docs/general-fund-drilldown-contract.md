@@ -194,6 +194,16 @@ quieter failure.
 See `docs/sankey-contract.md`'s `constraint_tier` section for the argument, and
 for why `""` and `unknown` are different claims.
 
+## The schedule this document shares
+
+`metadata.caveats` also carries `the-revenue-schedule-is-published-twice`, which
+`revenue-trends` carries too. Budget Book pp.127-140 are drawn in two places on
+the site: this document holds one adopted column of their rows, and the Revenue
+tables print all four the schedule carries — FY2023-24 actual, FY2024-25 revised
+and both adopted years. A row found in both is one printed figure shown once in
+each, so neither view is a second measurement of it. One sentence serves both
+documents, so a reader cannot find the two pages disagreeing about it.
+
 ## Tiers
 
 | tier | nodes, FY2025-26 | of 238 |

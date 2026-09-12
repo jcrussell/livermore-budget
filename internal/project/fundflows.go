@@ -473,8 +473,10 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	}, nil
 }
 
-// fundFlowsCaveats are the three things a reader of this file has to be told,
-// each of which is a property of the document rather than a hedge about it.
+// fundFlowsCaveats are the things a reader of this file has to be told, each of
+// which is a property of the document rather than a hedge about it. All but the
+// last are unconditional; the comment on that one says what its condition is
+// and why the condition is narrower than it looks.
 func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 	truncated := len(truncatedGroups(nodes))
 	// THE THIRD CAVEAT IS CONDITIONAL ON THE SENTENCE BEING TRUE, which is a
@@ -494,6 +496,7 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 	decomposed := len(sides) == 1 && sides[prefixFundGroup+"general"]
 	out := []Caveat{
 		ConstraintTierCaveat(),
+		revenueSchedulePublishedTwiceCaveat(),
 		{
 			ID:      "mixed-grain-double-counts",
 			Summary: "This document holds the same money at two grains, so summing every link double-counts.",
@@ -541,7 +544,9 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		},
 	}
 	if !decomposed {
-		return out[:2]
+		// The conditional caveat is the last entry, and this bound says so
+		// without counting the ones before it.
+		return out[:len(out)-1]
 	}
 	return out
 }

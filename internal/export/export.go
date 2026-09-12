@@ -239,17 +239,21 @@ type View struct {
 	//
 	// PER VIEW FOR RenderTiers' REASON, AND THEN SOME: it declares what
 	// activating a node MEANS on this page. Without it a node click isolates,
-	// which is what the spine has always done; with it a node at Steps[0].From
-	// opens into Steps[0].Tiers, and a node at Steps[1].From in THAT chart
-	// opens into Steps[1].Tiers. Those are two interaction contracts and no
+	// which is what the spine has always done; with it a node at a step's From
+	// opens into that step's Tiers, and a node at a child step's From in THAT
+	// chart opens into the child's. Those are two interaction contracts and no
 	// page has both, because a page that drills has two drawn columns and
 	// isolating on two columns dims a column the reader was not looking at
 	// (fisc-ppkq).
 	//
-	// A CHAIN IS A LINE. validateSteps reads it as one -- each step opens from
-	// a tier the step before it drew -- and the type carries one From per step,
-	// so two openable tiers at one depth have nowhere to go. That is a limit
-	// declared, not a property proved; see validateSteps.
+	// THE LIST IS FLAT AND THE SHAPE IS A TREE. A step names the step whose
+	// chart it opens from ([DrillStep.After]), so two openable tiers at one
+	// depth are two steps sharing a parent rather than two entries of a path,
+	// and a view may declare several steps that open from its own chart. Flat
+	// rather than nested because tools/jscheck/harness.mjs reads this literal
+	// out of the Go source and slices it on indentation, and because the
+	// packager resolves one step document per entry. What a declared tree must
+	// satisfy is validateSteps'.
 	//
 	// The behaviour is entirely the client's, like the fold. This package ships
 	// the declaration.
@@ -444,18 +448,55 @@ type Section struct {
 // this build lays out.
 //
 // FROM AND TIERS ARE NOT NECESSARILY TIERS OF THE SAME DOCUMENT. From is a tier
-// of the chart on screen when the reader opens a node -- the step before this
-// one, or the view's own document for the first step -- and Tiers are tiers of
-// the document THIS step draws. On a step that switches document the two
+// of the chart on screen when the reader opens a node -- the step After names,
+// or the view's own document for a root step -- and Tiers are tiers of the
+// document THIS step draws. On a step that switches document the two
 // hierarchies are unrelated: From: 2 is the spine's fund-group tier while
-// Tiers: {0, 3, 4} are fund-flows'. So validateSteps places From against the
-// step before and Tiers against this step's caps, and cannot relate From to
+// Tiers: {0, 3, 4} are fund-flows'. So validateSteps places From against this
+// step's parent and Tiers against this step's caps, and cannot relate From to
 // Tiers at all. A reader expecting it to has read the struct as one document.
+//
+// FOUR FIELDS ARE DECLARED AND NOT SHIPPED. Key, After, Side and Role say what
+// this step opens and what it opens from; the client still resolves a rung by
+// depth and reads none of them, and a key on the wire would be a second
+// declaration of a tree nothing walks. The lane that teaches the client to walk
+// it ships the JSON tags with the code that reads them (fisc-ko1j.11).
 type DrillStep struct {
+	// Key names this step, so another step can declare that it opens from this
+	// step's chart. Required and unique within a view: a step no other step can
+	// name is a chart no second edge can ever be attached to, and the
+	// uniqueness is what makes [DrillStep.After] resolve to one parent.
+	Key string `json:"-"`
+	// After is the Key of the step whose chart this one opens from, or "" for a
+	// step that opens from the view's own chart. Several steps may share one
+	// After: that is the second edge out of one chart a path cannot express.
+	//
+	// IT NAMES AN EARLIER STEP, ALWAYS, and validateSteps refuses one that does
+	// not. A cycle is then undeclarable rather than detected, which is a
+	// property of the type rather than an arm that has to be kept correct.
+	After string `json:"-"`
 	// From is the tier whose nodes open, in the chart on screen before they do.
-	// One tier rather than a set: a step is one hop, and the next hop is the
-	// next step.
+	// One tier rather than a set: a step is one hop, and a second tier of the
+	// same chart is a second step sharing this one's After.
 	From int `json:"from"`
+	// Side is which end of a link the opened node sits on: "" for the node the
+	// links point AT, which is every step the site ships today, and
+	// [SideSource] for the node they come FROM.
+	//
+	// DECLARED, NEVER INFERRED. "The opened tier is below every tier this step
+	// draws, so it must be a source" is a mapping from tier numbers to meaning
+	// -- the construct paintBreadcrumb's comment in site/app.js refuses. It is
+	// true of the columns that exist and says nothing a third document would
+	// have to obey.
+	Side string `json:"-"`
+	// Role is which of the nodes at From open, in the caller's vocabulary, or
+	// "" for all of them.
+	//
+	// A DISCRIMINATOR THIS PACKAGE GIVES NO MEANING. validateSteps requires
+	// only that (After, From, Role) name at most one step, so two steps opening
+	// one tier of one chart are told apart by something the caller declared
+	// rather than by declaration order.
+	Role string `json:"-"`
 	// Projection is the filename stem of the document this step draws, or ""
 	// to draw the same document as the step before it -- the view's own, for
 	// the first step. A named one must be a key of [Options.Projections].
@@ -536,6 +577,14 @@ type DrillStep struct {
 	// step carries nothing across", which is every same-document step.
 	Residual map[string]string `json:"residual,omitempty"`
 }
+
+// SideSource is [DrillStep.Side] for a step opening the node its chart's links
+// come FROM, as against "", which opens the node they point at.
+//
+// A CONSTANT BECAUSE THE PACKAGER SPELLS IT. The two values are a vocabulary
+// this package refuses outside of, and a caller's "Source" would otherwise be a
+// declaration that validates and means nothing.
+const SideSource = "source"
 
 // TierCap is how many nodes one drawn tier may hold before its tail, by value,
 // is folded into one aggregate node.
@@ -749,6 +798,7 @@ func (o *Options) views() []View {
 // validate refuses a view that could not be rendered, or that would land on a
 // path the site owns.
 func (v View) validate(built map[string][]byte) error {
+	badRoot := v.rootOutsideRenderTiers()
 	switch {
 	case v.Path == "":
 		return errors.New("a view has no output path")
@@ -850,7 +900,7 @@ func (v View) validate(built map[string][]byte) error {
 				"chart would draw the whole document", v.Path, v.Root, v.Template)
 	// TWO ARMS, NOT ONE ARM BEHIND A `len(v.RenderTiers) > 0 &&` GUARD, and
 	// not one plain arm either. RenderTiers empty means the document is drawn
-	// WHOLE, every tier on screen, so the first step's From is drawn by
+	// WHOLE, every tier on screen, so a root step's From is drawn by
 	// definition: the spine draws whole and its tier 2 IS drawn. Without the
 	// guard, `!slices.Contains(v.RenderTiers, From)` refuses exactly that view.
 	// With the guard wrapping the only arm, the configuration that most needs
@@ -859,11 +909,16 @@ func (v View) validate(built map[string][]byte) error {
 	// "click to open" hint over an unfolded 61-node column that lays every
 	// node out at zero height. So the first arm says only what it can know,
 	// and the hazard the guard hid is the second arm's, stated on its own.
-	case len(v.Steps) > 0 && len(v.RenderTiers) > 0 && !slices.Contains(v.RenderTiers, v.Steps[0].From):
+	//
+	// EVERY ROOT, NOT THE FIRST STEP. A view may declare several steps that
+	// open from its own chart; each is placed against RenderTiers here, and
+	// every other step is placed against its parent by validateSteps.
+	case len(v.RenderTiers) > 0 && badRoot >= 0:
 		return fmt.Errorf(
-			"view %q drills from tier %d and draws tiers %v, which do not include it; the "+
-				"page would ship the breadcrumb and the words about opening a node while no "+
-				"node on it is ever openable", v.Path, v.Steps[0].From, v.RenderTiers)
+			"view %q's step %d drills from tier %d and draws tiers %v, which do not include "+
+				"it; the page would ship the breadcrumb and the words about opening a node "+
+				"while no node on it is ever openable",
+			v.Path, badRoot, v.Steps[badRoot].From, v.RenderTiers)
 	case len(v.Steps) > 0 && len(v.RenderTiers) == 0 && templateRendersTiers(v.Template):
 		return fmt.Errorf(
 			"view %q drills and declares no render tiers on template %q, which publishes "+
@@ -894,28 +949,83 @@ func (v View) validate(built map[string][]byte) error {
 	return v.validateSteps(built)
 }
 
-// validateSteps refuses a drill chain a reader could not walk, and a step that
+// rootOutsideRenderTiers is the first step opening from the view's own chart at
+// a tier the view does not draw, or -1 when every root is placed. Its caller
+// guards it on a non-empty RenderTiers, which is where the reason lives.
+func (v View) rootOutsideRenderTiers() int {
+	for i, s := range v.Steps {
+		if s.After == "" && !slices.Contains(v.RenderTiers, s.From) {
+			return i
+		}
+	}
+	return -1
+}
+
+// validateSteps refuses a drill tree a reader could not walk, and a step that
 // would fold nothing, say nothing, draw a document that was not built, or draw
 // one year's document under another year's chart.
 //
-// THE CHAIN IS READ AS A PATH, AND THAT IS AN ASSUMPTION, NOT A PROOF. Each
-// step is placed against the one before it -- its From must be a tier the
-// previous step draws -- which is what makes every breadcrumb rung reachable
-// from the one above it. It says nothing about two openable tiers at one
-// depth, because []DrillStep cannot declare them: a second edge out of one
-// chart is not a longer path (fisc-ko1j.12). This arm passing is not evidence
-// the shape is a line; a line is the only shape the type can carry.
+// EVERY STEP IS PLACED AGAINST ITS PARENT. A step opens from the chart its
+// After names -- or from the view's own, for a root -- so its From must be a
+// tier that chart draws, which is what makes every breadcrumb rung reachable
+// from the one above it. Steps sharing an After are two edges out of one chart,
+// which is what a tier-0 revenue category opening beside a tier-2 fund group
+// needs and what a path could not declare at all (fisc-ko1j.12).
+//
+// A CYCLE CANNOT BE DECLARED, SO NOTHING HERE DETECTS ONE. After may only name
+// a step EARLIER in the list, so every parent chain ends at a root in at most
+// as many hops as there are steps. The arms below say what a declared tree must
+// satisfy; that it is a tree is the type's property, not theirs.
 func (v View) validateSteps(built map[string][]byte) error {
-	// The tiers on screen before a step opens, and the document they belong
-	// to. For the first step that is the view's own chart, and RenderTiers
-	// empty means the whole document -- which is why the first step's From is
-	// placed by validate's two arms above rather than here.
-	prevTiers, prevDoc := v.RenderTiers, v.Projection
+	// KEYS FIRST, AS A PASS OF THEIR OWN, so that After below resolves against
+	// a set already known to name one step each. Interleaved with the arms that
+	// follow, a duplicate key later in the list would be met by whichever arm
+	// its first parent broke, and the reader would be told about a tier.
+	index := make(map[string]int, len(v.Steps))
 	for i, s := range v.Steps {
+		if s.Key == "" {
+			return fmt.Errorf(
+				"view %q declares step %d with no key; a step nothing can name is a chart no "+
+					"other step can ever be declared to open from", v.Path, i)
+		}
+		if j, ok := index[s.Key]; ok {
+			return fmt.Errorf(
+				"view %q declares steps %d and %d both keyed %q; After would name two charts "+
+					"and a rung would open from whichever was declared first",
+				v.Path, j, i, s.Key)
+		}
+		index[s.Key] = i
+	}
+	// The document each step draws, filled in declaration order: a step naming
+	// no projection draws its parent's, and a parent is always earlier.
+	docs := make([]string, len(v.Steps))
+	for i, s := range v.Steps {
+		// The tiers on screen before this step opens, and the document they
+		// belong to. For a root that is the view's own chart, and RenderTiers
+		// empty means the whole document -- which is why a root's From is
+		// placed by validate's two arms above rather than here.
+		parentTiers, parentDoc := v.RenderTiers, v.Projection
+		if s.After != "" {
+			j, ok := index[s.After]
+			switch {
+			case !ok:
+				return fmt.Errorf(
+					"view %q's step %d opens from %q, which no step declares as its key; the "+
+						"breadcrumb would carry a rung hanging off a chart this view never draws",
+					v.Path, i, s.After)
+			case j >= i:
+				return fmt.Errorf(
+					"view %q's step %d opens from %q, which is step %d; After names an EARLIER "+
+						"step, and that is what makes a cycle undeclarable rather than something "+
+						"this has to detect", v.Path, i, s.After, j)
+			}
+			parentTiers, parentDoc = v.Steps[j].Tiers, docs[j]
+		}
 		doc := s.Projection
 		if doc == "" {
-			doc = prevDoc
+			doc = parentDoc
 		}
+		docs[i] = doc
 		switch {
 		case len(s.Tiers) == 0:
 			return fmt.Errorf(
@@ -967,20 +1077,51 @@ func (v View) validateSteps(built map[string][]byte) error {
 				"view %q's step %d maps %d year(s) and the view lists no year stems; there "+
 					"is no year on screen for the map to be read against",
 				v.Path, i, len(s.YearProjections))
-		case i > 0 && !slices.Contains(prevTiers, s.From):
+		// A SIDE IS A VOCABULARY OF TWO. Anything else is a declaration that
+		// would be carried to a client reading it against the two it knows,
+		// which is a step that silently opens the wrong end of its links.
+		case s.Side != "" && s.Side != SideSource:
 			return fmt.Errorf(
-				"view %q's step %d opens from tier %d, and the step before it draws tiers "+
+				"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
+					"at, and %q, the node it comes from", v.Path, i, s.Side, SideSource)
+		case s.After != "" && !slices.Contains(parentTiers, s.From):
+			return fmt.Errorf(
+				"view %q's step %d opens from tier %d, and step %q draws tiers "+
 					"%v, which do not include it; the breadcrumb would carry a rung nothing "+
-					"on the chart can reach", v.Path, i, s.From, prevTiers)
+					"on the chart can reach", v.Path, i, s.From, s.After, parentTiers)
 		// THE SAME DOCUMENT ONLY. Across a document switch the two tier sets
 		// are numbered by different hierarchies, and equal numbers are not the
 		// same chart -- the DrillStep doc comment says why validate cannot do
 		// better than skip.
-		case i > 0 && doc == prevDoc && slices.Equal(prevTiers, s.Tiers):
+		case s.After != "" && doc == parentDoc && slices.Equal(parentTiers, s.Tiers):
 			return fmt.Errorf(
-				"view %q's step %d draws tiers %v of %q, the set the step before it "+
+				"view %q's step %d draws tiers %v of %q, the set step %q "+
 					"already draws; opening a node would redraw the chart it was opened "+
-					"from", v.Path, i, s.Tiers, doc)
+					"from", v.Path, i, s.Tiers, doc, s.After)
+		}
+		// ONE STEP PER (After, From, Role), AND A ROLE-LESS STEP TAKES THE
+		// WHOLE TIER. Two steps a node matches are two rungs it opens into, and
+		// the client would take whichever it found first -- the silent choice
+		// the key and the role exist to make impossible. Compared against every
+		// earlier step rather than through a set, because the two refusals want
+		// to name the other step and say which of the three parts collided.
+		for j, o := range v.Steps[:i] {
+			if o.After != s.After || o.From != s.From {
+				continue
+			}
+			if o.Role == s.Role {
+				return fmt.Errorf(
+					"view %q declares steps %d and %d both opening tier %d of the same chart "+
+						"in role %q; a node there would open into two different charts",
+					v.Path, j, i, s.From, s.Role)
+			}
+			if o.Role == "" || s.Role == "" {
+				return fmt.Errorf(
+					"view %q declares steps %d and %d both opening tier %d of the same chart, "+
+						"in roles %q and %q; a step with no role opens EVERY node at its tier, "+
+						"so it cannot share one with a step that names which nodes open",
+					v.Path, j, i, s.From, o.Role, s.Role)
+			}
 		}
 		for _, id := range slices.Sorted(maps.Keys(s.Residual)) {
 			if id == "" || s.Residual[id] == "" {
@@ -1039,7 +1180,6 @@ func (v View) validateSteps(built map[string][]byte) error {
 			return fmt.Errorf("view %q's step %d renders projection %q, which was not built",
 				v.Path, i, s.Projection)
 		}
-		prevTiers, prevDoc = s.Tiers, doc
 	}
 	return nil
 }

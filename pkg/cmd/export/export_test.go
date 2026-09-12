@@ -1199,6 +1199,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	// measures the order; this pins what the join came to.
 	want := []export.DrillStep{
 		{
+			Key:             "fund-group",
 			From:            2,
 			Projection:      project.FundFlowsProjection,
 			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
@@ -1219,6 +1220,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"missing, but not broken down in any published schedule.",
 		},
 		{
+			Key:   "division",
+			After: "fund-group",
 			From:  4,
 			Tiers: []int{4, 5},
 			Caps:  []export.TierCap{{Tier: 5, Cap: 8}},

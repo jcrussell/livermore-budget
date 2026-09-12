@@ -199,8 +199,8 @@ const SPINE_CAVEATS = [
   "working-capital-is-a-stock", "permanent-funds-have-no-column",
 ];
 const FUND_FLOWS_CAVEATS = [
-  "constraint-tier-is-our-reading", "mixed-grain-double-counts",
-  "only-the-general-fund-is-decomposed",
+  "constraint-tier-is-our-reading", "the-revenue-schedule-is-published-twice",
+  "mixed-grain-double-counts", "only-the-general-fund-is-decomposed",
 ];
 
 /** Caveat refs the way the packager composes them: one anchor per (stem, id). */

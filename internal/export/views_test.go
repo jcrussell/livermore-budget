@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -251,7 +252,7 @@ func chartView(breaks func(*export.View)) export.View {
 		Path: "extra.html", Template: export.ChartTemplate, Projection: "sankey",
 		RenderTiers: []int{0, 2}, ChartSubject: "by something",
 		ChartDescription: "A description.",
-		Steps: []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Back: "All groups",
+		Steps: []export.DrillStep{{Key: "groups", From: 2, Tiers: []int{0, 3}, Back: "All groups",
 			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: "Opened."}},
 	}
 	breaks(&v)
@@ -264,7 +265,8 @@ func chartView(breaks func(*export.View)) export.View {
 // restated rather than the chain's.
 func chainView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
-		v.Steps = append(v.Steps, export.DrillStep{From: 3, Tiers: []int{3, 4},
+		v.Steps = append(v.Steps, export.DrillStep{Key: "funds", After: "groups",
+			From: 3, Tiers: []int{3, 4},
 			Back: "All funds", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}},
 			Description: "Opened again."})
 		breaks(v)
@@ -465,7 +467,7 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-				Steps: []export.DrillStep{{From: 2, Projection: "fund-flows",
+				Steps: []export.DrillStep{{Key: "group", From: 2, Projection: "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
 					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."}}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
@@ -657,7 +659,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill on a template that publishes none", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey",
-				Steps: []export.DrillStep{{From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t",
+				Steps: []export.DrillStep{{Key: "g", From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t",
 					Description: "d."}}}},
 			"the chart would isolate on a click while this view believes it opens"},
 		{"a root on a template that publishes none", []export.View{ok,
@@ -738,7 +740,45 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			"a rung nothing on the chart can reach"},
 		{"a step that redraws the tiers it opened from", []export.View{ok,
 			chainView(func(v *export.View) { v.Steps[1].Tiers = []int{0, 3}; v.Steps[1].Caps = nil })},
-			"the set the step before it already draws"},
+			"the set step \"groups\" already draws"},
+		// THE TREE'S OWN ARMS. A flat list with declared parentage can say
+		// things a path could not, and each of these is one of them said
+		// wrongly: a step nothing can name, two steps answering to one name, a
+		// parent that does not exist, a parent declared later, and two steps
+		// one node would match.
+		{"a step with no key", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Key = "" })},
+			"a step nothing can name"},
+		{"two steps keyed the same", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].Key = "groups" })},
+			"declares steps 0 and 1 both keyed \"groups\""},
+		{"a step opening from a key no step declares", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].After = "nope" })},
+			"which no step declares as its key"},
+		// A CYCLE IS UNDECLARABLE BECAUSE OF THIS ARM, so this is the arm that
+		// keeps it so: with the pair swapped, step 0 opens from a chart the
+		// list does not reach until step 1.
+		{"a step opening from a step declared after it", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[0], v.Steps[1] = v.Steps[1], v.Steps[0] })},
+			"After names an EARLIER step"},
+		{"two steps opening one tier of one chart", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].After = ""; v.Steps[1].From = 2 })},
+			"a node there would open into two different charts"},
+		{"a role-less step beside one that names a role", []export.View{ok,
+			chainView(func(v *export.View) {
+				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = "", 2, "revenue"
+			})},
+			"a step with no role opens EVERY node at its tier"},
+		{"a step opening a side this package does not declare", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Side = "Source" })},
+			"opens side \"Source\""},
+		// EVERY ROOT IS PLACED, NOT THE FIRST STEP. The second step is made a
+		// root here, so the arm that fires is the view's own -- and before it
+		// took every root, a second edge out of the page's chart could open
+		// from a tier the page never draws.
+		{"a second root from a tier the page does not draw", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].After = ""; v.Steps[1].From = 5 })},
+			"step 1 drills from tier 5"},
 		// A RESIDUAL NEEDS A SECOND DOCUMENT AND A REASON. The first case
 		// declares one on the chain's same-document step, where nothing could
 		// be residual between two grains of one file; the second names a
@@ -2630,9 +2670,10 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
-	steps := []export.DrillStep{{From: 2, Projection: "fund-flows", Tiers: []int{0, 3, 4},
-		Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
-		Back: "All fund groups", Tail: "funds", Description: "Opened."}}
+	steps := []export.DrillStep{{Key: "group", From: 2, Projection: "fund-flows",
+		Tiers: []int{0, 3, 4},
+		Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
+		Back:  "All fund groups", Tail: "funds", Description: "Opened."}}
 	dir := t.TempDir()
 	if _, err := export.Write(export.Options{
 		Dir: dir,
@@ -2665,7 +2706,21 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
 		t.Fatalf("decode window.FISC_CONFIG: %v", err)
 	}
-	if diff := cmp.Diff(steps, cfg.Steps); diff != "" {
+	// THE PARENTAGE IS DECLARED AND NOT SHIPPED. Key, After, Side and Role say
+	// which chart opens into which and which nodes of it open; the client
+	// resolves a rung by depth and reads none of them, so the wire carries the
+	// zero value of each. Pinned here rather than assumed, because a JSON tag
+	// added without a client to read it would put a second, unwalked
+	// declaration of the tree in front of every reader.
+	wantOnWire := slices.Clone(steps)
+	for i := range wantOnWire {
+		wantOnWire[i].Key, wantOnWire[i].After = "", ""
+		wantOnWire[i].Side, wantOnWire[i].Role = "", ""
+	}
+	if steps[0].Key == "" {
+		t.Fatal("the declared step carries no key, so the comparison below asserts nothing")
+	}
+	if diff := cmp.Diff(wantOnWire, cfg.Steps); diff != "" {
 		t.Errorf("FISC_CONFIG.steps (-want +got):\n%s", diff)
 	}
 }
@@ -2728,10 +2783,11 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey",
 				Steps: []export.DrillStep{
-					{From: 2, Projection: "fund-flows", Tiers: []int{0, 3},
+					{Key: "group", From: 2, Projection: "fund-flows", Tiers: []int{0, 3},
 						Back: "All fund groups", Tail: "funds", Description: "One."},
-					{From: 3, Projection: secondStepDoc, Tiers: []int{0, 3},
-						Back: "All funds", Tail: "things", Description: "Two."},
+					{Key: "fund", After: "group", From: 3, Projection: secondStepDoc,
+						Tiers: []int{0, 3},
+						Back:  "All funds", Tail: "things", Description: "Two."},
 				}}},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
@@ -2821,10 +2877,11 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
 			Steps: []export.DrillStep{
-				{From: 2, Projection: "fund-flows",
+				{Key: "group", From: 2, Projection: "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
 					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
-				{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Tail: "categories", Description: "Two."},
+				{Key: "division", After: "group", From: 4, Tiers: []int{4, 5},
+					Back: "All divisions", Tail: "categories", Description: "Two."},
 			},
 		}
 		breaks(&v)
@@ -2949,10 +3006,11 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
 				Steps: []export.DrillStep{
-					{From: 2, Projection: "fund-flows",
+					{Key: "group", From: 2, Projection: "fund-flows",
 						YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
 						Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
-					{From: 4, Tiers: []int{4, 5}, Back: "All divisions", Tail: "categories", Description: "Two."},
+					{Key: "division", After: "group", From: 4, Tiers: []int{4, 5},
+						Back: "All divisions", Tail: "categories", Description: "Two."},
 				}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
 				Title: "What these figures do not say", Lede: "A lede."},

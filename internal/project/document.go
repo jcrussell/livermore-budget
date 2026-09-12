@@ -87,6 +87,35 @@ type Caveat struct {
 	AppliesTo []string `json:"applies_to"`
 }
 
+// revenueSchedulePublishedTwiceCaveat is on every document that draws Budget
+// Book pp.127-140, and there are two of them.
+//
+// THE SENTENCE CARRIES THE ASYMMETRY, which is what makes publishing both
+// honest rather than a second figure for the same money: the chart draws ONE
+// adopted column of those rows and the Revenue tables print all four the
+// schedule carries. A reader who finds a row in both places is looking at one
+// printed figure in two views, and the two are not to be added.
+//
+// SHARED RATHER THAN SPELLED TWICE, because it is one claim about one schedule.
+// Two copies would be two sentences a reader could find disagreeing, on two
+// pages that are meant to be saying the same thing.
+func revenueSchedulePublishedTwiceCaveat() Caveat {
+	return Caveat{
+		ID: "the-revenue-schedule-is-published-twice",
+		Summary: "Budget Book pp.127-140 are published twice here: the chart draws one adopted " +
+			"column of their rows, and the Revenue tables print all four.",
+		Text: "Budget Book pp.127-140 are published in two places on this site, and the two " +
+			"are the same money rather than two figures. A chart here draws ONE column of that " +
+			"schedule, one adopted year at a time, while the Revenue tables print all four " +
+			"columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. " +
+			"A row found in both places is one printed figure shown once in each, so neither " +
+			"view is a second measurement of it and the two are never to be added.",
+		// DOCUMENT-WIDE. It is about where else a schedule is drawn, which is
+		// no more true of one node of it than of another.
+		AppliesTo: []string{},
+	}
+}
+
 // validateCaveats refuses a set no page could render honestly.
 //
 // IT RUNS AT BUILD TIME, in every document builder, because every failure below

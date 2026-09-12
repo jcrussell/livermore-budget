@@ -571,6 +571,10 @@ func views(built result) []export.View {
 	if years := stepStems(export.PrimaryProjection, project.FundFlowsProjection, projections); years[export.PrimaryProjection] != "" {
 		spine.Steps = []export.DrillStep{
 			{
+				// THE KEY IS THE PARENTAGE. The division step names it, so
+				// this pair's order in the literal carries nothing and a
+				// third step could open from either chart.
+				Key:             "fund-group",
 				From:            2,
 				Projection:      years[export.PrimaryProjection],
 				YearProjections: years,
@@ -615,6 +619,8 @@ func views(built result) []export.View {
 					"any published schedule.",
 			},
 			{
+				Key:   "division",
+				After: "fund-group",
 				From:  4,
 				Tiers: []int{4, 5},
 				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
@@ -713,8 +719,9 @@ func views(built result) []export.View {
 	// Options.validate refuses one. This page is unconditional for a third
 	// reason: it depends on no single document. Every builder in
 	// internal/project emits caveats unconditionally: caveats() always appends
-	// the stocks and permanent-funds pair, fundFlowsCaveats returns three, and
-	// trendsCaveats returns three. So the empty case cannot arise from this
+	// the stocks and permanent-funds pair, fundFlowsCaveats returns three and a
+	// fourth on a column that decomposes a fund group, and trendsCaveats
+	// returns four. So the empty case cannot arise from this
 	// repository -- and buildCaveatsPage refuses it anyway, rather than
 	// publishing a nav entry to a blank page, because "cannot arise here" is a
 	// claim about today's corpus and the guard is about tomorrow's.

@@ -268,13 +268,19 @@ var (
 // trendsCaveats is every caveat, unconditionally.
 //
 // UNCONDITIONAL IS THE POINT, unlike the Sankey's, whose caveats are predicated
-// on what the graph turned out to contain. Each of these is a statement about
+// on what the graph turned out to contain. The first three are statements about
 // what pp.127-140 DO NOT PRINT, and a document cannot detect the absence of a
 // schedule it was never given. Dropping one when the corpus changes would need
 // a check that the absence had ended, which is a thing to build when a page
 // makes it possible and not a condition to guess at here.
+//
+// THE FOURTH IS NOT ABOUT THIS SCHEDULE'S GAPS AT ALL. It is about the site
+// drawing these same rows a second time, at one column instead of four, and it
+// is shared with the document that draws them; see
+// [revenueSchedulePublishedTwiceCaveat].
 func trendsCaveats() []Caveat {
-	return []Caveat{caveatGeneralFundTransfersIn, caveatCapitalReserves, caveatComparability}
+	return []Caveat{caveatGeneralFundTransfersIn, caveatCapitalReserves, caveatComparability,
+		revenueSchedulePublishedTwiceCaveat()}
 }
 
 // trendColumns publishes the columns with their labels and comparable groups.

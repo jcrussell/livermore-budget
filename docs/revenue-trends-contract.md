@@ -228,6 +228,14 @@ that leaves them to be rediscovered is a document that reads as wrong. The two
 $1 rounding cells and the $500 are on the page and in this contract, which is
 where a reader who gets that far will look.
 
+**A fourth caveat is about neither.** `the-revenue-schedule-is-published-twice`
+is carried by this document and by every `fund-flows` document, because the site
+publishes pp.127-140 in two places: a chart of one adopted column at a time, and
+these tables of all four. That asymmetry is what makes both honest — a row found
+in both is one printed figure shown once in each, never a second measurement —
+and the sentence is shared rather than written twice, so the two pages cannot be
+found disagreeing about it.
+
 **One fund group is not on the spine at all.** `permanent` carries a single
 series — fund 470, *Transfers In*, 19,533 in FY2023-24 and zero in the other
 three — and pp.66-67 print no Permanent column (`fisc-u8o`). It ties to p63

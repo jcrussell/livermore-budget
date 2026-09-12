@@ -735,9 +735,26 @@ export function parseStepShapes(src) {
     const from = body.match(/From:\s*(\d+),/);
     const tiers = body.match(/Tiers:\s*\[\]int\{([\d,\s]*)\}/);
     const caps = [...body.matchAll(/\{Tier:\s*(\d+),\s*Cap:\s*(\d+)\}/g)];
+    // KEY IS READ AND REQUIRED, FOR From's REASON ONE FIELD OVER. The Go type
+    // requires one on every step and validateSteps refuses a view without, so
+    // a step this parse read with no key is a step it did not read -- a
+    // truncated slice or a brace it missed -- and not a step the site ships.
+    const key = body.match(/Key:\s*"((?:[^"\\]|\\.)*)",/);
+    const after = body.match(/After:\s*"((?:[^"\\]|\\.)*)",/);
+    const side = body.match(/Side:\s*"((?:[^"\\]|\\.)*)",/);
+    const role = body.match(/Role:\s*"((?:[^"\\]|\\.)*)",/);
     if (!from) throw new Error(`step ${i} in data.go declares no From this can read`);
     if (!tiers) throw new Error(`step ${i} in data.go declares no Tiers literal this can read`);
+    if (!key) throw new Error(`step ${i} in data.go declares no Key this can read`);
     out.push({
+      key: key[1],
+      // ABSENT IS THE DECLARED DEFAULT HERE, unlike Key. "" is what the Go
+      // zero value means on each of these -- a root step, today's
+      // filterToNode side, every node at the tier -- so a literal omitting
+      // them is read rather than refused.
+      after: after ? after[1] : "",
+      side: side ? side[1] : "",
+      role: role ? role[1] : "",
       from: Number(from[1]),
       tiers: tiers[1].split(",").map((x) => x.trim()).filter(Boolean).map(Number),
       caps: caps.map((c) => ({ tier: Number(c[1]), cap: Number(c[2]) })),
@@ -750,8 +767,10 @@ export function parseStepShapes(src) {
   // deliberately loose on indentation so that a reflow changes the PARSE and
   // not the CHECK.
   const froms = (block[1].match(/From:\s*\d+,/g) || []).length;
-  if (out.length === 0 || out.length !== froms) {
-    throw new Error(`parsed ${out.length} steps from a literal declaring ${froms} From fields`);
+  const keys = (block[1].match(/Key:\s*"/g) || []).length;
+  if (out.length === 0 || out.length !== froms || out.length !== keys) {
+    throw new Error(`parsed ${out.length} steps from a literal declaring ${froms} From ` +
+      `and ${keys} Key fields`);
   }
   return out;
 }

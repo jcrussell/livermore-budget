@@ -53,6 +53,12 @@
         "applies_to": []
       },
       {
+        "id": "the-revenue-schedule-is-published-twice",
+        "summary": "Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.",
+        "text": "Budget Book pp.127-140 are published in two places on this site, and the two are the same money rather than two figures. A chart here draws ONE column of that schedule, one adopted year at a time, while the Revenue tables print all four columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. A row found in both places is one printed figure shown once in each, so neither view is a second measurement of it and the two are never to be added.",
+        "applies_to": []
+      },
+      {
         "id": "mixed-grain-double-counts",
         "summary": "This document holds the same money at two grains, so summing every link double-counts.",
         "text": "This document holds the same money at more than one grain, so summing every link double-counts: 44 fact(s) are behind both a department's object rows and the fund-to-department link that totals them. Fold within one tier pair, never across the whole graph. It publishes no headline for this reason.",
