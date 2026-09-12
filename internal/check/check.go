@@ -183,6 +183,7 @@ func All() []Check {
 		&factKindMatchesCategory{},
 		&factDepartmentsResolve{},
 		&factFundsResolve{},
+		&factRevenueLinesResolve{},
 		&ruleFundsMatchTheirHeadings{},
 		&rowFundsMatchTheirAnchors{},
 		&fundBalanceIdentity{},

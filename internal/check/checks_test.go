@@ -125,6 +125,10 @@ func TestFixtureVerdicts(t *testing.T) {
 		"constraint-tier-vocabulary": "vacuous over 0",
 		"fact-departments-resolve":   "vacuous over 0",
 		"fact-funds-resolve":         "vacuous over 0",
+		// The fixture taxonomy nests taxes/property under `taxes`, and that is
+		// not a line: a line's parent is assignable, and no fixture fact is a
+		// revenue-by-fund row. Vacuous is the verdict the definition demands.
+		"fact-revenue-lines-resolve": "vacuous over 0",
 		// No rule file in the fixture subject declares a fund, so there is no
 		// hand-typed number to check against a printed name.
 		"rule-funds-match-their-headings": "vacuous over 0",
@@ -134,7 +138,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 24, Vacuous: 24, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 25, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -156,8 +160,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 24 {
-		t.Fatalf("vacuous count = %d, want 24", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 25 {
+		t.Fatalf("vacuous count = %d, want 25", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
@@ -182,6 +186,7 @@ func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 		"constraint-tier-vocabulary":        "no node carries a constraint_tier",
 		"fact-departments-resolve":          "no fact carries a department",
 		"fact-funds-resolve":                "no fact names a fund",
+		"fact-revenue-lines-resolve":        "no fact is a revenue row of scope revenue-by-fund",
 		"drill-reconciles-across-documents": "no fiscal column is published by both the spine and the drill-down",
 	} {
 		res := resultFor(t, rep, id)

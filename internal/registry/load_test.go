@@ -362,16 +362,22 @@ categories:
 `,
 			want: `taxonomy.yaml: category "intergovernmental": parent: is "taxes", but the slug has no parent segment`,
 		}, {
-			name: "two levels deep",
+			// Depth is unbounded, so a three-segment slug is refused for its
+			// GRAMMAR and never for its depth: the parent of
+			// taxes/property/secured is the slug minus its last segment, and
+			// `taxes` is the grandparent. TestTheTaxonomyNestsToAnyDepth is
+			// the same slug loading with the right parent.
+			name: "parent that is the grandparent",
 			taxonomy: `
 schema_version: 1
 categories:
   - {slug: taxes, label: "Taxes", kinds: [revenue]}
   - {slug: taxes/property/secured, label: "Current Year - Secured", parent: taxes, kinds: [revenue]}
 `,
-			want: `taxonomy.yaml: category "taxes/property/secured": slug: has 2 parent segments; the taxonomy is one level deep`,
+			want: `taxonomy.yaml: category "taxes/property/secured": parent: is "taxes", but the slug's head noun is "taxes/property"`,
 		}, {
-			name: "grandchild",
+			// The parent must be the slug's own prefix, whatever its depth.
+			name: "parent that is not the slug's own prefix",
 			taxonomy: `
 schema_version: 1
 categories:
@@ -557,6 +563,46 @@ divisions:
 
 // A file from a newer fisc is not a malformed file, and telling the reader to
 // upgrade rather than to go hunting for a typo is the difference.
+// TestTheTaxonomyNestsToAnyDepth pins the recursion: a child of a child loads,
+// and so does a child of that, because the grammar is "a slug's parent is the
+// slug minus its last segment" at every depth and no arm counts segments.
+//
+// Mutation: an arm that counts "/" in a slug, or one that refuses a parent
+// which itself has a parent, fails this at depth 2 before the depth-3 entry is
+// reached. Cutting the slug at its FIRST slash instead of its last fails it too,
+// at depth 2, with taxes/property/secured told its head noun is "taxes".
+func TestTheTaxonomyNestsToAnyDepth(t *testing.T) {
+	r := load(t, "", `
+schema_version: 1
+categories:
+  - {slug: taxes, label: "Taxes", kinds: [revenue], assignable: false}
+  - {slug: taxes/property, label: "Property Taxes", parent: taxes, kinds: [revenue]}
+  - {slug: taxes/property/secured, label: "Current Year - Secured", parent: taxes/property, kinds: [revenue]}
+  - {slug: taxes/property/secured/roll, label: "Secured Roll", parent: taxes/property/secured, kinds: [revenue]}
+`, "")
+
+	want := map[string]string{
+		"taxes":                       "",
+		"taxes/property":              "taxes",
+		"taxes/property/secured":      "taxes/property",
+		"taxes/property/secured/roll": "taxes/property/secured",
+	}
+	got := map[string]string{}
+	for _, c := range r.Categories() {
+		got[c.Slug] = c.Parent
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("parent of each slug (-want +got):\n%s", diff)
+	}
+	// Assignability is the flag and nothing else: a parent that is not a
+	// rollup stays writable, and a leaf three levels down is writable too.
+	for _, slug := range []string{"taxes/property", "taxes/property/secured", "taxes/property/secured/roll"} {
+		if !r.Assignable(slug) {
+			t.Errorf("Assignable(%q) = false; nothing infers assignable from depth", slug)
+		}
+	}
+}
+
 func TestLoadHintsAtANewerSchema(t *testing.T) {
 	_, err := Load(registryFS(t, "schema_version: 2\nfunds: []\n", "", ""))
 	var hint *cmdutil.ErrHint

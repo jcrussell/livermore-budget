@@ -360,7 +360,12 @@ func TestLoadRealRegistries(t *testing.T) {
 	}
 
 	cats := r.Categories()
-	if got, want := len(cats), 40; got != want {
+	// 40 categories, plus one line entry per distinct revenue row pp.127-140
+	// print: 101, measured off facts/facts.jsonl on 2026-09-12 as the distinct
+	// (category, row_label) of scope revenue-by-fund and kind revenue. The
+	// second term is a count against the pages, and
+	// TestEveryRevenueLineIsPrintedOnItsPages is what ties each entry to one.
+	if got, want := len(cats), 40+101; got != want {
 		t.Errorf("len(Categories()) = %d, want %d", got, want)
 	}
 	if got, want := len(r.FundGroups()), 7; got != want {
@@ -420,7 +425,7 @@ func TestLoadRealRegistries(t *testing.T) {
 	if kindMembers == 0 {
 		t.Error("no category declares any kinds; the membership arm is unexercised")
 	}
-	// Three of the twenty-five carry no pages, and they are exactly the three
+	// Three categories carry no pages, and they are exactly the three
 	// rollups above -- which is why the shape arm is applied and the presence
 	// arm is not. If that stops being true, "required when assignable" becomes
 	// landable and should be taken.
@@ -698,6 +703,102 @@ func TestEveryDivisionIsPrintedOnItsPages(t *testing.T) {
 		t.Errorf("the loop examined %d page claims, want at least 52: pp.85-125 print all "+
 			"29 divisions and pp.167-170 print 23 of them, so that many citations are "+
 			"required before any entry names a further page", claims)
+	}
+}
+
+// TestEveryRevenueLineIsPrintedOnItsPages ties each revenue line entry in
+// data/taxonomy.yaml to the pages it cites, as TestEveryDivisionIsPrintedOnItsPages
+// does for departments.yaml: the registry against the printed page, with no
+// rule file and no fact store in between.
+//
+// A LINE IS A CHILD OF AN ASSIGNABLE CATEGORY. That is the whole definition: a
+// fact reaches it through (category, row_label), so its parent is a category a
+// rule may write, and taxes/property -- a child of the rollup `taxes`, which no
+// rule may write -- is not one.
+//
+// The match is a ROW match and not the divisions test's Contains, because
+// pp.127-140 allow it: every row prints its label at the start of its own line
+// and the figures after it, so the term must begin a line and end at a space or
+// the line's end. "Franchise Tax- Gas" is therefore not satisfied by "Franchise
+// Tax- Garbage", nor "Citations" by a heading that mentions them. What it still
+// cannot witness is the figure beside the label; that is
+// fact-offset-points-at-token's, at verify time.
+//
+// Every page cited is read as a Budget Book page, which is the file's stated
+// convention for a bare page number; a line alias citing another document
+// would have to say so in a note and be read from that document's pages.
+//
+// Mutation: change any line's pages to a page that does not print it -- 127 for
+// miscellaneous-revenue/cardroom-revenue, which p130 prints -- and this fails
+// naming the line and the page.
+func TestEveryRevenueLineIsPrintedOnItsPages(t *testing.T) {
+	r := realRegistry(t)
+
+	pages := map[int][]string{}
+	readPage := func(t *testing.T, n int) []string {
+		t.Helper()
+		if body, ok := pages[n]; ok {
+			return body
+		}
+		b, err := os.ReadFile(fmt.Sprintf("%s/p%04d.txt", budgetPages, n))
+		if err != nil {
+			t.Fatalf("read page %d: %v", n, err)
+		}
+		pages[n] = strings.Split(string(b), "\n")
+		return pages[n]
+	}
+	printsRow := func(page []string, term string) bool {
+		for _, line := range page {
+			line = strings.TrimLeft(line, " ")
+			if strings.HasPrefix(line, term) && (len(line) == len(term) || line[len(term)] == ' ') {
+				return true
+			}
+		}
+		return false
+	}
+
+	var lines, claims int
+	for _, c := range r.Categories() {
+		if c.Parent == "" || !r.Assignable(c.Parent) {
+			continue
+		}
+		lines++
+		if c.DocumentTerm == "" {
+			t.Errorf("line %q has no document_term, so no printed row can resolve to it", c.Slug)
+		}
+		if len(c.Pages) == 0 {
+			t.Errorf("line %q cites no page; a printed row is printed somewhere", c.Slug)
+		}
+		for _, p := range c.Pages {
+			claims++
+			if !printsRow(readPage(t, p), c.DocumentTerm) {
+				t.Errorf("line %q document_term %q does not begin a row of p%04d", c.Slug, c.DocumentTerm, p)
+			}
+		}
+		for _, a := range c.Aliases {
+			for _, p := range a.Pages {
+				claims++
+				if !printsRow(readPage(t, p), a.Term) {
+					t.Errorf("line %q alias %q does not begin a row of p%04d", c.Slug, a.Term, p)
+				}
+			}
+		}
+	}
+
+	// The floors are counts against the documents, for the reason
+	// TestEveryDivisionIsPrintedOnItsPages gives at length: a floor summed from
+	// r.Categories() in the same run could never fire. Measured off
+	// facts/facts.jsonl on 2026-09-12, scope revenue-by-fund and kind revenue:
+	// 101 distinct (category, row_label) pairs, printed on 139 distinct
+	// (pair, page) combinations -- pp.127-130's General Fund rows once each,
+	// and pp.131-140's fund-level rows on every page a fund prints them.
+	if lines != 101 {
+		t.Errorf("the registry declares %d revenue lines, want 101; the floor below is a "+
+			"count against the pages and means nothing if the schedule changed", lines)
+	}
+	if claims < 139 {
+		t.Errorf("the loop examined %d page claims, want at least 139: that many (row, page) "+
+			"pairs are printed before any entry cites a further page", claims)
 	}
 }
 

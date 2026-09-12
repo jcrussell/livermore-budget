@@ -583,10 +583,6 @@ func validateCategory(c Category, catf errFunc) error {
 		}
 		seen[k] = true
 	}
-	if n := strings.Count(c.Slug, "/"); n > 1 {
-		return catf(c.Slug, "slug",
-			"has %d parent segments; the taxonomy is one level deep", n)
-	}
 	// A category's pages are optional (see validatePagesShape) and their shape
 	// is not.
 	if err := validatePagesShape(c.Pages, c.Slug, catf); err != nil {
@@ -711,13 +707,23 @@ func validateCategory(c Category, catf errFunc) error {
 	return nil
 }
 
-// validateParent checks the hierarchy, which taxonomy.yaml states twice: the
-// slug rule lifts a shared head noun into a parent segment, and the file is
-// one level deep. Checking both means a mis-parented entry — the head noun
-// saying one thing and `parent:` another — cannot load, and so cannot put a
-// row under a group it does not belong to in a rollup view.
+// validateParent checks the hierarchy against the grammar taxonomy.yaml
+// states: a nested slug's parent is the slug minus its last segment, so
+// `parent:` on taxes/property/eraf may name taxes/property and nothing else.
+// Checking `parent:` against the slug means a mis-parented entry — the slug
+// saying one thing and `parent:` another — cannot load, and so cannot put a row
+// under a group it does not belong to in a rollup view.
+//
+// Depth is unbounded, and there is deliberately no cycle check: a parent slug
+// is a strict prefix of its child's and so strictly shorter, so no chain of
+// `parent:` links can be spelled that returns to where it started.
 func validateParent(c Category, byslug map[string]Category, catf errFunc) error {
-	stem, _, nested := strings.Cut(c.Slug, "/")
+	i := strings.LastIndex(c.Slug, "/")
+	nested := i >= 0
+	var stem string
+	if nested {
+		stem = c.Slug[:i]
+	}
 	if c.Parent == "" {
 		if nested {
 			return catf(c.Slug, "parent",
@@ -725,8 +731,7 @@ func validateParent(c Category, byslug map[string]Category, catf errFunc) error 
 		}
 		return nil
 	}
-	parent, ok := byslug[c.Parent]
-	if !ok {
+	if _, ok := byslug[c.Parent]; !ok {
 		return catf(c.Slug, "parent", "unknown category %q", c.Parent)
 	}
 	if !nested {
@@ -736,11 +741,6 @@ func validateParent(c Category, byslug map[string]Category, catf errFunc) error 
 	if c.Parent != stem {
 		return catf(c.Slug, "parent",
 			"is %q, but the slug's head noun is %q", c.Parent, stem)
-	}
-	if parent.Parent != "" {
-		return catf(c.Slug, "parent",
-			"%q is itself a child of %q; the taxonomy is one level deep",
-			c.Parent, parent.Parent)
 	}
 	return nil
 }

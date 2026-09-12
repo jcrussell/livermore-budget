@@ -36,9 +36,10 @@ func (noVocabulary) Assignable(string) bool { return false }
 func (noVocabulary) Category(string) (registry.Category, bool) {
 	return registry.Category{}, false
 }
-func (noVocabulary) FundGroup(string) bool          { return false }
-func (noVocabulary) Fund(int) (registry.Fund, bool) { return registry.Fund{}, false }
-func (noVocabulary) Funds() []registry.Fund         { return nil }
+func (noVocabulary) Categories() []registry.Category { return nil }
+func (noVocabulary) FundGroup(string) bool           { return false }
+func (noVocabulary) Fund(int) (registry.Fund, bool)  { return registry.Fund{}, false }
+func (noVocabulary) Funds() []registry.Fund          { return nil }
 func (noVocabulary) FundByLabel(label string) (registry.Fund, error) {
 	return registry.Fund{}, fmt.Errorf("no fund is named %q in an empty corpus", label)
 }

@@ -293,6 +293,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"constraint-tier-vocabulary":      StatusPass,
 		"fact-departments-resolve":        StatusPass,
 		"fact-funds-resolve":              StatusPass,
+		"fact-revenue-lines-resolve":      StatusPass,
 		"rule-funds-match-their-headings": StatusPass,
 	}
 	got := make(map[string]Status, len(rep.Results))

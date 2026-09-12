@@ -39,6 +39,7 @@ const (
 	// "department %q is not a division departments.yaml lists" tells the reader
 	// which file to open and the slug alone does not.
 	departmentsFile = dataDir + "/" + registry.DepartmentsFile
+	taxonomyFile    = dataDir + "/" + registry.TaxonomyFile
 )
 
 // spineScope is the scope of the projection this package checks: the one the site
@@ -60,6 +61,11 @@ type Vocabulary interface {
 	// tells those two cases apart: "you named a rollup" and "you typo'd a slug"
 	// need different fixes.
 	Category(slug string) (registry.Category, bool)
+	// Categories is every taxonomy entry, ordered by slug. A check that could
+	// only look a slug up could never say what the registry declares that no
+	// fact prints, and an entry's children are not a field on it: the lines
+	// nested under a category are found by reading the whole file.
+	Categories() []registry.Category
 	// FundGroup reports whether name is a fund type data/funds.yaml uses.
 	FundGroup(name string) bool
 	// Fund is the registry entry for a fund number, which is the join key a

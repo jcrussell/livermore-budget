@@ -30,39 +30,94 @@
 # `slug` is DERIVED in every case — it is a machine identifier we chose, and no
 # reader should be shown it. The rule is:
 #
-#     slug = the document term, lowercased, `&` -> `and`, spaces -> `-`,
+#     slug = the document term, lowercased, `&` -> `and`, every other run
+#            of characters that are not letters or digits -> one `-`,
 #            with the shared head noun lifted to a parent segment where the
-#            document prints sibling rows that share one.
+#            document prints sibling rows that share one, and with a
+#            printed ROW nested under the category it is printed in.
 #
 # So "Use of Money And Property" -> `use-of-money-and-property` mechanically,
-# and "Property Taxes" -> `taxes/property` by the head-noun clause. Where a
+# "Property Taxes" -> `taxes/property` by the head-noun clause, and p127's
+# row "Pen & Int On Delinq Tax" -> `taxes/property/pen-and-int-on-delinq-tax`
+# by the row clause, abbreviation kept. Where a
 # slug does NOT fall out of that rule — because the printed term is an
 # abbreviation, or because we merged two schedules' labels — the entry carries
 # `derived: true` with a `rationale` and a `source_note`. Entries without
 # `derived` are a mechanical transform of a printed string and nothing more.
 #
-# HIERARCHY: real in three places, false everywhere else
-# ------------------------------------------------------
+# THE SLUG RULE IS STATED AND DELIBERATELY NOT ENFORCED. A loader that refused
+# slug != transform(document_term) would make an entry's identity depend on
+# its content, which is what choosing authored slugs over a slugified
+# row_label refused: a re-typeset row must stay the same node, changed, and
+# not become a different node. Identity is the slug; the printed string is
+# what `document_term` and `aliases` carry, and both say where to look.
+#
+# HIERARCHY: one grammar at any depth, and three groupings that are ours
+# ----------------------------------------------------------------------
+# A nested slug's parent is the slug minus its last segment, and `parent:`
+# must say so: internal/registry refuses `taxes/property/eraf` with any
+# parent but `taxes/property`. Depth is unbounded. A cycle cannot be spelled,
+# because a parent slug is a strict prefix of its child's and so strictly
+# shorter.
+#
 # The Budget Book prints NO "Total Taxes", "Total Transfers", or "Total Fund
 # Balance" row anywhere (verified by grep over all 268 extracted pages). That
 # claim is scoped to the Budget Book on purpose: the ACFR does print one such
 # line, "Total Fund Balances (Deficits)" on its p134, but that is a balance
 # sheet column total, not a rollup of the five fund-balance categories below.
-# Re-check this before extending the taxonomy to ACFR facts. Every
-# parent node below is therefore our grouping, not the city's: each is
-# `derived: true` and `assignable: false`, meaning it exists so a rollup view
-# can name the group and a mapping rule may NEVER write it as a `category`.
+# Re-check this before extending the taxonomy to ACFR facts. `taxes`,
+# `transfers` and `fund-balance` are therefore OUR grouping and not the
+# city's: each is `derived: true` and `assignable: false`, meaning it exists
+# so a rollup view can name the group and a mapping rule may NEVER write it
+# as a `category`. Those three group where the document prints several
+# sibling rows sharing a head noun — taxes (three rows on p66), transfers
+# (in/out), fund balance (beginning/change/ending).
 #
-# Hierarchy is used only where the document prints several sibling rows sharing
-# a head noun — taxes (three rows on p66), transfers (in/out), fund balance
-# (beginning/change/ending). It is deliberately NOT used below the ten revenue
-# categories, even though pp. 127-130 print 60+ detail lines under them
-# ("Current Year - Secured", "Franchise Tax- Gas", "Cell Tower Rent", ...).
-# Those detail lines are a rule's `label`, not a `category`. Giving each one a
-# slug would invent a classification the city does not make and would double
-# the surface on which two spellings of the same thing can drift apart.
+# Being a parent does not make an entry a grouping. pp.66-67 print
+# `taxes/property` and p127 prints "Total Property Taxes" over its detail
+# rows, so it is assignable, a rule writes it, AND it has children. Whether
+# a rule may write a slug is `assignable:` alone; nothing reads it off the
+# tree's shape, and no validator checks that a parent is unassignable.
 #
-# It is one level deep. Nothing here nests two segments.
+# REVENUE LINES: a slug names a printed row, it does not classify it
+# ------------------------------------------------------------------
+# pp.127-140 print each fund's revenue as rows under the ten categories, and
+# every distinct printed row of kind revenue has an entry below, nested under
+# its category: `parent:` is the category a rule classifies the row as,
+# `document_term` is the row label verbatim, `pages` is where it is printed.
+# A rule's `label:` already names each of these rows, so an entry invents no
+# classification the city does not make — what it adds is an identity the
+# fact store lacks. A fact carries only `row_label`, free text off the page,
+# and a chart cannot draw a row as a node with nothing content-independent to
+# name it by.
+#
+# Two spellings of one row drifting apart is refused rather than feared.
+# fact-revenue-lines-resolve, on every `fisc verify`, requires every fact of
+# scope revenue-by-fund and kind revenue to resolve its (category, row_label)
+# to EXACTLY ONE entry here by `document_term` or alias, and every entry to
+# be printed by at least one such fact. A re-typeset row is therefore
+# declared as an alias, with its pages, on the entry it re-spells; the old
+# spelling does not survive unprinted and the new one does not survive
+# unresolved. internal/registry's page test reads each `document_term` off
+# its pages, and internal/check's mapping test reads each off the rule file,
+# so an entry is checked against three things that did not generate it.
+#
+# Nine of these rows are the category's own name, in the narrower column
+# pp.131-140 use inside each non-General fund ("Intergovernmental", "Use of
+# Money & Prop", "ContributionsOutSrce", ...). They are rows the city prints
+# and get an entry like any other. The same spelling is also an alias on the
+# category, which is a different claim about the same string: that the
+# category is printed under that name there.
+#
+# The "Transfers In" row those pages print is not a revenue line. Its kind is
+# transfer_in and its category is transfers/in, and the check reads kind
+# revenue only.
+#
+# The line entries were generated from facts/facts.jsonl, one per distinct
+# (category, row_label) of that scope and kind, in printed order within each
+# category; the generating command is in the commit that added them. A
+# generated entry is still a claim about a page and carries a `#@cite` of the
+# printed line, as every other entry does.
 #
 # WHAT IS NOT IN THIS FILE
 # ------------------------
@@ -100,7 +155,8 @@ categories:
   # citywide spine (p66-67) and they are the same ten the detail schedule
   # subtotals to (pp. 127-130 print "Total <term>" for each). pp. 131-140
   # reuse them as line labels inside each non-General fund, in a narrower
-  # column, which is where the abbreviated aliases come from.
+  # column, which is where the abbreviated aliases come from. Under each
+  # category, in printed order, are the rows pp. 127-140 print in it.
   # ==================================================================
 
   #@cite p0066 rows "Property Taxes", "Other Taxes", "Sales Taxes" — three
@@ -177,6 +233,118 @@ categories:
       keep the sign, and a flow diagram must not render them as their own
       inbound flow.
 
+  #@cite p0127 "Current Year - Secured $56,400,410 $59,678,715 $62,067,470 $65,247,006"
+  - slug: taxes/property/current-year-secured
+    label: "Current Year - Secured"
+    document_term: "Current Year - Secured"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Prior Year - Secured 432,447 353,600 458,394 479,022"
+  - slug: taxes/property/prior-year-secured
+    label: "Prior Year - Secured"
+    document_term: "Prior Year - Secured"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "ERAF (14,086,438) (14,661,836) (15,175,000) (15,857,875)"
+  - slug: taxes/property/eraf
+    label: "ERAF"
+    document_term: "ERAF"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "RPTTF Reduction (1,749,120) (1,704,595) (1,810,339) (1,891,804)"
+  - slug: taxes/property/rpttf-reduction
+    label: "RPTTF Reduction"
+    document_term: "RPTTF Reduction"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Current Year - Unsecured 2,248,402 2,062,626 2,383,306 2,490,555"
+  - slug: taxes/property/current-year-unsecured
+    label: "Current Year - Unsecured"
+    document_term: "Current Year - Unsecured"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Prior Year - Unsecured (20,033) 33,150 34,310 35,854"
+  - slug: taxes/property/prior-year-unsecured
+    label: "Prior Year - Unsecured"
+    document_term: "Prior Year - Unsecured"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Supple - Sec Roll Current 1,335,115 1,350,000 1,397,250 1,460,126"
+  - slug: taxes/property/supple-sec-roll-current
+    label: "Supple - Sec Roll Current"
+    document_term: "Supple - Sec Roll Current"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "VLF Comp Fund 11,138,410 11,733,300 12,143,966 12,690,444"
+  - slug: taxes/property/vlf-comp-fund
+    label: "VLF Comp Fund"
+    document_term: "VLF Comp Fund"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Unitary Utility Tax 514,260 442,710 545,116 569,646"
+  - slug: taxes/property/unitary-utility-tax
+    label: "Unitary Utility Tax"
+    document_term: "Unitary Utility Tax"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Aircraft Taxes 467,715 275,748 495,778 518,088"
+  - slug: taxes/property/aircraft-taxes
+    label: "Aircraft Taxes"
+    document_term: "Aircraft Taxes"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "RPTTF Receipts & Other PropTax 1,042,541 795,000 1,105,094 1,154,823"
+  - slug: taxes/property/rpttf-receipts-and-other-proptax
+    label: "RPTTF Receipts & Other PropTax"
+    document_term: "RPTTF Receipts & Other PropTax"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "St Homeowner Prop Tax Re 193,530 213,000 220,455 230,375"
+  - slug: taxes/property/st-homeowner-prop-tax-re
+    label: "St Homeowner Prop Tax Re"
+    document_term: "St Homeowner Prop Tax Re"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Pen & Int On Delinq Tax 262,228 50,000 277,962 290,470"
+  - slug: taxes/property/pen-and-int-on-delinq-tax
+    label: "Pen & Int On Delinq Tax"
+    document_term: "Pen & Int On Delinq Tax"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0139 "Property Taxes 475,325 888,601 858,416 884,166"
+  - slug: taxes/property/property-taxes
+    label: "Property Taxes"
+    document_term: "Property Taxes"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [139]
+
   #@cite p0066 "Sales Taxes 41,086,606 41,908,338"
   #@cite p0127 "Total Sales Taxes $40,280,986 $42,593,316 $41,086,606 $41,908,338"
   #@cite p0041 (ACFR) "Sales Taxes   39.12   39.60"
@@ -199,6 +367,22 @@ categories:
       an alias repeating the term it is supposed to be an alternative to. The
       eight other revenue lines of that ACFR block DO differ in spelling and
       carry aliases; this one and `intergovernmental` are the two that do not.
+
+  #@cite p0127 "Sales & Use Tax $39,562,251 $41,903,316 $40,353,496 $41,160,566"
+  - slug: taxes/sales/sales-and-use-tax
+    label: "Sales & Use Tax"
+    document_term: "Sales & Use Tax"
+    parent: taxes/sales
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Prop 172 - Public Sfty Augmnt 718,735 690,000 733,110 747,772"
+  - slug: taxes/sales/prop-172-public-sfty-augmnt
+    label: "Prop 172 - Public Sfty Augmnt"
+    document_term: "Prop 172 - Public Sfty Augmnt"
+    parent: taxes/sales
+    kinds: [revenue]
+    pages: [127]
 
   #@cite p0066 "Other Taxes 23,800,196 24,508,202"
   #@cite p0128 "Total Other Taxes $22,204,869 $24,054,312 $23,800,196 $24,508,202"
@@ -224,6 +408,126 @@ categories:
       the construction taxes — a named group the city simply did not give a
       collective name to.
 
+  #@cite p0127 "Franchise Tax- Electric $897,157 $655,000 $924,072 $951,794"
+  - slug: taxes/other/franchise-tax-electric
+    label: "Franchise Tax- Electric"
+    document_term: "Franchise Tax- Electric"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Franchise Tax- Gas 450,580 350,000 464,098 478,021"
+  - slug: taxes/other/franchise-tax-gas
+    label: "Franchise Tax- Gas"
+    document_term: "Franchise Tax- Gas"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Franchise Tax- Cable TV 1,136,402 1,370,000 1,170,494 1,205,609"
+  - slug: taxes/other/franchise-tax-cable-tv
+    label: "Franchise Tax- Cable TV"
+    document_term: "Franchise Tax- Cable TV"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Franchise Tax- Garbage 4,172,865 4,200,000 4,326,000 4,455,780"
+  - slug: taxes/other/franchise-tax-garbage
+    label: "Franchise Tax- Garbage"
+    document_term: "Franchise Tax- Garbage"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Business License Tax 9,829,021 10,500,000 10,418,762 10,731,325"
+  - slug: taxes/other/business-license-tax
+    label: "Business License Tax"
+    document_term: "Business License Tax"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Business License Penalty 281,518 200,000 206,000 212,180"
+  - slug: taxes/other/business-license-penalty
+    label: "Business License Penalty"
+    document_term: "Business License Penalty"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Business License Registration 32,834 35,000 36,050 37,132"
+  - slug: taxes/other/business-license-registration
+    label: "Business License Registration"
+    document_term: "Business License Registration"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Real Property Transfer Tax 875,543 1,300,000 901,809 928,863"
+  - slug: taxes/other/real-property-transfer-tax
+    label: "Real Property Transfer Tax"
+    document_term: "Real Property Transfer Tax"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "TOT - Hotel 3,627,890 4,363,812 4,116,954 4,240,463"
+  - slug: taxes/other/tot-hotel
+    label: "TOT - Hotel"
+    document_term: "TOT - Hotel"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "TOT - Short Term Rental 46,721 63,000 49,524 51,010"
+  - slug: taxes/other/tot-short-term-rental
+    label: "TOT - Short Term Rental"
+    document_term: "TOT - Short Term Rental"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Residential Construction Tax 455,121 400,000 700,000 715,000"
+  - slug: taxes/other/residential-construction-tax
+    label: "Residential Construction Tax"
+    document_term: "Residential Construction Tax"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0127 "Industrial Construction Tax - 200,000 75,000 77,250"
+  - slug: taxes/other/industrial-construction-tax
+    label: "Industrial Construction Tax"
+    document_term: "Industrial Construction Tax"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [127]
+
+  #@cite p0128 "In-Lieu Taxes 8,009 7,500 8,490 8,744"
+  - slug: taxes/other/in-lieu-taxes
+    label: "In-Lieu Taxes"
+    document_term: "In-Lieu Taxes"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Emt Service Area 391,207 410,000 402,943 415,031"
+  - slug: taxes/other/emt-service-area
+    label: "Emt Service Area"
+    document_term: "Emt Service Area"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0138 "Other Taxes 57,821 150,000 150,000 150,000"
+  - slug: taxes/other/other-taxes
+    label: "Other Taxes"
+    document_term: "Other Taxes"
+    parent: taxes/other
+    kinds: [revenue]
+    pages: [138]
+
   #@cite p0066 "Licenses & Permits 7,252,799 7,261,048"
   #@cite p0128 "Total Licenses & Permits $4,051,029 $4,259,000 $7,252,799 $7,261,048"
   - slug: licenses-and-permits
@@ -245,6 +549,126 @@ categories:
       declare it in `omitted_rows` for p67 — extraction emits no row for it
       there. See internal/mapping/testdata/spine.yaml.
 
+  #@cite p0128 "Animal Licenses $37,385 $44,000 $39,628 $40,817"
+  - slug: licenses-and-permits/animal-licenses
+    label: "Animal Licenses"
+    document_term: "Animal Licenses"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Building Permits 1,466,815 1,695,000 2,790,000 2,790,000"
+  - slug: licenses-and-permits/building-permits
+    label: "Building Permits"
+    document_term: "Building Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Permit Technology Fee 58,210 - 61,703 63,554"
+  - slug: licenses-and-permits/permit-technology-fee
+    label: "Permit Technology Fee"
+    document_term: "Permit Technology Fee"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Plumbing Gas Permits 154,873 140,000 150,000 150,000"
+  - slug: licenses-and-permits/plumbing-gas-permits
+    label: "Plumbing Gas Permits"
+    document_term: "Plumbing Gas Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Electrical Permits 346,914 350,000 340,000 340,000"
+  - slug: licenses-and-permits/electrical-permits
+    label: "Electrical Permits"
+    document_term: "Electrical Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Mechanical Permits 255,795 240,000 260,000 260,000"
+  - slug: licenses-and-permits/mechanical-permits
+    label: "Mechanical Permits"
+    document_term: "Mechanical Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Street And Curb Permits 137,913 180,000 170,000 170,000"
+  - slug: licenses-and-permits/street-and-curb-permits
+    label: "Street And Curb Permits"
+    document_term: "Street And Curb Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Transportation Permit 37,414 30,000 39,659 40,849"
+  - slug: licenses-and-permits/transportation-permit
+    label: "Transportation Permit"
+    document_term: "Transportation Permit"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Fire Permits 386,082 325,000 1,200,000 1,200,000"
+  - slug: licenses-and-permits/fire-permits
+    label: "Fire Permits"
+    document_term: "Fire Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Hazmat Permits 411,353 430,000 1,117,000 1,117,000"
+  - slug: licenses-and-permits/hazmat-permits
+    label: "Hazmat Permits"
+    document_term: "Hazmat Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Use And Variance Permits 631,164 700,000 950,000 950,000"
+  - slug: licenses-and-permits/use-and-variance-permits
+    label: "Use And Variance Permits"
+    document_term: "Use And Variance Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Police Permits 63,578 60,000 67,500 69,500"
+  - slug: licenses-and-permits/police-permits
+    label: "Police Permits"
+    document_term: "Police Permits"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Tobacco License- Registration 36 - - -"
+  - slug: licenses-and-permits/tobacco-license-registration
+    label: "Tobacco License- Registration"
+    document_term: "Tobacco License- Registration"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Tobacco License- Fee 57,996 50,000 61,476 63,320"
+  - slug: licenses-and-permits/tobacco-license-fee
+    label: "Tobacco License- Fee"
+    document_term: "Tobacco License- Fee"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Short Term Rental Permit 5,503 15,000 5,833 6,008"
+  - slug: licenses-and-permits/short-term-rental-permit
+    label: "Short Term Rental Permit"
+    document_term: "Short Term Rental Permit"
+    parent: licenses-and-permits
+    kinds: [revenue]
+    pages: [128]
+
   #@cite p0066 "Fines & Forfeitures 386,500 398,270"
   #@cite p0128 "Total Fines & Forfeitures $346,405 $387,000 $386,500 $398,270"
   #@cite p0131 fund-level row "Fines & Forfeitures 1,211 - - -"
@@ -261,6 +685,30 @@ categories:
         note: >-
           ACFR pp.41 and 168, not Budget Book pages. "and" for "&", and lower
           case; same two nouns, so no derivation.
+
+  #@cite p0128 "Vehicle Code Fines $296,396 $300,000 $309,000 $318,270"
+  - slug: fines-and-forfeitures/vehicle-code-fines
+    label: "Vehicle Code Fines"
+    document_term: "Vehicle Code Fines"
+    parent: fines-and-forfeitures
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Citations 50,009 87,000 77,500 80,000"
+  - slug: fines-and-forfeitures/citations
+    label: "Citations"
+    document_term: "Citations"
+    parent: fines-and-forfeitures
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0131 "Fines & Forfeitures 1,211 - - -"
+  - slug: fines-and-forfeitures/fines-and-forfeitures
+    label: "Fines & Forfeitures"
+    document_term: "Fines & Forfeitures"
+    parent: fines-and-forfeitures
+    kinds: [revenue]
+    pages: [131]
 
   #@cite p0066 "Intergovernmental 4,328,164 4,631,220"
   #@cite p0128 "Total Intergovernmental $4,522,641 $3,833,548 $4,328,164 $4,631,220"
@@ -280,6 +728,62 @@ categories:
       motor-vehicle in-lieu, mandated-cost reimbursement, and Interdepartmental
       Revenue.
 
+  #@cite p0128 "Grant- Federal 17,143 15,000 92,379 95,423"
+  - slug: intergovernmental/grant-federal
+    label: "Grant- Federal"
+    document_term: "Grant- Federal"
+    parent: intergovernmental
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Grant- State 784,641 140,000 287,946 473,000"
+  - slug: intergovernmental/grant-state
+    label: "Grant- State"
+    document_term: "Grant- State"
+    parent: intergovernmental
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "St Highway Prop Rental 380 1,000 1,000 1,000"
+  - slug: intergovernmental/st-highway-prop-rental
+    label: "St Highway Prop Rental"
+    document_term: "St Highway Prop Rental"
+    parent: intergovernmental
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "State Motor Veh in Lieu (MVIL) 108,321 100,000 114,820 114,820"
+  - slug: intergovernmental/state-motor-veh-in-lieu-mvil
+    label: "State Motor Veh in Lieu (MVIL)"
+    document_term: "State Motor Veh in Lieu (MVIL)"
+    parent: intergovernmental
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Reimb-Mandated Costs (St) 138,814 - 147,143 151,557"
+  - slug: intergovernmental/reimb-mandated-costs-st
+    label: "Reimb-Mandated Costs (St)"
+    document_term: "Reimb-Mandated Costs (St)"
+    parent: intergovernmental
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0128 "Interdepartmental Revenue 3,473,342 3,577,548 3,684,876 3,795,420"
+  - slug: intergovernmental/interdepartmental-revenue
+    label: "Interdepartmental Revenue"
+    document_term: "Interdepartmental Revenue"
+    parent: intergovernmental
+    kinds: [revenue]
+    pages: [128]
+
+  #@cite p0131 "Intergovernmental 151,000 - - -"
+  - slug: intergovernmental/intergovernmental
+    label: "Intergovernmental"
+    document_term: "Intergovernmental"
+    parent: intergovernmental
+    kinds: [revenue]
+    pages: [131, 133, 134, 135, 136, 137, 138, 139, 140]
+
   #@cite p0066 "Charges for Services 6,130,207 6,179,158 62,250,824 64,332,646"
   #@cite p0129 "Total Charges for Services $4,862,047 $4,973,153 $6,130,207 $6,179,158"
   - slug: charges-for-services
@@ -297,6 +801,174 @@ categories:
           phrasing of the line the Budget Book prints as "Charges for
           Services"; the qualifier excludes nothing the Budget Book term
           included, so no derivation.
+
+  #@cite p0129 "Police Vehicle Fees $75,396 $75,000 $75,500 $78,000"
+  - slug: charges-for-services/police-vehicle-fees
+    label: "Police Vehicle Fees"
+    document_term: "Police Vehicle Fees"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Special Police Services 15,708 441,878 253,317 260,917"
+  - slug: charges-for-services/special-police-services
+    label: "Special Police Services"
+    document_term: "Special Police Services"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Sale Of Police Reports 36,400 30,000 42,500 44,000"
+  - slug: charges-for-services/sale-of-police-reports
+    label: "Sale Of Police Reports"
+    document_term: "Sale Of Police Reports"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Police Emerg Response 4,842 10,000 22,000 22,500"
+  - slug: charges-for-services/police-emerg-response
+    label: "Police Emerg Response"
+    document_term: "Police Emerg Response"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Tow Franchise Fees & Fines 2,234 18,500 20,000 20,000"
+  - slug: charges-for-services/tow-franchise-fees-and-fines
+    label: "Tow Franchise Fees & Fines"
+    document_term: "Tow Franchise Fees & Fines"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Fire Plan Check & Inspct Fee 186,067 210,000 300,000 300,000"
+  - slug: charges-for-services/fire-plan-check-and-inspct-fee
+    label: "Fire Plan Check & Inspct Fee"
+    document_term: "Fire Plan Check & Inspct Fee"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Fire VA Contract Service 640,192 719,775 741,368 763,609"
+  - slug: charges-for-services/fire-va-contract-service
+    label: "Fire VA Contract Service"
+    document_term: "Fire VA Contract Service"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Weed Abatement 2,665 5,000 2,825 2,909"
+  - slug: charges-for-services/weed-abatement
+    label: "Weed Abatement"
+    document_term: "Weed Abatement"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Library Fees 10,856 20,000 11,507 11,852"
+  - slug: charges-for-services/library-fees
+    label: "Library Fees"
+    document_term: "Library Fees"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Property Damage Recovery 15,903 27,500 16,857 17,363"
+  - slug: charges-for-services/property-damage-recovery
+    label: "Property Damage Recovery"
+    document_term: "Property Damage Recovery"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Building Records Reports 86,475 90,000 91,664 94,413"
+  - slug: charges-for-services/building-records-reports
+    label: "Building Records Reports"
+    document_term: "Building Records Reports"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Plan Check Fees 796,639 700,000 1,000,000 1,000,000"
+  - slug: charges-for-services/plan-check-fees
+    label: "Plan Check Fees"
+    document_term: "Plan Check Fees"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Sale of Reports & Publications 10 - - -"
+  - slug: charges-for-services/sale-of-reports-and-publications
+    label: "Sale of Reports & Publications"
+    document_term: "Sale of Reports & Publications"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Engineering & Filing Fee 1,083,232 870,000 2,400,000 2,400,000"
+  - slug: charges-for-services/engineering-and-filing-fee
+    label: "Engineering & Filing Fee"
+    document_term: "Engineering & Filing Fee"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Engineering Inspection Fees 1,561,737 1,057,000 760,000 760,000"
+  - slug: charges-for-services/engineering-inspection-fees
+    label: "Engineering Inspection Fees"
+    document_term: "Engineering Inspection Fees"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Administrative Cost Recovery 221,851 530,000 263,162 270,217"
+  - slug: charges-for-services/administrative-cost-recovery
+    label: "Administrative Cost Recovery"
+    document_term: "Administrative Cost Recovery"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Assessment Dist Admin Fee 110,553 123,000 117,186 120,702"
+  - slug: charges-for-services/assessment-dist-admin-fee
+    label: "Assessment Dist Admin Fee"
+    document_term: "Assessment Dist Admin Fee"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Admin Fee-RDA Dissolution - 25,000 - -"
+  - slug: charges-for-services/admin-fee-rda-dissolution
+    label: "Admin Fee-RDA Dissolution"
+    document_term: "Admin Fee-RDA Dissolution"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Outdoor Dining Maintenance 11,152 20,000 11,821 12,176"
+  - slug: charges-for-services/outdoor-dining-maintenance
+    label: "Outdoor Dining Maintenance"
+    document_term: "Outdoor Dining Maintenance"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Animal Shelter Fees & Charges 135 500 500 500"
+  - slug: charges-for-services/animal-shelter-fees-and-charges
+    label: "Animal Shelter Fees & Charges"
+    document_term: "Animal Shelter Fees & Charges"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0131 "Charges for Services 2,991,461 2,979,750 3,083,320 3,130,580"
+  - slug: charges-for-services/charges-for-services
+    label: "Charges for Services"
+    document_term: "Charges for Services"
+    parent: charges-for-services
+    kinds: [revenue]
+    pages: [131, 132, 133, 134, 136, 137, 138, 140]
 
   #@cite p0066 "Use of Money And Property 8,488,168 9,771,259 4,836,537 5,749,704"
   #@cite p0129 "Total Use of Money And Property $6,557,541 $7,237,501 $8,488,168 $9,771,259"
@@ -318,6 +990,62 @@ categories:
     note: >-
       The capital A in "And" is the document's, on both p66 and p129. Do not
       normalize it in `document_term`; the mapping matches printed text.
+
+  #@cite p0129 "Interest Income $3,131,019 $3,875,000 $4,790,000 $5,964,000"
+  - slug: use-of-money-and-property/interest-income
+    label: "Interest Income"
+    document_term: "Interest Income"
+    parent: use-of-money-and-property
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Interest Earned Trustee 188,630 - 192,403 196,251"
+  - slug: use-of-money-and-property/interest-earned-trustee
+    label: "Interest Earned Trustee"
+    document_term: "Interest Earned Trustee"
+    parent: use-of-money-and-property
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Rental Of Property 3,051,201 3,145,260 3,239,618 3,336,806"
+  - slug: use-of-money-and-property/rental-of-property
+    label: "Rental Of Property"
+    document_term: "Rental Of Property"
+    parent: use-of-money-and-property
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Multi Service Center Rentals 34,456 27,500 67,523 69,619"
+  - slug: use-of-money-and-property/multi-service-center-rentals
+    label: "Multi Service Center Rentals"
+    document_term: "Multi Service Center Rentals"
+    parent: use-of-money-and-property
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Cell Tower Rent 61,295 101,900 104,957 108,106"
+  - slug: use-of-money-and-property/cell-tower-rent
+    label: "Cell Tower Rent"
+    document_term: "Cell Tower Rent"
+    parent: use-of-money-and-property
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0129 "Misc Rental Income 90,939 87,841 93,667 96,477"
+  - slug: use-of-money-and-property/misc-rental-income
+    label: "Misc Rental Income"
+    document_term: "Misc Rental Income"
+    parent: use-of-money-and-property
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0131 "Use of Money & Prop 1,738,872 1,569,826 1,654,787 1,722,954"
+  - slug: use-of-money-and-property/use-of-money-and-prop
+    label: "Use of Money & Prop"
+    document_term: "Use of Money & Prop"
+    parent: use-of-money-and-property
+    kinds: [revenue]
+    pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
 
   #@cite p0066 "Contributions Outsourced 76,360 78,651"
   #@cite p0129 section heading "Contributions Outsourced"; detail row
@@ -357,6 +1085,22 @@ categories:
       elsewhere. spine.yaml was migrated to the long form when this
       file landed.
 
+  #@cite p0129 "Contribution Outside Services 72,038 - 76,360 78,651"
+  - slug: contributions-outsourced/contribution-outside-services
+    label: "Contribution Outside Services"
+    document_term: "Contribution Outside Services"
+    parent: contributions-outsourced
+    kinds: [revenue]
+    pages: [129]
+
+  #@cite p0131 "ContributionsOutSrce 263,000 - - -"
+  - slug: contributions-outsourced/contributionsoutsrce
+    label: "ContributionsOutSrce"
+    document_term: "ContributionsOutSrce"
+    parent: contributions-outsourced
+    kinds: [revenue]
+    pages: [131, 132, 135, 136, 138, 139]
+
   #@cite p0066 "Miscellaneous Revenue 2,180,708 2,205,271 426,900 225,900"
   #@cite p0130 "Total Miscellaneous Revenue $950,978 $840,900 $2,180,708 $2,205,271"
   - slug: miscellaneous-revenue
@@ -382,6 +1126,118 @@ categories:
       `contributions-outsourced`: the printed term has two words and the slug
       rule keeps both. `miscellaneous` on its own says nothing about which axis
       it belongs to.
+
+  #@cite p0130 "Sale of Surplus Property $366 $0 $0 $0"
+  - slug: miscellaneous-revenue/sale-of-surplus-property
+    label: "Sale of Surplus Property"
+    document_term: "Sale of Surplus Property"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Cardroom Revenue 417,696 438,000 1,359,600 1,359,600"
+  - slug: miscellaneous-revenue/cardroom-revenue
+    label: "Cardroom Revenue"
+    document_term: "Cardroom Revenue"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Hosted Training - 500 - -"
+  - slug: miscellaneous-revenue/hosted-training
+    label: "Hosted Training"
+    document_term: "Hosted Training"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Miscellaneous Revenue 120,161 80,500 406,576 418,549"
+  - slug: miscellaneous-revenue/miscellaneous-revenue
+    label: "Miscellaneous Revenue"
+    document_term: "Miscellaneous Revenue"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "SB 1383 Fees 210,980 200,000 217,309 223,829"
+  - slug: miscellaneous-revenue/sb-1383-fees
+    label: "SB 1383 Fees"
+    document_term: "SB 1383 Fees"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Bond Monitoring Fee 45,770 45,000 47,143 48,557"
+  - slug: miscellaneous-revenue/bond-monitoring-fee
+    label: "Bond Monitoring Fee"
+    document_term: "Bond Monitoring Fee"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "EDD Art Admin Fee Contrib 6,425 15,000 6,617 6,816"
+  - slug: miscellaneous-revenue/edd-art-admin-fee-contrib
+    label: "EDD Art Admin Fee Contrib"
+    document_term: "EDD Art Admin Fee Contrib"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Electric Vehicle Chg Fee 17,000 6,600 17,510 18,036"
+  - slug: miscellaneous-revenue/electric-vehicle-chg-fee
+    label: "Electric Vehicle Chg Fee"
+    document_term: "Electric Vehicle Chg Fee"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "LVWHD Collection Fee 11,357 - 11,697 12,048"
+  - slug: miscellaneous-revenue/lvwhd-collection-fee
+    label: "LVWHD Collection Fee"
+    document_term: "LVWHD Collection Fee"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Urban Forestry Revenues 99,665 5,000 102,655 105,735"
+  - slug: miscellaneous-revenue/urban-forestry-revenues
+    label: "Urban Forestry Revenues"
+    document_term: "Urban Forestry Revenues"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "POST Reimbursement 20,939 50,000 11,000 11,500"
+  - slug: miscellaneous-revenue/post-reimbursement
+    label: "POST Reimbursement"
+    document_term: "POST Reimbursement"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Library - Merchandise 601 300 601 601"
+  - slug: miscellaneous-revenue/library-merchandise
+    label: "Library - Merchandise"
+    document_term: "Library - Merchandise"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0130 "Cash Over/Short 19 - - -"
+  - slug: miscellaneous-revenue/cash-over-short
+    label: "Cash Over/Short"
+    document_term: "Cash Over/Short"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [130]
+
+  #@cite p0131 "Miscellaneous Rev 5,191 1,300 1,400 1,400"
+  - slug: miscellaneous-revenue/miscellaneous-rev
+    label: "Miscellaneous Rev"
+    document_term: "Miscellaneous Rev"
+    parent: miscellaneous-revenue
+    kinds: [revenue]
+    pages: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140]
 
   #@cite p0139 "ContributionsOutSrce 4,510 5,000 10,000 10,000
   #@cite     Oth Financing Source - 500 - -" (Police Donations fund; the two
@@ -414,6 +1270,14 @@ categories:
       inference it was written to refuse. The same arithmetic is derived
       independently in docs/revenue-trends-contract.md, which keeps the line
       because the city printed it on the page that document reads.
+
+  #@cite p0139 "Oth Financing Source - 500 - -"
+  - slug: other-financing-sources/oth-financing-source
+    label: "Oth Financing Source"
+    document_term: "Oth Financing Source"
+    parent: other-financing-sources
+    kinds: [revenue]
+    pages: [139]
 
   # ==================================================================
   # EXPENDITURE — object categories
