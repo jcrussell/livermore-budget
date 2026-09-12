@@ -366,11 +366,13 @@ func reconcileSide(subject, preposition string, spine, fund flowSum,
 	unaccounted := spine.total - fund.total - sideResidual
 	if split != "" {
 		// EQUAL FIGURES ARE NOT PROOF OF A SOLE DRIFT, and a second split must
-		// not be hidden behind the first. Two +$20 splits against an unrelated
-		// +$20 at fund level leave unaccounted == splitDiff == $20 while three
-		// things are wrong, so the count is asked as well as the arithmetic.
-		// Only the first split is named either way; the sentence says how many
-		// there are so a reader is not told the one they see is all of them.
+		// not be hidden behind the first. Measured on the fixture row named for
+		// it: a $30 split and a $20 split against $20 re-pointed at fund level
+		// leave the side $30 unaccounted, equal to the first split's difference
+		// while three things are wrong -- so the count is asked as well as the
+		// arithmetic. Only the first split is named either way; the sentence
+		// says how many there are, so a reader is not told the one they can see
+		// is all of them.
 		if splits == 1 && unaccounted == splitDiff {
 			return []Finding{finding(subject, "%s, and %s is unaccounted",
 				split, amount.Cents(splitDiff))}

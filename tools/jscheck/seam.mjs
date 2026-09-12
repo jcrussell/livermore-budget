@@ -243,26 +243,47 @@ export async function checks() {
         return true;
       }
     };
-    const base = parseStepShapes(two);
-    let reflowedSteps = [];
-    let reflowedThrew = false;
-    try {
-      reflowedSteps = parseStepShapes(reflowed);
-    } catch {
-      reflowedThrew = true;
-    }
-    // A reflow must not lose a step. Either reading it correctly or throwing is
-    // acceptable; returning one step with two steps' caps is not.
+    // THE CONTROL IS GUARDED TOO. An unguarded call here threw out of checks()
+    // and was reported as "a whole check module threw", taking every other arm
+    // in this file out of the output with it -- the shape drill.mjs's carried
+    // arm was fixed for one commit ago, reintroduced in that same commit. A
+    // control that cannot parse is this arm's own failure and says so.
+    const read = (/** @type {string} */ src) => {
+      try {
+        return { steps: parseStepShapes(src), threw: false };
+      } catch {
+        return { steps: [], threw: true };
+      }
+    };
+    const caps = (/** @type {any[]} */ steps, /** @type {number} */ i) =>
+      steps[i] && steps[i].caps ? steps[i].caps.length : -1;
+    const control = read(two);
+    const base = control.steps;
+    const reflowedRead = read(reflowed);
+    const reflowedSteps = reflowedRead.steps;
+    const reflowedThrew = reflowedRead.threw;
+    // A reflow must not lose a step OR a step's caps. Either reading it whole
+    // or throwing is acceptable; returning one step with two steps' caps is
+    // not, and neither is returning two steps with the last one's caps gone --
+    // a slice-end regression drops the final entry's fields, so both entries'
+    // caps are asserted rather than only the first's.
     const survived = reflowedThrew || (reflowedSteps.length === 2 &&
-      reflowedSteps[1].from === 4 && reflowedSteps[0].caps.length === 1);
+      reflowedSteps[1].from === 4 &&
+      reflowedSteps[0].caps.length === 1 && reflowedSteps[1].caps.length === 1);
     out.push({
       name: "a reflowed step is read or refused, never dropped with its caps moved onto the step before it",
-      ok: base.length === 2 && base[0].caps.length === 1 && base[1].from === 4 &&
+      ok: !control.threw && base.length === 2 && base[1].from === 4 &&
+          caps(base, 0) === 1 && caps(base, 1) === 1 &&
           survived && threw(noFrom),
-      detail: `two well-formed steps parse as ${base.length} with ${base[0].caps.length} cap(s) on ` +
-        `the first; the gofmt-legal reflow ` +
+      // THE DETAIL DEREFERENCES NOTHING EITHER. Guarding only `ok` left this
+      // string reading base[0].caps on a control that threw, so the arm still
+      // took the module down -- the same defect one line lower than where it
+      // was fixed. Every index here goes through caps().
+      detail: `${control.threw ? "THE CONTROL LITERAL DID NOT PARSE, so nothing below is evidence"
+        : `two well-formed steps parse as ${base.length} with ${caps(base, 0)} and ` +
+          `${caps(base, 1)} cap(s)`}; the gofmt-legal reflow ` +
         `${reflowedThrew ? "throws" : `parses ${reflowedSteps.length} step(s) with ` +
-          `${reflowedSteps[0] ? reflowedSteps[0].caps.length : 0} cap(s) on the first`}; ` +
+          `${caps(reflowedSteps, 0)} and ${caps(reflowedSteps, 1)} cap(s)`}; ` +
         `a step with no From throws`,
     });
   }
