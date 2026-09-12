@@ -589,7 +589,7 @@ export function selectorsIn(source) {
 }
 
 /**
- * The committed drill-down document, FY2025-26 -- 145 nodes, 175 links.
+ * The committed drill-down document, FY2025-26 -- 238 nodes, 251 links.
  *
  * SEPARATE FROM goldenGraph RATHER THAN A PARAMETER ON IT, so that every
  * existing caller keeps meaning what it meant. It is a capture of what `fisc
@@ -601,8 +601,8 @@ export function goldenFundFlows() {
 }
 
 /**
- * The other column the merged page reaches: FY2026-27's drill-down, 144
- * nodes, 173 links, captured and pinned the way goldenFundFlows' is.
+ * The other column the merged page reaches: FY2026-27's drill-down, 237
+ * nodes, 249 links, captured and pinned the way goldenFundFlows' is.
  *
  * A SECOND LOADER RATHER THAN A YEAR PARAMETER, for goldenFundFlows' own
  * reason: a check that names the year it measures cannot be handed the other

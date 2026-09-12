@@ -121,10 +121,18 @@ const PAGE = {
  *
  * EVERY FIGURE IS PINNED, NOT BOUNDED, for the file's reason. Measured
  * through the shipped entry points over the two committed captures. The
- * General Fund's depth-1 tuple is 39 nodes and 37 links citing 141 of 280 in
+ * General Fund's depth-1 tuple is 39 nodes and 37 links citing 135 of 280 in
  * both years, and the sub-pixel count is NOT the same in both -- 2 in
  * FY2025-26 and 3 in FY2026-27 -- which is why COLUMNS carries it per column
  * and walkChain pins it once per column rather than once.
+ *
+ * THESE ARE PINS ON THE FOLD AND NOT ON THE DOCUMENT'S SIZE, which is this
+ * file's half of the line tier's proof. A rung folds the tier-1 lines back
+ * through node.parent before it draws, so an opened view whose shape depended
+ * on how finely the document decomposes would be the fold failing rather than
+ * a pin going stale. The citation is the one figure that does not survive that
+ * argument: 135 and not the 141 rows a category-grain link would carry, the
+ * six being rows that print a dash inside a category cell that is not zero.
  */
 const COLUMNS = [
   {

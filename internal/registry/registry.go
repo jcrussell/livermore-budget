@@ -391,6 +391,54 @@ func (r *Registry) Categories() []Category {
 	return out
 }
 
+// LinesPrintedAs is every entry under parent that the city prints as printed
+// for kind: a `parent:` of parent, a `kinds:` naming kind, and a
+// `document_term` or an alias equal to printed byte for byte.
+//
+// A PRINTED ROW REACHES ITS SLUG THROUGH ITS LABEL AND NOTHING ELSE. A fact
+// carries a category and the free text of the row it was read from, and no
+// slug; this is the join that gives that row an identity, which is what a
+// projection needs before it can draw the row as a node of its own.
+//
+// EXACTNESS IS THE POINT, as it is for FundByLabel: pp.127-140 print
+// "Current Year - Secured" beside "Current Year - Unsecured" and "Prior Year -
+// Secured", so a prefix or fuzzy match picks a sibling silently.
+//
+// IT RETURNS A SLICE BECAUSE AMBIGUITY IS THE CALLER'S TO REFUSE. FundByLabel
+// can promise one fund because funds.yaml rejects a second claimant when it
+// loads; nothing rejects two lines under one category sharing a printed
+// spelling, and adding that refusal here would make an arm of
+// fact-revenue-lines-resolve unreachable -- the check reports the ambiguity
+// with the rows it resolves to, which a loader refusing the file could not.
+// So the answer is "the lines that claim this spelling", and a caller wanting
+// one says so.
+func (r *Registry) LinesPrintedAs(parent, printed, kind string) []string {
+	// An empty spelling matches nothing, rather than matching every entry that
+	// declares no document_term. Slug order, which r.slugs carries, so two
+	// answers cannot swap places between runs.
+	if printed == "" {
+		return nil
+	}
+	var out []string
+	for _, s := range r.slugs {
+		c := r.categories[s]
+		if c.Parent != parent || !slices.Contains(c.Kinds, kind) {
+			continue
+		}
+		if c.DocumentTerm == printed {
+			out = append(out, c.Slug)
+			continue
+		}
+		for _, a := range c.Aliases {
+			if a.Term == printed {
+				out = append(out, c.Slug)
+				break
+			}
+		}
+	}
+	return out
+}
+
 // Fund returns the registry entry for a fund number.
 func (r *Registry) Fund(number int) (Fund, bool) {
 	f, ok := r.funds[number]

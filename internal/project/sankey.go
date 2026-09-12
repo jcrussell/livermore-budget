@@ -44,13 +44,17 @@ const (
 // them, and the flow endpoints below sit at the ends rather than inside it.
 const (
 	tierRevenueSource = 0
-	// Tier 1 is UNUSED. It was the constraint tier and the layer cannot exist:
-	// a constraint tier is a property of a fund and the fund groups do not
+	// tierRevenueLine is a printed revenue ROW: pp.127-140 break each of the
+	// ten categories into the lines the city prints under it, and a line's
+	// parent edge is its category, one string, defined for every line.
+	//
+	// THE NUMBER WAS EMPTY AND NOT FREE. The contract reserves tier 1 for a
+	// layer between the revenue source and the fund group, and a constraint
+	// tier cannot be one: it is a property of a fund and the fund groups do not
 	// partition along it (data/funds.yaml has capital = 3 committed + 43
-	// restricted-by-law). It rides as Node.ConstraintTier instead. The number
-	// is left unassigned rather than renumbering, because tiers 2-5 are
-	// published in node.tier and shifting them would change every document
-	// already written. See docs/sankey-contract.md.
+	// restricted-by-law), so its parent edge has no single answer. A line's
+	// does. See docs/sankey-contract.md.
+	tierRevenueLine    = 1
 	tierFundGroup      = 2
 	tierFund           = 3
 	tierDepartment     = 4
@@ -60,6 +64,7 @@ const (
 // Node roles, which say what a node is for without the client parsing its id.
 const (
 	roleRevenueSource           = "revenue_source"
+	roleRevenueLine             = "revenue_line"
 	roleFundGroup               = "fund_group"
 	roleFund                    = "fund"
 	roleDepartment              = "department"
@@ -77,7 +82,14 @@ const (
 // "debt-services" the object category, and the taxonomy is explicit that the
 // near-miss is deliberate.
 const (
-	prefixRevenue     = "revenue/"
+	prefixRevenue = "revenue/"
+	// prefixRevenueLine is its own form rather than a deeper `revenue/` id,
+	// because an id form is read by cutting at the FIRST slash: `revenue/` is
+	// declared tier 0 and `revenue/taxes/property` is a tier-0 category with a
+	// slash already inside its slug, so a line nested under that prefix would
+	// be indistinguishable from its own parent. `expenditure/<division>/<object>`
+	// is the precedent for the shape and not for the prefix.
+	prefixRevenueLine = "revenue-line/"
 	prefixExpenditure = "expenditure/"
 	prefixFundGroup   = "fund-group/"
 	prefixFund        = "fund/"
@@ -197,6 +209,17 @@ type labels interface {
 	// a fact's `department` field holds. A miss is not an error: the slug is
 	// shown instead.
 	DivisionLabel(slug string) (string, bool)
+	// LinesPrintedAs is the line slugs a printed row label resolves to under a
+	// category, for the kind the fact carries. A fact names the row it was read
+	// from in free text and names no slug, so this is the only route from a
+	// printed row to a node id.
+	//
+	// EVERY ANSWER BUT ONE SLUG IS AN ERROR TO THE CALLER, both the empty
+	// result and the ambiguous one, and for the same reason FundType's miss is:
+	// a row this cannot place has no node, and drawing it under its category
+	// instead would publish a line the city prints as a share of one it does
+	// not.
+	LinesPrintedAs(parent, printed, kind string) []string
 }
 
 // derived carries the two fields fisc verify requires on anything we inferred.
@@ -584,7 +607,8 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 
 		switch k.kind {
 		case mapping.KindRevenue:
-			src = endpoint{prefixRevenue + k.category, k.category, tierRevenueSource, roleRevenueSource}
+			src = endpoint{id: prefixRevenue + k.category, slug: k.category,
+				tier: tierRevenueSource, role: roleRevenueSource}
 			dst = group
 			kind = boundaryKind(k.fundGroup)
 			h.AllFundsGrossRevenueCents += value
@@ -594,7 +618,8 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 
 		case mapping.KindExpenditure:
 			src = group
-			dst = endpoint{prefixExpenditure + k.category, k.category, tierObjectCategory, roleObjectCategory}
+			dst = endpoint{id: prefixExpenditure + k.category, slug: k.category,
+				tier: tierObjectCategory, role: roleObjectCategory}
 			kind = boundaryKind(k.fundGroup)
 			h.AllFundsGrossExpenditureCents += value
 			if kind == KindExternal {
@@ -602,14 +627,14 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 			}
 
 		case mapping.KindTransferIn:
-			src = endpoint{k.category, k.category, tierRevenueSource, roleTransferIn}
+			src = endpoint{id: k.category, slug: k.category, tier: tierRevenueSource, role: roleTransferIn}
 			dst = group
 			kind = KindInternalTransfer
 			h.InternalTransferInCents += value
 
 		case mapping.KindTransferOut:
 			src = group
-			dst = endpoint{k.category, k.category, tierObjectCategory, roleTransferOut}
+			dst = endpoint{id: k.category, slug: k.category, tier: tierObjectCategory, role: roleTransferOut}
 			kind = KindInternalTransfer
 			h.InternalTransferOutCents += value
 
@@ -635,7 +660,8 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 				}
 			default:
 				src = group
-				dst = endpoint{k.category, k.category, tierObjectCategory, roleReserveIncrease}
+				dst = endpoint{id: k.category, slug: k.category, tier: tierObjectCategory,
+					role: roleReserveIncrease}
 				kind = KindFundBalance
 			}
 
@@ -826,6 +852,11 @@ type endpoint struct {
 	slug string
 	tier int
 	role string
+	// parent is the node this one folds into, where the endpoint itself knows
+	// it. A fund's comes from the registry and a division's is fixed, so both
+	// are filled in by addFundFlowNode; a revenue line's is the category the
+	// row was printed under, which only the cell it was netted from carries.
+	parent string
 }
 
 // addNode records a node the first time a link touches it. Nodes exist because

@@ -159,8 +159,15 @@ const (
 	SignPositive Sign = "positive"
 	// SignContra marks a deduction booked as negative revenue — the ERAF and
 	// RPTTF property-tax shifts on Budget Book p127 are ~26% of gross
-	// property tax. A Sankey cannot render a negative link, so these net into
-	// their parent category and are disclosed in the provenance panel.
+	// property tax.
+	//
+	// WHERE THE NEGATIVE GOES IS THE CONSUMER'S, AND IT IS NOT ONE ANSWER. A
+	// view drawn at category grain nets a contra row into its parent, which is
+	// what the citywide spine does. A view that draws the printed ROW cannot:
+	// the row is the node, so the deduction is a negative value on that node's
+	// own link, and any other placement — a reversed positive link, a
+	// sign-decomposed endpoint — is a flow the category grain never had. Both
+	// publish the figure exactly as printed; neither negates anything here.
 	SignContra Sign = "contra"
 	// SignNetted marks a row the document prints with the OPPOSITE ORIENTATION
 	// to its kind's convention, because it sits inside a block that sums to a

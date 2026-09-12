@@ -21,7 +21,12 @@ type stubFundFlows struct {
 	tiers     map[int]string
 	notes     map[int]string
 	divisions map[string]string
+	lines     map[lineKey][]string
 }
+
+// lineKey is the three-part question the projection asks the registry about a
+// printed revenue row.
+type lineKey struct{ parent, printed, kind string }
 
 func (s stubFundFlows) FundName(n int) (string, bool) { v, ok := s.names[n]; return v, ok }
 func (s stubFundFlows) FundType(n int) (string, bool) { v, ok := s.types[n]; return v, ok }
@@ -32,6 +37,20 @@ func (s stubFundFlows) DivisionLabel(d string) (string, bool) {
 	return v, ok
 }
 
+// LinesPrintedAs answers only what a test declared. A miss is the registry's
+// "no line is printed as this", which the projection refuses -- so a fixture
+// that forgets a row fails loudly rather than drawing it under its category.
+func (s stubFundFlows) LinesPrintedAs(parent, printed, kind string) []string {
+	return s.lines[lineKey{parent, printed, kind}]
+}
+
+// printedRow is the row label this fixture prints for a category, and
+// lineOf is the line slug it resolves to. Every schedule row is printed under
+// some category, so one row per category is what the fixture needs everywhere
+// the line TIER is not itself the subject.
+func printedRow(category string) string { return "Printed " + category }
+func lineOf(category string) string     { return category + "/printed" }
+
 func fundFlowsLabels() stubFundFlows {
 	return stubFundFlows{
 		stubLabels: stubLabels{"taxes/property": "Property Taxes",
@@ -41,6 +60,9 @@ func fundFlowsLabels() stubFundFlows {
 		tiers:     map[int]string{100: "discretionary", 500: "restricted-by-law"},
 		notes:     map[int]string{100: "Available for any general city service.", 500: "Rates."},
 		divisions: map[string]string{"police": "Police"},
+		lines: map[lineKey][]string{
+			{"taxes/property", printedRow("taxes/property"), "revenue"}: {lineOf("taxes/property")},
+		},
 	}
 }
 
@@ -57,7 +79,7 @@ func fundFlowsFact(scope string, kind mapping.Kind, category, department, group 
 	fund int, cents int64, id string) fact.Fact {
 	return fact.Fact{
 		ID: id, DocID: testDoc, Scope: scope, Kind: kind, Category: category,
-		Department: department, FundGroup: group, Fund: fund,
+		Department: department, FundGroup: group, Fund: fund, RowLabel: printedRow(category),
 		FiscalYear: testYear, Basis: testBasis, AmountCents: cents, Page: 127,
 	}
 }
@@ -357,10 +379,11 @@ func TestTheDivisionTotalIsTheSumOfItsObjectRows(t *testing.T) {
 func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 	const rev, exp = ScopeRevenueByFund, scopeExpenditureByDepartment
 	cases := []struct {
-		name  string
-		facts []fact.Fact
-		opts  func(Options) Options
-		want  string
+		name   string
+		facts  []fact.Fact
+		opts   func(Options) Options
+		labels func(stubFundFlows) stubFundFlows
+		want   string
 	}{
 		{
 			name:  "one scope where two are required",
@@ -402,6 +425,42 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			want: "names funds",
 		},
 		{
+			// A ROW THE TAXONOMY DOES NOT DECLARE. The tempting half-measure is
+			// to draw it under its category, which ties to the spine and leaves
+			// a ribbon that looks like one more row while being the remainder of
+			// every row nobody declared.
+			name: "a revenue row no line is printed as",
+			facts: []fact.Fact{
+				fundFlowsFact(rev, mapping.KindRevenue, "taxes/sales", "", "general", 100, 1, "z"),
+			},
+			want: "no data/taxonomy.yaml line under",
+		},
+		{
+			name: "a revenue row two lines claim",
+			facts: []fact.Fact{
+				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 100, 1, "z"),
+			},
+			labels: func(l stubFundFlows) stubFundFlows {
+				l.lines = map[lineKey][]string{
+					{"taxes/property", printedRow("taxes/property"), "revenue"}: {
+						"taxes/property/one", "taxes/property/two"},
+				}
+				return l
+			},
+			want: "is printed by 2 lines",
+		},
+		{
+			name: "a revenue fact carrying no row label",
+			facts: []fact.Fact{
+				func() fact.Fact {
+					f := fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 100, 1, "z")
+					f.RowLabel = ""
+					return f
+				}(),
+			},
+			want: "carries no row label",
+		},
+		{
 			name: "a fund the registry does not list",
 			facts: []fact.Fact{
 				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 999, 1, "z"),
@@ -415,7 +474,11 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			if c.opts != nil {
 				o = c.opts(o)
 			}
-			_, err := (&fundFlows{Labels: fundFlowsLabels()}).Document(c.facts, o)
+			l := fundFlowsLabels()
+			if c.labels != nil {
+				l = c.labels(l)
+			}
+			_, err := (&fundFlows{Labels: l}).Document(c.facts, o)
 			if err == nil {
 				t.Fatal("Document = nil error, want a refusal")
 			}

@@ -184,6 +184,7 @@ re-decided, not waved through on this precedent.
 | tier | meaning | id form |
 |---|---|---|
 | 0 | revenue source | `revenue/<slug>` |
+| 1 | revenue line — one printed row of a category | `revenue-line/<slug>` |
 | 2 | fund group | `fund-group/<type>` |
 | 3 | fund | `fund/<number>` |
 | 4 | department | `dept/<slug>` |
@@ -193,24 +194,32 @@ Plus the flow endpoints that are not part of that hierarchy: `transfers/in`
 (tier 0), `transfers/out` (tier 5), `fund-balance/reserve-increase` (tier 5),
 `fund-balance/draw` (tier 0), `fund-balance/contribution` (tier 5).
 
-**Tier 1 is not a layer, and this table used to say it was.** Earlier revisions
+**Tier 1 is a printed row, and it was empty rather than free.** Earlier revisions
 gave tier 1 as a `constraint/<tier>` node between the revenue source and the fund
-group. It cannot be one, and the refutation is arithmetic rather than taste: a
+group. It could not be one, and the refutation is arithmetic rather than taste: a
 constraint tier is a property of a **fund**, and the fund groups do not partition
 along it. Counting `data/funds.yaml` by `type` x `constraint_tier`, `capital`
 holds 3 committed funds and 43 restricted-by-law; `special-revenue` holds 37
 restricted-by-law, 2 unknown and 1 committed. So `fund-group/<type>.parent =
-constraint/<tier>` has no single answer, and a layer whose parent edge is
+constraint/<tier>` had no single answer, and a layer whose parent edge is
 undefined is not a layer. The constraint tier rides as the `constraint_tier`
 **field** on a tier-3 node instead — see below.
 
-The number 1 is left unused rather than renumbering. Tiers 2-5 are published in
-`node.tier` today, and shifting them would silently change the meaning of every
-document already written.
+A `revenue-line/` node's parent edge **is** defined: the category the row is
+printed under, one string, on every line. That is the whole difference. The
+number was left unassigned rather than renumbering, because tiers 2-5 are
+published in `node.tier` and shifting them would silently change the meaning of
+every document already written — so tier 1 was there to be filled by the first
+layer that could define its own parent.
+
+**`revenue-line/` is a prefix of its own and not a deeper `revenue/` id.** An id
+form is read by cutting at the **first** slash, and a category slug may itself
+carry one: `revenue/taxes/property` is a tier-0 category. A line nested under
+`revenue/` would be indistinguishable from its own parent's form.
 
 **The documents that use the other tiers are elsewhere.** The drill-down
-(`docs/general-fund-drilldown-contract.md`) publishes tiers 0, 2, 3, 4 and 5 over
-Budget Book pp.127-140 and pp.167-170, and states its own counts there.
+(`docs/general-fund-drilldown-contract.md`) publishes tiers 0, 1, 2, 3, 4 and 5
+over Budget Book pp.127-140 and pp.167-170, and states its own counts there.
 
 **How many nodes a tier holds is a property of the DOCUMENT, not of the
 hierarchy.** A second document at another scope draws a different set: the
@@ -255,6 +264,11 @@ binds a fund to a type and records no words for the type itself, so the labels
 come from the pp.66-67 column headers. Letting the registry win would also mean
 the rendered site and `testdata/sankey.golden.json` disagreed on any node listed
 in both, quietly retiring the golden as a contract test.
+
+**On the spine, tier 1 is empty**, and that is the schedule rather than an
+omission: pp.66-67 print each revenue category as one row and no detail beneath
+it. The rows are printed on pp.127-140, which is a different schedule and a
+different document.
 
 The slug in every id is a `data/taxonomy.yaml` slug. Do not coin new ones — in
 particular `ADDITION TO RESERVES` is `fund-balance/reserve-increase`, whose

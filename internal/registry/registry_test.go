@@ -829,3 +829,79 @@ func labelColumn(page string) string {
 	}
 	return strings.Join(out, " ")
 }
+
+// linesTaxonomy is validTaxonomy with lines under taxes/property: two spellings
+// of one row, one row two lines claim, and one line of another kind.
+const linesTaxonomy = validTaxonomy + `
+  - slug: taxes/property/eraf
+    label: "ERAF"
+    document_term: "ERAF"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+    aliases:
+      - term: "E.R.A.F."
+        pages: [128]
+  - slug: taxes/property/rpttf-reduction
+    label: "RPTTF Reduction"
+    document_term: "RPTTF Reduction"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+  - slug: taxes/property/rpttf-reduction-again
+    label: "RPTTF Reduction"
+    document_term: "RPTTF Reduction"
+    parent: taxes/property
+    kinds: [revenue]
+    pages: [127]
+  - slug: taxes/property/refunds
+    label: "Refunds"
+    document_term: "Refunds"
+    parent: taxes/property
+    kinds: [expenditure]
+    pages: [127]
+`
+
+// TestLinesPrintedAsAnswersWithEveryClaimant is the join a projection needs
+// before it can draw a printed row as a node, and the reason it answers with a
+// slice.
+//
+// AMBIGUITY IS NOT RESOLVED HERE. Nothing refuses two lines under one category
+// sharing a printed spelling when taxonomy.yaml loads, and a lookup that picked
+// one of them would be the plausible-wrong-value failure this project exists to
+// prevent. So both come back and the caller refuses.
+func TestLinesPrintedAsAnswersWithEveryClaimant(t *testing.T) {
+	r := load(t, "", linesTaxonomy, "")
+
+	cases := []struct {
+		name                  string
+		parent, printed, kind string
+		want                  []string
+	}{
+		{"the document term", "taxes/property", "ERAF", "revenue",
+			[]string{"taxes/property/eraf"}},
+		{"an alias, because a re-typeset row is the same node", "taxes/property",
+			"E.R.A.F.", "revenue", []string{"taxes/property/eraf"}},
+		{"two lines claiming one spelling", "taxes/property", "RPTTF Reduction", "revenue",
+			[]string{"taxes/property/rpttf-reduction", "taxes/property/rpttf-reduction-again"}},
+		{"a line of another kind", "taxes/property", "Refunds", "revenue", nil},
+		{"a label is never a match key", "taxes/property", "ERAF ", "revenue", nil},
+		{"a spelling under another category", "taxes", "ERAF", "revenue", nil},
+		{"an empty spelling matches nothing", "taxes/property", "", "revenue", nil},
+		// THE METHOD IS STRUCTURAL AND KNOWS NOTHING ABOUT "LINE": it answers
+		// "the entries under this parent printed as this". taxes/property is a
+		// child of the taxes rollup and comes back as one. No fact can ask that
+		// question -- fact-vocabulary refuses a rule writing an unassignable
+		// slug as a category -- and the answer is still the honest one.
+		{"a child that is itself a category", "taxes", "Property Taxes", "revenue",
+			[]string{"taxes/property"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if diff := cmp.Diff(c.want, r.LinesPrintedAs(c.parent, c.printed, c.kind)); diff != "" {
+				t.Errorf("LinesPrintedAs(%q, %q, %q) (-want +got):\n%s",
+					c.parent, c.printed, c.kind, diff)
+			}
+		})
+	}
+}

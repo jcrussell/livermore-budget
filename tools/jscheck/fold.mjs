@@ -25,12 +25,17 @@ import {
  * floors them at.
  *
  * BOTH COLUMNS, BECAUSE THEY FOLD DIFFERENTLY. The same 280 facts read down
- * two printed columns give 145 nodes in FY2025-26 and 144 in FY2026-27 --
+ * two printed columns give 238 nodes in FY2025-26 and 237 in FY2026-27 --
  * fund/207 prints a dash in the second and is not a node there -- and the
  * fold's marks-too-small count moves with the money: 7 ribbons and 4 rects
  * in one year, 8 and 5 in the other. A pin taken over one column would have
  * stayed green while the other's chart changed underneath it (fisc-ko1j.6).
- * Measured 2026-09-10 through the shipped foldDocument and layOut.
+ * Measured 2026-09-12 through the shipped foldDocument and layOut.
+ *
+ * THE SUB-PIXEL COUNTS ARE A PROPERTY OF THE FOLD, NOT OF THE DOCUMENT'S
+ * SIZE. At {0,2,4} a tier-1 revenue line folds onto its category, which is
+ * drawn, so all 238 nodes and 251 links lay out as the same 40 nodes and 52
+ * ribbons that 11 revenue categories and their funds alone would.
  */
 const COLUMNS = [
   { label: "FY 2025-26", golden: goldenFundFlows, hairlines: 7, slivers: 4 },
@@ -51,7 +56,7 @@ const COLUMNS = [
  * IT ALSO HAS A PROPERTY THE RUNGS DO NOT, deliberately: at {0,2,4} the fold
  * cites nothing away, because the fund-to-division link that survives carries
  * the same facts as the object rows that fold into it. A rung cites a slice,
- * since it filtered first -- the General Fund at {0,3,4} cites 141 of 280 --
+ * since it filtered first -- the General Fund at {0,3,4} cites 135 of 280 --
  * and that is correct rather than a loss: the counts line says so (app.js's
  * paintCounts), and drill.mjs pins it.
  */
@@ -77,7 +82,7 @@ function appDrawing(tiers, fetch, extra) {
         path: "data/fund-flows.json", basis: "adopted",
         hero: { label: "l", value: "v", note: "n", kind: "hero" },
         figures: [], caveats: [],
-        counts: { facts: 280, nodes: 145, links: 175 },
+        counts: { facts: 280, nodes: 238, links: 251 },
         chart_title: "Sankey diagram of the FY 2025-26 adopted budget",
       }],
       docs: {},
@@ -281,7 +286,7 @@ export async function checks() {
     },
     {
       // THE PALETTE WAS WHOLLY DEAD ON THIS DOCUMENT and this is what says it
-      // is not any more. Unfolded, 0 of 175 links have a fund-group end, so
+      // is not any more. Unfolded, 0 of 251 links have a fund-group end, so
       // linkColor returned --muted for every ribbon and buildLegend rendered
       // six swatches over nodes with no flows to isolate. Folded, the fund
       // groups ARE the middle column: 52 of 52 links touch one.

@@ -182,7 +182,9 @@ type FundFlowsMetadata struct {
 // # The shape
 //
 //	tier 0  revenue/<category>, transfers/in
-//	          |  one link per netted (kind, category, fund) cell
+//	tier 1  revenue-line/<line>   parent = revenue/<category>
+//	          |  one link per netted (kind, line, fund) cell, and one per
+//	          |  (transfers/in, fund) cell straight from tier 0
 //	tier 3  fund/<n>            parent = fund-group/<type> from data/funds.yaml
 //	          |  one link per (fund, division) -- the SUM over its object rows
 //	tier 4  dept/<division>     parent = fund/100
@@ -638,10 +640,20 @@ type cellSum struct {
 	locs    locatorSet
 }
 
-// revKey addresses a revenue cell: the money a fund takes in, by category.
+// revKey addresses a revenue cell: the money a fund takes in, by printed row.
+//
+// THE LINE IS THE GRAIN AND THE CATEGORY IS ITS PARENT. pp.127-140 print
+// thirteen property-tax rows into the General Fund and the key used to hold
+// only their category, so all thirteen netted into one cell and the document
+// drew the page's own decomposition as a single ribbon. line is a
+// data/taxonomy.yaml line slug (`taxes/property/eraf`), resolved from the row
+// label the fact carries, and it is EMPTY for a transfer: pp.131-140 print
+// "Transfers In" as a row of the schedule, but its node is the flow endpoint
+// every transfer arrives from and that endpoint is not a line of anything.
 type revKey struct {
 	kind      mapping.Kind
 	category  string
+	line      string
 	fundGroup string
 	fund      int
 }
@@ -662,7 +674,7 @@ type expKey struct {
 // EVERY GUARD IS A REFUSAL AND NOT A SKIP, this package's own netCells' rule: a
 // fact this document cannot place is a mapping defect, and dropping it publishes
 // a smaller city with no error anywhere.
-func (*fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum, error) {
+func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum, error) {
 	rev := map[revKey]*cellSum{}
 	exp := map[expKey]*cellSum{}
 	expFund := 0
@@ -686,8 +698,11 @@ func (*fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expK
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund group", fa.ID, fa.Category),
 					"the fund group decides whether a flow crosses the city's boundary")
 			}
-			k := revKey{fa.Kind, fa.Category, fa.FundGroup, fa.Fund}
-			add(rev, k, fa)
+			line, lineErr := f.revenueLine(fa)
+			if lineErr != nil {
+				return nil, nil, lineErr
+			}
+			add(rev, revKey{fa.Kind, fa.Category, line, fa.FundGroup, fa.Fund}, fa)
 		case scopeExpenditureByDepartment:
 			if fa.Department == "" {
 				return nil, nil, cmdutil.WithHint(
@@ -744,6 +759,51 @@ func (*fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expK
 	return rev, exp, nil
 }
 
+// revenueLine is the data/taxonomy.yaml line a revenue fact's printed row names,
+// and "" for a transfer, whose node is a flow endpoint rather than a line.
+//
+// A ROW THE REGISTRY CANNOT PLACE IS REFUSED BY NAME, netFundFlows' rule and
+// not an exception to it. Falling back to the category would be the tempting
+// half-measure and it is the worst of the three outcomes: the money would still
+// tie to the spine, every check over amounts would stay green, and the page
+// would draw a category whose children are some of its rows and whose remainder
+// is silently folded into a ribbon that looks like one more row. Either the
+// document decomposes a category or it does not.
+//
+// AMBIGUITY IS REFUSED SEPARATELY FROM ABSENCE, because the two are different
+// defects in data/taxonomy.yaml -- a row nobody declared, against two lines
+// claiming one printed spelling -- and a reader fixing one would look in the
+// wrong place for the other.
+func (f *fundFlows) revenueLine(fa *fact.Fact) (string, error) {
+	if fa.Kind != mapping.KindRevenue {
+		return "", nil
+	}
+	if fa.RowLabel == "" {
+		return "", cmdutil.WithHint(
+			fmt.Errorf("fund-flows: fact %s (%s) carries no row label", fa.ID, fa.Category),
+			"a revenue line IS the printed row, and a fact with no row label names no row "+
+				"for the registry to resolve")
+	}
+	lines := f.Labels.LinesPrintedAs(fa.Category, fa.RowLabel, string(fa.Kind))
+	switch len(lines) {
+	case 1:
+		return lines[0], nil
+	case 0:
+		return "", cmdutil.WithHint(
+			fmt.Errorf("fund-flows: fact %s: no data/taxonomy.yaml line under %q is printed as %q",
+				fa.ID, fa.Category, fa.RowLabel),
+			"every revenue row of pp.127-140 is a node of this document, so a row the "+
+				"taxonomy does not declare has nowhere to go; fact-revenue-lines-resolve "+
+				"reports the same gap over the whole store")
+	default:
+		return "", cmdutil.WithHint(
+			fmt.Errorf("fund-flows: fact %s: %q under %q is printed by %d lines, %s",
+				fa.ID, fa.RowLabel, fa.Category, len(lines), strings.Join(lines, ", ")),
+			"one printed row is one node, so two lines claiming one spelling is an "+
+				"identity nothing can draw once")
+	}
+}
+
 // add sums one fact into a cell map.
 func add[K comparable](m map[K]*cellSum, k K, fa *fact.Fact) {
 	c := m[k]
@@ -775,12 +835,33 @@ func revenueLinkKind(k revKey) LinkKind {
 	return boundaryKind(k.fundGroup)
 }
 
-// revenueEndpoint is the tier-0 end of a revenue flow.
+// revenueEndpoint is the source end of a revenue flow: a tier-1 line for a
+// revenue row, and the tier-0 flow endpoint for a transfer.
+//
+// THE CELL'S LINE IS GUARANTEED BY netFundFlows, which refuses a revenue fact
+// it cannot resolve, so the empty-line arm below guards a second kind admitted
+// to the revenue map rather than any fact the corpus holds -- the same thing
+// the `default` arm guards, one step earlier.
+//
+// THE PARENT RIDES ON THE ENDPOINT because nothing downstream can recover it.
+// A line's id is `revenue-line/<line slug>` and the slug carries its category
+// as a prefix, so the parent LOOKS derivable by cutting at the last slash -- and
+// is not: a category slug is itself one or two segments (`taxes/property`
+// against `licenses-and-permits`), so the cut lands inside the category for
+// half the taxonomy. The cell knows which category the row was netted under;
+// this carries that answer rather than guessing it back out of a string.
 func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 	switch k.kind {
 	case mapping.KindRevenue:
-		return endpoint{id: prefixRevenue + k.category, slug: k.category,
-			tier: tierRevenueSource, role: roleRevenueSource}, nil
+		if k.line == "" {
+			return endpoint{}, cmdutil.WithHint(
+				fmt.Errorf("fund-flows: a revenue cell of %q carries no line", k.category),
+				"pp.127-140 print revenue as rows and this document draws the rows, so a "+
+					"cell with no line has no source end")
+		}
+		return endpoint{id: prefixRevenueLine + k.line, slug: k.line,
+			tier: tierRevenueLine, role: roleRevenueLine,
+			parent: prefixRevenue + k.category}, nil
 	case mapping.KindTransferIn:
 		return endpoint{id: nodeTransfersIn, slug: k.category,
 			tier: tierRevenueSource, role: roleTransferIn}, nil
@@ -824,7 +905,7 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 	if _, ok := nodes[e.id]; ok {
 		return
 	}
-	n := Node{ID: e.id, Label: f.label(e), Tier: e.tier, Role: e.role}
+	n := Node{ID: e.id, Label: f.label(e), Tier: e.tier, Role: e.role, Parent: e.parent}
 	if e.tier == tierFund {
 		number, err := strconv.Atoi(e.id[len(prefixFund):])
 		if err == nil {
@@ -860,7 +941,14 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 	nodes[e.id] = n
 }
 
-// addParents adds the fund-group node every fund node is parented to.
+// addParents adds the two kinds of node this document parents to and does not
+// otherwise build: the fund group above every fund, and the revenue category
+// above every line.
+//
+// A CATEGORY IS NOW REACHED ONLY THROUGH ITS LINES. Every revenue link leaves a
+// tier-1 node, so `revenue/taxes/property` is touched by nothing and would be
+// absent from a document whose nodes exist because links do -- and a client
+// folding the lines to the tiers it draws would have no box to put them in.
 func (f *fundFlows) addParents(nodes map[string]Node) error {
 	type edge struct{ child, parent string }
 	var want []edge
@@ -873,13 +961,20 @@ func (f *fundFlows) addParents(nodes map[string]Node) error {
 		if _, ok := nodes[p.parent]; ok {
 			continue
 		}
-		if !strings.HasPrefix(p.parent, prefixFundGroup) {
+		switch {
+		case strings.HasPrefix(p.parent, prefixFundGroup):
+			nodes[p.parent] = Node{ID: p.parent, Label: f.label(endpoint{id: p.parent}),
+				Tier: tierFundGroup, Role: roleFundGroup}
+		case strings.HasPrefix(p.parent, prefixRevenue):
+			slug := p.parent[len(prefixRevenue):]
+			nodes[p.parent] = Node{ID: p.parent,
+				Label: f.label(endpoint{id: p.parent, slug: slug, tier: tierRevenueSource}),
+				Tier:  tierRevenueSource, Role: roleRevenueSource}
+		default:
 			return fmt.Errorf("fund-flows: node %q is parented to %q, which this document "+
-				"does not build and cannot infer -- only a fund group is added on demand",
-				p.child, p.parent)
+				"does not build and cannot infer -- only a fund group and a revenue "+
+				"category are added on demand", p.child, p.parent)
 		}
-		nodes[p.parent] = Node{ID: p.parent, Label: f.label(endpoint{id: p.parent}),
-			Tier: tierFundGroup, Role: roleFundGroup}
 	}
 	return nil
 }
@@ -926,6 +1021,8 @@ func sortedRevKeys(m map[revKey]*cellSum) []revKey {
 			return a.kind < b.kind
 		case a.category != b.category:
 			return a.category < b.category
+		case a.line != b.line:
+			return a.line < b.line
 		case a.fundGroup != b.fundGroup:
 			return a.fundGroup < b.fundGroup
 		default:

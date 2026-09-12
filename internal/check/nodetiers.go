@@ -17,19 +17,25 @@ import (
 // whose prefix is not here is a coined id form, which the contract forbids in as
 // many words ("Do not coin new ones").
 //
-// TIER 1 IS ABSENT AND THE ABSENCE IS ASSERTED, not merely unlisted. The
-// contract used to give tier 1 as a `constraint/<tier>` node and no longer does:
-// a constraint tier is a property of a FUND and the fund groups do not partition
-// along it (data/funds.yaml has capital = 3 committed + 43 restricted-by-law), so
-// the layer cannot exist and the number is left unused rather than renumbering
-// tiers 2-5, which are published in node.tier today. A node claiming tier 1 is
-// therefore a node claiming a layer nothing can define.
+// TIER 1 IS A LINE AND WAS NEVER A CONSTRAINT TIER. The contract once gave it as
+// a `constraint/<tier>` node between the revenue source and the fund group, and
+// that layer could not exist: a constraint tier is a property of a FUND and the
+// fund groups do not partition along it (data/funds.yaml has capital = 3
+// committed + 43 restricted-by-law), so its parent edge had no single answer.
+// A `revenue-line/` node's does -- the category the row is printed under -- which
+// is the whole difference between an empty number and a layer.
+//
+// `revenue-line/` IS A SEPARATE PREFIX FROM `revenue/` BECAUSE OF THIS TABLE'S
+// OWN KEY. declaredTier cuts an id at its FIRST slash, and a category slug is
+// already one or two segments (`revenue/taxes/property` is tier 0), so a line
+// nested under `revenue/` would be read as its own parent's form.
 var hierarchyTiers = map[string]int{
-	"revenue":     0,
-	"fund-group":  2,
-	"fund":        3,
-	"dept":        4,
-	"expenditure": 5,
+	"revenue":      0,
+	"revenue-line": 1,
+	"fund-group":   2,
+	"fund":         3,
+	"dept":         4,
+	"expenditure":  5,
 }
 
 // endpointTiers are the five flow endpoints, which sit OUTSIDE the hierarchy and
@@ -103,24 +109,18 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			nodes++
 			tierOf[n.ID] = n.Tier
 
-			// ONE FINDING PER NODE, MOST SPECIFIC FIRST. The three arms
-			// overlap -- no declared form has tier 1, so a node claiming it
-			// always mismatches its form too -- and reporting both would give
-			// one defect two findings that read as two separate ones.
+			// ONE FINDING PER NODE. A node whose form is undeclared has no
+			// tier to be compared against, so the arms are ordered rather than
+			// independent: reporting both would give one defect two findings
+			// that read as two separate ones.
 			want, ok := declaredTier(n.ID)
 			switch {
 			case !ok:
 				findings = append(findings, finding(p.String(),
 					"node %q is of no id form the contract declares. Its table names "+
-						"revenue/, fund-group/, fund/<number>, dept/ and expenditure/, plus "+
-						"five flow endpoints by name; a coined form has no tier and no place "+
-						"in the fold", n.ID))
-			case n.Tier == unusedTier:
-				findings = append(findings, finding(p.String(),
-					"node %q claims tier %d, which the contract leaves UNUSED (its id form "+
-						"declares tier %d). Tier 1 was the constraint tier, and that layer "+
-						"cannot exist: a constraint tier is a property of a fund and the "+
-						"fund groups do not partition along it", n.ID, unusedTier, want))
+						"revenue/, revenue-line/, fund-group/, fund/<number>, dept/ and "+
+						"expenditure/, plus five flow endpoints by name; a coined form has "+
+						"no tier and no place in the fold", n.ID))
 			case n.Tier != want:
 				findings = append(findings, finding(p.String(),
 					"node %q carries tier %d and its id form declares tier %d. The tier is "+
@@ -180,11 +180,6 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		findings: findings,
 	}.result(), nil
 }
-
-// unusedTier is the number docs/sankey-contract.md leaves unassigned. Named
-// rather than written as a literal 1, because the whole point is that it means
-// "nothing", and a bare 1 beside tiers 0 and 2 reads like an omission.
-const unusedTier = 1
 
 // declaredTier is the tier an id form declares, and whether the form is one the
 // contract names. The endpoint table is consulted FIRST: `fund-balance/draw` is

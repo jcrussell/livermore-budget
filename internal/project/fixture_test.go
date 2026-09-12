@@ -229,6 +229,12 @@ func (stubLabels) ConstraintTier(int) string           { return "" }
 func (stubLabels) RestrictionNote(int) string          { return "" }
 func (stubLabels) DivisionLabel(string) (string, bool) { return "", false }
 
+// LinesPrintedAs returns no line, which is the honest stub for the spine: the
+// schedule it draws prints no revenue rows under its categories, and a stub that
+// invented one would let a test pass over a decomposition nothing declared.
+// stubLines supplies real answers where a test needs them.
+func (stubLabels) LinesPrintedAs(string, string, string) []string { return nil }
+
 // stubFunds is stubLabels with fund names attached, for the documents that key
 // on funds rather than on categories.
 type stubFunds struct {

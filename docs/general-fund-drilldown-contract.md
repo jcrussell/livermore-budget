@@ -36,7 +36,9 @@ that stopped spending.
 
 ```
 tier 0  revenue/<category>, transfers/in
-          |   one link per netted (kind, category, fund) cell
+tier 1  revenue-line/<line>          parent = revenue/<category>
+          |   one link per netted (kind, line, fund) cell, and one per
+          |   (transfers/in, fund) cell straight from tier 0
 tier 3  fund/<n>                     parent = fund-group/<type>
           |   one link per (fund, division) — the SUM over its object rows
 tier 4  dept/<division>              parent = fund/100
@@ -51,6 +53,24 @@ is what the version versions, and this document renames no key and coins no new
 one.
 
 Three things about the shape are not obvious and are load-bearing.
+
+**A revenue category is reached only through its lines.** Every revenue link
+leaves a tier-1 node, so `revenue/taxes/property` is the target of nothing and
+the source of nothing; it is emitted because the hierarchy needs it, the way the
+fund groups are. A client folding the lines to a coarser tier finds the box to
+put them in, and that fold reproduces the links this document published before
+the line tier existed — same values, same fact ids, same locators, same order
+(`TestTheLineTierFoldsToTheCategoryLinks`).
+
+**A contra row is a negative link on its own line.** pp.127-140 print ERAF and
+RPTTF Reduction in parentheses inside the Property Taxes subtotal, and while the
+category was the node they netted inside its cell. Now that the row is the node,
+the negative rides on the line's own link: any other placement — a reversed
+positive link, a sign-decomposed endpoint — folds to a flow the category grain
+never had. Measured on the committed store, the negative links are two per
+adopted column, both into `fund/100` under `taxes/property`, plus
+`prior-year-unsecured` in FY2023-24 actual, which is an ordinary row that was
+negative that year rather than a declared contra (`fisc-9psv`).
 
 **A tier-5 id carries its division.** `Node.Parent` is one string and
 `wages-and-benefits` is spent by 22 divisions, so a bare
@@ -121,8 +141,15 @@ division total that includes it. **Summing every link's `value_cents`
 double-counts the expenditure side by exactly this much.** Fold within one tier
 pair; never across the whole graph.
 
-FY2025-26: `280 = 239 + 41`, with 44 cited twice, over 145 nodes and 175 links.
+FY2025-26: `280 = 233 + 47`, with 44 cited twice, over 238 nodes and 251 links.
 `fund-flows-counts-reconcile` re-derives all six from the published links.
+
+**The 47 uncited facts are the 47 revenue rows that print a dash**, exactly,
+because the cell a zero is tested at is the printed ROW. Drawn at category grain
+the two sets come apart: measured on this column, six rows printing a dash sit
+inside a category cell that is not zero, and a category's link cites them while
+no line's link does. Neither reading moves any money — a dash adds nothing to a
+sum — so the difference is a citation and not a figure.
 
 ## No headline
 
@@ -161,20 +188,21 @@ for why `""` and `unknown` are different claims.
 
 ## Tiers
 
-| tier | nodes, FY2025-26 | of 145 |
+| tier | nodes, FY2025-26 | of 238 |
 |---|---|---|
-| 0 | 10 revenue categories plus `transfers/in` | 11 |
+| 0 | 10 revenue categories, **none of them touched by any link**, plus `transfers/in`, which is | 11 |
+| 1 | printed revenue rows that were not a printed zero | 93 |
 | 2 | fund groups, **all six untouched by any link** | 6 |
 | 3 | funds that took in money this column | 61 |
 | 4 | divisions, not departments — a fact's `department` field holds a division slug | 23 |
 | 5 | division x object cells that were not a printed zero | 44 |
 
-The tier-3 count is 61 and not the 70 funds pp.131-140 print, because nine of
-them print zero in this column and a zero-valued cell earns no link. The tier-4
-count is 23 and not 11: pp.167-170 print eleven DEPARTMENT totals over 23
-divisions, and the divisions are what the facts carry.
-
-Tier 1 does not exist; see `docs/sankey-contract.md`.
+The tier-1 count is 93 and not the 101 rows `data/taxonomy.yaml` declares,
+because a row that prints a dash in every fund of this column earns no link — the
+same rule as tier 3's. The tier-3 count is 61 and not the 70 funds pp.131-140
+print, for that rule again. The tier-4 count is 23 and not 11: pp.167-170 print
+eleven DEPARTMENT totals over 23 divisions, and the divisions are what the facts
+carry.
 
 ## What this document does not answer
 
@@ -251,8 +279,8 @@ So the client folds. The rule, in full:
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
   same money and the same facts, over every cell including the printed zeros,
-  which is what `facts_cited_twice` counts. Measured on FY2025-26: 239 facts
-  cited by 175 links before the fold, 239 by 52 after.
+  which is what `facts_cited_twice` counts. Measured on FY2025-26: 233 facts
+  cited by 251 links before the fold, 233 by 52 after.
 - **A retained node's `parent` is re-pointed at its own folded ancestor**, so
   the folded document satisfies client-side what `node-hierarchy-well-formed`
   asserts of the published one.
@@ -309,7 +337,7 @@ chart. Filtering to the opened node is what leaves a set the fold can place.
 **A rung cites a slice, and says so.** At `{0,2,4}` the fold cites nothing
 away; a rung filtered to one node cannot, and the counts line names both
 numbers — the General Fund at depth 1 reads "37 flows between 39 nodes, from
-141 of the document's 280 facts, and 4 flows carried unchanged from the chart
+135 of the document's 280 facts, and 4 flows carried unchanged from the chart
 above". `drill.mjs`'s chain walk pins it per column. Five of those nodes and
 four of those flows are the residual: one derived node, the four spine
 endpoints carried onto it, and the four links that carry them.

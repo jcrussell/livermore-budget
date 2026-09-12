@@ -75,14 +75,25 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			want: "no id form the contract declares",
 		},
 		{
-			// Tier 1 was the constraint tier and the layer cannot exist, so
-			// claiming it is claiming a layer nothing can define.
-			name: "the unused tier",
+			// A LINE LEFT AT ITS PARENT'S TIER, which is the tier-1 form's own
+			// failure mode and the one that reads as nothing at all: the node
+			// has the right id, the right parent and the right facts, and the
+			// client draws it in its category's column rather than beside it.
+			// Renaming the node carries its links with it, so the only claim
+			// that moves is the tier.
+			name: "a revenue line at its category's tier",
 			damage: func(t *testing.T, g *project.Graph) {
-				g.Nodes[nodeIndex(t, g, "fund-group/")].ID = "fund/1"
-				g.Nodes[nodeIndex(t, g, "fund/1")].Tier = unusedTier
+				i := nodeIndex(t, g, "revenue/")
+				was := g.Nodes[i].ID
+				now := "revenue-line/" + strings.TrimPrefix(was, "revenue/") + "/eraf"
+				g.Nodes[i].ID = now
+				for j := range g.Links {
+					if g.Links[j].Source == was {
+						g.Links[j].Source = now
+					}
+				}
 			},
-			want: "leaves UNUSED",
+			want: "declares tier 1",
 		},
 		{
 			// A backward ribbon. d3 will draw it, which is why no rendering
