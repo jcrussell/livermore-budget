@@ -211,6 +211,7 @@ func All() []Check {
 		&countsReconcile{},
 		&fundFlowsCountsReconcile{},
 		&drillReconcilesAcrossDocuments{},
+		&revenueLinesTieToTheirCategories{},
 		&headlineTiesToFacts{},
 		&headlineTransferResidual{},
 		&headlineNaiveExpenditure{},

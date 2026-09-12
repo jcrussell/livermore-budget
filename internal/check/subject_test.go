@@ -251,6 +251,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"link-kinds-match-their-facts":          StatusPass,
 		"fund-flows-counts-reconcile":           StatusPass,
 		"drill-reconciles-across-documents":     StatusPass,
+		"revenue-lines-tie-to-their-categories": StatusPass,
 		"projection-scopes-are-disjoint":        StatusPass,
 		"projections-build":                     StatusPass,
 		"published-projection-built":            StatusPass,

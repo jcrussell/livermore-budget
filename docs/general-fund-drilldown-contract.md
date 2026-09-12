@@ -16,6 +16,14 @@ document that publishes the city's printed totals, and the two are reconciled pe
 cell, at zero tolerance, by `revenue-detail-ties-to-spine` and
 `expenditure-detail-ties-to-spine`, which read the fact store and need no graph.
 
+**The drawn document is reconciled against the spine as well**, by
+`revenue-lines-tie-to-their-categories`: the links this file publishes into its
+funds sum, per `(kind, category, fund group)`, to the spine's own cell, with each
+fund's group read from `data/funds.yaml` rather than from this document's parent
+edges. It is the same arithmetic one step later — over links rather than over
+facts — and it is the only thing that asserts a line is drawn under the category
+`data/taxonomy.yaml` declares it under.
+
 ## Files
 
 Four, one per printed column — a flow diagram of two budgets is not a chart of
