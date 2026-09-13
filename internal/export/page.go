@@ -683,12 +683,12 @@ type clientConfig struct {
 	// the packager so the client never composes a figure or a caveat itself.
 	Years []yearView           `json:"years"`
 	Docs  map[string]clientDoc `json:"docs"`
-	// RenderTiers is the node tiers the page draws, coarsest first; omitted
+	// RenderTiers is the node tiers the page draws, left to right; omitted
 	// when the page draws its document whole.
 	//
 	// OMITTED AND NOT [] WHEN ABSENT, which app.js relies on: a page that
-	// declares nothing is laid out by exactly the code that laid it out before
-	// the fold existed, and the spine's config blob is unchanged byte for byte.
+	// declares nothing hands its graph to d3's own aligner, and an empty list
+	// would be a second spelling of that state for the client to get wrong.
 	RenderTiers []int `json:"render_tiers,omitempty"`
 	// Steps is how the page opens a node, one hop per step, omitted on a page
 	// that opens none.
@@ -1435,6 +1435,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Metadata:      doc.Metadata,
 		Years:         years,
 		Docs:          clientDocs,
+		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
 	}
 	blob, err := json.Marshal(cfg)

@@ -613,6 +613,21 @@ svg.sankey .link.contra {
   stroke: var(--critical);
 }
 
+/* A partition ribbon — one printed table read along a second axis rather than
+   money the schedule prints as moving that way, which is what app.js's
+   PARTITION_NOTE says in words on every mark that shows it.
+
+   TWO CHANNELS, AND THE OPACITY IS THE ONE THAT MATTERS. A partition ribbon is
+   PUBLISHED, so it keeps the full link opacity a printed flow has; a derived
+   one is faded to --link-opacity-derived. The dash is the secondary signal and
+   is deliberately a dot against the derived rule's long dash, so the two do not
+   read as the same qualification at ribbon scale. Both are the second signal
+   and neither is the only one — the tooltip, the panel, the flow table and the
+   screen-reader label each carry the sentence. */
+svg.sankey .link.partition {
+  stroke-dasharray: 1 4;
+}
+
 svg.sankey .link.dim {
   stroke-opacity: 0.07;
 }
@@ -721,6 +736,12 @@ svg.sankey .node {
 .chip.contra {
   color: var(--critical);
   border-color: var(--critical);
+}
+
+/* Dotted to match the ribbon it stands for, as .chip.derived is dashed to
+   match its own. */
+.chip.partition {
+  border-style: dotted;
 }
 
 #flow-table tr.contra td.num {
@@ -1096,8 +1117,10 @@ noscript p {
 }
 
 /* Forced-colors: hue is gone, so identity falls back to the direct labels and
-   the table view, and the derived/published distinction falls back to the
-   dash pattern, which forced-colors preserves. */
+   the table view, and the derived/published distinction falls back to GrayText
+   plus the dash pattern, which forced-colors preserves. A partition ribbon is
+   published and keeps CanvasText, told from a derived one by colour and by its
+   dot pattern against that rule's long dash. */
 @media (forced-colors: active) {
   svg.sankey .link {
     stroke-opacity: 1;

@@ -16,7 +16,7 @@
 // captures rather than derivations, and what the Go tests buy.
 
 import {
-  loadApp, goldenGraph, goldenFundFlows, goldenFundFlows2027, plannedFetch, settle,
+  loadApp, goldenGraph, goldenFundFlows, goldenFundFlows2027, plannedFetch, settle, spineConfig,
 } from "./harness.mjs";
 
 /**
@@ -194,7 +194,8 @@ function attempt(fn) {
  * the DOM and the only place buildLegend's output can be read.
  */
 async function spineLegend() {
-  const app = loadApp({ fetch: plannedFetch({ "data/sankey.json": { doc: goldenGraph() } }) });
+  const app = loadApp({ config: spineConfig(),
+    fetch: plannedFetch({ "data/sankey.json": { doc: goldenGraph() } }) });
   await settle();
   const legend = app.dom.byId.get("legend");
   return legend ? legend.children.map((b) => b.dataset.node) : [];
@@ -203,6 +204,10 @@ async function spineLegend() {
 export async function checks() {
   const legend = await spineLegend();
   const whole = loadApp();
+  // THE SPINE AS index.html DECLARES IT, which `whole` is not: that one carries
+  // no tier set, which is the "drawn whole" state the unfolded fund-flows
+  // comparisons below need and index.html is no longer in.
+  const spineApp = loadApp({ config: spineConfig() });
   const drill = appDrawing(DRAWN);
 
   const folding = attempt(() => drill.foldDocument(miniature()));
@@ -211,7 +216,7 @@ export async function checks() {
 
   // The spine, laid out by the function the page ships, against the same graph
   // laid out by layout.mjs's local rebuild of it.
-  const spine = attempt(() => whole.layOut(goldenGraph()));
+  const spine = attempt(() => spineApp.layOut(goldenGraph()));
 
   const out = [];
   for (const col of COLUMNS) {
@@ -472,7 +477,7 @@ export async function checks() {
       ok: (() => {
         if (!spine.ok) return false;
         const graph = spine.value;
-        const local = localLayout(whole);
+        const local = localLayout(spineApp);
         return graph.nodes.length === local.nodes.length &&
                graph.nodes.every((n, i) => n.id === local.nodes[i].id &&
                  Math.abs(n.x0 - local.nodes[i].x0) < 1e-9 &&
@@ -524,7 +529,7 @@ function localLayout(app) {
     .nodeId((d) => d.id)
     .nodeWidth(app.NODE_WIDTH)
     .nodePadding(app.NODE_PADDING)
-    .nodeAlign(app.d3.sankeyJustify)
+    .nodeAlign(app.alignFor(app.RENDER_TIERS))
     .nodeSort((a, b) => app.nodeRank(a) - app.nodeRank(b) || b.value - a.value)
     .extent([[app.LABEL_GUTTER, 12],
              [app.CHART_WIDTH - app.LABEL_GUTTER, app.CHART_HEIGHT - 12]]);

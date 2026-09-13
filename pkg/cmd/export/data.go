@@ -525,6 +525,25 @@ func views(built result) []export.View {
 		Template:   export.SankeyTemplate,
 		Projection: export.PrimaryProjection,
 		YearStems:  yearStems(export.PrimaryProjection, projections),
+		// THE SPINE'S COLUMNS, DECLARED RATHER THAN INFERRED. Both published
+		// spine documents carry exactly these three tiers, so the fold this
+		// buys is a no-op on the corpus; what it buys is ADJACENCY. A step
+		// that keeps one flank of the chart it opens from names a tier next to
+		// the one it opens from, and "next to" has no answer on a chart whose
+		// columns are d3's own inference -- View.RenderTiers says why, and
+		// validateSteps refuses the kept flank without it.
+		//
+		// MEASURED, BOTH YEARS, BEFORE IT WAS DECLARED. Driven through
+		// tools/jscheck's harness over the two committed spine goldens, the
+		// drawn document and the laid geometry are identical either way: the
+		// same nodes and links in the same order carrying the same values, and
+		// every node's depth, x0, y0 and y1 and every ribbon's y0, y1 and
+		// width unchanged to the digit. The reason is structural rather than
+		// lucky -- the spine is a clean three-layer DAG whose tier 0 is pure
+		// source and tier 5 pure sink, and sankeyJustify's own rule puts a
+		// link-less sink in the LAST column, which is where indexOf puts tier
+		// 5. tools/jscheck/layout.mjs keeps that measurement in the tree.
+		RenderTiers: []int{0, 2, 5},
 	}
 	// THE SPINE OPENS INTO FUND-FLOWS, AND FUND-FLOWS INTO ITSELF: one page
 	// where there were three. revenue.html drew fund-flows at {0,2} and opened

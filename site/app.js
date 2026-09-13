@@ -50,6 +50,12 @@
  *   ON A LINK THE CLIENT FLIPPED: a published link carries a signed
  *   value_cents and no such field; markContra draws the negative ones at
  *   their magnitude and records here what the sign meant.
+ * @property {boolean} [partition]  the ribbon divides one printed table along
+ *   a second axis rather than following money the schedule prints as moving
+ *   that way. THE PROJECTION'S, unlike contra: the client cannot tell a
+ *   cross-tab from a chain by looking at a graph, and a page that guessed
+ *   would be deciding what a published table means. PARTITION_NOTE carries the
+ *   words, in one place, for every mark that shows them.
  */
 
 /**
@@ -754,6 +760,15 @@ let isolated = "";
  * @property {FiscProjection} doc  the document this rung's chart is shaped from,
  *   unfolded
  * @property {FiscDrillStep} step  the step that opened it
+ * @property {FiscProjection} chart  the chart that was ON SCREEN when this rung
+ *   was opened: shaped, capped, folded and carried, as the reader saw it.
+ *
+ *   RECORDED RATHER THAN RECOMPUTED, because a window's kept flank is a filter
+ *   of it and a rung is reshaped long after the click -- Escape pops back to a
+ *   rung whose parent chart is no longer on screen, and shapeFor would have
+ *   nothing to filter. It is the chart, not the file: docAt() answers for the
+ *   file one depth up, and the flank the reader came from is the one they were
+ *   looking at, capped tail, residual and all.
  */
 
 /**
@@ -1483,13 +1498,19 @@ function redrawStack(next) {
 async function drillDown(id) {
   const depth = drilled.length;
   const from = docAt(depth);
-  // THE NODE THE READER ACTIVATED, off the document the chart is shaped from,
-  // because which step opens it is a question about that node -- its tier and
-  // its role -- and not about the depth. An id the document does not carry, or
-  // one drillable refuses, opens nothing.
-  const node = from ? from.nodes.find((n) => n.id === id) : undefined;
+  // THE NODE THE READER ACTIVATED, OFF THE CHART THEY ACTIVATED IT ON. Which
+  // step opens it is a question about that node -- its tier and its role --
+  // and not about the depth; the argument is unchanged and only the document
+  // it is asked of moves. It has to move, because a window's kept flank is
+  // drawn from the chart above and its nodes need not exist in the rung's file
+  // at all: asked of the file, a fund group kept beside a departmentwide
+  // document is a node that document does not carry, and the click returns
+  // FAILED in silence. An id the chart does not draw, or one drillable
+  // refuses, opens nothing.
+  const chart = projection;
+  const node = chart ? chart.nodes.find((n) => n.id === id) : undefined;
   const step = node && drillable(node) ? stepFor(node) : null;
-  if (!step || !from) return FAILED;
+  if (!step || !from || !chart) return FAILED;
   const mine = ++opening;
   const token = switching;
   const overtaken = () => mine !== opening || token !== switching;
@@ -1506,7 +1527,8 @@ async function drillDown(id) {
   // fisc-bccu's neighbour, found by pass two of /code-review.
   if (overtaken() || docAt(depth) !== from) return SUPERSEDED;
   if (!doc) return FAILED;
-  return redrawStack(drilled.concat([{ id: id, doc: doc, step: step }])) ? DREW : FAILED;
+  return redrawStack(drilled.concat([{ id: id, doc: doc, step: step, chart: chart }]))
+    ? DREW : FAILED;
 }
 
 /**
@@ -1693,18 +1715,24 @@ function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint || !STEPS.length) return;
   const anyOpens = Boolean(projection) && projection.nodes.some(drillable);
-  const column = anyOpens ? openableColumns().join(" or ") : "";
+  const column = anyOpens ? joinOr(openableColumns()) : "";
+  // THE COLUMN IS DROPPED FROM THE SENTENCE RATHER THAN LEFT BLANK IN IT. A
+  // chart whose columns nobody declared has no left and no right to name
+  // (openableColumns), and "Click a node in the  column" is worse than the
+  // shorter true sentence. internal/export refuses the view that would produce
+  // it; a config handed to this file has still said it.
+  const where = column ? " in the " + column + " column" : "";
   if (drilled.length) {
     hint.textContent = "This is " + labelOfRung(drilled.length - 1) +
       ", broken into its parts. " +
       (anyOpens
-        ? "Click a node in the " + column + " column to open it further, or tab to one and press Enter."
+        ? "Click a node" + where + " to open it further, or tab to one and press Enter."
         : "Nothing here opens further; go back to open another.");
     return;
   }
   const swatches = buildLegendCount();
   hint.textContent = (anyOpens
-    ? "Click a node in the " + column + " column to open it into its parts, " +
+    ? "Click a node" + where + " to open it into its parts, " +
       "or tab to one and press Enter."
     : "Nothing on this chart opens.") +
     (swatches ? " A fund swatch follows one group's money without opening anything." : "");
@@ -1714,11 +1742,21 @@ function paintChartHint() {
  * Which columns of the chart on screen hold a node that opens -- "left-hand",
  * "middle", "right-hand", left to right -- or none when nothing here opens.
  *
- * BY TIER, WHICH IS WHAT PLACES A COLUMN. layOut aligns columns on the tier
- * set the document was shaped by, so the drawn tiers in ascending order are
- * the columns left to right, and a column opens when a drawn node in it does.
- * Two drawn tiers have no middle; more than three would make "middle"
- * ambiguous, and no document here draws more than three at once.
+ * IN THE DECLARED ORDER AND NOT IN TIER ORDER. layOut aligns a node on
+ * indexOf(tier) in the set the document was shaped by (alignFor), so THAT list
+ * is the columns left to right; a sort by tier number agrees with it only
+ * while the declaration happens to ascend. A window's need not -- {2,5,4}
+ * draws fund groups, the object category they pay for, then the divisions
+ * spending it -- and sorted, this would name the middle column "right-hand"
+ * and send a reader to click the wrong one.
+ *
+ * NARROWED TO THE TIERS THE CHART ACTUALLY DRAWS, because a declared column
+ * can come out empty: at {0,3,4} only the General Fund has tier-4 nodes, and
+ * the other five groups' charts stop at their funds. Telling a reader to click
+ * a column that is not there is the same defect as telling them to click one
+ * that does not open. Two columns have no middle; a chart drawn whole declares
+ * no order at all and is named nothing here, which is the same answer as
+ * "nothing opens" and reaches the reader as paintChartHint's other sentence.
  *
  * ASKED OF THE DRAWN NODES, NOT OF THE STEPS: a step opens from a tier, and
  * which of that tier's nodes open is drillable's answer -- on the spine's
@@ -1727,13 +1765,30 @@ function paintChartHint() {
  */
 function openableColumns() {
   if (!projection) return [];
-  const tiers = [...new Set(projection.nodes.map((n) => n.tier))].sort((a, b) => a - b);
+  const drawn = new Set(projection.nodes.map((n) => n.tier));
+  const tiers = activeTiers().filter((t) => drawn.has(t));
   if (tiers.length < 2) return [];
   const opening = new Set(projection.nodes.filter(drillable).map((n) => n.tier));
   return tiers.map((tier, at) => {
     if (!opening.has(tier)) return "";
     return at === 0 ? "left-hand" : at === tiers.length - 1 ? "right-hand" : "middle";
   }).filter(Boolean);
+}
+
+/**
+ * A list of phrases as English: "a", "a or b", "a, b or c".
+ *
+ * A join ON " or " READS AS A CHOICE OF TWO HOWEVER MANY THERE ARE. Three
+ * openable columns came out "the left-hand or middle or right-hand column",
+ * which is not a sentence anyone writes, and the spine reaches three the day
+ * its right-hand column opens. No serial comma: the last separator is the
+ * conjunction alone.
+ * @param {string[]} parts
+ * @returns {string}
+ */
+function joinOr(parts) {
+  if (parts.length < 3) return parts.join(" or ");
+  return parts.slice(0, -1).join(", ") + " or " + parts[parts.length - 1];
 }
 
 /** How many fund-group swatches the legend is showing. */
@@ -1782,11 +1837,20 @@ function paintBreadcrumb() {
  * The printed label of the node rung k opened, from the document it was opened
  * FROM.
  *
- * NOT FROM THE DRAWN ONE, which is the point: the breadcrumb names the node the
- * reader opened, and opening it is what removes it from the drawn set. And not
- * from the rung's own document either: across a document switch the node was
+ * THE WORDS ARE THE CHART THE READER CLICKED ON'S, and that is the rule rather
+ * than a consequence of the node going away. A one-sided step does remove it:
+ * opening a fund group filters the group itself out of the drawn set, so there
+ * is nothing there to read. A window does not -- its centre IS the node that
+ * was clicked, drawn in the middle column -- and the answer has to be the same
+ * either way, because the same breadcrumb names both. windowFor takes the
+ * centre's record off the chart on screen for this reason, so the mark and the
+ * crumb agree by construction; this reads the file that chart was shaped from
+ * rather than depending on that.
+ *
+ * AND NOT THE RUNG'S OWN DOCUMENT: across a document switch the node was
  * clicked in the chart one depth up, and that chart's file is the one that
- * prints its label.
+ * prints its label. Both documents may carry the id and print different words
+ * for it, which is what tools/jscheck/drill.mjs relabels its fixtures to catch.
  * @param {number} k
  * @returns {string}
  */
@@ -1801,17 +1865,9 @@ function labelOfRung(k) {
 /**
  * The document as this page draws it: the overview, or one node opened.
  *
- * THE ORDER IS filter, cap, fold, AND IT IS NOT INTERCHANGEABLE.
- *
- *   - filter first, because the cap ranks a column by size and the sizes that
- *     matter are the ones inside the node being opened. Capping the citywide
- *     column and then filtering would keep the eight biggest funds in the CITY
- *     and show a group most of whose funds had already been discarded.
- *   - cap before fold, because the cap produces several ribbons from one source
- *     to the aggregate and the fold is what merges them -- summing the values
- *     and unioning the fact ids and locators. Capping afterwards would leave
- *     parallel ribbons between one pair of nodes, and an aggregate that cited a
- *     strict subset of the pages its figure was read from.
+ * THE RESIDUAL AND THE CONTRA MARKING COME LAST AND IN THAT ORDER, whichever
+ * shape the rung took; everything before them is sideOf's, once for a chart
+ * with a side and twice for a window.
  *
  * @param {FiscProjection} doc
  * @returns {FiscProjection}
@@ -1830,18 +1886,63 @@ function shapeFor(doc) {
   // reader opened, which is inside the root on a page that has one and is a
   // node of another document entirely on a step that switched.
   const step = rung.step;
-  // THE SIDE IS THE STEP'S DECLARATION, and it picks the filter: the opened
-  // node is the end its links point at, or the end they come from, and the
-  // two filters disagree about what "inside" means (filterFromNode).
-  const filter = step.side === "source" ? filterFromNode : filterToNode;
-  let shaped = filter(doc, rung.id, step.tiers);
+  // A WINDOW OR A SIDE, AND THE STEP SAYS WHICH. A step that keeps a flank
+  // draws two half-charts spliced on the node the reader clicked; one that
+  // keeps none draws a single filtered chart, and its SIDE picks the filter:
+  // the opened node is the end its links point at, or the end they come from,
+  // and the two filters disagree about what "inside" means (filterFromNode).
+  const drawn = (step.keep && step.keep.length)
+    ? windowFor(rung.chart, doc, rung)
+    : sideOf(doc, rung, step.tiers, step.side === "source" ? filterFromNode : filterToNode);
+  // LAST, AFTER THE CAP AND THE FOLD, because neither may touch it: the cap
+  // ranks the group's own parts and the residual is not one of them, and the
+  // fold merges by folded ends and these ends are the chart above's.
+  //
+  // AND THE CONTRA MARKING AFTER THAT, because it is about what the fold LEFT
+  // negative: a category's lines fold into the category's net cell at {0,3,4},
+  // where nothing is negative, and stand on their own at {1,3}, where two are.
+  return markContra(carryResidual(drawn, docAt(drilled.length - 1), rung), doc);
+}
+
+/**
+ * One filtered, capped and folded chart of a node: a whole rung on a step that
+ * keeps no flank, and one half of a window on a step that does.
+ *
+ * THE CAPS ARE THE STEP'S AND THE TIERS ARE THE CALLER'S, which is the whole
+ * reason this takes both. A window's two halves are two documents, and folding
+ * them together would hand foldDocument two parent chains at once -- the
+ * invariant carryResidual already preserves by copying links rather than
+ * merging documents. Each half is shaped whole and on its own, and the splice
+ * happens after.
+ *
+ * THE ORDER IS filter, cap, fold, AND IT IS NOT INTERCHANGEABLE.
+ *
+ *   - filter first, because the cap ranks a column by size and the sizes that
+ *     matter are the ones inside the node being opened. Capping the citywide
+ *     column and then filtering would keep the eight biggest funds in the CITY
+ *     and show a group most of whose funds had already been discarded.
+ *   - cap before fold, because the cap produces several ribbons from one source
+ *     to the aggregate and the fold is what merges them -- summing the values
+ *     and unioning the fact ids and locators. Capping afterwards would leave
+ *     parallel ribbons between one pair of nodes, and an aggregate that cited a
+ *     strict subset of the pages its figure was read from.
+ *
+ * @param {FiscProjection} doc
+ * @param {Rung} rung
+ * @param {number[]} tiers the columns this chart draws, in order
+ * @param {(doc: FiscProjection, id: string, tiers: number[]) => FiscProjection} filter
+ * @returns {FiscProjection}
+ */
+function sideOf(doc, rung, tiers, filter) {
+  const step = rung.step;
+  let shaped = filter(doc, rung.id, tiers);
   const inside = withinNode(doc, rung.id);
-  // EVERY CAP THE STEP DECLARES, COARSEST TIER FIRST. Folding a coarse node
-  // removes its descendants (capColumn's orphaned()), which changes which fine
-  // nodes are left to rank; capping the fine tier first would rank divisions
-  // of a fund about to be folded away. The order is the step's tier order, not
-  // the caps' declaration order, for the same reason the cap is looked up by
-  // the tier it names.
+  // EVERY CAP THE STEP DECLARES FOR THESE COLUMNS, IN THE DECLARED ORDER.
+  // Folding a coarse node removes its descendants (capColumn's orphaned()),
+  // which changes which fine nodes are left to rank; capping the fine tier
+  // first would rank divisions of a fund about to be folded away. The order is
+  // the tier order this chart draws in, not the caps' declaration order, for
+  // the same reason the cap is looked up by the tier it names.
   //
   // THE TAIL'S PARENT IS THE OPENED NODE ONLY WHEN THE WHOLE COLUMN IS INSIDE
   // IT, and that is asked of the document rather than assumed. A fund group's
@@ -1852,7 +1953,7 @@ function shapeFor(doc) {
   // "no single fund group" looks like everywhere else on this page.
   /** @type {Map<number, string>} */
   const parentOf = new Map();
-  for (const tier of step.tiers) {
+  for (const tier of tiers) {
     const cap = (step.caps || []).find((c) => c.tier === tier);
     if (!cap) continue;
     const column = shaped.nodes.filter((n) => n.tier === tier);
@@ -1863,7 +1964,7 @@ function shapeFor(doc) {
     // both tails.
     shaped = capColumn(shaped, tier, cap.cap, parent, cap.tail || step.tail);
   }
-  const drawn = foldDocument(shaped, step.tiers);
+  const drawn = foldDocument(shaped, tiers);
 
   // EVERY AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, and it has to be here
   // rather than in capColumn. capColumn runs first and parents the aggregate
@@ -1880,18 +1981,103 @@ function shapeFor(doc) {
   // It is restored rather than exempted from the fold, because the fold's rule
   // is about the document's own well-formedness and this is a claim about the
   // FILE's hierarchy, which is what fundGroupOf walks.
-  const reparented = Object.assign({}, drawn, {
+  return Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) =>
       (isAggregate(n.id) ? Object.assign({}, n, { parent: parentOf.get(n.tier) || "" }) : n)),
   });
-  // LAST, AFTER THE CAP AND THE FOLD, because neither may touch it: the cap
-  // ranks the group's own parts and the residual is not one of them, and the
-  // fold merges by folded ends and these ends are the chart above's.
-  //
-  // AND THE CONTRA MARKING AFTER THAT, because it is about what the fold LEFT
-  // negative: a category's lines fold into the category's net cell at {0,3,4},
-  // where nothing is negative, and stand on their own at {1,3}, where two are.
-  return markContra(carryResidual(reparented, docAt(drilled.length - 1), rung), doc);
+}
+
+/**
+ * Three columns whose centre is the node the reader clicked: the flank they
+ * came from on one side, the step document's decomposition on the other.
+ *
+ * TWO QUESTIONS, SO TWO CALLS, AND NEITHER FILTER CHANGES. filterToNode keeps a
+ * link whose TARGET is inside the clicked node; filterFromNode keeps one whose
+ * SOURCE is. A window needs both -- its decomposition on one side and the
+ * context hop on the other -- and answering both from one call would mean a
+ * third filter whose "inside" meant neither thing. So the kept flank and the
+ * new one are separate charts, spliced on the centre.
+ *
+ *   kept flank on the LEFT   kept: filterToNode(on screen), new: filterFromNode(step)
+ *   kept flank on the RIGHT  kept: filterFromNode(on screen), new: filterToNode(step)
+ *
+ * WHICH WAY IT SLIDES IS THE POSITION OF THE KEPT TIER IN THE STEP'S OWN
+ * COLUMN ORDER, and internal/export's validateSteps has already refused a step
+ * whose columns disagree with the chart it opens from. This reads the
+ * declaration and fails closed on one it cannot read, because a window drawn
+ * the wrong way round is a chart that lays out and means something else.
+ *
+ * THE KEPT FLANK COMES OFF THE CHART ON SCREEN, NOT OFF A FILE, and that is
+ * not an optimisation. Its nodes need not exist in the step's document at all:
+ * a departmentwide document has no fund axis, so every fund group in that
+ * window's flank would be a node drillDown could not find and the click would
+ * return FAILED in silence. Filtering the chart on screen removes that by
+ * construction, lets the kept flank carry a capped tail or a residual it
+ * already drew, and keeps filterLinks' fail-closed guards applicable, because
+ * the chart on screen is itself a well-formed document.
+ *
+ * THE CENTRE'S RECORD IS THE ON-SCREEN CHART'S, so the mark names the node in
+ * the words the reader clicked -- which is the rule paintBreadcrumb follows one
+ * function over, reached from the other side. It is NOT marked carried: a
+ * carried mark is one the drawn document has never heard of, and the centre is
+ * the node that document decomposes.
+ *
+ * @param {FiscProjection | null} onScreen the drawn chart the rung was opened from
+ * @param {FiscProjection} stepDoc the document the step draws
+ * @param {Rung} rung
+ * @returns {FiscProjection}
+ */
+function windowFor(onScreen, stepDoc, rung) {
+  const step = rung.step;
+  const tiers = step.tiers;
+  const keep = step.keep[0];
+  const at = tiers.indexOf(keep);
+  // ONE KEPT TIER AND NOT TWO, which the packager refuses too: a window slides
+  // by one column, and a second kept flank would be a fourth column with no
+  // side left to be on.
+  if (!onScreen || step.keep.length !== 1 || tiers.length !== 3 ||
+      tiers[1] !== step.from || (at !== 0 && at !== 2)) {
+    throw new Error("cannot draw " + stepDoc.projection + ": this step keeps tier(s) " +
+      step.keep.join(", ") + " and draws tiers " + tiers.join(", ") + " opening tier " +
+      step.from + ", which is not a window: a window is three columns with the opened tier " +
+      "in the middle, one kept flank at one end, and a chart on screen to take it from");
+  }
+  const centre = tiers[1];
+  const opens = tiers[at === 0 ? 2 : 0];
+  const kept = at === 0
+    ? sideOf(onScreen, rung, [keep, centre], filterToNode)
+    : sideOf(onScreen, rung, [centre, keep], filterFromNode);
+  const fresh = at === 0
+    ? sideOf(stepDoc, rung, [centre, opens], filterFromNode)
+    : sideOf(stepDoc, rung, [opens, centre], filterToNode);
+
+  // carried_from IS SET WHERE IT IS ABSENT AND NEVER CLEARED. A flank node
+  // that was already carried onto the chart above -- a residual's endpoint --
+  // keeps the stem it came from, because that is the document its figure and
+  // its caveats are of, however many rungs it is passed down.
+  const stem = onScreen.projection || "";
+  /** @type {Set<string>} */
+  const have = new Set();
+  /** @type {FiscNode[]} */
+  const nodes = [];
+  for (const n of kept.nodes) {
+    have.add(n.id);
+    nodes.push(n.id === rung.id || n.carried_from
+      ? n
+      : Object.assign({}, n, { carried_from: stem }));
+  }
+  for (const n of fresh.nodes) {
+    if (have.has(n.id)) continue;
+    have.add(n.id);
+    nodes.push(n);
+  }
+  // THE SPLICED DOCUMENT IS THE STEP DOCUMENT'S, which is what makes its
+  // projection name, its metadata and its caveats the drawn chart's: the kept
+  // flank is a guest on it, and says so on every node it brought.
+  return Object.assign({}, fresh, {
+    nodes: nodes,
+    links: kept.links.concat(fresh.links),
+  });
 }
 
 /**
@@ -1959,6 +2145,21 @@ function isContraNode(d) {
 }
 
 /**
+ * Whether every ribbon on a laid node is a partition one, so the mark's whole
+ * figure is a cross-tab total rather than money that moved through it.
+ *
+ * ALL OR NOTHING, AS isContraNode IS. A node with one partition ribbon among
+ * flows is a node whose sentence would be true of part of it, and a label that
+ * qualified the whole mark would be wrong about the rest.
+ * @param {LaidNode} d
+ * @returns {boolean}
+ */
+function isPartitionNode(d) {
+  const links = d.sourceLinks.concat(d.targetLinks);
+  return links.length > 0 && links.every((l) => Boolean(l.partition));
+}
+
+/**
  * The figure a laid mark prints: negative for a contra ribbon and for a line
  * whose every ribbon is one, and d3's value otherwise.
  * @param {LaidLink | LaidNode} d
@@ -1998,12 +2199,32 @@ function contraNote(d) {
 }
 
 /**
+ * What a partition ribbon is, in the one place the words for it live.
+ *
+ * EVERY MARK THAT SHOWS IT SHOWS THE SAME SENTENCE -- the tooltip, the detail
+ * panel, the flow table and the screen-reader label -- because four spellings
+ * of one claim about the documents is four things to keep true. contra's words
+ * come off the link because they name that row's own parent; this claim is the
+ * same wherever it appears.
+ *
+ * THE DIRECTION DRAWN IS NOT A DIRECTION THE CITY PRINTED. Budget Book
+ * pp.85-125 print one matrix of cells, divisions down and object categories
+ * across; a chart can read it either way round and neither reading is money
+ * moving. Drawing it forward and saying so is markContra's precedent: a ribbon
+ * is never reversed, and what the shape means is carried in a class and a
+ * sentence.
+ */
+const PARTITION_NOTE = "a cross-tab: one printed table read along a second axis, " +
+  "not money moving in the direction drawn";
+
+/**
  * The classes a ribbon is drawn with.
  * @param {LaidLink} d
  * @returns {string}
  */
 function linkClass(d) {
-  return "link" + (d.derived ? " derived" : "") + (d.contra ? " contra" : "");
+  return "link" + (d.derived ? " derived" : "") + (d.contra ? " contra" : "") +
+    (d.partition ? " partition" : "");
 }
 
 /**
@@ -2081,6 +2302,16 @@ function isResidual(id) {
  * Whether an id names the residual node or an endpoint carried with it: a
  * mark the rung on screen added from the chart it was opened from, which is
  * not the step document's and opens into nothing.
+ *
+ * THE GATE IS THE RESIDUAL'S DECLARED ENDPOINTS, NOT THE carried_from FLAG,
+ * and the difference is the window feature itself. A window's kept flank is
+ * carried onto the rung in exactly the sense that field records -- its figures
+ * and its caveats are the chart above's -- and it MUST open: a fund group kept
+ * beside a revenue category is the node the reader slides on to next. What
+ * closes a mark here is the step's own residual declaration, which names the
+ * endpoints whose money this chart cannot decompose, plus the residual node
+ * itself. Widening this to "anything carried" is the one-line simplification
+ * that would draw the window and refuse every click in it.
  * @param {string} id
  * @returns {boolean}
  */
@@ -2230,12 +2461,12 @@ function carryResidual(drawn, from, rung) {
       // carried -- transfers/in and transfers/out carry transfer-legs-unpaired
       // on the spine and arrived here unmarked. fisc-bccu.
       //
-      // THE STEM IS RECORDED AND NOT READ. carriedSource resolves to docAt(0)
-      // rather than to this value, because only step 0 carries a residual and
-      // its `from` is always the spine. A residual on a later step would make
-      // that false, and this field is what the resolution would have to start
-      // reading; it is a flag today and says so rather than promising a lookup
-      // nothing performs.
+      // THE STEM IS READ, NOT ONLY RECORDED. carriedSource resolves it
+      // against the documents on the stack, which is what a window needs:
+      // every window carries a flank, so a carried mark can sit two rungs
+      // down with a chart above it that is not the spine, and a lookup fixed
+      // at depth 0 would resolve its caveats and its source list to the wrong
+      // document.
       carried_from: from.projection || "",
     }));
   }
@@ -2692,6 +2923,49 @@ function restackLinks(graph) {
 }
 
 /**
+ * Which column d3-sankey puts a node in: the position of its tier in the
+ * declared order, or d3's own justify when nothing was declared.
+ *
+ * A DECLARED ORDER IS A CLAIM ABOUT POSITION AND sankeyJustify IS NOT. Justify
+ * derives the columns from topology and puts a link-less sink in the LAST one,
+ * which is right for a document drawn whole and wrong the moment tiers can be
+ * skipped: a node terminating early is shoved across the chart to sit among
+ * nodes it shares nothing with. It is also what leaves "the column to the left
+ * of this one" with no answer, which is why a view that opens a node has to
+ * declare its columns -- internal/export's View.RenderTiers refuses one that
+ * does not.
+ *
+ * THE SPINE'S OWN FIGURES DO NOT MOVE WHEN IT DECLARES ITS ORDER, and that is
+ * measured rather than argued: tools/jscheck/layout.mjs lays the committed
+ * goldens out through this function, so the crossing and overlap figures below
+ * are the ones the page draws under whatever the page declares. Both aligners
+ * were run over both published spine columns and agreed to the digit, because
+ * the spine's tier 0 is pure source and its tier 5 pure sink and justify's own
+ * rule puts a link-less sink where indexOf puts tier 5.
+ *
+ * THE ORDER MAY BE NON-MONOTONIC, and a window is why: {2,5,4} draws fund
+ * groups, then the object category they pay for, then the divisions that spend
+ * it, and indexOf says so where a sort by tier number would not.
+ *
+ * THE TIER SET IS THE CALLER'S, not the page's, and that distinction exists
+ * because a page can open a node. A drilled document is folded to its step's
+ * tiers -- {0,3} on Revenue against the page's {0,2} -- so aligning on the
+ * page's set gives every tier-3 fund indexOf === -1, which d3 clamps to column
+ * 0. Measured: that leaves the layer array with a hole and d3-sankey dies
+ * inside its own ordering pass with "Cannot read properties of undefined
+ * (reading 'sort')" -- a blank chart under a banner, on the first click of a
+ * feature whose whole point is the click.
+ *
+ * @param {number[]} tiers
+ * @returns {(d: LaidNode) => number}
+ */
+function alignFor(tiers) {
+  return tiers.length
+    ? /** @param {LaidNode} d */ (d) => tiers.indexOf(d.tier)
+    : D3.sankeyJustify;
+}
+
+/**
  * Lays a document out, touching nothing on the page.
  *
  * IT IS SEPARATE FROM render() SO THAT A DOCUMENT WHICH WILL NOT DRAW CANNOT
@@ -2743,33 +3017,11 @@ function layOut(doc) {
     for (const n of source.nodes) groupIndex.set(n.id, n);
   }
 
-  // WHICH COLUMN A NODE IS DRAWN IN IS A PROPERTY OF ITS TIER ONCE THIS PAGE
-  // FOLDS. sankeyJustify aligns link-less sinks to the LAST column, which is
-  // right for a document drawn whole and wrong the moment tiers can be skipped:
-  // a node terminating early is shoved across the chart to sit among nodes it
-  // shares nothing with. The spine is drawn whole and keeps sankeyJustify
-  // exactly, which is why the crossing figures pinned in tools/jscheck do not
-  // move.
-  //
-  // THE TIER SET IS THE ONE THE DOCUMENT WAS SHAPED BY, not the page's own, and
-  // that distinction only exists because a page can open a node. A drilled
-  // document is folded to its step's tiers -- {0,3} on Revenue against the page's
-  // {0,2} -- so aligning on RENDER_TIERS gives every tier-3 fund
-  // indexOf === -1, which d3 clamps to column 0. Measured: that leaves the
-  // layer array with a hole and d3-sankey dies inside its own ordering pass
-  // with "Cannot read properties of undefined (reading 'sort')" -- a blank
-  // chart under a banner, on the first click of a feature whose whole point is
-  // the click.
-  const tiers = activeTiers();
-  const align = tiers.length
-    ? /** @param {LaidNode} d */ (d) => tiers.indexOf(d.tier)
-    : D3.sankeyJustify;
-
   const sankey = D3.sankey()
     .nodeId(/** @param {LaidNode} d */ (d) => d.id)
     .nodeWidth(NODE_WIDTH)
     .nodePadding(NODE_PADDING)
-    .nodeAlign(align)
+    .nodeAlign(alignFor(activeTiers()))
     // Supplying this switches d3's own ordering pass off, which is what makes
     // the fund column's colour adjacency a property of the page rather than of
     // the library. nodeRank puts the crossing count back.
@@ -3016,6 +3268,7 @@ function linkDescription(d) {
   return d.source.label + " to " + d.target.label + ", " + fmtSigned(markCents(d)) + ", " +
     (/** @type {Record<string,string>} */ (KIND_LABEL)[d.kind] || d.kind) +
     (d.contra ? ", " + d.contra : "") +
+    (d.partition ? ", " + PARTITION_NOTE : "") +
     (d.derived ? ", inferred by us" : ", printed by the city");
 }
 
@@ -3036,8 +3289,13 @@ function nodeDescription(d) {
   // them announced one.
   const what = drillable(d) ? ", opens into its parts" : ", follow this money";
   const note = contraNote(d);
+  // THE CROSS-TAB SENTENCE REACHES A READER WHO CANNOT SEE THE RIBBONS. The
+  // class on the ribbon and the chip in the tooltip both need eyes; a mark
+  // whose every flow is a partition announces the same qualification here, in
+  // the words the chips stand for.
   return d.label + ", total " + fmtSigned(markCents(d)) +
     (d.derived ? ", inferred by us" : ", printed by the city") +
+    (isPartitionNode(d) ? ", " + PARTITION_NOTE : "") +
     (note ? ", " + note.replace(/^\u25c7 /, "") : "") + what;
 }
 
@@ -3058,7 +3316,7 @@ function nodeDescription(d) {
  * and the panel rendered the summary with no link (fisc-ko1j.13). The year's
  * entry for the rung carries that document's refs; this reads them.
  *
- * EXCEPT FOR A CARRIED MARK, WHOSE CAVEAT CAME FROM THE SPINE. The step
+ * EXCEPT FOR A CARRIED MARK, WHOSE CAVEAT CAME FROM THE CHART ABOVE. The step
  * document declares nothing about a mark it does not carry, so resolving a
  * carried mark's caveat against the rung lands back on fisc-ko1j.13's symptom
  * by the other route: a summary with no link. `carried` is the caller's,
@@ -3066,14 +3324,24 @@ function nodeDescription(d) {
  * caveat was read off -- one caveat can mark a carried node and a drawn one on
  * the same chart. fisc-bccu.
  *
+ * THE STEM PICKS THE DEPTH AND THE DEPTH PICKS THE REFS. A mark carried from
+ * the spine takes the year's anchors and one carried from a fund-flows chart
+ * takes that step's, which is a difference only a chain deeper than one hop
+ * can have -- and every window has one, since a window keeps a flank of
+ * whatever it opened from. A stem no document on the stack carries gets NO
+ * anchor rather than the year's: a summary without a link is a visible loss,
+ * and a link into the wrong document's caveats page is not.
+ *
  * @param {string} id
- * @param {boolean} [carried]  the mark this caveat was read off was carried
- *   from the chart above, so its anchor is that chart's
+ * @param {string} [carried]  the projection stem the mark this caveat was read
+ *   off was carried from, so its anchors are that document's
  * @returns {string}
  */
 function caveatHref(id, carried) {
-  const refs = drilled.length && !carried
-    ? (stepDocFor(drilled[drilled.length - 1].step) || { caveats: [] }).caveats
+  const at = carried ? depthOfDocument(carried) : drilled.length;
+  if (at < 0) return "";
+  const refs = at > 0
+    ? (stepDocFor(drilled[at - 1].step) || { caveats: [] }).caveats
     : shownYear ? shownYear.caveats : [];
   if (!Array.isArray(refs)) return "";
   const ref = refs.find((c) => c.id === id);
@@ -3105,7 +3373,7 @@ function caveatsFor(id) {
   // never heard of them, so filtering its caveats returns nothing however the
   // walk below resolves. fisc-bccu.
   const carried = projection.nodes.find((n) => n.id === id && n.carried_from);
-  const source = carried ? carriedSource() : projection;
+  const source = carried ? carriedSource(carried.carried_from) : projection;
   if (!source || !source.metadata || !Array.isArray(source.metadata.caveats)) {
     return [];
   }
@@ -3128,18 +3396,45 @@ function caveatsFor(id) {
 }
 
 /**
- * The document a carried mark came from: the chart the reader opened, which is
- * always the spine at depth 0 of the stack.
+ * Where on the stack the document named by a projection stem sits, or -1.
  *
- * NOT drilled[0].doc, WHICH IS THE STEP DOCUMENT. carryResidual's `from` is the
- * document of the chart the rung was opened from, and for the first rung that
- * is the fetched spine. Only step 0 carries a residual, so one accessor covers
- * every carried mark on the page.
+ * DEEPEST FIRST, because a carried mark came from the chart immediately above
+ * it and a chain may draw one document at several depths. The answer is a
+ * DEPTH and not a document because the two things resolved from it live in
+ * different places: the document itself is docAt's, and the caveat anchors for
+ * it are the year's at depth 0 and the step's below that.
  *
+ * @param {string} stem
+ * @returns {number}
+ */
+function depthOfDocument(stem) {
+  for (let depth = drilled.length; depth >= 0; depth--) {
+    const doc = docAt(depth);
+    if (doc && doc.projection === stem) return depth;
+  }
+  return -1;
+}
+
+/**
+ * The document a carried mark came from, resolved BY THE STEM IT RECORDS.
+ *
+ * NOT docAt(0), AND NOT drilled[0].doc EITHER. The first is the spine, which is
+ * the chart above only while nothing below depth 1 carries anything; the second
+ * is the step document, which is the chart the mark was carried ONTO. Every
+ * window keeps a flank of the chart it opens from, so a carried mark two rungs
+ * down came from a fund-flows chart and not from the spine, and a caveat or a
+ * source list resolved at depth 0 would be another document's.
+ *
+ * NULL RATHER THAN A GUESS when no document on the stack carries that stem: a
+ * mark losing its caveats is visible, and a mark wearing the wrong document's
+ * is not.
+ *
+ * @param {string} stem
  * @returns {FiscProjection | null}
  */
-function carriedSource() {
-  return docAt(0);
+function carriedSource(stem) {
+  const at = depthOfDocument(stem);
+  return at < 0 ? null : docAt(at);
 }
 
 /**
@@ -3231,10 +3526,16 @@ function showTip(event, d) {
       meta.append(document.createTextNode(" "));
       meta.append(h("span", "chip contra", "reduction"));
     }
+    if (l.partition) {
+      meta.append(document.createTextNode(" "));
+      meta.append(h("span", "chip partition", "cross-tab"));
+    }
     tip.append(meta);
     // THE SENTENCE, NOT ONLY THE CHIP: "reduction" says what kind of row this
-    // is, and the words say what it reduces.
+    // is, and the words say what it reduces. "cross-tab" is the same shape one
+    // claim over.
     if (l.contra) tip.append(h("div", "tip-meta", l.contra));
+    if (l.partition) tip.append(h("div", "tip-meta", PARTITION_NOTE));
     tip.append(h("div", "facts", l.fact_ids.join(" ")));
   } else {
     const n = /** @type {LaidNode} */ (d);
@@ -3319,8 +3620,10 @@ function pin(d) {
     chips.append(h("span", "chip", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
     chips.append(h("span", l.derived ? "chip derived" : "chip", l.derived ? "◇ our inference" : "printed by the city"));
     if (l.contra) chips.append(h("span", "chip contra", "reduction"));
+    if (l.partition) chips.append(h("span", "chip partition", "cross-tab"));
     panel.append(chips);
     if (l.contra) panel.append(h("p", "why", l.contra));
+    if (l.partition) panel.append(h("p", "why", PARTITION_NOTE));
     const ids = h("div", "facts", "Facts: " + l.fact_ids.join(" "));
     panel.append(ids);
   } else {
@@ -3343,7 +3646,7 @@ function pin(d) {
     for (const c of caveatsFor(n.id)) {
       const why = h("p", "why");
       why.append(document.createTextNode("\u26a0 " + c.summary + " "));
-      const href = caveatHref(c.id, Boolean(n.carried_from));
+      const href = caveatHref(c.id, n.carried_from);
       if (href) why.append(link("Read it in full", href));
       panel.append(why);
     }
@@ -3376,9 +3679,15 @@ function pin(d) {
   const prov = h("div", "prov");
   prov.append(h("span", "subtle", "Sources:"));
   const mark = asLink ? null : /** @type {LaidNode} */ (d);
-  const ofDocument = mark && (mark.carried_from || isResidual(mark.id))
-    ? ((carriedSource() || projection).metadata.sources || projection.metadata.sources)
-    : projection.metadata.sources;
+  // A CARRIED MARK RECORDS ITS STEM AND THE RESIDUAL DOES NOT. The residual is
+  // ours rather than any document's -- carryResidual builds it here -- and the
+  // chart its copied links came from is by construction the one the rung was
+  // opened from, so that is where it is asked for. Both fall back to the drawn
+  // document rather than to nothing.
+  const of = mark && mark.carried_from ? carriedSource(mark.carried_from)
+    : mark && isResidual(mark.id) ? docAt(drilled.length - 1)
+      : null;
+  const ofDocument = (of && of.metadata && of.metadata.sources) || projection.metadata.sources;
   for (const c of citations(asLink ? /** @type {LaidLink} */ (d).locators : ofDocument)) {
     prov.append(link(c.label, c.href));
   }
@@ -3491,7 +3800,9 @@ function buildTable() {
     tr.append(h("td", "", labels.get(l.target) || l.target));
     tr.append(h("td", "num", fmtSigned(l.contra ? -l.value_cents : l.value_cents)));
     tr.append(h("td", "", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
-    tr.append(h("td", "", l.derived ? "◇ inferred" : l.contra ? l.contra : "printed"));
+    tr.append(h("td", "", l.derived ? "◇ inferred"
+      : l.contra ? l.contra
+        : l.partition ? PARTITION_NOTE : "printed"));
     tr.append(h("td", "ids", l.fact_ids.join(" ")));
     // PER ROW, not per document. The column header says "Source" and until
     // this it printed the same 36 anchors on all 52 drill-down rows -- a

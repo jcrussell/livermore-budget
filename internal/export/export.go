@@ -177,18 +177,26 @@ type View struct {
 	// mislabel a block the schedule gained or lost.
 	Sections []Section
 
-	// RenderTiers is the node tiers this view's chart draws, coarsest first,
+	// RenderTiers is the node tiers this view's chart draws, left to right,
 	// shipped to the client as FISC_CONFIG.render_tiers. Empty draws the
-	// document whole.
+	// document whole, in whatever column order d3 infers from its topology.
+	//
+	// IT IS A COLUMN ORDER AND NOT ONLY A SET. site/app.js aligns a node on
+	// this list's indexOf, so what is to the LEFT of what is a declaration
+	// rather than an inference -- which is why a view that OPENS a node must
+	// carry one: a step that keeps a flank of its parent's chart names a tier
+	// adjacent to the one it opens from, and adjacency is a question only a
+	// declared order can answer. validateSteps refuses the kept flank against
+	// a parent that declares none.
 	//
 	// IT IS PER VIEW BECAUSE THE DOCUMENTS HAVE DIFFERENT HIERARCHIES. The
-	// spine publishes tiers 0, 2 and 5 and is drawn whole; the drill-down
-	// publishes 0, 2, 3, 4 and 5 and cannot be drawn whole at all -- its
-	// 61-node fund column lays every node and every ribbon out at zero height.
-	// A tier set belonging to this package rather than to a view would be wrong
-	// for one of them: the drill-down's set over the spine REFUSES to draw,
-	// because a spine node is parentless and has no ancestor to fold to. A
-	// refusal is the better of the two failures and still a broken page.
+	// spine publishes tiers 0, 2 and 5; the drill-down publishes 0, 2, 3, 4
+	// and 5 and cannot be drawn whole at all -- its 61-node fund column lays
+	// every node and every ribbon out at zero height. A tier set belonging to
+	// this package rather than to a view would be wrong for one of them: the
+	// drill-down's set over the spine REFUSES to draw, because a spine node is
+	// parentless and has no ancestor to fold to. A refusal is the better of
+	// the two failures and still a broken page.
 	//
 	// The fold itself is the client's: see site/app.js's foldDocument and the
 	// "Drawing it" section of docs/general-fund-drilldown-contract.md. This
@@ -969,12 +977,22 @@ func (v View) validate(built map[string][]byte) error {
 				"it; the page would ship the breadcrumb and the words about opening a node "+
 				"while no node on it is ever openable",
 			v.Path, badRoot, v.Steps[badRoot].From, v.RenderTiers)
+	// A CHART THAT OPENS DECLARES ITS COLUMN ORDER, whichever chart-bearing
+	// template draws it. The drill-down cannot be drawn whole at all -- its
+	// 61-node fund column lays every node out at zero height -- and the spine
+	// can, which is why this once read as a rule about folding. What it is
+	// about is ADJACENCY: app.js aligns on RenderTiers' indexOf and falls back
+	// to d3's own justify when the list is empty, so on a chart drawn whole
+	// nothing is to the left of anything, and a step that keeps a flank of
+	// this chart has no side to keep it on. The kept-flank arm below refuses
+	// that case by name; this one refuses the declaration that leads to it.
 	case len(v.Steps) > 0 && len(v.RenderTiers) == 0 && templateRendersTiers(v.Template):
 		return fmt.Errorf(
 			"view %q drills and declares no render tiers on template %q, which publishes "+
-				"render tiers because its documents cannot be drawn whole; the page would "+
-				"ship the breadcrumb over an unfolded column that lays every node out at "+
-				"zero height", v.Path, v.Template)
+				"them; the page would ship the breadcrumb over a chart whose columns are "+
+				"d3's own inference, so no tier is adjacent to any other and a document "+
+				"that needs folding lays every node out at zero height",
+			v.Path, v.Template)
 	}
 	if _, ok := built[v.Projection]; !ok && v.Projection != "" {
 		// Named rather than "a projection is missing": the fix differs by which
@@ -1247,23 +1265,19 @@ func (v View) validateSteps(built map[string][]byte) error {
 			if len(s.Keep) == 0 {
 				continue
 			}
-			// A DOCUMENT DRAWN WHOLE HAS NO DECLARED COLUMN ORDER TO TAKE A
-			// SIDE FROM. site/app.js's layOut aligns on tiers.indexOf(d.tier)
-			// only while a tier set is declared; with none it hands the graph
-			// to d3's sankeyJustify, which derives the columns from topology.
-			// So this is not a cheap refusal standing in for a harder check:
-			// there is nothing to the left of anything until a caller says so.
-			if len(p.tiers) == 0 {
-				return fmt.Errorf(
-					"view %q's step %d keeps tier %d and opens from %s, which declares no "+
-						"column order at all; which side a kept flank is on is a position in "+
-						"that order, and a document drawn whole has none",
-					v.Path, i, s.Keep[0], where)
-			}
-			// From IS IN THIS ORDER ALREADY, which is why these arms may index
-			// on it: the arm above places it for a named parent, and validate's
-			// badRoot arm places it against RenderTiers for the "" one, under
-			// the same non-empty guard as the refusal above.
+			// EVERY PARENT HERE HAS A COLUMN ORDER, AND NOT BECAUSE A WINDOW
+			// ASKED FOR ONE. A named parent is an earlier step, whose own
+			// Tiers were refused empty in its own iteration; the "" parent is
+			// this view's RenderTiers, which validate requires of any view
+			// that drills at all. So the case a kept flank could not survive
+			// -- a side taken in an order nobody declared -- cannot reach
+			// here, and an arm for it would be green because the gate fired
+			// rather than because the defect was prevented.
+			//
+			// From IS IN THIS ORDER ALREADY, which is why the arms below may
+			// index on it: the arm above places it for a named parent, and
+			// validate's badRoot arm places it against RenderTiers for the ""
+			// one.
 			ki, fi := slices.Index(p.tiers, s.Keep[0]), slices.Index(p.tiers, s.From)
 			switch {
 			case ki < 0:
@@ -1521,13 +1535,18 @@ func templateRendersSections(name string) bool {
 //
 // The third field of this family, and it was missing when the first two were
 // closed -- which is the argument for writing them as a family rather than as
-// three guards. Only buildChartPage puts RenderTiers in the config blob;
-// buildSankeyPage omits the key entirely, and app.js reads
-// `CONFIG.render_tiers ?? []`, so a fold asked for on the spine is not refused,
-// not reported, and not applied: the chart draws every tier and looks like a
-// chart rather than like a defect.
+// three guards. A template that omits the key leaves app.js reading
+// `CONFIG.render_tiers ?? []`, so a fold asked for there is not refused, not
+// reported and not applied: the chart draws every tier and looks like a chart
+// rather than like a defect.
+//
+// BOTH CHART-BEARING TEMPLATES PUBLISH IT, and the spine is the reason. A view
+// that opens a node has to declare the order of its own columns, because that
+// order is what says which tier is adjacent to which -- see [View.RenderTiers]
+// -- and the spine draws a chart from the same script as the drill-down.
+// Templates that render no Sankey at all still answer no.
 func templateRendersTiers(name string) bool {
-	return name == ChartTemplate
+	return name == ChartTemplate || name == SankeyTemplate
 }
 
 // templateRendersSteps answers whether a template publishes [View.Steps] to the

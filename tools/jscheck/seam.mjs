@@ -18,7 +18,7 @@
 
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
-  KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes,
+  KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes, parseSpineRenderTiers,
 } from "./harness.mjs";
 
 export async function checks() {
@@ -398,6 +398,52 @@ export async function checks() {
           `a constant among the entries throws ${JSON.stringify(read(constEntry).threw)}; a step ` +
           `with no After throws ${JSON.stringify(read(noAfter).threw)}; an unreadable Keep throws ` +
           `${JSON.stringify(read(unreadableKeep).threw)}`,
+    });
+  }
+
+  // THE SPINE'S COLUMN ORDER IS READ OR REFUSED, NEVER DEFAULTED TO "DRAWN
+  // WHOLE". An empty RenderTiers is a real state -- it means d3 decides the
+  // columns -- so a parse that fell back to [] on a literal it could not read
+  // would hand drill.mjs and layout.mjs the state index.html is no longer in,
+  // and every pin over them would measure a chart the site does not draw. The
+  // literals below are ones data.go does not contain.
+  {
+    const view = (/** @type {string} */ body) =>
+      `\tspine := export.View{\n\t\tPath: export.IndexPath,\n${body}\t}\n`;
+    const read = (/** @type {string} */ text) => {
+      try {
+        return { tiers: parseSpineRenderTiers(text), threw: "" };
+      } catch (e) {
+        return { tiers: null, threw: String((e && e.message) || e) };
+      }
+    };
+    const control = read(view("\t\tRenderTiers: []int{0, 2, 5},\n"));
+    const single = read(view("\t\tRenderTiers: []int{4},\n"));
+    const none = read(view(""));
+    const empty = read(view("\t\tRenderTiers: []int{},\n"));
+    // A CONSTANT IS NOT A LIST OF INTEGERS, and a nested literal is not the
+    // view's own field: `RenderTiers: spineColumns` and a RenderTiers indented
+    // inside another struct must both be refused rather than read.
+    const named = read(view("\t\tRenderTiers: spineColumns,\n"));
+    const nested = read(view("\t\tSteps: []export.DrillStep{\n\t\t\tRenderTiers: []int{1},\n\t\t},\n"));
+    const noView = read("nothing here declares a view\n");
+    out.push({
+      name: "the spine's declared column order is read whole, and a literal this cannot read throws rather than reading as a chart drawn whole",
+      ok: control.threw === "" && JSON.stringify(control.tiers) === "[0,2,5]" &&
+          single.threw === "" && JSON.stringify(single.tiers) === "[4]" &&
+          /declares no RenderTiers/.test(none.threw) &&
+          /did not parse as integers/.test(empty.threw) &&
+          /declares no RenderTiers/.test(named.threw) &&
+          /declares no RenderTiers/.test(nested.threw) &&
+          /no spine view literal/.test(noView.threw),
+      detail: control.threw !== ""
+        ? `THE CONTROL LITERAL DID NOT PARSE (${control.threw}), so nothing below is evidence`
+        : `{0, 2, 5} reads ${JSON.stringify(control.tiers)} and a one-tier list ` +
+          `${JSON.stringify(single.tiers)}; a view with no RenderTiers, a constant and a ` +
+          `RenderTiers nested inside another literal each throw ` +
+          `${JSON.stringify(none.threw)}; an empty list throws ` +
+          `${JSON.stringify(empty.threw)} rather than reading as a chart drawn whole; a ` +
+          `source with no spine view throws ${JSON.stringify(noView.threw)}`,
     });
   }
 

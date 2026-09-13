@@ -24,22 +24,33 @@
 // chart a reader sees. Pre-restack figures appear only where a check is about
 // what restackLinks itself does.
 
-import { loadApp, goldenGraph } from "./harness.mjs";
+import { loadApp, goldenGraph, spineConfig } from "./harness.mjs";
 
 /**
- * Lays the golden graph out exactly as render() does, under a given node sort.
+ * Lays the golden graph out exactly as render() does, under a given node sort
+ * and a given aligner.
  *
  * The constants come out of app.js rather than being repeated here: a chart laid
  * out at a different width has different crossings, so a harness carrying its
  * own copy would drift into checking a chart the page does not draw.
+ *
+ * THE ALIGNER COMES OFF THE PAGE FOR THAT SAME REASON, and it is the one
+ * constant here that used to be hard-coded. app.js hands a graph to d3's
+ * sankeyJustify only while no tier set is declared and aligns on the declared
+ * order otherwise (alignFor), and index.html declares one
+ * (pkg/cmd/export/data.go). A literal `.nodeAlign(sankeyJustify)` would measure
+ * an aligner the page does not use and would be green because the two happen to
+ * agree -- which is the copy-checks-the-copy shape this file exists to refuse.
+ * The default is the page's; a caller passes one only to compare the two, which
+ * is what makes that agreement a measurement rather than an assumption.
  */
-function layout(app, nodeSort) {
+function layout(app, nodeSort, align) {
   const doc = goldenGraph();
   const sankey = app.d3.sankey()
     .nodeId((d) => d.id)
     .nodeWidth(app.NODE_WIDTH)
     .nodePadding(app.NODE_PADDING)
-    .nodeAlign(app.d3.sankeyJustify)
+    .nodeAlign(align || app.alignFor(app.RENDER_TIERS))
     .extent([[app.LABEL_GUTTER, 12],
              [app.CHART_WIDTH - app.LABEL_GUTTER, app.CHART_HEIGHT - 12]]);
   if (nodeSort !== "d3") sankey.nodeSort(nodeSort);
@@ -47,6 +58,17 @@ function layout(app, nodeSort) {
     nodes: doc.nodes.map((n) => Object.assign({}, n)),
     links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),
   });
+}
+
+/** Whether two layouts put every node and every ribbon in the same place. */
+function samePlaces(a, b) {
+  return a.nodes.length === b.nodes.length && a.links.length === b.links.length &&
+    a.nodes.every((n, i) => n.id === b.nodes[i].id && n.depth === b.nodes[i].depth &&
+      Math.abs(n.x0 - b.nodes[i].x0) < 1e-9 && Math.abs(n.y0 - b.nodes[i].y0) < 1e-9 &&
+      Math.abs(n.y1 - b.nodes[i].y1) < 1e-9) &&
+    a.links.every((l, i) => Math.abs(l.y0 - b.links[i].y0) < 1e-9 &&
+      Math.abs(l.y1 - b.links[i].y1) < 1e-9 &&
+      Math.abs(l.width - b.links[i].width) < 1e-9);
 }
 
 /**
@@ -163,10 +185,14 @@ const ALTERNATIVES = {
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 
 export function checks() {
-  const app = loadApp();
+  // THE PAGE index.html SHIPS, NOT loadApp'S BARE DEFAULT: the config carries
+  // the column order data.go declares, which is what alignFor reads.
+  const app = loadApp({ config: spineConfig() });
   const byRank = (a, b) => app.nodeRank(a) - app.nodeRank(b) || b.value - a.value;
 
   const graph = layout(app, byRank);
+  const justified = layout(app, byRank, app.d3.sankeyJustify);
+  app.restackLinks(justified);
   const before = { tangle: tangle(graph), stale: staleStacked(graph) };
   const widths = graph.links.map((l) => l.width);
   app.restackLinks(graph);
@@ -246,6 +272,25 @@ export function checks() {
       })(),
       detail: "every figure pinned here appears in site/app.js's own comments in " +
               "its own sentence, so editing one without re-measuring fails",
+    },
+    {
+      // THE MEASUREMENT THAT LET THE SPINE DECLARE A COLUMN ORDER AT ALL, kept
+      // in the tree instead of in a commit message. Every figure above is
+      // measured under the declared order; all of them were measured under
+      // sankeyJustify before there was one, and the reason they did not move is
+      // structural rather than lucky -- tier 0 is pure source, tier 5 pure
+      // sink, and justify's own rule puts a link-less sink in the last column,
+      // which is where indexOf puts tier 5. This says so where it can go red:
+      // the day the spine grows a tier, or declares its columns in an order
+      // topology disagrees with, this fails and the figures above are a new
+      // measurement rather than the old one.
+      name: "the spine lays out identically under its declared column order and under d3's justify",
+      ok: app.RENDER_TIERS.length > 0 && samePlaces(graph, justified),
+      detail: app.RENDER_TIERS.length
+        ? `every node and ribbon in the same place under nodeAlign indexOf ` +
+          `[${app.RENDER_TIERS.join(", ")}] and under sankeyJustify`
+        : "the config this ran under declares no column order, so nothing here " +
+          "measures the aligner the page uses",
     },
     {
       name: "the fund column is pinned to the palette's order",

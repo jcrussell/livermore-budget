@@ -379,7 +379,8 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 				"fund-flows": builtLike(t, goldenSankey(t), fundFlows),
 			},
 			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-				Template: export.SankeyTemplate, Projection: "sankey", Steps: s}},
+				Template: export.SankeyTemplate, Projection: "sankey",
+				RenderTiers: []int{0, 2, 5}, Steps: s}},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
 		})
@@ -607,6 +608,7 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+				RenderTiers: []int{0, 2, 5},
 				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
 					Projection:      "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
@@ -983,17 +985,22 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Tiers = []int{2, 0, 3}
 			})},
 			"draws to the RIGHT of the opened tier 0, and draws tiers [2 0 3]"},
-		// THE SPINE IS THIS CASE, WHICH IS WHY IT IS NOT HYPOTHETICAL: it
-		// renders SankeyTemplate, declares no render tiers and draws its
-		// document whole, so app.js hands the graph to d3's sankeyJustify and
-		// there is no declared order for a side to be a position in.
+		// A WINDOW ON A CHART DRAWN WHOLE, REFUSED ONE ARM EARLIER THAN THE
+		// SHAPE OF THE STEP. app.js hands a graph with no declared tier set to
+		// d3's sankeyJustify, so there is no order for a side to be a position
+		// in -- but a view that DRILLS on a template publishing render tiers
+		// is refused for declaring none before any step is placed, and both
+		// chart templates publish them. The case is kept because it is the
+		// configuration the window model most needs refused; the message it
+		// gets is the one that actually fires, rather than a second arm inside
+		// validateSteps that nothing could ever reach.
 		{"a window on a page whose chart is drawn whole", []export.View{ok,
 			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
 				Projection: "sankey",
 				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
 					Keep: []int{0}, Tiers: []int{0, 2, 3}, Back: "b", Tail: "t",
 					Description: "d."}}}},
-			"declares no column order at all"},
+			"drills and declares no render tiers"},
 		// A RESIDUAL NEEDS A SECOND DOCUMENT AND A REASON. The first case
 		// declares one on the chain's same-document step, where nothing could
 		// be residual between two grains of one file; the second names a
@@ -1191,12 +1198,50 @@ func readFile(t *testing.T, dir, name string) string {
 	return string(b)
 }
 
+// TestTheSpineTemplatePublishesTheColumnOrderItDeclares is the third member of
+// the render-tiers family reaching the template that draws index.html.
+//
+// A VIEW'S DECLARATION THAT REACHES NO BLOB IS THE SILENT FAILURE THE FAMILY
+// EXISTS FOR, and this is the direction the family's own guard cannot witness:
+// templateRendersTiers can say a template publishes them, and only a rendered
+// page can say it does. app.js reads `CONFIG.render_tiers ?? []`, so a spine
+// whose order was dropped here aligns on d3's justify, every window's kept
+// flank lands on whichever side topology put it, and nothing anywhere reports
+// it.
+//
+// The mutation is one line: drop RenderTiers from buildSankeyPage's
+// clientConfig and this goes red while every other test stays green.
+func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Projection: "sankey",
+			RenderTiers: []int{0, 2, 5},
+			Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
+				Tiers: []int{0, 2},
+				Back:  "All fund groups", Tail: "funds", Description: "One."}}}},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	cfg := clientConfigOf(t, readFile(t, dir, "index.html"))
+	if diff := cmp.Diff([]int{0, 2, 5}, cfg.RenderTiers); diff != "" {
+		t.Errorf("index.html's FISC_CONFIG.render_tiers (-want +got):\n%s\n"+
+			"site/app.js aligns every column on this list, and reads an absent key as "+
+			"\"let d3 decide\"", diff)
+	}
+}
+
 // clientConfigOf decodes window.FISC_CONFIG out of a rendered page.
 type clientCfg struct {
 	Projections map[string]string `json:"projections"`
 	Docs        map[string]struct {
 		PageTextBase string `json:"page_text_base"`
 	} `json:"docs"`
+	RenderTiers []int `json:"render_tiers"`
 }
 
 func clientConfigOf(t *testing.T, page string) clientCfg {
@@ -2914,7 +2959,8 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 			"fund-flows": builtLike(t, goldenSankey(t), recited(t, fundFlows, "another-doc")),
 		},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
-			Template: export.SankeyTemplate, Projection: "sankey", Steps: steps}},
+			Template: export.SankeyTemplate, Projection: "sankey",
+			RenderTiers: []int{0, 2, 5}, Steps: steps}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
@@ -3016,6 +3062,7 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 			},
 			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey",
+				RenderTiers: []int{0, 2, 5},
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 						Tiers: []int{0, 3},
@@ -3111,6 +3158,7 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 		v := export.View{
 			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+			RenderTiers: []int{0, 2, 5},
 			Steps: []export.DrillStep{
 				{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
@@ -3240,6 +3288,7 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
+				RenderTiers: []int{0, 2, 5},
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 						YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},

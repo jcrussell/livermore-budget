@@ -318,6 +318,11 @@ const NAMES = [
   // reimplementation is now pinned to the shipped function rather than trusted
   // to match it.
   "layOut", "foldDocument", "fundGroupOf", "RENDER_TIERS",
+  // alignFor IS THE ALIGNER THE PAGE ACTUALLY USES, taken off the page for the
+  // reason every constant above it is: layout.mjs builds its own d3.sankey,
+  // and a hard-coded nodeAlign there would measure a chart the page does not
+  // draw the moment a view declares a column order.
+  "alignFor",
   // THE DRILL, WHICH SHIPPED WITH NO CHECK TOUCHING IT AT ALL; drill.mjs's
   // header says how that happened and what it cost. drill.mjs drives drillDown
   // and drillUp, which are the real entry points -- what a click, a breadcrumb
@@ -327,8 +332,15 @@ const NAMES = [
   "shapeFor", "filterToNode", "filterFromNode", "capColumn", "drillable", "drillDown", "drillUp",
   "STEPS", "stepFor", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
   "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
-  "loadDocument", "labelOfRung", "openableColumns", "linkClass", "markContra",
+  "loadDocument", "labelOfRung", "openableColumns", "joinOr", "linkClass", "markContra",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
+  // THE WINDOW. drill.mjs drives it through drillDown like everything else
+  // here; windowFor is reached directly for the refusals, which have no route
+  // through a click because export.validateSteps refuses them first. The rest
+  // is the cross-tab vocabulary a partition ribbon carries, in the four places
+  // one mark can carry it.
+  "windowFor", "depthOfDocument", "carriedSource", "isPartitionNode", "PARTITION_NOTE",
+  "linkDescription", "nodeDescription",
   "paintBreadcrumb",
   // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
   // "#legend button .key", and the swatches that selector finds do not exist
@@ -710,6 +722,59 @@ export function parseResidualLiteral(src) {
 export function stepShapes() {
   return parseStepShapes(
     readFileSync(join(repoRoot, "pkg", "cmd", "export", "data.go"), "utf8"));
+}
+
+/**
+ * The spine view's declared column order, read out of pkg/cmd/export/data.go.
+ *
+ * READ AND NOT COPIED, FOR stepShapes' REASON ONE FIELD OVER. This list is what
+ * app.js aligns every column on (alignFor), so a fixture carrying its own copy
+ * would lay the goldens out in an order the site does not ship and every pin
+ * over them would agree with the copy. It is also what places a kept flank:
+ * tier 2 is adjacent to tier 0 in {0,2,5} and not in {0,5,2}, and a window
+ * measured against the wrong order is a window drawn the wrong way round.
+ *
+ * A MISSING OR UNREADABLE DECLARATION THROWS rather than defaulting to the
+ * empty list, which is the "drawn whole" state: defaulted, this file would
+ * quietly measure the chart the spine drew before it had an order at all.
+ */
+export function spineRenderTiers() {
+  return parseSpineRenderTiers(
+    readFileSync(join(repoRoot, "pkg", "cmd", "export", "data.go"), "utf8"));
+}
+
+/**
+ * The parse behind [spineRenderTiers], over source text so seam.mjs can drive
+ * it over literals data.go does not contain.
+ * @param {string} src
+ * @returns {number[]}
+ */
+/**
+ * A page config that draws the spine the way index.html declares it: the column
+ * order off pkg/cmd/export/data.go, over the two published years.
+ *
+ * FOR THE FILES THAT LAY THE SPINE OUT WITHOUT OPENING ANYTHING. loadApp's own
+ * default config declares no order, which is the state a page drawn whole is
+ * in -- and index.html is no longer in it, so a layout measured under that
+ * default measures a chart the site does not draw.
+ */
+export function spineConfig() {
+  return Object.assign(twoYearConfig(), { render_tiers: spineRenderTiers() });
+}
+
+export function parseSpineRenderTiers(src) {
+  const view = src.match(/spine := export\.View\{\n([\s\S]*?)\n\t\}\n/);
+  if (!view) throw new Error("pkg/cmd/export/data.go declares no spine view literal to read");
+  const m = view[1].match(/^\t\tRenderTiers:\s*\[\]int\{([\d,\s]*)\},$/m);
+  if (!m) {
+    throw new Error("the spine view in pkg/cmd/export/data.go declares no RenderTiers " +
+      "this can read; a page that opens a node declares its column order");
+  }
+  const tiers = m[1].split(",").map((t) => t.trim()).filter(Boolean).map(Number);
+  if (!tiers.length || tiers.some((t) => !Number.isInteger(t))) {
+    throw new Error("the spine's RenderTiers literal did not parse as integers: " + m[1]);
+  }
+  return tiers;
 }
 
 /**

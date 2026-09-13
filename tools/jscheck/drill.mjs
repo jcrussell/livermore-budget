@@ -25,7 +25,7 @@ import { join } from "node:path";
 
 import {
   loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, goldenGraph2027, plannedFetch,
-  stepDescriptions, stepShapes,
+  stepDescriptions, stepShapes, spineRenderTiers,
   settle, refusals, twoYearConfig, repoRoot, residualDeclaration,
 } from "./harness.mjs";
 
@@ -70,6 +70,11 @@ import {
 // gate green. fisc-vsu8, and the same argument as residualDeclaration's.
 const STEP_DESCRIPTIONS = stepDescriptions();
 const STEP_SHAPES = stepShapes();
+// THE SPINE'S COLUMN ORDER, READ OFF data.go FOR THE SAME REASON THE SHAPES
+// ARE. app.js aligns every column on this list and openableColumns names the
+// columns in it, so a copy here would measure a chart the site does not draw
+// -- and would place a kept flank on whichever side the copy happened to say.
+const RENDER_TIERS = spineRenderTiers();
 
 /**
  * One step as the packager ships it: the parsed shape -- key, after, side,
@@ -118,6 +123,11 @@ const PAGE = {
   // HOW MANY VIEWS THE CHAIN OPENS: six fund groups, and the General Fund's
   // 23 divisions -- only that group draws a node at the second step's tier.
   openedViews: 29,
+  // THE COLUMN ORDER THE SPINE DECLARES, off data.go rather than typed. Its
+  // three tiers are the ones the document carries, so the fold it asks for
+  // changes no mark; what it decides is which column is "left-hand" and which
+  // tier a window could keep beside which.
+  renderTiers: RENDER_TIERS,
 };
 
 /**
@@ -301,6 +311,7 @@ async function opened(plan, tweak, column = COLUMNS[0]) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   config.projections["fund-flows-2027"] = "data/fund-flows-2027.json";
+  config.render_tiers = PAGE.renderTiers;
   config.steps = PAGE.steps;
   config.years = config.years.map((y, i) => Object.assign({}, y, {
     counts: { facts: 120, nodes: 25, links: 58 },
@@ -1333,6 +1344,9 @@ export async function checks() {
   out.push(...(await categoryProbes()));
   out.push(...(await keylessSteps()));
   out.push(...(await severalParents()));
+  out.push(...(await windowChecks()));
+  out.push(...(await columnAndPartitionChecks()));
+  out.push(...(await foreignFlankProbe()));
 
   // FIVE REFUSAL PATHS, EACH WITH ITS NEW CALLER. isDocument, understands,
   // drawableSankey and the fetch's own two failures had exactly one caller --
@@ -1513,8 +1527,14 @@ export async function checks() {
       fetch: plannedFetch({ "data/probe.json": { doc } }),
       config: {
         schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
+        // THE STEP OPENS FROM A TIER THE OVERVIEW DRAWS. drillDown looks the
+        // activated node up in the CHART ON SCREEN, so a step opening from a
+        // tier the overview folds away is a step no reader could reach -- which
+        // is the configuration export.View refuses by placing every root step's
+        // From against RenderTiers. The group is what the overview draws here:
+        // fund/100 folds into it at {0,2}.
         render_tiers: [0, 2],
-        steps: [{ key: "fund", after: [""], from: 3, tiers: [2, 4], back: "Back", tail: "divisions" }],
+        steps: [{ key: "fund", after: [""], from: 2, tiers: [2, 4], back: "Back", tail: "divisions" }],
         years: [{
           year: 2026, label: "FY", stem: "probe", path: "data/probe.json", basis: "adopted",
           hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
@@ -1528,13 +1548,13 @@ export async function checks() {
     await settle();
     const legend = app.dom.document.getElementById("legend");
     const swatches0 = legend.children.length;
-    const outcome = await openInto(app, "fund/100");
+    const outcome = await openInto(app, "fund-group/general");
     const groupDrawn = app.projection.nodes.some((n) => n.id === "fund-group/general");
     const swatches1 = legend.children.length;
     out.push({
       name: "an opened view draws no legend even where a fund-group node survives the filter",
       ok: outcome === "drew" && swatches0 === 1 && groupDrawn && swatches1 === 0,
-      detail: `overview ${swatches0} swatch(es); opened into fund/100 the group node is ` +
+      detail: `overview ${swatches0} swatch(es); opened into the group, its node is ` +
         `${groupDrawn ? "drawn" : "NOT drawn, so this asserts nothing"} and the legend holds ` +
         `${swatches1} -- one would be a key to a chart of one hue, toggling the only group on it`,
     });
@@ -1960,6 +1980,461 @@ async function keylessSteps() {
         `${r.categoryOpens ? "STILL opens" : "does not open"}, columns ` +
         `${JSON.stringify(r.columns)}, a click came to "${r.outcome}" at depth ${r.depth} ` +
         `with ${r.banners} banner(s)`).join("; "),
+  }];
+}
+
+/* ------------------------------------------------------------------ *
+ * The window: three columns spliced on the node the reader clicked
+ * ------------------------------------------------------------------ */
+
+/**
+ * A window declaration data.go does not carry, driven over the committed
+ * documents.
+ *
+ * A FIXTURE THE PACKAGER WOULD ACCEPT, AND NOT ONE IT WOULD REFUSE. No step in
+ * pkg/cmd/export/data.go keeps a flank yet, so nothing on the site exercises
+ * windowFor -- and shipping the shaping with nothing able to see it go wrong is
+ * what AGENTS.md's node boundary refuses. So the declaration is written here,
+ * in the shape export.validateSteps accepts: three columns with the opened tier
+ * in the middle, the kept tier at the end its adjacency names, and every
+ * `after` naming an EARLIER step. seam.mjs drives the Go-side parser over
+ * literals data.go does not contain for the same reason.
+ *
+ * THE CATEGORY KEEPS THE SPINE'S FUND GROUPS TO ITS RIGHT, which is the state
+ * the owner asked for: clicking Property Taxes leaves Property Taxes on screen,
+ * with its printed lines to the left and the groups its money reaches to the
+ * right. Tiers {1,0,2}: the kept tier 2 is drawn to the RIGHT of the opened
+ * tier 0 in the spine's own order {0,2,5}, so the window pushes left and the
+ * kept flank is the last column of the step's list.
+ */
+const WINDOW_STEPS = [
+  {
+    key: "revenue-category", after: [""], from: 0, role: "revenue_source",
+    projection: "fund-flows", keep: [2], tiers: [1, 0, 2],
+    caps: [{ tier: 1, cap: 8, tail: "lines" }],
+    back: "All revenue categories", tail: "lines",
+    description: "A category, its printed lines and the groups its money reaches.",
+  },
+  {
+    // REACHABLE FROM TWO CHARTS, which is what Keep is for: the same fund
+    // group opens from the spine and from inside the category's window, and
+    // the rung it opens is the same either way.
+    key: "fund-group", after: ["", "revenue-category"], from: 2,
+    projection: "fund-flows", tiers: [0, 3, 4],
+    caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24, tail: "divisions" }],
+    back: "All fund groups", tail: "funds",
+    description: "A fund group's own funds.",
+  },
+];
+
+/** The spine page carrying WINDOW_STEPS, on the first published column. */
+async function openedWindow(column = COLUMNS[0]) {
+  return opened(null, (config) => {
+    config.steps = WINDOW_STEPS;
+    config.years = config.years.map((y, i) => Object.assign({}, y, {
+      steps: WINDOW_STEPS.map(() => ({
+        stem: i === 0 ? "fund-flows" : "fund-flows-2027",
+        path: i === 0 ? "data/fund-flows.json" : "data/fund-flows-2027.json",
+        caveats: refsFor(i === 0 ? "fund-flows" : "fund-flows-2027", FUND_FLOWS_CAVEATS),
+      })),
+    }));
+  }, column);
+}
+
+/** The ids drawn at one tier of the chart on screen, in document order. */
+function atTier(app, tier) {
+  return app.projection.nodes.filter((n) => n.tier === tier).map((n) => n.id);
+}
+
+/**
+ * Everything the window shaping claims, measured through drillDown over the
+ * committed goldens.
+ */
+async function windowChecks() {
+  const out = [];
+  const CENTRE = "revenue/taxes/property";
+  const { app } = await openedWindow();
+  const spine = goldenGraph();
+  const kept = spine.links.filter((l) => l.source === CENTRE);
+
+  const outcome = await openInto(app, CENTRE);
+  const drawn = outcome === "drew" ? app.projection : { nodes: [], links: [] };
+  const tiers = [...new Set(drawn.nodes.map((n) => n.tier))].sort((a, b) => a - b);
+  const centreColumn = atTier(app, 0);
+  const keptColumn = atTier(app, 2);
+  const freshColumn = atTier(app, 1);
+  const centreNode = drawn.nodes.find((n) => n.id === CENTRE);
+  const toGroups = drawn.links.filter((l) => l.source === CENTRE);
+  const fromLines = drawn.links.filter((l) => l.target === CENTRE);
+  const laid = outcome === "drew" ? app.layOut(drawn) : null;
+  // The columns left to right, as d3 placed them, read back as tiers.
+  const placed = laid
+    ? [...new Set(laid.nodes.slice().sort((a, b) => a.x0 - b.x0).map((n) => n.tier))]
+    : [];
+  out.push({
+    name: "a window is three columns spliced on the node the reader clicked, its centre alone in the middle",
+    ok: outcome === "drew" && JSON.stringify(tiers) === "[0,1,2]" &&
+      JSON.stringify(centreColumn) === JSON.stringify([CENTRE]) &&
+      keptColumn.length === kept.length && freshColumn.length === 9 &&
+      toGroups.length === kept.length && fromLines.length === 9 &&
+      JSON.stringify(placed) === JSON.stringify(WINDOW_STEPS[0].tiers),
+    detail: outcome === "drew"
+      ? `tiers ${JSON.stringify(tiers)} drawn left to right as ${JSON.stringify(placed)}; ` +
+        `centre column ${JSON.stringify(centreColumn)}; kept column ${keptColumn.length} ` +
+        `node(s) taking ${toGroups.length} ribbon(s) from the centre; opened column ` +
+        `${freshColumn.length} node(s) sending ${fromLines.length} into it`
+      : `the category would not open: ${outcome}`,
+  });
+
+  // THE KEPT FLANK'S RECORDS ARE THE SPINE'S, WHICH IS WHAT PROVES THE SOURCE.
+  // Both committed documents carry fund-group/general and print the same label
+  // for it, so opened() relabels the SPINE's copy -- a flank read off the step
+  // document would name it "General Fund" and this would say so. The figures
+  // are the spine's cells to the cent, which no filter of fund-flows produces.
+  const labels = new Map(drawn.nodes.map((n) => [n.id, n.label]));
+  // THE SPINE AS THE PAGE HOLDS IT, which is the fixture's relabelled copy and
+  // not goldenGraph()'s: opened() renames exactly the two ids both documents
+  // print the same words for, so "off the chart on screen" and "off the file"
+  // give different answers here and this can tell them apart.
+  const onScreen = app.docAt(0);
+  const spineLabels = new Map(onScreen.nodes.map((n) => [n.id, n.label]));
+  const stepLabels = new Map(goldenFundFlows().nodes.map((n) => [n.id, n.label]));
+  const named = keptColumn.concat([CENTRE]);
+  const sameLabels = named.every((id) => labels.get(id) === spineLabels.get(id));
+  const sameValues = kept.every((l) => {
+    const drew = toGroups.find((d) => d.target === l.target);
+    return Boolean(drew) && drew.value_cents === l.value_cents;
+  });
+  // AND THE TWO SOURCES DISAGREE, or the arm above is green either way.
+  const tellsApart = named.filter((id) => spineLabels.get(id) !== stepLabels.get(id));
+  out.push({
+    name: "the kept flank and the centre come off the chart on screen, in its words and at its figures",
+    ok: outcome === "drew" && sameLabels && sameValues && tellsApart.length === 2,
+    detail: outcome === "drew"
+      ? `centre drawn as "${labels.get(CENTRE)}" against the step document's ` +
+        `"${stepLabels.get(CENTRE)}"; kept column ` +
+        `${JSON.stringify(keptColumn.map((id) => labels.get(id)))} at the spine's own cells; ` +
+        `${tellsApart.length} of ${named.length} drawn marks are named differently by the ` +
+        `two documents, so the source is distinguishable`
+      : `the category would not open: ${outcome}`,
+  });
+
+  // BOTH SIDES OF isCarried IN ONE CHECK, because the wrong simplification
+  // passes half of it. A kept-flank fund group is carried in exactly the sense
+  // carried_from records -- its figure and its caveats are the chart above's --
+  // AND MUST OPEN, which is the whole feature. A residual's declared endpoint
+  // is carried too and must NOT, being a flow's end rather than a container.
+  // "carried => not drillable" draws the window and refuses every click in it.
+  const group = drawn.nodes.find((n) => n.id === "fund-group/general");
+  const { app: chained } = await opened();
+  await at(chained, "fund-group/general");
+  const endpoint = chained.projection.nodes.find(
+    (n) => n.carried_from && chained.isCarried(n.id) && !chained.isResidual(n.id));
+  out.push({
+    name: "a kept flank is carried and opens; a residual's declared endpoint is carried and does not",
+    ok: Boolean(group) && group.carried_from === "sankey" && !app.isCarried(group.id) &&
+      app.drillable(group) &&
+      Boolean(endpoint) && !chained.drillable(endpoint) && chained.isCarried(endpoint.id),
+    detail: (group
+      ? `${group.id} carried from "${group.carried_from}", isCarried ` +
+        `${app.isCarried(group.id)}, drillable ${app.drillable(group)}`
+      : "no fund group was drawn in the window, so this asserts nothing") + "; " +
+      (endpoint
+        ? `${endpoint.id} carried from "${endpoint.carried_from}", isCarried ` +
+          `${chained.isCarried(endpoint.id)}, drillable ${chained.drillable(endpoint)}`
+        : "no carried endpoint was drawn on the opened group, so half of this asserts nothing"),
+  });
+
+  // A WINDOW CHAINS, AND COMES BACK. The kept flank is a filter of the chart
+  // that was ON SCREEN, and that chart is gone by the time Escape reshapes the
+  // rung -- so the rung records it. Opening the group and popping back has to
+  // land on the same window, mark for mark, or the flank is being recomputed
+  // from whatever happens to be drawn.
+  const before = JSON.stringify(drawn.nodes.map((n) => n.id + "@" + n.tier)) +
+    JSON.stringify(drawn.links.map((l) => l.source + ">" + l.target + "=" + l.value_cents));
+  const deeper = await openInto(app, "fund-group/general");
+  const deepTiers = deeper === "drew"
+    ? [...new Set(app.projection.nodes.map((n) => n.tier))].sort((a, b) => a - b) : [];
+  app.drillUp(1);
+  await settle();
+  const after = JSON.stringify(app.projection.nodes.map((n) => n.id + "@" + n.tier)) +
+    JSON.stringify(app.projection.links.map((l) => l.source + ">" + l.target + "=" + l.value_cents));
+  out.push({
+    name: "a window's kept flank survives being drilled through and popped back to",
+    ok: deeper === "drew" && JSON.stringify(deepTiers) === "[0,3,4]" &&
+      app.drilled.length === 1 && after === before,
+    detail: `the kept General Fund opened to "${deeper}" at tiers ${JSON.stringify(deepTiers)}; ` +
+      `popping back left ${app.drilled.length} rung drawing a chart that is ` +
+      `${after === before ? "identical to" : "DIFFERENT from"} the one it was opened from`,
+  });
+
+  // THE STEM IS RESOLVED AGAINST THE STACK, which is what makes a carried mark
+  // deeper than one rung resolvable at all. docAt(0) answers "the spine" for
+  // every mark on the page, and every window carries a flank, so a chain two
+  // deep has carried marks whose chart above is not the spine.
+  await at(app, CENTRE, "fund-group/general");
+  const depths = {
+    spine: app.depthOfDocument("sankey"),
+    step: app.depthOfDocument("fund-flows"),
+    absent: app.depthOfDocument("no-such-document"),
+  };
+  out.push({
+    name: "a carried mark's document is found by the stem it records, at the depth that document is on the stack",
+    ok: app.drilled.length === 2 && depths.spine === 0 && depths.step === 2 &&
+      depths.absent === -1 &&
+      app.carriedSource("sankey").projection === "sankey" &&
+      app.carriedSource("fund-flows").projection === "fund-flows" &&
+      app.carriedSource("no-such-document") === null &&
+      app.caveatHref(SPINE_CAVEATS[0], "no-such-document") === "" &&
+      app.caveatHref(SPINE_CAVEATS[0], "sankey") ===
+        `caveats.html#caveat-sankey--${SPINE_CAVEATS[0]}`,
+    detail: `two rungs deep the stack answers sankey at depth ${depths.spine}, fund-flows at ` +
+      `${depths.step} and an unknown stem at ${depths.absent}; the spine's caveat anchors to ` +
+      `"${app.caveatHref(SPINE_CAVEATS[0], "sankey")}" and an unknown stem to ` +
+      `"${app.caveatHref(SPINE_CAVEATS[0], "no-such-document")}" rather than to the year's`,
+  });
+
+  // FAIL CLOSED ON A DECLARATION THAT IS NOT A WINDOW. Every one of these is
+  // refused by export.validateSteps before it could ship, and the client is
+  // handed a config rather than a View: a window drawn the wrong way round
+  // lays out and means something else, which is the one failure a reader
+  // cannot see. The message names the document and says what a window is.
+  const rung = { id: CENTRE, doc: goldenFundFlows(), step: WINDOW_STEPS[0],
+    chart: goldenGraph() };
+  const refusedBy = (step, chart) => {
+    try {
+      app.windowFor(chart === undefined ? goldenGraph() : chart, goldenFundFlows(),
+        Object.assign({}, rung, { step: Object.assign({}, WINDOW_STEPS[0], step) }));
+      return "";
+    } catch (e) {
+      return String(e.message);
+    }
+  };
+  const bad = [
+    ["no chart on screen to keep a flank of", {}, null],
+    ["two columns", { tiers: [0, 2] }, undefined],
+    ["the centre is not the opened tier", { tiers: [1, 2, 0] }, undefined],
+    ["the kept tier is in the middle", { keep: [0], tiers: [1, 0, 2] }, undefined],
+    ["two kept flanks", { keep: [2, 1] }, undefined],
+  ].map(([why, step, chart]) => ({ why, said: refusedBy(step, chart) }));
+  out.push({
+    name: "a declaration that is not a window is refused by name rather than drawn",
+    ok: bad.every((b) => b.said.includes("which is not a window")),
+    detail: bad.map((b) => `${b.why}: ${b.said ? "refused" : "DREW ANYWAY"}`).join("; "),
+  });
+
+  return out;
+}
+
+/**
+ * A chart whose columns are declared in an order a sort by tier disagrees
+ * with, and whose ribbons are partitions rather than flows.
+ *
+ * BOTH SHAPES ARE THE WINDOW'S AND NEITHER IS ON THE CORPUS YET. {2,5,4} is
+ * the object-category window's column order -- fund groups, the category they
+ * pay for, the divisions that spend it -- and its ribbons are Budget Book
+ * pp.85-125's one matrix read along a second axis. Written here because the
+ * shaping and the wording ship before the projection that produces them, and
+ * a class nothing renders is a class nothing can see go wrong.
+ *
+ * @param {any[]} steps
+ */
+function crossTabProbe(steps) {
+  const node = (id, tier, parent, label) =>
+    ({ id, label, tier, parent, constraint_tier: "", role: "", derived: false,
+      rationale: "", source_note: "" });
+  const link = (a, b, v) =>
+    ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
+      fact_ids: ["f1"], locators: [], derived: false, partition: true });
+  const doc = {
+    schema_version: 1, projection: "probe",
+    metadata: { sources: [], caveats: [], counts: { facts: 1, nodes: 3, links: 2 } },
+    nodes: [
+      node("fund-group/general", 2, "", "General Fund"),
+      node("expenditure/wages", 5, "", "Wages & Benefits"),
+      node("dept/patrol", 4, "", "Patrol"),
+    ],
+    links: [link("fund-group/general", "expenditure/wages", 100),
+      link("expenditure/wages", "dept/patrol", 100)],
+  };
+  return loadApp({
+    fetch: plannedFetch({ "data/probe.json": { doc } }),
+    config: {
+      schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
+      render_tiers: [2, 5, 4],
+      steps,
+      years: [{
+        year: 2026, label: "FY", stem: "probe", path: "data/probe.json", basis: "adopted",
+        hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
+        counts: { facts: 1, nodes: 3, links: 2 }, chart_title: "t",
+      }],
+      docs: {},
+    },
+  });
+}
+
+/** Opens the probe through main() and hands back the app and its table body. */
+async function drawnProbe(steps) {
+  const app = crossTabProbe(steps);
+  const body = app.dom.document.node();
+  app.dom.document.getElementById("flow-table").selectable = { tbody: body };
+  app.dom.document.plant("main", app.dom.document.node());
+  await settle();
+  return { app, body };
+}
+
+/**
+ * The columns a reader is told to click, and the words a partition ribbon
+ * carries.
+ */
+async function columnAndPartitionChecks() {
+  const out = [];
+  const step = (key, from, tiers) =>
+    ({ key, after: [""], from, tiers, back: "Back", tail: "things" });
+
+  // ONE OPENABLE COLUMN, AND IT IS THE ONE THE TWO ORDERS DISAGREE ABOUT.
+  // Declared {2,5,4}, tier 4 is the LAST column; sorted ascending it is the
+  // MIDDLE one. With every column openable the two orders produce the same
+  // three words and the check would pass under either, which is why exactly
+  // one opens here.
+  const { app: one } = await drawnProbe([step("d", 4, [4, 5])]);
+  const declared = one.openableColumns();
+  out.push({
+    name: "the openable column is named by the order the page declares, not by tier number",
+    ok: JSON.stringify(declared) === JSON.stringify(["right-hand"]),
+    detail: `tiers [2,5,4] declared, tier 4 opens, and the hint calls it ` +
+      `${JSON.stringify(declared)} -- sorted ascending the same tier is the middle column`,
+  });
+
+  // THREE COLUMNS READ AS A LIST. `join(" or ")` gives "the left-hand or
+  // middle or right-hand column", which is a sentence nobody writes; the spine
+  // reaches three the day its right-hand column opens.
+  const { app: three } = await drawnProbe(
+    [step("a", 2, [2, 5]), step("b", 5, [5, 4]), step("c", 4, [4, 5])]);
+  const hint = three.maybeEl("chart-hint").textContent;
+  out.push({
+    name: "three openable columns are joined as a list, and joinOr is that rule at every length",
+    ok: hint.includes("Click a node in the left-hand, middle or right-hand column") &&
+      three.joinOr([]) === "" && three.joinOr(["a"]) === "a" &&
+      three.joinOr(["a", "b"]) === "a or b" &&
+      three.joinOr(["a", "b", "c"]) === "a, b or c",
+    detail: `hint "${hint}"; joinOr over one, two and three reads "${three.joinOr(["a"])}", ` +
+      `"${three.joinOr(["a", "b"])}", "${three.joinOr(["a", "b", "c"])}"`,
+  });
+
+  // THE CROSS-TAB SENTENCE, IN ALL FOUR PLACES ONE MARK CAN CARRY IT, and the
+  // same sentence in each: the class the stylesheet paints, the label a screen
+  // reader hears for the ribbon and for a node whose every ribbon is one, and
+  // the flow table's own column, which is where a reader who cannot use the
+  // chart at all reads it.
+  const { app, body } = await drawnProbe([step("d", 4, [4, 5])]);
+  const laid = app.layOut(app.projection);
+  const ribbon = laid.links[0];
+  const category = laid.nodes.find((n) => n.id === "expenditure/wages");
+  const cell = body.children.length ? body.children[0].children[4].textContent : "";
+  out.push({
+    name: "a partition ribbon says it is a cross-tab in its class, its two labels and the flow table",
+    ok: app.linkClass(ribbon).split(" ").includes("partition") &&
+      app.linkDescription(ribbon).includes(app.PARTITION_NOTE) &&
+      app.isPartitionNode(category) &&
+      app.nodeDescription(category).includes(app.PARTITION_NOTE) &&
+      cell === app.PARTITION_NOTE &&
+      !app.linkClass(ribbon).split(" ").includes("derived"),
+    detail: `class "${app.linkClass(ribbon)}"; ribbon label ends ` +
+      `"${app.linkDescription(ribbon)}"; the category's label carries the sentence ` +
+      `${app.nodeDescription(category).includes(app.PARTITION_NOTE)}; the flow table's ` +
+      `provenance column reads "${cell}" where a plain published ribbon reads "printed"`,
+  });
+
+  return out;
+}
+
+/**
+ * A window whose kept flank is a node the step's document has never heard of.
+ *
+ * THE CASE THAT DECIDES WHERE drillDown LOOKS THE NODE UP. A departmentwide
+ * document has no fund axis, so an object category's window keeps fund groups
+ * drawn from the spine in a chart whose own file carries none -- and the step
+ * that opens one of them draws a THIRD document. Asked of the rung's file, that
+ * fund group is a node the document does not carry and the click returns FAILED
+ * with nothing said; asked of the chart on screen, it is the mark the reader
+ * activated and it opens. Both documents here are three nodes wide because the
+ * shape is the subject, not the figures.
+ */
+async function foreignFlankProbe() {
+  const node = (id, tier, parent, label) =>
+    ({ id, label, tier, parent, constraint_tier: "", role: "", derived: false,
+      rationale: "", source_note: "" });
+  const link = (a, b, v) =>
+    ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
+      fact_ids: ["f"], locators: [], derived: false });
+  const doc = (stem, nodes, links) =>
+    ({ schema_version: 1, projection: stem,
+      metadata: { sources: [], caveats: [],
+        counts: { facts: 1, nodes: nodes.length, links: links.length } },
+      nodes, links });
+  // The spine: a category paying a group.
+  const spine = doc("spine", [node("cat", 0, "", "Category"), node("grp", 2, "", "Group")],
+    [link("cat", "grp", 100)]);
+  // What the window opens INTO, which carries the category and no group at all.
+  const lines = doc("lines", [node("line", 1, "cat", "A line"), node("cat", 0, "", "Category")],
+    [link("line", "cat", 100)]);
+  // What the kept group opens into: a third document, reached from a chart
+  // whose own file does not carry the node that was clicked.
+  const funds = doc("funds", [node("grp", 2, "", "Group"), node("fund", 3, "grp", "A fund")],
+    [link("grp", "fund", 100)]);
+  const app = loadApp({
+    fetch: plannedFetch({
+      "data/spine.json": { doc: spine },
+      "data/lines.json": { doc: lines },
+      "data/funds.json": { doc: funds },
+    }),
+    config: {
+      schema_version: 1, primary: "spine",
+      projections: { spine: "data/spine.json", lines: "data/lines.json", funds: "data/funds.json" },
+      render_tiers: [0, 2],
+      steps: [
+        { key: "win", after: [""], from: 0, projection: "lines", keep: [2], tiers: [1, 0, 2],
+          back: "Back", tail: "lines" },
+        { key: "grp", after: ["win"], from: 2, projection: "funds", tiers: [2, 3],
+          back: "Back", tail: "funds" },
+      ],
+      years: [{
+        year: 2026, label: "FY", stem: "spine", path: "data/spine.json", basis: "adopted",
+        hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
+        counts: { facts: 1, nodes: 2, links: 1 }, chart_title: "t",
+        steps: [{ stem: "lines", path: "data/lines.json", caveats: [] },
+          { stem: "funds", path: "data/funds.json", caveats: [] }],
+      }],
+      docs: {},
+    },
+  });
+  app.dom.document.getElementById("flow-table").selectable = { tbody: app.dom.document.node() };
+  app.dom.document.plant("main", app.dom.document.node());
+  await settle();
+
+  const opened = await openInto(app, "cat");
+  const drawn = app.projection.nodes.map((n) => n.id).sort();
+  const inRungFile = app.docAt(1).nodes.some((n) => n.id === "grp");
+  const group = app.projection.nodes.find((n) => n.id === "grp");
+  // ASKED WHILE THE WINDOW IS STILL ON SCREEN. drillable is a question about
+  // the chart the mark is drawn on, and the answer changes the moment the mark
+  // has been opened.
+  const offers = Boolean(group) && app.drillable(group);
+  const deeper = await openInto(app, "grp");
+  const deepIDs = app.projection.nodes.map((n) => n.id).sort();
+  return [{
+    name: "a kept flank the step's own document does not carry is still the mark the reader clicked, and still opens",
+    ok: opened === "drew" && JSON.stringify(drawn) === '["cat","grp","line"]' &&
+      !inRungFile && offers &&
+      deeper === "drew" && JSON.stringify(deepIDs) === '["fund","grp"]' &&
+      app.drilled.length === 2,
+    detail: opened === "drew"
+      ? `the window drew ${JSON.stringify(drawn)} from a step document that ` +
+        `${inRungFile ? "DOES carry" : "does not carry"} the kept group, which the window ` +
+        `${offers ? "offers to open" : "does NOT offer to open"}; clicking it came to ` +
+        `"${deeper}" drawing ${JSON.stringify(deepIDs)} of a third document`
+      : `the window would not open: ${opened}`,
   }];
 }
 

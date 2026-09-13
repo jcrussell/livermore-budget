@@ -1257,9 +1257,17 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		t.Errorf("the spine's steps (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGE "+
 			"carries a copy of this and measures against it", diff)
 	}
-	if len(spine.RenderTiers) != 0 || spine.Root != "" {
-		t.Errorf("the spine declares render tiers %v and root %q; it is drawn whole, "+
-			"and its template publishes neither", spine.RenderTiers, spine.Root)
+	// THE COLUMN ORDER IS PINNED AS THE STEPS ARE, and by hand, because it is
+	// the declaration every kept flank is placed against: a step keeping tier
+	// 2 beside tier 0 is adjacent in {0,2,5} and not in {0,5,2}, and nothing
+	// else in the tree would notice the list being reordered. The spine draws
+	// a chart and opens nodes on it, so View.validate requires the list; the
+	// root stays empty because index.html draws its whole document.
+	if diff := cmp.Diff([]int{0, 2, 5}, spine.RenderTiers); diff != "" {
+		t.Errorf("the spine's render tiers (-want +got):\n%s", diff)
+	}
+	if spine.Root != "" {
+		t.Errorf("the spine declares root %q; it draws its whole document", spine.Root)
 	}
 }
 
