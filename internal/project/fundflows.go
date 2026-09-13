@@ -125,10 +125,15 @@ type FundFlowsCounts struct {
 	// exactly those facts -- measured, 2 in FY2024 and 5 in FY2026 -- and the
 	// identity would not close.
 	FactsUncited int `json:"facts_uncited"`
-	// FactsCitedTwice is how many facts are behind two links: a revenue fact
-	// cited by its own line->fund flow AND by the rollup of that line into its
-	// category, and an expenditure fact cited by its own department->object link
-	// AND by the fund->department link that sums it.
+	// FactsCitedTwice is how many facts are behind MORE THAN ONE link: a
+	// revenue fact cited by its own line->fund flow, by the rollup of that line
+	// into its category and by the rollup of its fund under the group it is in,
+	// and an expenditure fact cited by its own department->object link AND by
+	// the fund->department link that sums it.
+	//
+	// A SET AND NOT A TALLY, which the name understates: a revenue row behind a
+	// flow is now cited three times and counts once here, because what the
+	// number is for is warning that `links` is not a partition.
 	//
 	// PUBLISHED AS A NUMBER BECAUSE `links` IS NOT A PARTITION OF `facts_cited`
 	// HERE, which the spine's shape would lead a reader to assume. Summing every
@@ -188,6 +193,8 @@ type FundFlowsMetadata struct {
 //	          |  that row's own cells
 //	          |  one link per netted (kind, line, fund) cell, and one per
 //	          |  (transfers/in, fund) cell straight from tier 0
+//	tier 2  fund-group/<type>
+//	          |  one link per (fund, kind) INTO the fund, that fund's own inflow
 //	tier 3  fund/<n>            parent = fund-group/<type> from data/funds.yaml
 //	          |  one link per (fund, division) -- the SUM over its object rows
 //	tier 4  dept/<division>     parent = fund/100
@@ -209,11 +216,16 @@ type FundFlowsMetadata struct {
 // THE (1,0) ROLLUP IS THAT SAME ARGUMENT ON THE REVENUE SIDE, one rung earlier.
 // A category is the SOURCE of every other link it touches, so a view that puts
 // it between its own lines and the funds has nothing flowing into it and draws
-// it at zero. The rollup is what a chart drawing tiers 1/0/2 folds; every tier
-// set this repository draws today drops it, which is the lane's own proof rather
-// than its hope.
+// it at zero. The rollup is what a chart drawing tiers 1/0/2 folds.
 //
-// The cost of both is that a fact is cited twice, which
+// THE (2,3) ROLLUP IS THE THIRD APPLICATION, and it is what lets a fund group be
+// drawn BETWEEN the revenue categories and its own funds: the categories reach
+// the funds directly at (0,3), so a group in the middle of {0,2,3} has nothing
+// entering or leaving it and draws at zero. It takes every cell including a
+// transfer's, because a fund takes its transfers in as it takes its taxes and a
+// group's inflow that left them out would not be the cell p0067 prints.
+//
+// The cost of all three is that a fact is cited more than once, which
 // FundFlowsCounts.FactsCitedTwice publishes as a number.
 type fundFlows struct {
 	// Labels supplies the city's words and the fund hierarchy. Unlike Sankey's,
@@ -316,9 +328,11 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	zero := map[string]bool{}
 	twice := map[string]bool{}
 
-	// Tier 0 -> 3, one link per revenue cell, and tier 1 -> 0, one link per
-	// (line, kind) carrying that line's own sum.
+	// Tier 0 -> 3, one link per revenue cell; tier 1 -> 0, one link per
+	// (line, kind) carrying that line's own sum; and tier 2 -> 3, one link per
+	// (fund, kind) carrying the fund's own inflow.
 	perLine := map[rollupKey]*lineRollup{}
+	perFund := map[fundRollupKey]*cellSum{}
 	for _, k := range sortedRevKeys(rev) {
 		c := rev[k]
 		src, srcErr := f.revenueEndpoint(k)
@@ -347,6 +361,21 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 			Kind: kind, FactIDs: c.factIDs,
 			Locators: c.locs.sources(),
 		})
+		// ACCUMULATED OVER EVERY CELL INCLUDING A TRANSFER'S, which is where
+		// the (2,3) rollup parts company with the (1,0) one below it. A line is
+		// the grain a transfer has no row at, so a transfer rolls up into no
+		// category; a FUND takes its transfers in exactly as it takes its taxes,
+		// and a group's inflow that left them out would fall short of the cell
+		// p0067 prints for it by the transfers alone.
+		fk := fundRollupKey{fund: k.fund, kind: kind}
+		fr := perFund[fk]
+		if fr == nil {
+			fr = &cellSum{}
+			perFund[fk] = fr
+		}
+		fr.cents += c.cents
+		fr.factIDs = append(fr.factIDs, c.factIDs...)
+		fr.locs.merge(&c.locs)
 		// A TRANSFER IS NOT A LINE OF ANYTHING. Its source is the tier-0 flow
 		// endpoint, which is nobody's child, so there is nothing to roll it
 		// into.
@@ -394,6 +423,47 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		}
 		links = append(links, Link{
 			Source: r.src.id, Target: r.src.parent, ValueCents: r.cents,
+			Kind: k.kind, FactIDs: r.factIDs,
+			Locators: r.locs.sources(),
+		})
+	}
+
+	// Tier 2 -> 3: each fund's own inflow, under the group data/funds.yaml puts
+	// it in.
+	for _, k := range sortedFundRollupKeys(perFund) {
+		r := perFund[k]
+		// A FUND WHOSE CELLS CANCEL DRAWS NOTHING, the rule the two rollups
+		// above and beside this one keep: its cells are cited by their own
+		// links already, so nothing goes uncited here.
+		if r.cents == 0 {
+			continue
+		}
+		dst, dstErr := f.fundEndpoint(k.fund)
+		if dstErr != nil {
+			return nil, dstErr
+		}
+		sort.Strings(r.factIDs)
+		f.addFundFlowNode(nodes, dst)
+		// THE GROUP IS READ OFF THE NODE THE FUND WAS ADDED AS, so that which
+		// group a fund belongs to is said in addFundFlowNode and nowhere else.
+		// Empty is refused rather than published as a link from "": a fund the
+		// registry does not place would otherwise draw a ribbon out of a node
+		// no document carries.
+		group := nodes[dst.id].Parent
+		if group == "" {
+			return nil, cmdutil.WithHint(
+				fmt.Errorf("fund-flows: fund %d is in no fund group", k.fund),
+				"the tier-2 link that lets a group be drawn between the categories and "+
+					"its funds runs from that group, so a fund with none has no source end")
+		}
+		for _, id := range r.factIDs {
+			if cited[id] {
+				twice[id] = true
+			}
+			cited[id] = true
+		}
+		links = append(links, Link{
+			Source: group, Target: dst.id, ValueCents: r.cents,
 			Kind: k.kind, FactIDs: r.factIDs,
 			Locators: r.locs.sources(),
 		})
@@ -564,17 +634,19 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		{
 			ID:      "mixed-grain-double-counts",
 			Summary: "This document holds the same money at two grains, so summing every link double-counts.",
-			// TWO OVERLAPS AND NOT ONE. This named the expenditure side alone
-			// while the count beneath it had already grown the revenue side's:
-			// a revenue row is behind its own flow into a fund AND the rollup
-			// that adds its row back into the category it is printed under.
-			// Naming one overlap under a number that counts two invites the
-			// reader to look for the difference on the spending side, where it
-			// is not.
+			// THREE OVERLAPS AND NOT TWO, AND THE COUNT IS OF FACTS RATHER
+			// THAN OF LINKS. This named the expenditure side alone while the
+			// count beneath it had already grown the revenue side's; a revenue
+			// row is now behind three links -- its own flow into a fund, the
+			// rollup of its row into the category it is printed under, and the
+			// rollup of its fund under the group data/funds.yaml puts it in.
+			// Naming fewer overlaps than the number counts invites the reader
+			// to look for the difference on the spending side, where it is not.
 			Text: fmt.Sprintf("This document holds the same money at more than one grain, so summing "+
-				"every link double-counts: %d fact(s) are behind two links. A revenue row is "+
-				"behind both its own flow into a fund and the rollup of its line into the "+
-				"category it is printed under; an expenditure row is behind both its "+
+				"every link double-counts: %d fact(s) are behind more than one link. A revenue "+
+				"row is behind its own flow into a fund, the rollup of its line into the "+
+				"category it is printed under, and the rollup of its fund under the group that "+
+				"fund belongs to; an expenditure row is behind both its "+
 				"department's object rows and the fund-to-department link that totals them. "+
 				"Fold within one tier pair, never across the whole graph. It publishes no "+
 				"headline for this reason.",
@@ -760,6 +832,18 @@ type expKey struct {
 // site/app.js's foldDocument both allow exactly when the kinds differ.
 type rollupKey struct {
 	line string
+	kind LinkKind
+}
+
+// fundRollupKey addresses a fund's inflow rolled up under its group: one fund,
+// under one link kind.
+//
+// PER KIND for rollupKey's reason, and it bites harder here: the five Internal
+// Service Funds take internal service charges and external revenue on the same
+// pair of nodes, and a transfer in is a third kind on a pair that also carries
+// the first two. One link per pair would have to publish one of them for all.
+type fundRollupKey struct {
+	fund int
 	kind LinkKind
 }
 
@@ -979,6 +1063,13 @@ func (*fundFlows) revenueEndpoint(k revKey) (endpoint, error) {
 }
 
 // fundEndpoint is a tier-3 fund node.
+//
+// THE GENERAL FUND IS A ROLE OF ITS OWN, and it is a claim about the city's
+// chart of accounts rather than about this data: fund 100 is the General Fund
+// whatever any column holds, which is why the number is a constant here and in
+// the tier-3-to-4 link that is also only ever drawn from it. A reader of the
+// published node learns which fund pp.167-170 are the schedule OF, which no
+// other field of the document says.
 func (f *fundFlows) fundEndpoint(number int) (endpoint, error) {
 	if _, ok := f.Labels.FundType(number); !ok {
 		return endpoint{}, cmdutil.WithHint(
@@ -986,7 +1077,11 @@ func (f *fundFlows) fundEndpoint(number int) (endpoint, error) {
 			"a fund node's parent is its type, so a fund the registry does not list "+
 				"cannot be placed in the hierarchy")
 	}
-	return endpoint{id: prefixFund + strconv.Itoa(number), tier: tierFund, role: roleFund}, nil
+	role := roleFund
+	if number == generalFund {
+		role = roleGeneralFund
+	}
+	return endpoint{id: prefixFund + strconv.Itoa(number), tier: tierFund, role: role}, nil
 }
 
 func (*fundFlows) divisionEndpoint(division string) endpoint {
@@ -1147,6 +1242,20 @@ func sortedRollupKeys(m map[rollupKey]*lineRollup) []rollupKey {
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].line != out[j].line {
 			return out[i].line < out[j].line
+		}
+		return out[i].kind < out[j].kind
+	})
+	return out
+}
+
+func sortedFundRollupKeys(m map[fundRollupKey]*cellSum) []fundRollupKey {
+	out := make([]fundRollupKey, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].fund != out[j].fund {
+			return out[i].fund < out[j].fund
 		}
 		return out[i].kind < out[j].kind
 	})

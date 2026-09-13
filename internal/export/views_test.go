@@ -970,6 +970,21 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a window keeping a tier that is not beside the opened one", []export.View{ok,
 			windowView(func(v *export.View) { v.RenderTiers = []int{0, 1, 2} })},
 			"a window slides by one column"},
+		// A STEP OPENING THE TIER ITS PARENT KEPT. The adjacency arms above
+		// are all satisfied -- this is a well-formed window hanging off a
+		// well-formed window -- and the chart it draws is still wrong, because
+		// a kept flank is drawn at its share of the centre and the step would
+		// send that node's whole decomposition out the other side. Measured on
+		// the committed corpus at 157,797,110 of unaccounted node height; the
+		// arm is what keeps that declaration undeclarable rather than
+		// remembered.
+		{"a step opening the tier the chart above kept", []export.View{ok,
+			windowView(func(v *export.View) {
+				v.Steps = append(v.Steps, export.DrillStep{Key: "cats", After: []string{"groups"},
+					From: 0, Keep: []int{2}, Tiers: []int{1, 0, 2}, Back: "All categories",
+					Tail: "lines", Description: "Opened off the kept flank."})
+			})},
+			"which KEEPS that tier"},
 		{"a window keeping its flank on the side the reader did not see it on",
 			[]export.View{ok, windowView(func(v *export.View) {
 				v.Steps[0].Tiers = []int{3, 2, 0}

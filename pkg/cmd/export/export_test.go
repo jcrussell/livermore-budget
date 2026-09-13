@@ -1212,33 +1212,58 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:            2,
 			Projection:      project.FundFlowsProjection,
 			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-			Tiers:           []int{0, 3, 4},
-			Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
+			Keep:            []int{0},
+			Tiers:           []int{0, 2, 3},
+			Caps:            []export.TierCap{{Tier: 3, Cap: 8}},
 			Back:            "All fund groups",
 			Tail:            "funds",
 			// READ OFF THE CHECK, NOT SPELLED, because the check is the
 			// declaration: a literal here would be the second copy the
 			// declaration exists to prevent, kept green by nothing.
 			Residual: check.ResidualNodes(),
-			Description: "The revenue categories on the left flow into this fund group's own " +
-				"funds, rescaled to the group's total \u2014 the citywide chart cannot show " +
-				"them, because the General Fund alone is half the fund column and the " +
-				"smallest fund is less than a thirty-thousandth of it. Only the General Fund continues " +
-				"into the divisions that spend it: Budget Book pp.167-170 decompose that " +
-				"fund alone, so every other group's money ends at its funds \u2014 not " +
-				"missing, but not broken down in any published schedule.",
+			Description: "The revenue categories on the left are the citywide chart's own " +
+				"cells; this fund group is the mark in the middle, and its own funds are " +
+				"on the right, rescaled to the group's total \u2014 the citywide chart " +
+				"cannot show them, because the General Fund alone is half the fund column " +
+				"and the smallest fund is less than a thirty-thousandth of it. Money " +
+				"Budget Book pp.127-140 print for no fund at all passes the group's mark " +
+				"to a node of its own beside the funds, so what the group takes in here " +
+				"is what its funds take in. Only the General Fund continues into the " +
+				"divisions that spend it: Budget Book pp.167-170 decompose that fund " +
+				"alone, so every other fund ends the drill \u2014 not missing, but not " +
+				"broken down in any published schedule.",
+		},
+		{
+			Key:   "fund",
+			After: []string{"fund-group"},
+			From:  3,
+			Role:  "general_fund",
+			Keep:  []int{2},
+			Tiers: []int{2, 3, 4},
+			Caps:  []export.TierCap{{Tier: 4, Cap: 24}},
+			Back:  "All funds",
+			Tail:  "divisions",
+			Description: "The fund group this fund belongs to is on the left and the " +
+				"divisions that spend it are on the right \u2014 that fund's rows of " +
+				"Budget Book pp.167-170, rescaled to its total. The two sides of the " +
+				"fund in the middle are not one figure: what it takes in is its revenue " +
+				"and what leaves it here is what its divisions spend, and the difference " +
+				"is the money the city transfers out of the fund and adds to its " +
+				"reserves, which pp.66-67 print for the fund group as a whole and no " +
+				"published schedule breaks down by fund.",
 		},
 		{
 			Key:   "division",
-			After: []string{"fund-group"},
+			After: []string{"fund"},
 			From:  4,
-			Tiers: []int{4, 5},
+			Keep:  []int{3},
+			Tiers: []int{3, 4, 5},
 			Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
 			Back:  "All divisions",
 			Tail:  "categories",
-			Description: "The division on the left flows into the object categories it " +
-				"spends on, on the right \u2014 that division's cells of Budget Book " +
-				"pp.167-170, rescaled to its total.",
+			Description: "The fund that pays for this division is on the left and the " +
+				"object categories it spends on are on the right \u2014 that division's " +
+				"cells of Budget Book pp.167-170, rescaled to its total.",
 		},
 		{
 			Key:             "revenue-category",
@@ -1278,7 +1303,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			// holds to it.
 			Gaps: check.SpendingGaps(),
 			Description: "The fund groups that pay for this object category are on the " +
-				"left; the divisions that spend it are on the right — Budget Book " +
+				"left; the divisions that spend it are on the right \u2014 Budget Book " +
 				"pp.85-125's rows for this category, every division in the city that " +
 				"has one, rescaled to the category's total. The two columns are read " +
 				"from different schedules, and the right-hand one prints what a " +
@@ -1390,11 +1415,11 @@ func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 			"the object-category step alone", len(noFlows), stepKeys(noFlows))
 	}
 	noSpending := views(result{Projections: without(project.DepartmentSpendingProjection)})[0].Steps
-	if len(noSpending) != 3 || slices.ContainsFunc(noSpending, func(s export.DrillStep) bool {
+	if len(noSpending) != 4 || slices.ContainsFunc(noSpending, func(s export.DrillStep) bool {
 		return s.Key == "object-category"
 	}) {
 		t.Errorf("with no department-spending document built the spine declares %d step(s) "+
-			"(%v), want the three fund-flows steps", len(noSpending), stepKeys(noSpending))
+			"(%v), want the four fund-flows steps", len(noSpending), stepKeys(noSpending))
 	}
 	neither := without(project.FundFlowsProjection, project.DepartmentSpendingProjection)
 	if steps := views(result{Projections: neither})[0].Steps; len(steps) != 0 {

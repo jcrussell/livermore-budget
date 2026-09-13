@@ -267,17 +267,22 @@ each states its own below rather than inheriting the spine's.
 which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
 neither a fund nor a department axis.
 
-**All three of the spine's drawn columns open.** `index.html` declares a tree of
-steps in `views()`, not a chain: the six tier-2 fund groups open into
-`fund-flows` for the same fiscal year and the ten tier-0 revenue categories open
-into a WINDOW of it — the lines that document prints under the category, the
-category itself, and the spine's own fund groups for it — a clicked General Fund
-division opens into its object categories, and the four tier-5 `expenditure/`
-nodes open into `department-spending` — the fund groups that fund the category,
-the category itself, and the divisions that spend it. The two
-tier-0 and three tier-5 nodes that are flow ENDS rather than containers do not
-open, and the `Role` on those two steps is what closes them. What those rungs draw, and how
-the year is joined, is stated in `docs/general-fund-drilldown-contract.md`.
+**All three of the spine's drawn columns open, and every rung is a WINDOW** —
+three columns with the node the reader clicked in the middle. `index.html`
+declares a tree of steps in `views()`, not a chain: the six tier-2 fund groups
+open into `fund-flows` for the same fiscal year, keeping this document's own
+revenue categories on the left and drawing the group's funds on the right; the
+ten tier-0 revenue categories open into a window of the same document — the
+lines it prints under the category, the category itself, and the spine's own
+fund groups for it; and the four tier-5 `expenditure/` nodes open into
+`department-spending` — the fund groups that fund the category, the category
+itself, and the divisions that spend it. From an opened fund group the General
+Fund opens into its divisions and a division into its object categories, three
+rungs deep. The two tier-0 and three tier-5 nodes that are flow ENDS rather than
+containers do not open, and the `Role` on those two steps is what closes them —
+as a third `Role` closes the sixty funds pp.167-170 do not decompose. What those
+rungs draw, and how the year is joined, is stated in
+`docs/general-fund-drilldown-contract.md`.
 Depth 0 is this document drawn whole, unchanged by any of it.
 
 Those counts are per TIER and include the flow endpoints, which is why they are

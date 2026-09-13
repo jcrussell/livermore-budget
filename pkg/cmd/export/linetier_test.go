@@ -69,9 +69,30 @@ func TestTheLineTierFoldsToTheCategoryLinks(t *testing.T) {
 
 	for stem, doc := range docs {
 		t.Run(stem, func(t *testing.T) {
-			folded, err := foldTo(doc, foldToRevenueCategory, foldToFund)
+			folded, unplaceable, err := foldTo(doc, foldToRevenueCategory, foldToFund)
 			if err != nil {
 				t.Fatalf("folding %s to {0,3}: %v", stem, err)
+			}
+			// WHAT THE FOLD IS ALLOWED TO LOSE IS NAMED, PER PAIR. The (2,3)
+			// rollup runs from a parentless tier-2 group, so {0,3} can place
+			// neither it nor any other link out of one; asserting the pairs
+			// rather than a count is what stops a REVENUE link quietly joining
+			// the set the comparison below never sees.
+			gotDropped := make([]string, 0, len(unplaceable))
+			for _, l := range unplaceable {
+				gotDropped = append(gotDropped, l.Source+" -> "+l.Target)
+			}
+			wantDropped := make([]string, 0, len(unplaceable))
+			for _, l := range doc.Links {
+				if strings.HasPrefix(l.Source, "fund-group/") {
+					wantDropped = append(wantDropped, l.Source+" -> "+l.Target)
+				}
+			}
+			sort.Strings(wantDropped)
+			if diff := cmp.Diff(wantDropped, gotDropped); diff != "" {
+				t.Errorf("%s folded to {%d,%d} lost links that are not the group's own "+
+					"rollups (-the document's (2,3) links +what the fold could not place):"+
+					"\n%s", stem, foldToRevenueCategory, foldToFund, diff)
 			}
 			want := netByCategory(facts, doc.Metadata.FiscalYear, doc.Metadata.Basis)
 			if diff := cmp.Diff(want, folded); diff != "" {
@@ -208,18 +229,19 @@ func builtFundFlows(t *testing.T) map[string]*project.FundFlowsDocument {
 // drawn tier, links fold with their ends and merge on the folded pair, and a
 // link whose ends fold together is dropped.
 //
-// IT REFUSES A NODE IT CANNOT PLACE, in the same words and for the same reason
-// the client does: the tier set does not describe this document, and both ways
-// of carrying on -- dropping the node, or keeping one that has no column -- lose
-// a column of the chart in silence.
+// IT RETURNS WHAT IT COULD NOT PLACE RATHER THAN REFUSING IT, and that is
+// stricter than the refusal it replaces rather than weaker. A fund group is
+// parentless at tier 2, so the (2,3) rollup out of one can be placed by no fold
+// of this document to {0,3}; refusing it would make this comparison
+// unstateable, and dropping it in silence would lose a column. Returning it
+// lets the caller name the links a fold is allowed to lose and go red on any
+// other -- which is what the caller does, per pair.
 //
 // IT PLACES THE ENDS OF LINKS AND NOT EVERY NODE, which {0,3} needs and the
-// client's own fold does not: the six fund-group nodes are parentless at tier 2
-// and touch no link at all -- they exist because the hierarchy does -- so a fold
-// that placed them could not be stated at this tier set. site/app.js reaches the
-// same document through filterToNode, which has already dropped them. Every node
-// a link touches is placed, which is what the refusal above is about.
-func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, error) {
+// client's own fold does not. site/app.js reaches the same document through
+// filterToNode, whose quiet branch has already dropped the end this cannot
+// place.
+func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, []project.Link, error) {
 	drawn := map[int]bool{}
 	for _, t := range tiers {
 		drawn[t] = true
@@ -230,10 +252,12 @@ func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, error
 	}
 
 	foldsTo := map[string]string{}
+	placed := map[string]bool{}
 	place := func(id string) error {
-		if _, done := foldsTo[id]; done {
+		if _, done := placed[id]; done {
 			return nil
 		}
+		placed[id] = true
 		at, ok := byID[id]
 		if !ok {
 			return fmt.Errorf("link names %s, which is not a node of this document", id)
@@ -241,20 +265,20 @@ func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, error
 		for hops := 0; !drawn[at.Tier]; hops++ {
 			parent, ok := byID[at.Parent]
 			if !ok || hops > len(doc.Nodes) {
-				return fmt.Errorf("node %s is tier %d and no ancestor of it is a tier "+
-					"this page draws (%v)", id, byID[id].Tier, tiers)
+				return nil
 			}
 			at = parent
 		}
 		foldsTo[id] = at.ID
 		return nil
 	}
+	var unplaceable []project.Link
 	for _, l := range doc.Links {
 		if err := place(l.Source); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := place(l.Target); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
@@ -264,6 +288,10 @@ func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, error
 	pages := map[string]map[string]map[int]bool{}
 	for _, l := range doc.Links {
 		source, target := foldsTo[l.Source], foldsTo[l.Target]
+		if source == "" || target == "" {
+			unplaceable = append(unplaceable, l)
+			continue
+		}
 		if source == target {
 			continue
 		}
@@ -278,7 +306,7 @@ func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, error
 			order = append(order, key)
 		}
 		if at.Kind != l.Kind || at.Derived != l.Derived {
-			return nil, fmt.Errorf("%s -> %s folds together a %s flow and a %s one",
+			return nil, nil, fmt.Errorf("%s -> %s folds together a %s flow and a %s one",
 				source, target, at.Kind, l.Kind)
 		}
 		at.ValueCents += l.ValueCents
@@ -303,7 +331,8 @@ func foldTo(doc *project.FundFlowsDocument, tiers ...int) ([]project.Link, error
 		out = append(out, l)
 	}
 	sortLinksByEnds(out)
-	return out, nil
+	sortLinksByEnds(unplaceable)
+	return out, unplaceable, nil
 }
 
 // netByCategory re-nets the revenue facts of one column at the grain the

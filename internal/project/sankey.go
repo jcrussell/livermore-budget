@@ -67,6 +67,7 @@ const (
 	roleRevenueLine             = "revenue_line"
 	roleFundGroup               = "fund_group"
 	roleFund                    = "fund"
+	roleGeneralFund             = "general_fund"
 	roleDepartment              = "department"
 	roleObjectCategory          = "object_category"
 	roleTransferIn              = "transfer_in"

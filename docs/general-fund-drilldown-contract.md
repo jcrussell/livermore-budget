@@ -49,6 +49,8 @@ tier 1  revenue-line/<line>          parent = revenue/<category>
           |   that printed row's own cells
           |   one link per netted (kind, line, fund) cell, and one per
           |   (transfers/in, fund) cell straight from tier 0
+tier 2  fund-group/<type>
+          |   one link per (fund, kind) INTO the fund, that fund's own inflow
 tier 3  fund/<n>                     parent = fund-group/<type>
           |   one link per (fund, division) — the SUM over its object rows
 tier 4  dept/<division>              parent = fund/100
@@ -92,12 +94,25 @@ kind)` and not by the pair alone.
 **The rollup is drawn in a category's own window and nowhere else.** That
 window is the chart it was published for: `{1,0,2}` puts the category between the
 lines printed under it and the fund groups it reaches, and the rollups are its
-whole left half. Every other tier set drops them, each for its own reason: at
-`{0,3,4}` both ends fold to the category and a link whose ends fold together is
-dropped, and at `{2,5,4}` and `{4,5}` neither end has a column.
-`tools/jscheck/drill.mjs` asserts both halves over every view the page opens
-rather than leaving it to the per-view pins, which cannot tell a rollup that was
-dropped from one that was never published.
+whole left half. Every other tier set drops them, each for its own reason: where
+tier 1 folds to tier 0 both ends fold to the category and a link whose ends fold
+together is dropped, and at `{2,5,4}`, `{2,3,4}` and `{3,4,5}` neither end has a
+column. `tools/jscheck/drill.mjs` asserts both halves over every view the page
+opens rather than leaving it to the per-view pins, which cannot tell a rollup
+that was dropped from one that was never published.
+
+**A fund is rolled up under its group the same way, once per kind.** The `(2,3)`
+link runs from `fund-group/<type>` to `fund/<n>`, carries that fund's whole
+inflow — every cell including a transfer's, unlike the `(1,0)` rollup, because a
+fund takes its transfers in exactly as it takes its taxes — and cites every cell
+behind it. Its reason is the `(1,0)` rollup's one tier further down: the
+categories reach the FUNDS directly at `(0,3)`, so a chart putting a fund group
+between them and its own funds has nothing entering or leaving the group and
+draws it at zero. That chart is the `{0,2,3}` window the spine's middle column
+opens into, and the rollups are its whole right half. Measured over both adopted
+columns, each group's rollups sum to within the declared residual of the cell
+pp.66-67 print for it, and to the cent for the three groups that carry no
+residual.
 
 **A contra row is a negative link on its own line.** pp.127-140 print ERAF and
 RPTTF Reduction in parentheses inside the Property Taxes subtotal, and while the
@@ -173,15 +188,17 @@ zero cells instead would overstate the gap and the identity would not close.
 
 `facts_cited_twice` is published because **`links` is not a partition of
 `facts_cited` in this document**, which the spine's shape would lead a reader to
-assume. **Both sides** now have a summing link above the cell: every expenditure
-fact is behind its own object row and the division total that includes it, and
-every revenue fact behind a flow is behind that flow and its line's rollup into
-the category. **Summing every link's `value_cents` counts both sides' money
-twice over.** Fold within one tier pair; never across the whole graph.
+assume. **Both sides** have a summing link above the cell, and the revenue side
+has two: every expenditure fact is behind its own object row and the division
+total that includes it, and every revenue fact behind a flow is behind that flow,
+its line's rollup into the category and its fund's rollup under the group.
+**Summing every link's `value_cents` counts both sides' money more than twice
+over.** Fold within one tier pair; never across the whole graph. The count is of
+FACTS behind more than one link, so a row behind three counts once.
 
-FY2025-26: `280 = 233 + 47`, with 220 cited twice, over 238 nodes and 346 links.
+FY2025-26: `280 = 233 + 47`, with 228 cited twice, over 238 nodes and 412 links.
 `fund-flows-counts-reconcile` re-derives all six from the published links. The
-220 is 44 expenditure rows plus the 176 revenue rows that earned a flow; the 47
+228 is 44 expenditure rows plus the 184 revenue rows that earned a flow; the 47
 that print a dash are in neither, which is what keeps `facts_uncited` where the
 line tier left it.
 
@@ -243,7 +260,7 @@ documents, so a reader cannot find the two pages disagreeing about it.
 |---|---|---|
 | 0 | 10 revenue categories, each the **target** of its own lines' rollups and the source of nothing, plus `transfers/in`, which is the source of a flow into every fund it reaches | 11 |
 | 1 | printed revenue rows that were not a printed zero | 93 |
-| 2 | fund groups, **all six untouched by any link** | 6 |
+| 2 | fund groups, each the **source** of its own funds' rollups and the target of nothing | 6 |
 | 3 | funds that took in money this column | 61 |
 | 4 | divisions, not departments — a fact's `department` field holds a division slug | 23 |
 | 5 | division x object cells that were not a printed zero | 44 |
@@ -336,7 +353,7 @@ So the client folds. The rule, in full:
   which is what `facts_cited_twice` counts. The `(1,0)` rollups are the same
   case on the revenue side — both ends fold to the category — and the line's own
   flows into the funds carry every fact they cited. Measured on FY2025-26: 233
-  facts cited by 346 links before the fold, 233 by 52 after.
+  facts cited by 412 links before the fold, 233 by 52 after.
 - **A retained node's `parent` is re-pointed at its own folded ancestor**, so
   the folded document satisfies client-side what `node-hierarchy-well-formed`
   asserts of the published one.
@@ -361,12 +378,17 @@ is held by a Go test — that test pins `views()` against a literal in the *test
 file* and reads nothing in `tools/jscheck`, which is how both a reworded
 description (`fisc-vsu8`) and a changed cap went green on both sides at once:
 
+Every rung of that chain is a WINDOW: three columns with the node the reader
+clicked in the middle, one flank kept off the chart they clicked it on and the
+other its own decomposition.
+
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
-| 0 | `sankey` | the spine, whole | a fund group (tier 2) — the next row; or a revenue category (tier 0) — the last row | — |
-| 1 | `fund-flows` | `{0,3,4}` filtered to the opened group: its revenue categories, its funds, and under the General Fund its divisions | a division (tier 4) — the row below | tier 3 at 8, tier 4 at 24 |
-| 2 | `fund-flows` | `{4,5}` filtered to the opened division: its object categories | nothing | tier 5 at 8 |
-| 1 | `fund-flows` | `{1,0,2}`, a WINDOW keeping tier 2 of the chart above: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
+| 0 | `sankey` | the spine, whole | a fund group (tier 2); or a revenue category (tier 0); or an object category (tier 5) | — |
+| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them | the General Fund (tier 3), and no other fund | tier 3 at 8 |
+| 2 | `fund-flows` | `{2,3,4}` keeping tier 2: the group, the opened fund, the divisions that spend it | a division (tier 4) | tier 4 at 24 |
+| 3 | `fund-flows` | `{3,4,5}` keeping tier 3: the fund, the opened division, its object categories | nothing | tier 5 at 8 |
+| 1 | `fund-flows` | `{1,0,2}` keeping tier 2: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
 
 The steps are a tree and not a chain: three open from the spine's chart, told
 apart by the tier they open from and, for the two that share a tier with a flow
@@ -374,12 +396,24 @@ end, by the node's role.
 The client walks it by key (`after` names the step whose chart a step opens
 from) and never by depth.
 
-**Only the General Fund draws a tier-4 column.** pp.167-170 decompose that
-fund alone, so the other five groups' charts end at their funds, and the
-only-the-General-Fund caveat is a property of the drawn chart rather than a
-sentence beside it. Measured through the whole tree: 6 fund groups, 10 revenue
-categories and 4 object categories open at depth 1, and under the fund groups 23
-divisions, all of the General Fund.
+**Nothing on a kept flank opens.** A window draws its kept column at that
+column's share of the CENTRE — the spine's cell for one revenue category into a
+fund group, not the group's own inflow — so a step opening one of those marks
+would draw a node taking one figure in and sending its whole decomposition out.
+Measured over both adopted columns while the fund-group step still named the
+revenue-category window among its parents: the Contributions & Outsourced window
+keeps `fund-group/general` at 76,360 and opening it drew 157,873,470 leaving —
+157,797,110 of node height with no ribbon under it. `export.validateSteps`
+refuses that declaration by name.
+
+**Only the General Fund opens into divisions.** pp.167-170 decompose that fund
+alone, so the fund step declares `role: "general_fund"` and the other sixty funds
+are the ends of the chain rather than rungs — drawn, coloured and terminal, which
+is what the only-the-General-Fund caveat says in words. Without that role every
+drawn fund offers a click that can only banner. Measured through the whole tree:
+6 fund groups, 10 revenue categories and 4 object categories open at depth 1;
+`fund/100` alone at depth 2; and its 23 divisions at depth 3 — 44 opened views,
+the same in both published columns.
 
 **The step document is the spine year's, joined on column.** A spine stem
 opens into the `fund-flows` stem carrying the same fiscal year on the same

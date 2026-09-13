@@ -98,18 +98,20 @@ function stepAs(i, words) {
 }
 
 const PAGE = {
-  // THREE STEPS AND NOT A CHAIN OF THREE: the third opens from the spine's
-  // chart like the first (after ""), from its revenue categories rather than
-  // its fund groups, and stepFor tells them apart by tier and role.
+  // FIVE STEPS AND A TREE, NOT A CHAIN OF FIVE: three of them are one chain --
+  // a fund group opens into its funds, a fund into its divisions, a division
+  // into what it spends on -- and two more open from the spine's own chart
+  // (after ""), one tier each, which stepFor tells apart by tier and role.
   steps: [
     stepAs(0, { projection: "fund-flows", back: "All fund groups", tail: "funds",
       residual: residualDeclaration() }),
-    stepAs(1, { back: "All divisions", tail: "categories" }),
-    stepAs(2, { projection: "fund-flows", back: "All revenue categories", tail: "lines" }),
-    // THE FOURTH STEP OPENS THE SPINE'S RIGHT-HAND COLUMN, and its gap set is
-    // read off internal/check the way step 0's residual is: one declaration,
-    // two readers, and no third spelling to drift.
-    stepAs(3, { projection: "department-spending", back: "All object categories",
+    stepAs(1, { back: "All funds", tail: "divisions" }),
+    stepAs(2, { back: "All divisions", tail: "categories" }),
+    stepAs(3, { projection: "fund-flows", back: "All revenue categories", tail: "lines" }),
+    // THE LAST STEP OPENS THE SPINE'S RIGHT-HAND COLUMN, and its gap set is
+    // read off internal/check the way the fund-group step's residual is: one
+    // declaration, two readers, and no third spelling to drift.
+    stepAs(4, { projection: "department-spending", back: "All object categories",
       tail: "divisions", gaps: spendingGapDeclaration() }),
   ],
   // Measured: the spine's 58 links over 25 nodes cite 58 of its 120 facts;
@@ -128,11 +130,13 @@ const PAGE = {
   inert: "dept/patrol",
   // HOW MANY VIEWS THE TREE OPENS, counted by walking it rather than by adding
   // the declarations up: ten revenue categories, six fund groups and four
-  // object categories at depth 1, and the General Fund's 23 divisions at depth
-  // 2 -- only that group draws a node at the division step's tier, and neither
-  // a revenue category's window nor an object category's offers anything at
-  // all. Measured 2026-09-13 over both published columns.
-  openedViews: 43,
+  // object categories at depth 1; fund/100 at depth 2, ALONE, because the fund
+  // step's role opens the General Fund and leaves the other sixty funds as the
+  // ends of the chain; and its 23 divisions at depth 3. Neither a revenue
+  // category's window nor an object category's offers anything at all, and
+  // neither does a kept flank -- no step names those charts. Measured
+  // 2026-09-13 over both published columns.
+  openedViews: 44,
   // THE COLUMN ORDER THE SPINE DECLARES, off data.go rather than typed. Its
   // three tiers are the ones the document carries, so the fold it asks for
   // changes no mark; what it decides is which column is "left-hand" and which
@@ -190,30 +194,44 @@ const COLUMNS = [
     worstDeep: "51.38",
     // PAGE.worst at the declared caps and uncapped: ribbons, and how many of
     // them lay out under a pixel.
-    capped: { links: 22, hairlines: 2 }, uncapped: { links: 49, hairlines: 22 },
+    capped: { links: 19, hairlines: 0 }, uncapped: { links: 42, hairlines: 9 },
     tail: "24 smaller funds",
     // fund/100's share of the fund column's inflow, and how many times the
     // smallest fund's inflow it is: the two figures step 0's description
     // rounds to "half" and "less than a thirty-thousandth".
     share: "49.18", ratio: 31575,
-    // The General Fund's depth-1 tuple with the residual drawn: nodes, links
-    // and sub-pixel ribbons. 34 / 33 / 2 before the residual; the five marks
-    // and four ribbons added are the residual node, its four endpoints and
-    // the four spine links carried onto it.
-    general: { nodes: 39, links: 37, hairlines: 2 },
+    // The General Fund's depth-1 tuple at {0,2,3} with the residual drawn:
+    // nodes, links and sub-pixel ribbons. The ONE mark the residual adds is
+    // its own node -- its two endpoints are already on screen, in the kept
+    // flank -- and it adds no ribbon at all, because the two it carries are
+    // the kept flank's own, re-pointed past the group rather than copied.
+    general: { nodes: 15, links: 13, hairlines: 1 },
+    // The fund window one rung further in: [the group | fund/100 | its 23
+    // divisions]. Its centre is the one node on the page whose two sides are
+    // different quantities, and the step's description is what says so --
+    // `fund` is [what it takes in, what its divisions spend].
+    fund: { nodes: 25, links: 24, hairlines: 1 },
+    fundCentre: [15787347000, 14465080200],
     // THE RESIDUAL PER GROUP, IN CENTS, MEASURED OFF fisc export's OWN
     // sankey.json AND fund-flows.json (2026-09-11) under the check's
     // whole-or-nothing rule and independently of app.js: a declared
     // endpoint's spine link is residual where the fund-level document
-    // carries nothing from it into the group's funds, and the outflow side is
-    // stated only for the group the fund-level document decomposes. A group
-    // absent here draws no residual node at all: special-revenue, enterprise
-    // and debt-service have their transfers in decomposed to the cent and
-    // draw no fund-balance row.
+    // carries nothing from it into the group's funds. A group absent here
+    // draws no residual node at all: special-revenue, enterprise and
+    // debt-service have their transfers in decomposed to the cent and draw no
+    // fund-balance row.
+    //
+    // `out` IS 0 ON EVERY GROUP AND THAT IS THE TIER SET'S DOING, not the
+    // documents'. {0,2,3} draws a group's funds and no division, so its funds
+    // publish no outflow on this chart; carrying general's transfers out and
+    // reserve increase against an outflow of nothing would state an identity
+    // the drawn chart does not hold, and there is no column right of the
+    // funds to draw those endpoints in. It is the rule this file already
+    // applies to the five groups pp.167-170 do not decompose, reached through
+    // the columns instead of through the file.
     residual: {
-      // 1,034,154 draw + 480,400 transfers in; 4,699,425 reserve increase +
-      // 10,037,797 transfers out.
-      "fund-group/general": { in: 151455400, out: 1473722200, carried: 4 },
+      // 1,034,154 draw + 480,400 transfers in.
+      "fund-group/general": { in: 151455400, out: 0, carried: 2 },
       "fund-group/capital": { in: 250021300, out: 0, carried: 1 },
       "fund-group/internal-service": { in: 614753300, out: 0, carried: 1 },
     },
@@ -295,19 +313,22 @@ const COLUMNS = [
     spine: goldenGraph2027,
     spendingStem: "department-spending-2027", spending: goldenSpending2027,
     worstDeep: "67.02",
-    capped: { links: 22, hairlines: 1 }, uncapped: { links: 47, hairlines: 18 },
+    capped: { links: 19, hairlines: 0 }, uncapped: { links: 41, hairlines: 7 },
     tail: "23 smaller funds",
     share: "50.79", ratio: 54786,
-    // One more hairline than FY2025-26: transfers in at 486,735 lays out
-    // under a pixel beside the draw's absence.
-    general: { nodes: 39, links: 37, hairlines: 3 },
+    // ONE MARK AND ONE RIBBON FEWER THAN FY2025-26, and the difference is the
+    // endpoint set: general's change in working capital turns positive this
+    // year, so there is no fund-balance draw to carry and the residual stands
+    // on the transfer in alone.
+    general: { nodes: 14, links: 12, hairlines: 1 },
+    fund: { nodes: 25, links: 24, hairlines: 1 },
+    fundCentre: [16435814700, 14901457900],
     residual: {
       // 486,735 transfers in and NO draw -- general's change in working
-      // capital turns positive this year, so it leaves as 2,351,098 of
-      // fund-balance/contribution, beside 3,332,607 reserve increase and
-      // 10,146,598 transfers out. The endpoint a FY2025-26-only set would
-      // have missed.
-      "fund-group/general": { in: 48673500, out: 1583030300, carried: 4 },
+      // capital turns positive this year, so it leaves the group as
+      // fund-balance/contribution rather than arriving as a draw, and this
+      // chart draws no column for it to leave into.
+      "fund-group/general": { in: 48673500, out: 0, carried: 1 },
       "fund-group/capital": { in: 1012941600, out: 0, carried: 1 },
       "fund-group/internal-service": { in: 716064500, out: 0, carried: 1 },
     },
@@ -621,31 +642,45 @@ export async function checks() {
     });
 
     const drawn = [];
+    // AND WHETHER EACH VIEW FILLS THE COLUMNS ITS STEP DECLARES. openableColumns
+    // narrows to the tiers actually drawn, and its comment says that narrowing
+    // changes nothing on the committed corpus -- which is a measurement, so it
+    // is measured here rather than asserted there. A view that comes out short
+    // is not a defect; a comment claiming none does while one has is.
+    const short = [];
     const walk = await everyOpenedView(app, (where, depth) => {
       drawn.push(Object.assign({ where, depth, rollups: rollupsIn(app.projection) },
         measure(app, app.projection)));
+      const rung = app.drilled[app.drilled.length - 1];
+      const has = new Set(app.projection.nodes.map((n) => n.tier));
+      const missing = rung.step.tiers.filter((t) => !has.has(t));
+      if (missing.length) short.push(`${where} draws no tier ${missing.join(", ")}`);
     });
-    // THE WORST DIVISION IS PINNED BY NAME AND BY WIDTH: fisc-ko1j's own
-    // measurement of depth 2 is Patrol at 51.38px, and PAGE.inert is that
-    // node because it is the worst, not a division picked at random.
-    const deep = drawn.filter((d) => d.depth === 2);
+    // THE WORST DIVISION IS PINNED BY NAME AND BY WIDTH: Patrol's window at
+    // 51.38px, and PAGE.inert is that node because it is the worst, not a
+    // division picked at random. It is DEPTH 3 since the fund became a rung of
+    // its own -- group, fund, division -- which is one more rung than
+    // fisc-ko1j measured and the same chart.
+    const deep = drawn.filter((d) => d.depth === 3);
     const worstDeep = deep.length ? deep.reduce((a, b) => (b.smallest < a.smallest ? b : a)) : null;
     // THE STEP FILE IS THE COLUMN'S OWN, asserted on the wire: a walk that
     // drew every view from the other year's file would pin that year twice.
     const stepAsked = fetch.asked.filter((p) => p.startsWith("data/fund-flows"));
     out.push({
-      name: `${col.label}: every node the chain offers to open draws when opened, at both depths`,
+      name: `${col.label}: every node the tree offers to open draws when opened, at every depth`,
       ok: walk.refused === "" && walk.visited === PAGE.openedViews && drawn.length === walk.visited &&
           Boolean(worstDeep) && worstDeep.where.endsWith(" > " + PAGE.inert) &&
-          worstDeep.smallest.toFixed(2) === col.worstDeep &&
+          worstDeep.smallest.toFixed(2) === col.worstDeep && short.length === 0 &&
           stepAsked.join() === `data/${col.step}.json`,
       detail: walk.refused
         ? `after ${walk.visited} view(s), refused: ${walk.refused}`
         : `${walk.visited} views opened (want ${PAGE.openedViews}) from ${JSON.stringify(stepAsked)}; ` +
           `smallest ribbon over all of them ${Math.min(...drawn.map((d) => d.smallest)).toFixed(3)}px; ` +
-          `the narrowest depth-2 ribbon is ` +
+          `the narrowest depth-3 ribbon is ` +
           `${worstDeep ? `${worstDeep.where} at ${worstDeep.smallest.toFixed(2)}px` : "nowhere"} ` +
-          `(want ${col.worstDeep})`,
+          `(want ${col.worstDeep}); ` +
+          (short.length ? `SHORT OF A DECLARED COLUMN: ${short.slice(0, 3).join("; ")}`
+            : "every one of them draws every column its step declares"),
     });
 
     // THE ROLLUP IS DRAWN IN THE TEN CATEGORY WINDOWS AND IN NO OTHER VIEW,
@@ -703,12 +738,12 @@ export async function checks() {
         `ribbons, ${worstUncapped.hairlines} under 1px (want ${col.uncapped.links}, ` +
         `${col.uncapped.hairlines}); the cap ${engaged ? "folded a tail" : "folded nothing"}`,
     });
-    await at(app, "fund-group/general", PAGE.inert);
+    await at(app, "fund-group/general", "fund/100", PAGE.inert);
     const inert = measure(app, app.projection);
-    await at(noCap, "fund-group/general", PAGE.inert);
+    await at(noCap, "fund-group/general", "fund/100", PAGE.inert);
     const inertUncapped = measure(noCap, noCap.projection);
     out.push({
-      name: `${col.label}: the category cap is inert two rungs deep, because no division is wide enough to need it`,
+      name: `${col.label}: the category cap is inert three rungs deep, because no division is wide enough to need it`,
       ok: inert.links === inertUncapped.links && inert.hairlines === inertUncapped.hairlines &&
           inert.links > 0,
       detail: `${PAGE.inert} capped: ${inert.links} ribbons, ${inert.hairlines} under 1px; ` +
@@ -981,8 +1016,14 @@ export async function checks() {
     // the filter would silently start measuring a node whose right anchor is
     // the SPINE's, and this arm's wantHref is the step document's. The carried
     // side is the arm below, which is the one that would go red.
+    // AND NOT THE CENTRE EITHER, for a reason the window model makes
+    // structural: the node the reader opened is alone in the middle column of
+    // every window, so its share is suppressed by construction and an arm
+    // expecting one would be red for being right. fund-group/general carries a
+    // caveat and sorts first, so `find` picked it.
+    const centre = where.open.length ? where.open[where.open.length - 1] : "";
     const marked = app.projection.nodes.find(
-      (n) => !n.carried_from && app.caveatsFor(n.id).length > 0);
+      (n) => !n.carried_from && n.id !== centre && app.caveatsFor(n.id).length > 0);
     if (!marked) {
       out.push({
         name: `${name}: a marked node reaches the tooltip and the panel`,
@@ -1126,8 +1167,12 @@ export async function checks() {
     const wantDrawn = `caveats.html#caveat-${column.step}--${drawnCaveat ? drawnCaveat.id : ""}`;
     out.push({
       name: `${column.label}: a carried mark's panel links to the spine's copy of the caveat, and the drawn mark beside it still links to the step document's`,
-      ok: carried.length > 0 && ids.length === 2 &&
-          ids[0] === "transfers/in" && ids[1] === "transfers/out" &&
+      // ONE CARRIED MARK WITH A CAVEAT AND NOT TWO. transfers/out was the
+      // other, and {0,2,3} draws no column for a fund's outflow, so the
+      // residual states the inflow side alone -- which is why this counts the
+      // set rather than asserting "at least one".
+      ok: carried.length > 0 && ids.length === 1 &&
+          ids[0] === "transfers/in" &&
           caveat === "transfer-legs-unpaired" &&
           carriedPanel.includes("Read it in full") && carriedHrefs.includes(wantHref) &&
           drawnPanel.includes("Read it in full") && drawnHrefs.includes(wantDrawn) &&
@@ -1346,18 +1391,27 @@ export async function checks() {
     }
     const asSeen = JSON.stringify(seen, Object.keys(seen).sort());
     const asWant = JSON.stringify(want, Object.keys(want).sort());
-    // AND WITH THE DECLARATION REMOVED FROM THE STEP, NOTHING IS DRAWN: the
-    // client spells no endpoint of its own, so the shipped set is the only
-    // source of the marks.
+    // AND WITH THE DECLARATION REMOVED FROM THE STEP, NOTHING IS RE-POINTED.
+    // The client spells no endpoint of its own, so the shipped set is the only
+    // source of the mark -- and what the declaration decides at {0,2,3} is
+    // WHERE two ribbons land, not whether their ends are drawn: the endpoints
+    // are marks of the chart above and the window keeps that flank either way.
+    // Undeclared, they run into the group, which then takes in more than it
+    // sends on by exactly the residual, with nothing on the page saying so;
+    // declared, they run past it onto a node of their own beside the funds and
+    // the group's two sides agree. The link COUNT is identical in both, which
+    // is why this measures the shortfall instead.
     const { app: undeclared } = await opened(null, (c) => {
       c.steps = PAGE.steps.map((st) => { const t = Object.assign({}, st); delete t.residual; return t; });
     }, col);
     await at(undeclared, general);
-    const none = residualOf.call(null, general);
+    const sumAt = (/** @type {any} */ a, /** @type {"source"|"target"} */ end) =>
+      a.projection.links.filter((/** @type {any} */ l) => l[end] === general)
+        .reduce((/** @type {number} */ sum, /** @type {any} */ l) => sum + l.value_cents, 0);
+    const absorbed = sumAt(undeclared, "target") - sumAt(undeclared, "source");
     const noneDrawn = !undeclared.projection.nodes.some((n) => app.isResidual(n.id)) &&
-      undeclared.projection.links.length === col.general.links - want[general].carried &&
-      !undeclared.projection.nodes.some((n) => Object.hasOwn(declared, n.id) && !stepHas.has(n.id));
-    void none;
+      undeclared.projection.links.length === col.general.links &&
+      absorbed === want[general].in;
     out.push({
       name: `${col.label}: the residual is drawn beside the funds of exactly the groups whose flows the fund-level document does not decompose, and only from the declared set`,
       ok: asSeen === asWant && stray.length === 0 && noneDrawn,
@@ -1366,8 +1420,11 @@ export async function checks() {
           `pinned sums, and on no other group`
         : `drawn ${asSeen}, want ${asWant}`) +
         (stray.length ? `; stray carried marks: ${stray.join("; ")}` : "") +
-        `; with residual deleted from the step, the General Fund draws ` +
-        `${noneDrawn ? "no carried mark" : "CARRIED MARKS FROM NOWHERE"}`,
+        `; with residual deleted from the step the same ${undeclared.projection.links.length} ` +
+        `ribbon(s) are drawn and ${undeclared.projection.nodes.some((n) => app.isResidual(n.id))
+          ? "a residual node appears FROM NOWHERE"
+          : `no residual node is, leaving the group ${absorbed} cent(s) of unaccounted node ` +
+            `height (want ${want[general].in})`}`,
     });
 
     // CARRIED, NOT COMPUTED. Each link on a residual node is the spine's link
@@ -1406,10 +1463,15 @@ export async function checks() {
           `link in value_cents, fact_ids, locators, kind and derived`,
     });
 
-    // THE IMBALANCE IS DRAWN. The General Fund's residual takes in the draw
-    // and the transfer in and pays out the transfer out and the reserve
-    // increase, and the two sums differ; d3-sankey sizes the node at the
-    // larger, in the fund column, with its endpoints in the first and last.
+    // THE RESIDUAL TAKES THE MONEY PAST THE GROUP, AND THAT IS WHAT MAKES THE
+    // CENTRE BALANCE. The endpoints' ribbons are the kept flank's own, drawn
+    // once each with the group end re-pointed onto a node beside the funds, so
+    // the group takes in exactly what its funds take in. The three claims are
+    // one check because the wrong repair passes two of them: copying the
+    // chart above's links instead of re-pointing the drawn ones leaves the
+    // residual right, the endpoints drawn at twice their printed figure, and
+    // the centre short by the residual -- measured before the fix, transfers/in
+    // left tier 0 at 960,800 against the 480,400 p0067 prints.
     await at(app, general);
     const r = residualOf(general);
     const laid = app.layOut(app.projection);
@@ -1421,16 +1483,32 @@ export async function checks() {
       return e + "@" + (n ? n.layer : "?") + (l.target === r.id ? " in" : " out");
     });
     const endsRight = layers.every((x) => (x.endsWith(" in") ? x.includes("@0 ") : x.includes("@" + (tiers.length - 1) + " ")));
+    const centreIn = app.projection.links.filter((l) => l.target === general)
+      .reduce((sum, l) => sum + l.value_cents, 0);
+    const centreOut = app.projection.links.filter((l) => l.source === general)
+      .reduce((sum, l) => sum + l.value_cents, 0);
+    // EACH ENDPOINT SENDS ITS PRINTED FIGURE ONCE, read off the drawn chart:
+    // the spine's link for it, and no second ribbon anywhere.
+    const doubled = r.links.filter((l) => {
+      const e = l.target === r.id ? l.source : l.target;
+      const sent = app.projection.links.filter((x) => x.source === e)
+        .reduce((sum, x) => sum + x.value_cents, 0);
+      const printed = spineLink.get(e + "|" + general);
+      return !printed || sent !== printed.value_cents;
+    }).map((l) => (l.target === r.id ? l.source : l.target));
     out.push({
-      name: `${col.label}: the General Fund's residual takes in less than it pays out, and both are drawn rather than balanced`,
-      ok: Boolean(r.node) && r.in === want[general].in && r.out === want[general].out && r.in !== r.out &&
+      name: `${col.label}: the residual carries the money that reaches no fund past the group, which is left taking in exactly what its funds take in`,
+      ok: Boolean(r.node) && r.in === want[general].in && r.out === want[general].out &&
           Boolean(laidNode) && laidNode.value === Math.max(r.in, r.out) &&
           laidNode.layer === tiers.indexOf(r.node.tier) && r.node.tier === 3 &&
-          endsRight && app.fundGroupOf(r.node) === general,
+          endsRight && app.fundGroupOf(r.node) === general &&
+          centreIn === centreOut && centreIn > 0 && doubled.length === 0,
       detail: r.node
         ? `in ${r.in} out ${r.out} cents (want ${want[general].in} / ${want[general].out}); laid at ` +
           `${laidNode ? laidNode.value : "nowhere"} in column ${laidNode ? laidNode.layer : "?"} of tier ` +
-          `${r.node.tier}; ends ${layers.join(", ")}; hue from ${app.fundGroupOf(r.node) || "no group"}`
+          `${r.node.tier}; ends ${layers.join(", ")}; hue from ${app.fundGroupOf(r.node) || "no group"}; ` +
+          `the group takes in ${centreIn} and sends on ${centreOut}` +
+          (doubled.length ? `; DRAWN TWICE: ${doubled.join(", ")}` : "; no endpoint drawn twice")
         : "no residual node on the General Fund",
     });
 
@@ -1503,15 +1581,27 @@ export async function checks() {
         out: links.filter((l) => l.source === id).reduce((sum, l) => sum + l.value_cents, 0) };
     })();
     const stillCarried = sr.links.some((l) => l.source === "transfers/in");
+    // AND WHERE IT WAS THE LAST ONE, THE MARK GOES. FY2026-27's general has no
+    // fund-balance draw -- its change in working capital is a contribution --
+    // so the transfer in is its whole residual, and decomposing that whole
+    // leaves nothing for a node to stand for. "A group with nothing to carry
+    // draws nothing" is carryResidual's own rule and this is the only place
+    // the General Fund reaches it; the other column keeps its draw and its
+    // node, so the two branches are both witnessed.
+    const wantLinks = want[general].carried - 1;
+    const wantIn = want[general].in - transferIn.value_cents;
     out.push({
       name: `${col.label}: an endpoint the fund-level document decomposes whole is not carried, even on the General Fund`,
-      ok: Boolean(sr.node) && !stillCarried && sr.in === want[general].in - transferIn.value_cents &&
-          sr.out === want[general].out && sr.links.length === want[general].carried - 1,
-      detail: sr.node
-        ? `with transfers/in -> fund/100 at ${transferIn.value_cents} in the step document, the residual ` +
-          `${stillCarried ? "STILL carries transfers/in" : "drops transfers/in"} and reads in ${sr.in} ` +
-          `(want ${want[general].in - transferIn.value_cents}) out ${sr.out} over ${sr.links.length} flows`
-        : "no residual node on the General Fund",
+      ok: wantLinks === 0
+        ? !sr.node && sr.links.length === 0 && wantIn === 0
+        : Boolean(sr.node) && !stillCarried && sr.in === wantIn &&
+          sr.out === want[general].out && sr.links.length === wantLinks,
+      detail: `with transfers/in -> fund/100 at ${transferIn.value_cents} in the step document, the ` +
+        (sr.node
+          ? `residual ${stillCarried ? "STILL carries transfers/in" : "drops transfers/in"} and reads ` +
+            `in ${sr.in} (want ${wantIn}) out ${sr.out} over ${sr.links.length} flow(s), want ${wantLinks}`
+          : `residual node is gone, which is ${wantLinks === 0 ? "right: it had nothing else to carry" :
+            `WRONG: ${wantLinks} flow(s) should still be on it`}`),
     });
   }
 
@@ -1790,7 +1880,7 @@ export async function checks() {
 async function walkCategory(col) {
   const out = [];
   const { app, fetch, body } = await opened(null, null, col);
-  const step = PAGE.steps[2];
+  const step = PAGE.steps[3];
   const want = col.category;
   const golden = col.golden();
   const spine = col.spine();
@@ -2217,12 +2307,16 @@ function quotesFigures(app, col, gross, reduced, net) {
  * have opened, with every Go test green. No step the site ships names two
  * charts yet -- this is measured on the shipped shape with one field replaced.
  *
- * FOUR READS AND NOT ONE, because "the division opens" is satisfied by a client
+ * FOUR READS AND NOT ONE, because "the fund opens" is satisfied by a client
  * that opens everything: the same step reached through a list that does NOT
  * name the rung on screen must NOT open, and a bare string -- the shape the
  * wire carried before this -- must be dropped by STEPS rather than quietly
  * matched by `.includes` on a string, which would be true of "fund-group" and
  * of "und-grou" alike.
+ *
+ * THE SUBJECT IS THE FUND STEP, which is the one hanging off the fund group's
+ * chart: its `after` is what is replaced, and fund/100 is the mark that opens
+ * or does not.
  */
 async function severalParents() {
   const read = async (/** @type {any} */ after) => {
@@ -2231,10 +2325,10 @@ async function severalParents() {
     });
     const outcome = await openInto(app, "fund-group/general");
     const laid = outcome === "drew" ? app.layOut(app.projection) : null;
-    const division = laid ? laid.nodes.find((/** @type {any} */ n) => n.id === "dept/patrol") : null;
+    const fund = laid ? laid.nodes.find((/** @type {any} */ n) => n.id === "fund/100") : null;
     return {
       after, steps: app.STEPS.length, outcome,
-      opens: Boolean(division) && app.drillable(division),
+      opens: Boolean(fund) && app.drillable(fund),
     };
   };
   const got = [
@@ -2252,7 +2346,7 @@ async function severalParents() {
       stranger.steps === PAGE.steps.length && !stranger.opens &&
       asString.steps === PAGE.steps.length - 1 && !asString.opens,
     detail: got.map((r) => `${JSON.stringify(r.after)}: ${r.steps} step(s) read, the spine ` +
-      `${r.outcome}, dept/patrol ${r.opens ? "opens" : "does not open"}`).join("; "),
+      `${r.outcome}, fund/100 ${r.opens ? "opens" : "does not open"}`).join("; "),
   }];
 }
 
@@ -2318,54 +2412,6 @@ async function keylessSteps() {
  * The window: three columns spliced on the node the reader clicked
  * ------------------------------------------------------------------ */
 
-/**
- * The shipped category window, plus the second edge into it that data.go does
- * not carry: a fund group reachable from inside that window as well as from
- * the spine.
- *
- * THE FIRST STEP IS THE SITE'S OWN, read out of data.go rather than spelled
- * again. It was a fixture until 2026-09-13, because no shipped step kept a
- * flank; the revenue-category step keeps one now, so a copy here would be the
- * thing this file exists not to do -- checking the copy while the page drew
- * something else.
- *
- * THE SECOND IS STILL A FIXTURE, and it is what these checks are for: the
- * chart on screen inside a window is not the spine, so a step reached from it
- * exercises the rung's recorded chart, carriedSource by stem, and isCarried's
- * gate two rungs down. data.go's fund-group step names only the spine, so
- * nothing on the site slides twice yet, and shipping the shaping with nothing
- * able to see it go wrong is what AGENTS.md's node boundary refuses. It is
- * written in the shape export.validateSteps accepts: every `after` naming an
- * EARLIER step, and the kept tier at the end its adjacency names.
- */
-const WINDOW_STEPS = [
-  PAGE.steps[2],
-  {
-    // REACHABLE FROM TWO CHARTS, which is what Keep is for: the same fund
-    // group opens from the spine and from inside the category's window, and
-    // the rung it opens is the same either way.
-    key: "fund-group", after: ["", "revenue-category"], from: 2,
-    projection: "fund-flows", tiers: [0, 3, 4],
-    caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24, tail: "divisions" }],
-    back: "All fund groups", tail: "funds",
-    description: "A fund group's own funds.",
-  },
-];
-
-/** The spine page carrying WINDOW_STEPS, on the first published column. */
-async function openedWindow(column = COLUMNS[0]) {
-  return opened(null, (config) => {
-    config.steps = WINDOW_STEPS;
-    config.years = config.years.map((y, i) => Object.assign({}, y, {
-      steps: WINDOW_STEPS.map(() => ({
-        stem: i === 0 ? "fund-flows" : "fund-flows-2027",
-        path: i === 0 ? "data/fund-flows.json" : "data/fund-flows-2027.json",
-        caveats: refsFor(i === 0 ? "fund-flows" : "fund-flows-2027", FUND_FLOWS_CAVEATS),
-      })),
-    }));
-  }, column);
-}
-
 /** The ids drawn at one tier of the chart on screen, in document order. */
 function atTier(app, tier) {
   return app.projection.nodes.filter((n) => n.tier === tier).map((n) => n.id);
@@ -2373,42 +2419,66 @@ function atTier(app, tier) {
 
 /**
  * Everything the window shaping claims, measured through drillDown over the
- * committed goldens.
+ * committed goldens and over the SHIPPED steps alone.
+ *
+ * NO FIXTURE STEP AT ALL SINCE LANE G, which is what the site growing a real
+ * chain of windows buys. This drove a copy of the fund-group step declaring
+ * `after: ["", "revenue-category"]`, because nothing shipped slid twice; the
+ * spine's fund group now opens into a window and its FUND opens into another,
+ * so the rung's recorded chart, carriedSource by stem and the gates two rungs
+ * down are all reached through data.go's own declarations.
+ *
+ * AND THE SECOND EDGE THAT FIXTURE MODELLED IS NOW UNDECLARABLE. A fund group
+ * kept on a revenue category's flank is drawn at THAT category's share of it,
+ * so a step opening it would draw one figure in and the group's whole
+ * decomposition out -- measured over both columns at up to 157,797,110 of node
+ * height with no ribbon under it. export.validateSteps refuses the declaration
+ * by name, and Go's TestWriteRefusesAnUnrenderableViewSet is where that is
+ * held; here the consequence is asserted instead, on the chart: a kept mark
+ * opens nothing.
  */
 async function windowChecks() {
   const out = [];
-  const CENTRE = "revenue/taxes/property";
-  const { app } = await openedWindow();
+  const CENTRE = "fund-group/general";
+  const { app } = await opened();
+  const step = PAGE.steps[0];
   const spine = goldenGraph();
-  const kept = spine.links.filter((l) => l.source === CENTRE);
+  const kept = spine.links.filter((l) => l.target === CENTRE);
 
   const outcome = await openInto(app, CENTRE);
   const drawn = outcome === "drew" ? app.projection : { nodes: [], links: [] };
   const tiers = [...new Set(drawn.nodes.map((n) => n.tier))].sort((a, b) => a - b);
-  const centreColumn = atTier(app, 0);
-  const keptColumn = atTier(app, 2);
-  const freshColumn = atTier(app, 1);
-  const centreNode = drawn.nodes.find((n) => n.id === CENTRE);
-  const toGroups = drawn.links.filter((l) => l.source === CENTRE);
-  const fromLines = drawn.links.filter((l) => l.target === CENTRE);
+  const centreColumn = atTier(app, 2);
+  const keptColumn = atTier(app, 0);
+  const freshColumn = atTier(app, 3);
+  const fromKept = drawn.links.filter((l) => l.target === CENTRE);
+  const toFunds = drawn.links.filter((l) => l.source === CENTRE);
   const laid = outcome === "drew" ? app.layOut(drawn) : null;
   // The columns left to right, as d3 placed them, read back as tiers.
   const placed = laid
     ? [...new Set(laid.nodes.slice().sort((a, b) => a.x0 - b.x0).map((n) => n.tier))]
     : [];
+  // THE KEPT COLUMN IS THE SPINE'S OWN, LESS WHAT THE RESIDUAL TOOK PAST THE
+  // CENTRE: every tier-0 mark the spine draws into the group is still on
+  // screen, and two of their ribbons end on the residual instead of on the
+  // group. So the column's WIDTH is the spine's and the centre's inflow is
+  // not, which is the one place those two numbers part company.
+  const residualEnds = drawn.links
+    .filter((l) => app.isResidual(l.target)).map((l) => l.source);
   out.push({
     name: "a window is three columns spliced on the node the reader clicked, its centre alone in the middle",
-    ok: outcome === "drew" && JSON.stringify(tiers) === "[0,1,2]" &&
+    ok: outcome === "drew" && JSON.stringify(tiers) === "[0,2,3]" &&
       JSON.stringify(centreColumn) === JSON.stringify([CENTRE]) &&
-      keptColumn.length === kept.length && freshColumn.length === 9 &&
-      toGroups.length === kept.length && fromLines.length === 9 &&
-      JSON.stringify(placed) === JSON.stringify(WINDOW_STEPS[0].tiers),
+      keptColumn.length === kept.length && freshColumn.length === 2 &&
+      fromKept.length === kept.length - residualEnds.length && toFunds.length === 1 &&
+      JSON.stringify(placed) === JSON.stringify(step.tiers),
     detail: outcome === "drew"
       ? `tiers ${JSON.stringify(tiers)} drawn left to right as ${JSON.stringify(placed)}; ` +
         `centre column ${JSON.stringify(centreColumn)}; kept column ${keptColumn.length} ` +
-        `node(s) taking ${toGroups.length} ribbon(s) from the centre; opened column ` +
-        `${freshColumn.length} node(s) sending ${fromLines.length} into it`
-      : `the category would not open: ${outcome}`,
+        `node(s) sending ${fromKept.length} ribbon(s) into the centre and ` +
+        `${residualEnds.length} past it; opened column ${freshColumn.length} node(s) taking ` +
+        `${toFunds.length} from it`
+      : `the fund group would not open: ${outcome}`,
   });
 
   // THE KEPT FLANK'S RECORDS ARE THE SPINE'S, WHICH IS WHAT PROVES THE SOURCE.
@@ -2418,66 +2488,77 @@ async function windowChecks() {
   // are the spine's cells to the cent, which no filter of fund-flows produces.
   const labels = new Map(drawn.nodes.map((n) => [n.id, n.label]));
   // THE SPINE AS THE PAGE HOLDS IT, which is the fixture's relabelled copy and
-  // not goldenGraph()'s: opened() renames exactly the two ids both documents
-  // print the same words for, so "off the chart on screen" and "off the file"
-  // give different answers here and this can tell them apart.
+  // not goldenGraph()'s: opened() renames exactly the ids both documents print
+  // the same words for, so "off the chart on screen" and "off the file" give
+  // different answers here and this can tell them apart.
   const onScreen = app.docAt(0);
   const spineLabels = new Map(onScreen.nodes.map((n) => [n.id, n.label]));
   const stepLabels = new Map(goldenFundFlows().nodes.map((n) => [n.id, n.label]));
   const named = keptColumn.concat([CENTRE]);
   const sameLabels = named.every((id) => labels.get(id) === spineLabels.get(id));
   const sameValues = kept.every((l) => {
-    const drew = toGroups.find((d) => d.target === l.target);
+    const drew = drawn.links.find((d) => d.source === l.source &&
+      (d.target === CENTRE || app.isResidual(d.target)));
     return Boolean(drew) && drew.value_cents === l.value_cents;
   });
-  // AND THE TWO SOURCES DISAGREE, or the arm above is green either way.
-  const tellsApart = named.filter((id) => spineLabels.get(id) !== stepLabels.get(id));
+  // AND THE TWO SOURCES DISAGREE, or the arm above is green either way. Over
+  // the ids BOTH documents carry: the kept column holds fund-balance/draw,
+  // which fund-flows has no node for at all, and "the step document does not
+  // name it" is a weaker thing than "the two name it differently".
+  const tellsApart = named.filter((id) => stepLabels.has(id) &&
+    spineLabels.get(id) !== stepLabels.get(id));
   out.push({
     name: "the kept flank and the centre come off the chart on screen, in its words and at its figures",
     ok: outcome === "drew" && sameLabels && sameValues && tellsApart.length === 2,
     detail: outcome === "drew"
       ? `centre drawn as "${labels.get(CENTRE)}" against the step document's ` +
-        `"${stepLabels.get(CENTRE)}"; kept column ` +
-        `${JSON.stringify(keptColumn.map((id) => labels.get(id)))} at the spine's own cells; ` +
+        `"${stepLabels.get(CENTRE)}"; kept column carries the spine's own cells; ` +
         `${tellsApart.length} of ${named.length} drawn marks are named differently by the ` +
         `two documents, so the source is distinguishable`
-      : `the category would not open: ${outcome}`,
+      : `the fund group would not open: ${outcome}`,
   });
 
-  // BOTH SIDES OF isCarried IN ONE CHECK, because the wrong simplification
-  // passes half of it. A kept-flank fund group is carried in exactly the sense
-  // carried_from records -- its figure and its caveats are the chart above's --
-  // AND MUST OPEN, which is the whole feature. A residual's declared endpoint
-  // is carried too and must NOT, being a flow's end rather than a container.
-  // "carried => not drillable" draws the window and refuses every click in it.
-  const group = drawn.nodes.find((n) => n.id === "fund-group/general");
-  const { app: chained } = await opened();
-  await at(chained, "fund-group/general");
-  const endpoint = chained.projection.nodes.find(
-    (n) => n.carried_from && chained.isCarried(n.id) && !chained.isResidual(n.id));
+  // NOTHING ON A KEPT FLANK OPENS, AND THE TWO REASONS ARE SEPARATED. A kept
+  // revenue category is carried in the sense carried_from records -- its figure
+  // and its caveats are the chart above's -- and it is NOT what isCarried
+  // means, which is a declared residual endpoint. Both are shut here, and by
+  // different gates: no step names the chart a kept mark is on, so stepFor
+  // answers null before isCarried is consulted at all.
+  //
+  // WHICH MAKES isCarried's ARM OF drillable INERT ON EVERY VIEW THE PAGE
+  // OPENS, and that is measured rather than assumed: over the whole walk, both
+  // columns, not one carried mark is at a tier a step could open from. It is
+  // kept as the second gate and this says so, so that a check reading "nothing
+  // carried opens" is not mistaken for evidence that the gate fired.
+  const category = drawn.nodes.find((n) => n.tier === 0 && n.role === "revenue_source");
+  const endpoint = drawn.nodes.find((n) => n.carried_from && app.isCarried(n.id));
+  const fund = drawn.nodes.find((n) => n.id === "fund/100");
   out.push({
-    name: "a kept flank is carried and opens; a residual's declared endpoint is carried and does not",
-    ok: Boolean(group) && group.carried_from === "sankey" && !app.isCarried(group.id) &&
-      app.drillable(group) &&
-      Boolean(endpoint) && !chained.drillable(endpoint) && chained.isCarried(endpoint.id),
-    detail: (group
-      ? `${group.id} carried from "${group.carried_from}", isCarried ` +
-        `${app.isCarried(group.id)}, drillable ${app.drillable(group)}`
-      : "no fund group was drawn in the window, so this asserts nothing") + "; " +
+    name: "nothing on a kept flank opens, and a residual's declared endpoint does not either -- by two different gates",
+    ok: Boolean(category) && category.carried_from === "sankey" && !app.isCarried(category.id) &&
+      !app.drillable(category) && app.stepFor(category) === null &&
+      Boolean(endpoint) && app.isCarried(endpoint.id) && !app.drillable(endpoint) &&
+      Boolean(fund) && !fund.carried_from && app.drillable(fund),
+    detail: (category
+      ? `${category.id} carried from "${category.carried_from}", isCarried ` +
+        `${app.isCarried(category.id)}, a step ${app.stepFor(category) ? "NAMES" : "names"} its ` +
+        `chart, drillable ${app.drillable(category)}`
+      : "no kept revenue category was drawn, so this asserts nothing") + "; " +
       (endpoint
         ? `${endpoint.id} carried from "${endpoint.carried_from}", isCarried ` +
-          `${chained.isCarried(endpoint.id)}, drillable ${chained.drillable(endpoint)}`
-        : "no carried endpoint was drawn on the opened group, so half of this asserts nothing"),
+          `${app.isCarried(endpoint.id)}, drillable ${app.drillable(endpoint)}`
+        : "no carried endpoint was drawn, so half of this asserts nothing") +
+      `; the one mark that opens is ${fund ? fund.id : "NONE"}`,
   });
 
   // A WINDOW CHAINS, AND COMES BACK. The kept flank is a filter of the chart
   // that was ON SCREEN, and that chart is gone by the time Escape reshapes the
-  // rung -- so the rung records it. Opening the group and popping back has to
+  // rung -- so the rung records it. Opening the fund and popping back has to
   // land on the same window, mark for mark, or the flank is being recomputed
   // from whatever happens to be drawn.
   const before = JSON.stringify(drawn.nodes.map((n) => n.id + "@" + n.tier)) +
     JSON.stringify(drawn.links.map((l) => l.source + ">" + l.target + "=" + l.value_cents));
-  const deeper = await openInto(app, "fund-group/general");
+  const deeper = await openInto(app, "fund/100");
   const deepTiers = deeper === "drew"
     ? [...new Set(app.projection.nodes.map((n) => n.tier))].sort((a, b) => a - b) : [];
   app.drillUp(1);
@@ -2486,9 +2567,9 @@ async function windowChecks() {
     JSON.stringify(app.projection.links.map((l) => l.source + ">" + l.target + "=" + l.value_cents));
   out.push({
     name: "a window's kept flank survives being drilled through and popped back to",
-    ok: deeper === "drew" && JSON.stringify(deepTiers) === "[0,3,4]" &&
+    ok: deeper === "drew" && JSON.stringify(deepTiers) === "[2,3,4]" &&
       app.drilled.length === 1 && after === before,
-    detail: `the kept General Fund opened to "${deeper}" at tiers ${JSON.stringify(deepTiers)}; ` +
+    detail: `fund/100 opened to "${deeper}" at tiers ${JSON.stringify(deepTiers)}; ` +
       `popping back left ${app.drilled.length} rung drawing a chart that is ` +
       `${after === before ? "identical to" : "DIFFERENT from"} the one it was opened from`,
   });
@@ -2497,16 +2578,18 @@ async function windowChecks() {
   // deeper than one rung resolvable at all. docAt(0) answers "the spine" for
   // every mark on the page, and every window carries a flank, so a chain two
   // deep has carried marks whose chart above is not the spine.
-  await at(app, CENTRE, "fund-group/general");
+  await at(app, CENTRE, "fund/100");
   const depths = {
     spine: app.depthOfDocument("sankey"),
     step: app.depthOfDocument("fund-flows"),
     absent: app.depthOfDocument("no-such-document"),
   };
+  const deepCarried = app.projection.nodes.filter((n) => n.carried_from).map((n) => n.carried_from);
   out.push({
     name: "a carried mark's document is found by the stem it records, at the depth that document is on the stack",
     ok: app.drilled.length === 2 && depths.spine === 0 && depths.step === 2 &&
-      depths.absent === -1 &&
+      depths.absent === -1 && deepCarried.length > 0 &&
+      deepCarried.every((s) => s === "fund-flows") &&
       app.carriedSource("sankey").projection === "sankey" &&
       app.carriedSource("fund-flows").projection === "fund-flows" &&
       app.carriedSource("no-such-document") === null &&
@@ -2514,9 +2597,10 @@ async function windowChecks() {
       app.caveatHref(SPINE_CAVEATS[0], "sankey") ===
         `caveats.html#caveat-sankey--${SPINE_CAVEATS[0]}`,
     detail: `two rungs deep the stack answers sankey at depth ${depths.spine}, fund-flows at ` +
-      `${depths.step} and an unknown stem at ${depths.absent}; the spine's caveat anchors to ` +
-      `"${app.caveatHref(SPINE_CAVEATS[0], "sankey")}" and an unknown stem to ` +
-      `"${app.caveatHref(SPINE_CAVEATS[0], "no-such-document")}" rather than to the year's`,
+      `${depths.step} and an unknown stem at ${depths.absent}; the ${deepCarried.length} carried ` +
+      `mark(s) here record ${JSON.stringify([...new Set(deepCarried)])} rather than the spine; ` +
+      `the spine's caveat anchors to "${app.caveatHref(SPINE_CAVEATS[0], "sankey")}" and an ` +
+      `unknown stem to "${app.caveatHref(SPINE_CAVEATS[0], "no-such-document")}"`,
   });
 
   // FAIL CLOSED ON A DECLARATION THAT IS NOT A WINDOW. Every one of these is
@@ -2524,12 +2608,11 @@ async function windowChecks() {
   // handed a config rather than a View: a window drawn the wrong way round
   // lays out and means something else, which is the one failure a reader
   // cannot see. The message names the document and says what a window is.
-  const rung = { id: CENTRE, doc: goldenFundFlows(), step: WINDOW_STEPS[0],
-    chart: goldenGraph() };
-  const refusedBy = (step, chart) => {
+  const rung = { id: CENTRE, doc: goldenFundFlows(), step: step, chart: goldenGraph() };
+  const refusedBy = (bad, chart) => {
     try {
       app.windowFor(chart === undefined ? goldenGraph() : chart, goldenFundFlows(),
-        Object.assign({}, rung, { step: Object.assign({}, WINDOW_STEPS[0], step) }));
+        Object.assign({}, rung, { step: Object.assign({}, step, bad) }));
       return "";
     } catch (e) {
       return String(e.message);
@@ -2538,9 +2621,9 @@ async function windowChecks() {
   const bad = [
     ["no chart on screen to keep a flank of", {}, null],
     ["two columns", { tiers: [0, 2] }, undefined],
-    ["the centre is not the opened tier", { tiers: [1, 2, 0] }, undefined],
-    ["the kept tier is in the middle", { keep: [0], tiers: [1, 0, 2] }, undefined],
-    ["two kept flanks", { keep: [2, 1] }, undefined],
+    ["the centre is not the opened tier", { tiers: [2, 3, 0] }, undefined],
+    ["the kept tier is in the middle", { keep: [2], tiers: [0, 2, 3] }, undefined],
+    ["two kept flanks", { keep: [0, 3] }, undefined],
   ].map(([why, step, chart]) => ({ why, said: refusedBy(step, chart) }));
   out.push({
     name: "a declaration that is not a window is refused by name rather than drawn",
@@ -3073,14 +3156,29 @@ async function categoryProbes() {
   }
 
   // fisc-ng17. A LINE WITH A BROKEN PARENT CHAIN STOPS THE DRILL, in both
-  // shapes, and the drill it stops is the FUND GROUP's: a rung filters before
-  // the fold can refuse, and the filter's placeability test dropped the link
-  // as if the view had declared its tier away. Measured before the fix, over
-  // this golden through this entry point: ERAF's parent blanked drew the
-  // General Fund's Property Taxes at $79,318,762 against p127's $64,143,762,
-  // with node and link counts unchanged and no banner.
+  // shapes: a rung filters before the fold can refuse, and the filter's
+  // placeability test dropped the link as if the view had declared its tier
+  // away. Measured before the fix, over this golden: ERAF's parent blanked drew
+  // the General Fund's Property Taxes at $79,318,762 against p127's
+  // $64,143,762, with node and link counts unchanged and no banner.
+  //
+  // DRIVEN THROUGH A DECLARATION THE SITE NO LONGER SHIPS, and that is stated
+  // rather than hidden. The guard fires where a view FOLDS tier 1 into tier 0,
+  // and no shipped tier set does any more: {0,2,3} takes its categories off the
+  // spine, which has no lines at all, and {1,0,2} draws each line in a column of
+  // its own. Measured over both columns after the tier sets moved -- ERAF's
+  // parent blanked or pointed at a node the document does not carry changes not
+  // one node, link or figure of any view the page opens. So the branch is
+  // reached through the fixture below, which is the {0,3,4} step this page
+  // shipped until Lane G, and the check goes on holding app.js's own refusal
+  // rather than being deleted with the declaration that used to reach it.
   {
-    const control = await opened(null, null, col);
+    const folding = [Object.assign({}, PAGE.steps[0], { tiers: [0, 3, 4],
+      caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24, tail: "divisions" }] })];
+    delete folding[0].keep;
+    const withFolding = (/** @type {any} */ plan) =>
+      opened(plan, (c) => { c.steps = folding; }, col);
+    const control = await withFolding(null);
     await mustOpen(control.app, "fund-group/general");
     const asPublished = control.app.projection.links.find((l) =>
       l.source === "revenue/taxes/property" && l.target === "fund/100");
@@ -3093,7 +3191,7 @@ async function categoryProbes() {
     for (const shape of shapes) {
       const doc = goldenFundFlows();
       doc.nodes.find((n) => n.id === "revenue-line/taxes/property/eraf").parent = shape.parent;
-      const { app, main, body } = await opened({ "data/fund-flows.json": { doc } }, null, col);
+      const { app, main, body } = await withFolding({ "data/fund-flows.json": { doc } });
       const before = shown(app, body);
       const outcome = await openInto(app, "fund-group/general");
       const after = shown(app, body);
@@ -3103,7 +3201,7 @@ async function categoryProbes() {
         unchanged: after.counts === before.counts && after.crumbHidden });
     }
     out.push({
-      name: "a tier-1 line whose parent chain is broken stops the fund group's drill by name, instead of folding the group's Property Taxes without it",
+      name: "a tier-1 line whose parent chain is broken stops a drill that folds it by name, instead of folding the group's Property Taxes without it",
       ok: Boolean(asPublished) && asPublished.value_cents === 6414376200 &&
           results.every((r) => r.outcome === "failed" && r.depth === 0 && r.named && r.unchanged),
       detail: `as published the opened General Fund draws Property Taxes at ${asPublished ? asPublished.value_cents : "nothing"} ` +
@@ -3153,8 +3251,7 @@ async function walkChain(col) {
   const served = templateDesc("index.html.tmpl", "");
   desc.textContent = served;
   const pointer = served.slice(served.indexOf(". ") + 2);
-  const step0 = PAGE.steps[0];
-  const step1 = PAGE.steps[1];
+  const [groupStep, fundStep, divisionStep] = PAGE.steps;
 
   const at0 = words(app);
   const asked0 = fetch.asked.slice();
@@ -3174,20 +3271,21 @@ async function walkChain(col) {
   const m1 = open1 === "drew" ? measure(app, app.projection) : null;
   // ASKED AT DEPTH 1, not later: drillable reads the stack, and by the time
   // `ok` is evaluated the walk is back on the overview.
-  const patrol = app.projection.nodes.find((n) => n.id === "dept/patrol");
+  //
+  // THE FUND IS WHAT OPENS HERE NOW AND THE DIVISION IS NOT DRAWN AT ALL:
+  // {0,2,3} stops at the funds, and the divisions are a rung further in. The
+  // fund column's OTHER marks are the counter-case -- the capped tail and the
+  // residual, neither of which is a fund the city printed -- and they must
+  // stay shut.
   const fund100 = app.projection.nodes.find((n) => n.id === "fund/100");
-  const patrolOpens = Boolean(patrol) && app.drillable(patrol);
   const fund100Opens = Boolean(fund100) && app.drillable(fund100);
+  const divisions1 = app.projection.nodes.filter((n) => n.id.startsWith("dept/")).length;
+  const opensAt1 = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id);
   // A CARRIED ENDPOINT BELONGS TO NO GROUP, exactly as it does on the spine
   // it was copied from: a transfer out is money leaving, not money held.
   const muted1 = app.projection.nodes
     .filter((n) => !n.id.startsWith("revenue/") && !app.isCarried(n.id) && app.fundGroupOf(n) === "")
     .map((n) => n.id);
-  // THE DIVISION CAP IS INERT ON THE CORPUS AND PINNED INERT: 23 divisions
-  // under a cap of 24, so no aggregate at tier 4 -- the day a 24th division
-  // appears the column starts folding, and this is what says so.
-  const divisions1 = app.projection.nodes.filter((n) => n.id.startsWith("dept/")).length;
-  const foldedDivisions1 = app.projection.nodes.some((n) => n.id === app.aggregateID(4));
   // THE DOCUMENT'S OWN FACTS, which is what the counts line claims a share
   // of: a carried flow cites the spine, and its facts are counted apart.
   const cited1 = new Set();
@@ -3196,14 +3294,53 @@ async function walkChain(col) {
     if (app.isResidual(l.source) || app.isResidual(l.target)) { carried1++; continue; }
     for (const id of l.fact_ids) cited1.add(id);
   }
+  // THE CENTRE BALANCES, ASSERTED WHERE THE READER MEETS IT. The residual is
+  // what makes it true and the residual block above is what proves the
+  // residual; this is the one figure a reader could check by eye, so the walk
+  // reads it too.
+  const centre1 = {
+    in: app.projection.links.filter((l) => l.target === "fund-group/general")
+      .reduce((sum, l) => sum + l.value_cents, 0),
+    out: app.projection.links.filter((l) => l.source === "fund-group/general")
+      .reduce((sum, l) => sum + l.value_cents, 0),
+  };
 
   withFocus();
-  const open2 = await openInto(app, "dept/patrol");
+  const open2 = await openInto(app, "fund/100");
   const at2 = words(app);
+  const rows2 = body.children.length;
   const focus2 = app.dom.focused ? app.dom.focused.textContent : "";
   const asked2 = fetch.asked.slice();
   const m2 = open2 === "drew" ? measure(app, app.projection) : null;
-  const anyOpens2 = app.projection.nodes.some((n) => app.drillable(n));
+  const patrol = app.projection.nodes.find((n) => n.id === "dept/patrol");
+  const patrolOpens = Boolean(patrol) && app.drillable(patrol);
+  // THE DIVISION CAP IS INERT ON THE CORPUS AND PINNED INERT: 23 divisions
+  // under a cap of 24, so no aggregate at tier 4 -- the day a 24th division
+  // appears the column starts folding, and this is what says so.
+  const divisions2 = app.projection.nodes.filter((n) => n.id.startsWith("dept/")).length;
+  const foldedDivisions2 = app.projection.nodes.some((n) => n.id === app.aggregateID(4));
+  const cited2 = new Set();
+  for (const l of app.projection.links) for (const id of l.fact_ids) cited2.add(id);
+  // THE ONE CENTRE ON THE PAGE WHOSE TWO SIDES ARE DIFFERENT QUANTITIES, and
+  // the step's description is what says so. A fund's revenue and its
+  // divisions' spending are two schedules; what is left is what the city
+  // transfers out and adds to reserves, which pp.66-67 print for the GROUP.
+  // Pinned per column so that difference cannot move unremarked, and the
+  // sentence that explains it is asserted beside the figures.
+  const centre2 = {
+    in: app.projection.links.filter((l) => l.target === "fund/100")
+      .reduce((sum, l) => sum + l.value_cents, 0),
+    out: app.projection.links.filter((l) => l.source === "fund/100")
+      .reduce((sum, l) => sum + l.value_cents, 0),
+  };
+
+  withFocus();
+  const open3 = await openInto(app, "dept/patrol");
+  const at3 = words(app);
+  const focus3 = app.dom.focused ? app.dom.focused.textContent : "";
+  const asked3 = fetch.asked.slice();
+  const m3 = open3 === "drew" ? measure(app, app.projection) : null;
+  const anyOpens3 = app.projection.nodes.some((n) => app.drillable(n));
 
   // ESCAPE, ONE RUNG AT A TIME, through the handler main() attached. The
   // breadcrumb's controls call drillUp(k) directly; Escape is the other route
@@ -3213,34 +3350,38 @@ async function walkChain(col) {
   };
   withFocus();
   escape();
+  const back2 = words(app);
+  const focusBack2 = app.dom.focused ? app.dom.focused.textContent : "";
+  escape();
   const back1 = words(app);
-  const focusBack1 = app.dom.focused ? app.dom.focused.textContent : "";
   escape();
   const back0 = words(app);
-  const asked3 = fetch.asked.slice();
+  const asked4 = fetch.asked.slice();
 
   // AND THE CACHE: opening again fetches nothing. Then the breadcrumb's own
-  // controls, each closing TO ITS OWN DEPTH: from depth 2 the inner control
-  // lands on depth 1 and the outer one on the overview -- a bar whose every
-  // control went to the overview would pass the Escape arm above unnoticed.
-  await openInto(app, "fund-group/general");
-  await openInto(app, "dept/patrol");
-  const asked4 = fetch.asked.slice();
+  // controls, each closing TO ITS OWN DEPTH: from depth 3 the innermost
+  // control lands on depth 2 and the outermost on the overview -- a bar whose
+  // every control went to the overview would pass the Escape arm above
+  // unnoticed.
+  await at(app, "fund-group/general", "fund/100", "dept/patrol");
+  const asked5 = fetch.asked.slice();
   const click = (control) => { for (const fn of (control && control.listeners.click) || []) fn({}); };
   const controlsAt = () =>
     app.dom.byId.get("breadcrumb").children.filter((c) => c.tagName === "button");
-  click(controlsAt()[1]);
+  click(controlsAt()[2]);
   const inner = words(app);
   await openInto(app, "dept/patrol");
   click(controlsAt()[0]);
   const back0b = words(app);
 
-  // A GROUP WITH NO DIVISIONS SAYS SO. Five of the six groups draw nothing at
-  // the second step's tier, so the depth-1 hint over them must say nothing
-  // opens further rather than point at a column that is not there.
+  // A GROUP WHOSE FUNDS NOTHING DECOMPOSES SAYS SO. Five of the six groups
+  // draw only funds the fund step's role leaves shut, so the depth-1 hint over
+  // them must say nothing opens further rather than point at a column whose
+  // marks are ends of the chain.
   await openInto(app, "fund-group/capital");
   const capital = words(app);
-  const capitalOpens = app.projection.nodes.some((n) => app.drillable(n));
+  const capitalOpens = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id);
+  const capitalFunds = app.projection.nodes.filter((n) => n.id.startsWith("fund/")).length;
   app.drillUp(0);
 
   const stepFile = `data/${col.step}.json`;
@@ -3266,91 +3407,128 @@ async function walkChain(col) {
     detail: `hint "${at0.hint}"; legend ${at0.legend} swatches`,
   });
   out.push({
-    name: `${col.label} chain: depth 1 draws the General Fund at {0,3,4} from the other document, and every sentence says so`,
-    // 34 nodes, 33 links and 2 sub-pixel ribbons is fisc-ko1j's own
-    // measurement of this view, reproduced here through the shipped functions
-    // -- and measured the same in FY2026-27, whose General Fund has the same
-    // one fund, ten sources and 23 divisions. The residual adds five marks
-    // and four ribbons to both, and one hairline to FY2026-27 alone; the
-    // counts line names the carried flows apart from the document's facts.
+    name: `${col.label} chain: depth 1 draws the General Fund at {0,2,3} as a window whose centre balances, and every sentence says so`,
+    // THE SPINE'S OWN REVENUE CATEGORIES ON THE LEFT, the group the reader
+    // clicked in the middle and its funds on the right, with the money no
+    // fund receives carried past the centre onto the residual. What makes the
+    // shape checkable rather than merely drawn is the equality: the centre's
+    // two sides agree to the cent, in both columns, which is what the residual
+    // is for.
     ok: open1 === "drew" && at1.depth === 1 && !at1.drawnIsYears &&
         Boolean(m1) && m1.nodes === col.general.nodes && m1.links === col.general.links &&
         m1.hairlines === col.general.hairlines &&
-        divisions1 === 23 && !foldedDivisions1 && carried1 === col.residual["fund-group/general"].carried &&
+        divisions1 === 0 && carried1 === col.residual["fund-group/general"].carried &&
+        centre1.in === centre1.out && centre1.in > 0 &&
         at1.counts === `${col.general.links} flows between ${col.general.nodes} nodes, from ` +
-          `${cited1.size} of the document's 280 facts, and ${carried1} flows carried unchanged ` +
-          "from the chart above" &&
+          `${cited1.size} of the document's 280 facts, and ${carried1} flow` +
+          `${carried1 === 1 ? "" : "s"} carried unchanged from the chart above` &&
         rows1 === col.general.links &&
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into General Fund group` &&
         at1.crumbControls.join("|") === "← All fund groups" && at1.crumbHere === "General Fund group" &&
         at1.hint === "This is General Fund group, broken into its parts. Click a node in the " +
           "right-hand column to open it further, or tab to one and press Enter." &&
         at1.legend === 0 &&
-        at1.desc === "Opened into General Fund group. " + step0.description +
+        at1.desc === "Opened into General Fund group. " + groupStep.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
-        patrolOpens && Boolean(fund100) && !fund100Opens && muted1.length === 0 &&
+        opensAt1.join() === "fund/100" && fund100Opens && muted1.length === 0 &&
         focus1 === "← All fund groups",
     detail: open1 === "drew"
       ? `${m1.nodes} nodes, ${m1.links} links, ${m1.hairlines} under 1px; counts "${at1.counts}"; ` +
         `title "${at1.title}"; breadcrumb ${JSON.stringify(at1.crumbControls)} + "${at1.crumbHere}"; ` +
         `hint "${at1.hint}"; legend ${at0.legend} -> ${at1.legend} swatches; desc ` +
-        `${at1.desc.startsWith("Opened into General Fund group. " + step0.description) ? "carries" : "LACKS"} ` +
+        `${at1.desc.startsWith("Opened into General Fund group. " + groupStep.description) ? "carries" : "LACKS"} ` +
         `the step's description and ${at1.desc.endsWith(pointer) ? "keeps" : "DROPS"} the table pointer; ` +
-        `${divisions1} divisions drawn${foldedDivisions1 ? " AND a tier-4 aggregate" : ", none folded"}; ` +
-        `a division ${patrolOpens ? "opens" : "does NOT open"} and a fund ` +
-        `${fund100Opens ? "WRONGLY opens" : "does not"}; ${muted1.length} fund-side mark(s) ` +
+        `the centre takes ${centre1.in} and sends ${centre1.out}; ${divisions1} division(s) drawn; ` +
+        `${JSON.stringify(opensAt1)} open; ${muted1.length} fund-side mark(s) ` +
         `resolve to no group${muted1.length ? " (" + muted1.slice(0, 3).join(", ") + ")" : ""}; ` +
         `focus on "${focus1}"`
       : `opening the General Fund came to "${open1}"`,
   });
   out.push({
-    name: `${col.label} chain: depth 2 draws Patrol at {4,5}, names both rungs, keeps the table pointer, and opens nothing further`,
-    ok: open2 === "drew" && at2.depth === 2 && Boolean(m2) && m2.links > 0 &&
+    name: `${col.label} chain: depth 2 draws fund/100 at {2,3,4}, whose two sides are different quantities and whose description says which`,
+    ok: open2 === "drew" && at2.depth === 2 && Boolean(m2) &&
+        m2.nodes === col.fund.nodes && m2.links === col.fund.links &&
+        m2.hairlines === col.fund.hairlines &&
+        divisions2 === 23 && !foldedDivisions2 && patrolOpens &&
         asked2.length === asked1.length &&
-        at2.title.endsWith(", opened into General Fund group, then Patrol") &&
-        at2.crumbControls.join("|") === "← All fund groups|← All divisions" &&
-        at2.crumbHere === "Patrol" &&
-        at2.hint === "This is Patrol, broken into its parts. Nothing here opens further; go back to open another." &&
-        at2.desc === "Opened into General Fund group, then Patrol. " + step1.description +
+        centre2.in === col.fundCentre[0] && centre2.out === col.fundCentre[1] &&
+        at2.counts === `${col.fund.links} flows between ${col.fund.nodes} nodes, from ` +
+          `${cited2.size} of the document's 280 facts` &&
+        rows2 === col.fund.links &&
+        at2.crumbControls.join("|") === "← All fund groups|← All funds" &&
+        at2.desc === "Opened into General Fund group, then General Fund. " + fundStep.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
-        !anyOpens2 && at2.legend === 0 &&
-        focus2 === "← All divisions",
+        fundStep.description.includes("what it takes in is its revenue") &&
+        fundStep.description.includes("transfers out of the fund and adds to its reserves") &&
+        focus2 === "← All funds",
     detail: open2 === "drew"
-      ? `${m2.nodes} nodes, ${m2.links} links, smallest ribbon ${m2.smallest.toFixed(2)}px; title ` +
-        `"${at2.title}"; breadcrumb ${JSON.stringify(at2.crumbControls)} + "${at2.crumbHere}"; ` +
-        `hint "${at2.hint}"; desc "${at2.desc.slice(0, 60)}..."; ` +
-        `${anyOpens2 ? "SOMETHING still opens" : "nothing opens"}; no second fetch; focus on "${focus2}"`
-      : `opening Patrol came to "${open2}"`,
+      ? `${m2.nodes} nodes, ${m2.links} links, ${m2.hairlines} under 1px; counts "${at2.counts}"; ` +
+        `breadcrumb ${JSON.stringify(at2.crumbControls)} + "${at2.crumbHere}"; ` +
+        `the fund takes in ${centre2.in} and pays its divisions ${centre2.out} ` +
+        `(want ${col.fundCentre.join(" / ")}), a difference of ${centre2.in - centre2.out} that the ` +
+        `step's sentence ${fundStep.description.includes("transfers out of the fund") ? "names" : "does NOT name"}; ` +
+        `${divisions2} divisions drawn${foldedDivisions2 ? " AND a tier-4 aggregate" : ", none folded"}; ` +
+        `a division ${patrolOpens ? "opens" : "does NOT open"}; no second fetch; focus on "${focus2}"`
+      : `opening fund/100 came to "${open2}"`,
+  });
+  out.push({
+    name: `${col.label} chain: depth 3 draws Patrol at {3,4,5}, names all three rungs, keeps the table pointer, and opens nothing further`,
+    ok: open3 === "drew" && at3.depth === 3 && Boolean(m3) && m3.links > 0 &&
+        asked3.length === asked1.length &&
+        at3.title.endsWith(", opened into General Fund group, then General Fund, then Patrol") &&
+        at3.crumbControls.join("|") === "← All fund groups|← All funds|← All divisions" &&
+        at3.crumbHere === "Patrol" &&
+        at3.hint === "This is Patrol, broken into its parts. Nothing here opens further; go back to open another." &&
+        at3.desc === "Opened into General Fund group, then General Fund, then Patrol. " +
+          divisionStep.description +
+          " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
+        !anyOpens3 && at3.legend === 0 &&
+        focus3 === "← All divisions",
+    detail: open3 === "drew"
+      ? `${m3.nodes} nodes, ${m3.links} links, smallest ribbon ${m3.smallest.toFixed(2)}px; title ` +
+        `"${at3.title}"; breadcrumb ${JSON.stringify(at3.crumbControls)} + "${at3.crumbHere}"; ` +
+        `hint "${at3.hint}"; desc "${at3.desc.slice(0, 60)}..."; ` +
+        `${anyOpens3 ? "SOMETHING still opens" : "nothing opens"}; no second fetch; focus on "${focus3}"`
+      : `opening Patrol came to "${open3}"`,
   });
   out.push({
     name: `${col.label} chain: Escape closes one rung at a time, and each depth comes back as it was`,
-    ok: back1.depth === 1 && back1.counts === at1.counts && back1.title === at1.title &&
+    ok: back2.depth === 2 && back2.counts === at2.counts && back2.title === at2.title &&
+        focusBack2 === "← All funds" &&
+        back1.depth === 1 && back1.counts === at1.counts && back1.title === at1.title &&
         back1.crumbControls.join("|") === at1.crumbControls.join("|") &&
         back1.hint === at1.hint && back1.desc === at1.desc &&
-        focusBack1 === "← All fund groups" &&
         back0.depth === 0 && back0.counts === at0.counts && back0.title === at0.title &&
         back0.crumbHidden && back0.legend === 6 && back0.hint === at0.hint &&
         back0.desc === served && back0.drawnIsYears &&
-        asked3.length === asked1.length,
-    detail: `after one Escape: depth ${back1.depth}, counts "${back1.counts}", focus on "${focusBack1}"; ` +
-      `after two: depth ${back0.depth}, counts "${back0.counts}", legend ${back0.legend}, ` +
+        asked4.length === asked1.length,
+    detail: `after one Escape: depth ${back2.depth}, counts "${back2.counts}", focus on "${focusBack2}"; ` +
+      `after two: depth ${back1.depth}, counts "${back1.counts}"; ` +
+      `after three: depth ${back0.depth}, legend ${back0.legend}, ` +
       `breadcrumb ${back0.crumbHidden ? "hidden" : "SHOWING"}`,
   });
   out.push({
     name: `${col.label} chain: reopening fetches nothing, and each breadcrumb control closes to its own depth`,
-    ok: asked4.length === asked1.length &&
-        inner.depth === 1 && inner.counts === at1.counts &&
+    ok: asked5.length === asked1.length &&
+        inner.depth === 2 && inner.counts === at2.counts &&
         back0b.depth === 0 && back0b.counts === at0.counts && back0b.crumbHidden,
-    detail: `${asked4.length} fetch(es) after 0->1->2->1->0->1->2, want ${asked1.length}; the inner ` +
-      `control left depth ${inner.depth} reading "${inner.counts}", and the outermost left depth ` +
-      `${back0b.depth} reading "${back0b.counts}"`,
+    detail: `${asked5.length} fetch(es) after 0->1->2->3->2->1->0->1->2->3, want ${asked1.length}; the ` +
+      `innermost control left depth ${inner.depth} reading "${inner.counts}", and the outermost left ` +
+      `depth ${back0b.depth} reading "${back0b.counts}"`,
   });
   out.push({
-    name: `${col.label} chain: a group with no divisions says nothing opens further, rather than naming a column that is not there`,
-    ok: capital.depth === 1 && !capitalOpens &&
+    name: `${col.label} chain: a group whose funds no schedule decomposes says nothing opens further, rather than naming a column that is not there`,
+    // THE FUNDS ARE DRAWN AND NONE OF THEM OPENS, which is a stronger claim
+    // than "the column is empty": pp.167-170 are the General Fund's schedule,
+    // so capital's ten marks are ends of the chain rather than rungs, and the
+    // step's role is what says so. Before that role every one of them offered
+    // a click that banners.
+    ok: capital.depth === 1 && capitalOpens.length === 0 && capitalFunds > 0 &&
         capital.hint === "This is Capital Funds, broken into its parts. Nothing here opens further; go back to open another." &&
-        capital.desc.startsWith("Opened into Capital Funds. " + step0.description),
-    detail: `opened into capital: ${capitalOpens ? "SOMETHING opens" : "nothing opens"}; hint "${capital.hint}"`,
+        capital.desc.startsWith("Opened into Capital Funds. " + groupStep.description),
+    detail: `opened into capital: ${capitalFunds} fund mark(s) drawn and ` +
+      `${capitalOpens.length ? capitalOpens.join(", ") + " WRONGLY open" : "none opens"}; ` +
+      `hint "${capital.hint}"`,
   });
   return out;
 }

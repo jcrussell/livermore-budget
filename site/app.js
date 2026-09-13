@@ -953,17 +953,18 @@ function foldTarget(byID, n, drawn) {
  * set uniform, which is the only shape this build lays out.
  *
  * THE RULE IS "TARGET IN THE SUBTREE, BOTH ENDS PLACEABLE", and both halves are
- * needed because the two pages that drill want opposite things from the same
- * function:
+ * needed because the windows that call it want opposite things from it:
  *
- *   - Revenue opens a fund group into its funds at tiers {0,3}. The context
- *     column, the revenue sources, sits OUTSIDE the subtree and must be kept.
- *     Requiring both ends inside would delete it and draw a column of funds fed
- *     by nothing.
- *   - Spending opens a division into its object categories at tiers {4,5}. The
- *     fund-to-division link pointing INTO the subtree must be dropped, because
- *     fund/100 has no ancestor at tier 4 or 5 and foldDocument would refuse the
- *     whole document over it.
+ *   - A fund group's window keeps the spine's own revenue categories beside the
+ *     group at tiers {0,2}. That context column sits OUTSIDE the subtree and
+ *     must be kept; requiring both ends inside would delete it and draw a group
+ *     fed by nothing.
+ *   - A division's window keeps the fund that pays for it at {3,4}, off a chart
+ *     that also carries the fund group above it. The group-to-fund link points
+ *     at a node the subtree does not hold and is excluded by the rule above;
+ *     what the placeability test is for is the end no column can hold at all,
+ *     which is why a tier set naming two adjacent columns can be handed a
+ *     document carrying six.
  *
  * Keying on the target says which end is the fine one; the placeability test
  * says what this drill's tier set has room for. Neither is a silent loss: a
@@ -1760,12 +1761,17 @@ function paintChartHint() {
  * and send a reader to click the wrong one.
  *
  * NARROWED TO THE TIERS THE CHART ACTUALLY DRAWS, because a declared column
- * can come out empty: at {0,3,4} only the General Fund has tier-4 nodes, and
- * the other five groups' charts stop at their funds. Telling a reader to click
- * a column that is not there is the same defect as telling them to click one
- * that does not open. Two columns have no middle; a chart drawn whole declares
- * no order at all and is named nothing here, which is the same answer as
- * "nothing opens" and reaches the reader as paintChartHint's other sentence.
+ * can come out empty and telling a reader to click a column that is not there
+ * is the same defect as telling them to click one that does not open. Measured
+ * over every view the page opens, both published columns: none of them comes
+ * out short, so the narrowing changes no sentence on the committed corpus. It
+ * stays because a tier set is a DECLARATION and a document need not fill it --
+ * the drill opens into a schedule that decomposes one fund of sixty-one -- and
+ * a hint naming a column nothing is drawn in is the same defect one step on.
+ * Two columns have no middle; a chart drawn whole
+ * declares no order at all and is named nothing here, which is the same answer
+ * as "nothing opens" and reaches the reader as paintChartHint's other
+ * sentence.
  *
  * ASKED OF THE DRAWN NODES, NOT OF THE STEPS: a step opens from a tier, and
  * which of that tier's nodes open is drillable's answer -- on the spine's
@@ -1908,8 +1914,9 @@ function shapeFor(doc) {
   // fold merges by folded ends and these ends are the chart above's.
   //
   // AND THE CONTRA MARKING AFTER THAT, because it is about what the fold LEFT
-  // negative: a category's lines fold into the category's net cell at {0,3,4},
-  // where nothing is negative, and stand on their own at {1,0,2}, where two are.
+  // negative: {1,0,2} is the one tier set that draws a category's printed lines
+  // at all, and two of them are reductions; every other view reaches the
+  // category as one net cell, where nothing is negative.
   //
   // AND THE GAP LAST OF THE THREE THAT ADD MARKS, because it is a statement
   // about the whole drawn chart: what the opened node takes in against what it
@@ -2459,10 +2466,18 @@ function carryResidual(drawn, from, rung) {
   if (!residual) return drawn;
   const opened = rung.id;
   const inside = withinNode(rung.doc, opened);
+  // WHAT THIS CHART DRAWS OF THE OPENED NODE'S PARTS, and not what the step
+  // document could draw. The tier set decides it: {0,2,3} draws a group's funds
+  // and no division, so its funds publish no outflow HERE however finely
+  // pp.167-170 decompose them, and carrying an outflow against an outflow of
+  // nothing would state an identity this chart does not hold. That is the rule
+  // this file already applies to the five groups no schedule decomposes,
+  // reached through the columns rather than through the file.
+  //
   // The group node itself carries no flow in any published document -- it
   // exists to hold the hierarchy -- and is excluded by name rather than by
   // assumption.
-  const decomposed = rung.doc.links.some((l) => inside.has(l.source) && l.source !== opened);
+  const decomposed = drawn.links.some((l) => inside.has(l.source) && l.source !== opened);
   const carriesFrom = (/** @type {string} */ e) =>
     rung.doc.links.some((l) => l.source === e && inside.has(l.target));
   const carriesTo = (/** @type {string} */ e) =>
@@ -2471,17 +2486,43 @@ function carryResidual(drawn, from, rung) {
   const id = residualID(opened);
   /** @type {FiscLink[]} */
   const links = [];
+  /**
+   * The chart's own copy of each link re-pointed below, dropped as it is: a
+   * window keeps a flank of the chart above, so the links this re-points are
+   * ALREADY DRAWN, pointing at the opened node. Copying the file's instead
+   * would leave both -- run, not predicted: transfers/in left tier 0 at
+   * 960,800 against the 480,400 p0067 prints for it, and the opened group
+   * stood 1,514,554 taller than the ribbons under it with nothing saying so.
+   * @type {Set<FiscLink>}
+   */
+  const spliced = new Set();
+  /**
+   * One endpoint's links off the chart above: this rung's own where it draws
+   * them, and the FILE's where it does not, which is every step that keeps no
+   * flank. The two cannot both be taken.
+   * @param {(l: FiscLink) => boolean} want
+   * @returns {FiscLink[]}
+   */
+  const above = (want) => {
+    const here = drawn.links.filter(want);
+    return here.length ? here : from.links.filter(want);
+  };
   /** @type {Map<string, boolean>} endpoint id to whether its flow arrives */
   const ends = new Map();
   // Endpoints in id order, so the rationale reads the same on every build.
   for (const e of Object.keys(residual).sort()) {
-    for (const l of from.links) {
-      if (l.source === e && l.target === opened && !carriesFrom(e)) {
+    if (!carriesFrom(e)) {
+      for (const l of above((l) => l.source === e && l.target === opened)) {
         links.push(Object.assign({}, l, { target: id }));
         ends.set(e, true);
-      } else if (l.source === opened && l.target === e && decomposed && !carriesTo(e)) {
+        spliced.add(l);
+      }
+    }
+    if (decomposed && !carriesTo(e)) {
+      for (const l of above((l) => l.source === opened && l.target === e)) {
         links.push(Object.assign({}, l, { source: id }));
         ends.set(e, false);
+        spliced.add(l);
       }
     }
   }
@@ -2568,7 +2609,7 @@ function carryResidual(drawn, from, rung) {
   };
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat(added, [node]),
-    links: drawn.links.concat(links),
+    links: drawn.links.filter((l) => !spliced.has(l)).concat(links),
   });
 }
 

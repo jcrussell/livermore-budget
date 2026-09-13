@@ -19,6 +19,7 @@ const (
 	revenueLinePrefix = "revenue-line/"
 	revenueNodePrefix = "revenue/"
 	fundNodePrefix    = "fund/"
+	fundGroupPrefix   = "fund-group/"
 	transfersInNode   = "transfers/in"
 )
 
@@ -53,13 +54,14 @@ const (
 // sides print rows, and would otherwise read here as a cell two figures agreed
 // on. The count of those is reported rather than folded in.
 //
-// THE REVENUE SIDE IS NOW CITED AT TWO GRAINS AND NEITHER ARM READS THE SECOND.
-// A line is both drawn into its funds and rolled back up into its category, so
-// every revenue row behind a flow is cited twice, and FundFlowsCounts
-// .FactsCitedTwice counts it -- which fund-flows-counts-reconcile re-derives from
-// the links and this check does not touch. Arm 1 iterates the links whose TARGET
-// is a fund, so a rollup is not among its subjects and cannot make a cell tie
-// against itself.
+// THE REVENUE SIDE IS CITED AT THREE GRAINS AND NEITHER ARM READS THE OTHER TWO.
+// A row is drawn into its funds, rolled back up into its category, and rolled up
+// again under the group its fund belongs to, so every revenue row behind a flow
+// is cited more than once and FundFlowsCounts.FactsCitedTwice counts it -- which
+// fund-flows-counts-reconcile re-derives from the links and this check does not
+// touch. Arm 1 keys on the TARGET being a fund, which the (1,0) rollup fails and
+// the (2,3) rollup PASSES: a group carries its funds' whole inflow, so it is
+// skipped by source below rather than by the shape of the subject set.
 //
 // WHAT IT CANNOT WITNESS. Both sides are one fact slice in one process: the
 // links were built from the facts this check sums, so a wrong AMOUNT moves both
@@ -128,6 +130,14 @@ func (c *revenueLinesTieToTheirCategories) Run(_ context.Context, s *Subject) (R
 
 		for _, l := range doc.Links {
 			if !strings.HasPrefix(l.Target, fundNodePrefix) {
+				continue
+			}
+			// THE GROUP'S ROLLUP IS THIS CELL'S OWN MONEY ONE GRAIN COARSER.
+			// Run, not predicted: counted here it doubles every one of the 18
+			// cells, and the check reports the spine as short by exactly the
+			// figure it publishes -- a drift finding on a document that
+			// reconciles.
+			if strings.HasPrefix(l.Source, fundGroupPrefix) {
 				continue
 			}
 			drawn++

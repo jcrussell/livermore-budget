@@ -274,6 +274,15 @@ func reconcileColumn(spine []project.Link, drill *project.FundFlowsDocument,
 			}
 		}
 		for _, l := range drill.Links {
+			// THE GROUP'S OWN ROLLUP INTO ITS FUNDS IS NOT A SECOND INFLOW.
+			// A (2,3) link carries the fund's whole inflow from the group it is
+			// already inside, so counting it doubles this side: run, not
+			// predicted, general's fund-level inflow came to 315,746,940
+			// against the spine's 159,388,024 and the check reported the
+			// unaccounted as 157,873,470 -- the reconciling figure itself.
+			if l.Source == g {
+				continue
+			}
 			if groupOfFund[l.Target] == g {
 				fundIn.add(l.Source, l.ValueCents)
 			}

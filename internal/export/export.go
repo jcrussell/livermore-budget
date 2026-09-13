@@ -1095,6 +1095,10 @@ type parentChart struct {
 	key   string
 	tiers []int
 	doc   string
+	// keep is that chart's own kept flank, or nil where it keeps none -- which
+	// is every root, since a view is not a window. A step may not open the tier
+	// its parent kept; the arm below says why.
+	keep []int
 }
 
 func (v View) validateSteps(built map[string][]byte) error {
@@ -1157,7 +1161,8 @@ func (v View) validateSteps(built map[string][]byte) error {
 						"step, and that is what makes a cycle undeclarable rather than something "+
 						"this has to detect", v.Path, i, a, j)
 			}
-			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].Tiers, doc: docs[j]})
+			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].Tiers, doc: docs[j],
+				keep: v.Steps[j].Keep})
 		}
 		doc := s.Projection
 		if doc == "" {
@@ -1301,6 +1306,30 @@ func (v View) validateSteps(built map[string][]byte) error {
 							"already draws; opening a node would redraw the chart it was opened "+
 							"from", v.Path, i, s.Tiers, doc, p.key)
 				}
+			}
+			// A KEPT FLANK IS NOT A WHOLE NODE, SO NOTHING ON ONE MAY OPEN.
+			// A window draws its kept column at that column's share of the
+			// CENTRE -- the spine's cell for ONE revenue category into a fund
+			// group, not the group's own inflow -- while a step opening one of
+			// those marks draws that node's WHOLE decomposition on the other
+			// side. The two are different quantities and no mark can say so:
+			// d3-sankey sizes the node at the larger and the difference is node
+			// height with no ribbon under it. Measured over both committed
+			// columns before this arm existed: the Contributions & Outsourced
+			// window keeps fund-group/general at 76,360, and opening it drew
+			// 157,873,470 leaving -- 157,797,110 of silence.
+			//
+			// PER PARENT, because it is a property of the chart the reader came
+			// from: the same step may be reachable from a chart that draws the
+			// tier whole and from one that keeps it, and only the second is
+			// refused.
+			if len(p.keep) == 1 && p.keep[0] == s.From {
+				return fmt.Errorf(
+					"view %q's step %d opens tier %d of %s, which KEEPS that tier; a kept "+
+						"flank is drawn at its share of that chart's centre rather than whole, "+
+						"so this step would draw a node taking one figure in and sending its "+
+						"whole decomposition out, with the difference left as node height "+
+						"nothing accounts for", v.Path, i, s.From, where)
 			}
 			if len(s.Keep) == 0 {
 				continue

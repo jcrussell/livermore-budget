@@ -610,20 +610,44 @@ func views(built result) []export.View {
 	if years := stepStems(export.PrimaryProjection, project.FundFlowsProjection, projections); years[export.PrimaryProjection] != "" {
 		spine.Steps = []export.DrillStep{
 			{
-				// THE KEY IS THE PARENTAGE. The division step names it, so
-				// this pair's order in the literal carries nothing and a
-				// third step could open from either chart.
+				// THE SPINE'S CHART AND NO OTHER, WHICH IS A MEASUREMENT AND
+				// NOT A CHOICE. A revenue category's window and an object
+				// category's both draw fund groups, and a group kept on one of
+				// those flanks is drawn at its share of THAT centre -- the
+				// spine's cell for one category into the group -- while this
+				// step draws the group's whole decomposition on the other
+				// side. Measured over both committed columns with
+				// "revenue-category" in this list: the Contributions &
+				// Outsourced window keeps fund-group/general at 76,360 and
+				// opening it drew 157,873,470 leaving, 157,797,110 of node
+				// height with no ribbon under it and nothing on the page
+				// saying so. validateSteps refuses that declaration by name
+				// now, so this list is held rather than remembered.
 				Key:             "fund-group",
 				After:           []string{""},
 				From:            2,
 				Projection:      years[export.PrimaryProjection],
 				YearProjections: years,
-				Tiers:           []int{0, 3, 4},
-				// THE DIVISION CAP NAMES ITS OWN NOUN. It never engages on the
-				// committed corpus (23 divisions under 24) and while it took the
-				// step's it would have labelled a tail of divisions "smaller
-				// funds" the day it did.
-				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
+				// A WINDOW WHOSE KEPT FLANK IS TIER 0, which is the case Keep
+				// is a slice for: the spine draws its revenue categories to the
+				// LEFT of its fund groups, so they stay the left column here
+				// and the window pushes right into the group's own funds.
+				// [revenue categories | this group | its funds], the owner's
+				// decision of 2026-09-13 over the {0,3,4} chart this replaces,
+				// which drew the funds and the divisions and left the group the
+				// reader clicked off the screen entirely.
+				Keep:  []int{0},
+				Tiers: []int{0, 2, 3},
+				// ONE CAP WHERE THERE WERE TWO, because the division column is
+				// a step further out now. Measured off both committed goldens:
+				// special-revenue draws 32 funds in FY2025-26 and 31 in
+				// FY2026-27 and folds to 8 either way; capital 11, enterprise 9,
+				// internal-service 5, debt-service 3 and general 1. Uncapped,
+				// special-revenue's window lays 9 of its 42 ribbons under a
+				// pixel in FY2025-26 and 7 of 41 in FY2026-27, with a smallest
+				// of 0.12px and 0.05px; capped it draws 19 ribbons and none of
+				// them is sub-pixel, in either column.
+				Caps: []export.TierCap{{Tier: 3, Cap: 8}},
 				Back: "All fund groups",
 				Tail: "funds",
 				// THE RESIDUAL IS THE CHECK'S DECLARATION, READ, NOT COPIED.
@@ -641,6 +665,19 @@ func views(built result) []export.View {
 				// check owns because the check is the only thing that can
 				// fail on it. Spelling the five ids here instead would give
 				// the site a set nothing verifies.
+				//
+				// IT IS WHAT MAKES THE CENTRE BALANCE, and that is new at
+				// {0,2,3}. The group's own mark is now drawn, so the money
+				// pp.127-140 print for no fund has to leave the reader's eye
+				// somewhere: each declared endpoint's ribbon is re-pointed
+				// past the group onto one derived node beside its funds, and
+				// the group then takes in exactly what its funds take in.
+				// Measured over both goldens, in dollars: general 1,514,554
+				// (a 1,034,154 fund-balance draw and 480,400 of transfers in)
+				// and 486,735 in FY2026-27, capital 2,500,213 and 10,129,416,
+				// internal-service 6,147,533 and 7,160,645; special-revenue,
+				// enterprise and debt-service nothing in either column, and
+				// their groups tie to the cent with no mark at all.
 				Residual: check.ResidualNodes(),
 				// THE FIGURES IN THIS SENTENCE ARE MEASURED off both
 				// committed goldens, and tools/jscheck/drill.mjs pins them
@@ -652,34 +689,89 @@ func views(built result) []export.View {
 				// exact ratio belongs to the check, not to a sentence that is
 				// shown under either year. That gap is the reason a citywide
 				// fund column is not drawn and a group is opened instead.
-				Description: "The revenue categories on the left flow into this fund " +
-					"group's own funds, rescaled to the group's total \u2014 the citywide " +
+				Description: "The revenue categories on the left are the citywide chart's " +
+					"own cells; this fund group is the mark in the middle, and its own funds " +
+					"are on the right, rescaled to the group's total — the citywide " +
 					"chart cannot show them, because the General Fund alone is half the " +
 					"fund column and the smallest fund is less than a thirty-thousandth " +
-					"of it. Only " +
+					"of it. Money Budget Book pp.127-140 print for no fund at all passes " +
+					"the group's mark to a node of its own beside the funds, so what the " +
+					"group takes in here is what its funds take in. Only " +
 					"the General Fund continues into the divisions that spend it: Budget " +
-					"Book pp.167-170 decompose that fund alone, so every other group's " +
-					"money ends at its funds \u2014 not missing, but not broken down in " +
+					"Book pp.167-170 decompose that fund alone, so every other fund ends " +
+					"the drill — not missing, but not broken down in " +
 					"any published schedule.",
 			},
 			{
-				Key:   "division",
+				// THE ROLE IS THE MIRROR OF THE OTHER TWO GATES, and it is
+				// what keeps 60-odd funds from offering a click that cannot be
+				// answered. pp.167-170 are the General Fund's schedule and no
+				// other fund has a spending side at all, so `general_fund` --
+				// which internal/project publishes on fund 100 because 100 IS
+				// the General Fund, not because this column happens to
+				// decompose it -- opens and `fund` does not. Run, not
+				// predicted: without it every drawn fund is drillable and a
+				// click on one banners "nothing flows between tiers 3, 4 for
+				// node fund/200, so there is no chart to open it into", which
+				// is Lane F's finding at the other end of the chart.
+				Key:   "fund",
 				After: []string{"fund-group"},
+				From:  3,
+				Role:  "general_fund",
+				// [the group | this fund | the divisions that spend it]. The
+				// step before it draws tier 2 to the LEFT of tier 3, so the
+				// group stays the left column here.
+				Keep:  []int{2},
+				Tiers: []int{2, 3, 4},
+				// THE DIVISION CAP HAS NEVER ENGAGED AND IS PINNED INERT: 23
+				// divisions against 24 in both committed columns. It is carried
+				// at the width it was declared at rather than tightened,
+				// because tightening it would fold a column no reader has ever
+				// seen folded on the strength of no measurement.
+				Caps: []export.TierCap{{Tier: 4, Cap: 24}},
+				Back: "All funds",
+				Tail: "divisions",
+				// WHAT THIS CENTRE DOES NOT CLAIM, said in the chart's own
+				// words because no mark can say it. A fund's revenue and its
+				// spending are two schedules and they are not one cell printed
+				// twice: what is left over is what the city transfers out and
+				// adds to reserves, which pp.66-67 print for the GROUP and no
+				// fund-level schedule attributes to a fund. Measured off both
+				// goldens: fund/100 takes 157,873,470 and pays 144,650,802 to
+				// its divisions in FY2025-26, and 164,358,147 against
+				// 149,014,579 in FY2026-27.
+				Description: "The fund group this fund belongs to is on the left and the " +
+					"divisions that spend it are on the right — that fund's rows of " +
+					"Budget Book pp.167-170, rescaled to its total. The two sides of the " +
+					"fund in the middle are not one figure: what it takes in is its revenue " +
+					"and what leaves it here is what its divisions spend, and the difference " +
+					"is the money the city transfers out of the fund and adds to its " +
+					"reserves, which pp.66-67 print for the fund group as a whole and no " +
+					"published schedule breaks down by fund.",
+			},
+			{
+				Key:   "division",
+				After: []string{"fund"},
 				From:  4,
-				Tiers: []int{4, 5},
+				// [the fund | this division | what it spends on]. A window
+				// where this drew two columns: the fund the division is paid
+				// from stays on screen, which is the level a reader arrived
+				// from and the one that says whose money this is.
+				Keep:  []int{3},
+				Tiers: []int{3, 4, 5},
 				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
 				Back:  "All divisions",
 				Tail:  "categories",
-				Description: "The division on the left flows into the object categories " +
-					"it spends on, on the right \u2014 that division's cells of Budget " +
-					"Book pp.167-170, rescaled to its total.",
+				Description: "The fund that pays for this division is on the left and the " +
+					"object categories it spends on are on the right — that division's " +
+					"cells of Budget Book pp.167-170, rescaled to its total.",
 			},
 			{
-				// A SECOND EDGE OUT OF THE SPINE'S CHART, not a third rung of
-				// the chain: After carries "" like the fund-group step's, and
-				// the two are told apart by From. The role is declared because
-				// transfers/in and fund-balance/draw share tier 0 with the
-				// categories and open into nothing pp.127-140 print.
+				// A SECOND EDGE OUT OF THE SPINE'S CHART, not a rung of the
+				// chain above it: After carries "" like the fund-group step's,
+				// and the two are told apart by From. The role is declared
+				// because transfers/in and fund-balance/draw share tier 0 with
+				// the categories and open into nothing pp.127-140 print.
 				Key:             "revenue-category",
 				After:           []string{""},
 				From:            0,
