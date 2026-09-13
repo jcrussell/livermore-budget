@@ -153,6 +153,23 @@ type fundFlowsBuilder interface {
 	Document(facts []fact.Fact, o project.Options) (*project.FundFlowsDocument, error)
 }
 
+// departmentSpendingBuilder is a projection whose document is the departmentwide
+// cross-tab.
+//
+// A FOURTH INTERFACE AND NOT A SECOND USE OF fundFlowsBuilder, and the reason is
+// what the shape means rather than what it holds. Both are nodes and links with
+// no headline, so the STRUCTURAL checks read them identically through
+// [Subject.LinkedDocuments] -- and the checks that are of the drill-down's shape
+// ALONE would then be handed this one: drill-reconciles-across-documents indexes
+// drill-downs by column and would see two documents of FY2026, and
+// fund-flows-counts-reconcile would re-derive facts_cited_twice on a document
+// that has no second grain. Sharing the type would make those two checks report
+// on a document neither was written about.
+type departmentSpendingBuilder interface {
+	Name() string
+	Document(facts []fact.Fact, o project.Options) (*project.DepartmentSpendingDocument, error)
+}
+
 // projection is one built graph, with the options it was built under.
 //
 // The options are carried because they are the difference between a graph that
@@ -179,8 +196,13 @@ type projection struct {
 	// [Subject.LinkedDocuments] for the structural checks, and through
 	// [Subject.FundFlowsDocuments] for the ones that are of this shape alone.
 	//
-	// EXACTLY ONE OF THE THREE IS NON-NIL on a healthy projection.
+	// EXACTLY ONE OF THE FOUR IS NON-NIL on a healthy projection.
 	FundFlows *project.FundFlowsDocument
+	// DepartmentSpending is the built cross-tab, or nil. Read it through
+	// [Subject.LinkedDocuments] for the structural checks, and through
+	// [Subject.DepartmentSpendingDocuments] for the one that is of this shape
+	// alone.
+	DepartmentSpending *project.DepartmentSpendingDocument
 }
 
 // linked is one document's nodes and links, whatever shape carried them.
@@ -358,6 +380,21 @@ func (s *Subject) linkedDocuments() []linked {
 		case p.FundFlows != nil:
 			out = append(out, linked{projection: p,
 				Nodes: p.FundFlows.Nodes, Links: p.FundFlows.Links})
+		case p.DepartmentSpending != nil:
+			out = append(out, linked{projection: p,
+				Nodes: p.DepartmentSpending.Nodes, Links: p.DepartmentSpending.Links})
+		}
+	}
+	return out
+}
+
+// departmentSpendingDocuments is every projection that built the departmentwide
+// cross-tab, for the check that is of that shape alone.
+func (s *Subject) departmentSpendingDocuments() []projection {
+	out := make([]projection, 0, len(s.Projections))
+	for _, p := range s.Projections {
+		if p.DepartmentSpending != nil {
+			out = append(out, p)
 		}
 	}
 	return out
@@ -770,6 +807,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		g, isGraph := p.(graphBuilder)
 		t, isTrends := p.(trendsBuilder)
 		ff, isFundFlows := p.(fundFlowsBuilder)
+		ds, isSpending := p.(departmentSpendingBuilder)
 
 		for _, o := range want {
 			built := projection{Name: p.Name(), Options: o}
@@ -781,6 +819,8 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				built.Trends, err = t.Document(facts, o)
 			case isFundFlows:
 				built.FundFlows, err = ff.Document(facts, o)
+			case isSpending:
+				built.DepartmentSpending, err = ds.Document(facts, o)
 			}
 			if err != nil {
 				// Recorded, not returned: see ProjectionFailure. The loop goes

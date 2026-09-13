@@ -369,7 +369,8 @@
           ]
         }
       ],
-      "derived": true
+      "derived": true,
+      "partition": false
     },
     {
       "source": "fund-balance/draw",
@@ -388,7 +389,8 @@
           ]
         }
       ],
-      "derived": true
+      "derived": true,
+      "partition": false
     },
     {
       "source": "fund-group/capital",
@@ -407,7 +409,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/capital",
@@ -426,7 +429,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/capital",
@@ -445,7 +449,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/debt-service",
@@ -464,7 +469,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/enterprise",
@@ -483,7 +489,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/enterprise",
@@ -502,7 +509,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/enterprise",
@@ -521,7 +529,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/enterprise",
@@ -540,7 +549,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/enterprise",
@@ -559,7 +569,8 @@
           ]
         }
       ],
-      "derived": true
+      "derived": true,
+      "partition": false
     },
     {
       "source": "fund-group/enterprise",
@@ -578,7 +589,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/general",
@@ -597,7 +609,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/general",
@@ -616,7 +629,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/general",
@@ -635,7 +649,8 @@
           ]
         }
       ],
-      "derived": true
+      "derived": true,
+      "partition": false
     },
     {
       "source": "fund-group/general",
@@ -654,7 +669,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/general",
@@ -673,7 +689,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/internal-service",
@@ -692,7 +709,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/internal-service",
@@ -711,7 +729,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/internal-service",
@@ -730,7 +749,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/internal-service",
@@ -749,7 +769,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/internal-service",
@@ -768,7 +789,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/special-revenue",
@@ -787,7 +809,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/special-revenue",
@@ -806,7 +829,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/special-revenue",
@@ -825,7 +849,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/special-revenue",
@@ -844,7 +869,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "fund-group/special-revenue",
@@ -863,7 +889,8 @@
           ]
         }
       ],
-      "derived": true
+      "derived": true,
+      "partition": false
     },
     {
       "source": "fund-group/special-revenue",
@@ -882,7 +909,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/charges-for-services",
@@ -901,7 +929,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/charges-for-services",
@@ -920,7 +949,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/charges-for-services",
@@ -939,7 +969,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/charges-for-services",
@@ -958,7 +989,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/contributions-outsourced",
@@ -977,7 +1009,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/contributions-outsourced",
@@ -996,7 +1029,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/fines-and-forfeitures",
@@ -1015,7 +1049,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/intergovernmental",
@@ -1034,7 +1069,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/intergovernmental",
@@ -1053,7 +1089,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/intergovernmental",
@@ -1072,7 +1109,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/intergovernmental",
@@ -1091,7 +1129,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/licenses-and-permits",
@@ -1110,7 +1149,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/miscellaneous-revenue",
@@ -1129,7 +1169,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/miscellaneous-revenue",
@@ -1148,7 +1189,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/miscellaneous-revenue",
@@ -1167,7 +1209,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/miscellaneous-revenue",
@@ -1186,7 +1229,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/taxes/other",
@@ -1205,7 +1249,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/taxes/other",
@@ -1224,7 +1269,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/taxes/property",
@@ -1243,7 +1289,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/taxes/property",
@@ -1262,7 +1309,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/taxes/sales",
@@ -1281,7 +1329,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/use-of-money-and-property",
@@ -1300,7 +1349,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/use-of-money-and-property",
@@ -1319,7 +1369,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/use-of-money-and-property",
@@ -1338,7 +1389,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/use-of-money-and-property",
@@ -1357,7 +1409,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "revenue/use-of-money-and-property",
@@ -1376,7 +1429,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "transfers/in",
@@ -1395,7 +1449,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "transfers/in",
@@ -1414,7 +1469,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "transfers/in",
@@ -1433,7 +1489,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     },
     {
       "source": "transfers/in",
@@ -1452,7 +1509,8 @@
           ]
         }
       ],
-      "derived": false
+      "derived": false,
+      "partition": false
     }
   ]
 }

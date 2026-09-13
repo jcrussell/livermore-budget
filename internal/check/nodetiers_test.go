@@ -194,6 +194,61 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 	}
 }
 
+// TestAPartitionIsTheOTHERDescendingLinkAllowed is the second exemption and the
+// proof that it is narrow, which is the whole reason it is one test.
+//
+// THE CROSS-TAB DRAWS expenditure/<object> -> dept/<division>: tier 5 into tier
+// 4, descending, and the target is not the source's parent -- both ends are
+// parentless, because pp.85-125 print no fund axis for either to hang from. So
+// the rollup exemption cannot cover it and a second one is needed. What makes
+// that principled rather than a repeal is that it turns on a DECLARATION the
+// projection published: Link.Partition says this ribbon is one printed matrix
+// read along its second axis, so neither end is upstream of the other.
+//
+// THE NARROWNESS IS THE ASSERTION. The same link with the flag cleared -- one
+// bool, nothing else moved -- must still be refused BY NAME, or the exemption
+// has become "any descending link between two parentless nodes", which is most
+// of them.
+func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
+	crossTab := func(t *testing.T, partition bool) *Subject {
+		t.Helper()
+		s := tieredSubject(t)
+		g := s.graphs()[0].Graph
+		// Both ends parentless and neither the other's parent, which is what
+		// the committed cross-tab publishes.
+		g.Nodes = append(g.Nodes,
+			project.Node{ID: "expenditure/wages-and-benefits", Tier: 5, Role: "object_category"},
+			project.Node{ID: "dept/police-patrol", Tier: 4, Role: "department"})
+		g.Links = append(g.Links, project.Link{
+			Source: "expenditure/wages-and-benefits", Target: "dept/police-patrol",
+			ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"},
+			Partition: partition,
+		})
+		return s
+	}
+
+	if res := runNodeTiers(t, crossTab(t, true)); res.Status != StatusPass {
+		t.Errorf("a declared partition running 5 -> 4 is %s, want PASS: %v",
+			res.Status, res.Findings)
+	}
+
+	res := runNodeTiers(t, crossTab(t, false))
+	if res.Status != StatusFail {
+		t.Fatalf("the same link with partition cleared is %s, want FAIL", res.Status)
+	}
+	var saw bool
+	for _, f := range res.Findings {
+		if strings.Contains(f.Detail, "declares no partition") &&
+			strings.Contains(f.Detail, "own parent") {
+			saw = true
+		}
+	}
+	if !saw {
+		t.Errorf("no finding names both the missing parent edge and the missing partition "+
+			"declaration; got %v", res.Findings)
+	}
+}
+
 // TestAFundNodeNamesAFundNumber is the one id form whose SHAPE carries meaning
 // beyond its prefix.
 //

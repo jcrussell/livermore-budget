@@ -105,7 +105,7 @@ func TestRegistry(t *testing.T) {
 	// first is the document the site opens on, and a registry that quietly
 	// reordered would move which document `fisc export` writes to data/sankey.json.
 	want := []string{PublishedProjection, TrendsProjection, FundFlowsProjection,
-		ChangesProjection, FundBalancesProjection}
+		DepartmentSpendingProjection, ChangesProjection, FundBalancesProjection}
 	if len(got) != len(want) {
 		t.Fatalf("got %d projections, want %d", len(got), len(want))
 	}

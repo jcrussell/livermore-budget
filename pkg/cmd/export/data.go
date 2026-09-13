@@ -372,7 +372,35 @@ func yearStems(name string, projections map[string][]byte) []string {
 var unviewedDocuments = map[string]string{
 	project.FundFlowsProjection + "-2024-actual":  fundFlowsNoSpineColumn,
 	project.FundFlowsProjection + "-2025-revised": fundFlowsNoSpineColumn,
+
+	// ALL FOUR OF THE CROSS-TAB, NOT TWO, AND THE BEAD THAT WROTE THIS LANE
+	// SAID TWO. Re-derived here: reachability is by a view's projection, its
+	// year stems or a STEP's documents, and no step opens tier 5 yet, so the
+	// two adopted columns are as unreachable as the two historical ones. They
+	// are separate entries because they retire on separate events -- the
+	// adopted pair the moment fisc-ko1j.21 declares the step, the historical
+	// pair not then and maybe never.
+	project.DepartmentSpendingProjection:                   spendingNoStepYet,
+	project.DepartmentSpendingProjection + "-2027":         spendingNoStepYet,
+	project.DepartmentSpendingProjection + "-2024-actual":  spendingNoSpineColumn,
+	project.DepartmentSpendingProjection + "-2025-revised": spendingNoSpineColumn,
 }
+
+const spendingNoStepYet = "a published column of the departmentwide cross-tab that no chart " +
+	"opens yet. Its object categories ARE the spine's tier-5 nodes and its column is a spine " +
+	"year, so nothing about the document stands in the way; what is missing is the drill " +
+	"step that declares From: 5, which is fisc-ko1j.21. The projection lands first because " +
+	"assertPublishedReachable refuses a step naming a document that was never built, so the " +
+	"two cannot land in one commit in the other order"
+
+const spendingNoSpineColumn = "a published column of the departmentwide cross-tab that the " +
+	"chart cannot reach even once fisc-ko1j.21 lands. The spine opens into a document one " +
+	"fiscal year at a time, joining on Column, and pp.66-67 print no actual and no revised " +
+	"column -- so there is no spine year to open this one from. It is published because " +
+	"pp.85-125 DO print those two columns and this is the only document that draws those " +
+	"pages: drawing two of the four would leave internal/check's unprojectedScopes entry " +
+	"half true rather than retired. caveats.html lists its caveats, which indexes the " +
+	"document rather than rendering it and does not retire this entry"
 
 const fundFlowsNoSpineColumn = "a published column of the General Fund drill-down that the chart " +
 	"cannot reach. index.html opens the spine into fund-flows one fiscal year at a time, " +

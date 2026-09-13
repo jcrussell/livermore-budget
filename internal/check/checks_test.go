@@ -92,6 +92,10 @@ func TestFixtureVerdicts(t *testing.T) {
 		// And the cross-document identity with them: the miniature spine has
 		// no drill-down to pair a column with.
 		"drill-reconciles-across-documents": "vacuous over 0",
+		// The window's identity is the same shape one document further on: the
+		// fixture carries no departmentwide-expenditures fact, so the cross-tab
+		// declares no slice and there is no object category with two sides.
+		"spending-window-reconciles": "vacuous over 0",
 		// The line tier is a property of the drill-down, so with no drill-down
 		// there is no line node and no flow into a fund. Its vacancy is NOT
 		// declared, and must not become so: over the committed corpus it has
@@ -143,7 +147,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 24, Vacuous: 26, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 27, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -165,8 +169,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 26 {
-		t.Fatalf("vacuous count = %d, want 26", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 27 {
+		t.Fatalf("vacuous count = %d, want 27", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
@@ -193,6 +197,7 @@ func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 		"fact-funds-resolve":                    "no fact names a fund",
 		"fact-revenue-lines-resolve":            "no fact is a revenue row of scope revenue-by-fund",
 		"drill-reconciles-across-documents":     "no fiscal column is published by both the spine and the drill-down",
+		"spending-window-reconciles":            "no fiscal column is published by both the spine and the departmentwide cross-tab",
 		"revenue-lines-tie-to-their-categories": "no projection built a drill-down",
 	} {
 		res := resultFor(t, rep, id)

@@ -817,9 +817,13 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	// single-column documents, so the FY2026 adopted one -- the opening
 	// published column -- takes the bare stem and the other three are suffixed,
 	// the historical two by year AND basis because their basis is not the
-	// published one.
+	// published one. department-spending publishes the same four columns and
+	// names them by the same rule, which is what makes the rule visible as a
+	// rule rather than as one document's spelling.
 	if diff := cmp.Diff([]string{
 		"changes-in-fund-balances",
+		"department-spending", "department-spending-2024-actual",
+		"department-spending-2025-revised", "department-spending-2027",
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",
@@ -886,9 +890,11 @@ func keys(m map[string][]byte) []string {
 	return out
 }
 
-// TestTheCommittedStemsAreUnchanged pins the seven published paths as literal
-// strings, which is fisc-rmx's own acceptance criterion and the only thing that
-// makes the naming rule safe to change again.
+// TestTheCommittedStemsAreUnchanged pins the published paths as literal strings,
+// which is fisc-rmx's own acceptance criterion and the only thing that makes the
+// naming rule safe to change again. They are TYPED rather than generated, which
+// is the whole of the test: a list derived from the same rule under test would
+// agree with a rename by construction.
 //
 // docs/sankey-contract.md promises data/sankey.json, and
 // docs/revenue-trends-contract.md promises data/revenue-trends.json. The year
@@ -908,6 +914,8 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	}
 	want := []string{
 		"changes-in-fund-balances",
+		"department-spending", "department-spending-2024-actual",
+		"department-spending-2025-revised", "department-spending-2027",
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",

@@ -84,7 +84,7 @@ to ship travels the same channel (`export.Options.Files`).
     "value_cents": 6414376200, "kind": "external", "transfer_id": "",
     "fact_ids": ["fisc-f-..."],
     "locators": [{"doc_id": "livermore-budget-fy2026-2027", "pages": [66]}],
-    "derived": false
+    "derived": false, "partition": false
   }]
 }
 ```
@@ -187,6 +187,32 @@ Recorded as a decision on fisc-5hxr rather than assumed, because
 [`revenue-trends-contract.md`](revenue-trends-contract.md) says a bump is a
 decision and not a number someone increments. The next additive key is
 re-decided, not waved through on this precedent.
+
+### `partition`
+
+**`partition: true` means the ribbon divides one printed table along a second
+axis rather than following money the schedule prints as moving that way.** The
+departmentwide cross-tab is the only document that sets it: Budget Book
+pp.85-125 print one matrix, divisions down and object categories across, and a
+chart can read it either way round without either reading being money moving.
+
+It is **the projection's flag and not the client's**, which is why it is on the
+wire at all. Nothing in a graph distinguishes a cross-tab from a chain by
+looking, so a page that guessed would be deciding what a published table means.
+`site/app.js` carries the words in one constant, `PARTITION_NOTE`, for every
+mark that shows them.
+
+`node-tiers-are-declared` reads it as the **second** exception to "a link runs
+from a coarser tier to a finer one", beside a rollup into the source's own
+parent. A partition link may descend — the cross-tab's run `expenditure/<object>`
+(tier 5) into `dept/<division>` (tier 4) — and a descending link that is neither
+a rollup nor a declared partition is still refused by name.
+
+It is the second additive key, and it was **re-decided rather than waved through
+on `locators`' precedent**: `schema_version` stays at 1 for the same reason, the
+project being pre-release, and the key is present and `false` on every link of
+every document so that no diff between two releases reads as a structural
+change.
 
 ## Tiers and node ids
 

@@ -420,6 +420,20 @@ type Link struct {
 	// aggregate.
 	Locators []Source `json:"locators"`
 	Derived  bool     `json:"derived"`
+	// Partition says the ribbon divides one printed table along a second axis
+	// rather than following money the schedule prints as moving that way.
+	//
+	// IT IS THE PROJECTION'S ANSWER AND NOT THE CLIENT'S, which is the whole
+	// reason it is on the wire. Budget Book pp.85-125 print one matrix of
+	// cells, divisions down and object categories across; a chart can read it
+	// either way round and neither reading is money moving. Nothing in a graph
+	// distinguishes a cross-tab from a chain by looking, so a page that guessed
+	// would be deciding what a published table means.
+	//
+	// node-tiers-are-declared reads it: a partition link is the second thing
+	// allowed to run from a finer tier to a coarser one, beside a rollup into
+	// the source's own parent. A link that is neither is still refused.
+	Partition bool `json:"partition"`
 }
 
 // sankey projects the citywide spine as a flow diagram.

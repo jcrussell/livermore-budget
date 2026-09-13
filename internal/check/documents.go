@@ -213,6 +213,11 @@ func documentShape(p projection) string {
 		// constraint-tier-vocabulary. NOT the three headline ones, which is the
 		// whole point of the shape: this document publishes no headline.
 		return "linked graph, no headline"
+	case p.DepartmentSpending != nil:
+		// The same six structural checks that read Subject.Linked, plus
+		// spending-window-reconciles, which holds this document's object
+		// categories against the spine's cell by cell.
+		return "cross-tab, no headline"
 	default:
 		return ""
 	}

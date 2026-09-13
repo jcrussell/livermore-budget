@@ -87,14 +87,25 @@ var endpointTiers = map[string]int{
 // render as a flow running against every other flow on the page, which is a
 // picture that reads as a defect in the data rather than in the layout.
 //
-// A ROLLUP IS THE ONE EXCEPTION AND IT IS NARROW BY CONSTRUCTION: the target
-// must be the SOURCE'S OWN PARENT, the edge the client already folds along. A
+// TWO EXCEPTIONS, EACH NARROW BY CONSTRUCTION, AND NEITHER IS A TOLERANCE. A
 // column order is a declaration a view makes and need not be ascending -- a
-// window puts the clicked node in the middle -- so the ribbon a rollup draws
-// runs backwards only in a view that drew it backwards. Any other descending
-// link is still refused, which is what keeps this an exception rather than a
-// repeal: a fund-to-revenue-category link is not a fold and has no column order
-// that makes it forward.
+// window puts the clicked node in the middle -- so a ribbon runs backwards only
+// in a view that drew it backwards. What has to be established per link is that
+// the link is not a FLOW at all, and there are exactly two ways to establish it:
+//
+//   - A ROLLUP. The target is the SOURCE'S OWN PARENT, the edge the client
+//     already folds along, so the "flow" is a node being added into the box it
+//     is part of.
+//   - A DECLARED PARTITION. [project.Link.Partition] says the projection read
+//     one printed matrix along its second axis, so neither end is upstream of
+//     the other and the direction drawn is the chart's choice. It is the
+//     PROJECTION's claim and is on the wire: nothing in a graph distinguishes a
+//     cross-tab from a chain by looking, so a check that inferred it would be
+//     inferring what a published table means.
+//
+// ANY OTHER DESCENDING LINK IS STILL REFUSED, which is what keeps these
+// exceptions rather than a repeal: a fund-to-revenue-category link is neither a
+// fold nor a cross-tab, and there is no column order that makes it forward.
 type nodeTiersAreDeclared struct{}
 
 var _ Check = (*nodeTiersAreDeclared)(nil)
@@ -105,7 +116,7 @@ func (*nodeTiersAreDeclared) Full() bool { return false }
 func (*nodeTiersAreDeclared) Description() string {
 	return "every node's tier is the one docs/sankey-contract.md's table gives for its id " +
 		"form, and every link runs from a coarser tier to a finer one unless it is a rollup " +
-		"into the source's own parent"
+		"into the source's own parent or a declared partition"
 }
 
 func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) {
@@ -113,6 +124,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 	nodes := 0
 	links := 0
 	rollups := 0
+	partitions := 0
 
 	for _, p := range s.linkedDocuments() {
 		tierOf := map[string]int{}
@@ -172,17 +184,23 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 					l.Source, l.Target, missing))
 				continue
 			}
-			if src >= dst && parentOf[l.Source] != l.Target {
-				findings = append(findings, finding(p.String(),
-					"link %q -> %q runs from tier %d to tier %d and %q is not %q's own "+
-						"parent. A flow in this diagram goes from a coarser tier to a finer "+
-						"one, or from a node into the box it folds into; one that does "+
-						"neither is drawn as a ribbon running against every other ribbon on "+
-						"the page",
-					l.Source, l.Target, src, dst, l.Target, l.Source))
+			if src < dst {
+				continue
 			}
-			if src >= dst {
+			switch {
+			case parentOf[l.Source] == l.Target:
 				rollups++
+			case l.Partition:
+				partitions++
+			default:
+				findings = append(findings, finding(p.String(),
+					"link %q -> %q runs from tier %d to tier %d, %q is not %q's own "+
+						"parent, and the link declares no partition. A flow in this diagram "+
+						"goes from a coarser tier to a finer one, from a node into the box "+
+						"it folds into, or along the second axis of one printed table; one "+
+						"that does none of the three is drawn as a ribbon running against "+
+						"every other ribbon on the page",
+					l.Source, l.Target, src, dst, l.Target, l.Source))
 			}
 		}
 	}
@@ -192,9 +210,10 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		unit:     "nodes",
 		held: fmt.Sprintf("%d nodes over %d graph document(s), each at the tier its id form "+
 			"declares, and %d links each running from a coarser tier to a finer one or, for "+
-			"%d of them, from a node into the box it folds into; the declared forms are %s, "+
-			"plus %d flow endpoints named individually",
-			nodes, len(s.linkedDocuments()), links, rollups, describeForms(),
+			"%d of them, from a node into the box it folds into and, for %d, along the "+
+			"second axis of one printed table; the declared forms are %s, plus %d flow "+
+			"endpoints named individually",
+			nodes, len(s.linkedDocuments()), links, rollups, partitions, describeForms(),
 			len(endpointTiers)),
 		nothing:  "no projection carries a node, so no tier has been read",
 		findings: findings,
