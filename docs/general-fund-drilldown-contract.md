@@ -432,13 +432,18 @@ nodes with no ancestor at tier 3 or 4, and the fold refuses a node it cannot
 place — so `{4,5}` over the whole document draws *nothing*, not a partial
 chart. Filtering to the opened node is what leaves a set the fold can place.
 
-**A rung cites a slice, and says so.** At `{0,2,4}` the fold cites nothing
-away; a rung filtered to one node cannot, and the counts line names both
-numbers — the General Fund at depth 1 reads "37 flows between 39 nodes, from
-135 of the document's 280 facts, and 4 flows carried unchanged from the chart
-above". `drill.mjs`'s chain walk pins it per column. Five of those nodes and
-four of those flows are the residual: one derived node, the four spine
-endpoints carried onto it, and the four links that carry them.
+**A rung cites a slice, and says so — and a window cites two documents, which
+the sentence keeps apart.** At `{0,2,4}` the fold cites nothing away; a rung
+filtered to one node cannot, and a window also draws a flank of the chart it was
+opened from, whose ribbons cite that document and not this one. So the counts
+line partitions the ribbons before it gives either fact count. Measured,
+FY2025-26: the General Fund at depth 1 reads "13 flows between 15 nodes: 1
+citing 86 of the document's 280 facts, and 12 carried unchanged from the chart
+above, citing 12 of its 120 facts". Twelve of the thirteen are the spine's — ten
+the kept flank of revenue categories, and two its own endpoints re-pointed onto
+the residual, which adds one derived node and no ribbon of its own.
+`drill.mjs`'s chain walk pins that sentence per column, and its whole-tree walk
+pins every opened view's against the fact ids the committed goldens publish.
 
 ### Opening a node: filter, cap, fold
 

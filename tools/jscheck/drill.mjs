@@ -137,6 +137,16 @@ const PAGE = {
   // neither does a kept flank -- no step names those charts. Measured
   // 2026-09-13 over both published columns.
   openedViews: 44,
+  // HOW MANY OF THEM DRAW A SECOND DOCUMENT'S RIBBONS: the ten revenue
+  // categories, the six fund groups and the four object categories, all at
+  // depth 1, each keeping a flank of the spine it was opened from. The fund
+  // and division windows keep a flank too and it is NOT counted here, because
+  // the document it comes off is the one they draw. This is the evidence for
+  // splitting the counts line in two: nearly half the views the page opens
+  // state both documents' figures, so folding one into a trailing clause built
+  // for a residual would be a footnote over anything from a tenth of the
+  // ribbons (Licenses & Permits) to twelve of thirteen (the General Fund).
+  carryingViews: 20,
   // THE COLUMN ORDER THE SPINE DECLARES, off data.go rather than typed. Its
   // three tiers are the ones the document carries, so the fold it asks for
   // changes no mark; what it decides is which column is "left-hand" and which
@@ -155,6 +165,65 @@ const PAGE = {
  * once rather than one at a time.
  */
 const OPENABLE_COLUMNS = "left-hand|middle|right-hand";
+
+/**
+ * Every fact id a committed document publishes, read off its own links.
+ * @param {{links: {fact_ids: string[]}[]}} doc
+ * @returns {Set<string>}
+ */
+function factIDsOf(doc) {
+  const ids = new Set();
+  for (const l of doc.links) for (const id of l.fact_ids) ids.add(id);
+  return ids;
+}
+
+/**
+ * The counts line a drawn view must read, composed from the COMMITTED GOLDENS.
+ *
+ * THE PARTITION IS BY MEMBERSHIP AND NOT BY carried_from, which is what makes
+ * this evidence rather than a restatement: a drawn ribbon's facts are the drawn
+ * document's or they are not, and `mine` answers that from the file the
+ * packager wrote. app.js reaches the same two numbers through the stem a
+ * carried mark records, so a client that counted the spine's ribbons into the
+ * step document's share -- or stopped counting a flank kept off the document it
+ * draws -- parts company with this here.
+ *
+ * A LINK IS THE OTHER DOCUMENT'S WHEN ANY OF ITS FACTS IS, rather than when all
+ * of them are. The two readings agree on the committed corpus, where no drawn
+ * ribbon cites both documents at once, and the strict one is the one that
+ * cannot call a half-foreign ribbon native.
+ *
+ * @param {any} drawn the projection on screen
+ * @param {Set<string>} mine the drawn document's own fact ids
+ * @param {number} total the drawn document's fact total
+ * @param {number} aboveTotal the fact total of the chart a flank is kept from
+ */
+function countsLineFor(drawn, mine, total, aboveTotal) {
+  const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
+    n + " " + word + (n === 1 ? "" : "s");
+  const foreign = drawn.links.filter((l) => l.fact_ids.some((/** @type {string} */ id) => !mine.has(id)));
+  const own = drawn.links.filter((l) => !l.fact_ids.some((/** @type {string} */ id) => !mine.has(id)));
+  const factsIn = (/** @type {any[]} */ links) => {
+    const ids = new Set();
+    for (const l of links) for (const id of l.fact_ids) ids.add(id);
+    return ids;
+  };
+  const head = plural(drawn.links.length, "flow") + " between " + plural(drawn.nodes.length, "node");
+  const cited = factsIn(own).size;
+  if (!foreign.length) {
+    return { carried: 0, cited: cited, want: head + (cited === total
+      ? ", from " + plural(cited, "fact")
+      : ", from " + cited + " of the document's " + plural(total, "fact")) };
+  }
+  return {
+    carried: foreign.length,
+    cited: cited,
+    want: head + ": " + own.length + " citing " + cited + " of the document's " +
+      plural(total, "fact") + ", and " + foreign.length +
+      " carried unchanged from the chart above, citing " + factsIn(foreign).size +
+      " of its " + plural(aboveTotal, "fact"),
+  };
+}
 
 /**
  * The two fund-flows columns the page reaches, one per spine year, and the
@@ -205,7 +274,14 @@ const COLUMNS = [
     // its own node -- its two endpoints are already on screen, in the kept
     // flank -- and it adds no ribbon at all, because the two it carries are
     // the kept flank's own, re-pointed past the group rather than copied.
-    general: { nodes: 15, links: 13, hairlines: 1 },
+    general: { nodes: 15, links: 13, hairlines: 1,
+      // TWELVE OF THE THIRTEEN RIBBONS ARE THE SPINE'S. The kept flank is the
+      // spine's ten revenue categories reaching this group, and the residual
+      // carries two more; the one ribbon pp.127-140 and 167-170 draw here is
+      // the group's whole inflow into fund/100, which alone cites 86 of the
+      // 280. Measured by hand, 2026-09-13.
+      counts: "13 flows between 15 nodes: 1 citing 86 of the document's 280 facts, " +
+        "and 12 carried unchanged from the chart above, citing 12 of its 120 facts" },
     // The fund window one rung further in: [the group | fund/100 | its 23
     // divisions]. Its centre is the one node on the page whose two sides are
     // different quantities, and the step's description is what says so --
@@ -268,7 +344,12 @@ const COLUMNS = [
       // pp.85-125's division rows come to p0067's cell to the cent in every
       // one of this column's four categories, so no gap mark is drawn at all.
       gapCents: 0,
-      counts: "14 flows between 15 nodes, from 34 of the document's 73 facts",
+      // MEASURED BY HAND, 2026-09-13, over this column's committed captures:
+      // 9 of the 14 ribbons are pp.85-125's and cite 29 of its 73 facts; the
+      // other 5 are the spine's own, kept beside the centre, and cite 5 of
+      // p0067's 120.
+      counts: "14 flows between 15 nodes: 9 citing 29 of the document's 73 facts, " +
+        "and 5 carried unchanged from the chart above, citing 5 of its 120 facts",
     },
     // THE (1,0) ROLLUPS THE DOCUMENT CARRIES, one per (printed row, kind) over
     // 93 lines, two of which reach their funds under both kinds. The same
@@ -292,7 +373,12 @@ const COLUMNS = [
     // column draws. Stated as one table per column even so.
     category: {
       nodes: 12, links: 11, hairlines: 0,
-      counts: "11 flows between 12 nodes, from 19 of the document's 280 facts",
+      // MEASURED BY HAND, 2026-09-13, and the same sentence in both columns:
+      // 9 of the 11 ribbons are pp.127-140's and cite 17 of its 280 facts, and
+      // the 2 fund groups kept beside the centre reach it over 2 spine ribbons
+      // citing 2 of p0067's 120.
+      counts: "11 flows between 12 nodes: 9 citing 17 of the document's 280 facts, " +
+        "and 2 carried unchanged from the chart above, citing 2 of its 120 facts",
       chargesLineTail: "11 smaller lines", chargesLinks: 13, moneyLinks: 13,
       // THE CENTRE OF THE PROPERTY TAXES WINDOW as d3 sizes it, what the two
       // reductions contribute to that figure, and what p127 prints net of
@@ -320,7 +406,11 @@ const COLUMNS = [
     // endpoint set: general's change in working capital turns positive this
     // year, so there is no fund-balance draw to carry and the residual stands
     // on the transfer in alone.
-    general: { nodes: 14, links: 12, hairlines: 1 },
+    general: { nodes: 14, links: 12, hairlines: 1,
+      // ONE CARRIED RIBBON FEWER, for the reason the residual block below
+      // gives: there is no fund-balance draw to carry this year.
+      counts: "12 flows between 14 nodes: 1 citing 86 of the document's 280 facts, " +
+        "and 11 carried unchanged from the chart above, citing 11 of its 120 facts" },
     fund: { nodes: 25, links: 24, hairlines: 1 },
     fundCentre: [16435814700, 14901457900],
     residual: {
@@ -356,12 +446,21 @@ const COLUMNS = [
       // $250,000.00, drawn as one derived mark rather than left as node height
       // with no ribbon under it.
       gapCents: 25000000,
-      counts: "15 flows between 16 nodes, from 34 of the document's 73 facts",
+      // ONE MORE OWN RIBBON THAN FY2025-26 AND NO MORE FACTS: the extra one is
+      // the gap mark's, which is derived and cites nothing, so 10 ribbons cite
+      // the same 29.
+      counts: "15 flows between 16 nodes: 10 citing 29 of the document's 73 facts, " +
+        "and 5 carried unchanged from the chart above, citing 5 of its 120 facts",
     },
     rollups: 95,
     category: {
       nodes: 12, links: 11, hairlines: 0,
-      counts: "11 flows between 12 nodes, from 19 of the document's 280 facts",
+      // MEASURED BY HAND, 2026-09-13, and the same sentence in both columns:
+      // 9 of the 11 ribbons are pp.127-140's and cite 17 of its 280 facts, and
+      // the 2 fund groups kept beside the centre reach it over 2 spine ribbons
+      // citing 2 of p0067's 120.
+      counts: "11 flows between 12 nodes: 9 citing 17 of the document's 280 facts, " +
+        "and 2 carried unchanged from the chart above, citing 2 of its 120 facts",
       chargesLineTail: "11 smaller lines", chargesLinks: 13, moneyLinks: 13,
       gross: 10839120200, reduced: 1774967900, net: 7289184400,
       views: {
@@ -642,6 +741,8 @@ export async function checks() {
     });
 
     const drawn = [];
+    /** Each opened view's counts line, beside the one the goldens say it must be. */
+    const said = [];
     // AND WHETHER EACH VIEW FILLS THE COLUMNS ITS STEP DECLARES. openableColumns
     // narrows to the tiers actually drawn, and its comment says that narrowing
     // changes nothing on the committed corpus -- which is a measurement, so it
@@ -651,6 +752,15 @@ export async function checks() {
     const walk = await everyOpenedView(app, (where, depth) => {
       drawn.push(Object.assign({ where, depth, rollups: rollupsIn(app.projection) },
         measure(app, app.projection)));
+      // THE DRAWN DOCUMENT IS ASKED FOR BY THE NAME THE FILE CARRIES, not by
+      // the year's stem: the packager writes `projection: "fund-flows"` into
+      // fund-flows-2027.json too, which is what lets one carried_from resolve
+      // under either column.
+      const stem = app.projection.projection;
+      const golden = stem === "department-spending" ? col.spending() : col.golden();
+      said.push(Object.assign({ where, depth, got: app.dom.byId.get("counts-line").textContent },
+        countsLineFor(app.projection, factIDsOf(golden),
+          golden.metadata.counts.facts, col.spine().metadata.counts.facts)));
       const rung = app.drilled[app.drilled.length - 1];
       const has = new Set(app.projection.nodes.map((n) => n.tier));
       const missing = rung.step.tiers.filter((t) => !has.has(t));
@@ -681,6 +791,39 @@ export async function checks() {
           `(want ${col.worstDeep}); ` +
           (short.length ? `SHORT OF A DECLARED COLUMN: ${short.slice(0, 3).join("; ")}`
             : "every one of them draws every column its step declares"),
+    });
+
+    // EVERY COUNTS LINE, AGAINST THE DOCUMENT EACH OF ITS NUMBERS IS OF.
+    //
+    // A WINDOW DRAWS TWO DOCUMENTS. Its kept flank is a flank of the chart it
+    // was opened from, so those ribbons cite that document's facts; reported as
+    // a share of the drawn document's total they are one document's figure over
+    // another's denominator, which is a published number that is wrong. The
+    // partition here is membership of the drawn document's own fact ids, read
+    // off the committed golden, so it agrees with the client only if the client
+    // is telling the two apart.
+    //
+    // AND WHERE A SECOND DOCUMENT MAY APPEAR AT ALL. Only a window opened off
+    // the spine keeps a flank of another file; the fund and division windows
+    // keep fund-flows on a fund-flows chart, whose facts ARE the drawn
+    // document's and are counted as such. So a carried count below depth 1 is
+    // this check going red, not a shape it tolerates.
+    const carrying = said.filter((c) => c.carried > 0);
+    const wrong = said.filter((c) => c.got !== c.want);
+    out.push({
+      name: `${col.label}: every opened view's counts line weighs each document's ribbons against that document's own total`,
+      ok: said.length === PAGE.openedViews && wrong.length === 0 &&
+          carrying.length === PAGE.carryingViews &&
+          carrying.every((c) => c.depth === 1),
+      detail: wrong.length
+        ? `${wrong.length} of ${said.length} view(s) misreport: ${wrong.slice(0, 2)
+            .map((c) => `${c.where} says "${c.got}" for "${c.want}"`).join("; ")}`
+        : `${said.length} view(s) each read what the goldens say they must; ` +
+          `${carrying.length} of them carry another document's ribbons (want ` +
+          `${PAGE.carryingViews}), at depth(s) ` +
+          `${JSON.stringify([...new Set(carrying.map((c) => c.depth))])}; the widest flank is ` +
+          `${carrying.reduce((a, b) => (b.carried > a.carried ? b : a)).where} at ` +
+          `${Math.max(...carrying.map((c) => c.carried))} carried ribbon(s)`,
     });
 
     // THE ROLLUP IS DRAWN IN THE TEN CATEGORY WINDOWS AND IN NO OTHER VIEW,
@@ -3286,14 +3429,12 @@ async function walkChain(col) {
   const muted1 = app.projection.nodes
     .filter((n) => !n.id.startsWith("revenue/") && !app.isCarried(n.id) && app.fundGroupOf(n) === "")
     .map((n) => n.id);
-  // THE DOCUMENT'S OWN FACTS, which is what the counts line claims a share
-  // of: a carried flow cites the spine, and its facts are counted apart.
-  const cited1 = new Set();
-  let carried1 = 0;
-  for (const l of app.projection.links) {
-    if (app.isResidual(l.source) || app.isResidual(l.target)) { carried1++; continue; }
-    for (const id of l.fact_ids) cited1.add(id);
-  }
+  // THE DOCUMENT'S OWN FACTS, which is what the counts line claims a share of.
+  // The residual count stays a number of its own: the residual is some of the
+  // ribbons this window carries off the spine and the kept flank is the rest,
+  // and the residual block is what pins which are which.
+  const resid1 = app.projection.links.filter((l) =>
+    app.isResidual(l.source) || app.isResidual(l.target)).length;
   // THE CENTRE BALANCES, ASSERTED WHERE THE READER MEETS IT. The residual is
   // what makes it true and the residual block above is what proves the
   // residual; this is the one figure a reader could check by eye, so the walk
@@ -3417,11 +3558,9 @@ async function walkChain(col) {
     ok: open1 === "drew" && at1.depth === 1 && !at1.drawnIsYears &&
         Boolean(m1) && m1.nodes === col.general.nodes && m1.links === col.general.links &&
         m1.hairlines === col.general.hairlines &&
-        divisions1 === 0 && carried1 === col.residual["fund-group/general"].carried &&
+        divisions1 === 0 && resid1 === col.residual["fund-group/general"].carried &&
         centre1.in === centre1.out && centre1.in > 0 &&
-        at1.counts === `${col.general.links} flows between ${col.general.nodes} nodes, from ` +
-          `${cited1.size} of the document's 280 facts, and ${carried1} flow` +
-          `${carried1 === 1 ? "" : "s"} carried unchanged from the chart above` &&
+        at1.counts === col.general.counts &&
         rows1 === col.general.links &&
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into General Fund group` &&
         at1.crumbControls.join("|") === "← All fund groups" && at1.crumbHere === "General Fund group" &&
@@ -3438,7 +3577,8 @@ async function walkChain(col) {
         `hint "${at1.hint}"; legend ${at0.legend} -> ${at1.legend} swatches; desc ` +
         `${at1.desc.startsWith("Opened into General Fund group. " + groupStep.description) ? "carries" : "LACKS"} ` +
         `the step's description and ${at1.desc.endsWith(pointer) ? "keeps" : "DROPS"} the table pointer; ` +
-        `the centre takes ${centre1.in} and sends ${centre1.out}; ${divisions1} division(s) drawn; ` +
+        `the centre takes ${centre1.in} and sends ${centre1.out}; ${resid1} residual ribbon(s); ` +
+        `${divisions1} division(s) drawn; ` +
         `${JSON.stringify(opensAt1)} open; ${muted1.length} fund-side mark(s) ` +
         `resolve to no group${muted1.length ? " (" + muted1.slice(0, 3).join(", ") + ")" : ""}; ` +
         `focus on "${focus1}"`

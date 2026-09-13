@@ -1248,6 +1248,20 @@ function activeTiers() {
  * document `fisc export` writes carries the block; the guard is for a file that
  * is not one of those.
  *
+ * A WINDOW DRAWS TWO DOCUMENTS AND THE SENTENCE REPORTS THEM APART, each
+ * against its own total. A kept flank's ribbons come off the chart above, so
+ * their facts are that document's; counted into the drawn document's share they
+ * state one document's figure as a fraction of another's, which on a window is
+ * a body of ribbons rather than a footnote -- twelve of the thirteen the
+ * General Fund's window draws. The partition is by the STEM a
+ * carried mark records and not by the flag: the fund and division windows keep
+ * a flank of the same document they draw, whose facts ARE the drawn document's.
+ * Measured through drillDown over every view the page opens, both published
+ * columns: partitioning by stem gives the same two numbers, view for view, as
+ * partitioning the drawn ribbons' fact ids by membership of the drawn
+ * document's own -- which is what tools/jscheck/drill.mjs asserts, from the
+ * committed goldens rather than from this function.
+ *
  * SEPARATE FROM paintYearWords BECAUSE A DRILL CHANGES IT TOO. It was inline
  * there while a year switch was the only thing that could change what is drawn;
  * opening a fund group changes it just as completely, and a counts line left
@@ -1282,27 +1296,63 @@ function paintCounts() {
   // 62 it does not draw are the printed zeros and the stocks.
   let from = ", from " + plural(shownYear.counts.facts, "fact");
   if (projection) {
+    const doc = drawnDoc();
+    const drawnStem = doc ? doc.projection : "";
+    const byID = new Map(projection.nodes.map((n) => [n.id, n]));
+    // THE STEM OF A MARK THIS DOCUMENT HAS NEVER HEARD OF, and "" for one it
+    // has. A window's kept flank is carried in the sense carried_from records
+    // whichever document it came from, so the flag alone cannot tell the fund
+    // window's flank -- fund-flows kept on a fund-flows chart -- from the
+    // object category's, which is the spine's.
+    const guestOf = (/** @type {string} */ id) => {
+      const n = byID.get(id);
+      const of = n && n.carried_from ? n.carried_from : "";
+      return of && of !== drawnStem ? of : "";
+    };
     const cited = new Set();
+    const above = new Set();
+    /** @type {Set<string>} the documents the carried ribbons came from */
+    const stems = new Set();
     let carried = 0;
     for (const l of projection.links) {
       // A CARRIED FLOW CITES THE CHART ABOVE, NOT THIS DOCUMENT. Its facts are
       // the other document's, and counting them here would report one
       // document's facts as a share of another's total.
-      if (isResidual(l.source) || isResidual(l.target)) {
+      const of = guestOf(l.source) || guestOf(l.target);
+      if (of || isResidual(l.source) || isResidual(l.target)) {
         carried++;
+        if (of) stems.add(of);
+        for (const id of l.fact_ids) above.add(id);
         continue;
       }
       for (const id of l.fact_ids) cited.add(id);
     }
-    const doc = drawnDoc();
-    const own = doc && doc !== fetched && doc.metadata && doc.metadata.counts
-      ? doc.metadata.counts.facts : undefined;
-    const total = doc === fetched || !doc ? shownYear.counts.facts
-      : typeof own === "number" ? own : cited.size;
-    from = cited.size === total
-      ? ", from " + plural(cited.size, "fact")
-      : ", from " + cited.size + " of the document's " + plural(total, "fact");
-    if (carried) from += ", and " + plural(carried, "flow") + " carried unchanged from the chart above";
+    const factsIn = (/** @type {FiscProjection | null} */ d, /** @type {number} */ fallback) =>
+      !d || d === fetched ? shownYear.counts.facts
+        : d.metadata && d.metadata.counts && typeof d.metadata.counts.facts === "number"
+          ? d.metadata.counts.facts : fallback;
+    const total = factsIn(doc, cited.size);
+    if (!carried) {
+      from = cited.size === total
+        ? ", from " + plural(cited.size, "fact")
+        : ", from " + cited.size + " of the document's " + plural(total, "fact");
+    } else {
+      // THE RIBBONS ARE SPLIT BEFORE EITHER FACT COUNT IS GIVEN, so neither
+      // number is left attached to the whole chart. "14 flows ..., from 29 of
+      // the document's 73 facts" reads as a claim about all 14 while it is one
+      // about 9 of them, which is the same sentence the carried ones were
+      // wrongly inside.
+      from = ": " + (projection.links.length - carried) + " citing " + cited.size +
+        " of the document's " + plural(total, "fact") + ", and " + carried +
+        " carried unchanged from the chart above";
+      // NAMED ONLY WHERE ONE DOCUMENT IS NAMEABLE. carriedSource resolves a
+      // stem against the stack; two stems, or a document with no counts block,
+      // leave the clause as the count of ribbons alone rather than weigh the
+      // carried facts against a total that is not theirs.
+      const src = stems.size === 1 ? carriedSource(Array.from(stems)[0]) : null;
+      const theirs = src ? factsIn(src, 0) : 0;
+      if (theirs) from += ", citing " + above.size + " of its " + plural(theirs, "fact");
+    }
   }
   counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") + from;
 }
