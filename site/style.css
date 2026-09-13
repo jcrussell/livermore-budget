@@ -604,6 +604,15 @@ svg.sankey .link.derived {
   stroke-dasharray: 5 4;
 }
 
+/* A contra ribbon — a line pp.127-140 print as a reduction of its category,
+   ERAF and the RPTTF Reduction under Property Taxes — takes --critical for the
+   series table's reason: the sign on every figure is the first signal and the
+   hue the second, never the only one. The class is set by linkClass in app.js
+   and this rule wins over the stroke attribute paint() writes. */
+svg.sankey .link.contra {
+  stroke: var(--critical);
+}
+
 svg.sankey .link.dim {
   stroke-opacity: 0.07;
 }
@@ -623,6 +632,14 @@ svg.sankey .node.derived rect {
   stroke: var(--ink-2);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
+}
+
+svg.sankey .node.contra rect {
+  fill: var(--critical);
+}
+
+svg.sankey .node.contra tspan.value {
+  fill: var(--critical);
 }
 
 svg.sankey .node.dim {
@@ -699,6 +716,15 @@ svg.sankey .node {
   border-radius: 999px;
   border: 1px solid var(--rule);
   color: var(--ink-2);
+}
+
+.chip.contra {
+  color: var(--critical);
+  border-color: var(--critical);
+}
+
+#flow-table tr.contra td.num {
+  color: var(--critical);
 }
 
 .chip.derived {

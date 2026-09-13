@@ -456,17 +456,19 @@ type Section struct {
 // step's parent and Tiers against this step's caps, and cannot relate From to
 // Tiers at all. A reader expecting it to has read the struct as one document.
 //
-// FOUR FIELDS ARE DECLARED AND NOT SHIPPED. Key, After, Side and Role say what
-// this step opens and what it opens from; the client still resolves a rung by
-// depth and reads none of them, and a key on the wire would be a second
-// declaration of a tree nothing walks. The lane that teaches the client to walk
-// it ships the JSON tags with the code that reads them (fisc-ko1j.11).
+// THE TREE IS ON THE WIRE BECAUSE THE CLIENT WALKS IT. Key, After, Side and
+// Role say what this step opens and what it opens from, and site/app.js
+// resolves the step a node opens into by matching all three against the rung
+// on screen rather than by depth -- two steps open from the spine's chart, one
+// per tier, and a depth cannot tell them apart. They were `json:"-"` while no
+// client read them, so that a key on the wire could not be a second
+// declaration of a tree nothing walked.
 type DrillStep struct {
 	// Key names this step, so another step can declare that it opens from this
 	// step's chart. Required and unique within a view: a step no other step can
 	// name is a chart no second edge can ever be attached to, and the
 	// uniqueness is what makes [DrillStep.After] resolve to one parent.
-	Key string `json:"-"`
+	Key string `json:"key"`
 	// After is the Key of the step whose chart this one opens from, or "" for a
 	// step that opens from the view's own chart. Several steps may share one
 	// After: that is the second edge out of one chart a path cannot express.
@@ -474,7 +476,7 @@ type DrillStep struct {
 	// IT NAMES AN EARLIER STEP, ALWAYS, and validateSteps refuses one that does
 	// not. A cycle is then undeclarable rather than detected, which is a
 	// property of the type rather than an arm that has to be kept correct.
-	After string `json:"-"`
+	After string `json:"after"`
 	// From is the tier whose nodes open, in the chart on screen before they do.
 	// One tier rather than a set: a step is one hop, and a second tier of the
 	// same chart is a second step sharing this one's After.
@@ -488,7 +490,7 @@ type DrillStep struct {
 	// -- the construct paintBreadcrumb's comment in site/app.js refuses. It is
 	// true of the columns that exist and says nothing a third document would
 	// have to obey.
-	Side string `json:"-"`
+	Side string `json:"side,omitempty"`
 	// Role is which of the nodes at From open, in the caller's vocabulary, or
 	// "" for all of them.
 	//
@@ -496,7 +498,7 @@ type DrillStep struct {
 	// only that (After, From, Role) name at most one step, so two steps opening
 	// one tier of one chart are told apart by something the caller declared
 	// rather than by declaration order.
-	Role string `json:"-"`
+	Role string `json:"role,omitempty"`
 	// Projection is the filename stem of the document this step draws, or ""
 	// to draw the same document as the step before it -- the view's own, for
 	// the first step. A named one must be a key of [Options.Projections].
@@ -536,7 +538,8 @@ type DrillStep struct {
 	// does not know what the reader calls the things in it.
 	Back string `json:"back"`
 	// Tail is the plural noun the capped aggregate is counted in -- "funds",
-	// "categories" -- so its label reads "24 smaller funds".
+	// "categories" -- so its label reads "24 smaller funds". A cap naming its
+	// own [TierCap.Tail] takes that instead; this is the default for the rest.
 	//
 	// DECLARED FOR Back's REASON, and it was derived for one commit: app.js
 	// read `tier === 3 ? "funds" : "categories"`, which is the exact construct
@@ -598,6 +601,15 @@ const SideSource = "source"
 type TierCap struct {
 	Tier int `json:"tier"`
 	Cap  int `json:"cap"`
+	// Tail is the plural noun this tier's folded tail is counted in, or "" to
+	// take the step's [DrillStep.Tail].
+	//
+	// PER CAP BECAUSE ONE STEP CAPS TWO TIERS OF DIFFERENT THINGS. A revenue
+	// category opens into its printed lines and the funds they land in, and
+	// both columns fold on the committed corpus -- so one noun on the step
+	// labels the fund tail "26 smaller lines". The fund-group step had the same
+	// defect latent: its division cap read "funds" and never engaged.
+	Tail string `json:"tail,omitempty"`
 }
 
 // Download is one whole-store artifact a page offers.

@@ -45,6 +45,11 @@
  * @property {string[]} fact_ids
  * @property {FiscSource[]} locators
  * @property {boolean} derived
+ * @property {string} [contra]  the words for a link the schedule printed as a
+ *   reduction, e.g. "printed as a reduction of Property Taxes". PRESENT ONLY
+ *   ON A LINK THE CLIENT FLIPPED: a published link carries a signed
+ *   value_cents and no such field; markContra draws the negative ones at
+ *   their magnitude and records here what the sign meant.
  */
 
 /**
@@ -164,12 +169,21 @@
  * @property {number} tier
  * @property {number} cap  how many nodes the tier may hold before its tail is
  *   folded into one aggregate; see capColumn for why a cap is needed at all.
+ * @property {string} [tail]  the plural noun this tier's tail is counted in;
+ *   absent, the step's own
  */
 
 /**
- * One hop of the chain the packager ships, verbatim from export.DrillStep.
+ * One step of the tree the packager ships, verbatim from export.DrillStep.
  *
  * @typedef {Object} FiscDrillStep
+ * @property {string} key  what other steps name this one by
+ * @property {string} after  the key of the step whose chart this one opens
+ *   from, "" for the view's own chart
+ * @property {string} [side]  which end of a link the opened node is: absent
+ *   for the end links point at, "source" for the end they come from
+ * @property {string} [role]  which nodes at `from` open, by node.role; absent
+ *   opens every node at the tier
  * @property {number} from  the tier whose nodes open, in the chart on screen
  *   before they do
  * @property {string} [projection]  the document this step draws; absent means
@@ -293,34 +307,71 @@ const FUND_COLOR_VAR = {
 const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.render_tiers : [];
 
 /**
- * How this page drills: the chain of steps the packager declared, empty for a
- * page that opens nothing.
+ * How this page drills: the steps the packager declared, empty for a page
+ * that opens nothing.
  *
  * PER VIEW AND NEVER A CONSTANT HERE, for render_tiers' reason: the spine and
  * the two fund-flows pages are drawn by the same script from different
  * hierarchies, and a page that declares nothing keeps the isolate-on-click
  * behaviour it has always had.
  *
- * A CHAIN, READ AS A PATH. Step k opens a node of the chart k rungs deep, so a
- * node in an opened view is itself openable exactly when a step exists at the
- * next depth; stepAt is the one reader of that rule. The packager validates the
- * chain as a path (export.validateSteps), and this file assumes no more than
- * that: fisc-ko1j.12 is the shape it cannot express.
+ * A TREE, READ BY KEY. Each step names the step whose chart it opens from --
+ * `after`, "" for the view's own chart -- and the tier its nodes are at, so
+ * two steps can open from one chart: the spine's fund groups and its revenue
+ * categories open into different views of the same document, and a depth
+ * cannot tell them apart. stepFor is the one reader of that rule. The packager
+ * validates the tree (export.validateSteps): keys unique, `after` naming an
+ * earlier step, at most one step per (after, from, role).
  *
  * @type {FiscDrillStep[]}
  */
 const STEPS = CONFIG && Array.isArray(CONFIG.steps)
-  ? CONFIG.steps.filter((s) => s && Array.isArray(s.tiers) && s.tiers.length > 0)
+  // A STEP WITH NO KEY OR NO `after` IS NOT A STEP OF THE TREE, and is dropped
+  // as one with no tiers is. Read as "" instead, a keyless step is a root that
+  // its own children match by "" -- measured: a config whose steps carried no
+  // keys opened Patrol into Patrol without end, because the division step
+  // matched from its own chart. The packager requires both.
+  ? CONFIG.steps.filter((s) => s && Array.isArray(s.tiers) && s.tiers.length > 0 &&
+      typeof s.key === "string" && typeof s.after === "string")
   : [];
 
 /**
- * The step that opens a node of the chart at this depth, or null when nothing
- * at that depth opens.
- * @param {number} depth  how many nodes are open, 0 on the overview
+ * The key of the step whose chart is on screen, "" on the overview.
+ * @returns {string}
+ */
+function openedKey() {
+  return drilled.length ? drilled[drilled.length - 1].step.key : "";
+}
+
+/**
+ * The step this node of the chart on screen opens into, or null when it opens
+ * nothing.
+ *
+ * THREE MATCHES AND NOT A DEPTH. The step opens from the chart on screen
+ * (`after` is the rung's key), from this node's tier (`from`), and -- when it
+ * names one -- from nodes in this role. Depth alone answered while the steps
+ * were a line; on the spine two steps open from depth 0, one per tier.
+ *
+ * THE ROLE IS THE PACKAGER'S GATE, MATCHED AND NOT INFERRED. transfers/in and
+ * fund-balance/draw sit at tier 0 beside the ten revenue categories, and
+ * pp.127-140 print nothing beneath either; a step declaring `role:
+ * "revenue_source"` opens the categories and leaves the endpoints as the
+ * flow's ends. Deriving the same answer from an id prefix or from what the
+ * step document happens to carry would be this file deciding what a tier
+ * means, which paintBreadcrumb's comment refuses.
+ *
+ * @param {{tier: number, role?: string}} node
  * @returns {FiscDrillStep | null}
  */
-function stepAt(depth) {
-  return depth >= 0 && depth < STEPS.length ? STEPS[depth] : null;
+function stepFor(node) {
+  const key = openedKey();
+  for (const s of STEPS) {
+    if (s.after !== key) continue;
+    if (s.from !== node.tier) continue;
+    if (s.role && s.role !== node.role) continue;
+    return s;
+  }
+  return null;
 }
 
 /**
@@ -385,6 +436,27 @@ function fmt(cents) {
 /** @param {number} cents */
 function fmtShort(cents) {
   return moneyCompact.format(cents / 100);
+}
+
+/**
+ * A figure with its sign, for a mark whose figure the schedule prints as a
+ * reduction.
+ *
+ * THE MINUS IS THE FIRST SIGNAL AND THE COLOUR THE SECOND, for the reason the
+ * series table gives its contra rows a minus rather than the city's
+ * parentheses: screen readers do not announce parentheses at default settings
+ * and would read the figure aloud as positive, and a hue is never the only
+ * signal on this site. U+2212 rather than a hyphen, so it reads as a sign.
+ * @param {number} cents
+ * @returns {string}
+ */
+function fmtSigned(cents) {
+  return (cents < 0 ? "\u2212" : "") + fmt(Math.abs(cents));
+}
+
+/** @param {number} cents */
+function fmtShortSigned(cents) {
+  return (cents < 0 ? "\u2212" : "") + fmtShort(Math.abs(cents));
 }
 
 /**
@@ -676,11 +748,12 @@ let isolated = "";
 /**
  * The nodes the chart is opened into, outermost first; empty on the overview.
  *
- * A STACK, BECAUSE THE DRILL IS A CHAIN. Step k opens a node of the chart k
- * rungs deep, so a node in an opened view is itself openable whenever a step
- * exists at the next depth -- drillable asks exactly that -- and the breadcrumb
- * shows one rung per step taken. The chain is read as a path: depth k was
- * opened by STEPS[k] and by nothing else.
+ * A STACK, BECAUSE A PATH THROUGH THE TREE IS STILL A LINE. Each rung records
+ * the step that opened it, the next step is the one naming that step's key
+ * (stepFor), and the breadcrumb shows one rung per step taken. Two steps can
+ * open from one chart, and one reader can still only take one of them at a
+ * time, so what is on screen is always a path even though what is declared
+ * is not.
  * @type {Rung[]}
  */
 let drilled = [];
@@ -865,7 +938,8 @@ function foldTarget(byID, n, drawn) {
  * Keying on the target says which end is the fine one; the placeability test
  * says what this drill's tier set has room for. Neither is a silent loss: a
  * link dropped here is one the declared tier set has no column for, which is a
- * statement the view made when it declared them.
+ * statement the view made when it declared them -- and scoped() is what keeps
+ * that sentence true, by refusing the one case it was false of.
  *
  * @param {FiscProjection} doc
  * @param {string} id
@@ -873,6 +947,55 @@ function foldTarget(byID, n, drawn) {
  * @returns {FiscProjection}
  */
 function filterToNode(doc, id, tiers) {
+  return filterLinks(doc, id, tiers, (l, inside) => inside.has(l.target));
+}
+
+/**
+ * The document restricted to the money leaving one node's own lines.
+ *
+ * A SIBLING OF filterToNode AND NOT A PARAMETER ON IT, because the two
+ * disagree about what "inside" means. That one keeps a link whose TARGET is in
+ * the subtree, so the column feeding the opened node stays as context; this
+ * one keeps a link whose SOURCE is, so the column the opened node feeds stays.
+ * A revenue category is a tier-0 node with nothing pointing at it, and asked
+ * through filterToNode it answers an empty graph with no error -- the id is
+ * known, so the guard that fires on an unknown one does not -- and d3-sankey
+ * dies on the empty graph with "RangeError: Invalid array length". One
+ * function answering both questions by flag is how a caller gets the wrong
+ * one.
+ *
+ * THE RULE IS "SOURCE IN THE SUBTREE, BOTH ENDS PLACEABLE". Opening a category
+ * into tiers {1,3} keeps every line printed under it and every fund a line
+ * lands in, across every fund group; the category itself is drawn nowhere,
+ * since it is the source of nothing -- pp.127-140 print money at the line, and
+ * the category is the line's parent.
+ *
+ * @param {FiscProjection} doc
+ * @param {string} id
+ * @param {number[]} tiers
+ * @returns {FiscProjection}
+ */
+function filterFromNode(doc, id, tiers) {
+  return filterLinks(doc, id, tiers, (l, inside) => inside.has(l.source));
+}
+
+/**
+ * The filter both drills share: the links `keeps` admits whose ends this tier
+ * set can place, and the nodes those links need.
+ *
+ * AN EMPTY RESULT IS REFUSED BY NAME, in the sentence the guard on an unknown
+ * id already uses. Every other route to an empty graph ends in d3-sankey's
+ * "RangeError: Invalid array length", a stack trace where a sentence belongs;
+ * a node the document carries and draws nothing under is a fault in the view
+ * or the document, not in the reader's click.
+ *
+ * @param {FiscProjection} doc
+ * @param {string} id
+ * @param {number[]} tiers
+ * @param {(l: FiscLink, inside: Set<string>) => boolean} keeps
+ * @returns {FiscProjection}
+ */
+function filterLinks(doc, id, tiers, keeps) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   // A NAME THIS DOCUMENT DOES NOT CARRY IS A FAULT IN THE VIEW, and it must say
   // so. Unchecked, an unknown id gives an empty subtree, no links, and
@@ -886,14 +1009,19 @@ function filterToNode(doc, id, tiers) {
   }
   const drawn = new Set(tiers);
   const inside = withinNode(doc, id);
+  const placeable = scoped(doc, tiers);
 
   const links = doc.links.filter((l) => {
-    if (!inside.has(l.target)) return false;
+    if (!keeps(l, inside)) return false;
     const src = byID.get(l.source);
     const dst = byID.get(l.target);
     if (!src || !dst) return false;
-    return foldTarget(byID, src, drawn) !== "" && foldTarget(byID, dst, drawn) !== "";
+    return placeable(src) && placeable(dst);
   });
+  if (!links.length) {
+    throw new Error("cannot draw " + doc.projection + ": nothing flows between tiers " +
+      tiers.join(", ") + " for node " + id + ", so there is no chart to open it into");
+  }
 
   // Only the nodes those links touch, and their ancestors up to the drawn
   // tiers. Handing foldDocument a node it cannot place would make it refuse the
@@ -914,6 +1042,63 @@ function filterToNode(doc, id, tiers) {
     nodes: doc.nodes.filter((n) => keep.has(n.id)),
     links: links,
   });
+}
+
+/**
+ * Whether a link end has a column in this tier set, or a throw when the
+ * question cannot honestly be answered "no".
+ *
+ * A DROPPED END AND A BROKEN CHAIN LOOKED THE SAME. The filters drop a link
+ * whose end folds to nothing, and the comment above calls that "a statement
+ * the view made when it declared its tiers" -- true of a tier the view left
+ * out, and false of a node whose parent chain is broken, which foldTarget also
+ * answers "" for. Measured (fisc-ng17): with revenue-line/taxes/property/eraf's
+ * parent blanked, the opened General Fund drew Property Taxes at $79,318,762
+ * against p127's $64,143,762, because ERAF is a contra row and dropping it
+ * removed a negative -- with identical node and link counts and no banner.
+ * foldDocument would have refused the node, but a rung filters first and the
+ * fold never saw it.
+ *
+ * TWO SHAPES ARE BROKEN, AND ONE IS NOT. A parent naming a node the document
+ * does not carry is broken outright. A node with no drawn ancestor while OTHER
+ * nodes of its tier have one is broken too: the view found a column for that
+ * tier, and this node's chain is what failed to reach it. A tier no node of
+ * which can be placed is the view's own declaration -- the fund column under a
+ * division opened at {4,5}, the revenue column under Spending's old {3,4} --
+ * and its links are dropped as before. What this cannot see is a whole tier
+ * losing its parents at once, which node-hierarchy-well-formed refuses Go-side;
+ * the drill-down's line tier is the arm fisc-ko1j.10 added for exactly that.
+ *
+ * @param {FiscProjection} doc
+ * @param {number[]} tiers
+ * @returns {(n: FiscNode) => boolean}
+ */
+function scoped(doc, tiers) {
+  const byID = new Map(doc.nodes.map((n) => [n.id, n]));
+  const drawn = new Set(tiers);
+  /** Tiers at which some node has a drawn ancestor. */
+  const placed = new Set();
+  for (const n of doc.nodes) {
+    if (foldTarget(byID, n, drawn) !== "") placed.add(n.tier);
+  }
+  return (n) => {
+    if (foldTarget(byID, n, drawn) !== "") return true;
+    let at = n;
+    for (let hops = 0; at.parent && hops < 9; hops++) {
+      const up = byID.get(at.parent);
+      if (!up) {
+        throw new Error("cannot draw " + doc.projection + ": node " + at.id + " names parent " +
+          at.parent + ", which the document does not carry");
+      }
+      at = up;
+    }
+    if (placed.has(n.tier)) {
+      throw new Error("cannot draw " + doc.projection + ": node " + n.id + " is tier " + n.tier +
+        " and reaches no tier this page draws (" + tiers.join(", ") + "), while other tier-" +
+        n.tier + " nodes do; its parent chain is broken");
+    }
+    return false;
+  };
 }
 
 /**
@@ -1091,25 +1276,30 @@ function paintCounts() {
 /**
  * Whether activating this node opens it.
  *
- * ONE TIER PER DEPTH AND NO OTHER. A node at the next step's `from` opens;
- * everything else on the page is an endpoint of the flow rather than a
- * container of it, and offering to open a revenue category would promise a
- * decomposition the document does not carry. Where no step exists at this
- * depth nothing opens, which is every node of a chain's last rung. An
- * aggregate is excluded by name -- it can sit at a step's `from` tier now that
- * caps are per tier -- and would have nothing to open into anyway, being
+ * A NODE OPENS WHEN A STEP OPENS FROM IT, and that is stepFor's three matches:
+ * the chart on screen, the node's tier, and its role where the step names
+ * one. Two things on the spine's chart open, into two different views of
+ * fund-flows: a fund group into its funds, and a revenue category into the
+ * lines pp.127-140 print under it. The categories were excluded here while
+ * the document carried nothing beneath them -- the offer would have promised a
+ * decomposition no page printed -- and since it carries the line tier the
+ * exclusion is by role and not by tier: transfers/in and fund-balance/draw
+ * share tier 0 with the categories, are the flow's ends rather than
+ * containers of it, and the step's role leaves them closed.
+ *
+ * An aggregate is excluded by name -- it can sit at a step's `from` tier now
+ * that caps are per tier -- and would have nothing to open into anyway, being
  * several documents' worth of small funds rather than one thing. So are the
  * residual node and the endpoints carried with it: an endpoint that leaves
  * the group is placed at the last drawn tier, which is exactly where the
  * next step opens from, and it is a flow's end rather than a container of
  * anything.
  *
- * @param {{id: string, tier: number}} d
+ * @param {{id: string, tier: number, role?: string}} d
  * @returns {boolean}
  */
 function drillable(d) {
-  const step = stepAt(drilled.length);
-  return Boolean(step) && d.tier === step.from && !isAggregate(d.id) && !isCarried(d.id);
+  return Boolean(stepFor(d)) && !isAggregate(d.id) && !isCarried(d.id);
 }
 
 /**
@@ -1131,23 +1321,29 @@ function focusInChart() {
 }
 
 /**
- * The year's entry for the rung a step at `depth` opens: the file it draws and
- * the caveat refs its marks link to, or null when the year on screen was
- * packaged with none.
+ * The year's entry for the rung a step opens: the file it draws and the
+ * caveat refs its marks link to, or null when the year on screen was packaged
+ * with none.
  *
  * READ OFF THE YEAR, NEVER JOINED HERE. A step's document is per fiscal year --
  * FY2026-27's fund groups open into fund-flows-2027, not into the one file a
  * stem maps to in CONFIG.projections -- and which file that is belongs to the
  * packager, which resolves every step for every year into the year's own
  * config entry. This file resolves nothing: it reads the entry for the year on
- * screen at the depth being opened, and refuses when there is none rather than
+ * screen for the step being opened, and refuses when there is none rather than
  * draw a file the year was never told about.
- * @param {number} depth
+ *
+ * BY THE STEP'S PLACE IN THE DECLARATION, NOT BY DEPTH. The packager writes
+ * one entry per declared step in declaration order (export.stepDocuments),
+ * and two steps open from depth 0 on the spine, so the depth names two
+ * entries and the step names one.
+ * @param {FiscDrillStep} step
  * @returns {FiscStepDoc | null}
  */
-function stepDocAt(depth) {
+function stepDocFor(step) {
   const steps = shownYear && Array.isArray(shownYear.steps) ? shownYear.steps : [];
-  const entry = steps[depth];
+  const at = CONFIG && Array.isArray(CONFIG.steps) ? CONFIG.steps.indexOf(step) : -1;
+  const entry = at >= 0 ? steps[at] : undefined;
   return entry && typeof entry.path === "string" && entry.path ? entry : null;
 }
 
@@ -1162,14 +1358,13 @@ function stepDocAt(depth) {
  * draw at depth 1 a document the year control would refuse at depth 0.
  * loadDocument is the one place they are sequenced.
  * @param {FiscDrillStep} step
- * @param {number} depth  the depth the step opens from
  * @param {FiscProjection} from  the document of the chart the step opens from
  * @param {() => boolean} superseded
  * @returns {Promise<FiscProjection | null>}
  */
-async function stepDocument(step, depth, from, superseded) {
+async function stepDocument(step, from, superseded) {
   if (!step.projection) return from;
-  const entry = stepDocAt(depth);
+  const entry = stepDocFor(step);
   if (!entry) {
     if (!superseded()) {
       fail("That could not be opened: this page's step names a document, " +
@@ -1276,13 +1471,18 @@ function redrawStack(next) {
  */
 async function drillDown(id) {
   const depth = drilled.length;
-  const step = stepAt(depth);
   const from = docAt(depth);
+  // THE NODE THE READER ACTIVATED, off the document the chart is shaped from,
+  // because which step opens it is a question about that node -- its tier and
+  // its role -- and not about the depth. An id the document does not carry, or
+  // one drillable refuses, opens nothing.
+  const node = from ? from.nodes.find((n) => n.id === id) : undefined;
+  const step = node && drillable(node) ? stepFor(node) : null;
   if (!step || !from) return FAILED;
   const mine = ++opening;
   const token = switching;
   const overtaken = () => mine !== opening || token !== switching;
-  const doc = await stepDocument(step, depth, from, overtaken);
+  const doc = await stepDocument(step, from, overtaken);
   // THE TOKEN CANNOT SEE A SWITCH THAT WAS ALREADY IN FLIGHT. `switching` is
   // bumped when showYear STARTS, so a drill begun while a year fetch is
   // outstanding captures the already-bumped value and compares equal when the
@@ -1465,7 +1665,9 @@ function lastSentence(s) {
  * THE COLUMN IS READ OFF THE CHART, NOT ASSUMED. This said "right-hand column"
  * unconditionally, which held while every declared step opened the finest tier
  * its chart drew and stopped holding on the spine, whose fund groups are its
- * MIDDLE column. openableColumn names the column the step's tier is drawn in.
+ * MIDDLE column. openableColumns names every column that holds a node which
+ * opens -- two on the spine, since its revenue categories open as well as its
+ * fund groups.
  *
  * AND WHETHER ANYTHING OPENS IS ASKED OF THE DRAWN NODES, not of the chain: a
  * step exists below depth 1 for every fund group, and only the General Fund
@@ -1480,7 +1682,7 @@ function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint || !STEPS.length) return;
   const anyOpens = Boolean(projection) && projection.nodes.some(drillable);
-  const column = anyOpens ? openableColumn() : "";
+  const column = anyOpens ? openableColumns().join(" or ") : "";
   if (drilled.length) {
     hint.textContent = "This is " + labelOfRung(drilled.length - 1) +
       ", broken into its parts. " +
@@ -1498,25 +1700,29 @@ function paintChartHint() {
 }
 
 /**
- * Which column of the chart on screen the next step's nodes are in --
- * "left-hand", "middle" or "right-hand" -- or "" when no step opens here.
+ * Which columns of the chart on screen hold a node that opens -- "left-hand",
+ * "middle", "right-hand", left to right -- or none when nothing here opens.
  *
  * BY TIER, WHICH IS WHAT PLACES A COLUMN. layOut aligns columns on the tier
  * set the document was shaped by, so the drawn tiers in ascending order are
- * the columns left to right, and a step's `from` is one of them. Two drawn
- * tiers have no middle; more than three would make "middle" ambiguous, and
- * no document here draws more than three at once.
- * @returns {string}
+ * the columns left to right, and a column opens when a drawn node in it does.
+ * Two drawn tiers have no middle; more than three would make "middle"
+ * ambiguous, and no document here draws more than three at once.
+ *
+ * ASKED OF THE DRAWN NODES, NOT OF THE STEPS: a step opens from a tier, and
+ * which of that tier's nodes open is drillable's answer -- on the spine's
+ * left-hand column three of thirteen do not.
+ * @returns {string[]}
  */
-function openableColumn() {
-  const step = stepAt(drilled.length);
-  if (!step || !projection) return "";
+function openableColumns() {
+  if (!projection) return [];
   const tiers = [...new Set(projection.nodes.map((n) => n.tier))].sort((a, b) => a - b);
-  const at = tiers.indexOf(step.from);
-  if (at < 0 || tiers.length < 2) return "";
-  if (at === 0) return "left-hand";
-  if (at === tiers.length - 1) return "right-hand";
-  return "middle";
+  if (tiers.length < 2) return [];
+  const opening = new Set(projection.nodes.filter(drillable).map((n) => n.tier));
+  return tiers.map((tier, at) => {
+    if (!opening.has(tier)) return "";
+    return at === 0 ? "left-hand" : at === tiers.length - 1 ? "right-hand" : "middle";
+  }).filter(Boolean);
 }
 
 /** How many fund-group swatches the legend is showing. */
@@ -1606,29 +1812,51 @@ function shapeFor(doc) {
     // subtree is a page permanently opened into it. Composing them would be
     // wrong -- the node a reader opens is already inside the root -- so a drill
     // filters to what was clicked and an overview to what was declared.
-    return foldDocument(ROOT ? filterToNode(doc, ROOT, RENDER_TIERS) : doc);
+    return markContra(foldDocument(ROOT ? filterToNode(doc, ROOT, RENDER_TIERS) : doc), doc);
   }
   // ROOT DOES NOT REACH HERE. It is the spine's vocabulary -- the node whose
   // subtree THIS PAGE's overview draws -- and a rung filters to the node the
   // reader opened, which is inside the root on a page that has one and is a
   // node of another document entirely on a step that switched.
   const step = rung.step;
-  let shaped = filterToNode(doc, rung.id, step.tiers);
+  // THE SIDE IS THE STEP'S DECLARATION, and it picks the filter: the opened
+  // node is the end its links point at, or the end they come from, and the
+  // two filters disagree about what "inside" means (filterFromNode).
+  const filter = step.side === "source" ? filterFromNode : filterToNode;
+  let shaped = filter(doc, rung.id, step.tiers);
+  const inside = withinNode(doc, rung.id);
   // EVERY CAP THE STEP DECLARES, COARSEST TIER FIRST. Folding a coarse node
   // removes its descendants (capColumn's orphaned()), which changes which fine
   // nodes are left to rank; capping the fine tier first would rank divisions
   // of a fund about to be folded away. The order is the step's tier order, not
   // the caps' declaration order, for the same reason the cap is looked up by
   // the tier it names.
+  //
+  // THE TAIL'S PARENT IS THE OPENED NODE ONLY WHEN THE WHOLE COLUMN IS INSIDE
+  // IT, and that is asked of the document rather than assumed. A fund group's
+  // funds and a category's lines are inside the node that opened them, and
+  // the tail inherits its hue through it; a category's fund column spans every
+  // fund group, and a tail parented to the category would claim a place in a
+  // hierarchy the funds are not in. It gets "", which is --muted, which is what
+  // "no single fund group" looks like everywhere else on this page.
+  /** @type {Map<number, string>} */
+  const parentOf = new Map();
   for (const tier of step.tiers) {
     const cap = (step.caps || []).find((c) => c.tier === tier);
-    if (cap) shaped = capColumn(shaped, tier, cap.cap, rung.id, step.tail);
+    if (!cap) continue;
+    const column = shaped.nodes.filter((n) => n.tier === tier);
+    const parent = column.every((n) => inside.has(n.id)) ? rung.id : "";
+    parentOf.set(tier, parent);
+    // THE NOUN IS THE CAP'S WHERE IT NAMES ONE, and the step's otherwise: a
+    // category's step caps its lines and its funds, and one word cannot count
+    // both tails.
+    shaped = capColumn(shaped, tier, cap.cap, parent, cap.tail || step.tail);
   }
   const drawn = foldDocument(shaped, step.tiers);
 
   // EVERY AGGREGATE'S PARENT IS PUT BACK AFTER THE FOLD, and it has to be here
-  // rather than in capColumn. capColumn runs first and parents the aggregate at
-  // the node being opened, which is true; foldDocument then re-points every
+  // rather than in capColumn. capColumn runs first and parents the aggregate
+  // as the loop above decided, which is true; foldDocument then re-points every
   // retained node's parent at its folded ancestor and blanks the ones whose
   // ancestor is not in the document -- which the opened node never is, since
   // opening it is what filtered it away. So the aggregate came out of the fold
@@ -1643,12 +1871,137 @@ function shapeFor(doc) {
   // FILE's hierarchy, which is what fundGroupOf walks.
   const reparented = Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) =>
-      (isAggregate(n.id) ? Object.assign({}, n, { parent: rung.id }) : n)),
+      (isAggregate(n.id) ? Object.assign({}, n, { parent: parentOf.get(n.tier) || "" }) : n)),
   });
   // LAST, AFTER THE CAP AND THE FOLD, because neither may touch it: the cap
   // ranks the group's own parts and the residual is not one of them, and the
   // fold merges by folded ends and these ends are the chart above's.
-  return carryResidual(reparented, docAt(drilled.length - 1), rung);
+  //
+  // AND THE CONTRA MARKING AFTER THAT, because it is about what the fold LEFT
+  // negative: a category's lines fold into the category's net cell at {0,3,4},
+  // where nothing is negative, and stand on their own at {1,3}, where two are.
+  return markContra(carryResidual(reparented, docAt(drilled.length - 1), rung), doc);
+}
+
+/**
+ * Draws every link the fold leaves negative as a contra ribbon: forward, at
+ * its magnitude, carrying the words for what the schedule printed.
+ *
+ * WHAT A NEGATIVE LINK IS. pp.127-140 print ERAF and the RPTTF reduction as
+ * reductions of Property Taxes -- rows in parentheses, netted into the
+ * category's total -- and fund-flows publishes each as a line whose link into
+ * the fund carries its signed figure. Folded to the category they vanish into
+ * the net cell; drawn as lines they stand on their own, and a sankey has no
+ * ribbon of negative width.
+ *
+ * NOT A REVERSED LINK, THOUGH THAT WAS THE FIRST DESIGN. A link from the fund
+ * back to the line gives the line a depth one past the fund's, and the
+ * vendored d3-sankey sizes its column count from the deepest node: a {1,3}
+ * view came to three columns with the third empty, and its layering pass
+ * throws on the hole -- "Cannot read properties of undefined (reading
+ * 'sort')", the same failure layOut's comment records for a misaligned tier
+ * set. So the ribbon runs the way every other ribbon runs, at the printed
+ * size, and what makes it a reduction is said three ways: the class render()
+ * gives it, the sign every figure carries, and the sentence on the mark.
+ *
+ * THE FUND'S FIGURE IS GROSS OF ITS REDUCTIONS, and contraNote says so on the
+ * mark. d3-sankey sizes a node at the larger of what enters and what leaves,
+ * and a contra ribbon enters; the General Fund in the Property Taxes view
+ * stands at the sum of every ribbon into it, which is the p127 total before
+ * ERAF and the RPTTF reduction come off. The step's description says the same
+ * for the chart as a whole.
+ *
+ * THE WORDS NAME THE PARENT IN THE FILE, not in the drawn document: the fold
+ * blanks a line's parent, and it is the category p127 prints the reduction
+ * under that the reader should hear. A source the file does not carry -- a
+ * capped tail whose folded rows net to a reduction, which no committed column
+ * produces -- is named for what it is rather than for a category it is not.
+ *
+ * @param {FiscProjection} drawn  shaped and folded
+ * @param {FiscProjection} file  the document it was shaped from, unfolded
+ * @returns {FiscProjection} drawn itself when nothing in it is negative
+ */
+function markContra(drawn, file) {
+  if (!drawn.links.some((l) => l.value_cents < 0)) return drawn;
+  const byID = new Map(file.nodes.map((n) => [n.id, n]));
+  const under = (/** @type {string} */ id) => {
+    const n = byID.get(id);
+    const up = n && n.parent ? byID.get(n.parent) : undefined;
+    return up ? "printed as a reduction of " + up.label : "printed rows netting to a reduction";
+  };
+  return Object.assign({}, drawn, {
+    links: drawn.links.map((l) => (l.value_cents < 0
+      ? Object.assign({}, l, { value_cents: -l.value_cents, contra: under(l.source) })
+      : l)),
+  });
+}
+
+/**
+ * Whether every ribbon on a laid node is a contra one: a line the schedule
+ * prints as a reduction, whose own figure is therefore negative.
+ * @param {LaidNode} d
+ * @returns {boolean}
+ */
+function isContraNode(d) {
+  const links = d.sourceLinks.concat(d.targetLinks);
+  return links.length > 0 && links.every((l) => Boolean(l.contra));
+}
+
+/**
+ * The figure a laid mark prints: negative for a contra ribbon and for a line
+ * whose every ribbon is one, and d3's value otherwise.
+ * @param {LaidLink | LaidNode} d
+ * @returns {number}
+ */
+function markCents(d) {
+  if (isLink(d)) {
+    const l = /** @type {LaidLink} */ (d);
+    return l.contra ? -l.value_cents : l.value_cents;
+  }
+  const n = /** @type {LaidNode} */ (d);
+  return isContraNode(n) ? -n.value : n.value;
+}
+
+/**
+ * For a node with contra ribbons among others, what its figure is gross of and
+ * what it comes to net, or "" for every other node.
+ *
+ * IT IS ARITHMETIC AND SAYS SO, with columnShare's diamond and word: the
+ * mark's own figure less TWICE what the reductions contributed to it, since
+ * each is drawn at its magnitude and so was added where the schedule
+ * subtracts it. Measured on FY2025-26: the General Fund in the Property Taxes
+ * view is sized at $98,114,440 — $16,985,339 of reductions among $81,129,101
+ * of additions — while p127 prints $64,143,762, and nothing on the mark would
+ * say why.
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+function contraNote(d) {
+  const arriving = d.targetLinks.reduce((sum, l) => sum + l.value, 0);
+  const leaving = d.sourceLinks.reduce((sum, l) => sum + l.value, 0);
+  const side = arriving >= leaving ? d.targetLinks : d.sourceLinks;
+  const reduced = side.filter((l) => l.contra).reduce((sum, l) => sum + l.value_cents, 0);
+  if (!reduced || reduced === d.value) return "";
+  return "\u25c7 our reading: " + fmt(reduced) + " of this is printed as reductions, so " +
+    fmt(d.value - 2 * reduced) + " net of them";
+}
+
+/**
+ * The classes a ribbon is drawn with.
+ * @param {LaidLink} d
+ * @returns {string}
+ */
+function linkClass(d) {
+  return "link" + (d.derived ? " derived" : "") + (d.contra ? " contra" : "");
+}
+
+/**
+ * The classes a node is drawn with.
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+function nodeClass(d) {
+  return "node" + (d.derived ? " derived" : "") + (isContraNode(d) ? " contra" : "");
 }
 
 /**
@@ -1956,9 +2309,9 @@ function carryResidual(drawn, from, rung) {
  * @param {FiscProjection} doc
  * @param {number} tier
  * @param {number} cap
- * @param {string} opened  the node the column is inside, which the aggregate is
- *   parented to
- * @param {string} noun  the step's plural noun for the tier's rows
+ * @param {string} opened  the node the aggregate is parented to: the opened
+ *   node when the whole column is inside it, "" when it spans fund groups
+ * @param {string} noun  the plural noun for the tier's rows
  * @returns {FiscProjection}
  */
 function capColumn(doc, tier, cap, opened, noun) {
@@ -1975,14 +2328,35 @@ function capColumn(doc, tier, cap, opened, noun) {
   // answer than one fewer plus a box saying "1 smaller".
   if (atTier.length <= cap + 1) return doc;
 
+  // RANKED BY THE LARGER OF INFLOW AND OUTFLOW, which is d3-sankey's own node
+  // value and the height the reader sees. Inflow alone ranked every column
+  // this page capped until a category opened into its lines: a line is the
+  // SOURCE of everything it carries and takes in nothing, so under inflow
+  // every line tied at zero and the tail was whichever eight sorted last by
+  // id. On the columns capped before -- funds and divisions -- the two agree,
+  // because a fund's outflow never exceeds its inflow and a division's equals
+  // it, and tools/jscheck/drill.mjs pins every opened view at the figures it
+  // had under inflow.
+  //
+  // BY MAGNITUDE, because a contra row is a printed line as large as its
+  // figure. Ranked signed, ERAF at -$15,175,000 is the smallest line in
+  // Property Taxes and the tail folds a reduction in with the additions it is
+  // labelled "smaller" than; ranked by magnitude it is the second largest,
+  // which is what p127 prints.
   /** @type {Map<string, number>} */
-  const size = new Map();
-  for (const l of doc.links) size.set(l.target, (size.get(l.target) || 0) + l.value_cents);
+  const inflow = new Map();
+  /** @type {Map<string, number>} */
+  const outflow = new Map();
+  for (const l of doc.links) {
+    inflow.set(l.target, (inflow.get(l.target) || 0) + Math.abs(l.value_cents));
+    outflow.set(l.source, (outflow.get(l.source) || 0) + Math.abs(l.value_cents));
+  }
+  const size = (/** @type {string} */ id) => Math.max(inflow.get(id) || 0, outflow.get(id) || 0);
   // Ties broken by id, so the set kept is the same on every build of the same
   // document. A cap that reordered under an unstable sort would move which
   // funds a reader sees between two identical exports.
   const ranked = atTier.slice().sort((a, b) =>
-    (size.get(b.id) || 0) - (size.get(a.id) || 0) || (a.id < b.id ? -1 : 1));
+    size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
   const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
   const folded = ranked.slice(cap);
 
@@ -2008,9 +2382,11 @@ function capColumn(doc, tier, cap, opened, noun) {
   // the rationale says.
   const aggregate = {
     id: aggregateID(tier), label: label, tier: tier,
-    // PARENTED TO THE NODE BEING OPENED, which is true -- every item folded
-    // into it is inside that node -- and is what gives the mark its group's
-    // hue instead of --muted. It was "" and drew grey among coloured siblings.
+    // PARENTED AS THE CALLER DECIDED: at the node being opened when every
+    // item folded into it is inside that node, which is what gives the mark
+    // its group's hue instead of --muted -- it was "" and drew grey among
+    // coloured siblings -- and "" where the column spans fund groups, which
+    // shapeFor asks of the document.
     parent: opened,
     constraint_tier: "",
     // A ROLE, because an empty one renders as a bordered empty .chip in both
@@ -2097,8 +2473,8 @@ function capColumn(doc, tier, cap, opened, noun) {
  *
  * THE RULE. Each node folds to its nearest ancestor whose tier this page draws,
  * following node.parent. Links fold with their ends and merge on the folded
- * pair, summing values and unioning fact ids. A link whose ends fold to the
- * SAME node is dropped: it was a flow inside what is now one box. That is the
+ * pair and the kind, summing values and unioning fact ids. A link whose ends
+ * fold to the SAME node is dropped: it was a flow inside what is now one box. That is the
  * drill-down's department-to-object links, which fold to fund/100 -> fund/100 --
  * docs/general-fund-drilldown-contract.md warns about exactly this shape -- and
  * dropping them cites nothing away, because the fund-to-department link that
@@ -2166,7 +2542,16 @@ function foldDocument(doc, tiers) {
         " -> " + l.target + " names a node the document does not carry");
     }
     if (source === target) continue;
-    const key = source + "\u001f" + target;
+    // ONE RIBBON PER KIND BETWEEN A FOLDED PAIR, so a ribbon's kind is true of
+    // all of it. This refused two kinds on one pair while no published column
+    // produced them, and none does under any fold through node.parent --
+    // measured over all four committed goldens at {0,3,4}, {4,5}, {1,3} and
+    // {0,2,5}. A category's capped fund tail is what does: its funds span
+    // every group, and the five internal-service funds take Use of Money and
+    // Intergovernmental money as an internal service charge beside external
+    // money into the rest, so one line reaches the tail twice, once per kind,
+    // and the tooltip and the table name each ribbon for what it is.
+    const key = source + "\u001f" + target + "\u001f" + l.kind;
     const at = merged.get(key);
     const ids = cited.get(key);
     if (!at || !ids) {
@@ -2175,15 +2560,8 @@ function foldDocument(doc, tiers) {
       located.set(key, new Set(locatorKeys(l.locators)));
       continue;
     }
-    // Two links of different kinds folding onto one ribbon would leave that
-    // ribbon's tooltip and table row naming a kind that is true of only part of
-    // it. It does not occur in any published column; if it ever does, stop.
-    if (at.kind !== l.kind) {
-      throw new Error("cannot draw " + doc.projection + ": " + source + " -> " + target +
-        " folds together a " + at.kind + " flow and a " + l.kind + " one");
-    }
-    // A PRINTED LEG AND AN INFERRED ONE CANNOT MERGE, for the same reason two
-    // kinds cannot, and it is this project's oldest rule: published is not
+    // A PRINTED LEG AND AN INFERRED ONE CANNOT MERGE, and it is this project's
+    // oldest rule: published is not
     // derived. OR-ing the flag draws the merged ribbon dashed and lists its
     // WHOLE amount under "what we inferred", which is a false statement about a
     // figure the city printed most of. Latent -- all four published columns
@@ -2213,7 +2591,8 @@ function foldDocument(doc, tiers) {
       locators: regroupLocators(located.get(key)),
     }))
     .sort((a, b) => (a.source < b.source ? -1 : a.source > b.source ? 1
-      : a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
+      : a.target < b.target ? -1 : a.target > b.target ? 1
+      : a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : 0));
 
   // A node the folded links do not touch is not drawable: d3-sankey gives a
   // zero-degree node depth 0 and value 0, so it lands in the first column as a
@@ -2436,7 +2815,7 @@ function render(laid) {
   gLinks.selectAll("path")
     .data(graph.links)
     .join("path")
-    .attr("class", /** @param {LaidLink} d */ (d) => "link" + (d.derived ? " derived" : ""))
+    .attr("class", /** @param {LaidLink} d */ (d) => linkClass(d))
     .attr("d", D3.sankeyLinkHorizontal())
     // The 2px surface gap is the separator between stacked ribbons; a stroke
     // drawn around each one would be data-weight ink doing white's job.
@@ -2454,7 +2833,7 @@ function render(laid) {
   const node = gNodes.selectAll("g")
     .data(graph.nodes)
     .join("g")
-    .attr("class", /** @param {LaidNode} d */ (d) => "node" + (d.derived ? " derived" : ""))
+    .attr("class", /** @param {LaidNode} d */ (d) => nodeClass(d))
     .attr("tabindex", 0)
     .attr("role", "button")
     // aria-pressed ONLY WHERE ACTIVATION IS A TOGGLE. The isolation is one, and
@@ -2550,7 +2929,7 @@ function render(laid) {
   label.append("tspan").text(/** @param {LaidNode} d */ (d) => d.label);
   label.append("tspan")
     .attr("class", "value")
-    .text(/** @param {LaidNode} d */ (d) => "  " + fmtShort(d.value));
+    .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(markCents(d)));
   label.append("tspan")
     .attr("class", "flag")
     // A short marker, not the word: the label is already at the edge of its
@@ -2623,8 +3002,9 @@ function applyEmphasis() {
  * @returns {string}
  */
 function linkDescription(d) {
-  return d.source.label + " to " + d.target.label + ", " + fmt(d.value_cents) + ", " +
+  return d.source.label + " to " + d.target.label + ", " + fmtSigned(markCents(d)) + ", " +
     (/** @type {Record<string,string>} */ (KIND_LABEL)[d.kind] || d.kind) +
+    (d.contra ? ", " + d.contra : "") +
     (d.derived ? ", inferred by us" : ", printed by the city");
 }
 
@@ -2644,8 +3024,10 @@ function nodeDescription(d) {
   // toggling aria-pressed, announced no action whatever while the mark beside
   // them announced one.
   const what = drillable(d) ? ", opens into its parts" : ", follow this money";
-  return d.label + ", total " + fmt(d.value) +
-    (d.derived ? ", inferred by us" : ", printed by the city") + what;
+  const note = contraNote(d);
+  return d.label + ", total " + fmtSigned(markCents(d)) +
+    (d.derived ? ", inferred by us" : ", printed by the city") +
+    (note ? ", " + note.replace(/^\u25c7 /, "") : "") + what;
 }
 
 /**
@@ -2680,7 +3062,7 @@ function nodeDescription(d) {
  */
 function caveatHref(id, carried) {
   const refs = drilled.length && !carried
-    ? (stepDocAt(drilled.length - 1) || { caveats: [] }).caveats
+    ? (stepDocFor(drilled[drilled.length - 1].step) || { caveats: [] }).caveats
     : shownYear ? shownYear.caveats : [];
   if (!Array.isArray(refs)) return "";
   const ref = refs.find((c) => c.id === id);
@@ -2812,12 +3194,11 @@ function showTip(event, d) {
   tip.replaceChildren();
 
   const asLink = isLink(d);
-  const value = asLink ? /** @type {LaidLink} */ (d).value_cents : /** @type {LaidNode} */ (d).value;
   const color = asLink ? linkColor(/** @type {LaidLink} */ (d)) : nodeColor(/** @type {LaidNode} */ (d));
 
   // Values lead, labels follow: here the reader already knows what they are
   // pointing at and wants the number.
-  tip.append(h("div", "tip-value", fmt(value)));
+  tip.append(h("div", "tip-value", fmtSigned(markCents(d))));
 
   const label = h("div", "tip-label");
   const key = h("span", "line-key");
@@ -2835,7 +3216,14 @@ function showTip(event, d) {
     meta.append(h("span", "chip", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
     meta.append(document.createTextNode(" "));
     meta.append(h("span", l.derived ? "chip derived" : "chip", l.derived ? "◇ inferred" : "printed"));
+    if (l.contra) {
+      meta.append(document.createTextNode(" "));
+      meta.append(h("span", "chip contra", "reduction"));
+    }
     tip.append(meta);
+    // THE SENTENCE, NOT ONLY THE CHIP: "reduction" says what kind of row this
+    // is, and the words say what it reduces.
+    if (l.contra) tip.append(h("div", "tip-meta", l.contra));
     tip.append(h("div", "facts", l.fact_ids.join(" ")));
   } else {
     const n = /** @type {LaidNode} */ (d);
@@ -2867,6 +3255,8 @@ function showTip(event, d) {
     }
     tip.append(meta);
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
+    const note = contraNote(n);
+    if (note) tip.append(h("div", "tip-meta", note));
     for (const c of cavs) tip.append(h("div", "tip-meta", "\u26a0 " + c.summary));
   }
   tip.append(h("div", "tip-meta", "Select for sources."));
@@ -2906,9 +3296,8 @@ function pin(d) {
   if (!projection) return;
 
   const asLink = isLink(d);
-  const value = asLink ? /** @type {LaidLink} */ (d).value_cents : /** @type {LaidNode} */ (d).value;
 
-  panel.append(h("div", "amount", fmt(value)));
+  panel.append(h("div", "amount", fmtSigned(markCents(d))));
   panel.append(h("div", "", asLink
     ? /** @type {LaidLink} */ (d).source.label + " → " + /** @type {LaidLink} */ (d).target.label
     : /** @type {LaidNode} */ (d).label));
@@ -2918,7 +3307,9 @@ function pin(d) {
     const l = /** @type {LaidLink} */ (d);
     chips.append(h("span", "chip", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
     chips.append(h("span", l.derived ? "chip derived" : "chip", l.derived ? "◇ our inference" : "printed by the city"));
+    if (l.contra) chips.append(h("span", "chip contra", "reduction"));
     panel.append(chips);
+    if (l.contra) panel.append(h("p", "why", l.contra));
     const ids = h("div", "facts", "Facts: " + l.fact_ids.join(" "));
     panel.append(ids);
   } else {
@@ -2931,6 +3322,8 @@ function pin(d) {
     panel.append(chips);
     if (n.rationale) panel.append(h("p", "why", n.rationale));
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
+    const note = contraNote(n);
+    if (note) panel.append(h("p", "why", note));
     // THE CAVEAT IN FULL IS ONE CLICK AWAY, and the summary is here. The
     // tooltip can only afford the line; this panel is where a reader has asked
     // for the detail, so it is where the link belongs. The href is the same
@@ -2991,17 +3384,20 @@ function pin(d) {
  * isolation.
  *
  * EMPTY ON EVERY OPENED VIEW, BY RULE AND NOT BY ACCIDENT. It was empty there
- * already, because filterToNode keeps no fund-group node once a group is
+ * already, because neither filter keeps a fund-group node once a node is
  * opened -- but that is a side effect, and on a page that opens the spine the
- * legend vanishing on the first click is a decision the code has to own. The
- * decision: an opened view is one node's subtree, every mark in it resolves
- * to the one fund group above that node, and a key that distinguishes groups
- * has nothing to distinguish. The breadcrumb names the group and every ribbon
- * wears its hue. And the swatch is a toggle on a NODE id -- setIsolated dims
- * whatever is not adjacent to it -- so a swatch for a group not on the chart
- * would dim the whole chart. fisc-ko1j.11, which opens a revenue category
- * whose subtree spans groups, is where this rule would have to change, and
- * with it the isolation it rests on.
+ * legend vanishing on the first click is a decision the code has to own.
+ *
+ * THE DECISION RESTS ON WHAT A SWATCH IS, not on what an opened view draws. A
+ * swatch is a toggle on a NODE id: setIsolated dims whatever is not adjacent
+ * to that node, and no opened view carries a fund-group node, so a swatch for
+ * a group would dim the whole chart. That an opened fund group's marks all
+ * resolve to the one group above it was true and is not the reason: an opened
+ * revenue category's fund column spans every group, and the rule holds there
+ * for the same reason it holds under a group. A legend on that view needs
+ * emphasis resolved per group through fundGroupOf rather than per node, which
+ * is a second emphasis model and is filed as fisc-0jy9; that a category's
+ * funds carry nothing saying which group each is in is fisc-b4a6.
  */
 function buildLegend() {
   if (!projection) return;
@@ -3076,11 +3472,15 @@ function buildTable() {
 
   for (const l of projection.links) {
     const tr = document.createElement("tr");
+    // A CONTRA ROW READS AS THE SCHEDULE PRINTED IT: a signed figure, and in
+    // place of "printed" the words for what it reduces, so the table says the
+    // same thing the tooltip and the ribbon do.
+    if (l.contra) tr.className = "contra";
     tr.append(h("td", "", labels.get(l.source) || l.source));
     tr.append(h("td", "", labels.get(l.target) || l.target));
-    tr.append(h("td", "num", fmt(l.value_cents)));
+    tr.append(h("td", "num", fmtSigned(l.contra ? -l.value_cents : l.value_cents)));
     tr.append(h("td", "", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
-    tr.append(h("td", "", l.derived ? "◇ inferred" : "printed"));
+    tr.append(h("td", "", l.derived ? "◇ inferred" : l.contra ? l.contra : "printed"));
     tr.append(h("td", "ids", l.fact_ids.join(" ")));
     // PER ROW, not per document. The column header says "Source" and until
     // this it printed the same 36 anchors on all 52 drill-down rows -- a

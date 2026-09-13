@@ -322,12 +322,12 @@ const NAMES = [
   // header says how that happened and what it cost. drill.mjs drives drillDown
   // and drillUp, which are the real entry points -- what a click, a breadcrumb
   // control and Escape call -- and shapeFor; the rest are here so a check can
-  // measure one stage without the repaint. STEPS is the chain as app.js read it
-  // off the config, and stepAt is its one reader.
-  "shapeFor", "filterToNode", "capColumn", "drillable", "drillDown", "drillUp",
-  "STEPS", "stepAt", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
+  // measure one stage without the repaint. STEPS is the tree as app.js read it
+  // off the config, and stepFor is its one reader.
+  "shapeFor", "filterToNode", "filterFromNode", "capColumn", "drillable", "drillDown", "drillUp",
+  "STEPS", "stepFor", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
   "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
-  "loadDocument", "labelOfRung",
+  "loadDocument", "labelOfRung", "openableColumns", "linkClass", "markContra",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
   "paintBreadcrumb",
   // paint IS EXPORTED SO ITS LEGEND LOOP CAN BE REACHED AT ALL. It queries
@@ -734,14 +734,24 @@ export function parseStepShapes(src) {
     const body = block[1].slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
     const from = body.match(/From:\s*(\d+),/);
     const tiers = body.match(/Tiers:\s*\[\]int\{([\d,\s]*)\}/);
-    const caps = [...body.matchAll(/\{Tier:\s*(\d+),\s*Cap:\s*(\d+)\}/g)];
+    // A CAP MAY NAME ITS OWN NOUN. `{Tier: 4, Cap: 24, Tail: "divisions"}`
+    // is one cap and not zero: a pattern closing on the Cap figure read the
+    // fund-group step as capping one tier the moment its division cap gained
+    // a Tail, and every check measuring that step would have measured a
+    // column the site folds as one drawn whole.
+    const caps = [...body.matchAll(/\{Tier:\s*(\d+),\s*Cap:\s*(\d+)(?:,\s*Tail:\s*"((?:[^"\\]|\\.)*)")?\}/g)];
     // KEY IS READ AND REQUIRED, FOR From's REASON ONE FIELD OVER. The Go type
     // requires one on every step and validateSteps refuses a view without, so
     // a step this parse read with no key is a step it did not read -- a
     // truncated slice or a brace it missed -- and not a step the site ships.
     const key = body.match(/Key:\s*"((?:[^"\\]|\\.)*)",/);
     const after = body.match(/After:\s*"((?:[^"\\]|\\.)*)",/);
-    const side = body.match(/Side:\s*"((?:[^"\\]|\\.)*)",/);
+    // THE SIDE IS SPELLED AS THE CONSTANT, not as a string: data.go writes
+    // `Side: export.SideSource`, which export.go keeps as a constant so that a
+    // caller's "Source" cannot validate and mean nothing. A pattern that read
+    // only a quoted literal returned "" for the shipped step, and every check
+    // here measured a source-side step as opening the node its links point AT.
+    const side = body.match(/Side:\s*(?:"((?:[^"\\]|\\.)*)"|export\.SideSource),/);
     const role = body.match(/Role:\s*"((?:[^"\\]|\\.)*)",/);
     if (!from) throw new Error(`step ${i} in data.go declares no From this can read`);
     if (!tiers) throw new Error(`step ${i} in data.go declares no Tiers literal this can read`);
@@ -753,11 +763,13 @@ export function parseStepShapes(src) {
       // filterToNode side, every node at the tier -- so a literal omitting
       // them is read rather than refused.
       after: after ? after[1] : "",
-      side: side ? side[1] : "",
+      side: side ? (side[1] === undefined ? "source" : side[1]) : "",
       role: role ? role[1] : "",
       from: Number(from[1]),
       tiers: tiers[1].split(",").map((x) => x.trim()).filter(Boolean).map(Number),
-      caps: caps.map((c) => ({ tier: Number(c[1]), cap: Number(c[2]) })),
+      caps: caps.map((c) => (c[3] === undefined
+        ? { tier: Number(c[1]), cap: Number(c[2]) }
+        : { tier: Number(c[1]), cap: Number(c[2]), tail: c[3] })),
     });
   }
   // THE TWO MARKERS ARE INDEPENDENT, which is the whole point: braces say how

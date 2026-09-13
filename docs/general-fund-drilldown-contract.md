@@ -271,10 +271,13 @@ So the client folds. The rule, in full:
   drew it before the fold existed.
 - **Each node folds to its nearest ancestor whose tier the page draws**,
   following `parent`.
-- **Links fold with their ends** and merge on the folded pair, summing
-  `value_cents` and unioning both `fact_ids` and `locators`. Two links of
-  different `kind` folding onto one ribbon is refused rather than resolved; it
-  occurs in no published column.
+- **Links fold with their ends** and merge on the folded pair and the `kind`,
+  summing `value_cents` and unioning both `fact_ids` and `locators`. One
+  ribbon per kind, so a ribbon's kind is true of all of it: no fold through
+  `parent` puts two kinds on one pair in any published column, but a revenue
+  category's capped fund tail does, because its funds span every group and
+  the internal-service funds take a line's money as an internal service
+  charge.
 
   The locator union is not decoration. `buildTable` and `pin` render the
   **folded** document, and the fold builds a merged ribbon by copying its first
@@ -325,15 +328,22 @@ description (`fisc-vsu8`) and a changed cap went green on both sides at once:
 
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
-| 0 | `sankey` | the spine, whole | a fund group (tier 2) — the row below | — |
+| 0 | `sankey` | the spine, whole | a fund group (tier 2) — the next row; or a revenue category (tier 0) — the last row | — |
 | 1 | `fund-flows` | `{0,3,4}` filtered to the opened group: its revenue categories, its funds, and under the General Fund its divisions | a division (tier 4) — the row below | tier 3 at 8, tier 4 at 24 |
 | 2 | `fund-flows` | `{4,5}` filtered to the opened division: its object categories | nothing | tier 5 at 8 |
+| 1 | `fund-flows` | `{1,3}` filtered to the lines pp.127-140 print under the opened category, and the funds they land in across every group; a line printed as a reduction draws as a contra ribbon at its magnitude | nothing | tier 1 at 8 (lines), tier 3 at 8 (funds) |
+
+The steps are a tree and not a chain: two open from the spine's chart, told
+apart by the tier they open from and, for the category, by the node's role.
+The client walks it by key (`after` names the step whose chart a step opens
+from) and never by depth.
 
 **Only the General Fund draws a tier-4 column.** pp.167-170 decompose that
 fund alone, so the other five groups' charts end at their funds, and the
 only-the-General-Fund caveat is a property of the drawn chart rather than a
 sentence beside it. Measured through the chain: 6 fund groups open, and under
-them 23 divisions, all of the General Fund — 29 opened views.
+them 23 divisions, all of the General Fund — 29 opened views; and beside them
+the 10 revenue categories, each into its own lines.
 
 **The step document is the spine year's, joined on column.** A spine stem
 opens into the `fund-flows` stem carrying the same fiscal year on the same

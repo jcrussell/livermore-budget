@@ -71,20 +71,30 @@ import {
 const STEP_DESCRIPTIONS = stepDescriptions();
 const STEP_SHAPES = stepShapes();
 
+/**
+ * One step as the packager ships it: the parsed shape -- key, after, side,
+ * role, from, tiers, caps -- under the words views() declares beside it.
+ * @param {number} i
+ * @param {Record<string, any>} words
+ */
+function stepAs(i, words) {
+  const shape = STEP_SHAPES[i];
+  const step = { key: shape.key, after: shape.after, from: shape.from, tiers: shape.tiers,
+    caps: shape.caps, description: STEP_DESCRIPTIONS[i] };
+  if (shape.side) step.side = shape.side;
+  if (shape.role) step.role = shape.role;
+  return Object.assign(step, words);
+}
+
 const PAGE = {
+  // THREE STEPS AND NOT A CHAIN OF THREE: the third opens from the spine's
+  // chart like the first (after ""), from its revenue categories rather than
+  // its fund groups, and stepFor tells them apart by tier and role.
   steps: [
-    {
-      from: STEP_SHAPES[0].from, projection: "fund-flows",
-      tiers: STEP_SHAPES[0].tiers, caps: STEP_SHAPES[0].caps,
-      back: "All fund groups", tail: "funds",
-      residual: residualDeclaration(),
-      description: STEP_DESCRIPTIONS[0],
-    },
-    {
-      from: STEP_SHAPES[1].from, tiers: STEP_SHAPES[1].tiers, caps: STEP_SHAPES[1].caps,
-      back: "All divisions", tail: "categories",
-      description: STEP_DESCRIPTIONS[1],
-    },
+    stepAs(0, { projection: "fund-flows", back: "All fund groups", tail: "funds",
+      residual: residualDeclaration() }),
+    stepAs(1, { back: "All divisions", tail: "categories" }),
+    stepAs(2, { projection: "fund-flows", back: "All revenue categories", tail: "lines" }),
   ],
   // Measured: the spine's 58 links over 25 nodes cite 58 of its 120 facts;
   // the 62 it does not draw are the printed zeros and the stocks.
@@ -169,6 +179,26 @@ const COLUMNS = [
       "fund-group/capital": { in: 250021300, out: 0, carried: 1 },
       "fund-group/internal-service": { in: 614753300, out: 0, carried: 1 },
     },
+    // PROPERTY TAXES OPENED AT {1,3}, MEASURED THROUGH drillDown: nodes, links
+    // and sub-pixel ribbons, and the counts line; then the tails each cap
+    // folds on the two categories whose columns exceed it.
+    category: {
+      nodes: 14, links: 12, hairlines: 0,
+      counts: "12 flows between 14 nodes, from 17 of the document's 280 facts",
+      chargesLineTail: "11 smaller lines", chargesFundTail: "5 smaller funds", chargesLinks: 16,
+      moneyFundTail: "26 smaller funds", moneyLinks: 15,
+      // EVERY CATEGORY, nodes / links / sub-pixel ribbons, so a category that
+      // stops opening -- or opens into a different shape -- is a red row and
+      // not a sample missed. Contributions and Intergovernmental differ
+      // between the years: fund/207 prints a dash in FY2026-27.
+      views: {
+        "revenue/charges-for-services": [18, 16, 0], "revenue/contributions-outsourced": [7, 5, 0],
+        "revenue/fines-and-forfeitures": [3, 2, 0], "revenue/intergovernmental": [16, 15, 1],
+        "revenue/licenses-and-permits": [10, 9, 0], "revenue/miscellaneous-revenue": [18, 16, 3],
+        "revenue/taxes/other": [12, 11, 1], "revenue/taxes/property": [14, 12, 0],
+        "revenue/taxes/sales": [3, 2, 0], "revenue/use-of-money-and-property": [16, 15, 0],
+      },
+    },
   },
   {
     stem: "sankey-2027", label: "FY 2026-27", step: "fund-flows-2027", golden: goldenFundFlows2027,
@@ -189,6 +219,19 @@ const COLUMNS = [
       "fund-group/general": { in: 48673500, out: 1583030300, carried: 4 },
       "fund-group/capital": { in: 1012941600, out: 0, carried: 1 },
       "fund-group/internal-service": { in: 716064500, out: 0, carried: 1 },
+    },
+    category: {
+      nodes: 14, links: 12, hairlines: 0,
+      counts: "12 flows between 14 nodes, from 17 of the document's 280 facts",
+      chargesLineTail: "11 smaller lines", chargesFundTail: "5 smaller funds", chargesLinks: 16,
+      moneyFundTail: "26 smaller funds", moneyLinks: 15,
+      views: {
+        "revenue/charges-for-services": [18, 16, 0], "revenue/contributions-outsourced": [6, 4, 0],
+        "revenue/fines-and-forfeitures": [3, 2, 0], "revenue/intergovernmental": [16, 15, 1],
+        "revenue/licenses-and-permits": [10, 9, 0], "revenue/miscellaneous-revenue": [18, 16, 3],
+        "revenue/taxes/other": [12, 11, 1], "revenue/taxes/property": [14, 12, 0],
+        "revenue/taxes/sales": [3, 2, 0], "revenue/use-of-money-and-property": [16, 15, 0],
+      },
     },
   },
 ];
@@ -254,6 +297,12 @@ async function opened(plan, tweak, column = COLUMNS[0]) {
   const spineOf = (/** @type {() => any} */ load) => {
     const spine = load();
     spine.nodes.find((n) => n.id === "fund-group/general").label = "General Fund group";
+    // THE SAME FOR THE CATEGORY, for the same reason: both documents print
+    // "Property Taxes" for revenue/taxes/property, and the rung, the title and
+    // the hint must name it in the spine's words. markContra names the
+    // category in the STEP DOCUMENT's words, so the contra sentence stays
+    // "Property Taxes" and the two are told apart.
+    spine.nodes.find((n) => n.id === "revenue/taxes/property").label = "Property Taxes category";
     return spine;
   };
   const fetch = plannedFetch(Object.assign({
@@ -1229,6 +1278,16 @@ export async function checks() {
   // assumed.
   for (const col of COLUMNS) out.push(...(await walkChain(col)));
 
+  // ------------------------------------------------------ a revenue category
+  //
+  // THE SECOND EDGE OUT OF THE SPINE'S CHART, over both columns: a category
+  // opened into the lines pp.127-140 print under it and the funds they land
+  // in, through the same entry point a click and Enter call. Every figure is
+  // pinned in COLUMNS[].category off the committed goldens.
+  for (const col of COLUMNS) out.push(...(await walkCategory(col)));
+  out.push(...(await categoryProbes()));
+  out.push(...(await keylessSteps()));
+
   // FIVE REFUSAL PATHS, EACH WITH ITS NEW CALLER. isDocument, understands,
   // drawableSankey and the fetch's own two failures had exactly one caller --
   // showYear -- and drillDown is the second. A click that reached a guard
@@ -1320,8 +1379,8 @@ export async function checks() {
     // depth 2 (no division spends on more than a handful of categories), so
     // "current rung, not first" is a claim only this document can test.
     const steps = [
-      { from: 2, tiers: [0, 3, 4], caps: [{ tier: 3, cap: 2 }, { tier: 4, cap: 2 }], back: "Back", tail: "funds" },
-      { from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 1 }], back: "Up", tail: "categories" },
+      { key: "g", after: "", from: 2, tiers: [0, 3, 4], caps: [{ tier: 3, cap: 2 }, { tier: 4, cap: 2 }], back: "Back", tail: "funds" },
+      { key: "d", after: "g", from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 1 }], back: "Up", tail: "categories" },
     ];
     const app = loadApp({
       fetch: plannedFetch({ "data/probe.json": { doc } }),
@@ -1409,7 +1468,7 @@ export async function checks() {
       config: {
         schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
         render_tiers: [0, 2],
-        steps: [{ from: 3, tiers: [2, 4], back: "Back", tail: "divisions" }],
+        steps: [{ key: "fund", after: "", from: 3, tiers: [2, 4], back: "Back", tail: "divisions" }],
         years: [{
           year: 2026, label: "FY", stem: "probe", path: "data/probe.json", basis: "adopted",
           hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
@@ -1435,6 +1494,476 @@ export async function checks() {
     });
   }
 
+  return out;
+}
+
+/**
+ * A revenue category opened from the spine, each depth read back from the DOM
+ * as walkChain reads the chain: the stack, the fetch, the words, the caps on
+ * both of its columns, the contra rows, and the way back.
+ *
+ * THE FIGURES ARE THE COLUMN'S OWN, pinned in COLUMNS[].category and, where
+ * the golden can state them independently of app.js -- the signed sum over
+ * the drawn lines, the top eight by outflow, the net into the General Fund --
+ * computed off the golden here and compared against what the client drew.
+ */
+async function walkCategory(col) {
+  const out = [];
+  const { app, fetch, body } = await opened(null, null, col);
+  const step = PAGE.steps[2];
+  const want = col.category;
+  const golden = col.golden();
+  const spine = col.spine();
+  const property = "revenue/taxes/property";
+  const asked0 = fetch.asked.slice();
+  const desc = app.dom.document.getElementById("chart-desc");
+  const served = templateDesc("index.html.tmpl", "");
+  desc.textContent = served;
+  const pointer = served.slice(served.indexOf(". ") + 2);
+  const text = (/** @type {any} */ el) => {
+    const parts = [];
+    const walk = (/** @type {any} */ n) => {
+      if (n.textContent) parts.push(n.textContent);
+      for (const c of n.children || []) walk(c);
+    };
+    walk(el);
+    return parts.join(" ");
+  };
+
+  // WHAT OPENS AT DEPTH 0, asked of the drawn spine: every category, every
+  // fund group, and neither endpoint that shares tier 0 with the categories.
+  const at0 = app.projection.nodes;
+  const opens = (/** @type {string} */ id) => {
+    const n = at0.find((x) => x.id === id);
+    return Boolean(n) && app.drillable(n);
+  };
+  const categories = at0.filter((n) => n.id.startsWith("revenue/")).map((n) => n.id);
+  const columns0 = app.openableColumns();
+
+  const outcome = await openInto(app, property);
+  // REPORTED, NOT THROWN. Every arm below stands on this view being open;
+  // measured with the side ignored, the first mustOpen threw out of checks()
+  // and the module reported nothing about why.
+  if (outcome !== "drew") {
+    app.drillUp(0);
+    out.push({
+      name: `${col.label} category: Property Taxes opens at {1,3} from the year's step document, and every sentence says so`,
+      ok: false,
+      detail: `opening Property Taxes came to "${outcome}"; ${refusals(app.dom.byId.get("main") ||
+        app.dom.document.node()).map((b) => b.textContent).join(" | ")}`,
+    });
+    return out;
+  }
+  const at1 = words(app);
+  const m1 = outcome === "drew" ? measure(app, app.projection) : null;
+  const tiers1 = [...new Set(app.projection.nodes.map((n) => n.tier))].sort((a, b) => a - b);
+  const asked1 = fetch.asked.slice();
+  const rows1 = body.children.length;
+  const anyOpens1 = app.projection.nodes.some((n) => app.drillable(n));
+
+  // THE CONTRA ROWS: two, both ERAF and the RPTTF reduction into the General
+  // Fund, drawn forward at their magnitude with the words for what p127
+  // printed, and NOT folded into the tail -- by magnitude they are the second
+  // and sixth largest lines of the fourteen.
+  const contra = app.projection.links.filter((l) => l.contra);
+  const contraOK = contra.length === 2 &&
+    contra.every((l) => l.target === "fund/100" && l.value_cents > 0 &&
+      l.contra === "printed as a reduction of Property Taxes") &&
+    contra.map((l) => l.source).sort().join() ===
+      "revenue-line/taxes/property/eraf,revenue-line/taxes/property/rpttf-reduction";
+  // THE SIGNED SUM OVER THE DRAWN LINES IS THE SPINE'S CELL. The spine prints
+  // the category once per fund group, netted; the lines are that money before
+  // netting, and a contra ribbon subtracts what it draws.
+  const drawnSum = app.projection.links.reduce((sum, l) => sum + (l.contra ? -l.value_cents : l.value_cents), 0);
+  const spineSum = spine.links.filter((l) => l.source === property).reduce((sum, l) => sum + l.value_cents, 0);
+  // AND THE GENERAL FUND'S MARK SAYS WHAT IT IS GROSS OF. Read off the
+  // golden: every line of the category into fund/100, signed.
+  const intoGeneral = golden.links.filter((l) => l.target === "fund/100" &&
+    l.source.startsWith("revenue-line/taxes/property/"));
+  const generalNet = intoGeneral.reduce((sum, l) => sum + l.value_cents, 0);
+  const generalReduced = intoGeneral.filter((l) => l.value_cents < 0).reduce((sum, l) => sum - l.value_cents, 0);
+  // THE SIZE OF THE MARK ITSELF, not only what its note says about it. A
+  // contra ribbon is drawn at its magnitude and so ENTERS the fund, which puts
+  // the gross ABOVE the additions rather than at them: on FY2025-26 the mark
+  // is $98,114,440, the $81,129,101 of additions plus the $16,985,339 of
+  // reductions, and the note subtracts the reductions twice to reach p127's
+  // $64,143,762. The three figures are pinned in contraNote's own comment and
+  // checked against it below, so quoting the wrong one of them fails here.
+  const generalGross = intoGeneral.reduce((sum, l) => sum + Math.abs(l.value_cents), 0);
+  const laid = app.layOut(app.projection);
+  const general = laid.nodes.find((n) => n.id === "fund/100");
+  const eraf = laid.links.find((l) => l.source.id === "revenue-line/taxes/property/eraf");
+  // ERAF'S FIGURE OFF THE GOLDEN, NOT TYPED: it is $15,175,000 in FY2025-26
+  // and $15,857,875 in FY2026-27, and a figure typed for one column would pin
+  // the other's arm to the wrong year.
+  const erafPrinted = -golden.links.find((l) => l.source === "revenue-line/taxes/property/eraf").value_cents;
+  app.showTip({ target: app.dom.byId.get("chart"), clientX: 0, clientY: 0 }, general);
+  const generalTip = text(app.dom.byId.get("tooltip"));
+  app.showTip({ target: app.dom.byId.get("chart"), clientX: 0, clientY: 0 }, eraf);
+  const erafTip = text(app.dom.byId.get("tooltip"));
+  app.pin(eraf);
+  const erafPanel = text(app.dom.byId.get("detail"));
+  const erafRow = body.children.find((tr) => tr.className === "contra" &&
+    tr.children[0].textContent === "ERAF");
+  const erafCells = erafRow ? erafRow.children.map((td) => td.textContent) : [];
+  const erafLine = laid.nodes.find((n) => n.id === "revenue-line/taxes/property/eraf");
+
+  // ESCAPE CLOSES IT, INNERMOST FIRST: the pin the panel check left is what
+  // the first press clears, and the rung is what the second closes.
+  app.dom.document.activeElement = app.dom.document.getElementById("chart");
+  const escape = () => { for (const fn of app.dom.documentListeners.keydown || []) fn({ key: "Escape" }); };
+  escape();
+  const unpinned = words(app);
+  escape();
+  const back0 = words(app);
+
+  // DEPTH 0 ONLY: under an opened fund group the categories are context, and
+  // the step's `after` is the spine's chart and not the group's.
+  await mustOpen(app, "fund-group/general");
+  const categoryUnderGroup = app.projection.nodes.find((n) => n.id === property);
+  const opensUnderGroup = Boolean(categoryUnderGroup) && app.drillable(categoryUnderGroup);
+  app.drillUp(0);
+
+  out.push({
+    name: `${col.label} category: every revenue category opens from the spine and neither tier-0 endpoint does`,
+    ok: categories.length === 10 && categories.every(opens) && !opens("transfers/in") &&
+        !opens("fund-balance/draw") && opens("fund-group/general") &&
+        columns0.join("|") === "left-hand|middle" && !opensUnderGroup,
+    detail: `${categories.filter(opens).length} of ${categories.length} categories open; transfers/in ` +
+      `${opens("transfers/in") ? "WRONGLY opens" : "does not open"}, fund-balance/draw ` +
+      `${opens("fund-balance/draw") ? "WRONGLY opens" : "does not open"}; openable columns ` +
+      `${JSON.stringify(columns0)}; under an opened group the category ` +
+      `${opensUnderGroup ? "WRONGLY opens" : "does not open"}`,
+  });
+  out.push({
+    name: `${col.label} category: Property Taxes opens at {1,3} from the year's step document, and every sentence says so`,
+    ok: outcome === "drew" && at1.depth === 1 && !at1.drawnIsYears && tiers1.join() === "1,3" &&
+        asked1.length === asked0.length + 1 && asked1[asked1.length - 1] === `data/${col.step}.json` &&
+        Boolean(m1) && m1.nodes === want.nodes && m1.links === want.links && m1.hairlines === want.hairlines &&
+        rows1 === want.links && at1.counts === want.counts &&
+        at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into Property Taxes category` &&
+        at1.crumbControls.join("|") === "\u2190 All revenue categories" && at1.crumbHere === "Property Taxes category" &&
+        at1.hint === "This is Property Taxes category, broken into its parts. Nothing here opens further; go back to open another." &&
+        at1.legend === 0 && !anyOpens1 &&
+        at1.desc === "Opened into Property Taxes category. " + step.description +
+          " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
+        unpinned.depth === 1 && back0.depth === 0 && back0.legend === 6 && back0.crumbHidden && back0.drawnIsYears,
+    detail: outcome === "drew"
+      ? `${m1.nodes} nodes, ${m1.links} links, ${m1.hairlines} under 1px (want ${want.nodes}/${want.links}/` +
+        `${want.hairlines}) at tiers ${JSON.stringify(tiers1)}; counts "${at1.counts}" (want "${want.counts}"); ` +
+        `title "${at1.title}"; breadcrumb ${JSON.stringify(at1.crumbControls)} + "${at1.crumbHere}"; hint ` +
+        `"${at1.hint}"; legend ${at1.legend}; desc ${at1.desc.startsWith("Opened into Property Taxes category. " +
+          step.description) ? "carries" : "LACKS"} the step's description; fetched ` +
+        `${JSON.stringify(asked1.slice(asked0.length))}; Escape once (pinned) leaves depth ${unpinned.depth}, twice ` +
+        `depth ${back0.depth} with legend ${back0.legend}`
+      : `opening Property Taxes came to "${outcome}"`,
+  });
+  out.push({
+    name: `${col.label} category: the two contra rows are drawn as reductions, the lines sum to the spine's cell, and the General Fund's mark says what it is gross of`,
+    ok: contraOK && drawnSum === spineSum && Boolean(general) && Boolean(eraf) &&
+        general.value === generalGross && generalTip.includes(fmtDollars(generalGross)) &&
+        generalTip.includes(fmtDollars(generalReduced)) && generalTip.includes(fmtDollars(generalNet)) &&
+        generalTip.includes("\u25c7 our reading") && quotesFigures(app, col, generalGross, generalReduced, generalNet) &&
+        erafPrinted > 0 && erafTip.includes("\u2212" + fmtDollars(erafPrinted)) &&
+        erafTip.includes("reduction") && erafTip.includes("printed as a reduction of Property Taxes") &&
+        erafPanel.includes("printed as a reduction of Property Taxes") &&
+        erafCells.length > 0 && erafCells[2] === "\u2212" + fmtDollars(erafPrinted) &&
+        erafCells[4] === "printed as a reduction of Property Taxes" &&
+        app.linkClass(eraf) === "link contra" && Boolean(erafLine) && erafLine.value === erafPrinted,
+    detail: `${contra.length} contra ribbon(s): ${contra.map((l) => l.source.split("/").pop() + " " +
+        l.value_cents + " (" + l.contra + ")").join(", ")}; signed sum over the drawn lines ${drawnSum}, the ` +
+      `spine's cell ${spineSum}; the General Fund's mark is sized at ${general ? general.value : "nothing"} ` +
+      `(want ${generalGross}) and app.js ${quotesFigures(app, col, generalGross, generalReduced, generalNet) ? "quotes" : "MISQUOTES"} that; ` +
+      `its tooltip ${generalTip.includes(fmtDollars(generalNet)) ?
+        "names" : "DOES NOT name"} ${fmtDollars(generalNet)} net of ${fmtDollars(generalReduced)}; ERAF's tooltip ` +
+      `${erafTip.includes("\u2212") ? "carries the sign" : "LACKS the sign"} and ` +
+      `${erafTip.includes("printed as a reduction of Property Taxes") ? "the sentence" : "NOT the sentence"}; ` +
+      `its table row reads ${JSON.stringify(erafCells.slice(0, 5))}; class "${eraf ? app.linkClass(eraf) : ""}"`,
+  });
+
+  // THE CAP ON EACH OF THE CATEGORY'S COLUMNS, in its own noun. Charges for
+  // Services prints 19 lines and lands in 13 funds, so both columns fold; Use
+  // of Money and Property prints 7 and lands in 34, so only the fund column
+  // does; Fines & Forfeitures prints 2 into 1, so neither does and the fund
+  // column is a column of one, which columnShare says nothing about.
+  const capsOf = async (/** @type {string} */ id) => {
+    await at(app, id);
+    const aggs = app.projection.nodes.filter((n) => app.isAggregate(n.id));
+    const byTier = Object.fromEntries(aggs.map((a) => [a.tier, a]));
+    return { aggs, byTier, m: measure(app, app.projection), laid: app.layOut(app.projection) };
+  };
+  const charges = await capsOf("revenue/charges-for-services");
+  // TOP EIGHT BY OUTFLOW, OFF THE GOLDEN, and what inflow would have kept: a
+  // line takes in nothing, so under inflow every line ties at zero and the
+  // eight kept are the first eight ids.
+  const chargeLines = golden.nodes.filter((n) => n.parent === "revenue/charges-for-services").map((n) => n.id);
+  const outflow = new Map(chargeLines.map((id) => [id, 0]));
+  for (const l of golden.links) if (outflow.has(l.source)) outflow.set(l.source, outflow.get(l.source) + Math.abs(l.value_cents));
+  const byOutflow = chargeLines.slice().sort((a, b) => outflow.get(b) - outflow.get(a) || (a < b ? -1 : 1)).slice(0, 8);
+  const byInflow = chargeLines.slice().sort().slice(0, 8);
+  const keptLines = app.projection.nodes.filter((n) => n.tier === 1 && !app.isAggregate(n.id)).map((n) => n.id);
+  const lineAgg = charges.byTier[1];
+  const fundAgg = charges.byTier[3];
+  out.push({
+    name: `${col.label} category: Charges for Services folds both its columns, each tail in its own noun and parented where it belongs`,
+    ok: charges.aggs.length === 2 && Boolean(lineAgg) && Boolean(fundAgg) &&
+        lineAgg.id === app.aggregateID(1) && fundAgg.id === app.aggregateID(3) &&
+        lineAgg.label === want.chargesLineTail && fundAgg.label === want.chargesFundTail &&
+        lineAgg.parent === "revenue/charges-for-services" && fundAgg.parent === "" &&
+        [lineAgg, fundAgg].every((a) => a.derived === true && a.rationale !== "" && a.source_note !== "" &&
+          Array.isArray(a.folds) && a.folds.length === Number(a.label.split(" ")[0])) &&
+        keptLines.slice().sort().join() === byOutflow.slice().sort().join() &&
+        byInflow.slice().sort().join() !== byOutflow.slice().sort().join() &&
+        charges.m.links === want.chargesLinks,
+    detail: charges.aggs.length === 2
+      ? `tier 1 "${lineAgg.label}" (want "${want.chargesLineTail}") parent ${JSON.stringify(lineAgg.parent)}, ` +
+        `tier 3 "${fundAgg.label}" (want "${want.chargesFundTail}") parent ${JSON.stringify(fundAgg.parent)}; ` +
+        `${charges.m.links} ribbons (want ${want.chargesLinks}); the eight lines kept are the top eight by ` +
+        `outflow ${keptLines.slice().sort().join() === byOutflow.slice().sort().join() ? "yes" : "NO"}, and ` +
+        `inflow would have kept ${byInflow.filter((id) => !byOutflow.includes(id)).length} other(s)`
+      : `${charges.aggs.length} aggregate(s): ${JSON.stringify(charges.aggs.map((a) => a.label))}`,
+  });
+  const money = await capsOf("revenue/use-of-money-and-property");
+  const fines = await capsOf("revenue/fines-and-forfeitures");
+  const finesFund = fines.laid.nodes.find((n) => n.tier === 3);
+  const finesLine = fines.laid.nodes.find((n) => n.tier === 1);
+  out.push({
+    name: `${col.label} category: the fund cap engages alone on Use of Money and Property and neither cap on Fines & Forfeitures, whose column of one gets no share`,
+    ok: money.aggs.length === 1 && money.aggs[0].tier === 3 && money.aggs[0].label === want.moneyFundTail &&
+        money.aggs[0].parent === "" && money.m.links === want.moneyLinks &&
+        fines.aggs.length === 0 && fines.m.links === 2 && fines.m.nodes === 3 &&
+        Boolean(finesFund) && app.columnShare(finesFund) === "" &&
+        Boolean(finesLine) && app.columnShare(finesLine).startsWith("\u25c7 our "),
+    detail: `Use of Money: ${money.aggs.length} aggregate(s) ${JSON.stringify(money.aggs.map((a) => a.label + " parent " +
+        JSON.stringify(a.parent)))} (want "${want.moneyFundTail}"), ${money.m.links} ribbons (want ${want.moneyLinks}); ` +
+      `Fines: ${fines.aggs.length} aggregate(s), ${fines.m.links} ribbons over ${fines.m.nodes} nodes; the fund's ` +
+      `share reads ${JSON.stringify(finesFund ? app.columnShare(finesFund) : "")} and a line's ` +
+      `${JSON.stringify(finesLine ? app.columnShare(finesLine) : "")}`,
+  });
+
+  // EVERY CATEGORY OPENS, IN BOTH YEARS, at the pinned shape. Use of Money is
+  // the one that did not until the fold merged per kind: its tail of 26 funds
+  // takes the line's money as an internal service charge in five of them.
+  const shapes = {};
+  const refused = [];
+  for (const id of Object.keys(want.views)) {
+    app.drillUp(0);
+    const o = await openInto(app, id);
+    if (o !== "drew") { refused.push(id + ": " + o); continue; }
+    const m = measure(app, app.projection);
+    shapes[id] = [m.nodes, m.links, m.hairlines];
+  }
+  const asDrawn = JSON.stringify(shapes, Object.keys(shapes).sort());
+  const asPinned = JSON.stringify(want.views, Object.keys(want.views).sort());
+  // AND THE TWO-KIND TAIL IS TWO RIBBONS FROM ONE LINE, each its own kind.
+  await at(app, "revenue/use-of-money-and-property");
+  const intoTail = app.projection.links.filter((l) => l.target === app.aggregateID(3) &&
+    l.source === "revenue-line/use-of-money-and-property/use-of-money-and-prop");
+  const tailKinds = intoTail.map((l) => l.kind).sort();
+  out.push({
+    name: `${col.label} category: all ten categories open at their pinned shapes, and a tail spanning two kinds draws one ribbon per kind`,
+    ok: refused.length === 0 && asDrawn === asPinned && tailKinds.join() === "external,internal_service",
+    detail: (refused.length ? `refused: ${refused.join("; ")}; ` : "") +
+      (asDrawn === asPinned ? `all ${Object.keys(shapes).length} at the pinned shapes` : `drawn ${asDrawn}, want ${asPinned}`) +
+      `; the Use of Money line reaches the fund tail ${intoTail.length} time(s), kinds ${JSON.stringify(tailKinds)}`,
+  });
+  app.drillUp(0);
+  return out;
+}
+
+/**
+ * Whether contraNote's own comment in site/app.js quotes the three figures
+ * this column measures off the golden.
+ *
+ * MATCHED AS WHOLE QUOTED PHRASES, layout.mjs's rule: a bare includes() of a
+ * figure is satisfied by that figure appearing anywhere in a 3,700-line file,
+ * so each phrase carries enough of its own sentence to be unique.
+ *
+ * ON THE YEAR THE COMMENT NAMES AND NO OTHER. The sentence says FY2025-26 and
+ * FY2026-27's gross is a different number, so the second column asserts that
+ * the comment does NOT claim to be about it rather than asserting nothing.
+ */
+function quotesFigures(app, col, gross, reduced, net) {
+  const year = col.label.replace("FY ", "FY");
+  if (col.stem !== "sankey") return !app.source.includes("Measured on " + year + ":");
+  return [
+    "Measured on " + year + ":",
+    `sized at ${fmtDollars(gross)}`,
+    `${fmtDollars(reduced)} of reductions among ${fmtDollars(gross - reduced)}`,
+    `p127 prints ${fmtDollars(net)}`,
+  ].every((q) => app.source.includes(q));
+}
+
+/**
+ * What the client does with a step the wire declares without a key or without
+ * an `after`: drops it, so nothing opens, rather than reading either as "".
+ *
+ * THE CONSEQUENCE IS THE WHOLE DRILL, WHICH IS WHY IT IS MEASURED HERE AND NOT
+ * ONLY GO-SIDE. export.DrillStep's `after` reaches the client only through its
+ * JSON tag; dropped back to `json:"-"` the config carries no `after` at all,
+ * every step falls out of STEPS, and the page a reader gets isolates on a
+ * click with no sign that it ever opened anything.
+ *
+ * AND READ AS "" INSTEAD, A KEYLESS STEP MATCHES ITSELF. `after: ""` is the
+ * root marker, so a step with no key becomes its own parent -- measured under
+ * a config whose steps carried none, Patrol opened into Patrol without end.
+ * Dropping is what makes that unrepresentable; the packager is what refuses it
+ * (export.validateSteps, and seam.mjs's `noKey` arm on the parse).
+ */
+async function keylessSteps() {
+  const without = async (/** @type {string} */ field) => {
+    const { app, main } = await opened(null, (config) => {
+      config.steps = config.steps.map((s) => {
+        const copy = Object.assign({}, s);
+        delete copy[field];
+        return copy;
+      });
+    });
+    const nodeAt = (/** @type {string} */ id) => app.projection.nodes.find((n) => n.id === id);
+    const outcome = await openInto(app, "fund-group/general");
+    return {
+      field, steps: app.STEPS.length,
+      groupOpens: app.drillable(nodeAt("fund-group/general")),
+      categoryOpens: app.drillable(nodeAt("revenue/taxes/property")),
+      columns: app.openableColumns(), outcome, depth: app.drilled.length,
+      banners: refusals(main).length,
+    };
+  };
+  // THE CONTROL FIRST, so this arm cannot be green because the fixture stopped
+  // drawing: the same page with both fields present opens two things.
+  const { app: control } = await opened(null, null);
+  const controlOpens = control.STEPS.length === 3 &&
+    control.openableColumns().join("|") === "left-hand|middle";
+  const got = [await without("key"), await without("after")];
+  return [{
+    name: "a step the wire declares with no key, or with no `after`, is dropped rather than read as a root -- so the drill vanishes instead of opening a node into itself",
+    ok: controlOpens && got.every((r) => r.steps === 0 && !r.groupOpens && !r.categoryOpens &&
+      r.columns.length === 0 && r.outcome === "failed" && r.depth === 0 && r.banners === 0),
+    detail: `with both fields the page reads ${control.STEPS.length} step(s) and offers ` +
+      `${JSON.stringify(control.openableColumns())}; ` +
+      got.map((r) => `without \`${r.field}\`: ${r.steps} step(s), fund group ` +
+        `${r.groupOpens ? "STILL opens" : "does not open"}, category ` +
+        `${r.categoryOpens ? "STILL opens" : "does not open"}, columns ` +
+        `${JSON.stringify(r.columns)}, a click came to "${r.outcome}" at depth ${r.depth} ` +
+        `with ${r.banners} banner(s)`).join("; "),
+  }];
+}
+
+/** A cents figure as fmt() prints it, for a pin typed as dollars and cents. */
+function fmtDollars(cents) {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    .format(cents / 100);
+}
+
+/**
+ * The shapes the committed columns cannot reach: a category of one line, a
+ * category with none, and fisc-ng17's broken parent chains.
+ */
+async function categoryProbes() {
+  const out = [];
+  const col = COLUMNS[0];
+  const node = (id, tier, parent, role) =>
+    ({ id, label: id, tier, parent, constraint_tier: "", role: role || "", derived: false,
+      rationale: "", source_note: "" });
+  const link = (a, b, v) =>
+    ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
+      fact_ids: [], locators: [], derived: false });
+
+  // A CATEGORY OF ONE LINE STILL OPENS -- it shows which funds carry it --
+  // and its line column is a column of one, so the line gets no share chip
+  // while the two funds beside it do. Built rather than found: no adopted
+  // column prints a category with a single distinct label.
+  {
+    const doc = Object.assign({}, goldenFundFlows());
+    doc.nodes = doc.nodes.concat([
+      node("revenue/probe", 0, "", "revenue_source"),
+      node("revenue-line/probe/only", 1, "revenue/probe", "revenue_line"),
+      node("revenue/empty", 0, "", "revenue_source"),
+    ]);
+    doc.links = doc.links.concat([
+      link("revenue-line/probe/only", "fund/100", 700), link("revenue-line/probe/only", "fund/200", 300),
+    ]);
+    const spine = goldenGraph();
+    spine.nodes = spine.nodes.concat([
+      node("revenue/probe", 0, "", "revenue_source"), node("revenue/empty", 0, "", "revenue_source")]);
+    spine.links = spine.links.concat([
+      link("revenue/probe", "fund-group/general", 700), link("revenue/probe", "fund-group/special-revenue", 300),
+      link("revenue/empty", "fund-group/general", 1)]);
+    const { app, main } = await opened({
+      "data/sankey.json": { doc: spine }, "data/fund-flows.json": { doc } }, null, col);
+    const one = await openInto(app, "revenue/probe");
+    const laid = one === "drew" ? app.layOut(app.projection) : null;
+    const only = laid ? laid.nodes.find((n) => n.id === "revenue-line/probe/only") : null;
+    const funds = laid ? laid.nodes.filter((n) => n.tier === 3) : [];
+    // READ WHILE THIS VIEW IS THE ONE LAID OUT. columnShare totals the column
+    // of the last layOut, and after drillUp below that is the spine's --
+    // measured: asked afterwards, the line read "<0.1% of this column",
+    // its 1000 cents against the spine's revenue column.
+    const onlyShare = only ? app.columnShare(only) : "";
+    const oneShares = funds.map((f) => app.columnShare(f));
+    app.drillUp(0);
+    const none = await openInto(app, "revenue/empty");
+    const banners = refusals(main).map((b) => b.textContent);
+    let direct = "";
+    try {
+      app.filterFromNode(doc, "revenue/empty", [1, 3]);
+    } catch (e) {
+      direct = String((e && e.message) || e);
+    }
+    out.push({
+      name: "a category of one line opens with no share on the line, and one with none is refused by name rather than handed to d3-sankey empty",
+      ok: one === "drew" && Boolean(only) && onlyShare === "" && funds.length === 2 &&
+          oneShares.every((sh) => sh.startsWith("\u25c7 our ")) &&
+          none === "failed" && app.drilled.length === 0 && banners.length === 1 &&
+          banners[0].includes("nothing flows between tiers 1, 3 for node revenue/empty") &&
+          direct.includes("nothing flows between tiers 1, 3 for node revenue/empty"),
+      detail: `one line: ${one}, the line's share reads ${JSON.stringify(onlyShare)} and ` +
+        `its ${funds.length} funds' ${JSON.stringify(oneShares)}; no lines: ${none} with ${banners.length} ` +
+        `banner(s)${banners.length ? ` reading "${banners[0]}"` : ""}; filterFromNode directly: ` +
+        `${JSON.stringify(direct)}`,
+    });
+  }
+
+  // fisc-ng17. A LINE WITH A BROKEN PARENT CHAIN STOPS THE DRILL, in both
+  // shapes, and the drill it stops is the FUND GROUP's: a rung filters before
+  // the fold can refuse, and the filter's placeability test dropped the link
+  // as if the view had declared its tier away. Measured before the fix, over
+  // this golden through this entry point: ERAF's parent blanked drew the
+  // General Fund's Property Taxes at $79,318,762 against p127's $64,143,762,
+  // with node and link counts unchanged and no banner.
+  {
+    const control = await opened(null, null, col);
+    await mustOpen(control.app, "fund-group/general");
+    const asPublished = control.app.projection.links.find((l) =>
+      l.source === "revenue/taxes/property" && l.target === "fund/100");
+    const shapes = [
+      { name: "blanked", parent: "", says: "revenue-line/taxes/property/eraf is tier 1 and reaches no tier this page draws (0, 3, 4), while other tier-1 nodes do; its parent chain is broken" },
+      { name: "pointing at a node the document does not carry", parent: "revenue/no-such-category",
+        says: "revenue-line/taxes/property/eraf names parent revenue/no-such-category, which the document does not carry" },
+    ];
+    const results = [];
+    for (const shape of shapes) {
+      const doc = goldenFundFlows();
+      doc.nodes.find((n) => n.id === "revenue-line/taxes/property/eraf").parent = shape.parent;
+      const { app, main, body } = await opened({ "data/fund-flows.json": { doc } }, null, col);
+      const before = shown(app, body);
+      const outcome = await openInto(app, "fund-group/general");
+      const after = shown(app, body);
+      const banners = refusals(main).map((b) => b.textContent);
+      results.push({ shape: shape.name, outcome, depth: app.drilled.length, banners,
+        named: banners.length === 1 && banners[0].includes(shape.says),
+        unchanged: after.counts === before.counts && after.crumbHidden });
+    }
+    out.push({
+      name: "a tier-1 line whose parent chain is broken stops the fund group's drill by name, instead of folding the group's Property Taxes without it",
+      ok: Boolean(asPublished) && asPublished.value_cents === 6414376200 &&
+          results.every((r) => r.outcome === "failed" && r.depth === 0 && r.named && r.unchanged),
+      detail: `as published the opened General Fund draws Property Taxes at ${asPublished ? asPublished.value_cents : "nothing"} ` +
+        `(p127: 6414376200); ` + results.map((r) => `ERAF's parent ${r.shape}: ${r.outcome} at depth ${r.depth}, ` +
+          `${r.banners.length} banner(s) ${r.named ? "naming the node and the fault" : "NOT naming it"}` +
+          (r.banners.length && !r.named ? ` ("${r.banners[0].slice(0, 120)}")` : "")).join("; "),
+    });
+  }
   return out;
 }
 
@@ -1575,11 +2104,13 @@ async function walkChain(col) {
       `${JSON.stringify(asked1.slice(asked0.length))}`,
   });
   out.push({
-    name: `${col.label} chain: the overview's hint names the column that opens, which is the spine's middle one`,
-    // "MIDDLE", READ OFF THE CHART. The spine draws tiers 0, 2 and 5 and its
-    // fund groups are tier 2; a hint saying "right-hand column" here would
+    name: `${col.label} chain: the overview's hint names both columns that open, the spine's left-hand and middle ones`,
+    // BOTH COLUMNS, READ OFF THE CHART. The spine draws tiers 0, 2 and 5; its
+    // revenue categories are tier 0 and its fund groups tier 2, and both open.
+    // A hint naming the middle column alone would leave the categories a
+    // gesture nothing on the page invites, and one saying "right-hand" would
     // send the reader to the uses, which do not open.
-    ok: at0.hint === "Click a node in the middle column to open it into its parts, or tab to " +
+    ok: at0.hint === "Click a node in the left-hand or middle column to open it into its parts, or tab to " +
         "one and press Enter. A fund swatch follows one group's money without opening anything." &&
         at0.legend === 6 && at0.desc === served,
     detail: `hint "${at0.hint}"; legend ${at0.legend} swatches`,

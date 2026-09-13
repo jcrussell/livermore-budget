@@ -2670,10 +2670,27 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
-	steps := []export.DrillStep{{Key: "group", From: 2, Projection: "fund-flows",
-		Tiers: []int{0, 3, 4},
-		Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
-		Back:  "All fund groups", Tail: "funds", Description: "Opened."}}
+	steps := []export.DrillStep{
+		{Key: "group", From: 2, Projection: "fund-flows",
+			Tiers: []int{0, 3, 4},
+			Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
+			Back:  "All fund groups", Tail: "funds", Description: "Opened."},
+		// A SECOND ROOT, ON THE OTHER SIDE AND IN A ROLE, so that the wire
+		// comparison below has a non-zero value of every walked field to lose.
+		{Key: "category", From: 0, Side: export.SideSource, Role: "revenue_source",
+			Projection: "fund-flows", Tiers: []int{1, 3},
+			Caps: []export.TierCap{{Tier: 1, Cap: 8}, {Tier: 3, Cap: 8, Tail: "funds"}},
+			Back: "All revenue categories", Tail: "lines", Description: "Opened a category."},
+		// AND A CHILD, BECAUSE TWO ROOTS BOTH CARRY After "". A comparison of
+		// the zero value against the zero value is what this declaration is
+		// arranged to avoid, and it was reached anyway on the one field whose
+		// absence costs the most: with After back to `json:"-"` the wire
+		// carries no `after`, app.js's STEPS drops every step for want of one,
+		// and the whole drill leaves the site with every gate green.
+		{Key: "division", After: "group", From: 4, Tiers: []int{4, 5},
+			Caps: []export.TierCap{{Tier: 5, Cap: 8}},
+			Back: "All divisions", Tail: "categories", Description: "Opened a division."},
+	}
 	dir := t.TempDir()
 	if _, err := export.Write(export.Options{
 		Dir: dir,
@@ -2706,19 +2723,21 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	if err := json.Unmarshal(configBlob(t, page), &cfg); err != nil {
 		t.Fatalf("decode window.FISC_CONFIG: %v", err)
 	}
-	// THE PARENTAGE IS DECLARED AND NOT SHIPPED. Key, After, Side and Role say
-	// which chart opens into which and which nodes of it open; the client
-	// resolves a rung by depth and reads none of them, so the wire carries the
-	// zero value of each. Pinned here rather than assumed, because a JSON tag
-	// added without a client to read it would put a second, unwalked
-	// declaration of the tree in front of every reader.
+	// THE PARENTAGE IS SHIPPED, BECAUSE THE CLIENT WALKS IT. Key, After, Side
+	// and Role are what site/app.js matches a clicked node against to find the
+	// step it opens into, and a per-cap Tail is what labels a fund tail "funds"
+	// beside a line tail "lines" on one step. Each is asserted non-zero on the
+	// declaration first, so a tag dropped back to `json:"-"` is a diff here and
+	// not a comparison of one zero value against another.
 	wantOnWire := slices.Clone(steps)
 	for i := range wantOnWire {
-		wantOnWire[i].Key, wantOnWire[i].After = "", ""
-		wantOnWire[i].Side, wantOnWire[i].Role = "", ""
+		wantOnWire[i].YearProjections = nil
 	}
-	if steps[0].Key == "" {
-		t.Fatal("the declared step carries no key, so the comparison below asserts nothing")
+	second := steps[1]
+	if second.Key == "" || second.Side == "" || second.Role == "" || second.Caps[1].Tail == "" ||
+		steps[2].After == "" {
+		t.Fatal("the declared steps carry no key, after, side, role or cap tail, so the " +
+			"comparison below asserts nothing")
 	}
 	if diff := cmp.Diff(wantOnWire, cfg.Steps); diff != "" {
 		t.Errorf("FISC_CONFIG.steps (-want +got):\n%s", diff)

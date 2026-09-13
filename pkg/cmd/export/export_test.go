@@ -1204,7 +1204,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Projection:      project.FundFlowsProjection,
 			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
 			Tiers:           []int{0, 3, 4},
-			Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
+			Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
 			Back:            "All fund groups",
 			Tail:            "funds",
 			// READ OFF THE CHECK, NOT SPELLED, because the check is the
@@ -1230,6 +1230,25 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Description: "The division on the left flows into the object categories it " +
 				"spends on, on the right \u2014 that division's cells of Budget Book " +
 				"pp.167-170, rescaled to its total.",
+		},
+		{
+			Key:             "revenue-category",
+			From:            0,
+			Side:            export.SideSource,
+			Role:            "revenue_source",
+			Projection:      project.FundFlowsProjection,
+			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
+			Tiers:           []int{1, 3},
+			Caps:            []export.TierCap{{Tier: 1, Cap: 8, Tail: "lines"}, {Tier: 3, Cap: 8, Tail: "funds"}},
+			Back:            "All revenue categories",
+			Tail:            "lines",
+			Description: "The lines Budget Book pp.127-140 print under this revenue " +
+				"category, on the left, flow into the funds that receive them, on the " +
+				"right \u2014 every fund in the city that carries one, whichever group it " +
+				"belongs to, rescaled to the category's total. A line the schedule prints " +
+				"as a reduction is drawn in red at its printed size and named as one, and " +
+				"a fund's figure on this chart is the sum of every ribbon into it before " +
+				"those reductions.",
 		},
 	}
 	if diff := cmp.Diff(want, spine.Steps); diff != "" {

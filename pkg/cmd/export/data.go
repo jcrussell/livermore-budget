@@ -579,9 +579,13 @@ func views(built result) []export.View {
 				Projection:      years[export.PrimaryProjection],
 				YearProjections: years,
 				Tiers:           []int{0, 3, 4},
-				Caps:            []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24}},
-				Back:            "All fund groups",
-				Tail:            "funds",
+				// THE DIVISION CAP NAMES ITS OWN NOUN. It never engages on the
+				// committed corpus (23 divisions under 24) and while it took the
+				// step's it would have labelled a tail of divisions "smaller
+				// funds" the day it did.
+				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
+				Back: "All fund groups",
+				Tail: "funds",
 				// THE RESIDUAL IS THE CHECK'S DECLARATION, READ, NOT COPIED.
 				// drill-reconciles-across-documents declares which spine
 				// endpoints pp.127-140 and 167-170 cannot decompose, each
@@ -629,6 +633,37 @@ func views(built result) []export.View {
 				Description: "The division on the left flows into the object categories " +
 					"it spends on, on the right \u2014 that division's cells of Budget " +
 					"Book pp.167-170, rescaled to its total.",
+			},
+			{
+				// A SECOND EDGE OUT OF THE SPINE'S CHART, not a third rung of
+				// the chain: After is "" like the fund-group step's, and the
+				// two are told apart by From. The side is declared because the
+				// category is the node its links come FROM, and the role
+				// because transfers/in and fund-balance/draw share tier 0 with
+				// the categories and open into nothing pp.127-140 print.
+				Key:             "revenue-category",
+				From:            0,
+				Side:            export.SideSource,
+				Role:            "revenue_source",
+				Projection:      years[export.PrimaryProjection],
+				YearProjections: years,
+				Tiers:           []int{1, 3},
+				// BOTH COLUMNS FOLD ON THE COMMITTED CORPUS, each in its own
+				// noun. Measured over both goldens: five categories print more
+				// than nine nonzero lines (charges-for-services prints 19) and
+				// four land in more than nine funds (use-of-money-and-property
+				// in 34), so a cap of 8 engages on each side and neither tail
+				// can borrow the other's word.
+				Caps: []export.TierCap{{Tier: 1, Cap: 8, Tail: "lines"}, {Tier: 3, Cap: 8, Tail: "funds"}},
+				Back: "All revenue categories",
+				Tail: "lines",
+				Description: "The lines Budget Book pp.127-140 print under this revenue " +
+					"category, on the left, flow into the funds that receive them, on the " +
+					"right \u2014 every fund in the city that carries one, whichever group it " +
+					"belongs to, rescaled to the category's total. A line the schedule prints " +
+					"as a reduction is drawn in red at its printed size and named as one, and " +
+					"a fund's figure on this chart is the sum of every ribbon into it before " +
+					"those reductions.",
 			},
 		}
 	}

@@ -252,6 +252,14 @@ export async function checks() {
     // all.
     const nested = lit(step("group", "", 2, "0, 3, 4", [3, 8]) + "\n" +
       step("division", "group", 4, "4, 5", [5, 8]).replace(/^\t{3}/gm, "\t\t\t\t"));
+    // A CAP NAMING ITS NOUN AND A SIDE SPELLED AS THE CONSTANT, which is how
+    // data.go declares the revenue step. Measured before the parse read them:
+    // `{Tier: 4, Cap: 24, Tail: "divisions"}` parsed as no cap at all, and
+    // `Side: export.SideSource` as "" -- a source-side step measured as
+    // opening the end its links point at, with every check green.
+    const worded = lit(step("group", "", 2, "0, 3, 4", [3, 8])
+      .replace("{Tier: 3, Cap: 8}", "{Tier: 3, Cap: 8, Tail: \"funds\"}")
+      .replace("\t\t\t\tFrom:  2,\n", "\t\t\t\tSide:  export.SideSource,\n\t\t\t\tRole:  \"revenue_source\",\n\t\t\t\tFrom:  2,\n"));
     // THE REFUSAL IS READ, NOT COUNTED. `did it throw` is satisfied by a
     // TypeError off an unguarded dereference, which is green for a reason that
     // has nothing to do with the guard -- measured: deleting the `if (!key)`
@@ -281,6 +289,11 @@ export async function checks() {
       steps[i] && steps[i].caps ? steps[i].caps.length : -1;
     const control = read(two);
     const base = control.steps;
+    const wordedRead = read(worded);
+    const wordedOK = !wordedRead.threw && wordedRead.steps.length === 1 &&
+      wordedRead.steps[0].side === "source" && wordedRead.steps[0].role === "revenue_source" &&
+      caps(wordedRead.steps, 0) === 1 && wordedRead.steps[0].caps[0].tail === "funds" &&
+      wordedRead.steps[0].caps[0].cap === 8;
     const reflowedRead = read(reflowed);
     const reflowedSteps = reflowedRead.steps;
     const reflowedThrew = reflowedRead.threw;
@@ -298,7 +311,7 @@ export async function checks() {
           base[0].key === "group" && base[1].after === "group" && base[0].after === "" &&
           caps(base, 0) === 1 && caps(base, 1) === 1 &&
           survived && /From/.test(refusal(noFrom)) && /Key/.test(refusal(noKey)) &&
-          /Key/.test(refusal(nested)),
+          /Key/.test(refusal(nested)) && wordedOK,
       // THE DETAIL DEREFERENCES NOTHING EITHER. Guarding only `ok` left this
       // string reading base[0].caps on a control that threw, so the arm still
       // took the module down -- the same defect one line lower than where it
@@ -311,7 +324,10 @@ export async function checks() {
           `${caps(reflowedSteps, 0)} and ${caps(reflowedSteps, 1)} cap(s)`}; ` +
         `a step with no From is refused with ${JSON.stringify(refusal(noFrom))}, one ` +
         `with no Key with ${JSON.stringify(refusal(noKey))}, and a step indented as a ` +
-        `nested literal with ${JSON.stringify(refusal(nested))}`,
+        `nested literal with ${JSON.stringify(refusal(nested))}; a cap with its own Tail and a Side ` +
+        `spelled export.SideSource read as ${wordedRead.threw ? "A THROW" :
+          JSON.stringify(wordedRead.steps[0] && { side: wordedRead.steps[0].side,
+            role: wordedRead.steps[0].role, caps: wordedRead.steps[0].caps })}`,
     });
   }
 
