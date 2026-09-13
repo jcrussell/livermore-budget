@@ -89,13 +89,15 @@ one pair is what `checkDistinctLinks` and the client's own fold allow exactly
 when the kinds differ, which is why `links` are ordered by `(source, target,
 kind)` and not by the pair alone.
 
-**Every tier set this repository draws today drops the rollup**, which is how a
-document can gain 95 links per column and no chart change a pixel: at `{0,3,4}`
-both ends fold to the category and a link whose ends fold together is dropped, and
-at `{1,3}` the tier-0 end has no column and the filter drops it before the fold.
-`tools/jscheck/drill.mjs` asserts that over all 39 views the page opens, rather
-than leaving it to the per-view pins, which cannot tell a rollup that was dropped
-from one that was never published.
+**The rollup is drawn in a category's own window and nowhere else.** That
+window is the chart it was published for: `{1,0,2}` puts the category between the
+lines printed under it and the fund groups it reaches, and the rollups are its
+whole left half. Every other tier set drops them, each for its own reason: at
+`{0,3,4}` both ends fold to the category and a link whose ends fold together is
+dropped, and at `{2,5,4}` and `{4,5}` neither end has a column.
+`tools/jscheck/drill.mjs` asserts both halves over every view the page opens
+rather than leaving it to the per-view pins, which cannot tell a rollup that was
+dropped from one that was never published.
 
 **A contra row is a negative link on its own line.** pp.127-140 print ERAF and
 RPTTF Reduction in parentheses inside the Property Taxes subtotal, and while the
@@ -364,19 +366,20 @@ description (`fisc-vsu8`) and a changed cap went green on both sides at once:
 | 0 | `sankey` | the spine, whole | a fund group (tier 2) — the next row; or a revenue category (tier 0) — the last row | — |
 | 1 | `fund-flows` | `{0,3,4}` filtered to the opened group: its revenue categories, its funds, and under the General Fund its divisions | a division (tier 4) — the row below | tier 3 at 8, tier 4 at 24 |
 | 2 | `fund-flows` | `{4,5}` filtered to the opened division: its object categories | nothing | tier 5 at 8 |
-| 1 | `fund-flows` | `{1,3}` filtered to the lines pp.127-140 print under the opened category, and the funds they land in across every group; a line printed as a reduction draws as a contra ribbon at its magnitude | nothing | tier 1 at 8 (lines), tier 3 at 8 (funds) |
+| 1 | `fund-flows` | `{1,0,2}`, a WINDOW keeping tier 2 of the chart above: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
 
-The steps are a tree and not a chain: two open from the spine's chart, told
-apart by the tier they open from and, for the category, by the node's role.
+The steps are a tree and not a chain: three open from the spine's chart, told
+apart by the tier they open from and, for the two that share a tier with a flow
+end, by the node's role.
 The client walks it by key (`after` names the step whose chart a step opens
 from) and never by depth.
 
 **Only the General Fund draws a tier-4 column.** pp.167-170 decompose that
 fund alone, so the other five groups' charts end at their funds, and the
 only-the-General-Fund caveat is a property of the drawn chart rather than a
-sentence beside it. Measured through the chain: 6 fund groups open, and under
-them 23 divisions, all of the General Fund — 29 opened views; and beside them
-the 10 revenue categories, each into its own lines.
+sentence beside it. Measured through the whole tree: 6 fund groups, 10 revenue
+categories and 4 object categories open at depth 1, and under the fund groups 23
+divisions, all of the General Fund.
 
 **The step document is the spine year's, joined on column.** A spine stem
 opens into the `fund-flows` stem carrying the same fiscal year on the same

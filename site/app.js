@@ -994,11 +994,14 @@ function filterToNode(doc, id, tiers) {
  * function answering both questions by flag is how a caller gets the wrong
  * one.
  *
- * THE RULE IS "SOURCE IN THE SUBTREE, BOTH ENDS PLACEABLE". Opening a category
- * into tiers {1,3} keeps every line printed under it and every fund a line
- * lands in, across every fund group; the category itself is drawn nowhere,
- * since it is the source of nothing -- pp.127-140 print money at the line, and
- * the category is the line's parent.
+ * THE RULE IS "SOURCE IN THE SUBTREE, BOTH ENDS PLACEABLE". Asked of the spine
+ * for a revenue category at tiers {0,2}, it keeps the category and the fund
+ * groups the spine draws its money reaching -- which is the kept half of that
+ * category's window, and the half that puts the node the reader clicked back on
+ * the screen. Asked of pp.127-140 for the same category it would keep every
+ * fund a line lands in and draw the category nowhere, since there the category
+ * is the source of nothing: the schedule prints money at the line, and the
+ * category is the line's parent.
  *
  * @param {FiscProjection} doc
  * @param {string} id
@@ -1308,11 +1311,13 @@ function paintCounts() {
  *
  * A NODE OPENS WHEN A STEP OPENS FROM IT, and that is stepFor's three matches:
  * the chart on screen, the node's tier, and its role where the step names
- * one. Two things on the spine's chart open, into two different views of
- * fund-flows: a fund group into its funds, and a revenue category into the
- * lines pp.127-140 print under it. The categories were excluded here while
- * the document carried nothing beneath them -- the offer would have promised a
- * decomposition no page printed -- and since it carries the line tier the
+ * one. All three of the spine's drawn columns hold something that opens, into
+ * two documents: a fund group into its funds, a revenue category into the lines
+ * pp.127-140 print under it with the fund groups it reaches kept beside them,
+ * and an object category into the divisions pp.85-125 give it. The categories
+ * were excluded here while the document carried nothing beneath them -- the
+ * offer would have promised a decomposition no page printed -- and since it
+ * carries the line tier the
  * exclusion is by role and not by tier: transfers/in and fund-balance/draw
  * share tier 0 with the categories, are the flow's ends rather than
  * containers of it, and the step's role leaves them closed.
@@ -1703,8 +1708,8 @@ function lastSentence(s) {
  * unconditionally, which held while every declared step opened the finest tier
  * its chart drew and stopped holding on the spine, whose fund groups are its
  * MIDDLE column. openableColumns names every column that holds a node which
- * opens -- two on the spine, since its revenue categories open as well as its
- * fund groups.
+ * opens -- all three on the spine, whose revenue categories and object
+ * categories open as well as its fund groups.
  *
  * AND WHETHER ANYTHING OPENS IS ASKED OF THE DRAWN NODES, not of the chain: a
  * step exists below depth 1 for every fund group, and only the General Fund
@@ -1904,7 +1909,7 @@ function shapeFor(doc) {
   //
   // AND THE CONTRA MARKING AFTER THAT, because it is about what the fold LEFT
   // negative: a category's lines fold into the category's net cell at {0,3,4},
-  // where nothing is negative, and stand on their own at {1,3}, where two are.
+  // where nothing is negative, and stand on their own at {1,0,2}, where two are.
   //
   // AND THE GAP LAST OF THE THREE THAT ADD MARKS, because it is a statement
   // about the whole drawn chart: what the opened node takes in against what it
@@ -1956,10 +1961,11 @@ function sideOf(doc, rung, tiers, filter) {
   // THE TAIL'S PARENT IS THE OPENED NODE ONLY WHEN THE WHOLE COLUMN IS INSIDE
   // IT, and that is asked of the document rather than assumed. A fund group's
   // funds and a category's lines are inside the node that opened them, and
-  // the tail inherits its hue through it; a category's fund column spans every
-  // fund group, and a tail parented to the category would claim a place in a
-  // hierarchy the funds are not in. It gets "", which is --muted, which is what
-  // "no single fund group" looks like everywhere else on this page.
+  // the tail inherits its hue through it; an object category's divisions are
+  // read off a schedule with no fund axis at all, and a tail parented to the
+  // category would claim a place in a hierarchy they are not in. It gets "",
+  // which is --muted, which is what "no single fund group" looks like
+  // everywhere else on this page.
   /** @type {Map<number, string>} */
   const parentOf = new Map();
   for (const tier of tiers) {
@@ -1968,9 +1974,9 @@ function sideOf(doc, rung, tiers, filter) {
     const column = shaped.nodes.filter((n) => n.tier === tier);
     const parent = column.every((n) => inside.has(n.id)) ? rung.id : "";
     parentOf.set(tier, parent);
-    // THE NOUN IS THE CAP'S WHERE IT NAMES ONE, and the step's otherwise: a
-    // category's step caps its lines and its funds, and one word cannot count
-    // both tails.
+    // THE NOUN IS THE CAP'S WHERE IT NAMES ONE, and the step's otherwise: the
+    // fund-group step caps its funds under its own noun and its divisions under
+    // the cap's, and one word cannot count both tails.
     shaped = capColumn(shaped, tier, cap.cap, parent, cap.tail || step.tail);
   }
   const drawn = foldDocument(shaped, tiers);
@@ -2095,27 +2101,29 @@ function windowFor(onScreen, stepDoc, rung) {
  *
  * WHAT A NEGATIVE LINK IS. pp.127-140 print ERAF and the RPTTF reduction as
  * reductions of Property Taxes -- rows in parentheses, netted into the
- * category's total -- and fund-flows publishes each as a line whose link into
- * the fund carries its signed figure. Folded to the category they vanish into
- * the net cell; drawn as lines they stand on their own, and a sankey has no
- * ribbon of negative width.
+ * category's total -- and fund-flows publishes each as a line whose links carry
+ * its signed figure, into the fund it reduces and back into the category it is
+ * printed under. Folded to the category they vanish into the net cell; drawn as
+ * that category's own lines they stand on their own, and a sankey has no ribbon
+ * of negative width.
  *
- * NOT A REVERSED LINK, THOUGH THAT WAS THE FIRST DESIGN. A link from the fund
- * back to the line gives the line a depth one past the fund's, and the
- * vendored d3-sankey sizes its column count from the deepest node: a {1,3}
- * view came to three columns with the third empty, and its layering pass
- * throws on the hole -- "Cannot read properties of undefined (reading
- * 'sort')", the same failure layOut's comment records for a misaligned tier
- * set. So the ribbon runs the way every other ribbon runs, at the printed
- * size, and what makes it a reduction is said three ways: the class render()
- * gives it, the sign every figure carries, and the sentence on the mark.
+ * NOT A REVERSED LINK, THOUGH THAT WAS THE FIRST DESIGN. A reduction pointed
+ * backwards gives its line a depth one past the mark it reduces, and the
+ * vendored d3-sankey sizes its column count from the deepest node: the view
+ * came out with one column more than its step declares and the last of them
+ * empty, and its layering pass throws on the hole -- "Cannot read properties of
+ * undefined (reading 'sort')", the same failure layOut's comment records for a
+ * misaligned tier set. So the ribbon runs the way every other ribbon runs, at
+ * the printed size, and what makes it a reduction is said three ways: the class
+ * render() gives it, the sign every figure carries, and the sentence on the mark.
  *
- * THE FUND'S FIGURE IS GROSS OF ITS REDUCTIONS, and contraNote says so on the
- * mark. d3-sankey sizes a node at the larger of what enters and what leaves,
- * and a contra ribbon enters; the General Fund in the Property Taxes view
- * stands at the sum of every ribbon into it, which is the p127 total before
- * ERAF and the RPTTF reduction come off. The step's description says the same
- * for the chart as a whole.
+ * THE CENTRE'S FIGURE IS GROSS OF ITS REDUCTIONS, and contraNote says so on
+ * the mark. d3-sankey sizes a node at the larger of what enters and what
+ * leaves, and a contra ribbon enters; the Property Taxes category stands at the
+ * sum of every ribbon into it, which is p127's total before ERAF and the RPTTF
+ * reduction come off, while the two ribbons leaving it are the spine's own
+ * cells and come to that total net. The step's description says the same for
+ * the chart as a whole.
  *
  * THE WORDS NAME THE PARENT IN THE FILE, not in the drawn document: the fold
  * blanks a line's parent, and it is the category p127 prints the reduction
@@ -2190,10 +2198,12 @@ function markCents(d) {
  * IT IS ARITHMETIC AND SAYS SO, with columnShare's diamond and word: the
  * mark's own figure less TWICE what the reductions contributed to it, since
  * each is drawn at its magnitude and so was added where the schedule
- * subtracts it. Measured on FY2025-26: the General Fund in the Property Taxes
- * view is sized at $98,114,440 — $16,985,339 of reductions among $81,129,101
- * of additions — while p127 prints $64,143,762, and nothing on the mark would
- * say why.
+ * subtracts it. Measured on FY2025-26: the Property Taxes category, the centre
+ * of its own window, is sized at $103,430,092 — that is
+ * $16,985,339 of reductions among $86,444,753 of additions, and
+ * p127 prints $69,459,414, which nothing on the mark would say. That net is
+ * what the two ribbons LEAVING the centre come to, so the note is what makes
+ * the two sides of one mark agree.
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -2595,6 +2605,15 @@ function carryResidual(drawn, from, rung) {
  * sentence is shown under both years and one that did not would be wrong under
  * the other.
  *
+ * THE TWO SIDES ARE THE SIGNED ONES, WHICH IS WHY THIS RUNS BEFORE markContra.
+ * A reduction is drawn forward at its magnitude, so after that pass a centre
+ * taking its category's gross and sending the spine's net looks like a
+ * shortfall of twice the reductions -- the Property Taxes window is exactly
+ * that shape, $103,430,092 arriving against $69,459,414 leaving. The identity
+ * the two schedules actually hold is the signed one, and it is the signed one
+ * this reads: measured over both published columns, every one of the ten
+ * revenue categories balances here to the cent.
+ *
  * IT CARRIES NO kind. A kind says which boundary the money crosses, and the
  * difference between two schedules crosses nothing either of them printed;
  * `derived` is the claim this mark can make, and it makes it in the class, the
@@ -2925,14 +2944,16 @@ function foldDocument(doc, tiers) {
     }
     if (source === target) continue;
     // ONE RIBBON PER KIND BETWEEN A FOLDED PAIR, so a ribbon's kind is true of
-    // all of it. This refused two kinds on one pair while no published column
-    // produced them, and none does under any fold through node.parent --
-    // measured over all four committed goldens at {0,3,4}, {4,5}, {1,3} and
-    // {0,2,5}. A category's capped fund tail is what does: its funds span
-    // every group, and the five internal-service funds take Use of Money and
-    // Intergovernmental money as an internal service charge beside external
-    // money into the rest, so one line reaches the tail twice, once per kind,
-    // and the tooltip and the table name each ribbon for what it is.
+    // all of it. Keying the merge on the pair alone would draw an internal
+    // service charge and money crossing the city's boundary as one ribbon.
+    // Measured over every view the page opens, on both published columns:
+    // exactly two drawn pairs carry both kinds, the Intergovernmental line's
+    // rollup into its category and Use of Money and Property's -- the 2 of
+    // pp.127-140's 93 rows that reach the five Internal Service Funds as an
+    // internal service charge and the rest of the city as external revenue.
+    // fund-flows publishes each as two (1,0) links, so this branch is what
+    // keeps them two ribbons rather than what makes them two, and the tooltip
+    // and the table name each for what it is.
     const key = source + "\u001f" + target + "\u001f" + l.kind;
     const at = merged.get(key);
     const ids = cited.get(key);
@@ -3843,21 +3864,20 @@ function pin(d) {
  * Draws one swatch per fund group on the chart, each a toggle for that group's
  * isolation.
  *
- * EMPTY ON EVERY OPENED VIEW, BY RULE AND NOT BY ACCIDENT. It was empty there
- * already, because neither filter keeps a fund-group node once a node is
- * opened -- but that is a side effect, and on a page that opens the spine the
- * legend vanishing on the first click is a decision the code has to own.
+ * EMPTY ON EVERY OPENED VIEW, BY RULE AND NOT BY ACCIDENT, and the rule is the
+ * only thing holding it: a window keeps a whole flank of the chart it was
+ * opened from, and the revenue category's window keeps the fund-group column
+ * itself.
  *
  * THE DECISION RESTS ON WHAT A SWATCH IS, not on what an opened view draws. A
- * swatch is a toggle on a NODE id: setIsolated dims whatever is not adjacent
- * to that node, and no opened view carries a fund-group node, so a swatch for
- * a group would dim the whole chart. That an opened fund group's marks all
- * resolve to the one group above it was true and is not the reason: an opened
- * revenue category's fund column spans every group, and the rule holds there
- * for the same reason it holds under a group. A legend on that view needs
- * emphasis resolved per group through fundGroupOf rather than per node, which
- * is a second emphasis model and is filed as fisc-0jy9; that a category's
- * funds carry nothing saying which group each is in is fisc-b4a6.
+ * swatch is a toggle on a NODE id: setIsolated dims whatever is not adjacent to
+ * that node. Where an opened view carries no fund-group node there is nothing
+ * for a swatch to toggle, and where a window keeps that column there is one
+ * swatch per mark in it, each dimming everything the reader opened the node to
+ * see. A legend that meant a group rather than a node needs emphasis resolved
+ * through fundGroupOf, which is a second emphasis model and is filed as
+ * fisc-0jy9; that a category's funds carry nothing saying which group each is
+ * in is fisc-b4a6.
  */
 function buildLegend() {
   if (!projection) return;

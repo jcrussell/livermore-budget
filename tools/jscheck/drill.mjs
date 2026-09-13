@@ -217,9 +217,6 @@ const COLUMNS = [
       "fund-group/capital": { in: 250021300, out: 0, carried: 1 },
       "fund-group/internal-service": { in: 614753300, out: 0, carried: 1 },
     },
-    // PROPERTY TAXES OPENED AT {1,3}, MEASURED THROUGH drillDown: nodes, links
-    // and sub-pixel ribbons, and the counts line; then the tails each cap
-    // folds on the two categories whose columns exceed it.
     // THE FOUR OBJECT-CATEGORY WINDOWS, MEASURED BY HAND ON 2026-09-13 through
     // drillDown over this column's two committed captures.
     //
@@ -255,26 +252,41 @@ const COLUMNS = [
       gapCents: 0,
       counts: "14 flows between 15 nodes, from 34 of the document's 73 facts",
     },
-    // THE (1,0) ROLLUPS THE DOCUMENT CARRIES, drawn in none of its views: one
-    // per (printed row, kind) over 93 lines, two of which reach their funds
-    // under both kinds. The same number in both years -- fund/207's dash in
-    // FY2026-27 moves a fund and not a row.
+    // THE (1,0) ROLLUPS THE DOCUMENT CARRIES, one per (printed row, kind) over
+    // 93 lines, two of which reach their funds under both kinds. The same
+    // number in both years -- fund/207's dash in FY2026-27 moves a fund and
+    // not a row. The ten category windows below are where they are DRAWN, and
+    // every other view the page opens drops them.
     rollups: 95,
+    // THE TEN CATEGORY WINDOWS, MEASURED BY HAND ON 2026-09-13 through
+    // drillDown over this column's two committed captures: the printed lines
+    // on the left, the category the reader clicked in the middle, and the fund
+    // groups the spine draws it reaching on the right.
+    //
+    // THE CENTRE IS THE NODE THE READER CLICKED, which is the owner's second
+    // finding stated as a pin: the category is drawn, once, between its lines
+    // and the groups its money reaches, and a shape that lost it is a red row.
+    //
+    // `views` is [nodes, links, sub-pixel ribbons, fund groups reached]. THE
+    // TWO COLUMNS DRAW THE SAME TEN SHAPES, which is a measurement and not a
+    // rule: fund/207 prints a dash in FY2026-27, which takes a fund out of
+    // that column and no fund GROUP, and fund groups are what the right-hand
+    // column draws. Stated as one table per column even so.
     category: {
-      nodes: 14, links: 12, hairlines: 0,
-      counts: "12 flows between 14 nodes, from 17 of the document's 280 facts",
-      chargesLineTail: "11 smaller lines", chargesFundTail: "5 smaller funds", chargesLinks: 16,
-      moneyFundTail: "26 smaller funds", moneyLinks: 15,
-      // EVERY CATEGORY, nodes / links / sub-pixel ribbons, so a category that
-      // stops opening -- or opens into a different shape -- is a red row and
-      // not a sample missed. Contributions and Intergovernmental differ
-      // between the years: fund/207 prints a dash in FY2026-27.
+      nodes: 12, links: 11, hairlines: 0,
+      counts: "11 flows between 12 nodes, from 19 of the document's 280 facts",
+      chargesLineTail: "11 smaller lines", chargesLinks: 13, moneyLinks: 13,
+      // THE CENTRE OF THE PROPERTY TAXES WINDOW as d3 sizes it, what the two
+      // reductions contribute to that figure, and what p127 prints net of
+      // them -- contraNote's three figures, read off this column's golden
+      // rather than typed, and asserted against the comment that quotes them.
+      gross: 10343009200, reduced: 1698533900, net: 6945941400,
       views: {
-        "revenue/charges-for-services": [18, 16, 0], "revenue/contributions-outsourced": [7, 5, 0],
-        "revenue/fines-and-forfeitures": [3, 2, 0], "revenue/intergovernmental": [16, 15, 1],
-        "revenue/licenses-and-permits": [10, 9, 0], "revenue/miscellaneous-revenue": [18, 16, 3],
-        "revenue/taxes/other": [12, 11, 1], "revenue/taxes/property": [14, 12, 0],
-        "revenue/taxes/sales": [3, 2, 0], "revenue/use-of-money-and-property": [16, 15, 0],
+        "revenue/charges-for-services": [14, 13, 0, 4], "revenue/contributions-outsourced": [5, 4, 0, 2],
+        "revenue/fines-and-forfeitures": [4, 3, 0, 1], "revenue/intergovernmental": [12, 12, 1, 4],
+        "revenue/licenses-and-permits": [11, 10, 0, 1], "revenue/miscellaneous-revenue": [14, 13, 3, 4],
+        "revenue/taxes/other": [12, 11, 0, 2], "revenue/taxes/property": [12, 11, 0, 2],
+        "revenue/taxes/sales": [4, 3, 0, 1], "revenue/use-of-money-and-property": [13, 13, 0, 5],
       },
     },
   },
@@ -299,10 +311,6 @@ const COLUMNS = [
       "fund-group/capital": { in: 1012941600, out: 0, carried: 1 },
       "fund-group/internal-service": { in: 716064500, out: 0, carried: 1 },
     },
-    // THE (1,0) ROLLUPS THE DOCUMENT CARRIES, drawn in none of its views: one
-    // per (printed row, kind) over 93 lines, two of which reach their funds
-    // under both kinds. The same number in both years -- fund/207's dash in
-    // FY2026-27 moves a fund and not a row.
     // THE SAME FOUR, ON THE COLUMN THAT DOES NOT TIE. capital-outlay reaches
     // four divisions here against five, and services-and-supplies carries the
     // declared 250,000 between p0067 and pp.85-125 -- the one cell of the eight
@@ -331,16 +339,16 @@ const COLUMNS = [
     },
     rollups: 95,
     category: {
-      nodes: 14, links: 12, hairlines: 0,
-      counts: "12 flows between 14 nodes, from 17 of the document's 280 facts",
-      chargesLineTail: "11 smaller lines", chargesFundTail: "5 smaller funds", chargesLinks: 16,
-      moneyFundTail: "26 smaller funds", moneyLinks: 15,
+      nodes: 12, links: 11, hairlines: 0,
+      counts: "11 flows between 12 nodes, from 19 of the document's 280 facts",
+      chargesLineTail: "11 smaller lines", chargesLinks: 13, moneyLinks: 13,
+      gross: 10839120200, reduced: 1774967900, net: 7289184400,
       views: {
-        "revenue/charges-for-services": [18, 16, 0], "revenue/contributions-outsourced": [6, 4, 0],
-        "revenue/fines-and-forfeitures": [3, 2, 0], "revenue/intergovernmental": [16, 15, 1],
-        "revenue/licenses-and-permits": [10, 9, 0], "revenue/miscellaneous-revenue": [18, 16, 3],
-        "revenue/taxes/other": [12, 11, 1], "revenue/taxes/property": [14, 12, 0],
-        "revenue/taxes/sales": [3, 2, 0], "revenue/use-of-money-and-property": [16, 15, 0],
+        "revenue/charges-for-services": [14, 13, 0, 4], "revenue/contributions-outsourced": [5, 4, 0, 2],
+        "revenue/fines-and-forfeitures": [4, 3, 0, 1], "revenue/intergovernmental": [12, 12, 1, 4],
+        "revenue/licenses-and-permits": [11, 10, 0, 1], "revenue/miscellaneous-revenue": [14, 13, 3, 4],
+        "revenue/taxes/other": [12, 11, 0, 2], "revenue/taxes/property": [12, 11, 0, 2],
+        "revenue/taxes/sales": [4, 3, 0, 1], "revenue/use-of-money-and-property": [13, 13, 0, 5],
       },
     },
   },
@@ -503,13 +511,16 @@ async function mustOpen(app, id) {
  * category it is printed under, which internal/project publishes at the (1,0)
  * pair.
  *
- * THE ANSWER MUST BE ZERO IN EVERY VIEW THIS PAGE DRAWS, and that is the whole
- * claim the Go side rests on: at {0,3,4} both ends fold to the category and
- * foldDocument drops the self-loop, and at {1,3} the tier-0 end is placeable
- * nowhere, so scoped's quiet branch drops it before the fold. The per-view node
- * and link pins say the shapes did not move; this says WHY, and goes red the
- * day a filter or a fold starts keeping one -- which a pin cannot distinguish
- * from a rollup that was never published.
+ * A CATEGORY'S WINDOW DRAWS THEM AND NO OTHER VIEW MAY, which is why the two
+ * arms that call this are a pair rather than one assertion. The rollup was
+ * published for this chart: it is the window's whole left half, the ribbons
+ * that give the centre something flowing into it. Everywhere else the answer
+ * is zero for a reason of its own -- at {0,3,4} both ends fold to the category
+ * and foldDocument drops the self-loop, and at {2,5,4} and {4,5} neither end
+ * is placeable, so scoped's quiet branch drops it before the fold. The
+ * per-view node and link pins say the shapes did not move; this says WHERE the
+ * rollups went, and a pin cannot tell a rollup that was dropped from one that
+ * was never published.
  *
  * @param {{links: FiscLink[]}} doc
  */
@@ -637,13 +648,25 @@ export async function checks() {
           `(want ${col.worstDeep})`,
     });
 
+    // THE ROLLUP IS DRAWN IN THE TEN CATEGORY WINDOWS AND IN NO OTHER VIEW,
+    // asserted over the whole walk rather than left to the per-view pins. Both
+    // halves have to hold -- the document publishes 95 and exactly the ten
+    // windows draw one -- because a filter that started keeping a rollup
+    // somewhere else would move no node and no ribbon count a shape pin can
+    // see.
+    const drewRollup = drawn.filter((d) => d.rollups > 0);
+    const windows = drawn.filter((d) => d.depth === 1 && d.where.startsWith("revenue/"));
     out.push({
-      name: `${col.label}: the document's line-to-category rollups are drawn in none of the chain's views`,
-      ok: rollupsIn(col.golden()) === col.rollups && drawn.every((d) => d.rollups === 0) &&
-          drawn.length > 0,
+      name: `${col.label}: the document's line-to-category rollups are drawn in the ten category windows and in no other view`,
+      ok: rollupsIn(col.golden()) === col.rollups && drawn.length > 0 && windows.length === 10 &&
+          drewRollup.length === windows.length &&
+          drewRollup.every((d) => d.depth === 1 && d.where.startsWith("revenue/")),
       detail: `${col.step} carries ${rollupsIn(col.golden())} rollup link(s) (want ${col.rollups}); ` +
-        `${drawn.filter((d) => d.rollups > 0).length} of ${drawn.length} view(s) draw one` +
-        (drawn.find((d) => d.rollups > 0) ? `, first at ${drawn.find((d) => d.rollups > 0).where}` : ""),
+        `of ${drawn.length} view(s) walked, ${windows.length} are category windows (want 10) and ` +
+        `${drewRollup.length} draw a rollup` +
+        (drewRollup.some((d) => !d.where.startsWith("revenue/"))
+          ? `, including ${drewRollup.find((d) => !d.where.startsWith("revenue/")).where}`
+          : ""),
     });
 
     // THE CAP IS THE POINT OF THIS FILE, and it does not engage at both
@@ -1506,17 +1529,30 @@ export async function checks() {
   // ------------------------------------------------------ a revenue category
   //
   // THE SECOND EDGE OUT OF THE SPINE'S CHART, over both columns: a category
-  // opened into the lines pp.127-140 print under it and the funds they land
-  // in, through the same entry point a click and Enter call. Every figure is
-  // pinned in COLUMNS[].category off the committed goldens.
+  // opened into a window of the lines pp.127-140 print under it, the category
+  // itself, and the fund groups the spine draws it reaching -- through the
+  // same entry point a click and Enter call. Every figure is pinned in
+  // COLUMNS[].category off the committed goldens.
   for (const col of COLUMNS) out.push(...(await walkCategory(col)));
-  out.push(...(await categoryProbes()));
-  out.push(...(await keylessSteps()));
-  out.push(...(await severalParents()));
-  out.push(...(await windowChecks()));
-  out.push(...(await objectCategoryChecks()));
-  out.push(...(await columnAndPartitionChecks()));
-  out.push(...(await foreignFlankProbe()));
+  // EACH GROUP BELOW REPORTS ITS OWN THROW, which is run.mjs's rule about a
+  // check applied one level down. These groups drive the shipped declaration,
+  // so a step that stops being a window takes mustOpen's throw out of the
+  // first of them -- and one throw out of checks() reports a single line about
+  // a hundred arms that were never reached. Measured: with Keep deleted from
+  // the revenue-category step, the whole module printed one FAIL and said
+  // nothing about the ten views whose shapes had moved.
+  const group = async (/** @type {() => Promise<any[]>} */ fn) => {
+    try {
+      return await fn();
+    } catch (e) {
+      return [{ name: `${fn.name}: the group threw before producing any check`, ok: false,
+        detail: String((e && e.stack) || e) }];
+    }
+  };
+  for (const fn of [gapAtTheCentre, categoryProbes, keylessSteps, severalParents, windowChecks,
+    objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe]) {
+    out.push(...(await group(fn)));
+  }
 
   // FIVE REFUSAL PATHS, EACH WITH ITS NEW CALLER. isDocument, understands,
   // drawableSankey and the fetch's own two failures had exactly one caller --
@@ -1734,14 +1770,22 @@ export async function checks() {
 }
 
 /**
- * A revenue category opened from the spine, each depth read back from the DOM
- * as walkChain reads the chain: the stack, the fetch, the words, the caps on
- * both of its columns, the contra rows, and the way back.
+ * A revenue category opened from the spine into its own window, each depth
+ * read back from the DOM as walkChain reads the chain: the stack, the fetch,
+ * the words, the cap on its line column, the contra rows against its centre,
+ * and the way back.
+ *
+ * THE CENTRE IS THE NODE THE READER CLICKED, and that is the subject of this
+ * whole function rather than one arm of it: a window's middle column is the
+ * mark that was opened, so the arm asserting the category is drawn at all --
+ * and drawn in the middle -- is the one that answers the owner's second
+ * finding. Every figure below is measured against {1,0,2}.
  *
  * THE FIGURES ARE THE COLUMN'S OWN, pinned in COLUMNS[].category and, where
- * the golden can state them independently of app.js -- the signed sum over
- * the drawn lines, the top eight by outflow, the net into the General Fund --
- * computed off the golden here and compared against what the client drew.
+ * the golden can state them independently of app.js -- the signed sum over the
+ * drawn rollups, the top eight by outflow, the spine's own cell for the
+ * category -- computed off the golden here and compared against what the
+ * client drew.
  */
 async function walkCategory(col) {
   const out = [];
@@ -1783,7 +1827,7 @@ async function walkCategory(col) {
   if (outcome !== "drew") {
     app.drillUp(0);
     out.push({
-      name: `${col.label} category: Property Taxes opens at {1,3} from the year's step document, and every sentence says so`,
+      name: `${col.label} category: Property Taxes opens into a window whose centre it is, and every sentence says so`,
       ok: false,
       detail: `opening Property Taxes came to "${outcome}"; ${refusals(app.dom.byId.get("main") ||
         app.dom.document.node()).map((b) => b.textContent).join(" | ")}`,
@@ -1791,58 +1835,84 @@ async function walkCategory(col) {
     return out;
   }
   const at1 = words(app);
-  const m1 = outcome === "drew" ? measure(app, app.projection) : null;
-  const tiers1 = [...new Set(app.projection.nodes.map((n) => n.tier))].sort((a, b) => a - b);
+  const m1 = measure(app, app.projection);
   const asked1 = fetch.asked.slice();
   const rows1 = body.children.length;
   const anyOpens1 = app.projection.nodes.some((n) => app.drillable(n));
+  const laid1 = app.layOut(app.projection);
+  // THE COLUMNS AS d3 PLACED THEM, left to right, read back as tiers -- not
+  // the tier numbers sorted. {1,0,2} is non-monotonic on purpose, and a sorted
+  // read would call the same chart correct whichever order it came out in.
+  const placed = [...new Set(laid1.nodes.slice().sort((a, b) => a.x0 - b.x0).map((n) => n.tier))];
+  const middle = app.projection.nodes.filter((n) => n.tier === 0).map((n) => n.id);
+  const flank = app.projection.nodes.filter((n) => n.tier === 2);
 
-  // THE CONTRA ROWS: two, both ERAF and the RPTTF reduction into the General
-  // Fund, drawn forward at their magnitude with the words for what p127
-  // printed, and NOT folded into the tail -- by magnitude they are the second
-  // and sixth largest lines of the fourteen.
+  // THE CONTRA ROWS: two, both ERAF and the RPTTF reduction, and they now run
+  // into the CENTRE rather than into a fund. pp.127-140 print each as a
+  // reduction of Property Taxes, and the link the window draws for a line is
+  // its rollup back into the category it is printed under -- so the mark the
+  // reduction is netted out of is the mark it is drawn against. Neither is
+  // folded into the tail: by magnitude they are the second and sixth largest
+  // of the fourteen.
   const contra = app.projection.links.filter((l) => l.contra);
   const contraOK = contra.length === 2 &&
-    contra.every((l) => l.target === "fund/100" && l.value_cents > 0 &&
+    contra.every((l) => l.target === property && l.value_cents > 0 &&
       l.contra === "printed as a reduction of Property Taxes") &&
     contra.map((l) => l.source).sort().join() ===
       "revenue-line/taxes/property/eraf,revenue-line/taxes/property/rpttf-reduction";
-  // THE SIGNED SUM OVER THE DRAWN LINES IS THE SPINE'S CELL. The spine prints
-  // the category once per fund group, netted; the lines are that money before
-  // netting, and a contra ribbon subtracts what it draws.
-  const drawnSum = app.projection.links.reduce((sum, l) => sum + (l.contra ? -l.value_cents : l.value_cents), 0);
+  // THE SIGNED SUM OVER THE DRAWN ROLLUPS IS THE SPINE'S CELL. The spine
+  // prints the category once per fund group, netted; the rollups are that
+  // money before netting, and a contra ribbon subtracts what it draws.
+  const intoCentre = app.projection.links.filter((l) => l.target === property);
+  const drawnSum = intoCentre.reduce((sum, l) => sum + (l.contra ? -l.value_cents : l.value_cents), 0);
+  const outOfCentre = app.projection.links.filter((l) => l.source === property);
+  const leavingSum = outOfCentre.reduce((sum, l) => sum + l.value_cents, 0);
   const spineSum = spine.links.filter((l) => l.source === property).reduce((sum, l) => sum + l.value_cents, 0);
-  // AND THE GENERAL FUND'S MARK SAYS WHAT IT IS GROSS OF. Read off the
-  // golden: every line of the category into fund/100, signed.
-  const intoGeneral = golden.links.filter((l) => l.target === "fund/100" &&
+  // AND THE CENTRE'S MARK SAYS WHAT IT IS GROSS OF. Read off the golden: every
+  // rollup of the category, signed.
+  const rollupsOf = golden.links.filter((l) => l.target === property &&
     l.source.startsWith("revenue-line/taxes/property/"));
-  const generalNet = intoGeneral.reduce((sum, l) => sum + l.value_cents, 0);
-  const generalReduced = intoGeneral.filter((l) => l.value_cents < 0).reduce((sum, l) => sum - l.value_cents, 0);
+  const centreNet = rollupsOf.reduce((sum, l) => sum + l.value_cents, 0);
+  const centreReduced = rollupsOf.filter((l) => l.value_cents < 0).reduce((sum, l) => sum - l.value_cents, 0);
   // THE SIZE OF THE MARK ITSELF, not only what its note says about it. A
-  // contra ribbon is drawn at its magnitude and so ENTERS the fund, which puts
-  // the gross ABOVE the additions rather than at them: on FY2025-26 the mark
-  // is $98,114,440, the $81,129,101 of additions plus the $16,985,339 of
-  // reductions, and the note subtracts the reductions twice to reach p127's
-  // $64,143,762. The three figures are pinned in contraNote's own comment and
-  // checked against it below, so quoting the wrong one of them fails here.
-  const generalGross = intoGeneral.reduce((sum, l) => sum + Math.abs(l.value_cents), 0);
-  const laid = app.layOut(app.projection);
-  const general = laid.nodes.find((n) => n.id === "fund/100");
-  const eraf = laid.links.find((l) => l.source.id === "revenue-line/taxes/property/eraf");
+  // contra ribbon is drawn at its magnitude and so ENTERS the category, which
+  // puts the gross ABOVE the additions rather than at them: on FY2025-26 the
+  // centre is $103,430,092, the $86,444,753 of additions plus the $16,985,339
+  // of reductions, and the note subtracts the reductions twice to reach p127's
+  // $69,459,414 -- which is the figure the two ribbons LEAVING the centre come
+  // to. The three are pinned in contraNote's own comment and checked against
+  // it below, so quoting the wrong one of them fails here.
+  const centreGross = rollupsOf.reduce((sum, l) => sum + Math.abs(l.value_cents), 0);
+  const centre = laid1.nodes.find((n) => n.id === property);
+  const eraf = laid1.links.find((l) => l.source.id === "revenue-line/taxes/property/eraf");
   // ERAF'S FIGURE OFF THE GOLDEN, NOT TYPED: it is $15,175,000 in FY2025-26
   // and $15,857,875 in FY2026-27, and a figure typed for one column would pin
   // the other's arm to the wrong year.
-  const erafPrinted = -golden.links.find((l) => l.source === "revenue-line/taxes/property/eraf").value_cents;
-  app.showTip({ target: app.dom.byId.get("chart"), clientX: 0, clientY: 0 }, general);
-  const generalTip = text(app.dom.byId.get("tooltip"));
-  app.showTip({ target: app.dom.byId.get("chart"), clientX: 0, clientY: 0 }, eraf);
-  const erafTip = text(app.dom.byId.get("tooltip"));
-  app.pin(eraf);
-  const erafPanel = text(app.dom.byId.get("detail"));
+  const erafPrinted = -golden.links.find((l) => l.source === "revenue-line/taxes/property/eraf" &&
+    l.target === property).value_cents;
+  // EACH MARK IS LOOKED UP BEFORE IT IS ASKED FOR A TOOLTIP, because a
+  // declaration that stopped drawing one would otherwise throw out of the
+  // module and report nothing about the other arms -- measured, dropping Keep
+  // from the step took the whole file's output down to one line.
+  const tipOn = (/** @type {any} */ mark) => {
+    if (!mark) return "";
+    app.showTip({ target: app.dom.byId.get("chart"), clientX: 0, clientY: 0 }, mark);
+    return text(app.dom.byId.get("tooltip"));
+  };
+  const centreTip = tipOn(centre);
+  // AND NO SUCH NOTE SITS ON THE KEPT FUND GROUP. The right-hand column is the
+  // spine's, whose cells for this category are already net of the two
+  // reductions, so a gross-of sentence there would be arithmetic about a
+  // figure nothing on this chart takes anything off.
+  const keptGeneral = laid1.nodes.find((n) => n.id === "fund-group/general");
+  const keptTip = tipOn(keptGeneral);
+  const erafTip = tipOn(eraf);
+  if (eraf) app.pin(eraf);
+  const erafPanel = eraf ? text(app.dom.byId.get("detail")) : "";
   const erafRow = body.children.find((tr) => tr.className === "contra" &&
     tr.children[0].textContent === "ERAF");
   const erafCells = erafRow ? erafRow.children.map((td) => td.textContent) : [];
-  const erafLine = laid.nodes.find((n) => n.id === "revenue-line/taxes/property/eraf");
+  const erafLine = laid1.nodes.find((n) => n.id === "revenue-line/taxes/property/eraf");
 
   // ESCAPE CLOSES IT, INNERMOST FIRST: the pin the panel check left is what
   // the first press clears, and the rung is what the second closes.
@@ -1872,56 +1942,64 @@ async function walkCategory(col) {
       `${opensUnderGroup ? "WRONGLY opens" : "does not open"}`,
   });
   out.push({
-    name: `${col.label} category: Property Taxes opens at {1,3} from the year's step document, and every sentence says so`,
-    ok: outcome === "drew" && at1.depth === 1 && !at1.drawnIsYears && tiers1.join() === "1,3" &&
+    name: `${col.label} category: Property Taxes opens into a window whose centre it is, and every sentence says so`,
+    ok: at1.depth === 1 && !at1.drawnIsYears &&
+        JSON.stringify(placed) === JSON.stringify(step.tiers) &&
+        JSON.stringify(middle) === JSON.stringify([property]) &&
+        flank.length === want.views[property][3] &&
         asked1.length === asked0.length + 1 && asked1[asked1.length - 1] === `data/${col.step}.json` &&
-        Boolean(m1) && m1.nodes === want.nodes && m1.links === want.links && m1.hairlines === want.hairlines &&
+        m1.nodes === want.nodes && m1.links === want.links && m1.hairlines === want.hairlines &&
         rows1 === want.links && at1.counts === want.counts &&
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into Property Taxes category` &&
-        at1.crumbControls.join("|") === "\u2190 All revenue categories" && at1.crumbHere === "Property Taxes category" &&
+        at1.crumbControls.join("|") === "← All revenue categories" && at1.crumbHere === "Property Taxes category" &&
         at1.hint === "This is Property Taxes category, broken into its parts. Nothing here opens further; go back to open another." &&
         at1.legend === 0 && !anyOpens1 &&
         at1.desc === "Opened into Property Taxes category. " + step.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
         unpinned.depth === 1 && back0.depth === 0 && back0.legend === 6 && back0.crumbHidden && back0.drawnIsYears,
-    detail: outcome === "drew"
-      ? `${m1.nodes} nodes, ${m1.links} links, ${m1.hairlines} under 1px (want ${want.nodes}/${want.links}/` +
-        `${want.hairlines}) at tiers ${JSON.stringify(tiers1)}; counts "${at1.counts}" (want "${want.counts}"); ` +
-        `title "${at1.title}"; breadcrumb ${JSON.stringify(at1.crumbControls)} + "${at1.crumbHere}"; hint ` +
-        `"${at1.hint}"; legend ${at1.legend}; desc ${at1.desc.startsWith("Opened into Property Taxes category. " +
-          step.description) ? "carries" : "LACKS"} the step's description; fetched ` +
-        `${JSON.stringify(asked1.slice(asked0.length))}; Escape once (pinned) leaves depth ${unpinned.depth}, twice ` +
-        `depth ${back0.depth} with legend ${back0.legend}`
-      : `opening Property Taxes came to "${outcome}"`,
+    detail: `${m1.nodes} nodes, ${m1.links} links, ${m1.hairlines} under 1px (want ${want.nodes}/${want.links}/` +
+      `${want.hairlines}) in columns ${JSON.stringify(placed)} left to right (want ` +
+      `${JSON.stringify(step.tiers)}), the middle one ${JSON.stringify(middle)} beside ${flank.length} ` +
+      `kept fund group(s); counts "${at1.counts}" (want "${want.counts}"); ` +
+      `title "${at1.title}"; breadcrumb ${JSON.stringify(at1.crumbControls)} + "${at1.crumbHere}"; hint ` +
+      `"${at1.hint}"; legend ${at1.legend}; desc ${at1.desc.startsWith("Opened into Property Taxes category. " +
+        step.description) ? "carries" : "LACKS"} the step's description; fetched ` +
+      `${JSON.stringify(asked1.slice(asked0.length))}; Escape once (pinned) leaves depth ${unpinned.depth}, twice ` +
+      `depth ${back0.depth} with legend ${back0.legend}`,
   });
   out.push({
-    name: `${col.label} category: the two contra rows are drawn as reductions, the lines sum to the spine's cell, and the General Fund's mark says what it is gross of`,
-    ok: contraOK && drawnSum === spineSum && Boolean(general) && Boolean(eraf) &&
-        general.value === generalGross && generalTip.includes(fmtDollars(generalGross)) &&
-        generalTip.includes(fmtDollars(generalReduced)) && generalTip.includes(fmtDollars(generalNet)) &&
-        generalTip.includes("\u25c7 our reading") && quotesFigures(app, col, generalGross, generalReduced, generalNet) &&
-        erafPrinted > 0 && erafTip.includes("\u2212" + fmtDollars(erafPrinted)) &&
+    name: `${col.label} category: the two contra rows run into the centre, whose mark is gross of them and says what it nets to`,
+    ok: contraOK && drawnSum === spineSum && leavingSum === spineSum && Boolean(centre) && Boolean(eraf) &&
+        centreGross === want.gross && centreReduced === want.reduced && centreNet === want.net &&
+        centre.value === centreGross && centreTip.includes(fmtDollars(centreGross)) &&
+        centreTip.includes(fmtDollars(centreReduced)) && centreTip.includes(fmtDollars(centreNet)) &&
+        centreTip.includes("◇ our reading") && quotesFigures(app, col, centreGross, centreReduced, centreNet) &&
+        Boolean(keptGeneral) && !keptTip.includes("printed as reductions") &&
+        erafPrinted > 0 && erafTip.includes("−" + fmtDollars(erafPrinted)) &&
         erafTip.includes("reduction") && erafTip.includes("printed as a reduction of Property Taxes") &&
         erafPanel.includes("printed as a reduction of Property Taxes") &&
-        erafCells.length > 0 && erafCells[2] === "\u2212" + fmtDollars(erafPrinted) &&
+        erafCells.length > 0 && erafCells[2] === "−" + fmtDollars(erafPrinted) &&
         erafCells[4] === "printed as a reduction of Property Taxes" &&
         app.linkClass(eraf) === "link contra" && Boolean(erafLine) && erafLine.value === erafPrinted,
     detail: `${contra.length} contra ribbon(s): ${contra.map((l) => l.source.split("/").pop() + " " +
-        l.value_cents + " (" + l.contra + ")").join(", ")}; signed sum over the drawn lines ${drawnSum}, the ` +
-      `spine's cell ${spineSum}; the General Fund's mark is sized at ${general ? general.value : "nothing"} ` +
-      `(want ${generalGross}) and app.js ${quotesFigures(app, col, generalGross, generalReduced, generalNet) ? "quotes" : "MISQUOTES"} that; ` +
-      `its tooltip ${generalTip.includes(fmtDollars(generalNet)) ?
-        "names" : "DOES NOT name"} ${fmtDollars(generalNet)} net of ${fmtDollars(generalReduced)}; ERAF's tooltip ` +
-      `${erafTip.includes("\u2212") ? "carries the sign" : "LACKS the sign"} and ` +
+        l.value_cents + " into " + l.target + " (" + l.contra + ")").join(", ")}; signed sum into the centre ` +
+      `${drawnSum} and out of it ${leavingSum}, the spine's cell ${spineSum}; the centre is sized at ` +
+      `${centre ? centre.value : "nothing"} (want ${want.gross}) and app.js ` +
+      `${quotesFigures(app, col, centreGross, centreReduced, centreNet) ? "quotes" : "MISQUOTES"} that; ` +
+      `its tooltip ${centreTip.includes(fmtDollars(centreNet)) ?
+        "names" : "DOES NOT name"} ${fmtDollars(centreNet)} net of ${fmtDollars(centreReduced)}, and the kept ` +
+      `General Fund's ${keptTip.includes("printed as reductions") ? "WRONGLY carries" : "carries no"} ` +
+      `reductions note; ERAF's tooltip ` +
+      `${erafTip.includes("−") ? "carries the sign" : "LACKS the sign"} and ` +
       `${erafTip.includes("printed as a reduction of Property Taxes") ? "the sentence" : "NOT the sentence"}; ` +
       `its table row reads ${JSON.stringify(erafCells.slice(0, 5))}; class "${eraf ? app.linkClass(eraf) : ""}"`,
   });
 
-  // THE CAP ON EACH OF THE CATEGORY'S COLUMNS, in its own noun. Charges for
-  // Services prints 19 lines and lands in 13 funds, so both columns fold; Use
-  // of Money and Property prints 7 and lands in 34, so only the fund column
-  // does; Fines & Forfeitures prints 2 into 1, so neither does and the fund
-  // column is a column of one, which columnShare says nothing about.
+  // THE CAP ON THE CATEGORY'S ONE FOLDABLE COLUMN. Charges for Services prints
+  // 19 lines, so the line column folds; Use of Money and Property prints 7
+  // into 5 fund groups and Fines & Forfeitures 2 into 1, so neither folds
+  // anything -- the fund column that used to fold for both of them is gone,
+  // and the right-hand column is the spine's six groups.
   const capsOf = async (/** @type {string} */ id) => {
     await at(app, id);
     const aggs = app.projection.nodes.filter((n) => app.isAggregate(n.id));
@@ -1929,31 +2007,34 @@ async function walkCategory(col) {
     return { aggs, byTier, m: measure(app, app.projection), laid: app.layOut(app.projection) };
   };
   const charges = await capsOf("revenue/charges-for-services");
-  // TOP EIGHT BY OUTFLOW, OFF THE GOLDEN, and what inflow would have kept: a
-  // line takes in nothing, so under inflow every line ties at zero and the
-  // eight kept are the first eight ids.
+  // TOP EIGHT BY OUTFLOW OVER THE LINKS THIS VIEW DRAWS, off the golden: a
+  // line's rollups into its own category, which is its whole outflow here.
+  // What inflow would have kept is the contrast that makes the arm mean
+  // something -- a line takes in nothing, so under inflow every line ties at
+  // zero and the eight kept are the first eight ids.
   const chargeLines = golden.nodes.filter((n) => n.parent === "revenue/charges-for-services").map((n) => n.id);
   const outflow = new Map(chargeLines.map((id) => [id, 0]));
-  for (const l of golden.links) if (outflow.has(l.source)) outflow.set(l.source, outflow.get(l.source) + Math.abs(l.value_cents));
+  for (const l of golden.links) {
+    if (outflow.has(l.source) && l.target === "revenue/charges-for-services") {
+      outflow.set(l.source, outflow.get(l.source) + Math.abs(l.value_cents));
+    }
+  }
   const byOutflow = chargeLines.slice().sort((a, b) => outflow.get(b) - outflow.get(a) || (a < b ? -1 : 1)).slice(0, 8);
   const byInflow = chargeLines.slice().sort().slice(0, 8);
   const keptLines = app.projection.nodes.filter((n) => n.tier === 1 && !app.isAggregate(n.id)).map((n) => n.id);
   const lineAgg = charges.byTier[1];
-  const fundAgg = charges.byTier[3];
   out.push({
-    name: `${col.label} category: Charges for Services folds both its columns, each tail in its own noun and parented where it belongs`,
-    ok: charges.aggs.length === 2 && Boolean(lineAgg) && Boolean(fundAgg) &&
-        lineAgg.id === app.aggregateID(1) && fundAgg.id === app.aggregateID(3) &&
-        lineAgg.label === want.chargesLineTail && fundAgg.label === want.chargesFundTail &&
-        lineAgg.parent === "revenue/charges-for-services" && fundAgg.parent === "" &&
-        [lineAgg, fundAgg].every((a) => a.derived === true && a.rationale !== "" && a.source_note !== "" &&
-          Array.isArray(a.folds) && a.folds.length === Number(a.label.split(" ")[0])) &&
+    name: `${col.label} category: Charges for Services folds its line column alone, the tail in the step's own noun and parented to the category`,
+    ok: charges.aggs.length === 1 && Boolean(lineAgg) && lineAgg.id === app.aggregateID(1) &&
+        lineAgg.label === want.chargesLineTail &&
+        lineAgg.parent === "revenue/charges-for-services" &&
+        lineAgg.derived === true && lineAgg.rationale !== "" && lineAgg.source_note !== "" &&
+        Array.isArray(lineAgg.folds) && lineAgg.folds.length === Number(lineAgg.label.split(" ")[0]) &&
         keptLines.slice().sort().join() === byOutflow.slice().sort().join() &&
         byInflow.slice().sort().join() !== byOutflow.slice().sort().join() &&
         charges.m.links === want.chargesLinks,
-    detail: charges.aggs.length === 2
-      ? `tier 1 "${lineAgg.label}" (want "${want.chargesLineTail}") parent ${JSON.stringify(lineAgg.parent)}, ` +
-        `tier 3 "${fundAgg.label}" (want "${want.chargesFundTail}") parent ${JSON.stringify(fundAgg.parent)}; ` +
+    detail: charges.aggs.length === 1
+      ? `tier 1 "${lineAgg.label}" (want "${want.chargesLineTail}") parent ${JSON.stringify(lineAgg.parent)}; ` +
         `${charges.m.links} ribbons (want ${want.chargesLinks}); the eight lines kept are the top eight by ` +
         `outflow ${keptLines.slice().sort().join() === byOutflow.slice().sort().join() ? "yes" : "NO"}, and ` +
         `inflow would have kept ${byInflow.filter((id) => !byOutflow.includes(id)).length} other(s)`
@@ -1961,64 +2042,144 @@ async function walkCategory(col) {
   });
   const money = await capsOf("revenue/use-of-money-and-property");
   const fines = await capsOf("revenue/fines-and-forfeitures");
-  const finesFund = fines.laid.nodes.find((n) => n.tier === 3);
+  const finesFlank = fines.laid.nodes.find((n) => n.tier === 2);
+  const finesCentre = fines.laid.nodes.find((n) => n.tier === 0);
   const finesLine = fines.laid.nodes.find((n) => n.tier === 1);
   out.push({
-    name: `${col.label} category: the fund cap engages alone on Use of Money and Property and neither cap on Fines & Forfeitures, whose column of one gets no share`,
-    ok: money.aggs.length === 1 && money.aggs[0].tier === 3 && money.aggs[0].label === want.moneyFundTail &&
-        money.aggs[0].parent === "" && money.m.links === want.moneyLinks &&
-        fines.aggs.length === 0 && fines.m.links === 2 && fines.m.nodes === 3 &&
-        Boolean(finesFund) && app.columnShare(finesFund) === "" &&
-        Boolean(finesLine) && app.columnShare(finesLine).startsWith("\u25c7 our "),
-    detail: `Use of Money: ${money.aggs.length} aggregate(s) ${JSON.stringify(money.aggs.map((a) => a.label + " parent " +
-        JSON.stringify(a.parent)))} (want "${want.moneyFundTail}"), ${money.m.links} ribbons (want ${want.moneyLinks}); ` +
-      `Fines: ${fines.aggs.length} aggregate(s), ${fines.m.links} ribbons over ${fines.m.nodes} nodes; the fund's ` +
-      `share reads ${JSON.stringify(finesFund ? app.columnShare(finesFund) : "")} and a line's ` +
+    name: `${col.label} category: neither cap engages on Use of Money and Property or Fines & Forfeitures, and no column of one claims a share`,
+    ok: money.aggs.length === 0 && money.m.links === want.moneyLinks &&
+        fines.aggs.length === 0 && fines.m.links === 3 && fines.m.nodes === 4 &&
+        Boolean(finesFlank) && app.columnShare(finesFlank) === "" &&
+        Boolean(finesCentre) && app.columnShare(finesCentre) === "" &&
+        Boolean(finesLine) && app.columnShare(finesLine).startsWith("◇ our "),
+    detail: `Use of Money: ${money.aggs.length} aggregate(s), ${money.m.links} ribbons (want ` +
+      `${want.moneyLinks}); Fines: ${fines.aggs.length} aggregate(s), ${fines.m.links} ribbons over ` +
+      `${fines.m.nodes} nodes; the one kept fund group's share reads ` +
+      `${JSON.stringify(finesFlank ? app.columnShare(finesFlank) : "")}, the centre's ` +
+      `${JSON.stringify(finesCentre ? app.columnShare(finesCentre) : "")} and a line's ` +
       `${JSON.stringify(finesLine ? app.columnShare(finesLine) : "")}`,
   });
 
-  // EVERY CATEGORY OPENS, IN BOTH YEARS, at the pinned shape. Use of Money is
-  // the one that did not until the fold merged per kind: its tail of 26 funds
-  // takes the line's money as an internal service charge in five of them.
+  // EVERY CATEGORY OPENS, IN BOTH YEARS, at the pinned shape -- and at the
+  // SAME shape in both, which is a property of the right-hand column being
+  // fund GROUPS: fund/207 prints a dash in FY2026-27 and that moves a fund
+  // without moving the group it belongs to.
   const shapes = {};
   const refused = [];
-  const drewRollup = [];
+  const balances = [];
+  const ownRollups = [];
   for (const id of Object.keys(want.views)) {
     app.drillUp(0);
     const o = await openInto(app, id);
     if (o !== "drew") { refused.push(id + ": " + o); continue; }
-    const m = measure(app, app.projection);
-    shapes[id] = [m.nodes, m.links, m.hairlines];
-    if (rollupsIn(app.projection)) drewRollup.push(id);
+    const drawn = app.projection;
+    const m = measure(app, drawn);
+    shapes[id] = [m.nodes, m.links, m.hairlines, drawn.nodes.filter((n) => n.tier === 2).length];
+    // THE CENTRE BALANCES, SIGNED, AND THAT IS THE IDENTITY THE WINDOW DRAWS.
+    // The left half is pp.127-140's rollups into the category and the right is
+    // the spine's own cells for it; markGap reads exactly this difference, so
+    // a category that stopped tying would be a gap mark on a step that
+    // declares none -- which throws rather than drawing.
+    const into = drawn.links.filter((l) => l.target === id)
+      .reduce((sum, l) => sum + (l.contra ? -l.value_cents : l.value_cents), 0);
+    const outOf = drawn.links.filter((l) => l.source === id).reduce((sum, l) => sum + l.value_cents, 0);
+    const cell = spine.links.filter((l) => l.source === id).reduce((sum, l) => sum + l.value_cents, 0);
+    if (into !== cell || outOf !== cell) balances.push(`${id}: ${into} in, ${outOf} out, spine ${cell}`);
+    // AND EVERY ROLLUP IT DRAWS IS ITS OWN CATEGORY'S. A window that kept
+    // another category's rollup would draw a ribbon into a mark that is not on
+    // the chart, which rollupsIn alone cannot see.
+    if (drawn.links.some((l) => l.source.startsWith("revenue-line/") && l.target !== id)) ownRollups.push(id);
   }
   const asDrawn = JSON.stringify(shapes, Object.keys(shapes).sort());
   const asPinned = JSON.stringify(want.views, Object.keys(want.views).sort());
-  // AND THE TWO-KIND TAIL IS TWO RIBBONS FROM ONE LINE, each its own kind.
+  // AND THE TWO-KIND LINE IS TWO RIBBONS FROM ONE ROW, each its own kind.
+  // pp.127-140 print 2 of their 93 rows reaching the five Internal Service
+  // Funds as an internal service charge and the rest of the city as external
+  // revenue, and internal/project publishes a rollup per (row, kind) for
+  // exactly that reason, so the pair carrying both kinds is the printed ROW
+  // itself, which is where the document puts it.
   await at(app, "revenue/use-of-money-and-property");
-  const intoTail = app.projection.links.filter((l) => l.target === app.aggregateID(3) &&
-    l.source === "revenue-line/use-of-money-and-property/use-of-money-and-prop");
-  const tailKinds = intoTail.map((l) => l.kind).sort();
+  const twoKind = app.projection.links.filter((l) =>
+    l.source === "revenue-line/use-of-money-and-property/use-of-money-and-prop" &&
+    l.target === "revenue/use-of-money-and-property");
+  const tailKinds = twoKind.map((l) => l.kind).sort();
   out.push({
-    name: `${col.label} category: all ten categories open at their pinned shapes, and a tail spanning two kinds draws one ribbon per kind`,
+    name: `${col.label} category: all ten categories open at their pinned shapes, and a row spanning two kinds draws one ribbon per kind`,
     ok: refused.length === 0 && asDrawn === asPinned && tailKinds.join() === "external,internal_service",
     detail: (refused.length ? `refused: ${refused.join("; ")}; ` : "") +
       (asDrawn === asPinned ? `all ${Object.keys(shapes).length} at the pinned shapes` : `drawn ${asDrawn}, want ${asPinned}`) +
-      `; the Use of Money line reaches the fund tail ${intoTail.length} time(s), kinds ${JSON.stringify(tailKinds)}`,
+      `; the Use of Money row reaches its category ${twoKind.length} time(s), kinds ${JSON.stringify(tailKinds)}`,
   });
-  // AND THE ROLLUP THAT MAKES THE CATEGORY A CENTRE IS DRAWN IN NONE OF THEM.
-  // {1,3} draws the category nowhere -- filterFromNode's own sentence -- so the
-  // (1,0) link into it has a source in the subtree and an end with no column,
-  // and scoped drops it quietly. The shapes above would not move if it were
-  // kept as a self-loop on a line; this is what says it is not kept at all.
   out.push({
-    name: `${col.label} category: none of the ten views draws a line's rollup into its category`,
-    ok: rollupsIn(col.golden()) === col.rollups && drewRollup.length === 0 &&
+    name: `${col.label} category: every window's centre takes in what it sends out, and that is the spine's own cell for it`,
+    ok: refused.length === 0 && balances.length === 0 && ownRollups.length === 0 &&
         Object.keys(shapes).length === Object.keys(want.views).length,
-    detail: `${col.step} carries ${rollupsIn(col.golden())} rollup link(s) (want ${col.rollups}); ` +
-      `${Object.keys(shapes).length} view(s) drawn, of which ${drewRollup.length} carry one` +
-      (drewRollup.length ? `: ${drewRollup.join(", ")}` : ""),
+    detail: (balances.length
+      ? `${balances.length} centre(s) do not tie: ${balances.join("; ")}`
+      : `all ${Object.keys(shapes).length} centres tie to the spine's cell to the cent, signed`) +
+      (ownRollups.length ? `; ${ownRollups.join(", ")} draw a rollup into another category` : ""),
   });
   app.drillUp(0);
+  return out;
+}
+
+/**
+ * markGap's own arithmetic over the category window, which declares no gap:
+ * the centre balances, so nothing is drawn, and a centre that did not would
+ * throw rather than leave the difference as node height.
+ *
+ * THE STEP DECLARES NO GAP AND SO markGap RETURNS AT ITS FIRST LINE -- which
+ * is exactly why the claim "the centre balances" needs checking somewhere the
+ * gap reader can see. This splices an empty gap map onto the shipped step,
+ * which is the declaration a step would carry the day one of these cells
+ * drifted, and then asks markGap the question it would ask.
+ *
+ * THE SIDES IT COMPARES ARE SIGNED, AND THAT IS THE WHOLE OF WHY THIS PASSES.
+ * A reduction is drawn forward at its magnitude, so a Property Taxes centre
+ * measured after markContra takes $103,430,092 and sends $69,459,414 -- the
+ * shape markGap exists to refuse. shapeFor runs it BEFORE markContra, on the
+ * figures pp.127-140 print, and the mutation below is that ordering: with the
+ * spine's cell for the category moved by a dollar, the same call refuses by
+ * name.
+ */
+async function gapAtTheCentre() {
+  const out = [];
+  const CENTRE = "revenue/taxes/property";
+  const withGaps = (/** @type {any} */ config) => {
+    config.steps = config.steps.map((s) => (s.key === "revenue-category"
+      ? Object.assign({}, s, { gaps: {} }) : s));
+  };
+  for (const col of COLUMNS) {
+    const { app } = await opened(null, withGaps, col);
+    const drew = await openInto(app, CENTRE);
+    const marks = drew === "drew" ? app.projection.nodes.filter((n) => app.isGap(n.id)) : [];
+    // THE MUTATION, RUN RATHER THAN DESCRIBED: the spine's own cell for the
+    // category moved by one dollar makes the kept flank disagree with the
+    // rollups, and the step names no reason for it.
+    const { app: bentApp, main: bentMain } = await opened({
+      [`data/${col.stem}.json`]: {
+        doc: (() => {
+          const doc = col.spine();
+          doc.nodes.find((n) => n.id === "fund-group/general").label = "General Fund group";
+          doc.nodes.find((n) => n.id === CENTRE).label = "Property Taxes category";
+          for (const n of doc.nodes) if (n.id.startsWith("expenditure/")) n.label = n.label + " category";
+          const link = doc.links.find((l) => l.source === CENTRE);
+          link.value_cents += 100;
+          return doc;
+        })(),
+      },
+    }, withGaps, col);
+    const refused = await openInto(bentApp, CENTRE);
+    const said = refusals(bentMain).map((b) => b.textContent).join(" | ");
+    out.push({
+      name: `${col.label} category: the window's centre balances under markGap's own arithmetic, and a cent of drift is refused by name`,
+      ok: drew === "drew" && marks.length === 0 && refused === "failed" &&
+        said.includes("that no declaration on this step accounts for"),
+      detail: `with an empty gap map declared the click came to "${drew}" and the centre drew ` +
+        `${marks.length} gap mark(s); with the spine's cell for it moved by $1.00 it came to ` +
+        `"${refused}"` + (said ? `, saying "${said}"` : " and said nothing"),
+    });
+  }
   return out;
 }
 
@@ -2158,33 +2319,27 @@ async function keylessSteps() {
  * ------------------------------------------------------------------ */
 
 /**
- * A window declaration data.go does not carry, driven over the committed
- * documents.
+ * The shipped category window, plus the second edge into it that data.go does
+ * not carry: a fund group reachable from inside that window as well as from
+ * the spine.
  *
- * A FIXTURE THE PACKAGER WOULD ACCEPT, AND NOT ONE IT WOULD REFUSE. No step in
- * pkg/cmd/export/data.go keeps a flank yet, so nothing on the site exercises
- * windowFor -- and shipping the shaping with nothing able to see it go wrong is
- * what AGENTS.md's node boundary refuses. So the declaration is written here,
- * in the shape export.validateSteps accepts: three columns with the opened tier
- * in the middle, the kept tier at the end its adjacency names, and every
- * `after` naming an EARLIER step. seam.mjs drives the Go-side parser over
- * literals data.go does not contain for the same reason.
+ * THE FIRST STEP IS THE SITE'S OWN, read out of data.go rather than spelled
+ * again. It was a fixture until 2026-09-13, because no shipped step kept a
+ * flank; the revenue-category step keeps one now, so a copy here would be the
+ * thing this file exists not to do -- checking the copy while the page drew
+ * something else.
  *
- * THE CATEGORY KEEPS THE SPINE'S FUND GROUPS TO ITS RIGHT, which is the state
- * the owner asked for: clicking Property Taxes leaves Property Taxes on screen,
- * with its printed lines to the left and the groups its money reaches to the
- * right. Tiers {1,0,2}: the kept tier 2 is drawn to the RIGHT of the opened
- * tier 0 in the spine's own order {0,2,5}, so the window pushes left and the
- * kept flank is the last column of the step's list.
+ * THE SECOND IS STILL A FIXTURE, and it is what these checks are for: the
+ * chart on screen inside a window is not the spine, so a step reached from it
+ * exercises the rung's recorded chart, carriedSource by stem, and isCarried's
+ * gate two rungs down. data.go's fund-group step names only the spine, so
+ * nothing on the site slides twice yet, and shipping the shaping with nothing
+ * able to see it go wrong is what AGENTS.md's node boundary refuses. It is
+ * written in the shape export.validateSteps accepts: every `after` naming an
+ * EARLIER step, and the kept tier at the end its adjacency names.
  */
 const WINDOW_STEPS = [
-  {
-    key: "revenue-category", after: [""], from: 0, role: "revenue_source",
-    projection: "fund-flows", keep: [2], tiers: [1, 0, 2],
-    caps: [{ tier: 1, cap: 8, tail: "lines" }],
-    back: "All revenue categories", tail: "lines",
-    description: "A category, its printed lines and the groups its money reaches.",
-  },
+  PAGE.steps[2],
   {
     // REACHABLE FROM TWO CHARTS, which is what Keep is for: the same fund
     // group opens from the spine and from inside the category's window, and
@@ -2853,10 +3008,11 @@ async function categoryProbes() {
     ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
       fact_ids: [], locators: [], derived: false });
 
-  // A CATEGORY OF ONE LINE STILL OPENS -- it shows which funds carry it --
-  // and its line column is a column of one, so the line gets no share chip
-  // while the two funds beside it do. Built rather than found: no adopted
-  // column prints a category with a single distinct label.
+  // A CATEGORY OF ONE LINE STILL OPENS -- it shows which groups carry it --
+  // and TWO of that window's three columns hold one mark: the line and the
+  // centre get no share chip while the two fund groups beside them do. Built
+  // rather than found: no adopted column prints a category with a single
+  // distinct label.
   {
     const doc = Object.assign({}, goldenFundFlows());
     doc.nodes = doc.nodes.concat([
@@ -2866,6 +3022,10 @@ async function categoryProbes() {
     ]);
     doc.links = doc.links.concat([
       link("revenue-line/probe/only", "fund/100", 700), link("revenue-line/probe/only", "fund/200", 300),
+      // THE ROLLUP IS WHAT THE WINDOW DRAWS. A category is the target of its
+      // lines' (1,0) links and the source of nothing this document prints, so
+      // a probe category without one opens into an empty left half.
+      link("revenue-line/probe/only", "revenue/probe", 1000),
     ]);
     const spine = goldenGraph();
     spine.nodes = spine.nodes.concat([
@@ -2878,31 +3038,35 @@ async function categoryProbes() {
     const one = await openInto(app, "revenue/probe");
     const laid = one === "drew" ? app.layOut(app.projection) : null;
     const only = laid ? laid.nodes.find((n) => n.id === "revenue-line/probe/only") : null;
-    const funds = laid ? laid.nodes.filter((n) => n.tier === 3) : [];
+    const groups = laid ? laid.nodes.filter((n) => n.tier === 2) : [];
+    const probeCentre = laid ? laid.nodes.find((n) => n.id === "revenue/probe") : null;
     // READ WHILE THIS VIEW IS THE ONE LAID OUT. columnShare totals the column
     // of the last layOut, and after drillUp below that is the spine's --
     // measured: asked afterwards, the line read "<0.1% of this column",
     // its 1000 cents against the spine's revenue column.
     const onlyShare = only ? app.columnShare(only) : "";
-    const oneShares = funds.map((f) => app.columnShare(f));
+    const centreShare = probeCentre ? app.columnShare(probeCentre) : "";
+    const oneShares = groups.map((f) => app.columnShare(f));
     app.drillUp(0);
     const none = await openInto(app, "revenue/empty");
     const banners = refusals(main).map((b) => b.textContent);
     let direct = "";
     try {
-      app.filterFromNode(doc, "revenue/empty", [1, 3]);
+      app.filterToNode(doc, "revenue/empty", [1, 0]);
     } catch (e) {
       direct = String((e && e.message) || e);
     }
     out.push({
       name: "a category of one line opens with no share on the line, and one with none is refused by name rather than handed to d3-sankey empty",
-      ok: one === "drew" && Boolean(only) && onlyShare === "" && funds.length === 2 &&
+      ok: one === "drew" && Boolean(only) && onlyShare === "" &&
+          Boolean(probeCentre) && centreShare === "" && groups.length === 2 &&
           oneShares.every((sh) => sh.startsWith("\u25c7 our ")) &&
           none === "failed" && app.drilled.length === 0 && banners.length === 1 &&
-          banners[0].includes("nothing flows between tiers 1, 3 for node revenue/empty") &&
-          direct.includes("nothing flows between tiers 1, 3 for node revenue/empty"),
-      detail: `one line: ${one}, the line's share reads ${JSON.stringify(onlyShare)} and ` +
-        `its ${funds.length} funds' ${JSON.stringify(oneShares)}; no lines: ${none} with ${banners.length} ` +
+          banners[0].includes("nothing flows between tiers 1, 0 for node revenue/empty") &&
+          direct.includes("nothing flows between tiers 1, 0 for node revenue/empty"),
+      detail: `one line: ${one}, the line's share reads ${JSON.stringify(onlyShare)}, the centre's ` +
+        `${JSON.stringify(centreShare)} and ` +
+        `its ${groups.length} fund groups' ${JSON.stringify(oneShares)}; no lines: ${none} with ${banners.length} ` +
         `banner(s)${banners.length ? ` reading "${banners[0]}"` : ""}; filterFromNode directly: ` +
         `${JSON.stringify(direct)}`,
     });

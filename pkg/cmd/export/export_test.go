@@ -1244,21 +1244,21 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Key:             "revenue-category",
 			After:           []string{""},
 			From:            0,
-			Side:            export.SideSource,
 			Role:            "revenue_source",
 			Projection:      project.FundFlowsProjection,
 			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-			Tiers:           []int{1, 3},
-			Caps:            []export.TierCap{{Tier: 1, Cap: 8, Tail: "lines"}, {Tier: 3, Cap: 8, Tail: "funds"}},
+			Keep:            []int{2},
+			Tiers:           []int{1, 0, 2},
+			Caps:            []export.TierCap{{Tier: 1, Cap: 8}},
 			Back:            "All revenue categories",
 			Tail:            "lines",
 			Description: "The lines Budget Book pp.127-140 print under this revenue " +
-				"category, on the left, flow into the funds that receive them, on the " +
-				"right \u2014 every fund in the city that carries one, whichever group it " +
-				"belongs to, rescaled to the category's total. A line the schedule prints " +
-				"as a reduction is drawn in red at its printed size and named as one, and " +
-				"a fund's figure on this chart is the sum of every ribbon into it before " +
-				"those reductions.",
+				"category are on the left; the fund groups its money reaches are on the " +
+				"right, as the citywide chart draws them. The category itself is the mark " +
+				"in the middle, and the two sides of it are the same figure read from two " +
+				"schedules. A line the schedule prints as a reduction is drawn in red at " +
+				"its printed size and named as one, so the category's own mark is the sum " +
+				"of every ribbon into it before those reductions.",
 		},
 		{
 			Key:             "object-category",

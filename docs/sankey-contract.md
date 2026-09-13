@@ -268,11 +268,13 @@ which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
 neither a fund nor a department axis.
 
 **All three of the spine's drawn columns open.** `index.html` declares a tree of
-steps in `views()`, not a chain: the six tier-2 fund groups and the ten tier-0
-revenue categories open into `fund-flows` for the same fiscal year, a clicked
-General Fund division opens into its object categories, and the four tier-5
-`expenditure/` nodes open into `department-spending` — the fund groups that fund
-the category, the category itself, and the divisions that spend it. The two
+steps in `views()`, not a chain: the six tier-2 fund groups open into
+`fund-flows` for the same fiscal year and the ten tier-0 revenue categories open
+into a WINDOW of it — the lines that document prints under the category, the
+category itself, and the spine's own fund groups for it — a clicked General Fund
+division opens into its object categories, and the four tier-5 `expenditure/`
+nodes open into `department-spending` — the fund groups that fund the category,
+the category itself, and the divisions that spend it. The two
 tier-0 and three tier-5 nodes that are flow ENDS rather than containers do not
 open, and the `Role` on those two steps is what closes them. What those rungs draw, and how
 the year is joined, is stated in `docs/general-fund-drilldown-contract.md`.

@@ -677,34 +677,47 @@ func views(built result) []export.View {
 			{
 				// A SECOND EDGE OUT OF THE SPINE'S CHART, not a third rung of
 				// the chain: After carries "" like the fund-group step's, and
-				// the two are told apart by From. The side is declared because the
-				// category is the node its links come FROM, and the role
-				// because transfers/in and fund-balance/draw share tier 0 with
-				// the categories and open into nothing pp.127-140 print.
+				// the two are told apart by From. The role is declared because
+				// transfers/in and fund-balance/draw share tier 0 with the
+				// categories and open into nothing pp.127-140 print.
 				Key:             "revenue-category",
 				After:           []string{""},
 				From:            0,
-				Side:            export.SideSource,
 				Role:            "revenue_source",
 				Projection:      years[export.PrimaryProjection],
 				YearProjections: years,
-				Tiers:           []int{1, 3},
-				// BOTH COLUMNS FOLD ON THE COMMITTED CORPUS, each in its own
-				// noun. Measured over both goldens: five categories print more
-				// than nine nonzero lines (charges-for-services prints 19) and
-				// four land in more than nine funds (use-of-money-and-property
-				// in 34), so a cap of 8 engages on each side and neither tail
-				// can borrow the other's word.
-				Caps: []export.TierCap{{Tier: 1, Cap: 8, Tail: "lines"}, {Tier: 3, Cap: 8, Tail: "funds"}},
+				// A WINDOW, AND THE CATEGORY IS ITS CENTRE. The node the
+				// reader clicked stays on the screen, in the middle column,
+				// with the lines pp.127-140 print under it on one side and the
+				// fund groups the spine draws it reaching on the other -- and
+				// the two sides of that mark are one figure read from two
+				// schedules. Tier 2 is to the RIGHT of tier 0 in the spine's
+				// own {0,2,5}, so the kept flank is the last column here and
+				// the window pushes left; validateSteps checks that adjacency
+				// against the spine's declared order rather than the tier
+				// numbers.
+				Keep:  []int{2},
+				Tiers: []int{1, 0, 2},
+				// ONE COLUMN FOLDS NOW, WHERE TWO DID, AND THE CAP TAKES
+				// THE STEP'S OWN NOUN. Measured over both goldens: five of
+				// the ten categories print more than nine lines --
+				// charges-for-services 19, other taxes 15, property taxes and
+				// licenses and permits 14 each, miscellaneous 11 -- so the
+				// line cap engages exactly where it did before. The fund
+				// column it also capped is gone: the right-hand column is the
+				// spine's own fund groups, and no category reaches more than
+				// five of the six. With one cap left there is nothing for a
+				// second noun to count, so Tail is not respelled here.
+				Caps: []export.TierCap{{Tier: 1, Cap: 8}},
 				Back: "All revenue categories",
 				Tail: "lines",
 				Description: "The lines Budget Book pp.127-140 print under this revenue " +
-					"category, on the left, flow into the funds that receive them, on the " +
-					"right \u2014 every fund in the city that carries one, whichever group it " +
-					"belongs to, rescaled to the category's total. A line the schedule prints " +
-					"as a reduction is drawn in red at its printed size and named as one, and " +
-					"a fund's figure on this chart is the sum of every ribbon into it before " +
-					"those reductions.",
+					"category are on the left; the fund groups its money reaches are on the " +
+					"right, as the citywide chart draws them. The category itself is the mark " +
+					"in the middle, and the two sides of it are the same figure read from two " +
+					"schedules. A line the schedule prints as a reduction is drawn in red at " +
+					"its printed size and named as one, so the category's own mark is the sum " +
+					"of every ribbon into it before those reductions.",
 			},
 		}
 	}
