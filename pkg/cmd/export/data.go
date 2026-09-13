@@ -575,6 +575,7 @@ func views(built result) []export.View {
 				// this pair's order in the literal carries nothing and a
 				// third step could open from either chart.
 				Key:             "fund-group",
+				After:           []string{""},
 				From:            2,
 				Projection:      years[export.PrimaryProjection],
 				YearProjections: years,
@@ -624,7 +625,7 @@ func views(built result) []export.View {
 			},
 			{
 				Key:   "division",
-				After: "fund-group",
+				After: []string{"fund-group"},
 				From:  4,
 				Tiers: []int{4, 5},
 				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
@@ -636,12 +637,13 @@ func views(built result) []export.View {
 			},
 			{
 				// A SECOND EDGE OUT OF THE SPINE'S CHART, not a third rung of
-				// the chain: After is "" like the fund-group step's, and the
-				// two are told apart by From. The side is declared because the
+				// the chain: After carries "" like the fund-group step's, and
+				// the two are told apart by From. The side is declared because the
 				// category is the node its links come FROM, and the role
 				// because transfers/in and fund-balance/draw share tier 0 with
 				// the categories and open into nothing pp.127-140 print.
 				Key:             "revenue-category",
+				After:           []string{""},
 				From:            0,
 				Side:            export.SideSource,
 				Role:            "revenue_source",

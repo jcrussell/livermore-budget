@@ -231,11 +231,11 @@ export async function checks() {
     const lit = (body) => `\t\tspine.Steps = []export.DrillStep{\n${body}\n\t\t}\n`;
     const step = (key, after, from, tiers, cap) =>
       `\t\t\t{\n\t\t\t\tKey:   ${JSON.stringify(key)},\n` +
-      `\t\t\t\tAfter: ${JSON.stringify(after)},\n` +
+      `\t\t\t\tAfter: []string{${after.map((a) => JSON.stringify(a)).join(", ")}},\n` +
       `\t\t\t\tFrom:  ${from},\n\t\t\t\tTiers: []int{${tiers}},\n` +
       `\t\t\t\tCaps:  []export.TierCap{{Tier: ${cap[0]}, Cap: ${cap[1]}}},\n\t\t\t},`;
-    const two = lit(step("group", "", 2, "0, 3, 4", [3, 8]) + "\n" +
-      step("division", "group", 4, "4, 5", [5, 8]));
+    const two = lit(step("group", [""], 2, "0, 3, 4", [3, 8]) + "\n" +
+      step("division", ["group"], 4, "4, 5", [5, 8]));
     const reflowed = two.replace("\t\t\t{\n\t\t\t\tKey:   \"division\",", "\t\t\t{Key: \"division\",");
     const noFrom = two.replace("\t\t\t\tFrom:  4,\n", "");
     // A STEP WITH NO KEY IS A STEP THIS PARSE DID NOT READ. The Go type
@@ -250,14 +250,14 @@ export async function checks() {
     // chain the site does not ship. What catches it is the entry count
     // disagreeing with the field counts, which is why those are counted at
     // all.
-    const nested = lit(step("group", "", 2, "0, 3, 4", [3, 8]) + "\n" +
-      step("division", "group", 4, "4, 5", [5, 8]).replace(/^\t{3}/gm, "\t\t\t\t"));
+    const nested = lit(step("group", [""], 2, "0, 3, 4", [3, 8]) + "\n" +
+      step("division", ["group"], 4, "4, 5", [5, 8]).replace(/^\t{3}/gm, "\t\t\t\t"));
     // A CAP NAMING ITS NOUN AND A SIDE SPELLED AS THE CONSTANT, which is how
     // data.go declares the revenue step. Measured before the parse read them:
     // `{Tier: 4, Cap: 24, Tail: "divisions"}` parsed as no cap at all, and
     // `Side: export.SideSource` as "" -- a source-side step measured as
     // opening the end its links point at, with every check green.
-    const worded = lit(step("group", "", 2, "0, 3, 4", [3, 8])
+    const worded = lit(step("group", [""], 2, "0, 3, 4", [3, 8])
       .replace("{Tier: 3, Cap: 8}", "{Tier: 3, Cap: 8, Tail: \"funds\"}")
       .replace("\t\t\t\tFrom:  2,\n", "\t\t\t\tSide:  export.SideSource,\n\t\t\t\tRole:  \"revenue_source\",\n\t\t\t\tFrom:  2,\n"));
     // THE REFUSAL IS READ, NOT COUNTED. `did it throw` is satisfied by a
@@ -303,12 +303,13 @@ export async function checks() {
     // a slice-end regression drops the final entry's fields, so both entries'
     // caps are asserted rather than only the first's.
     const survived = reflowedThrew || (reflowedSteps.length === 2 &&
-      reflowedSteps[1].from === 4 && reflowedSteps[1].after === "group" &&
+      reflowedSteps[1].from === 4 && reflowedSteps[1].after.join("|") === "group" &&
       reflowedSteps[0].caps.length === 1 && reflowedSteps[1].caps.length === 1);
     out.push({
       name: "a reflowed step is read or refused, never dropped with its caps moved onto the step before it",
       ok: !control.threw && base.length === 2 && base[1].from === 4 &&
-          base[0].key === "group" && base[1].after === "group" && base[0].after === "" &&
+          base[0].key === "group" && base[1].after.join("|") === "group" &&
+          base[0].after.join("|") === "" &&
           caps(base, 0) === 1 && caps(base, 1) === 1 &&
           survived && /From/.test(refusal(noFrom)) && /Key/.test(refusal(noKey)) &&
           /Key/.test(refusal(nested)) && wordedOK,
@@ -328,6 +329,75 @@ export async function checks() {
         `spelled export.SideSource read as ${wordedRead.threw ? "A THROW" :
           JSON.stringify(wordedRead.steps[0] && { side: wordedRead.steps[0].side,
             role: wordedRead.steps[0].role, caps: wordedRead.steps[0].caps })}`,
+    });
+  }
+
+
+  // THE PARENT LIST AND THE KEPT FLANK ARE READ OR REFUSED, NEVER DEFAULTED.
+  // `After: \s*"..."` is what this parse used to ask, and the day the Go field
+  // became []string that pattern would have matched nothing, defaulted every
+  // step to "" and read the three steps the site ships as three ROOTS -- a tree
+  // drill.mjs would then measure and the site would not draw, with every count
+  // here agreeing with itself. The literals below are ones data.go does not
+  // contain: a list gofmt has broken over two lines, a Keep on its own line and
+  // a Keep reflowed onto the line before it, an entry that is a constant rather
+  // than a literal, and a step with no After at all.
+  {
+    const lit = (/** @type {string} */ body) =>
+      `\t\tspine.Steps = []export.DrillStep{\n${body}\n\t\t}\n`;
+    const step = (/** @type {string} */ key, /** @type {string} */ after,
+      /** @type {number} */ from, /** @type {string} */ tail) =>
+      `\t\t\t{\n\t\t\t\tKey:   ${JSON.stringify(key)},\n` +
+      `\t\t\t\tAfter: []string{${after}},\n` +
+      `\t\t\t\tFrom:  ${from},\n\t\t\t\tTiers: []int{0, 2, 3},\n${tail}\t\t\t},`;
+    const one = (/** @type {string} */ after, /** @type {string} */ tail = "") =>
+      lit(step("group", after, 2, tail));
+    // THE TWO-PARENT LITERAL AS gofmt MAY LEAVE IT, broken at the comma. A
+    // pattern stopping at the newline reads one entry of two and calls a step
+    // reachable from two charts reachable from one -- which is not a refusal
+    // and not a throw, just a smaller tree.
+    const reflowed = one('\n\t\t\t\t\t"",\n\t\t\t\t\t"fund-group",\n\t\t\t\t');
+    const keepOwnLine = one('""', "\t\t\t\tKeep:  []int{0},\n");
+    const keepFolded = one('""').replace("\t\t\t\tFrom:  2,\n", "\t\t\t\tFrom: 2, Keep: []int{0},\n");
+    const constEntry = one('"", stepKeyFundGroup');
+    const noAfter = one('""').replace('\t\t\t\tAfter: []string{""},\n', "");
+    const unreadableKeep = one('""', "\t\t\t\tKeep:  keptFlank,\n");
+    const read = (/** @type {string} */ text) => {
+      try {
+        return { steps: parseStepShapes(text), threw: "" };
+      } catch (e) {
+        return { steps: [], threw: String((e && e.message) || e) };
+      }
+    };
+    const control = read(one('""'));
+    const two = read(reflowed);
+    const own = read(keepOwnLine);
+    const folded = read(keepFolded);
+    const keepOf = (/** @type {{steps: any[]}} */ r) =>
+      r.steps[0] && r.steps[0].keep ? r.steps[0].keep.join(",") : "absent";
+    // A REFLOWED FIELD IS READ OR REFUSED, NEVER HALF-READ, which is the same
+    // rule the arm above holds the entry braces to: `keep: [0]` and a throw are
+    // both answers a reader can act on, and `keep` quietly absent is the one
+    // that would ship a window nothing measures.
+    const foldedOK = folded.threw !== "" || keepOf(folded) === "0";
+    out.push({
+      name: "a reflowed `after` list is read whole, and a `Keep` is read or refused rather than silently defaulted to no window",
+      ok: control.threw === "" && control.steps.length === 1 &&
+          keepOf(control) === "absent" && control.steps[0].after.join("|") === "" &&
+          two.threw === "" && two.steps[0].after.join("|") === "|fund-group" &&
+          own.threw === "" && keepOf(own) === "0" && foldedOK &&
+          /list of string literals/.test(read(constEntry).threw) &&
+          /After/.test(read(noAfter).threw) &&
+          /Keep/.test(read(unreadableKeep).threw),
+      detail: control.threw !== ""
+        ? `THE CONTROL LITERAL DID NOT PARSE (${control.threw}), so nothing below is evidence`
+        : `a step declaring no Keep reads ${keepOf(control)}; a list broken over two lines ` +
+          `reads ${JSON.stringify(two.steps[0] ? two.steps[0].after : two.threw)}; a Keep on ` +
+          `its own line reads ${keepOf(own)} and one folded onto the From line ` +
+          `${folded.threw !== "" ? `throws ${JSON.stringify(folded.threw)}` : `reads ${keepOf(folded)}`}; ` +
+          `a constant among the entries throws ${JSON.stringify(read(constEntry).threw)}; a step ` +
+          `with no After throws ${JSON.stringify(read(noAfter).threw)}; an unreadable Keep throws ` +
+          `${JSON.stringify(read(unreadableKeep).threw)}`,
     });
   }
 

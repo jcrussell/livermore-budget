@@ -716,13 +716,21 @@ export function stepShapes() {
  * The parse behind [stepShapes], over source text rather than the file, so
  * seam.mjs can drive it over literals data.go does not contain -- including the
  * reflow that used to drop a step in silence.
+ *
+ * A LIST-VALUED `After` IS WHY THIS READS FIELDS AND NOT PATTERNS. `After:
+ * \s*"..."` matched a string and defaulted to "" when it did not match, so the
+ * day the field became []string every step would have parsed as a ROOT: three
+ * steps read as three edges out of the spine's chart, drill.mjs measuring a
+ * tree the site does not ship, and the step count agreeing with itself. Every
+ * field this returns is either read or refused now, and the three counts below
+ * are what catch an entry this missed.
  */
 export function parseStepShapes(src) {
   const block = src.match(/spine\.Steps = \[\]export\.DrillStep\{\n([\s\S]*?)\n\t\t\}\n/);
   if (!block) throw new Error("pkg/cmd/export/data.go declares no spine.Steps literal to read");
   const out = [];
   // ENTRIES ARE SLICED ON THE BRACE THAT OPENS ONE, not on a field inside it,
-  // and the cross-check counts a DIFFERENT marker. Slicing on `From:` made the
+  // and the cross-check counts DIFFERENT markers. Slicing on `From:` made the
   // parse and its guard ask the same question: a step whose From was not at
   // exactly four tabs was skipped by both, so the count agreed with itself and
   // nothing threw. Measured -- reflowing step 1's opener to `{From: 4,`, which
@@ -745,7 +753,14 @@ export function parseStepShapes(src) {
     // a step this parse read with no key is a step it did not read -- a
     // truncated slice or a brace it missed -- and not a step the site ships.
     const key = body.match(/Key:\s*"((?:[^"\\]|\\.)*)",/);
-    const after = body.match(/After:\s*"((?:[^"\\]|\\.)*)",/);
+    // AFTER IS READ AND REQUIRED FOR THE SAME REASON, and the list is what
+    // makes the requirement necessary rather than tidy: the Go type takes
+    // []string and validateSteps refuses a step naming no chart at all, so a
+    // step here with no readable After is a step this did not read. `[^}]*`
+    // spans newlines deliberately -- gofmt is free to break a long list, and a
+    // parse that read only the first line would return a shorter list and call
+    // a step reachable from two charts reachable from one.
+    const after = body.match(/After:\s*\[\]string\{([^}]*)\}/);
     // THE SIDE IS SPELLED AS THE CONSTANT, not as a string: data.go writes
     // `Side: export.SideSource`, which export.go keeps as a constant so that a
     // caller's "Source" cannot validate and mean nothing. A pattern that read
@@ -753,16 +768,41 @@ export function parseStepShapes(src) {
     // here measured a source-side step as opening the node its links point AT.
     const side = body.match(/Side:\s*(?:"((?:[^"\\]|\\.)*)"|export\.SideSource),/);
     const role = body.match(/Role:\s*"((?:[^"\\]|\\.)*)",/);
+    // KEEP IS ABSENT OR READ, NEVER DEFAULTED -- the same discipline as Key and
+    // After one field over, arrived at from the other side. A step declaring no
+    // window declares no Keep, so absence is a value here; but a Keep this
+    // cannot read is a window the site draws and no check sees, which is worse
+    // than either. So: nothing declared, nothing returned; something declared
+    // and unreadable, refused.
+    const keep = body.match(/Keep:\s*\[\]int\{([\d,\s]*)\}/);
     if (!from) throw new Error(`step ${i} in data.go declares no From this can read`);
     if (!tiers) throw new Error(`step ${i} in data.go declares no Tiers literal this can read`);
     if (!key) throw new Error(`step ${i} in data.go declares no Key this can read`);
-    out.push({
+    if (!after) {
+      throw new Error(`step ${i} in data.go declares no After list this can read; every ` +
+        `step names the charts it opens from, and a root names "" among them`);
+    }
+    if (/Keep:/.test(body) && !keep) {
+      throw new Error(`step ${i} in data.go declares a Keep this cannot read as []int`);
+    }
+    // THE LIST IS GO STRING LITERALS AND NOTHING ELSE. Reading only what the
+    // quote pattern finds would take `[]string{"", stepKeyConst}` for a
+    // one-entry list -- the shape the residual parse was fixed for (fisc-0flg)
+    // arriving one field over -- so what is left after the literals, the commas
+    // and the whitespace have been removed has to be empty.
+    const text = after[1];
+    const entries = [...text.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((q) => q[1]);
+    if (text.replace(/"(?:[^"\\]|\\.)*"/g, "").replace(/[\s,]/g, "") !== "") {
+      throw new Error(`step ${i} in data.go declares After as \`[]string{${text.trim()}}\`, ` +
+        `which this cannot read as a list of string literals`);
+    }
+    const shape = {
       key: key[1],
-      // ABSENT IS THE DECLARED DEFAULT HERE, unlike Key. "" is what the Go
-      // zero value means on each of these -- a root step, today's
-      // filterToNode side, every node at the tier -- so a literal omitting
-      // them is read rather than refused.
-      after: after ? after[1] : "",
+      after: entries,
+      // ABSENT IS THE DECLARED DEFAULT HERE, unlike Key and After. "" is what
+      // the Go zero value means on each of these -- today's filterToNode side,
+      // every node at the tier -- so a literal omitting them is read rather
+      // than refused.
       side: side ? (side[1] === undefined ? "source" : side[1]) : "",
       role: role ? role[1] : "",
       from: Number(from[1]),
@@ -770,19 +810,26 @@ export function parseStepShapes(src) {
       caps: caps.map((c) => (c[3] === undefined
         ? { tier: Number(c[1]), cap: Number(c[2]) }
         : { tier: Number(c[1]), cap: Number(c[2]), tail: c[3] })),
-    });
+    };
+    // THE KEY IS ABSENT WHEN THE FIELD IS, which is what the wire does:
+    // `json:"keep,omitempty"` ships no key for a step that keeps nothing, and a
+    // shape carrying `keep: []` would have a client read an empty flank where
+    // the site sends none.
+    if (keep) shape.keep = keep[1].split(",").map((x) => x.trim()).filter(Boolean).map(Number);
+    out.push(shape);
   }
-  // THE TWO MARKERS ARE INDEPENDENT, which is the whole point: braces say how
-  // many entries the literal has, `From:` says how many steps declare one, and
-  // they can disagree. An entry whose brace this missed, or a From this read
-  // into the wrong entry, moves one count and not the other. The From count is
-  // deliberately loose on indentation so that a reflow changes the PARSE and
-  // not the CHECK.
+  // THE MARKERS ARE INDEPENDENT, which is the whole point: braces say how many
+  // entries the literal has, `From:`, `Key:` and `After:` say how many steps
+  // declare one each, and they can disagree. An entry whose brace this missed,
+  // or a From this read into the wrong entry, moves one count and not the
+  // others. The field counts are deliberately loose on indentation so that a
+  // reflow changes the PARSE and not the CHECK.
   const froms = (block[1].match(/From:\s*\d+,/g) || []).length;
   const keys = (block[1].match(/Key:\s*"/g) || []).length;
-  if (out.length === 0 || out.length !== froms || out.length !== keys) {
-    throw new Error(`parsed ${out.length} steps from a literal declaring ${froms} From ` +
-      `and ${keys} Key fields`);
+  const afters = (block[1].match(/After:\s*\[\]string\{/g) || []).length;
+  if (out.length === 0 || out.length !== froms || out.length !== keys || out.length !== afters) {
+    throw new Error(`parsed ${out.length} steps from a literal declaring ${froms} From, ` +
+      `${keys} Key and ${afters} After fields`);
   }
   return out;
 }

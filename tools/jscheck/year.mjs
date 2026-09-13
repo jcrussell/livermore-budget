@@ -603,7 +603,7 @@ async function chainedYears(plan, paths) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   config.steps = [{
-    key: "group", after: "", from: 2, projection: "fund-flows", tiers: [0, 3, 4],
+    key: "group", after: [""], from: 2, projection: "fund-flows", tiers: [0, 3, 4],
     caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24 }], back: "All fund groups", tail: "funds",
     description: "Opened.",
   }];

@@ -73,7 +73,11 @@ const STEP_SHAPES = stepShapes();
 
 /**
  * One step as the packager ships it: the parsed shape -- key, after, side,
- * role, from, tiers, caps -- under the words views() declares beside it.
+ * role, from, tiers, caps, keep -- under the words views() declares beside it.
+ *
+ * THE OPTIONAL FIELDS ARE COPIED ONLY WHERE THE LITERAL DECLARES THEM, which is
+ * what the wire does: all three carry `omitempty`, so a config built here with
+ * `keep: []` on every step would hand the client a shape data.go does not ship.
  * @param {number} i
  * @param {Record<string, any>} words
  */
@@ -83,6 +87,7 @@ function stepAs(i, words) {
     caps: shape.caps, description: STEP_DESCRIPTIONS[i] };
   if (shape.side) step.side = shape.side;
   if (shape.role) step.role = shape.role;
+  if (shape.keep) step.keep = shape.keep;
   return Object.assign(step, words);
 }
 
@@ -1327,6 +1332,7 @@ export async function checks() {
   for (const col of COLUMNS) out.push(...(await walkCategory(col)));
   out.push(...(await categoryProbes()));
   out.push(...(await keylessSteps()));
+  out.push(...(await severalParents()));
 
   // FIVE REFUSAL PATHS, EACH WITH ITS NEW CALLER. isDocument, understands,
   // drawableSankey and the fetch's own two failures had exactly one caller --
@@ -1419,8 +1425,8 @@ export async function checks() {
     // depth 2 (no division spends on more than a handful of categories), so
     // "current rung, not first" is a claim only this document can test.
     const steps = [
-      { key: "g", after: "", from: 2, tiers: [0, 3, 4], caps: [{ tier: 3, cap: 2 }, { tier: 4, cap: 2 }], back: "Back", tail: "funds" },
-      { key: "d", after: "g", from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 1 }], back: "Up", tail: "categories" },
+      { key: "g", after: [""], from: 2, tiers: [0, 3, 4], caps: [{ tier: 3, cap: 2 }, { tier: 4, cap: 2 }], back: "Back", tail: "funds" },
+      { key: "d", after: ["g"], from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 1 }], back: "Up", tail: "categories" },
     ];
     const app = loadApp({
       fetch: plannedFetch({ "data/probe.json": { doc } }),
@@ -1508,7 +1514,7 @@ export async function checks() {
       config: {
         schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
         render_tiers: [0, 2],
-        steps: [{ key: "fund", after: "", from: 3, tiers: [2, 4], back: "Back", tail: "divisions" }],
+        steps: [{ key: "fund", after: [""], from: 3, tiers: [2, 4], back: "Back", tail: "divisions" }],
         years: [{
           year: 2026, label: "FY", stem: "probe", path: "data/probe.json", basis: "adopted",
           hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
@@ -1850,6 +1856,56 @@ function quotesFigures(app, col, gross, reduced, net) {
 }
 
 /**
+ * What the client does with a step whose `after` names SEVERAL charts: opens
+ * from each of them, by membership rather than by equality.
+ *
+ * THE CLIENT WALKS THE LIST BEFORE ANYTHING ASKS IT TO DRAW ONE. export
+ * .DrillStep.After is []string and reaches app.js through its JSON tag, so the
+ * wire carries `["fund-group"]` where it carried `"fund-group"`; read with
+ * `!==` every step would have failed to match and nothing on the page would
+ * have opened, with every Go test green. No step the site ships names two
+ * charts yet -- this is measured on the shipped shape with one field replaced.
+ *
+ * FOUR READS AND NOT ONE, because "the division opens" is satisfied by a client
+ * that opens everything: the same step reached through a list that does NOT
+ * name the rung on screen must NOT open, and a bare string -- the shape the
+ * wire carried before this -- must be dropped by STEPS rather than quietly
+ * matched by `.includes` on a string, which would be true of "fund-group" and
+ * of "und-grou" alike.
+ */
+async function severalParents() {
+  const read = async (/** @type {any} */ after) => {
+    const { app } = await opened(null, (config) => {
+      config.steps = config.steps.map((s, i) => (i === 1 ? Object.assign({}, s, { after }) : s));
+    });
+    const outcome = await openInto(app, "fund-group/general");
+    const laid = outcome === "drew" ? app.layOut(app.projection) : null;
+    const division = laid ? laid.nodes.find((/** @type {any} */ n) => n.id === "dept/patrol") : null;
+    return {
+      after, steps: app.STEPS.length, outcome,
+      opens: Boolean(division) && app.drillable(division),
+    };
+  };
+  const got = [
+    await read(["fund-group"]),
+    await read(["nope", "fund-group"]),
+    await read(["nope"]),
+    await read("fund-group"),
+  ];
+  const [shipped, member, stranger, asString] = got;
+  return [{
+    name: "a step opens from every chart its `after` names, and from no other -- membership, so one view can be reached from several",
+    ok: got.every((r) => r.outcome === "drew") &&
+      shipped.steps === 3 && shipped.opens &&
+      member.steps === 3 && member.opens &&
+      stranger.steps === 3 && !stranger.opens &&
+      asString.steps === 2 && !asString.opens,
+    detail: got.map((r) => `${JSON.stringify(r.after)}: ${r.steps} step(s) read, the spine ` +
+      `${r.outcome}, dept/patrol ${r.opens ? "opens" : "does not open"}`).join("; "),
+  }];
+}
+
+/**
  * What the client does with a step the wire declares without a key or without
  * an `after`: drops it, so nothing opens, rather than reading either as "".
  *
@@ -1859,11 +1915,14 @@ function quotesFigures(app, col, gross, reduced, net) {
  * every step falls out of STEPS, and the page a reader gets isolates on a
  * click with no sign that it ever opened anything.
  *
- * AND READ AS "" INSTEAD, A KEYLESS STEP MATCHES ITSELF. `after: ""` is the
- * root marker, so a step with no key becomes its own parent -- measured under
- * a config whose steps carried none, Patrol opened into Patrol without end.
- * Dropping is what makes that unrepresentable; the packager is what refuses it
- * (export.validateSteps, and seam.mjs's `noKey` arm on the parse).
+ * AND READ AS A ROOT INSTEAD, A KEYLESS STEP MATCHES ITSELF. A list carrying
+ * "" is the root marker, so a step with no key becomes its own parent --
+ * measured under a config whose steps carried none, Patrol opened into Patrol
+ * without end. Dropping is what makes that unrepresentable, and it is why the
+ * client tests for an ARRAY rather than for a truthy value: a dropped field is
+ * `undefined`, which is not one. The packager is what refuses the same thing
+ * one side over (export.validateSteps, and seam.mjs's `noKey` arm on the
+ * parse).
  */
 async function keylessSteps() {
   const without = async (/** @type {string} */ field) => {

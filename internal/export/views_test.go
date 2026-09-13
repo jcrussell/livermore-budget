@@ -252,7 +252,8 @@ func chartView(breaks func(*export.View)) export.View {
 		Path: "extra.html", Template: export.ChartTemplate, Projection: "sankey",
 		RenderTiers: []int{0, 2}, ChartSubject: "by something",
 		ChartDescription: "A description.",
-		Steps: []export.DrillStep{{Key: "groups", From: 2, Tiers: []int{0, 3}, Back: "All groups",
+		Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
+			Tiers: []int{0, 3}, Back: "All groups",
 			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: "Opened."}},
 	}
 	breaks(&v)
@@ -265,12 +266,151 @@ func chartView(breaks func(*export.View)) export.View {
 // restated rather than the chain's.
 func chainView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
-		v.Steps = append(v.Steps, export.DrillStep{Key: "funds", After: "groups",
+		v.Steps = append(v.Steps, export.DrillStep{Key: "funds", After: []string{"groups"},
 			From: 3, Tiers: []int{3, 4},
 			Back: "All funds", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}},
 			Description: "Opened again."})
 		breaks(v)
 	})
+}
+
+// windowView is chartView's step turned into a window: the chart on screen
+// draws tiers {0, 2}, tier 2's nodes open, and tier 0 -- the flank to their
+// left there -- stays drawn to their left here, beside what tier 2 opens into.
+//
+// A WELL-FORMED ONE, because every case that breaks a window is measured
+// against the arm it is meant to trip and not against a type that refuses every
+// window. TestAStepMayKeepOneFlankOfTheChartItOpensFrom writes this view and is
+// what says so.
+func windowView(breaks func(*export.View)) export.View {
+	return chartView(func(v *export.View) {
+		v.Steps[0].Keep = []int{0}
+		v.Steps[0].Tiers = []int{0, 2, 3}
+		breaks(v)
+	})
+}
+
+// TestAStepMayKeepOneFlankOfTheChartItOpensFrom is the control for the window
+// refusals: the shape they each break is one a caller can actually declare, and
+// the page ships it.
+//
+// AND THE ABSENT ONE IS ABSENT ON THE WIRE, which is the whole reason Keep is a
+// slice. A step keeping nothing must ship no `keep` key at all -- as `keep: 0`
+// it would say "keep tier 0", the spine's revenue categories, on every step
+// that declares nothing.
+func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	dir := t.TempDir()
+	// THE WINDOW'S OWN CLAUSES ARE UNTOUCHED HERE. Only the document changes:
+	// a ChartTemplate page needs a drilldown document's metadata, which the
+	// spine golden does not carry, and the refusal table never renders one.
+	v := windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
+	v.Steps = append(v.Steps,
+		// A WINDOW THE OTHER WAY UP, from the same chart: tier 0 opens and tier
+		// 2, which that chart draws to its right, is the flank that stays. Both
+		// signs are declarable or only one of the two arms that read the sign
+		// has ever been satisfied.
+		export.DrillStep{Key: "cats", After: []string{""}, From: 0, Keep: []int{2},
+			Tiers: []int{1, 0, 2}, Back: "All categories", Tail: "lines",
+			Description: "Opened the other way."},
+		export.DrillStep{Key: "funds", After: []string{"groups"},
+			From: 3, Tiers: []int{3, 4}, Back: "All funds", Tail: "divisions",
+			Description: "Opened again."})
+	if _, err := export.Write(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Projection: "sankey"}, v},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused a window: %v", err)
+
+	}
+	page := readFile(t, dir, "extra.html")
+	for _, want := range []string{`"keep":[0]`, `"keep":[2]`} {
+		if !strings.Contains(page, want) {
+			t.Errorf("the config carries no %s; the step that draws that window is on the "+
+				"wire and the tier it keeps is not", want)
+		}
+	}
+	if got := strings.Count(page, `"keep"`); got != 2 {
+		t.Errorf("the config carries %d `keep` keys over three steps, one of which keeps "+
+			"nothing; an absent flank must be absent and not tier 0", got)
+	}
+}
+
+// TestAStepIsPlacedAgainstEveryChartItOpensFrom is the list's own arms, over a
+// step with TWO parents: it is accepted when both place it, refused when the
+// SECOND one cannot reach its From, and refused when they draw different
+// documents and it names none of its own.
+//
+// THE SECOND PARENT IS THE POINT. A loop that stopped at the first would accept
+// the middle case, and the rung would be unreachable from exactly one of the
+// two charts that offer it -- the failure a single parent could not have.
+func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	// TWO PARENTS DRAWING DIFFERENT DOCUMENTS, which is what makes "the
+	// document before it" a question with two answers: "a" switches to
+	// fund-flows and "b" draws the view's own.
+	steps := func(breaks func([]export.DrillStep)) []export.DrillStep {
+		s := []export.DrillStep{
+			{Key: "a", After: []string{""}, From: 2, Projection: "fund-flows",
+				Tiers: []int{0, 3, 4}, Back: "Back", Tail: "funds", Description: "One."},
+			{Key: "b", After: []string{""}, From: 0, Tiers: []int{0, 3},
+				Back: "Back", Tail: "lines", Description: "Two."},
+			{Key: "c", After: []string{"a", "b"}, From: 3, Projection: "fund-flows",
+				Tiers: []int{3, 4}, Back: "Back", Tail: "divisions", Description: "Three."},
+		}
+		breaks(s)
+		return s
+	}
+	write := func(s []export.DrillStep) error {
+		_, err := export.Write(export.Options{
+			Dir: t.TempDir(),
+			Projections: map[string][]byte{
+				"sankey":     goldenSankey(t),
+				"fund-flows": builtLike(t, goldenSankey(t), fundFlows),
+			},
+			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+				Template: export.SankeyTemplate, Projection: "sankey", Steps: s}},
+			Docs:        budgetDocs(),
+			GeneratedBy: "fisc test",
+		})
+		return err
+	}
+	if err := write(steps(func([]export.DrillStep) {})); err != nil {
+		t.Fatalf("Write refused a step with two parents that both place it: %v", err)
+	}
+	for _, c := range []struct {
+		name   string
+		breaks func([]export.DrillStep)
+		want   string
+	}{
+		{"the second parent cannot reach it", func(s []export.DrillStep) {
+			// Tier 4 is a column of "a" and not of "b".
+			s[2].From, s[2].Tiers = 4, []int{4, 5}
+		}, "step \"b\" draws tiers [0 3]"},
+		{"the two parents draw different documents", func(s []export.DrillStep) {
+			s[2].Projection = ""
+		}, "needs ONE document before it"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			err := write(steps(c.breaks))
+			if err == nil {
+				t.Fatal("Write accepted it")
+			}
+			if !strings.Contains(err.Error(), c.want) {
+				t.Errorf("error %q does not contain %q", err, c.want)
+			}
+		})
+	}
 }
 
 // TestTheCaveatsPageRefusesWhatWouldRender covers buildCaveatsPage's five
@@ -467,7 +607,8 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
-				Steps: []export.DrillStep{{Key: "group", From: 2, Projection: "fund-flows",
+				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
+					Projection:      "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
 					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."}}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
@@ -659,7 +800,8 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill on a template that publishes none", []export.View{ok,
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey",
-				Steps: []export.DrillStep{{Key: "g", From: 2, Tiers: []int{0, 3}, Back: "b", Tail: "t",
+				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
+					Tiers: []int{0, 3}, Back: "b", Tail: "t",
 					Description: "d."}}}},
 			"the chart would isolate on a click while this view believes it opens"},
 		{"a root on a template that publishes none", []export.View{ok,
@@ -753,8 +895,29 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chainView(func(v *export.View) { v.Steps[1].Key = "groups" })},
 			"declares steps 0 and 1 both keyed \"groups\""},
 		{"a step opening from a key no step declares", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].After = "nope" })},
+			chainView(func(v *export.View) { v.Steps[1].After = []string{"nope"} })},
 			"which no step declares as its key"},
+		// THE LIST'S OWN ARMS, which a single parent could not say wrongly: a
+		// step hanging off nothing, one naming the same chart twice, and a
+		// collision on a SHARED parent between two steps whose parent lists
+		// are not equal -- the last is what a comparison of the lists whole
+		// would let through.
+		{"a step opening from no chart at all", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].After = nil })},
+			"opening from no chart at all"},
+		{"a step naming one chart twice", []export.View{ok,
+			chainView(func(v *export.View) { v.Steps[1].After = []string{"groups", "groups"} })},
+			"opens from \"groups\" twice"},
+		{"two steps colliding on one of several parents", []export.View{ok,
+			chainView(func(v *export.View) {
+				// A THIRD STEP WHOSE PARENT LIST IS NOT step 1's. Both open
+				// tier 3 of "groups" in no role, so a node there matches both;
+				// the lists differ, so a comparison of them whole says nothing.
+				v.Steps = append(v.Steps, export.DrillStep{Key: "x",
+					After: []string{"funds", "groups"}, From: 3, Tiers: []int{0, 4},
+					Back: "Back", Tail: "things", Description: "Opened a third time."})
+			})},
+			"both opening tier 3 of step \"groups\"'s chart"},
 		// A CYCLE IS UNDECLARABLE BECAUSE OF THIS ARM, so this is the arm that
 		// keeps it so: with the pair swapped, step 0 opens from a chart the
 		// list does not reach until step 1.
@@ -762,11 +925,11 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chainView(func(v *export.View) { v.Steps[0], v.Steps[1] = v.Steps[1], v.Steps[0] })},
 			"After names an EARLIER step"},
 		{"two steps opening one tier of one chart", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].After = ""; v.Steps[1].From = 2 })},
+			chainView(func(v *export.View) { v.Steps[1].After = []string{""}; v.Steps[1].From = 2 })},
 			"a node there would open into two different charts"},
 		{"a role-less step beside one that names a role", []export.View{ok,
 			chainView(func(v *export.View) {
-				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = "", 2, "revenue"
+				v.Steps[1].After, v.Steps[1].From, v.Steps[1].Role = []string{""}, 2, "revenue"
 			})},
 			"a step with no role opens EVERY node at its tier"},
 		{"a step opening a side this package does not declare", []export.View{ok,
@@ -777,8 +940,60 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// took every root, a second edge out of the page's chart could open
 		// from a tier the page never draws.
 		{"a second root from a tier the page does not draw", []export.View{ok,
-			chainView(func(v *export.View) { v.Steps[1].After = ""; v.Steps[1].From = 5 })},
+			chainView(func(v *export.View) { v.Steps[1].After = []string{""}; v.Steps[1].From = 5 })},
 			"step 1 drills from tier 5"},
+		// THE WINDOW'S OWN ARMS, one per thing the type now promises about a
+		// step that keeps a flank. windowView is a well-formed window --
+		// TestAStepMayKeepOneFlankOfTheChartItOpensFrom is what keeps these
+		// from being green because a window is refused outright -- and each
+		// case breaks one clause of it.
+		{"a step keeping two flanks", []export.View{ok,
+			windowView(func(v *export.View) { v.Steps[0].Keep = []int{0, 2} })},
+			"a window is the opened node with ONE flank"},
+		{"a window that also declares a side", []export.View{ok,
+			windowView(func(v *export.View) { v.Steps[0].Side = export.SideSource })},
+			"is the TARGET of one half and the SOURCE of the other"},
+		{"a window that is not three columns", []export.View{ok,
+			windowView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 2} })},
+			"a window is three columns"},
+		{"a window whose centre is not the opened tier", []export.View{ok,
+			windowView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 3, 2} })},
+			"the node the reader clicked is the centre of a window"},
+		{"a window keeping a tier the chart it opens from does not draw", []export.View{ok,
+			windowView(func(v *export.View) {
+				v.Steps[0].Keep = []int{5}
+				v.Steps[0].Tiers = []int{5, 2, 3}
+			})},
+			"the flank the reader came from has to be a column they were looking at"},
+		{"a window keeping a tier that is not beside the opened one", []export.View{ok,
+			windowView(func(v *export.View) { v.RenderTiers = []int{0, 1, 2} })},
+			"a window slides by one column"},
+		{"a window keeping its flank on the side the reader did not see it on",
+			[]export.View{ok, windowView(func(v *export.View) {
+				v.Steps[0].Tiers = []int{3, 2, 0}
+			})},
+			"draws to the LEFT of the opened tier 2, and draws tiers [3 2 0]"},
+		// THE OTHER DIRECTION, WHICH IS THE ONE THE SPINE'S REVENUE CATEGORIES
+		// WILL TAKE: tier 0 opens and tier 2, drawn to its RIGHT, is what stays.
+		// Its own case because its own arm: the sign of the adjacency is the
+		// declaration, and an arm that only ever sees one sign is half a rule.
+		{"a window pushing the other way and keeping its flank on the wrong side",
+			[]export.View{ok, windowView(func(v *export.View) {
+				v.Steps[0].From, v.Steps[0].Keep = 0, []int{2}
+				v.Steps[0].Tiers = []int{2, 0, 3}
+			})},
+			"draws to the RIGHT of the opened tier 0, and draws tiers [2 0 3]"},
+		// THE SPINE IS THIS CASE, WHICH IS WHY IT IS NOT HYPOTHETICAL: it
+		// renders SankeyTemplate, declares no render tiers and draws its
+		// document whole, so app.js hands the graph to d3's sankeyJustify and
+		// there is no declared order for a side to be a position in.
+		{"a window on a page whose chart is drawn whole", []export.View{ok,
+			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
+				Projection: "sankey",
+				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
+					Keep: []int{0}, Tiers: []int{0, 2, 3}, Back: "b", Tail: "t",
+					Description: "d."}}}},
+			"declares no column order at all"},
 		// A RESIDUAL NEEDS A SECOND DOCUMENT AND A REASON. The first case
 		// declares one on the chain's same-document step, where nothing could
 		// be residual between two grains of one file; the second names a
@@ -2671,23 +2886,23 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
 	steps := []export.DrillStep{
-		{Key: "group", From: 2, Projection: "fund-flows",
+		{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 			Tiers: []int{0, 3, 4},
 			Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
 			Back:  "All fund groups", Tail: "funds", Description: "Opened."},
 		// A SECOND ROOT, ON THE OTHER SIDE AND IN A ROLE, so that the wire
 		// comparison below has a non-zero value of every walked field to lose.
-		{Key: "category", From: 0, Side: export.SideSource, Role: "revenue_source",
+		{Key: "category", After: []string{""}, From: 0, Side: export.SideSource, Role: "revenue_source",
 			Projection: "fund-flows", Tiers: []int{1, 3},
 			Caps: []export.TierCap{{Tier: 1, Cap: 8}, {Tier: 3, Cap: 8, Tail: "funds"}},
 			Back: "All revenue categories", Tail: "lines", Description: "Opened a category."},
-		// AND A CHILD, BECAUSE TWO ROOTS BOTH CARRY After "". A comparison of
+		// AND A CHILD, BECAUSE TWO ROOTS BOTH CARRY After [""]. A comparison of
 		// the zero value against the zero value is what this declaration is
 		// arranged to avoid, and it was reached anyway on the one field whose
 		// absence costs the most: with After back to `json:"-"` the wire
 		// carries no `after`, app.js's STEPS drops every step for want of one,
 		// and the whole drill leaves the site with every gate green.
-		{Key: "division", After: "group", From: 4, Tiers: []int{4, 5},
+		{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
 			Caps: []export.TierCap{{Tier: 5, Cap: 8}},
 			Back: "All divisions", Tail: "categories", Description: "Opened a division."},
 	}
@@ -2735,7 +2950,7 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	}
 	second := steps[1]
 	if second.Key == "" || second.Side == "" || second.Role == "" || second.Caps[1].Tail == "" ||
-		steps[2].After == "" {
+		len(steps[2].After) == 0 || steps[2].After[0] == "" {
 		t.Fatal("the declared steps carry no key, after, side, role or cap tail, so the " +
 			"comparison below asserts nothing")
 	}
@@ -2802,9 +3017,10 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 			Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 				Template: export.SankeyTemplate, Projection: "sankey",
 				Steps: []export.DrillStep{
-					{Key: "group", From: 2, Projection: "fund-flows", Tiers: []int{0, 3},
-						Back: "All fund groups", Tail: "funds", Description: "One."},
-					{Key: "fund", After: "group", From: 3, Projection: secondStepDoc,
+					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
+						Tiers: []int{0, 3},
+						Back:  "All fund groups", Tail: "funds", Description: "One."},
+					{Key: "fund", After: []string{"group"}, From: 3, Projection: secondStepDoc,
 						Tiers: []int{0, 3},
 						Back:  "All funds", Tail: "things", Description: "Two."},
 				}}},
@@ -2896,10 +3112,10 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 			Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 			Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
 			Steps: []export.DrillStep{
-				{Key: "group", From: 2, Projection: "fund-flows",
+				{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
 					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
-				{Key: "division", After: "group", From: 4, Tiers: []int{4, 5},
+				{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
 					Back: "All divisions", Tail: "categories", Description: "Two."},
 			},
 		}
@@ -3025,10 +3241,10 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
 				Steps: []export.DrillStep{
-					{Key: "group", From: 2, Projection: "fund-flows",
+					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 						YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
 						Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
-					{Key: "division", After: "group", From: 4, Tiers: []int{4, 5},
+					{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
 						Back: "All divisions", Tail: "categories", Description: "Two."},
 				}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,

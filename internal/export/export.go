@@ -246,10 +246,13 @@ type View struct {
 	// isolating on two columns dims a column the reader was not looking at
 	// (fisc-ppkq).
 	//
-	// THE LIST IS FLAT AND THE SHAPE IS A TREE. A step names the step whose
-	// chart it opens from ([DrillStep.After]), so two openable tiers at one
-	// depth are two steps sharing a parent rather than two entries of a path,
-	// and a view may declare several steps that open from its own chart. Flat
+	// THE LIST IS FLAT AND THE SHAPE IS A TREE. A step names the charts it
+	// opens from ([DrillStep.After]), so two openable tiers at one depth are
+	// two steps sharing a parent rather than two entries of a path, and a view
+	// may declare several steps that open from its own chart. A step may name
+	// several parents, so one chart is reachable from several -- which makes
+	// the shape a DAG over a strictly decreasing declaration order, and leaves
+	// every walk of it finite for the reason After's comment gives. Flat
 	// rather than nested because tools/jscheck/harness.mjs reads this literal
 	// out of the Go source and slices it on indentation, and because the
 	// packager resolves one step document per entry. What a declared tree must
@@ -469,14 +472,27 @@ type DrillStep struct {
 	// name is a chart no second edge can ever be attached to, and the
 	// uniqueness is what makes [DrillStep.After] resolve to one parent.
 	Key string `json:"key"`
-	// After is the Key of the step whose chart this one opens from, or "" for a
-	// step that opens from the view's own chart. Several steps may share one
-	// After: that is the second edge out of one chart a path cannot express.
+	// After is the Keys of the steps whose charts this one opens from, and ""
+	// is the view's own chart. Several steps may share one entry: that is the
+	// second edge out of one chart a path cannot express. Several entries,
+	// because one chart is reachable from several -- a fund group opens the
+	// same view whether the reader clicked it on the spine, in a revenue
+	// category's window or in an object category's, and one parent could not
+	// say so.
 	//
-	// IT NAMES AN EARLIER STEP, ALWAYS, and validateSteps refuses one that does
-	// not. A cycle is then undeclarable rather than detected, which is a
-	// property of the type rather than an arm that has to be kept correct.
-	After string `json:"after"`
+	// EVERY ENTRY NAMES AN EARLIER STEP, ALWAYS, and validateSteps refuses one
+	// that does not. A cycle is then undeclarable rather than detected: every
+	// parent chain strictly decreases whichever entry it is walked through, so
+	// it ends at a root in at most len(Steps) hops. That argument is the list's
+	// unchanged, which is why the list is safe -- it generalises which charts a
+	// step hangs off and weakens nothing about the order they are declared in.
+	//
+	// A ROOT SAYS SO WITH "", NOT WITH AN EMPTY LIST. "Opens from the view's
+	// own chart" and "declares no parent at all" are different claims and the
+	// zero value cannot be the first; validateSteps refuses a step naming no
+	// chart. The client matches by membership against the key of the rung on
+	// screen, which is "" on the overview.
+	After []string `json:"after"`
 	// From is the tier whose nodes open, in the chart on screen before they do.
 	// One tier rather than a set: a step is one hop, and a second tier of the
 	// same chart is a second step sharing this one's After.
@@ -526,6 +542,28 @@ type DrillStep struct {
 	// Tiers is the tier set drawn once a node has opened -- this step's
 	// RenderTiers, and a different declaration from the chart's before it.
 	Tiers []int `json:"tiers"`
+	// Keep is the one tier of the chart on screen that stays drawn beside the
+	// node the reader opened -- the flank they came from -- or empty for a step
+	// that draws the opened node's parts alone, which is every step the site
+	// ships today.
+	//
+	// A SLICE AND NOT AN INT, because tier 0 is a real tier: it is the spine's
+	// revenue categories, and the flank a fund group's window keeps. An int's
+	// zero value would read as "keep tier 0" on every step that declares
+	// nothing at all, which is the absent-is-not-zero rule the fact store is
+	// built on (AGENTS.md, "Provenance invariants") arriving at this seam. At
+	// most one entry: a window keeps ONE flank, and validateSteps refuses two.
+	//
+	// WITH AN ENTRY IT MAKES THE WINDOW A PROPERTY OF THE TYPE. Tiers is then
+	// three columns with From in the MIDDLE, and Keep's tier at whichever end
+	// the parent's own column order names: kept to From's left in the chart on
+	// screen, kept column on the left here. The sign of that adjacency is what
+	// tells the client which way the window pushes -- declared and positional,
+	// not the tier-number inference paintBreadcrumb's comment in site/app.js
+	// refuses. validateSteps checks it against EVERY chart this step opens
+	// from, so a step reachable from two charts that disagree about which side
+	// its kept flank is on cannot be declared.
+	Keep []int `json:"keep,omitempty"`
 	// Caps bounds the columns this step draws, one per tier that needs one; a
 	// tier with no cap is drawn whole.
 	//
@@ -966,7 +1004,7 @@ func (v View) validate(built map[string][]byte) error {
 // guards it on a non-empty RenderTiers, which is where the reason lives.
 func (v View) rootOutsideRenderTiers() int {
 	for i, s := range v.Steps {
-		if s.After == "" && !slices.Contains(v.RenderTiers, s.From) {
+		if slices.Contains(s.After, "") && !slices.Contains(v.RenderTiers, s.From) {
 			return i
 		}
 	}
@@ -977,17 +1015,38 @@ func (v View) rootOutsideRenderTiers() int {
 // would fold nothing, say nothing, draw a document that was not built, or draw
 // one year's document under another year's chart.
 //
-// EVERY STEP IS PLACED AGAINST ITS PARENT. A step opens from the chart its
-// After names -- or from the view's own, for a root -- so its From must be a
-// tier that chart draws, which is what makes every breadcrumb rung reachable
-// from the one above it. Steps sharing an After are two edges out of one chart,
-// which is what a tier-0 revenue category opening beside a tier-2 fund group
-// needs and what a path could not declare at all (fisc-ko1j.12).
+// EVERY STEP IS PLACED AGAINST EVERY PARENT IT NAMES. A step opens from the
+// charts its After names -- the view's own, for the "" entry -- so its From
+// must be a tier EVERY one of them draws, which is what makes every breadcrumb
+// rung reachable from the one above it. Steps sharing an entry are two edges
+// out of one chart, which is what a tier-0 revenue category opening beside a
+// tier-2 fund group needs and what a path could not declare at all
+// (fisc-ko1j.12); a step naming two entries is one chart reachable from two,
+// which is what a fund group clickable on the spine and inside a window needs.
 //
-// A CYCLE CANNOT BE DECLARED, SO NOTHING HERE DETECTS ONE. After may only name
-// a step EARLIER in the list, so every parent chain ends at a root in at most
-// as many hops as there are steps. The arms below say what a declared tree must
-// satisfy; that it is a tree is the type's property, not theirs.
+// A CYCLE CANNOT BE DECLARED, SO NOTHING HERE DETECTS ONE. Every entry of After
+// may only name a step EARLIER in the list, so every parent chain ends at a
+// root in at most as many hops as there are steps. THE LIST LEAVES THAT
+// ARGUMENT INTACT, and it is worth saying why rather than asserting it: a walk
+// upward takes one entry at a time, every entry names a strictly smaller index,
+// and a strictly decreasing sequence of non-negative integers terminates
+// however many branches it could have taken at each step. Several parents make
+// the shape a DAG over the declaration order rather than a path through it;
+// they cannot make it a ring. The arms below say what a declared tree must
+// satisfy; that it is acyclic is the type's property, not theirs.
+// parentChart is one chart a step opens from: the key naming it, "" for the
+// view's own, with the column order it draws and the document it draws them of.
+//
+// THE COLUMN ORDER AND NOT A SET. Tiers is a declaration order and may be
+// non-monotonic -- site/app.js's layOut aligns on tiers.indexOf(d.tier), so
+// {2,5,4} is three columns in that order and not a sorted set -- and a kept
+// flank's side is a POSITION in it.
+type parentChart struct {
+	key   string
+	tiers []int
+	doc   string
+}
+
 func (v View) validateSteps(built map[string][]byte) error {
 	// KEYS FIRST, AS A PASS OF THEIR OWN, so that After below resolves against
 	// a set already known to name one step each. Interleaved with the arms that
@@ -1012,30 +1071,60 @@ func (v View) validateSteps(built map[string][]byte) error {
 	// no projection draws its parent's, and a parent is always earlier.
 	docs := make([]string, len(v.Steps))
 	for i, s := range v.Steps {
-		// The tiers on screen before this step opens, and the document they
-		// belong to. For a root that is the view's own chart, and RenderTiers
-		// empty means the whole document -- which is why a root's From is
-		// placed by validate's two arms above rather than here.
-		parentTiers, parentDoc := v.RenderTiers, v.Projection
-		if s.After != "" {
-			j, ok := index[s.After]
+		if len(s.After) == 0 {
+			return fmt.Errorf(
+				"view %q declares step %d opening from no chart at all; a step that opens "+
+					"from the view's own chart says so with \"\", and an empty list is a rung "+
+					"hanging off nothing", v.Path, i)
+		}
+		// The charts this step opens from, in the order it names them: each
+		// one's column order and the document it draws. "" is the view's own
+		// chart, whose From is placed by validate's two arms above rather than
+		// here -- RenderTiers empty means the document is drawn WHOLE, which
+		// those arms can say and a tier set cannot.
+		parents := make([]parentChart, 0, len(s.After))
+		for k, a := range s.After {
+			if slices.Contains(s.After[:k], a) {
+				return fmt.Errorf(
+					"view %q's step %d opens from %q twice; one chart reaching a step is one "+
+						"edge, and every arm below would place the same chart twice and the "+
+						"other parents once", v.Path, i, a)
+			}
+			if a == "" {
+				parents = append(parents, parentChart{tiers: v.RenderTiers, doc: v.Projection})
+				continue
+			}
+			j, ok := index[a]
 			switch {
 			case !ok:
 				return fmt.Errorf(
 					"view %q's step %d opens from %q, which no step declares as its key; the "+
 						"breadcrumb would carry a rung hanging off a chart this view never draws",
-					v.Path, i, s.After)
+					v.Path, i, a)
 			case j >= i:
 				return fmt.Errorf(
 					"view %q's step %d opens from %q, which is step %d; After names an EARLIER "+
 						"step, and that is what makes a cycle undeclarable rather than something "+
-						"this has to detect", v.Path, i, s.After, j)
+						"this has to detect", v.Path, i, a, j)
 			}
-			parentTiers, parentDoc = v.Steps[j].Tiers, docs[j]
+			parents = append(parents, parentChart{key: a, tiers: v.Steps[j].Tiers, doc: docs[j]})
 		}
 		doc := s.Projection
 		if doc == "" {
-			doc = parentDoc
+			// ONE DOCUMENT BEFORE IT, OR NAME ONE. "The document before it" has
+			// as many answers as this step has parents, and two parents drawing
+			// different files would leave the packager to resolve whichever it
+			// walked first -- a rung whose file depends on the route the reader
+			// took to reach it.
+			doc = parents[0].doc
+			for _, p := range parents[1:] {
+				if p.doc != doc {
+					return fmt.Errorf(
+						"view %q's step %d names no projection and opens from charts drawing "+
+							"%q and %q; a step that draws the document before it needs ONE "+
+							"document before it", v.Path, i, doc, p.doc)
+				}
+			}
 		}
 		docs[i] = doc
 		switch {
@@ -1096,43 +1185,153 @@ func (v View) validateSteps(built map[string][]byte) error {
 			return fmt.Errorf(
 				"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
 					"at, and %q, the node it comes from", v.Path, i, s.Side, SideSource)
-		case s.After != "" && !slices.Contains(parentTiers, s.From):
+		// A WINDOW KEEPS ONE FLANK, AND THESE FOUR ARMS ARE WHAT MAKE IT A
+		// PROPERTY OF THE TYPE rather than of the client that draws it. Two
+		// kept tiers are two answers to which flank; a side beside a kept
+		// flank is two answers to which end opened, because a window's centre
+		// is the target of one half and the source of the other; and a window
+		// that is not three columns with the opened tier in the middle is not
+		// the shape the reader was promised -- the node they clicked is the
+		// centre. The fourth is checked here and not per parent because Tiers
+		// is one declaration whatever chart the step was reached from.
+		case len(s.Keep) > 1:
 			return fmt.Errorf(
-				"view %q's step %d opens from tier %d, and step %q draws tiers "+
-					"%v, which do not include it; the breadcrumb would carry a rung nothing "+
-					"on the chart can reach", v.Path, i, s.From, s.After, parentTiers)
-		// THE SAME DOCUMENT ONLY. Across a document switch the two tier sets
-		// are numbered by different hierarchies, and equal numbers are not the
-		// same chart -- the DrillStep doc comment says why validate cannot do
-		// better than skip.
-		case s.After != "" && doc == parentDoc && slices.Equal(parentTiers, s.Tiers):
+				"view %q's step %d keeps tiers %v; a window is the opened node with ONE "+
+					"flank of the chart it was opened on beside it, so the second entry is "+
+					"a second declaration of which flank that is", v.Path, i, s.Keep)
+		case len(s.Keep) == 1 && s.Side != "":
 			return fmt.Errorf(
-				"view %q's step %d draws tiers %v of %q, the set step %q "+
-					"already draws; opening a node would redraw the chart it was opened "+
-					"from", v.Path, i, s.Tiers, doc, s.After)
+				"view %q's step %d keeps tier %d and opens side %q; a window's opened node "+
+					"is the TARGET of one half and the SOURCE of the other, so its side is "+
+					"both and a step declaring one would be two declarations of one thing",
+				v.Path, i, s.Keep[0], s.Side)
+		case len(s.Keep) == 1 && len(s.Tiers) != 3:
+			return fmt.Errorf(
+				"view %q's step %d keeps tier %d and draws tiers %v; a window is three "+
+					"columns -- the kept flank, the node that was opened, and what it opens "+
+					"into", v.Path, i, s.Keep[0], s.Tiers)
+		case len(s.Keep) == 1 && s.Tiers[1] != s.From:
+			return fmt.Errorf(
+				"view %q's step %d keeps tier %d and draws tiers %v, whose middle column is "+
+					"tier %d and not the opened tier %d; the node the reader clicked is the "+
+					"centre of a window", v.Path, i, s.Keep[0], s.Tiers, s.Tiers[1], s.From)
 		}
-		// ONE STEP PER (After, From, Role), AND A ROLE-LESS STEP TAKES THE
-		// WHOLE TIER. Two steps a node matches are two rungs it opens into, and
-		// the client would take whichever it found first -- the silent choice
-		// the key and the role exist to make impossible. Compared against every
-		// earlier step rather than through a set, because the two refusals want
-		// to name the other step and say which of the three parts collided.
-		for j, o := range v.Steps[:i] {
-			if o.After != s.After || o.From != s.From {
+		// EVERY PARENT PLACES THIS STEP, not the first one that happens to fit.
+		// A step reachable from a chart whose columns do not include its From
+		// is a rung nothing on that chart can reach, and a kept flank that is
+		// not beside the opened node in one of those charts is a window that
+		// slides the wrong way when the reader arrives by that route.
+		for _, p := range parents {
+			where := "the view's own chart"
+			if p.key != "" {
+				where = fmt.Sprintf("step %q", p.key)
+			}
+			if p.key != "" {
+				switch {
+				case !slices.Contains(p.tiers, s.From):
+					return fmt.Errorf(
+						"view %q's step %d opens from tier %d, and step %q draws tiers "+
+							"%v, which do not include it; the breadcrumb would carry a rung nothing "+
+							"on the chart can reach", v.Path, i, s.From, p.key, p.tiers)
+				// THE SAME DOCUMENT ONLY. Across a document switch the two tier
+				// sets are numbered by different hierarchies, and equal numbers
+				// are not the same chart -- the DrillStep doc comment says why
+				// validate cannot do better than skip.
+				case doc == p.doc && slices.Equal(p.tiers, s.Tiers):
+					return fmt.Errorf(
+						"view %q's step %d draws tiers %v of %q, the set step %q "+
+							"already draws; opening a node would redraw the chart it was opened "+
+							"from", v.Path, i, s.Tiers, doc, p.key)
+				}
+			}
+			if len(s.Keep) == 0 {
 				continue
+			}
+			// A DOCUMENT DRAWN WHOLE HAS NO DECLARED COLUMN ORDER TO TAKE A
+			// SIDE FROM. site/app.js's layOut aligns on tiers.indexOf(d.tier)
+			// only while a tier set is declared; with none it hands the graph
+			// to d3's sankeyJustify, which derives the columns from topology.
+			// So this is not a cheap refusal standing in for a harder check:
+			// there is nothing to the left of anything until a caller says so.
+			if len(p.tiers) == 0 {
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d and opens from %s, which declares no "+
+						"column order at all; which side a kept flank is on is a position in "+
+						"that order, and a document drawn whole has none",
+					v.Path, i, s.Keep[0], where)
+			}
+			// From IS IN THIS ORDER ALREADY, which is why these arms may index
+			// on it: the arm above places it for a named parent, and validate's
+			// badRoot arm places it against RenderTiers for the "" one, under
+			// the same non-empty guard as the refusal above.
+			ki, fi := slices.Index(p.tiers, s.Keep[0]), slices.Index(p.tiers, s.From)
+			switch {
+			case ki < 0:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d and opens from %s, which draws tiers %v "+
+						"and does not include it; the flank the reader came from has to be a "+
+						"column they were looking at", v.Path, i, s.Keep[0], where, p.tiers)
+			case ki != fi-1 && ki != fi+1:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d and opens tier %d of %s, which draws "+
+						"them as columns %d and %d of %v; a window slides by one column, and "+
+						"which way it slides is the SIGN of that adjacency",
+					v.Path, i, s.Keep[0], s.From, where, ki, fi, p.tiers)
+			case ki < fi && s.Tiers[0] != s.Keep[0]:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d, which %s draws to the LEFT of the "+
+						"opened tier %d, and draws tiers %v, whose left column is tier %d; "+
+						"the kept flank stays on the side the reader saw it on",
+					v.Path, i, s.Keep[0], where, s.From, s.Tiers, s.Tiers[0])
+			case ki > fi && s.Tiers[2] != s.Keep[0]:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier %d, which %s draws to the RIGHT of the "+
+						"opened tier %d, and draws tiers %v, whose right column is tier %d; "+
+						"the kept flank stays on the side the reader saw it on",
+					v.Path, i, s.Keep[0], where, s.From, s.Tiers, s.Tiers[2])
+			}
+		}
+		// ONE STEP PER (After, From, Role) OVER THE CROSS PRODUCT, AND A
+		// ROLE-LESS STEP TAKES THE WHOLE TIER. Two steps a node matches are two
+		// rungs it opens into, and the client would take whichever it found
+		// first -- the silent choice the key and the role exist to make
+		// impossible. Per SHARED parent and not per equal list: two steps that
+		// open one tier of one chart collide on that chart however many other
+		// charts either of them also hangs off, and comparing the lists whole
+		// would let a step add a parent and slip past a collision it keeps.
+		// Compared against every earlier step rather than through a set,
+		// because the two refusals want to name the other step, the chart they
+		// collide on, and which of the three parts collided.
+		for j, o := range v.Steps[:i] {
+			if o.From != s.From {
+				continue
+			}
+			shared, found := "", false
+			for _, a := range s.After {
+				if slices.Contains(o.After, a) {
+					shared, found = a, true
+					break
+				}
+			}
+			if !found {
+				continue
+			}
+			where := "the view's own chart"
+			if shared != "" {
+				where = fmt.Sprintf("step %q's chart", shared)
 			}
 			if o.Role == s.Role {
 				return fmt.Errorf(
-					"view %q declares steps %d and %d both opening tier %d of the same chart "+
+					"view %q declares steps %d and %d both opening tier %d of %s "+
 						"in role %q; a node there would open into two different charts",
-					v.Path, j, i, s.From, s.Role)
+					v.Path, j, i, s.From, where, s.Role)
 			}
 			if o.Role == "" || s.Role == "" {
 				return fmt.Errorf(
-					"view %q declares steps %d and %d both opening tier %d of the same chart, "+
+					"view %q declares steps %d and %d both opening tier %d of %s, "+
 						"in roles %q and %q; a step with no role opens EVERY node at its tier, "+
 						"so it cannot share one with a step that names which nodes open",
-					v.Path, j, i, s.From, o.Role, s.Role)
+					v.Path, j, i, s.From, where, o.Role, s.Role)
 			}
 		}
 		for _, id := range slices.Sorted(maps.Keys(s.Residual)) {

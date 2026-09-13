@@ -1200,6 +1200,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	want := []export.DrillStep{
 		{
 			Key:             "fund-group",
+			After:           []string{""},
 			From:            2,
 			Projection:      project.FundFlowsProjection,
 			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
@@ -1221,7 +1222,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		},
 		{
 			Key:   "division",
-			After: "fund-group",
+			After: []string{"fund-group"},
 			From:  4,
 			Tiers: []int{4, 5},
 			Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
@@ -1233,6 +1234,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		},
 		{
 			Key:             "revenue-category",
+			After:           []string{""},
 			From:            0,
 			Side:            export.SideSource,
 			Role:            "revenue_source",

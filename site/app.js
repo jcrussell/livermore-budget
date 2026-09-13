@@ -178,8 +178,8 @@
  *
  * @typedef {Object} FiscDrillStep
  * @property {string} key  what other steps name this one by
- * @property {string} after  the key of the step whose chart this one opens
- *   from, "" for the view's own chart
+ * @property {string[]} after  the keys of the steps whose charts this one
+ *   opens from, carrying "" for the view's own chart
  * @property {string} [side]  which end of a link the opened node is: absent
  *   for the end links point at, "source" for the end they come from
  * @property {string} [role]  which nodes at `from` open, by node.role; absent
@@ -315,24 +315,31 @@ const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.rende
  * hierarchies, and a page that declares nothing keeps the isolate-on-click
  * behaviour it has always had.
  *
- * A TREE, READ BY KEY. Each step names the step whose chart it opens from --
- * `after`, "" for the view's own chart -- and the tier its nodes are at, so
+ * A TREE, READ BY KEY. Each step names the charts it opens from -- `after`,
+ * a list carrying "" for the view's own -- and the tier its nodes are at, so
  * two steps can open from one chart: the spine's fund groups and its revenue
  * categories open into different views of the same document, and a depth
- * cannot tell them apart. stepFor is the one reader of that rule. The packager
- * validates the tree (export.validateSteps): keys unique, `after` naming an
- * earlier step, at most one step per (after, from, role).
+ * cannot tell them apart. Several entries are one chart reachable from
+ * several, which is the other direction and the same list. stepFor is the one
+ * reader of that rule. The packager validates the tree
+ * (export.validateSteps): keys unique, every entry naming an earlier step, at
+ * most one step per (after, from, role).
  *
  * @type {FiscDrillStep[]}
  */
 const STEPS = CONFIG && Array.isArray(CONFIG.steps)
-  // A STEP WITH NO KEY OR NO `after` IS NOT A STEP OF THE TREE, and is dropped
-  // as one with no tiers is. Read as "" instead, a keyless step is a root that
-  // its own children match by "" -- measured: a config whose steps carried no
-  // keys opened Patrol into Patrol without end, because the division step
-  // matched from its own chart. The packager requires both.
+  // A STEP WITH NO KEY OR NO PARENTAGE IS NOT A STEP OF THE TREE, and is
+  // dropped as one with no tiers is. What is refused is parentage that is
+  // ABSENT, and the list refuses it where the string did: a step whose `after`
+  // was dropped carries `undefined`, which is not an array and falls out here
+  // rather than being read as a root. A step read as a root is one its own
+  // children match by "" -- measured, on a config whose steps carried no keys:
+  // Patrol opened into Patrol without end, because the division step matched
+  // from its own chart. A root says so by carrying "" IN the list, and the
+  // packager requires that rather than an empty one (export.validateSteps).
   ? CONFIG.steps.filter((s) => s && Array.isArray(s.tiers) && s.tiers.length > 0 &&
-      typeof s.key === "string" && typeof s.after === "string")
+      typeof s.key === "string" && Array.isArray(s.after) &&
+      s.after.every((a) => typeof a === "string"))
   : [];
 
 /**
@@ -348,9 +355,13 @@ function openedKey() {
  * nothing.
  *
  * THREE MATCHES AND NOT A DEPTH. The step opens from the chart on screen
- * (`after` is the rung's key), from this node's tier (`from`), and -- when it
- * names one -- from nodes in this role. Depth alone answered while the steps
- * were a line; on the spine two steps open from depth 0, one per tier.
+ * (`after` CONTAINS the rung's key), from this node's tier (`from`), and --
+ * when it names one -- from nodes in this role. Depth alone answered while the
+ * steps were a line; on the spine two steps open from depth 0, one per tier.
+ *
+ * THE FIRST MATCH IS MEMBERSHIP AND NOT EQUALITY, which is what lets one chart
+ * be reached from several: a step listing two keys is one view the reader can
+ * arrive at by either route, and it opens the same way whichever they took.
  *
  * THE ROLE IS THE PACKAGER'S GATE, MATCHED AND NOT INFERRED. transfers/in and
  * fund-balance/draw sit at tier 0 beside the ten revenue categories, and
@@ -366,7 +377,7 @@ function openedKey() {
 function stepFor(node) {
   const key = openedKey();
   for (const s of STEPS) {
-    if (s.after !== key) continue;
+    if (!s.after.includes(key)) continue;
     if (s.from !== node.tier) continue;
     if (s.role && s.role !== node.role) continue;
     return s;
