@@ -204,6 +204,10 @@
  *   this step opens FROM whose flow the document it draws does not
  *   decompose, id to reason -- the check's declaration as the packager
  *   shipped it; absent on a step that switches no document
+ * @property {Record<string,string>} [gaps]  the nodes this step OPENS whose
+ *   total the document it draws does not reach, id to the declared reason the
+ *   two documents print one cell at two figures; absent on a step that makes
+ *   no claim that its opened nodes balance
  */
 
 /**
@@ -1901,7 +1905,12 @@ function shapeFor(doc) {
   // AND THE CONTRA MARKING AFTER THAT, because it is about what the fold LEFT
   // negative: a category's lines fold into the category's net cell at {0,3,4},
   // where nothing is negative, and stand on their own at {1,3}, where two are.
-  return markContra(carryResidual(drawn, docAt(drilled.length - 1), rung), doc);
+  //
+  // AND THE GAP LAST OF THE THREE THAT ADD MARKS, because it is a statement
+  // about the whole drawn chart: what the opened node takes in against what it
+  // sends out, once everything that is going to stand beside it does. Only
+  // markContra follows, and it reclassifies ribbons rather than moving a cent.
+  return markContra(markGap(carryResidual(drawn, docAt(drilled.length - 1), rung), rung), doc);
 }
 
 /**
@@ -2299,9 +2308,38 @@ function isResidual(id) {
 }
 
 /**
- * Whether an id names the residual node or an endpoint carried with it: a
- * mark the rung on screen added from the chart it was opened from, which is
- * not the step document's and opens into nothing.
+ * The prefix a gap node's id carries, followed by the opened node's id.
+ *
+ * ITS OWN PREFIX AND NOT THE RESIDUAL'S, because the two marks make different
+ * claims and a check counting one must not find the other: a residual is money
+ * the chart above prints that the drawn document carries no row for, copied
+ * across with its citations, and a gap is one cell two schedules print at two
+ * figures, which no page prints at all. markGap says which is which.
+ */
+const GAP_PREFIX = "gap/";
+
+/**
+ * The id of the node an opened node's undecomposed difference is drawn at.
+ * @param {string} opened
+ * @returns {string}
+ */
+function gapID(opened) {
+  return GAP_PREFIX + opened;
+}
+
+/**
+ * Whether an id names a gap node.
+ * @param {string} id
+ * @returns {boolean}
+ */
+function isGap(id) {
+  return id.startsWith(GAP_PREFIX);
+}
+
+/**
+ * Whether an id names the residual node, the gap node, or an endpoint carried
+ * with the residual: a mark the rung on screen added beside the opened node's
+ * parts, which is not one of them and opens into nothing.
  *
  * THE GATE IS THE RESIDUAL'S DECLARED ENDPOINTS, NOT THE carried_from FLAG,
  * and the difference is the window feature itself. A window's kept flank is
@@ -2316,7 +2354,7 @@ function isResidual(id) {
  * @returns {boolean}
  */
 function isCarried(id) {
-  if (isResidual(id)) return true;
+  if (isResidual(id) || isGap(id)) return true;
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   return Boolean(rung && rung.step.residual &&
     Object.prototype.hasOwnProperty.call(rung.step.residual, id));
@@ -2521,6 +2559,108 @@ function carryResidual(drawn, from, rung) {
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat(added, [node]),
     links: drawn.links.concat(links),
+  });
+}
+
+/**
+ * States as a mark of its own the difference between what the chart above
+ * sends into the opened node and what the document this rung draws breaks that
+ * node into.
+ *
+ * ABSORBED IS THE FAILURE THIS EXISTS TO REFUSE. d3-sankey sizes a node at the
+ * larger of what enters and what leaves, so a centre taking 130,502,087 from
+ * the chart above and sending 130,252,087 into its parts draws at the larger
+ * figure with 250,000 of node height and no ribbon against it. Nothing on the
+ * page says so, and a reader who does not measure the marks sees a chart that
+ * balances. That cell is FY2026-27 services-and-supplies, p0067 against Budget
+ * Book pp.85-125, and it is the one the site actually draws.
+ *
+ * NOT carryResidual, AND THE LINE BETWEEN THEM IS carried VERSUS derived. That
+ * function copies published links of the chart above onto a node beside the
+ * parts, figures and citations untouched; nothing in it sums, subtracts or
+ * allocates. A gap has no link to copy -- both documents draw the cell, at
+ * figures that differ -- so the only mark that can state it is a derived one,
+ * whose value is the difference and whose words are the packager's declaration.
+ *
+ * A STEP THAT DECLARES ANY GAP CLAIMS EVERY NODE IT OPENS BALANCES, and this
+ * is where that claim has teeth: a shortfall on a node the declaration does not
+ * name throws rather than drawing, which is the client-side twin of `fisc
+ * verify`'s spending-window-reconciles. A step declaring none is left alone --
+ * an opened fund group is deliberately unbalanced and says so on its residual,
+ * and a rule that demanded balance everywhere would refuse it.
+ *
+ * THE AMOUNT IS NOT DECLARED AND CANNOT BE. A gap is per fiscal column and a
+ * step is declared once for every year the view lists, so what rides on the
+ * declaration is the REASON -- which names its own column, because the same
+ * sentence is shown under both years and one that did not would be wrong under
+ * the other.
+ *
+ * IT CARRIES NO kind. A kind says which boundary the money crosses, and the
+ * difference between two schedules crosses nothing either of them printed;
+ * `derived` is the claim this mark can make, and it makes it in the class, the
+ * tooltip, the flow table and "What we inferred".
+ *
+ * @param {FiscProjection} drawn  the rung's chart, shaped, folded and spliced
+ * @param {Rung} rung
+ * @returns {FiscProjection} drawn itself where the step declares no gap at all,
+ *   or the node it opened balances
+ */
+function markGap(drawn, rung) {
+  const gaps = rung.step.gaps;
+  if (!gaps || typeof gaps !== "object") return drawn;
+  const opened = rung.id;
+  const centre = drawn.nodes.find((n) => n.id === opened);
+  if (!centre) {
+    throw new Error("cannot draw " + (drawn.projection || "this chart") + ": " + opened +
+      " is not a mark of it, so the gap this step declares has nothing to be stated against");
+  }
+  let into = 0;
+  let outOf = 0;
+  for (const l of drawn.links) {
+    if (l.target === opened) into += l.value_cents;
+    if (l.source === opened) outOf += l.value_cents;
+  }
+  const gap = into - outOf;
+  if (gap === 0) return drawn;
+  const declared = Object.prototype.hasOwnProperty.call(gaps, opened) ? gaps[opened] : "";
+  if (!declared) {
+    throw new Error("cannot draw " + (drawn.projection || "this chart") + ": the chart above " +
+      "sends " + fmt(into) + " into " + centre.label + " and this one draws " + fmt(outOf) +
+      " of it, a difference of " + fmt(Math.abs(gap)) + " that no declaration on this step " +
+      "accounts for; the two documents have drifted apart");
+  }
+  // THE SHORT SIDE DECIDES WHERE THE MARK GOES, which is the same question in
+  // both directions and needs no knowledge of which half of a window came from
+  // which file: too little leaving stands at the last drawn column, too little
+  // arriving at the first.
+  const tiers = rung.step.tiers;
+  const id = gapID(opened);
+  const node = {
+    id: id,
+    label: "Difference between the two schedules",
+    tier: gap > 0 ? tiers[tiers.length - 1] : tiers[0],
+    // PARENTLESS, WHICH DRAWS IT --muted, and that is the claim: it belongs to
+    // neither document's hierarchy.
+    parent: "",
+    constraint_tier: "",
+    role: "gap",
+    derived: true,
+    rationale: "The chart above puts " + fmt(into) + " through " + centre.label +
+      " and the schedule this chart is drawn from accounts for " + fmt(outOf) + " of it. " +
+      declared + " This mark is what is left, drawn so that the ribbons and the node agree; " +
+      "no page prints it as a figure of its own.",
+    source_note: "Derived, not published: one document's total for this cell less the other's, " +
+      "taken from the two charts on screen. `fisc verify` holds that difference to the figure " +
+      "the reason above declares.",
+  };
+  const link = gap > 0
+    ? { source: opened, target: id, value_cents: gap }
+    : { source: id, target: opened, value_cents: -gap };
+  return Object.assign({}, drawn, {
+    nodes: drawn.nodes.concat([node]),
+    links: drawn.links.concat([Object.assign({
+      kind: "", transfer_id: "", fact_ids: [], locators: [], derived: true,
+    }, link)]),
   });
 }
 

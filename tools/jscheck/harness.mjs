@@ -332,6 +332,10 @@ const NAMES = [
   "shapeFor", "filterToNode", "filterFromNode", "capColumn", "drillable", "drillDown", "drillUp",
   "STEPS", "stepFor", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
   "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
+  // THE GAP, which is the other mark a rung can stand beside an opened node:
+  // markGap is reached directly for the refusals, which a click cannot produce
+  // while the committed corpus ties, and isGap is what tells it from a residual.
+  "markGap", "gapID", "isGap",
   "loadDocument", "labelOfRung", "openableColumns", "joinOr", "linkClass", "markContra",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
   // THE WINDOW. drill.mjs drives it through drillDown like everything else
@@ -669,6 +673,87 @@ export function residualDeclaration() {
 }
 
 /**
+ * Budget Book pp.85-125's upper block as `fisc export` writes it, one loader
+ * per published spine column.
+ *
+ * TWO LOADERS AND NOT A YEAR PARAMETER, for goldenFundFlows2027's reason. The
+ * object-category window splices a spine year onto the cross-tab column of the
+ * same year, and the two columns differ in shape and in what they reconcile to:
+ * capital-outlay reaches five divisions in FY2025-26 and four in FY2026-27, and
+ * only FY2026-27 carries the declared 250,000 gap against p0067. A check served
+ * one capture under both paths would pin one year twice and leave the other
+ * with nothing able to see it go wrong.
+ */
+export function goldenSpending() {
+  return JSON.parse(
+    readFileSync(join(repoRoot, "testdata", "department-spending.golden.json"), "utf8"));
+}
+
+export function goldenSpending2027() {
+  return JSON.parse(
+    readFileSync(join(repoRoot, "testdata", "department-spending-2027.golden.json"), "utf8"));
+}
+
+/**
+ * The gap set as internal/check/departmentwide.go declares it: the tier-5 node
+ * id an object category is drawn at, and the reason the two schedules print
+ * that cell at two figures.
+ *
+ * READ OFF THE GO SOURCE FOR residualDeclaration's REASON. The site ships
+ * check.SpendingGaps(), which is this table keyed by node id; a literal here
+ * would be a second copy, and the object-category window would be measured
+ * under a set the site may no longer declare.
+ *
+ * THE KEYS ARE THE DECLARATION AND THE SENTENCE IS NOT. SpendingGaps composes
+ * each reason with the column, both printed figures and the bead in front of
+ * the text parsed here, and internal/check's own
+ * TestSpendingGapsIsTheSameDeclarationTheCheckReads is what holds those figures
+ * to the table. What this side needs is WHICH nodes carry a gap, and a reason
+ * the client can be seen to put on the mark verbatim -- composing the prefix
+ * here would be the second spelling the parse exists to avoid.
+ */
+export function spendingGapDeclaration() {
+  return parseSpendingGaps(
+    readFileSync(join(repoRoot, "internal", "check", "departmentwide.go"), "utf8"));
+}
+
+/**
+ * The parse behind [spendingGapDeclaration], over source text so seam.mjs can
+ * drive it over literals the file does not contain.
+ *
+ * Counted twice, by entries parsed and by `category:` fields present, so an
+ * entry in a shape the pattern cannot follow throws rather than leaving the
+ * window measured under a shorter set. The node id is composed from the
+ * category the way internal/check's spendingCategoryNode does, which is the one
+ * thing about the shipped map this cannot read out of a literal.
+ * @param {string} src
+ * @returns {Record<string, string>}
+ */
+export function parseSpendingGaps(src) {
+  const m = src.match(/var departmentwideExceptions = \[\]departmentwideException\{\{([\s\S]*?)\n\}\}\n/);
+  if (!m) {
+    throw new Error("internal/check/departmentwide.go declares no departmentwideExceptions " +
+      "literal to read");
+  }
+  const out = {};
+  const entry = /category:\s*"((?:[^"\\]|\\.)*)",[\s\S]*?reason:\s*((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+),/g;
+  let e;
+  while ((e = entry.exec(m[1])) !== null) {
+    const pieces = e[2].match(/"(?:[^"\\]|\\.)*"/g) || [];
+    out["expenditure/" + JSON.parse(`"${e[1]}"`)] = pieces.map((p) => JSON.parse(p)).join("");
+  }
+  const declared = (m[1].match(/^\tcategory:/gm) || []).length;
+  const got = Object.keys(out).length;
+  if (got === 0 || got !== declared) {
+    throw new Error(`parsed ${got} gap entries from a literal declaring ${declared} categories`);
+  }
+  for (const [id, reason] of Object.entries(out)) {
+    if (!reason) throw new Error(`gap node ${id} parsed with an empty reason`);
+  }
+  return out;
+}
+
+/**
  * The parse behind residualDeclaration, over source text rather than the file,
  * so seam.mjs can hand it a literal the file does not contain.
  *
@@ -791,8 +876,17 @@ export function parseSpineRenderTiers(src) {
  * are what catch an entry this missed.
  */
 export function parseStepShapes(src) {
-  const block = src.match(/spine\.Steps = \[\]export\.DrillStep\{\n([\s\S]*?)\n\t\t\}\n/);
-  if (!block) throw new Error("pkg/cmd/export/data.go declares no spine.Steps literal to read");
+  // EVERY []export.DrillStep LITERAL, IN SOURCE ORDER, AND NOT THE FIRST. The
+  // spine's steps are joined to two different projections -- pp.127-140 and
+  // pp.85-125 -- and views() declares each group under its own guard, so a
+  // corpus missing one document keeps the other's drill. Reading one literal
+  // returned three steps of a four-step tree and every walk over it would have
+  // measured a chart missing the one the site had just added.
+  const literals = [...src.matchAll(/\[\]export\.DrillStep\{\n([\s\S]*?)\n\t\t\}/g)];
+  if (!literals.length) {
+    throw new Error("pkg/cmd/export/data.go declares no []export.DrillStep literal to read");
+  }
+  const block = literals.map((m) => m[1]).join("\n");
   const out = [];
   // ENTRIES ARE SLICED ON THE BRACE THAT OPENS ONE, not on a field inside it,
   // and the cross-check counts DIFFERENT markers. Slicing on `From:` made the
@@ -802,9 +896,9 @@ export function parseStepShapes(src) {
   // gofmt accepts, dropped that step and attributed its `{Tier: 5, Cap: 8}` to
   // step 0, silently. That is the defect this function cited fisc-0flg for and
   // then repeated; found by pass three of /code-review.
-  const starts = [...block[1].matchAll(/^\t{3}\{/gm)];
+  const starts = [...block.matchAll(/^\t{3}\{/gm)];
   for (const [i, m] of starts.entries()) {
-    const body = block[1].slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
+    const body = block.slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
     const from = body.match(/From:\s*(\d+),/);
     const tiers = body.match(/Tiers:\s*\[\]int\{([\d,\s]*)\}/);
     // A CAP MAY NAME ITS OWN NOUN. `{Tier: 4, Cap: 24, Tail: "divisions"}`
@@ -889,9 +983,9 @@ export function parseStepShapes(src) {
   // or a From this read into the wrong entry, moves one count and not the
   // others. The field counts are deliberately loose on indentation so that a
   // reflow changes the PARSE and not the CHECK.
-  const froms = (block[1].match(/From:\s*\d+,/g) || []).length;
-  const keys = (block[1].match(/Key:\s*"/g) || []).length;
-  const afters = (block[1].match(/After:\s*\[\]string\{/g) || []).length;
+  const froms = (block.match(/From:\s*\d+,/g) || []).length;
+  const keys = (block.match(/Key:\s*"/g) || []).length;
+  const afters = (block.match(/After:\s*\[\]string\{/g) || []).length;
   if (out.length === 0 || out.length !== froms || out.length !== keys || out.length !== afters) {
     throw new Error(`parsed ${out.length} steps from a literal declaring ${froms} From, ` +
       `${keys} Key and ${afters} After fields`);

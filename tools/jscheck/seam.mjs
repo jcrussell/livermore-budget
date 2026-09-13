@@ -19,6 +19,7 @@
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
   KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes, parseSpineRenderTiers,
+  parseSpendingGaps,
 } from "./harness.mjs";
 
 export async function checks() {
@@ -398,6 +399,77 @@ export async function checks() {
           `a constant among the entries throws ${JSON.stringify(read(constEntry).threw)}; a step ` +
           `with no After throws ${JSON.stringify(read(noAfter).threw)}; an unreadable Keep throws ` +
           `${JSON.stringify(read(unreadableKeep).threw)}`,
+    });
+  }
+
+  // THE STEPS COME FROM EVERY []export.DrillStep LITERAL, NOT FROM THE FIRST.
+  // views() declares the spine's steps under one guard per step DOCUMENT, so
+  // that a corpus missing pp.127-140 keeps the drill that opens pp.85-125 -- and
+  // a parse anchored on `spine.Steps = []export.DrillStep{` read the first group
+  // and returned a tree one edge short, with every count inside it agreeing.
+  // The literal below is the shape data.go now has: a slice literal and an
+  // append of a second.
+  {
+    const step = (/** @type {string} */ key, /** @type {number} */ from) =>
+      `\t\t\t{\n\t\t\t\tKey:   ${JSON.stringify(key)},\n` +
+      `\t\t\t\tAfter: []string{""},\n` +
+      `\t\t\t\tFrom:  ${from},\n\t\t\t\tTiers: []int{0, 2, 3},\n\t\t\t},`;
+    const first = `\t\tspine.Steps = []export.DrillStep{\n${step("group", 2)}\n\t\t}\n`;
+    const second = "\t\tspine.Steps = append(spine.Steps, []export.DrillStep{\n" +
+      `${step("object", 5)}\n\t\t}...)\n`;
+    const read = (/** @type {string} */ text) => {
+      try {
+        return { steps: parseStepShapes(text), threw: "" };
+      } catch (e) {
+        return { steps: [], threw: String((e && e.message) || e) };
+      }
+    };
+    const both = read(first + "\tsomething := 1\n" + second);
+    const one = read(first);
+    const keys = (/** @type {{steps: any[]}} */ r) => r.steps.map((x) => x.key).join("|");
+    out.push({
+      name: "a second []export.DrillStep literal is read as more steps of the same tree, not dropped",
+      ok: both.threw === "" && keys(both) === "group|object" &&
+        both.steps[1].from === 5 && one.threw === "" && keys(one) === "group",
+      detail: both.threw !== ""
+        ? `two literals threw ${JSON.stringify(both.threw)}`
+        : `two literals read as ${JSON.stringify(keys(both))} opening tiers ` +
+          `${JSON.stringify(both.steps.map((x) => x.from))}; one literal alone reads ` +
+          `${JSON.stringify(keys(one))}`,
+    });
+  }
+
+  // THE GAP PARSE COUNTS TWICE FOR THE RESIDUAL PARSE'S REASON, and the set it
+  // returns is what the object-category window is driven under: a short one
+  // would leave the FY2026-27 services-and-supplies mark measured under no
+  // declaration at all, which is the state markGap throws on and a check would
+  // then be recording as the feature. The literals below are ones
+  // internal/check/departmentwide.go does not contain.
+  {
+    const lit = (/** @type {string} */ body) =>
+      `var departmentwideExceptions = []departmentwideException{{\n${body}\n}}\n`;
+    const good = lit('\tcategory: "wages-and-benefits", year: 2027,\n\n\tbead: "b-1",\n' +
+      '\treason: "one " +\n\t\t"two",');
+    const noReason = lit('\tcategory: "wages-and-benefits", year: 2027,\n\tbead: "b-1",');
+    const emptyReason = lit('\tcategory: "wages-and-benefits",\n\treason: "",');
+    const read = (/** @type {string} */ text) => {
+      try {
+        return { gaps: parseSpendingGaps(text), threw: "" };
+      } catch (e) {
+        return { gaps: {}, threw: String((e && e.message) || e) };
+      }
+    };
+    const control = read(good);
+    out.push({
+      name: "the gap literal is read into node ids, and a category whose reason it cannot follow throws",
+      ok: control.threw === "" &&
+        control.gaps["expenditure/wages-and-benefits"] === "one two" &&
+        read(noReason).threw !== "" && read(emptyReason).threw !== "",
+      detail: control.threw !== ""
+        ? `THE CONTROL LITERAL DID NOT PARSE (${control.threw}), so nothing below is evidence`
+        : `a well-formed entry reads as ${JSON.stringify(control.gaps)}; a category with no ` +
+          `reason throws ${JSON.stringify(read(noReason).threw)} and one with an empty ` +
+          `reason throws ${JSON.stringify(read(emptyReason).threw)}`,
     });
   }
 

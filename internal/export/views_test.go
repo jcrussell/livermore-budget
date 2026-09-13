@@ -1018,6 +1018,24 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				v.Steps[0].Residual = map[string]string{"transfers/in": ""}
 			})},
 			"declares residual endpoint \"transfers/in\" with reason \"\""},
+		// A GAP NEEDS THE SAME TWO THINGS FOR A DIFFERENT REASON, and the two
+		// declarations are told apart by which node the key names -- an
+		// endpoint of the chart above for a residual, the opened node itself
+		// for a gap. A gap on a same-document step names a cell one file prints
+		// once; a gap with no reason draws the two documents' drift with
+		// nothing on the mark to say it was expected, which is the only thing
+		// separating a declared gap from a defect.
+		{"a gap on a step that switches no document", []export.View{ok,
+			chainView(func(v *export.View) {
+				v.Steps[1].Gaps = map[string]string{"expenditure/services-and-supplies": "a reason"}
+			})},
+			"a step that switches no document has only one"},
+		{"a gap with no reason", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Gaps = map[string]string{"expenditure/services-and-supplies": ""}
+			})},
+			"declares a gap on node \"expenditure/services-and-supplies\" with reason \"\""},
 		{"a cap on a tier the step does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
 			"the cap would fold nothing, in silence"},

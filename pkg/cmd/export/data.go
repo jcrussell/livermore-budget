@@ -364,37 +364,29 @@ func yearStems(name string, projections map[string][]byte) []string {
 // false statement about the site, so assertPublishedReachable refuses it and
 // the entry is deleted rather than left for whoever forgets.
 //
-// WHY THE TWO REMAINING ENTRIES ARE NOT A CHART PROBLEM ANY MORE. They were:
-// the drill-down's 61-node fund column laid every node and every ribbon out at
-// zero height, and c3a337d landed the fold that fixes it. index.html opens the
-// spine into fund-flows now, joining the two documents on Column -- see
-// stepStems -- and that join is what these two cannot satisfy: see the const.
+// WHY THE FUND-FLOWS PAIR IS NOT A CHART PROBLEM ANY MORE. It was: the
+// drill-down's 61-node fund column laid every node and every ribbon out at zero
+// height, and c3a337d landed the fold that fixes it. index.html opens the spine
+// into fund-flows now, joining the two documents on Column -- see stepStems --
+// and that join is what those two cannot satisfy: see the const. Every entry
+// left here is a printed column pp.66-67 have no year for, on one projection or
+// the other.
 var unviewedDocuments = map[string]string{
 	project.FundFlowsProjection + "-2024-actual":  fundFlowsNoSpineColumn,
 	project.FundFlowsProjection + "-2025-revised": fundFlowsNoSpineColumn,
 
-	// ALL FOUR OF THE CROSS-TAB, NOT TWO, AND THE BEAD THAT WROTE THIS LANE
-	// SAID TWO. Re-derived here: reachability is by a view's projection, its
-	// year stems or a STEP's documents, and no step opens tier 5 yet, so the
-	// two adopted columns are as unreachable as the two historical ones. They
-	// are separate entries because they retire on separate events -- the
-	// adopted pair the moment fisc-ko1j.21 declares the step, the historical
-	// pair not then and maybe never.
-	project.DepartmentSpendingProjection:                   spendingNoStepYet,
-	project.DepartmentSpendingProjection + "-2027":         spendingNoStepYet,
+	// THE CROSS-TAB'S TWO ADOPTED COLUMNS ARE GONE FROM HERE, and the two
+	// historical ones are what is left. The object-category step opens the
+	// spine's tier 5 into this projection and joins on Column, so each spine
+	// year reaches its own column; the actual and revised columns have no spine
+	// year to be opened from, which is the same shape as fund-flows' pair.
 	project.DepartmentSpendingProjection + "-2024-actual":  spendingNoSpineColumn,
 	project.DepartmentSpendingProjection + "-2025-revised": spendingNoSpineColumn,
 }
 
-const spendingNoStepYet = "a published column of the departmentwide cross-tab that no chart " +
-	"opens yet. Its object categories ARE the spine's tier-5 nodes and its column is a spine " +
-	"year, so nothing about the document stands in the way; what is missing is the drill " +
-	"step that declares From: 5, which is fisc-ko1j.21. The projection lands first because " +
-	"assertPublishedReachable refuses a step naming a document that was never built, so the " +
-	"two cannot land in one commit in the other order"
-
 const spendingNoSpineColumn = "a published column of the departmentwide cross-tab that the " +
-	"chart cannot reach even once fisc-ko1j.21 lands. The spine opens into a document one " +
+	"chart cannot reach even though its object-category step has landed. The spine opens " +
+	"into a document one " +
 	"fiscal year at a time, joining on Column, and pp.66-67 print no actual and no revised " +
 	"column -- so there is no spine year to open this one from. It is published because " +
 	"pp.85-125 DO print those two columns and this is the only document that draws those " +
@@ -715,6 +707,67 @@ func views(built result) []export.View {
 					"those reductions.",
 			},
 		}
+	}
+	// THE SPINE'S RIGHT-HAND COLUMN OPENS INTO A SECOND DOCUMENT, and it is
+	// declared apart from the three above because it is joined to a different
+	// projection: a corpus that built pp.85-125 and not pp.127-140 should lose
+	// the fund-group drill and keep this one, which one guard over both could
+	// not express.
+	//
+	// A WINDOW, AND THE ONLY ONE THE SITE SHIPS TODAY. Keep 2 with Tiers
+	// {2,5,4} draws the fund groups that pay for the category the reader
+	// clicked, the category itself, and the divisions that spend it. Tier 2 is
+	// to the LEFT of tier 5 in the spine's own {0,2,5}, so the window pushes
+	// right and the kept flank is the first column here -- validateSteps checks
+	// that adjacency against the spine's declared order rather than against the
+	// tier numbers.
+	//
+	// THE ROLE IS THE MIRROR OF THE REVENUE STEP'S. Three of the spine's seven
+	// tier-5 nodes are flow ends rather than object categories -- transfers/out
+	// and the two fund-balance rows -- and pp.85-125 decompose none of them:
+	// the Transfers Out row those pages print is a dash in both budget columns.
+	// Role closes them exactly as "revenue_source" closes transfers/in and
+	// fund-balance/draw at the other end of the chart.
+	//
+	// THE CAP ENGAGES HERE, WHICH THE DIVISION CAP ON THE STEP ABOVE DOES NOT.
+	// Measured off both committed columns: services-and-supplies reaches 29
+	// divisions and wages-and-benefits 26, against 5 for debt-services and 5
+	// (FY2025-26) or 4 (FY2026-27) for capital-outlay. Uncapped, the smallest
+	// services ribbon lays out under a pixel; tools/jscheck/drill.mjs pins the
+	// fold on all four.
+	//
+	// THE GAP IS THE CHECK'S DECLARATION, READ, NOT COPIED -- the argument the
+	// residual above makes one field over. spending-window-reconciles proves
+	// each object category's spine inflow equals pp.85-125's division rows plus
+	// the declared gap, and check.SpendingGaps() is that same table keyed by
+	// the node the chart draws it at. FY2026-27's services-and-supplies is the
+	// one entry: p0067 publishes 130,502,087 where pp.85-125's rows come to
+	// 130,252,087, which is fisc-av0w. The chart draws the 250,000 as a mark of
+	// its own rather than letting the ribbons fall short of the node.
+	if years := stepStems(export.PrimaryProjection, project.DepartmentSpendingProjection, projections); years[export.PrimaryProjection] != "" {
+		spine.Steps = append(spine.Steps, []export.DrillStep{
+			{
+				Key:             "object-category",
+				After:           []string{""},
+				From:            5,
+				Role:            "object_category",
+				Projection:      years[export.PrimaryProjection],
+				YearProjections: years,
+				Keep:            []int{2},
+				Tiers:           []int{2, 5, 4},
+				Caps:            []export.TierCap{{Tier: 4, Cap: 8}},
+				Back:            "All object categories",
+				Tail:            "divisions",
+				Gaps:            check.SpendingGaps(),
+				Description: "The fund groups that pay for this object category are on the " +
+					"left; the divisions that spend it are on the right \u2014 Budget Book " +
+					"pp.85-125's rows for this category, every division in the city that " +
+					"has one, rescaled to the category's total. The two columns are read " +
+					"from different schedules, and the right-hand one prints what a " +
+					"division spends whatever pays for it: it carries no fund at all, so " +
+					"no division here takes the colour of a fund group.",
+			},
+		}...)
 	}
 	out := []export.View{spine}
 

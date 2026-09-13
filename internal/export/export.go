@@ -625,6 +625,38 @@ type DrillStep struct {
 	// from the JSON when empty, so the client reads an absent key as "this
 	// step carries nothing across", which is every same-document step.
 	Residual map[string]string `json:"residual,omitempty"`
+	// Gaps is the set of nodes this step OPENS whose total the document it
+	// draws does not reach, each with the declared reason the two documents
+	// print one cell at two figures: node id to reason. The client draws the
+	// shortfall as one derived node beside the opened node's parts, in that
+	// reason's words.
+	//
+	// NOT [DrillStep.Residual], AND THE KEY IS WHAT SEPARATES THEM. A residual
+	// key is an ENDPOINT of the chart above whose flow into or out of the
+	// opened node has no finer grain, and the client carries that endpoint's
+	// published link across verbatim. A gap key is the OPENED NODE itself and
+	// there is no link to carry: both documents draw the cell, at figures that
+	// differ. Declared in the other's field it would also have the client treat
+	// the node the reader clicked as carried from the chart above, which it is
+	// not.
+	//
+	// THE REASON IS DECLARED AND THE AMOUNT IS NOT. A gap is per fiscal column
+	// -- Budget Book pp.85-125's services-and-supplies falls 250,000 short of
+	// p0067's in FY2026-27 and ties to the cent in FY2025-26 -- while a step is
+	// declared once for every year the view lists, so a declared figure would
+	// need a year axis this map cannot have. The client takes the difference
+	// between the two sides of the node it drew and the reason names the column
+	// it is of; internal/check's spending-window-reconciles is what holds that
+	// difference to the declared figure, on the documents, at verify time.
+	//
+	// A STEP DECLARING ONE CLAIMS EVERY OTHER NODE IT OPENS BALANCES. The
+	// client refuses a shortfall on a node named nowhere here rather than
+	// drawing it unexplained, which is the claim's only teeth. A step declaring
+	// none makes no such claim: the fund-group step's opened node is
+	// deliberately unbalanced and says so through [DrillStep.Residual] instead.
+	//
+	// ONLY ON A STEP THAT SWITCHES DOCUMENT, for Residual's reason.
+	Gaps map[string]string `json:"gaps,omitempty"`
 }
 
 // SideSource is [DrillStep.Side] for a step opening the node its chart's links
@@ -1181,6 +1213,14 @@ func (v View) validateSteps(built map[string][]byte) error {
 					"document before it; a residual is what one document prints at a grain "+
 					"the other does not, and a step that switches no document has no second "+
 					"grain", v.Path, i, len(s.Residual))
+		// A GAP NEEDS TWO DOCUMENTS FOR THE SAME REASON AND A DIFFERENT ONE: it
+		// is one cell printed twice at two figures, and a step drawing the
+		// document before it has only the one printing.
+		case s.Projection == "" && len(s.Gaps) > 0:
+			return fmt.Errorf(
+				"view %q's step %d declares a gap on %d node(s) and draws the document "+
+					"before it; a gap is one cell two documents print at two figures, and a "+
+					"step that switches no document has only one", v.Path, i, len(s.Gaps))
 		// THE PER-YEAR JOIN IS EXACT OR REFUSED. A year with no entry would
 		// have the client open the year's chart into a file it was never
 		// told about; an entry for no year is a claim about a document the
@@ -1355,6 +1395,15 @@ func (v View) validateSteps(built map[string][]byte) error {
 						"that carries it tells the reader why no part of the opened node "+
 						"receives that flow in the reason's words, and an empty one draws a "+
 						"mark that explains nothing", v.Path, i, id, s.Residual[id])
+			}
+		}
+		for _, id := range slices.Sorted(maps.Keys(s.Gaps)) {
+			if id == "" || s.Gaps[id] == "" {
+				return fmt.Errorf(
+					"view %q's step %d declares a gap on node %q with reason %q; the only "+
+						"thing separating a declared gap from two documents drifting apart "+
+						"is the reason the mark states, and an empty one draws the drift "+
+						"unexplained", v.Path, i, id, s.Gaps[id])
 			}
 		}
 		if s.Projection != "" && len(v.YearStems) > 0 {

@@ -1260,6 +1260,31 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"a fund's figure on this chart is the sum of every ribbon into it before " +
 				"those reductions.",
 		},
+		{
+			Key:             "object-category",
+			After:           []string{""},
+			From:            5,
+			Role:            "object_category",
+			Projection:      project.DepartmentSpendingProjection,
+			YearProjections: map[string]string{"sankey": "department-spending", "sankey-2027": "department-spending-2027"},
+			Keep:            []int{2},
+			Tiers:           []int{2, 5, 4},
+			Caps:            []export.TierCap{{Tier: 4, Cap: 8}},
+			Back:            "All object categories",
+			Tail:            "divisions",
+			// READ OFF THE CHECK FOR check.ResidualNodes' REASON, one field
+			// over: spending-window-reconciles proves the identity this set
+			// closes, and a literal here would be a second spelling nothing
+			// holds to it.
+			Gaps: check.SpendingGaps(),
+			Description: "The fund groups that pay for this object category are on the " +
+				"left; the divisions that spend it are on the right — Budget Book " +
+				"pp.85-125's rows for this category, every division in the city that " +
+				"has one, rescaled to the category's total. The two columns are read " +
+				"from different schedules, and the right-hand one prints what a " +
+				"division spends whatever pays for it: it carries no fund at all, so " +
+				"no division here takes the colour of a fund group.",
+		},
 	}
 	if diff := cmp.Diff(want, spine.Steps); diff != "" {
 		t.Errorf("the spine's steps (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGE "+
@@ -1341,18 +1366,49 @@ func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		t.Errorf("got %v, want the refusal naming the year", err)
 	}
 
-	// AND NO DRILL AT ALL WHEN THE OPENING YEAR'S DOCUMENT WAS NOT BUILT, for
-	// the reason a view whose document was not built is dropped: a chain
-	// pointing at a file that was not written is a click that 404s.
-	none := map[string][]byte{}
-	for k, v := range built {
-		if !strings.HasPrefix(k, project.FundFlowsProjection) {
-			none[k] = v
+	// AND NO DRILL INTO A DOCUMENT THAT WAS NOT BUILT, for the reason a view
+	// whose document was not built is dropped: a chain pointing at a file that
+	// was not written is a click that 404s.
+	//
+	// PER PROJECTION AND NOT PER SPINE, which is why the first case below is
+	// not zero. The three fund-flows steps and the object-category step are
+	// joined by separate calls to stepStems, so a corpus that lost pp.127-140
+	// keeps the drill that opens pp.85-125 -- and one guard over both documents
+	// could not say that.
+	without := func(prefixes ...string) map[string][]byte {
+		out := map[string][]byte{}
+		for k, v := range built {
+			if !slices.ContainsFunc(prefixes, func(p string) bool { return strings.HasPrefix(k, p) }) {
+				out[k] = v
+			}
 		}
+		return out
 	}
-	if steps := views(result{Projections: none})[0].Steps; len(steps) != 0 {
-		t.Errorf("the spine declares %d step(s) with no fund-flows document built", len(steps))
+	noFlows := views(result{Projections: without(project.FundFlowsProjection)})[0].Steps
+	if len(noFlows) != 1 || noFlows[0].Key != "object-category" {
+		t.Errorf("with no fund-flows document built the spine declares %d step(s) (%v), want "+
+			"the object-category step alone", len(noFlows), stepKeys(noFlows))
 	}
+	noSpending := views(result{Projections: without(project.DepartmentSpendingProjection)})[0].Steps
+	if len(noSpending) != 3 || slices.ContainsFunc(noSpending, func(s export.DrillStep) bool {
+		return s.Key == "object-category"
+	}) {
+		t.Errorf("with no department-spending document built the spine declares %d step(s) "+
+			"(%v), want the three fund-flows steps", len(noSpending), stepKeys(noSpending))
+	}
+	neither := without(project.FundFlowsProjection, project.DepartmentSpendingProjection)
+	if steps := views(result{Projections: neither})[0].Steps; len(steps) != 0 {
+		t.Errorf("the spine declares %d step(s) with neither step document built", len(steps))
+	}
+}
+
+// stepKeys names a step list for a failure message.
+func stepKeys(steps []export.DrillStep) []string {
+	out := make([]string, 0, len(steps))
+	for _, s := range steps {
+		out = append(out, s.Key)
+	}
+	return out
 }
 
 // TestAPageThatDisclaimsAuditAssuranceDoesNotClaimItInItsProse couples the two
@@ -1859,6 +1915,25 @@ func TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 // fund-balance/contribution carried at all.
 func TestTheSankey2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "sankey-2027", "sankey-2027.golden.json")
+}
+
+// TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws and its 2027 twin
+// pin the captures the object-category window is measured over.
+//
+// ONE PER PUBLISHED SPINE YEAR, for the fund-flows pair's reason and a sharper
+// one: the two columns are not the same shape -- capital-outlay reaches five
+// divisions in FY2025-26 and four in FY2026-27 -- and only FY2026-27 carries
+// the declared 250,000 gap between p0067 and pp.85-125. A window measured over
+// FY2025-26's capture twice would never see a gap mark drawn at all, and one
+// measured over FY2026-27's twice would never see a chart that ties.
+func TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, project.DepartmentSpendingProjection,
+		"department-spending.golden.json")
+}
+
+func TestTheDepartmentSpending2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, "department-spending-2027",
+		"department-spending-2027.golden.json")
 }
 
 // fixtureIsTheDocumentExported compares one committed capture line for line

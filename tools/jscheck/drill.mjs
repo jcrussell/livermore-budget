@@ -25,6 +25,7 @@ import { join } from "node:path";
 
 import {
   loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, goldenGraph2027, plannedFetch,
+  goldenSpending, goldenSpending2027, spendingGapDeclaration,
   stepDescriptions, stepShapes, spineRenderTiers,
   settle, refusals, twoYearConfig, repoRoot, residualDeclaration,
 } from "./harness.mjs";
@@ -105,6 +106,11 @@ const PAGE = {
       residual: residualDeclaration() }),
     stepAs(1, { back: "All divisions", tail: "categories" }),
     stepAs(2, { projection: "fund-flows", back: "All revenue categories", tail: "lines" }),
+    // THE FOURTH STEP OPENS THE SPINE'S RIGHT-HAND COLUMN, and its gap set is
+    // read off internal/check the way step 0's residual is: one declaration,
+    // two readers, and no third spelling to drift.
+    stepAs(3, { projection: "department-spending", back: "All object categories",
+      tail: "divisions", gaps: spendingGapDeclaration() }),
   ],
   // Measured: the spine's 58 links over 25 nodes cite 58 of its 120 facts;
   // the 62 it does not draw are the printed zeros and the stocks.
@@ -120,15 +126,31 @@ const PAGE = {
   // spends on more than a handful of object categories. Pinned so that stops
   // being true loudly.
   inert: "dept/patrol",
-  // HOW MANY VIEWS THE CHAIN OPENS: six fund groups, and the General Fund's
-  // 23 divisions -- only that group draws a node at the second step's tier.
-  openedViews: 29,
+  // HOW MANY VIEWS THE TREE OPENS, counted by walking it rather than by adding
+  // the declarations up: ten revenue categories, six fund groups and four
+  // object categories at depth 1, and the General Fund's 23 divisions at depth
+  // 2 -- only that group draws a node at the division step's tier, and neither
+  // a revenue category's window nor an object category's offers anything at
+  // all. Measured 2026-09-13 over both published columns.
+  openedViews: 43,
   // THE COLUMN ORDER THE SPINE DECLARES, off data.go rather than typed. Its
   // three tiers are the ones the document carries, so the fold it asks for
   // changes no mark; what it decides is which column is "left-hand" and which
   // tier a window could keep beside which.
   renderTiers: RENDER_TIERS,
 };
+
+/**
+ * The columns of the spine's own chart that hold a node which opens, in the
+ * order it declares them, as openableColumns names them.
+ *
+ * ALL THREE SINCE THE OBJECT-CATEGORY STEP, and it was "left-hand|middle" for
+ * as long as the right-hand column opened nothing -- which is the owner's third
+ * finding stated as a pin. One constant because three checks assert it and a
+ * spine that stopped offering one of its columns should turn all three red at
+ * once rather than one at a time.
+ */
+const OPENABLE_COLUMNS = "left-hand|middle|right-hand";
 
 /**
  * The two fund-flows columns the page reaches, one per spine year, and the
@@ -163,6 +185,7 @@ const COLUMNS = [
   {
     stem: "sankey", label: "FY 2025-26", step: "fund-flows", golden: goldenFundFlows,
     spine: goldenGraph,
+    spendingStem: "department-spending", spending: goldenSpending,
     // The narrowest depth-2 ribbon, which is Patrol's in both years.
     worstDeep: "51.38",
     // PAGE.worst at the declared caps and uncapped: ribbons, and how many of
@@ -197,6 +220,41 @@ const COLUMNS = [
     // PROPERTY TAXES OPENED AT {1,3}, MEASURED THROUGH drillDown: nodes, links
     // and sub-pixel ribbons, and the counts line; then the tails each cap
     // folds on the two categories whose columns exceed it.
+    // THE FOUR OBJECT-CATEGORY WINDOWS, MEASURED BY HAND ON 2026-09-13 through
+    // drillDown over this column's two committed captures.
+    //
+    // FOUR ENTRIES AND THREE ABSENCES. The spine puts seven nodes in its
+    // right-hand column; transfers/out, fund-balance/contribution and
+    // fund-balance/reserve-increase are flow ends rather than object
+    // categories and the step's role leaves them closed, which is the mirror
+    // of the revenue step's gate at the other end of the chart.
+    //
+    // `views` is [nodes, links, sub-pixel ribbons, fund groups in the kept
+    // flank] and `uncapped` is [links, sub-pixel ribbons] with the tier-4 cap
+    // taken off -- which is what says the cap is doing the work here, unlike
+    // the division cap one step over that has never engaged.
+    object: {
+      views: {
+        "expenditure/capital-outlay": [9, 8, 0, 3],
+        "expenditure/debt-services": [10, 9, 0, 4],
+        "expenditure/services-and-supplies": [15, 14, 0, 5],
+        "expenditure/wages-and-benefits": [15, 14, 0, 5],
+      },
+      uncapped: {
+        "expenditure/capital-outlay": [8, 0],
+        "expenditure/debt-services": [9, 0],
+        "expenditure/services-and-supplies": [34, 4],
+        "expenditure/wages-and-benefits": [31, 2],
+      },
+      tails: {
+        "expenditure/services-and-supplies": "21 smaller divisions",
+        "expenditure/wages-and-benefits": "18 smaller divisions",
+      },
+      // pp.85-125's division rows come to p0067's cell to the cent in every
+      // one of this column's four categories, so no gap mark is drawn at all.
+      gapCents: 0,
+      counts: "14 flows between 15 nodes, from 34 of the document's 73 facts",
+    },
     // THE (1,0) ROLLUPS THE DOCUMENT CARRIES, drawn in none of its views: one
     // per (printed row, kind) over 93 lines, two of which reach their funds
     // under both kinds. The same number in both years -- fund/207's dash in
@@ -223,6 +281,7 @@ const COLUMNS = [
   {
     stem: "sankey-2027", label: "FY 2026-27", step: "fund-flows-2027", golden: goldenFundFlows2027,
     spine: goldenGraph2027,
+    spendingStem: "department-spending-2027", spending: goldenSpending2027,
     worstDeep: "67.02",
     capped: { links: 22, hairlines: 1 }, uncapped: { links: 47, hairlines: 18 },
     tail: "23 smaller funds",
@@ -244,6 +303,32 @@ const COLUMNS = [
     // per (printed row, kind) over 93 lines, two of which reach their funds
     // under both kinds. The same number in both years -- fund/207's dash in
     // FY2026-27 moves a fund and not a row.
+    // THE SAME FOUR, ON THE COLUMN THAT DOES NOT TIE. capital-outlay reaches
+    // four divisions here against five, and services-and-supplies carries the
+    // declared 250,000 between p0067 and pp.85-125 -- the one cell of the eight
+    // that does not close, and the reason this window needed a gap mark at all.
+    object: {
+      views: {
+        "expenditure/capital-outlay": [8, 7, 0, 3],
+        "expenditure/debt-services": [10, 9, 0, 4],
+        "expenditure/services-and-supplies": [16, 15, 0, 5],
+        "expenditure/wages-and-benefits": [15, 14, 0, 5],
+      },
+      uncapped: {
+        "expenditure/capital-outlay": [7, 0],
+        "expenditure/debt-services": [9, 0],
+        "expenditure/services-and-supplies": [35, 5],
+        "expenditure/wages-and-benefits": [31, 2],
+      },
+      tails: {
+        "expenditure/services-and-supplies": "21 smaller divisions",
+        "expenditure/wages-and-benefits": "18 smaller divisions",
+      },
+      // $250,000.00, drawn as one derived mark rather than left as node height
+      // with no ribbon under it.
+      gapCents: 25000000,
+      counts: "15 flows between 16 nodes, from 34 of the document's 73 facts",
+    },
     rollups: 95,
     category: {
       nodes: 14, links: 12, hairlines: 0,
@@ -270,6 +355,10 @@ const FUND_FLOWS_CAVEATS = [
   "constraint-tier-is-our-reading", "the-revenue-schedule-is-published-twice",
   "mixed-grain-double-counts", "only-the-general-fund-is-decomposed",
 ];
+const SPENDING_CAVEATS = [
+  "no-fund-axis-on-these-pages", "the-ribbons-are-a-cross-tab",
+  "the-boundary-is-not-classified-here",
+];
 
 /** Caveat refs the way the packager composes them: one anchor per (stem, id). */
 function refsFor(stem, ids) {
@@ -281,10 +370,19 @@ function refsFor(stem, ids) {
  * draws, resolved for that year, with that document's caveat refs. The
  * same-document second step resolves to the first's document, so there is one
  * entry per declared step.
+ *
+ * TWO PROJECTIONS, RESOLVED OFF EACH STEP'S OWN DECLARATION rather than by
+ * index. The spine opens into pp.127-140 and into pp.85-125, and a list keyed
+ * by position would go on handing the object-category rung a fund-flows file
+ * the day a step is inserted before it -- which is the packager's own rule
+ * (export.stepDocuments) reached from this side.
  */
-function stepDocsFor(stem) {
-  const entry = { stem, path: `data/${stem}.json`, caveats: refsFor(stem, FUND_FLOWS_CAVEATS) };
-  return PAGE.steps.map(() => Object.assign({}, entry));
+function stepDocsFor(flows, spending) {
+  return PAGE.steps.map((s) => {
+    const stem = s.projection === "department-spending" ? spending : flows;
+    const caveats = stem.startsWith("department-spending") ? SPENDING_CAVEATS : FUND_FLOWS_CAVEATS;
+    return { stem, path: `data/${stem}.json`, caveats: refsFor(stem, caveats) };
+  });
 }
 
 /**
@@ -311,13 +409,16 @@ async function opened(plan, tweak, column = COLUMNS[0]) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   config.projections["fund-flows-2027"] = "data/fund-flows-2027.json";
+  config.projections["department-spending"] = "data/department-spending.json";
+  config.projections["department-spending-2027"] = "data/department-spending-2027.json";
   config.render_tiers = PAGE.renderTiers;
   config.steps = PAGE.steps;
   config.years = config.years.map((y, i) => Object.assign({}, y, {
     counts: { facts: 120, nodes: 25, links: 58 },
     chart_title: `Sankey diagram of the ${y.label} adopted budget`,
     caveats: refsFor(y.stem, SPINE_CAVEATS),
-    steps: stepDocsFor(i === 0 ? "fund-flows" : "fund-flows-2027"),
+    steps: stepDocsFor(i === 0 ? "fund-flows" : "fund-flows-2027",
+      i === 0 ? "department-spending" : "department-spending-2027"),
   }));
   if (tweak) tweak(config);
   const spineOf = (/** @type {() => any} */ load) => {
@@ -329,6 +430,13 @@ async function opened(plan, tweak, column = COLUMNS[0]) {
     // category in the STEP DOCUMENT's words, so the contra sentence stays
     // "Property Taxes" and the two are told apart.
     spine.nodes.find((n) => n.id === "revenue/taxes/property").label = "Property Taxes category";
+    // AND THE SAME FOR THE FOUR OBJECT CATEGORIES, which the cross-tab prints
+    // in the same words as the spine: the object-category window's centre is
+    // the node the reader clicked, so it must be namable apart from the copy
+    // the step document carries under the same id.
+    for (const n of spine.nodes) {
+      if (n.id.startsWith("expenditure/")) n.label = n.label + " category";
+    }
     return spine;
   };
   const fetch = plannedFetch(Object.assign({
@@ -336,6 +444,8 @@ async function opened(plan, tweak, column = COLUMNS[0]) {
     "data/sankey-2027.json": { doc: spineOf(goldenGraph2027) },
     "data/fund-flows.json": { doc: goldenFundFlows() },
     "data/fund-flows-2027.json": { doc: goldenFundFlows2027() },
+    "data/department-spending.json": { doc: goldenSpending() },
+    "data/department-spending-2027.json": { doc: goldenSpending2027() },
   }, plan || {}));
   const app = loadApp({ config, fetch, checkedStem: column.stem });
   const body = app.dom.document.node();
@@ -440,22 +550,36 @@ function measure(app, doc) {
  * @returns {Promise<{visited: number, refused: string}>}
  */
 async function everyOpenedView(app, visit) {
-  const groups = goldenGraph().nodes.filter((n) => n.tier === PAGE.steps[0].from);
   let visited = 0;
-  try {
-    for (const g of groups) {
-      app.drillUp(0);
-      await mustOpen(app, g.id);
-      visited++;
-      await visit(g.id, 1);
-      const divisions = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id);
-      for (const d of divisions) {
-        app.drillUp(1);
-        await mustOpen(app, d);
-        visited++;
-        await visit(`${g.id} > ${d}`, 2);
-      }
+  // THE WHOLE TREE, NOT ONE EDGE OF IT, and that is what the rewrite buys.
+  // This read the drawn chart for its children and the GOLDEN SPINE for its
+  // roots, at `PAGE.steps[0].from` -- so the day the spine grew a second and a
+  // third edge out of its own chart, the walk went on visiting the fund groups
+  // alone and PAGE.openedViews agreed with it. Every node the chart on screen
+  // OFFERS is opened now, at every depth, which is the same question asked once
+  // instead of once per declared step.
+  const walk = async (/** @type {string[]} */ path) => {
+    if (path.length > PAGE.steps.length) {
+      throw new Error(`the drill went ${path.length} rungs deep on ${PAGE.steps.length} ` +
+        `declared step(s), at ${path.join(" > ")}; a step is opening its own chart`);
     }
+    await at(app, ...path);
+    const offers = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id);
+    for (const id of offers) {
+      // REOPENED FROM THE OVERVIEW FOR EACH OFFER rather than popped one rung,
+      // because a rung records the chart it was opened from and popping back
+      // into a sibling would reuse it. `at` is cheap: every document is fetched
+      // once and cached for the year.
+      await at(app, ...path);
+      await mustOpen(app, id);
+      visited++;
+      const next = path.concat([id]);
+      await visit(next.join(" > "), next.length);
+      await walk(next);
+    }
+  };
+  try {
+    await walk([]);
   } catch (e) {
     app.drillUp(0);
     return { visited, refused: e && e.message ? e.message : String(e) };
@@ -643,18 +767,63 @@ export async function checks() {
   // pp.66-67's "Wages & Benefits" is every group's at once, and nodeColor draws
   // it --muted on purpose. What must resolve is anything on the fund side of
   // the hierarchy, which is what carries a hue: a fund group, an aggregate the
-  // cap made beneath one, or any node the FETCHED document places under a
-  // parent. Read off the goldens' parent field rather than an id prefix,
-  // because the spine's uses share the expenditure/ prefix with fund-flows'
-  // object cells and belong to no group.
+  // cap made beneath one, or any node whose parent chain in the FETCHED
+  // documents REACHES a fund group. Read off the goldens' parent field rather
+  // than an id prefix, because the spine's uses share the expenditure/ prefix
+  // with fund-flows' object cells and belong to no group.
+  //
+  // THE CHAIN AND NOT THE FIRST LINK, and "has a parent at all" is what it said
+  // until the walk reached the revenue categories' views. A printed revenue
+  // line is parented to its category, so it HAS a parent -- and it is money
+  // arriving, exactly like the category above it, so it correctly resolves to
+  // no group. Measured: 89 such marks in FY2025-26 and 88 in FY2026-27, every
+  // one of them a revenue-line node, reported as unresolved by a predicate
+  // whose own comment says a revenue source is not.
+  //
+  // AND THE HIERARCHY IS THE DRAWN DOCUMENT'S, NOT ONE PAIR OF FILES'. A
+  // division is parented to its fund on pp.167-170 and to NOTHING on pp.85-125,
+  // which print what it spends whatever pays for it -- so the same dept/ id is
+  // on the fund side in one window and correctly group-less in the other, and a
+  // map built from the two revenue documents called 18 of FY2025-26's marks
+  // unresolved for being drawn from the third. The spine's own parents sit
+  // underneath because a window splices its kept flank in, and every one of
+  // them is "".
   for (const col of COLUMNS) {
     const { app } = await opened(null, null, col);
-    const parentOf = new Map();
-    for (const n of [...goldenGraph().nodes, ...col.golden().nodes]) parentOf.set(n.id, n.parent);
-    const onTheFundSide = (/** @type {{id: string}} */ n) =>
-      app.isFundGroup(n) || app.isAggregate(n.id) || Boolean(parentOf.get(n.id));
-    const unresolved = (/** @type {{nodes: any[]}} */ d) => {
+    const files = new Map([[col.stem, col.spine()], [col.step, col.golden()],
+      [col.spendingStem, col.spending()]]);
+    const parentsFor = (/** @type {string} */ stem) => {
+      const m = new Map();
+      for (const n of col.spine().nodes) m.set(n.id, n.parent);
+      for (const n of (files.get(stem) || { nodes: [] }).nodes) m.set(n.id, n.parent);
+      return m;
+    };
+    let parentOf = parentsFor(col.stem);
+    const underAGroup = (/** @type {string} */ id) => {
+      for (let up = parentOf.get(id), hops = 0; up && hops < 9; hops++) {
+        if (app.isFundGroup({ id: up })) return true;
+        up = parentOf.get(up);
+      }
+      return false;
+    };
+    // AN AGGREGATE IS ON THE FUND SIDE WHEN THE COLUMN IT FOLDED IS, and
+    // shapeFor is what decides that: a tail wholly inside the opened node is
+    // parented to it and inherits its hue, and one spanning fund groups gets
+    // "" and draws --muted on purpose. A category's line tail is parented to
+    // the CATEGORY, and a category has no group -- so "any aggregate" reported
+    // 29 marks unresolved in FY2025-26 and 28 in FY2026-27, every one a tail
+    // the cap folded on the revenue side.
+    const onTheFundSide = (/** @type {{id: string, parent?: string}} */ n) => {
+      if (app.isFundGroup(n)) return true;
+      if (app.isAggregate(n.id)) {
+        return Boolean(n.parent) &&
+          (app.isFundGroup({ id: n.parent }) || underAGroup(n.parent));
+      }
+      return underAGroup(n.id);
+    };
+    const unresolved = (/** @type {{nodes: any[], projection?: string}} */ d) => {
       app.layOut(d);
+      parentOf = parentsFor(d.projection || col.stem);
       return d.nodes.filter((n) => onTheFundSide(n) && app.fundGroupOf(n) === "");
     };
     const bad = unresolved(app.projection).map((n) => n.id);
@@ -1345,6 +1514,7 @@ export async function checks() {
   out.push(...(await keylessSteps()));
   out.push(...(await severalParents()));
   out.push(...(await windowChecks()));
+  out.push(...(await objectCategoryChecks()));
   out.push(...(await columnAndPartitionChecks()));
   out.push(...(await foreignFlankProbe()));
 
@@ -1694,7 +1864,7 @@ async function walkCategory(col) {
     name: `${col.label} category: every revenue category opens from the spine and neither tier-0 endpoint does`,
     ok: categories.length === 10 && categories.every(opens) && !opens("transfers/in") &&
         !opens("fund-balance/draw") && opens("fund-group/general") &&
-        columns0.join("|") === "left-hand|middle" && !opensUnderGroup,
+        columns0.join("|") === OPENABLE_COLUMNS && !opensUnderGroup,
     detail: `${categories.filter(opens).length} of ${categories.length} categories open; transfers/in ` +
       `${opens("transfers/in") ? "WRONGLY opens" : "does not open"}, fund-balance/draw ` +
       `${opens("fund-balance/draw") ? "WRONGLY opens" : "does not open"}; openable columns ` +
@@ -1916,10 +2086,10 @@ async function severalParents() {
   return [{
     name: "a step opens from every chart its `after` names, and from no other -- membership, so one view can be reached from several",
     ok: got.every((r) => r.outcome === "drew") &&
-      shipped.steps === 3 && shipped.opens &&
-      member.steps === 3 && member.opens &&
-      stranger.steps === 3 && !stranger.opens &&
-      asString.steps === 2 && !asString.opens,
+      shipped.steps === PAGE.steps.length && shipped.opens &&
+      member.steps === PAGE.steps.length && member.opens &&
+      stranger.steps === PAGE.steps.length && !stranger.opens &&
+      asString.steps === PAGE.steps.length - 1 && !asString.opens,
     detail: got.map((r) => `${JSON.stringify(r.after)}: ${r.steps} step(s) read, the spine ` +
       `${r.outcome}, dept/patrol ${r.opens ? "opens" : "does not open"}`).join("; "),
   }];
@@ -1966,8 +2136,8 @@ async function keylessSteps() {
   // THE CONTROL FIRST, so this arm cannot be green because the fixture stopped
   // drawing: the same page with both fields present opens two things.
   const { app: control } = await opened(null, null);
-  const controlOpens = control.STEPS.length === 3 &&
-    control.openableColumns().join("|") === "left-hand|middle";
+  const controlOpens = control.STEPS.length === PAGE.steps.length &&
+    control.openableColumns().join("|") === OPENABLE_COLUMNS;
   const got = [await without("key"), await without("after")];
   return [{
     name: "a step the wire declares with no key, or with no `after`, is dropped rather than read as a root -- so the drill vanishes instead of opening a node into itself",
@@ -2223,6 +2393,231 @@ async function windowChecks() {
     detail: bad.map((b) => `${b.why}: ${b.said ? "refused" : "DREW ANYWAY"}`).join("; "),
   });
 
+  return out;
+}
+
+/**
+ * The step that answers the owner's third finding: the spine's right-hand
+ * column, opened into the divisions that spend it.
+ *
+ * THE GATE IS THE ROLE AND NOT THE TIER, which is the mirror of the revenue
+ * step's at the other end of the chart. Four of the spine's seven tier-5 nodes
+ * are object categories pp.85-125 decompose; the other three -- transfers/out
+ * and the two fund-balance rows -- are flow ends, and the Transfers Out row
+ * those pages do print is a dash in both budget columns. Deleting Role from
+ * the step opens all seven: measured, the three then draw a window whose
+ * opened column is empty and filterLinks refuses each BY NAME.
+ *
+ * EVERY FIGURE IS MEASURED BY HAND PER PUBLISHED YEAR (COLUMNS[*].object) and
+ * not derived from the documents here, for the file's reason: a pin computed
+ * the way the code computes it agrees with the code by construction.
+ */
+async function objectCategoryChecks() {
+  const out = [];
+  const ENDS = ["transfers/out", "fund-balance/contribution", "fund-balance/reserve-increase"];
+  for (const col of COLUMNS) {
+    const { app, body } = await opened(null, null, col);
+    const pins = col.object;
+    const ids = Object.keys(pins.views);
+
+    // WHAT OPENS IN THE RIGHT-HAND COLUMN, asked of the drawn spine.
+    const at5 = app.projection.nodes.filter((n) => n.tier === 5);
+    const opens = (/** @type {string} */ id) => {
+      const n = at5.find((x) => x.id === id);
+      return Boolean(n) && app.drillable(n);
+    };
+    out.push({
+      name: `${col.label} object: the spine's four object categories open and its three flow ends do not`,
+      ok: at5.length === ids.length + ENDS.length && ids.every(opens) &&
+        ENDS.every((id) => !opens(id)) &&
+        app.openableColumns().join("|") === OPENABLE_COLUMNS,
+      detail: `the spine draws ${at5.length} node(s) in its right-hand column; ` +
+        `${ids.filter(opens).length} of ${ids.length} object categories open and ` +
+        `${ENDS.filter(opens).length} of ${ENDS.length} flow ends do; openable columns ` +
+        `${JSON.stringify(app.openableColumns())}`,
+    });
+
+    // EVERY ONE OF THE FOUR, NOT A SAMPLE, and the shape is the whole window:
+    // the fund groups that pay for it on the left, the category in the middle
+    // alone, the divisions on the right, laid out in the order the step
+    // declares rather than in tier order.
+    /** @type {Record<string, any>} */
+    const got = {};
+    for (const id of ids) {
+      await at(app);
+      const outcome = await openInto(app, id);
+      if (outcome !== "drew") {
+        got[id] = { outcome };
+        continue;
+      }
+      const d = app.projection;
+      const laid = app.layOut(d);
+      const widths = laid.links.map((l) => l.width);
+      got[id] = {
+        outcome,
+        shape: [d.nodes.length, d.links.length, widths.filter((w) => w < 1).length,
+          d.nodes.filter((n) => n.tier === 2).length],
+        placed: [...new Set(laid.nodes.slice().sort((a, b) => a.x0 - b.x0).map((n) => n.tier))],
+        centre: d.nodes.filter((n) => n.tier === 5).map((n) => n.id),
+        // THE DESCRIPTION'S OWN CLAIM, CHECKED: "no division here takes the
+        // colour of a fund group". pp.85-125 print what a division spends
+        // whatever pays for it, so every tier-4 mark is parentless and draws
+        // --muted, and the sentence under the chart says so.
+        grouped: d.nodes.filter((n) => n.tier === 4 && n.parent).map((n) => n.id),
+        tail: (d.nodes.find((n) => app.isAggregate(n.id)) || {}).label || "",
+      };
+      await at(app);
+    }
+    const shapeOf = (/** @type {string} */ id) => (got[id].shape || []).join(",");
+    out.push({
+      name: `${col.label} object: all four categories draw as three columns -- the groups that fund it, the category, the divisions that spend it`,
+      ok: ids.every((id) => got[id].outcome === "drew" &&
+        shapeOf(id) === pins.views[id].join(",") &&
+        got[id].placed.join(",") === "2,5,4" &&
+        got[id].centre.join(",") === id &&
+        got[id].grouped.length === 0 &&
+        got[id].tail === (pins.tails[id] || "")),
+      detail: ids.map((id) => `${id}: ${got[id].outcome === "drew"
+        ? `[${shapeOf(id)}] want [${pins.views[id].join(",")}], columns ` +
+          `${JSON.stringify(got[id].placed)}, centre ${JSON.stringify(got[id].centre)}, ` +
+          `${got[id].grouped.length} division(s) carrying a fund group, tail ` +
+          `"${got[id].tail}"`
+        : `would not open: ${got[id].outcome}`}`).join("; "),
+    });
+
+    // THE CAP IS DOING THE WORK, unlike the division cap one step over. Two of
+    // the four columns fold and two are drawn whole, and both facts are pinned:
+    // a check asserting the cap engages everywhere would fail on debt-services
+    // for being right, and one asserting it nowhere would go quiet the day a
+    // fifth division appears under capital outlay.
+    const { app: noCap } = await opened(null, (c) => {
+      c.steps = c.steps.map((st) => (st.key === "object-category"
+        ? Object.assign({}, st, { caps: [] }) : st));
+    }, col);
+    /** @type {Record<string, number[]>} */
+    const bare = {};
+    for (const id of ids) {
+      await at(noCap);
+      const outcome = await openInto(noCap, id);
+      if (outcome !== "drew") { bare[id] = [-1, -1]; continue; }
+      const widths = noCap.layOut(noCap.projection).links.map((l) => l.width);
+      bare[id] = [widths.length, widths.filter((w) => w < 1).length];
+      await at(noCap);
+    }
+    out.push({
+      name: `${col.label} object: the division cap is what keeps the two wide categories drawable, and is inert on the two narrow ones`,
+      ok: ids.every((id) => bare[id].join(",") === pins.uncapped[id].join(",")) &&
+        ids.every((id) => (pins.tails[id]
+          ? bare[id][0] > pins.views[id][1] && bare[id][1] > 0
+          : bare[id][0] === pins.views[id][1])) &&
+        ids.every((id) => pins.views[id][2] === 0),
+      detail: ids.map((id) => `${id}: capped ${pins.views[id][1]} ribbon(s), ` +
+        `${pins.views[id][2]} under 1px; uncapped ${bare[id][0]} and ${bare[id][1]} ` +
+        `(want ${pins.uncapped[id].join(", ")})`).join("; "),
+    });
+
+    // THE GAP, AND THE YEAR THAT DOES NOT HAVE ONE. check.SpendingGaps has no
+    // year axis -- a step is declared once for every year the view lists -- so
+    // the declaration names services-and-supplies under BOTH columns and only
+    // one of them draws a mark. That asymmetry is the check: a gap node drawn
+    // on a chart that ties to the cent would be a figure the site invented.
+    const gapID = "expenditure/services-and-supplies";
+    await at(app, gapID);
+    const drawn = app.projection;
+    const mark = drawn.nodes.find((n) => app.isGap(n.id));
+    const flow = mark ? drawn.links.find((l) => l.target === mark.id) : null;
+    const inferred = app.dom.byId.get("derived-list").children
+      .map((li) => (li.children[0] ? li.children[0].textContent : li.textContent));
+    const named = inferred.filter((t) => t.includes("Difference between the two schedules"));
+    const rows = body.children.length;
+    const counts = app.dom.byId.get("counts-line").textContent;
+    const into = drawn.links.filter((l) => l.target === gapID)
+      .reduce((a, b) => a + b.value_cents, 0);
+    const outOf = drawn.links.filter((l) => l.source === gapID)
+      .reduce((a, b) => a + b.value_cents, 0);
+    out.push({
+      name: pins.gapCents
+        ? `${col.label} object: the 250,000 p0067 and pp.85-125 disagree by is drawn, named and listed under what we inferred`
+        : `${col.label} object: services-and-supplies ties to the cent, so no gap mark is drawn on a chart that balances`,
+      ok: Boolean(pins.gapCents) === Boolean(mark) &&
+        (pins.gapCents
+          ? Boolean(flow) && flow.value_cents === pins.gapCents && flow.derived &&
+            flow.fact_ids.length === 0 && flow.source === gapID &&
+            mark.tier === 4 && mark.derived && mark.parent === "" &&
+            !app.drillable(mark) && app.isCarried(mark.id) &&
+            mark.rationale.includes(spendingGapDeclaration()[gapID]) &&
+            named.length === 1
+          : named.length === 0) &&
+        into === outOf && counts === pins.counts && rows === pins.views[gapID][1],
+      detail: `${mark ? `one gap mark, "${mark.label}", at tier ${mark.tier} taking ` +
+        `${flow ? flow.value_cents : "no"} cents (want ${pins.gapCents})` : "no gap mark"}; ` +
+        `${named.length} entry(ies) under what we inferred name it, of ${inferred.length}; ` +
+        `the centre takes ${into} and sends ${outOf}; the counts line reads "${counts}" and ` +
+        `the flow table holds ${rows} row(s)`,
+    });
+    await at(app);
+  }
+
+  // FAIL CLOSED ON A DIFFERENCE NOTHING DECLARES, which is the only thing that
+  // makes "this step's opened nodes balance" a claim rather than a hope. Both
+  // refusals are reached directly: neither is producible by a click while the
+  // committed corpus ties, which is the point -- they exist for the day it
+  // stops.
+  const { app } = await opened();
+  const spine = goldenGraph();
+  const step = PAGE.steps[PAGE.steps.length - 1];
+  const centre = "expenditure/services-and-supplies";
+  const chart = (/** @type {any[]} */ links) => ({
+    projection: "department-spending",
+    nodes: [{ id: centre, label: "Services & Supplies", tier: 5, parent: "" },
+      { id: "dept/patrol", label: "Patrol", tier: 4, parent: "" },
+      { id: "fund-group/general", label: "General Fund", tier: 2, parent: "" }],
+    links: links,
+  });
+  const link = (/** @type {string} */ a, /** @type {string} */ b, /** @type {number} */ v) =>
+    ({ source: a, target: b, value_cents: v, kind: "external", fact_ids: [], locators: [] });
+  const refusedBy = (/** @type {any} */ drawnDoc, /** @type {any} */ gaps) => {
+    try {
+      return { threw: "", got: app.markGap(drawnDoc, { id: centre, step: Object.assign({}, step, { gaps }) }) };
+    } catch (e) {
+      return { threw: String((e && e.message) || e), got: null };
+    }
+  };
+  const balanced = chart([link("fund-group/general", centre, 10000),
+    link(centre, "dept/patrol", 10000)]);
+  const short = chart([link("fund-group/general", centre, 10000),
+    link(centre, "dept/patrol", 6000)]);
+  const declared = spendingGapDeclaration();
+  const undeclared = refusedBy(short, { "expenditure/wages-and-benefits": "elsewhere" });
+  // THE CENTRE MISSING FROM THE CHART IS ITS OWN REFUSAL, and it is not the
+  // same state as a chart that ties: `into` and `outOf` are both zero either
+  // way, so a function that only compared them would call a rung that drew
+  // nothing at all a rung that reconciles.
+  const withoutCentre = { projection: "department-spending",
+    nodes: balanced.nodes.filter((n) => n.id !== centre),
+    links: [link("fund-group/general", "dept/patrol", 10000)] };
+  const absent = refusedBy(withoutCentre, declared);
+  const withReason = refusedBy(short, declared);
+  const ties = refusedBy(balanced, declared);
+  const none = refusedBy(short, undefined);
+  out.push({
+    name: "a shortfall the step declares no reason for is refused by name; a declared one is drawn, and a step declaring no gap at all is left alone",
+    ok: /no declaration on this step accounts for/.test(undeclared.threw) &&
+      /\$40/.test(undeclared.threw) &&
+      /nothing to be stated against/.test(absent.threw) &&
+      withReason.threw === "" && withReason.got.nodes.length === 4 &&
+      withReason.got.links.length === 3 &&
+      withReason.got.links[2].value_cents === 4000 &&
+      ties.threw === "" && ties.got.nodes.length === 3 && ties.got.links.length === 2 &&
+      none.threw === "" && none.got.links.length === 2 &&
+      spine.nodes.some((n) => n.id === centre),
+    detail: `an undeclared $40 shortfall throws ${JSON.stringify(undeclared.threw)}; a declared ` +
+      `one draws ${withReason.threw ? `A THROW (${withReason.threw})` :
+        `${withReason.got.nodes.length} node(s) and ${withReason.got.links.length} link(s)`}; ` +
+      `a centre the chart does not draw throws ${JSON.stringify(absent.threw)}; a chart that ` +
+      `ties draws ${ties.threw ? "A THROW" : `${ties.got.links.length} link(s)`}; a step with ` +
+      `no gaps at all draws ${none.threw ? "A THROW" : `${none.got.links.length} link(s)`}`,
+  });
   return out;
 }
 
@@ -2693,14 +3088,16 @@ async function walkChain(col) {
       `${JSON.stringify(asked1.slice(asked0.length))}`,
   });
   out.push({
-    name: `${col.label} chain: the overview's hint names both columns that open, the spine's left-hand and middle ones`,
-    // BOTH COLUMNS, READ OFF THE CHART. The spine draws tiers 0, 2 and 5; its
-    // revenue categories are tier 0 and its fund groups tier 2, and both open.
-    // A hint naming the middle column alone would leave the categories a
-    // gesture nothing on the page invites, and one saying "right-hand" would
-    // send the reader to the uses, which do not open.
-    ok: at0.hint === "Click a node in the left-hand or middle column to open it into its parts, or tab to " +
-        "one and press Enter. A fund swatch follows one group's money without opening anything." &&
+    name: `${col.label} chain: the overview's hint names all three columns that open`,
+    // ALL THREE, READ OFF THE CHART. The spine draws tiers 0, 2 and 5 in that
+    // declared order, and something opens in each: the revenue categories, the
+    // fund groups, and -- since the object-category step -- four of the seven
+    // nodes in the right-hand column. A hint naming the middle column alone
+    // would leave two gestures nothing on the page invites, and this is the
+    // sentence a reader who cannot see the marks is given.
+    ok: at0.hint === "Click a node in the left-hand, middle or right-hand column to open it into " +
+        "its parts, or tab to one and press Enter. A fund swatch follows one group's money " +
+        "without opening anything." &&
         at0.legend === 6 && at0.desc === served,
     detail: `hint "${at0.hint}"; legend ${at0.legend} swatches`,
   });
