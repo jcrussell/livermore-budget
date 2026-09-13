@@ -125,14 +125,15 @@ type FundFlowsCounts struct {
 	// exactly those facts -- measured, 2 in FY2024 and 5 in FY2026 -- and the
 	// identity would not close.
 	FactsUncited int `json:"facts_uncited"`
-	// FactsCitedTwice is how many facts are behind two links: an expenditure
-	// fact cited by its own department->object link AND by the fund->department
-	// link that sums it.
+	// FactsCitedTwice is how many facts are behind two links: a revenue fact
+	// cited by its own line->fund flow AND by the rollup of that line into its
+	// category, and an expenditure fact cited by its own department->object link
+	// AND by the fund->department link that sums it.
 	//
 	// PUBLISHED AS A NUMBER BECAUSE `links` IS NOT A PARTITION OF `facts_cited`
 	// HERE, which the spine's shape would lead a reader to assume. Summing every
-	// link's value_cents double-counts the expenditure side by exactly this
-	// much; folding within one tier pair does not.
+	// link's value_cents counts both sides' money twice over; folding within one
+	// tier pair does not.
 	FactsCitedTwice int `json:"facts_cited_twice"`
 	Nodes           int `json:"nodes"`
 	Links           int `json:"links"`
@@ -183,6 +184,8 @@ type FundFlowsMetadata struct {
 //
 //	tier 0  revenue/<category>, transfers/in
 //	tier 1  revenue-line/<line>   parent = revenue/<category>
+//	          |  one link per (line, kind) back INTO the category, the sum of
+//	          |  that row's own cells
 //	          |  one link per netted (kind, line, fund) cell, and one per
 //	          |  (transfers/in, fund) cell straight from tier 0
 //	tier 3  fund/<n>            parent = fund-group/<type> from data/funds.yaml
@@ -202,7 +205,15 @@ type FundFlowsMetadata struct {
 // and it becomes fund/100 -> fund/100, a self-loop, while a client rendering
 // tiers 0/3/4 would find every department node with no inbound link and a value
 // of zero. A sankey needs a link at each adjacent tier pair it can be drawn at.
-// The cost is that an expenditure fact is cited twice, which
+//
+// THE (1,0) ROLLUP IS THAT SAME ARGUMENT ON THE REVENUE SIDE, one rung earlier.
+// A category is the SOURCE of every other link it touches, so a view that puts
+// it between its own lines and the funds has nothing flowing into it and draws
+// it at zero. The rollup is what a chart drawing tiers 1/0/2 folds; every tier
+// set this repository draws today drops it, which is the lane's own proof rather
+// than its hope.
+//
+// The cost of both is that a fact is cited twice, which
 // FundFlowsCounts.FactsCitedTwice publishes as a number.
 type fundFlows struct {
 	// Labels supplies the city's words and the fund hierarchy. Unlike Sankey's,
@@ -305,7 +316,9 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	zero := map[string]bool{}
 	twice := map[string]bool{}
 
-	// Tier 0 -> 3, one link per revenue cell.
+	// Tier 0 -> 3, one link per revenue cell, and tier 1 -> 0, one link per
+	// (line, kind) carrying that line's own sum.
+	perLine := map[rollupKey]*lineRollup{}
 	for _, k := range sortedRevKeys(rev) {
 		c := rev[k]
 		src, srcErr := f.revenueEndpoint(k)
@@ -328,10 +341,61 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 		for _, id := range c.factIDs {
 			cited[id] = true
 		}
+		kind := revenueLinkKind(k)
 		links = append(links, Link{
 			Source: src.id, Target: dst.id, ValueCents: c.cents,
-			Kind: revenueLinkKind(k), FactIDs: c.factIDs,
+			Kind: kind, FactIDs: c.factIDs,
 			Locators: c.locs.sources(),
+		})
+		// A TRANSFER IS NOT A LINE OF ANYTHING. Its source is the tier-0 flow
+		// endpoint, which is nobody's child, so there is nothing to roll it
+		// into.
+		if src.tier != tierRevenueLine {
+			continue
+		}
+		// ACCUMULATED BELOW THE ZERO CELLS AND NOT ABOVE THEM, which is the one
+		// place the tier-3-to-4 rule below is deliberately not copied: that
+		// link's division total is taken over every object cell including the
+		// dashes, and on THIS side a printed dash is a fact and not a flow,
+		// uncited by construction and counted in facts_uncited. Rolling them up
+		// would cite them and move that number, while the value would not
+		// change by a cent -- so the citation is the whole of what is at stake,
+		// which is exactly what link-values-tie-to-facts compares.
+		rk := rollupKey{line: k.line, kind: kind}
+		r := perLine[rk]
+		if r == nil {
+			r = &lineRollup{src: src}
+			perLine[rk] = r
+		}
+		r.cents += c.cents
+		r.factIDs = append(r.factIDs, c.factIDs...)
+		r.locs.merge(&c.locs)
+	}
+
+	// Tier 1 -> 0: the printed rows added back up into the category they are
+	// printed under.
+	for _, k := range sortedRollupKeys(perLine) {
+		r := perLine[k]
+		// A LINE WHOSE CELLS CANCEL DRAWS NOTHING, the same rule as a cell that
+		// nets to zero: p127 prints ERAF and the RPTTF reduction as negatives,
+		// so a line summing to zero across its funds is arithmetic and not a
+		// flow. Its cells are cited by their own links already, so nothing goes
+		// uncited here.
+		if r.cents == 0 {
+			continue
+		}
+		sort.Strings(r.factIDs)
+		f.addFundFlowNode(nodes, r.src)
+		for _, id := range r.factIDs {
+			if cited[id] {
+				twice[id] = true
+			}
+			cited[id] = true
+		}
+		links = append(links, Link{
+			Source: r.src.id, Target: r.src.parent, ValueCents: r.cents,
+			Kind: k.kind, FactIDs: r.factIDs,
+			Locators: r.locs.sources(),
 		})
 	}
 
@@ -500,10 +564,20 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 		{
 			ID:      "mixed-grain-double-counts",
 			Summary: "This document holds the same money at two grains, so summing every link double-counts.",
+			// TWO OVERLAPS AND NOT ONE. This named the expenditure side alone
+			// while the count beneath it had already grown the revenue side's:
+			// a revenue row is behind its own flow into a fund AND the rollup
+			// that adds its row back into the category it is printed under.
+			// Naming one overlap under a number that counts two invites the
+			// reader to look for the difference on the spending side, where it
+			// is not.
 			Text: fmt.Sprintf("This document holds the same money at more than one grain, so summing "+
-				"every link double-counts: %d fact(s) are behind both a department's object "+
-				"rows and the fund-to-department link that totals them. Fold within one tier "+
-				"pair, never across the whole graph. It publishes no headline for this reason.",
+				"every link double-counts: %d fact(s) are behind two links. A revenue row is "+
+				"behind both its own flow into a fund and the rollup of its line into the "+
+				"category it is printed under; an expenditure row is behind both its "+
+				"department's object rows and the fund-to-department link that totals them. "+
+				"Fold within one tier pair, never across the whole graph. It publishes no "+
+				"headline for this reason.",
 				twice),
 			AppliesTo: []string{},
 		},
@@ -671,6 +745,32 @@ type revKey struct {
 type expKey struct {
 	division string
 	category string
+}
+
+// rollupKey addresses a revenue line's rollup into its category: one printed row,
+// under one link kind.
+//
+// PER KIND AND NOT PER LINE, because a kind is a claim about the money and not a
+// label on the ribbon. pp.127-140 print one row reaching the five Internal
+// Service Funds as an internal service charge and the rest of the city as
+// external revenue, and a single rollup would have to publish one of those two
+// answers for both -- naming internal service charges as money crossing the
+// city's boundary, which is the false claim link-kinds-match-their-facts was
+// written for. Two links on one pair is what checkDistinctLinks and
+// site/app.js's foldDocument both allow exactly when the kinds differ.
+type rollupKey struct {
+	line string
+	kind LinkKind
+}
+
+// lineRollup is one line's own sum and the endpoint that carries its category.
+//
+// THE ENDPOINT RIDES ALONG FOR revenueEndpoint's REASON: the target is the
+// line's parent, and a parent cannot be cut out of the child's slug because a
+// category slug is itself one or two segments.
+type lineRollup struct {
+	cellSum
+	src endpoint
 }
 
 // netFundFlows sums the selected facts into the two cell maps, refusing anything
@@ -950,10 +1050,12 @@ func (f *fundFlows) addFundFlowNode(nodes map[string]Node, e endpoint) {
 // otherwise build: the fund group above every fund, and the revenue category
 // above every line.
 //
-// A CATEGORY IS NOW REACHED ONLY THROUGH ITS LINES. Every revenue link leaves a
-// tier-1 node, so `revenue/taxes/property` is touched by nothing and would be
-// absent from a document whose nodes exist because links do -- and a client
-// folding the lines to the tiers it draws would have no box to put them in.
+// A CATEGORY IS NOT BUILT WHERE IT IS DRAWN INTO. The (1,0) rollup names it as a
+// target and builds nothing, because a line whose cells cancel draws no rollup
+// and would leave its category with no box for the lines to fold into -- so the
+// node has to come from the hierarchy rather than from a link, which is what
+// this does. p127's ERAF and RPTTF reduction are the rows that make that case
+// reachable rather than theoretical.
 func (f *fundFlows) addParents(nodes map[string]Node) error {
 	type edge struct{ child, parent string }
 	var want []edge
@@ -1010,10 +1112,10 @@ func (f *fundFlows) label(e endpoint) string {
 	return slugLabel(e.id)
 }
 
-// sortedRevKeys and sortedExpKeys are total orders over the cell maps, so node
-// creation and the caveats' arithmetic do not depend on map iteration order.
-// Links are re-sorted afterwards, but a node's first-touch and a division's
-// accumulation both happen here.
+// sortedRevKeys, sortedRollupKeys and sortedExpKeys are total orders over the cell
+// maps, so node creation and the caveats' arithmetic do not depend on map
+// iteration order. Links are re-sorted afterwards, but a node's first-touch, a
+// division's accumulation and a line's are all done here.
 func sortedRevKeys(m map[revKey]*cellSum) []revKey {
 	out := make([]revKey, 0, len(m))
 	for k := range m {
@@ -1033,6 +1135,20 @@ func sortedRevKeys(m map[revKey]*cellSum) []revKey {
 		default:
 			return a.fund < b.fund
 		}
+	})
+	return out
+}
+
+func sortedRollupKeys(m map[rollupKey]*lineRollup) []rollupKey {
+	out := make([]rollupKey, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].line != out[j].line {
+			return out[i].line < out[j].line
+		}
+		return out[i].kind < out[j].kind
 	})
 	return out
 }

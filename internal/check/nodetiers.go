@@ -86,6 +86,15 @@ var endpointTiers = map[string]int{
 // with no backward ribbon. A link from a finer tier to a coarser one would
 // render as a flow running against every other flow on the page, which is a
 // picture that reads as a defect in the data rather than in the layout.
+//
+// A ROLLUP IS THE ONE EXCEPTION AND IT IS NARROW BY CONSTRUCTION: the target
+// must be the SOURCE'S OWN PARENT, the edge the client already folds along. A
+// column order is a declaration a view makes and need not be ascending -- a
+// window puts the clicked node in the middle -- so the ribbon a rollup draws
+// runs backwards only in a view that drew it backwards. Any other descending
+// link is still refused, which is what keeps this an exception rather than a
+// repeal: a fund-to-revenue-category link is not a fold and has no column order
+// that makes it forward.
 type nodeTiersAreDeclared struct{}
 
 var _ Check = (*nodeTiersAreDeclared)(nil)
@@ -95,19 +104,23 @@ func (*nodeTiersAreDeclared) Tier() int  { return 1 }
 func (*nodeTiersAreDeclared) Full() bool { return false }
 func (*nodeTiersAreDeclared) Description() string {
 	return "every node's tier is the one docs/sankey-contract.md's table gives for its id " +
-		"form, and every link runs from a coarser tier to a finer one"
+		"form, and every link runs from a coarser tier to a finer one unless it is a rollup " +
+		"into the source's own parent"
 }
 
 func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
 	nodes := 0
 	links := 0
+	rollups := 0
 
 	for _, p := range s.linkedDocuments() {
 		tierOf := map[string]int{}
+		parentOf := map[string]string{}
 		for _, n := range p.Nodes {
 			nodes++
 			tierOf[n.ID] = n.Tier
+			parentOf[n.ID] = n.Parent
 
 			// ONE FINDING PER NODE. A node whose form is undeclared has no
 			// tier to be compared against, so the arms are ordered rather than
@@ -159,12 +172,17 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 					l.Source, l.Target, missing))
 				continue
 			}
-			if src >= dst {
+			if src >= dst && parentOf[l.Source] != l.Target {
 				findings = append(findings, finding(p.String(),
-					"link %q -> %q runs from tier %d to tier %d. Every flow in this diagram "+
-						"goes from a coarser tier to a finer one, and one that does not is "+
-						"drawn as a ribbon running against every other ribbon on the page",
-					l.Source, l.Target, src, dst))
+					"link %q -> %q runs from tier %d to tier %d and %q is not %q's own "+
+						"parent. A flow in this diagram goes from a coarser tier to a finer "+
+						"one, or from a node into the box it folds into; one that does "+
+						"neither is drawn as a ribbon running against every other ribbon on "+
+						"the page",
+					l.Source, l.Target, src, dst, l.Target, l.Source))
+			}
+			if src >= dst {
+				rollups++
 			}
 		}
 	}
@@ -173,9 +191,11 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		subjects: nodes,
 		unit:     "nodes",
 		held: fmt.Sprintf("%d nodes over %d graph document(s), each at the tier its id form "+
-			"declares, and %d links each running from a coarser tier to a finer one; the "+
-			"declared forms are %s, plus %d flow endpoints named individually",
-			nodes, len(s.linkedDocuments()), links, describeForms(), len(endpointTiers)),
+			"declares, and %d links each running from a coarser tier to a finer one or, for "+
+			"%d of them, from a node into the box it folds into; the declared forms are %s, "+
+			"plus %d flow endpoints named individually",
+			nodes, len(s.linkedDocuments()), links, rollups, describeForms(),
+			len(endpointTiers)),
 		nothing:  "no projection carries a node, so no tier has been read",
 		findings: findings,
 	}.result(), nil

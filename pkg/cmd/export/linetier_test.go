@@ -439,6 +439,9 @@ func sortLinksByEnds(links []project.Link) {
 // sign-decomposed endpoint -- the spine's answer for CHANGE IN WORKING CAPITAL --
 // would fold to a link from a node the category grain never had.
 //
+// TWO LINKS CARRY THE SIGN NOW, not one, and the second is checked against the
+// same printed figures rather than against the first.
+//
 // The figures are the ones p127 prints, so this is a comparison against the
 // document rather than against the pipeline.
 func TestAContraRowIsANegativeLinkOnItsOwnLine(t *testing.T) {
@@ -461,20 +464,41 @@ func TestAContraRowIsANegativeLinkOnItsOwnLine(t *testing.T) {
 	for stem, doc := range builtFundFlows(t) {
 		t.Run(stem, func(t *testing.T) {
 			got := map[string]int64{}
+			rolled := map[string]int64{}
 			for _, l := range doc.Links {
 				if l.ValueCents >= 0 {
 					continue
 				}
-				if l.Target != "fund/100" {
+				line := strings.TrimPrefix(l.Source, "revenue-line/taxes/property/")
+				switch {
+				case l.Target == "fund/100":
+					got[line] = l.ValueCents
+				// THE ROLLUP CARRIES THE SIGN THROUGH, for the reason the flow
+				// into the fund does: a reduction of Property Taxes reduces the
+				// category, so the only placement that adds the rows back up to
+				// p127's printed 64,143,762 is a negative value on the line's
+				// own rollup.
+				case l.Target == "revenue/taxes/property" &&
+					strings.HasPrefix(l.Source, "revenue-line/taxes/property/"):
+					rolled[line] = l.ValueCents
+				default:
 					t.Errorf("%s -> %s is negative at %d, and every negative row pp.127-140 "+
 						"print is a General Fund property-tax line", l.Source, l.Target,
 						l.ValueCents)
 				}
-				got[strings.TrimPrefix(l.Source, "revenue-line/taxes/property/")] = l.ValueCents
 			}
 			if diff := cmp.Diff(want[stem], got); diff != "" {
 				t.Errorf("the negative links of %s are not the rows p127 prints in "+
 					"parentheses (-printed +published):\n%s", stem, diff)
+			}
+			// THE SAME FIGURES AGAIN, AND THAT IS A CLAIM ABOUT THE PAGE: p127
+			// prints each of these rows in the General Fund column alone, so
+			// the line's whole sum IS its one cell. A rollup that had gathered
+			// a second fund's money, or one cell short of the line, would
+			// differ here while the column above stayed green.
+			if diff := cmp.Diff(want[stem], rolled); diff != "" {
+				t.Errorf("the rollups of %s's contra lines into Property Taxes are not the "+
+					"rows p127 prints in parentheses (-printed +published):\n%s", stem, diff)
 			}
 		})
 	}

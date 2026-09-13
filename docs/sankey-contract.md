@@ -142,9 +142,18 @@ own arithmetic, not three different caveats. A page listing more than one
 document's caveats must therefore key on `(id, document)` and must not assume
 one text per id.
 
-Determinism: nodes sorted by `(tier, id)`, links by `(source, target)`,
+Determinism: nodes sorted by `(tier, id)`, links by `(source, target, kind)`,
 `fact_ids` ascending, `locators` by `doc_id` with `pages` ascending inside each
 and every page once. Two builds of the same facts are byte-identical.
+
+**The kind is in that order because a pair may carry one ribbon per kind**, which
+is the client's own fold rule and what a rollup of one printed row into its
+category needs: a row reaching the five Internal Service Funds takes its money as
+an internal service charge and the rest of the city's as external revenue, and
+one ribbon for both would publish the first as money crossing the city's
+boundary. Two links of the SAME kind on one pair is still a cell key that lost an
+axis and is still refused. The sort is not stable, so a pair with two kinds and
+no tie-break would come out in whichever order the sort happened to leave it.
 
 ### A link cites its facts twice, and the two citations are not redundant
 

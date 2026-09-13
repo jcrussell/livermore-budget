@@ -139,6 +139,61 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 	}
 }
 
+// TestARollupIsTheOnlyDescendingLinkAllowed is the exemption and its edge, in
+// one test because either alone is a different check.
+//
+// THE DRILL-DOWN ADDS EACH PRINTED ROW BACK INTO THE CATEGORY IT IS PRINTED
+// UNDER, which is a tier-1 node pointing at a tier-0 one. It is the edge the
+// client already folds along, so it draws no backward ribbon in any view: a
+// column order is a view's own declaration and the two ends land in whichever
+// order that declaration puts them. What must stay refused is every OTHER
+// descending link, and the difference between the two is one comparison -- so a
+// test that only proved the exemption would pass on a check that had stopped
+// looking at direction at all.
+func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
+	rolled := func(t *testing.T, target string) *Subject {
+		t.Helper()
+		s := tieredSubject(t)
+		g := s.graphs()[0].Graph
+		category := g.Nodes[nodeIndex(t, g, "revenue/")].ID
+		// The id form is `revenue-line/` and the slug it carries is the
+		// category's own, which is what declaredTier reads it as tier 1 by.
+		line := project.Node{ID: "revenue-line/" + strings.TrimPrefix(category, "revenue/") +
+			"/eraf", Tier: 1, Parent: category}
+		g.Nodes = append(g.Nodes, line)
+		if target == "" {
+			target = category
+		}
+		g.Links = append(g.Links, project.Link{Source: line.ID, Target: target,
+			ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"}})
+		return s
+	}
+
+	if res := runNodeTiers(t, rolled(t, "")); res.Status != StatusPass {
+		t.Errorf("a line rolled up into its own category is %s, want PASS: %v",
+			res.Status, res.Findings)
+	}
+
+	// THE SAME LINK ONE NODE OVER. transfers/in is tier 0 and is nobody's
+	// parent, so this is a descending link that folds into nothing -- and it
+	// is the shape a mis-pointed rollup would have.
+	res := runNodeTiers(t, rolled(t, "transfers/in"))
+	if res.Status != StatusFail {
+		t.Fatalf("a line pointing at a tier-0 node that is not its parent is %s, want FAIL",
+			res.Status)
+	}
+	var saw bool
+	for _, f := range res.Findings {
+		if strings.Contains(f.Detail, "is not") && strings.Contains(f.Detail, "own parent") {
+			saw = true
+		}
+	}
+	if !saw {
+		t.Errorf("no finding says the target is not the source's own parent; got %v",
+			res.Findings)
+	}
+}
+
 // TestAFundNodeNamesAFundNumber is the one id form whose SHAPE carries meaning
 // beyond its prefix.
 //

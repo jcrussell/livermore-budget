@@ -182,6 +182,11 @@ const COLUMNS = [
     // PROPERTY TAXES OPENED AT {1,3}, MEASURED THROUGH drillDown: nodes, links
     // and sub-pixel ribbons, and the counts line; then the tails each cap
     // folds on the two categories whose columns exceed it.
+    // THE (1,0) ROLLUPS THE DOCUMENT CARRIES, drawn in none of its views: one
+    // per (printed row, kind) over 93 lines, two of which reach their funds
+    // under both kinds. The same number in both years -- fund/207's dash in
+    // FY2026-27 moves a fund and not a row.
+    rollups: 95,
     category: {
       nodes: 14, links: 12, hairlines: 0,
       counts: "12 flows between 14 nodes, from 17 of the document's 280 facts",
@@ -220,6 +225,11 @@ const COLUMNS = [
       "fund-group/capital": { in: 1012941600, out: 0, carried: 1 },
       "fund-group/internal-service": { in: 716064500, out: 0, carried: 1 },
     },
+    // THE (1,0) ROLLUPS THE DOCUMENT CARRIES, drawn in none of its views: one
+    // per (printed row, kind) over 93 lines, two of which reach their funds
+    // under both kinds. The same number in both years -- fund/207's dash in
+    // FY2026-27 moves a fund and not a row.
+    rollups: 95,
     category: {
       nodes: 14, links: 12, hairlines: 0,
       counts: "12 flows between 14 nodes, from 17 of the document's 280 facts",
@@ -362,6 +372,26 @@ async function mustOpen(app, id) {
   }
 }
 
+/**
+ * The rollup links a drawn chart carries: a printed row added back into the
+ * category it is printed under, which internal/project publishes at the (1,0)
+ * pair.
+ *
+ * THE ANSWER MUST BE ZERO IN EVERY VIEW THIS PAGE DRAWS, and that is the whole
+ * claim the Go side rests on: at {0,3,4} both ends fold to the category and
+ * foldDocument drops the self-loop, and at {1,3} the tier-0 end is placeable
+ * nowhere, so scoped's quiet branch drops it before the fold. The per-view node
+ * and link pins say the shapes did not move; this says WHY, and goes red the
+ * day a filter or a fold starts keeping one -- which a pin cannot distinguish
+ * from a rollup that was never published.
+ *
+ * @param {{links: FiscLink[]}} doc
+ */
+function rollupsIn(doc) {
+  return doc.links.filter((l) => l.source.startsWith("revenue-line/") &&
+    l.target.startsWith("revenue/")).length;
+}
+
 /** The smallest ribbon and how many lay out under a pixel. */
 function measure(app, doc) {
   const laid = app.layOut(doc);
@@ -441,7 +471,8 @@ export async function checks() {
 
     const drawn = [];
     const walk = await everyOpenedView(app, (where, depth) => {
-      drawn.push(Object.assign({ where, depth }, measure(app, app.projection)));
+      drawn.push(Object.assign({ where, depth, rollups: rollupsIn(app.projection) },
+        measure(app, app.projection)));
     });
     // THE WORST DIVISION IS PINNED BY NAME AND BY WIDTH: fisc-ko1j's own
     // measurement of depth 2 is Patrol at 51.38px, and PAGE.inert is that
@@ -464,6 +495,15 @@ export async function checks() {
           `the narrowest depth-2 ribbon is ` +
           `${worstDeep ? `${worstDeep.where} at ${worstDeep.smallest.toFixed(2)}px` : "nowhere"} ` +
           `(want ${col.worstDeep})`,
+    });
+
+    out.push({
+      name: `${col.label}: the document's line-to-category rollups are drawn in none of the chain's views`,
+      ok: rollupsIn(col.golden()) === col.rollups && drawn.every((d) => d.rollups === 0) &&
+          drawn.length > 0,
+      detail: `${col.step} carries ${rollupsIn(col.golden())} rollup link(s) (want ${col.rollups}); ` +
+        `${drawn.filter((d) => d.rollups > 0).length} of ${drawn.length} view(s) draw one` +
+        (drawn.find((d) => d.rollups > 0) ? `, first at ${drawn.find((d) => d.rollups > 0).where}` : ""),
     });
 
     // THE CAP IS THE POINT OF THIS FILE, and it does not engage at both
@@ -1746,12 +1786,14 @@ async function walkCategory(col) {
   // takes the line's money as an internal service charge in five of them.
   const shapes = {};
   const refused = [];
+  const drewRollup = [];
   for (const id of Object.keys(want.views)) {
     app.drillUp(0);
     const o = await openInto(app, id);
     if (o !== "drew") { refused.push(id + ": " + o); continue; }
     const m = measure(app, app.projection);
     shapes[id] = [m.nodes, m.links, m.hairlines];
+    if (rollupsIn(app.projection)) drewRollup.push(id);
   }
   const asDrawn = JSON.stringify(shapes, Object.keys(shapes).sort());
   const asPinned = JSON.stringify(want.views, Object.keys(want.views).sort());
@@ -1766,6 +1808,19 @@ async function walkCategory(col) {
     detail: (refused.length ? `refused: ${refused.join("; ")}; ` : "") +
       (asDrawn === asPinned ? `all ${Object.keys(shapes).length} at the pinned shapes` : `drawn ${asDrawn}, want ${asPinned}`) +
       `; the Use of Money line reaches the fund tail ${intoTail.length} time(s), kinds ${JSON.stringify(tailKinds)}`,
+  });
+  // AND THE ROLLUP THAT MAKES THE CATEGORY A CENTRE IS DRAWN IN NONE OF THEM.
+  // {1,3} draws the category nowhere -- filterFromNode's own sentence -- so the
+  // (1,0) link into it has a source in the subtree and an end with no column,
+  // and scoped drops it quietly. The shapes above would not move if it were
+  // kept as a self-loop on a line; this is what says it is not kept at all.
+  out.push({
+    name: `${col.label} category: none of the ten views draws a line's rollup into its category`,
+    ok: rollupsIn(col.golden()) === col.rollups && drewRollup.length === 0 &&
+        Object.keys(shapes).length === Object.keys(want.views).length,
+    detail: `${col.step} carries ${rollupsIn(col.golden())} rollup link(s) (want ${col.rollups}); ` +
+      `${Object.keys(shapes).length} view(s) drawn, of which ${drewRollup.length} carry one` +
+      (drewRollup.length ? `: ${drewRollup.join(", ")}` : ""),
   });
   app.drillUp(0);
   return out;

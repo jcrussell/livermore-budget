@@ -11,8 +11,10 @@ import (
 // rather than an arm of that one because the identity is not the same statement.
 // The spine's is facts = facts_cited + stocks + zero-valued cells, and it assumes
 // each fact is behind at most one link. Neither half survives here: neither
-// schedule prints a stock row, and a fund-to-department link is the SUM of that
-// department's object rows, so every expenditure fact is behind two links.
+// schedule prints a stock row, and both sides carry a summing link above the
+// cell -- the fund-to-department link over a division's object rows, and a
+// line's rollup over the funds one printed row reaches -- so most facts here are
+// behind two links.
 //
 // THE DERIVATION IS INDEPENDENT, which is the whole reason a count is worth
 // checking. counts-reconcile earns that by carrying a second copy of
@@ -92,8 +94,10 @@ func (*fundFlowsCountsReconcile) Run(_ context.Context, s *Subject) (Result, err
 			{"counts.facts_uncited", c.FactsUncited, uncited,
 				"a fact that reached no link, and the document disagrees about how many"},
 			{"counts.facts_cited_twice", c.FactsCitedTwice, twice,
-				"the overlap between the two grains -- facts behind both a department's " +
-					"object rows and the fund-to-department link that totals them"},
+				"the overlap between the grains -- a revenue row behind both its flow into " +
+					"a fund and its line's rollup into the category, or an expenditure row " +
+					"behind both a department's object rows and the fund-to-department link " +
+					"that totals them"},
 			{"counts.nodes", c.Nodes, len(doc.Nodes), "a ratchet on the arrays as published"},
 			{"counts.links", c.Links, len(doc.Links), "a ratchet on the arrays as published"},
 		} {

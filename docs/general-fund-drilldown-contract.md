@@ -45,6 +45,8 @@ that stopped spending.
 ```
 tier 0  revenue/<category>, transfers/in
 tier 1  revenue-line/<line>          parent = revenue/<category>
+          |   one link per (line, kind) back INTO the category, the sum of
+          |   that printed row's own cells
           |   one link per netted (kind, line, fund) cell, and one per
           |   (transfers/in, fund) cell straight from tier 0
 tier 3  fund/<n>                     parent = fund-group/<type>
@@ -63,12 +65,37 @@ one.
 Three things about the shape are not obvious and are load-bearing.
 
 **A revenue category is reached only through its lines.** Every revenue link
-leaves a tier-1 node, so `revenue/taxes/property` is the target of nothing and
-the source of nothing; it is emitted because the hierarchy needs it, the way the
-fund groups are. A client folding the lines to a coarser tier finds the box to
-put them in, and that fold reproduces the links this document published before
-the line tier existed — same values, same fact ids, same locators, same order
+leaves a tier-1 node, so `revenue/taxes/property` is the source of nothing; it is
+emitted because the hierarchy needs it, the way the fund groups are. A client
+folding the lines to a coarser tier finds the box to put them in, and that fold
+reproduces the links this document published before the line tier existed — same
+values, same fact ids, same locators, same order
 (`TestTheLineTierFoldsToTheCategoryLinks`).
+
+**A line is rolled back up into its category, once per kind.** The rollup is a
+`(1,0)` link whose value is the sum of that printed row's own cells and whose
+citation is exactly those cells — *not* the dashes among them, which earn no link
+on this side of the document and stay in `counts.facts_uncited`. It is published
+rather than left to the client for the reason the middle link is, one rung
+earlier: a category is the source of every other link it touches, so a chart that
+puts it *between* its lines and the funds has nothing flowing into it and draws
+it at zero.
+
+**Per kind**, because one printed row reaches the five Internal Service Funds as
+an internal service charge and the rest of the city as external revenue — 2 of
+the 93 lines in both adopted columns — and one ribbon carrying both would publish
+an internal service charge as money crossing the city's boundary. Two links on
+one pair is what `checkDistinctLinks` and the client's own fold allow exactly
+when the kinds differ, which is why `links` are ordered by `(source, target,
+kind)` and not by the pair alone.
+
+**Every tier set this repository draws today drops the rollup**, which is how a
+document can gain 95 links per column and no chart change a pixel: at `{0,3,4}`
+both ends fold to the category and a link whose ends fold together is dropped, and
+at `{1,3}` the tier-0 end has no column and the filter drops it before the fold.
+`tools/jscheck/drill.mjs` asserts that over all 39 views the page opens, rather
+than leaving it to the per-view pins, which cannot tell a rollup that was dropped
+from one that was never published.
 
 **A contra row is a negative link on its own line.** pp.127-140 print ERAF and
 RPTTF Reduction in parentheses inside the Property Taxes subtotal, and while the
@@ -144,13 +171,17 @@ zero cells instead would overstate the gap and the identity would not close.
 
 `facts_cited_twice` is published because **`links` is not a partition of
 `facts_cited` in this document**, which the spine's shape would lead a reader to
-assume. Every expenditure fact is behind two links: its own object row and the
-division total that includes it. **Summing every link's `value_cents`
-double-counts the expenditure side by exactly this much.** Fold within one tier
-pair; never across the whole graph.
+assume. **Both sides** now have a summing link above the cell: every expenditure
+fact is behind its own object row and the division total that includes it, and
+every revenue fact behind a flow is behind that flow and its line's rollup into
+the category. **Summing every link's `value_cents` counts both sides' money
+twice over.** Fold within one tier pair; never across the whole graph.
 
-FY2025-26: `280 = 233 + 47`, with 44 cited twice, over 238 nodes and 251 links.
-`fund-flows-counts-reconcile` re-derives all six from the published links.
+FY2025-26: `280 = 233 + 47`, with 220 cited twice, over 238 nodes and 346 links.
+`fund-flows-counts-reconcile` re-derives all six from the published links. The
+220 is 44 expenditure rows plus the 176 revenue rows that earned a flow; the 47
+that print a dash are in neither, which is what keeps `facts_uncited` where the
+line tier left it.
 
 **The 47 uncited facts are the 47 revenue rows that print a dash**, exactly,
 because the cell a zero is tested at is the printed ROW. Drawn at category grain
@@ -208,7 +239,7 @@ documents, so a reader cannot find the two pages disagreeing about it.
 
 | tier | nodes, FY2025-26 | of 238 |
 |---|---|---|
-| 0 | 10 revenue categories, **none of them touched by any link**, plus `transfers/in`, which is | 11 |
+| 0 | 10 revenue categories, each the **target** of its own lines' rollups and the source of nothing, plus `transfers/in`, which is the source of a flow into every fund it reaches | 11 |
 | 1 | printed revenue rows that were not a printed zero | 93 |
 | 2 | fund groups, **all six untouched by any link** | 6 |
 | 3 | funds that took in money this column | 61 |
@@ -300,8 +331,10 @@ So the client folds. The rule, in full:
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
   same money and the same facts, over every cell including the printed zeros,
-  which is what `facts_cited_twice` counts. Measured on FY2025-26: 233 facts
-  cited by 251 links before the fold, 233 by 52 after.
+  which is what `facts_cited_twice` counts. The `(1,0)` rollups are the same
+  case on the revenue side — both ends fold to the category — and the line's own
+  flows into the funds carry every fact they cited. Measured on FY2025-26: 233
+  facts cited by 346 links before the fold, 233 by 52 after.
 - **A retained node's `parent` is re-pointed at its own folded ancestor**, so
   the folded document satisfies client-side what `node-hierarchy-well-formed`
   asserts of the published one.

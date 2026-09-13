@@ -934,27 +934,47 @@ func sortedNodes(nodes map[string]Node) []Node {
 	return out
 }
 
-// sortLinks orders links by (source, target).
+// sortLinks orders links by (source, target, kind).
+//
+// THE KIND IS PART OF THE ORDER BECAUSE IT IS PART OF THE IDENTITY, and
+// sort.Slice is not stable: a pair carrying one ribbon per kind would otherwise
+// come out in whichever order the sort happened to leave, and two builds of the
+// same facts would differ by a line. docs/sankey-contract.md states the order.
 func sortLinks(links []Link) {
 	sort.Slice(links, func(i, j int) bool {
 		if links[i].Source != links[j].Source {
 			return links[i].Source < links[j].Source
 		}
-		return links[i].Target < links[j].Target
+		if links[i].Target != links[j].Target {
+			return links[i].Target < links[j].Target
+		}
+		return links[i].Kind < links[j].Kind
 	})
 }
 
-// checkDistinctLinks refuses two links between the same pair of nodes.
+// checkDistinctLinks refuses two links of one kind between the same pair of
+// nodes.
 //
 // d3-sankey draws them stacked and indistinguishable, and a reader hovering
 // one would see a value that is not the flow between those two boxes. It can
 // only happen if two cells collapse onto one pair, which means a classification
 // is wrong upstream, so it is an error rather than a silent merge.
+//
+// THE KIND IS IN THE KEY, which is site/app.js's foldDocument rule and not a
+// relaxation of it: one ribbon per kind between a pair, so a ribbon's kind is
+// true of all of it. A line rolled up into its category reaches it under every
+// kind its funds take the money under -- external into most, internal_service
+// into the five Internal Service Funds -- and collapsing those two onto one
+// ribbon would publish internal service charges as money crossing the city's
+// boundary, which is the claim link-kinds-match-their-facts exists to refuse.
+// Two links of the SAME kind on one pair is still a lost axis and still an
+// error.
 func checkDistinctLinks(links []Link) error {
 	for i := 1; i < len(links); i++ {
-		if links[i].Source == links[i-1].Source && links[i].Target == links[i-1].Target {
-			return fmt.Errorf("sankey: two links from %q to %q (%s and %s)",
-				links[i].Source, links[i].Target,
+		if links[i].Source == links[i-1].Source && links[i].Target == links[i-1].Target &&
+			links[i].Kind == links[i-1].Kind {
+			return fmt.Errorf("sankey: two %s links from %q to %q (%s and %s)",
+				links[i].Kind, links[i].Source, links[i].Target,
 				strings.Join(links[i-1].FactIDs, ","), strings.Join(links[i].FactIDs, ","))
 		}
 	}

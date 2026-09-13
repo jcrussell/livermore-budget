@@ -53,13 +53,13 @@ const (
 // sides print rows, and would otherwise read here as a cell two figures agreed
 // on. The count of those is reported rather than folded in.
 //
-// THE FACTS-CITED-TWICE ARM fisc-ko1j.10 ASKED FOR IS VOID, and writing it would
-// have been a vacuous check dressed as a claim. Under the model the drill-down
-// ships, a revenue fact is behind exactly one link: the tier-0-to-3 flow was
-// replaced by the tier-1-to-3 flow rather than joined by it, so nothing on the
-// revenue side is cited at two grains. FundFlowsCounts.FactsCitedTwice is
-// unchanged by the line tier and stays what it was, the expenditure side's
-// two-grain overlap, which fund-flows-counts-reconcile re-derives.
+// THE REVENUE SIDE IS NOW CITED AT TWO GRAINS AND NEITHER ARM READS THE SECOND.
+// A line is both drawn into its funds and rolled back up into its category, so
+// every revenue row behind a flow is cited twice, and FundFlowsCounts
+// .FactsCitedTwice counts it -- which fund-flows-counts-reconcile re-derives from
+// the links and this check does not touch. Arm 1 iterates the links whose TARGET
+// is a fund, so a rollup is not among its subjects and cannot make a cell tie
+// against itself.
 //
 // WHAT IT CANNOT WITNESS. Both sides are one fact slice in one process: the
 // links were built from the facts this check sums, so a wrong AMOUNT moves both

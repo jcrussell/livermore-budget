@@ -344,11 +344,112 @@ func TestTheCountsIdentityHolds(t *testing.T) {
 	if c.FactsUncited != 1 {
 		t.Errorf("uncited = %d, want 1: the transfers_in row is a printed zero", c.FactsUncited)
 	}
-	// Both expenditure facts are behind their own object link AND the
-	// fund-to-department link that totals them.
-	if c.FactsCitedTwice != 2 {
-		t.Errorf("cited twice = %d, want 2: the two object rows are also in the division "+
-			"total", c.FactsCitedTwice)
+	// FOUR, AND THE TWO OVERLAPS ARE NOT THE SAME SHAPE. Both expenditure facts
+	// are behind their own object link AND the fund-to-department link that
+	// totals them; both revenue facts are behind their own flow into a fund AND
+	// the rollup of their line into Property Taxes. The printed zero is behind
+	// neither, which is what keeps it in facts_uncited above.
+	if c.FactsCitedTwice != 4 {
+		t.Errorf("cited twice = %d, want 4: the two object rows are also in the division "+
+			"total, and the two revenue rows are also in their line's rollup",
+			c.FactsCitedTwice)
+	}
+}
+
+// TestALineRollsUpIntoItsCategoryOncePerKind is the (1,0) link's shape, and the
+// per-kind half of it is held by nothing else in the tree.
+//
+// ONE PRINTED ROW REACHES THE CITY UNDER TWO KINDS. pp.127-140 print rows whose
+// money lands in the five Internal Service Funds as an internal service charge
+// and in the rest of the city as external revenue -- 2 of the 93 lines in both
+// published columns. A single rollup would have to publish one of those two
+// answers for all of it, and nothing else would notice: the value would still
+// tie to the facts it cites, every one of those facts is a revenue row so
+// link-kinds-match-their-facts stays quiet, and checkDistinctLinks refuses two
+// links of ONE kind on a pair rather than a pair carrying two kinds.
+func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
+	labels := fundFlowsLabels()
+	labels.names[700] = "Fleet Maintenance"
+	labels.types[700] = "internal-service"
+	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
+		"taxes/property", "", "internal-service", 700, 500, "f"))
+
+	got := map[LinkKind]Link{}
+	for _, l := range buildFundFlows(t, facts, labels).Links {
+		if l.Target != prefixRevenue+"taxes/property" {
+			continue
+		}
+		if l.Source != prefixRevenueLine+lineOf("taxes/property") {
+			t.Errorf("%s -> %s: the category's inflow comes from something other than its "+
+				"own line", l.Source, l.Target)
+		}
+		if _, seen := got[l.Kind]; seen {
+			t.Errorf("two %s rollups on one pair", l.Kind)
+		}
+		got[l.Kind] = l
+	}
+	if len(got) != 2 {
+		t.Fatalf("the line rolls up %d time(s), want one per kind: %v", len(got), got)
+	}
+	if v := got[KindExternal].ValueCents; v != 3000 {
+		t.Errorf("the external rollup is %d, want 3000 = 1000 general + 2000 enterprise", v)
+	}
+	if v := got[KindInternalService].ValueCents; v != 500 {
+		t.Errorf("the internal-service rollup is %d, want 500", v)
+	}
+	if diff := cmp.Diff([]string{"a", "b"}, got[KindExternal].FactIDs); diff != "" {
+		t.Errorf("the external rollup cites the wrong rows (-want +got):\n%s", diff)
+	}
+	if diff := cmp.Diff([]string{"f"}, got[KindInternalService].FactIDs); diff != "" {
+		t.Errorf("the internal-service rollup cites the wrong rows (-want +got):\n%s", diff)
+	}
+	// PUBLISHED, NOT INFERRED. A rollup of rows the city printed is a reading of
+	// the page and not a model of it, so the flag that would draw it dashed and
+	// list it under "what we inferred" stays false.
+	for k, l := range got {
+		if l.Derived {
+			t.Errorf("the %s rollup is published as derived", k)
+		}
+	}
+}
+
+// TestAPrintedZeroIsNotInItsLinesRollup holds the one place the tier-3-to-4 rule
+// is deliberately not copied.
+//
+// A DASH IS A FACT AND NOT A FLOW on this side of the document: the division
+// total sums every object cell including the zeros and cites them all, while a
+// revenue row printed as a dash earns no link and is counted in facts_uncited.
+// Rolling the zeros up would cite them, move that number and contradict
+// TestThePrintedZeroRowsAreNotNodes -- and the value would not move a cent,
+// which is why only a test of the CITATION can see it.
+func TestAPrintedZeroIsNotInItsLinesRollup(t *testing.T) {
+	labels := fundFlowsLabels()
+	labels.names[600] = "Capital Projects"
+	labels.types[600] = "capital"
+	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
+		"taxes/property", "", "capital", 600, 0, "z"))
+
+	doc := buildFundFlows(t, facts, labels)
+	var rollup *Link
+	for i := range doc.Links {
+		if doc.Links[i].Target == prefixRevenue+"taxes/property" {
+			rollup = &doc.Links[i]
+		}
+	}
+	if rollup == nil {
+		t.Fatal("the line rolls up into nothing, so the category has no inflow at all")
+	}
+	if diff := cmp.Diff([]string{"a", "b"}, rollup.FactIDs); diff != "" {
+		t.Errorf("the rollup's citation is not the rows that flowed (-want +got):\n%s", diff)
+	}
+	if rollup.ValueCents != 3000 {
+		t.Errorf("the rollup is %d, want 3000: a dash adds nothing", rollup.ValueCents)
+	}
+	// The dash is still a fact, and the identity is where it is accounted for.
+	c := doc.Metadata.Counts
+	if c.FactsUncited != 2 || c.FactsCited+c.FactsUncited != c.Facts {
+		t.Errorf("%d cited + %d uncited of %d facts, want 2 uncited: the transfers_in row "+
+			"and the dashed capital row", c.FactsCited, c.FactsUncited, c.Facts)
 	}
 }
 

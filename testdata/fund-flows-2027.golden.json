@@ -41,9 +41,9 @@
       "facts": 280,
       "facts_cited": 231,
       "facts_uncited": 49,
-      "facts_cited_twice": 44,
+      "facts_cited_twice": 218,
       "nodes": 237,
-      "links": 249
+      "links": 344
     },
     "caveats": [
       {
@@ -61,7 +61,7 @@
       {
         "id": "mixed-grain-double-counts",
         "summary": "This document holds the same money at two grains, so summing every link double-counts.",
-        "text": "This document holds the same money at more than one grain, so summing every link double-counts: 44 fact(s) are behind both a department's object rows and the fund-to-department link that totals them. Fold within one tier pair, never across the whole graph. It publishes no headline for this reason.",
+        "text": "This document holds the same money at more than one grain, so summing every link double-counts: 218 fact(s) are behind two links. A revenue row is behind both its own flow into a fund and the rollup of its line into the category it is printed under; an expenditure row is behind both its department's object rows and the fund-to-department link that totals them. Fold within one tier pair, never across the whole graph. It publishes no headline for this reason.",
         "applies_to": []
       },
       {
@@ -4011,8 +4011,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/administrative-cost-recovery",
+      "target": "revenue/charges-for-services",
+      "value_cents": 27021700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-06faf356388c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/animal-shelter-fees-and-charges",
       "target": "fund/100",
+      "value_cents": 50000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-138285abf3f7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/animal-shelter-fees-and-charges",
+      "target": "revenue/charges-for-services",
       "value_cents": 50000,
       "kind": "external",
       "transfer_id": "",
@@ -4049,8 +4087,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/assessment-dist-admin-fee",
+      "target": "revenue/charges-for-services",
+      "value_cents": 12070200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1f30ae11d313"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/building-records-reports",
       "target": "fund/100",
+      "value_cents": 9441300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-ac2c4a9eac78"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/building-records-reports",
+      "target": "revenue/charges-for-services",
       "value_cents": 9441300,
       "kind": "external",
       "transfer_id": "",
@@ -4296,8 +4372,62 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/charges-for-services",
+      "target": "revenue/charges-for-services",
+      "value_cents": 6798407000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-201e72ef65c7",
+        "fisc-f-3206d8a3001e",
+        "fisc-f-4a6d2205e3de",
+        "fisc-f-68a49c2d1e4e",
+        "fisc-f-7dcec4b2a05a",
+        "fisc-f-7edc21f4f3ad",
+        "fisc-f-803dc6e945fc",
+        "fisc-f-9662e34f14ce",
+        "fisc-f-ab4aab5d83d8",
+        "fisc-f-b16ffac200ef",
+        "fisc-f-d170bc562b30",
+        "fisc-f-f7f10bc5cec4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131,
+            132,
+            133,
+            136,
+            137,
+            138
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/engineering-and-filing-fee",
       "target": "fund/100",
+      "value_cents": 240000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-a5ad91e89a55"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/engineering-and-filing-fee",
+      "target": "revenue/charges-for-services",
       "value_cents": 240000000,
       "kind": "external",
       "transfer_id": "",
@@ -4334,8 +4464,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/engineering-inspection-fees",
+      "target": "revenue/charges-for-services",
+      "value_cents": 76000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-50d76de3db04"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee",
       "target": "fund/100",
+      "value_cents": 30000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c2ba57b3c18a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee",
+      "target": "revenue/charges-for-services",
       "value_cents": 30000000,
       "kind": "external",
       "transfer_id": "",
@@ -4372,8 +4540,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/fire-va-contract-service",
+      "target": "revenue/charges-for-services",
+      "value_cents": 76360900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-cfe14e759727"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/library-fees",
       "target": "fund/100",
+      "value_cents": 1185200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-eb9427526560"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/library-fees",
+      "target": "revenue/charges-for-services",
       "value_cents": 1185200,
       "kind": "external",
       "transfer_id": "",
@@ -4410,8 +4616,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/outdoor-dining-maintenance",
+      "target": "revenue/charges-for-services",
+      "value_cents": 1217600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b9452ec84f25"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/plan-check-fees",
       "target": "fund/100",
+      "value_cents": 100000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-fe0525d4cf0c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/plan-check-fees",
+      "target": "revenue/charges-for-services",
       "value_cents": 100000000,
       "kind": "external",
       "transfer_id": "",
@@ -4448,8 +4692,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/police-emerg-response",
+      "target": "revenue/charges-for-services",
+      "value_cents": 2250000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-afd87888b0ad"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/police-vehicle-fees",
       "target": "fund/100",
+      "value_cents": 7800000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1bfaf8316201"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/police-vehicle-fees",
+      "target": "revenue/charges-for-services",
       "value_cents": 7800000,
       "kind": "external",
       "transfer_id": "",
@@ -4486,8 +4768,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/property-damage-recovery",
+      "target": "revenue/charges-for-services",
+      "value_cents": 1736300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-df34a161604a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/sale-of-police-reports",
       "target": "fund/100",
+      "value_cents": 4400000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-fdcad72ff44f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/sale-of-police-reports",
+      "target": "revenue/charges-for-services",
       "value_cents": 4400000,
       "kind": "external",
       "transfer_id": "",
@@ -4524,8 +4844,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/special-police-services",
+      "target": "revenue/charges-for-services",
+      "value_cents": 26091700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6e3ed4833654"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/charges-for-services/tow-franchise-fees-and-fines",
       "target": "fund/100",
+      "value_cents": 2000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f14a3618b0f0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/charges-for-services/tow-franchise-fees-and-fines",
+      "target": "revenue/charges-for-services",
       "value_cents": 2000000,
       "kind": "external",
       "transfer_id": "",
@@ -4562,8 +4920,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/charges-for-services/weed-abatement",
+      "target": "revenue/charges-for-services",
+      "value_cents": 290900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-77fd6d027086"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/contributions-outsourced/contribution-outside-services",
       "target": "fund/100",
+      "value_cents": 7865100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-57a9c40dc8a5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/contributions-outsourced/contribution-outside-services",
+      "target": "revenue/contributions-outsourced",
       "value_cents": 7865100,
       "kind": "external",
       "transfer_id": "",
@@ -4638,8 +5034,49 @@
       "derived": false
     },
     {
+      "source": "revenue-line/contributions-outsourced/contributionsoutsrce",
+      "target": "revenue/contributions-outsourced",
+      "value_cents": 13400000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6c051cffc8dc",
+        "fisc-f-b3670852647a",
+        "fisc-f-e4e29824b49a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            136,
+            139
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/fines-and-forfeitures/citations",
       "target": "fund/100",
+      "value_cents": 8000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1b80a3528b92"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/fines-and-forfeitures/citations",
+      "target": "revenue/fines-and-forfeitures",
       "value_cents": 8000000,
       "kind": "external",
       "transfer_id": "",
@@ -4676,8 +5113,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/fines-and-forfeitures/vehicle-code-fines",
+      "target": "revenue/fines-and-forfeitures",
+      "value_cents": 31827000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-ebd2c6c34187"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/intergovernmental/grant-federal",
       "target": "fund/100",
+      "value_cents": 9542300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5cad5c14ce09"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/intergovernmental/grant-federal",
+      "target": "revenue/intergovernmental",
       "value_cents": 9542300,
       "kind": "external",
       "transfer_id": "",
@@ -4714,8 +5189,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/intergovernmental/grant-state",
+      "target": "revenue/intergovernmental",
+      "value_cents": 47300000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-cd1acc296dfb"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/intergovernmental/interdepartmental-revenue",
       "target": "fund/100",
+      "value_cents": 379542000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-af1fc3cc4943"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/intergovernmental/interdepartmental-revenue",
+      "target": "revenue/intergovernmental",
       "value_cents": 379542000,
       "kind": "external",
       "transfer_id": "",
@@ -5037,8 +5550,84 @@
       "derived": false
     },
     {
+      "source": "revenue-line/intergovernmental/intergovernmental",
+      "target": "revenue/intergovernmental",
+      "value_cents": 956509300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-06e329e929ad",
+        "fisc-f-07a6b8a7c64a",
+        "fisc-f-0a4168669160",
+        "fisc-f-1a5edb830fa3",
+        "fisc-f-2ac51848f400",
+        "fisc-f-45a7821ea63b",
+        "fisc-f-9417c09d9fcb",
+        "fisc-f-9b4c4a770d9c",
+        "fisc-f-a77139e0ae9f",
+        "fisc-f-cd099389b8db",
+        "fisc-f-d274f4899346"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            133,
+            134,
+            135,
+            136,
+            137
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/intergovernmental/intergovernmental",
+      "target": "revenue/intergovernmental",
+      "value_cents": 1987087000,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-67e826e6e741",
+        "fisc-f-6b1c570c3f2a",
+        "fisc-f-6d062f15fcfd",
+        "fisc-f-df70580fe758",
+        "fisc-f-e2be66871c15"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139,
+            140
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/intergovernmental/reimb-mandated-costs-st",
       "target": "fund/100",
+      "value_cents": 15155700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-77dde46ee9fb"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/intergovernmental/reimb-mandated-costs-st",
+      "target": "revenue/intergovernmental",
       "value_cents": 15155700,
       "kind": "external",
       "transfer_id": "",
@@ -5075,8 +5664,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/intergovernmental/st-highway-prop-rental",
+      "target": "revenue/intergovernmental",
+      "value_cents": 100000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-0bbe67020b96"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/intergovernmental/state-motor-veh-in-lieu-mvil",
       "target": "fund/100",
+      "value_cents": 11482000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e5a6f09e462f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/intergovernmental/state-motor-veh-in-lieu-mvil",
+      "target": "revenue/intergovernmental",
       "value_cents": 11482000,
       "kind": "external",
       "transfer_id": "",
@@ -5113,8 +5740,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/licenses-and-permits/animal-licenses",
+      "target": "revenue/licenses-and-permits",
+      "value_cents": 4081700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-8f3c8d0818bc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/licenses-and-permits/building-permits",
       "target": "fund/100",
+      "value_cents": 279000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-85b93bdcabe0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/licenses-and-permits/building-permits",
+      "target": "revenue/licenses-and-permits",
       "value_cents": 279000000,
       "kind": "external",
       "transfer_id": "",
@@ -5151,8 +5816,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/licenses-and-permits/electrical-permits",
+      "target": "revenue/licenses-and-permits",
+      "value_cents": 34000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-690fcc5dbe64"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/licenses-and-permits/fire-permits",
       "target": "fund/100",
+      "value_cents": 120000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-d98caec43f62"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/licenses-and-permits/fire-permits",
+      "target": "revenue/licenses-and-permits",
       "value_cents": 120000000,
       "kind": "external",
       "transfer_id": "",
@@ -5189,8 +5892,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/licenses-and-permits/hazmat-permits",
+      "target": "revenue/licenses-and-permits",
+      "value_cents": 111700000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c547aeb8a347"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/licenses-and-permits/mechanical-permits",
       "target": "fund/100",
+      "value_cents": 26000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-0a5d82bf0cc5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/licenses-and-permits/mechanical-permits",
+      "target": "revenue/licenses-and-permits",
       "value_cents": 26000000,
       "kind": "external",
       "transfer_id": "",
@@ -5227,8 +5968,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/licenses-and-permits/permit-technology-fee",
+      "target": "revenue/licenses-and-permits",
+      "value_cents": 6355400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-249e819f74a0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/licenses-and-permits/plumbing-gas-permits",
       "target": "fund/100",
+      "value_cents": 15000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4d9bcbc698c5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/licenses-and-permits/plumbing-gas-permits",
+      "target": "revenue/licenses-and-permits",
       "value_cents": 15000000,
       "kind": "external",
       "transfer_id": "",
@@ -5265,8 +6044,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/licenses-and-permits/police-permits",
+      "target": "revenue/licenses-and-permits",
+      "value_cents": 6950000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4e09ef696015"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/licenses-and-permits/short-term-rental-permit",
       "target": "fund/100",
+      "value_cents": 600800,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-59493da45d02"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/licenses-and-permits/short-term-rental-permit",
+      "target": "revenue/licenses-and-permits",
       "value_cents": 600800,
       "kind": "external",
       "transfer_id": "",
@@ -5303,8 +6120,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/licenses-and-permits/street-and-curb-permits",
+      "target": "revenue/licenses-and-permits",
+      "value_cents": 17000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-8609ad0e7934"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/licenses-and-permits/tobacco-license-fee",
       "target": "fund/100",
+      "value_cents": 6332000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-34f57e97eb7b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/licenses-and-permits/tobacco-license-fee",
+      "target": "revenue/licenses-and-permits",
       "value_cents": 6332000,
       "kind": "external",
       "transfer_id": "",
@@ -5341,8 +6196,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/licenses-and-permits/transportation-permit",
+      "target": "revenue/licenses-and-permits",
+      "value_cents": 4084900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-9b84a4e04a3b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/licenses-and-permits/use-and-variance-permits",
       "target": "fund/100",
+      "value_cents": 95000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-30a5b04fb147"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/licenses-and-permits/use-and-variance-permits",
+      "target": "revenue/licenses-and-permits",
       "value_cents": 95000000,
       "kind": "external",
       "transfer_id": "",
@@ -5379,8 +6272,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/miscellaneous-revenue/bond-monitoring-fee",
+      "target": "revenue/miscellaneous-revenue",
+      "value_cents": 4855700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-7ab58bfbfa13"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/miscellaneous-revenue/cardroom-revenue",
       "target": "fund/100",
+      "value_cents": 135960000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-494abbeb84e8"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/miscellaneous-revenue/cardroom-revenue",
+      "target": "revenue/miscellaneous-revenue",
       "value_cents": 135960000,
       "kind": "external",
       "transfer_id": "",
@@ -5417,8 +6348,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/miscellaneous-revenue/edd-art-admin-fee-contrib",
+      "target": "revenue/miscellaneous-revenue",
+      "value_cents": 681600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-dec760549449"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/miscellaneous-revenue/electric-vehicle-chg-fee",
       "target": "fund/100",
+      "value_cents": 1803600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-7f8f759add5f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/miscellaneous-revenue/electric-vehicle-chg-fee",
+      "target": "revenue/miscellaneous-revenue",
       "value_cents": 1803600,
       "kind": "external",
       "transfer_id": "",
@@ -5455,8 +6424,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/miscellaneous-revenue/library-merchandise",
+      "target": "revenue/miscellaneous-revenue",
+      "value_cents": 60100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-838d8c2a71c7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/miscellaneous-revenue/lvwhd-collection-fee",
       "target": "fund/100",
+      "value_cents": 1204800,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1751d7efb4b7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/miscellaneous-revenue/lvwhd-collection-fee",
+      "target": "revenue/miscellaneous-revenue",
       "value_cents": 1204800,
       "kind": "external",
       "transfer_id": "",
@@ -5816,8 +6823,69 @@
       "derived": false
     },
     {
+      "source": "revenue-line/miscellaneous-revenue/miscellaneous-rev",
+      "target": "revenue/miscellaneous-revenue",
+      "value_cents": 2637981700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-113008dec72b",
+        "fisc-f-172a76059020",
+        "fisc-f-18c0aab16066",
+        "fisc-f-1b5929405368",
+        "fisc-f-26650a4bf1b8",
+        "fisc-f-266ea1410902",
+        "fisc-f-2aa0f9f6153e",
+        "fisc-f-6bb1d2b3c4bd",
+        "fisc-f-802bba329ea7",
+        "fisc-f-877c94a0bad6",
+        "fisc-f-9ad90e302195",
+        "fisc-f-a47e2f6b9526",
+        "fisc-f-b2db79c8e80a",
+        "fisc-f-d57a75ec5fe1",
+        "fisc-f-d82a5a9cd894",
+        "fisc-f-dfc096fc288b",
+        "fisc-f-ed9d6fccdea9",
+        "fisc-f-edde2a9f27f9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131,
+            132,
+            133,
+            135,
+            136,
+            137,
+            138
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
       "target": "fund/100",
+      "value_cents": 41854900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-eadfdfb065d1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/miscellaneous-revenue/miscellaneous-revenue",
+      "target": "revenue/miscellaneous-revenue",
       "value_cents": 41854900,
       "kind": "external",
       "transfer_id": "",
@@ -5854,8 +6922,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/miscellaneous-revenue/post-reimbursement",
+      "target": "revenue/miscellaneous-revenue",
+      "value_cents": 1150000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-dc339527aca1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/miscellaneous-revenue/sb-1383-fees",
       "target": "fund/100",
+      "value_cents": 22382900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-0364e5f4e1ae"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/miscellaneous-revenue/sb-1383-fees",
+      "target": "revenue/miscellaneous-revenue",
       "value_cents": 22382900,
       "kind": "external",
       "transfer_id": "",
@@ -5892,8 +6998,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/miscellaneous-revenue/urban-forestry-revenues",
+      "target": "revenue/miscellaneous-revenue",
+      "value_cents": 10573500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-0c09dd1f3979"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            130
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/business-license-penalty",
       "target": "fund/100",
+      "value_cents": 21218000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-956dd7651ce0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/other/business-license-penalty",
+      "target": "revenue/taxes/other",
       "value_cents": 21218000,
       "kind": "external",
       "transfer_id": "",
@@ -5930,8 +7074,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/business-license-registration",
+      "target": "revenue/taxes/other",
+      "value_cents": 3713200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-47f616384623"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/business-license-tax",
       "target": "fund/100",
+      "value_cents": 1073132500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f7646c5a22b3"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/other/business-license-tax",
+      "target": "revenue/taxes/other",
       "value_cents": 1073132500,
       "kind": "external",
       "transfer_id": "",
@@ -5968,8 +7150,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/emt-service-area",
+      "target": "revenue/taxes/other",
+      "value_cents": 41503100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-54829bbe67ad"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/franchise-tax-cable-tv",
       "target": "fund/100",
+      "value_cents": 120560900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-78e037aa83b3"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/other/franchise-tax-cable-tv",
+      "target": "revenue/taxes/other",
       "value_cents": 120560900,
       "kind": "external",
       "transfer_id": "",
@@ -6006,8 +7226,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/franchise-tax-electric",
+      "target": "revenue/taxes/other",
+      "value_cents": 95179400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-896ab30ca29a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/franchise-tax-garbage",
       "target": "fund/100",
+      "value_cents": 445578000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-16b6463613d5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/other/franchise-tax-garbage",
+      "target": "revenue/taxes/other",
       "value_cents": 445578000,
       "kind": "external",
       "transfer_id": "",
@@ -6044,6 +7302,25 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/franchise-tax-gas",
+      "target": "revenue/taxes/other",
+      "value_cents": 47802100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-9517d21b6dd6"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/in-lieu-taxes",
       "target": "fund/100",
       "value_cents": 874400,
@@ -6063,8 +7340,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/in-lieu-taxes",
+      "target": "revenue/taxes/other",
+      "value_cents": 874400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-d9fef71dc784"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            128
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/industrial-construction-tax",
       "target": "fund/100",
+      "value_cents": 7725000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-d5cc2c7f38a7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/other/industrial-construction-tax",
+      "target": "revenue/taxes/other",
       "value_cents": 7725000,
       "kind": "external",
       "transfer_id": "",
@@ -6120,8 +7435,47 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/other-taxes",
+      "target": "revenue/taxes/other",
+      "value_cents": 17000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-05cc0840e4c9",
+        "fisc-f-21bce925ba27"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            138
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/real-property-transfer-tax",
       "target": "fund/100",
+      "value_cents": 92886300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5238e75a0d77"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/other/real-property-transfer-tax",
+      "target": "revenue/taxes/other",
       "value_cents": 92886300,
       "kind": "external",
       "transfer_id": "",
@@ -6158,8 +7512,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/residential-construction-tax",
+      "target": "revenue/taxes/other",
+      "value_cents": 71500000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-a9b3b8500a30"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/other/tot-hotel",
       "target": "fund/100",
+      "value_cents": 424046300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-345332354cf2"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/other/tot-hotel",
+      "target": "revenue/taxes/other",
       "value_cents": 424046300,
       "kind": "external",
       "transfer_id": "",
@@ -6196,8 +7588,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/other/tot-short-term-rental",
+      "target": "revenue/taxes/other",
+      "value_cents": 5101000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-20a69ca67dd9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/property/aircraft-taxes",
       "target": "fund/100",
+      "value_cents": 51808800,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b7b0278b5fbe"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/property/aircraft-taxes",
+      "target": "revenue/taxes/property",
       "value_cents": 51808800,
       "kind": "external",
       "transfer_id": "",
@@ -6234,8 +7664,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/property/current-year-secured",
+      "target": "revenue/taxes/property",
+      "value_cents": 6524700600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-45894d08572d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/property/current-year-unsecured",
       "target": "fund/100",
+      "value_cents": 249055500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-18ca7e2a18c7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/property/current-year-unsecured",
+      "target": "revenue/taxes/property",
       "value_cents": 249055500,
       "kind": "external",
       "transfer_id": "",
@@ -6272,8 +7740,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/property/eraf",
+      "target": "revenue/taxes/property",
+      "value_cents": -1585787500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-64769a308180"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/property/pen-and-int-on-delinq-tax",
       "target": "fund/100",
+      "value_cents": 29047000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-79bc0804faad"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/property/pen-and-int-on-delinq-tax",
+      "target": "revenue/taxes/property",
       "value_cents": 29047000,
       "kind": "external",
       "transfer_id": "",
@@ -6310,8 +7816,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/property/prior-year-secured",
+      "target": "revenue/taxes/property",
+      "value_cents": 47902200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6a19f8c53701"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/property/prior-year-unsecured",
       "target": "fund/100",
+      "value_cents": 3585400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-be6f67c8b38f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/property/prior-year-unsecured",
+      "target": "revenue/taxes/property",
       "value_cents": 3585400,
       "kind": "external",
       "transfer_id": "",
@@ -6405,8 +7949,49 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/property/property-taxes",
+      "target": "revenue/taxes/property",
+      "value_cents": 547511400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-2375b768d4b8",
+        "fisc-f-42a944bd0e66",
+        "fisc-f-eefa615e0d23",
+        "fisc-f-fe3c36bef925"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            139
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/property/rpttf-receipts-and-other-proptax",
       "target": "fund/100",
+      "value_cents": 115482300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6a138d6b7a44"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/property/rpttf-receipts-and-other-proptax",
+      "target": "revenue/taxes/property",
       "value_cents": 115482300,
       "kind": "external",
       "transfer_id": "",
@@ -6443,8 +8028,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/property/rpttf-reduction",
+      "target": "revenue/taxes/property",
+      "value_cents": -189180400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-7cd0a2d4b033"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/property/st-homeowner-prop-tax-re",
       "target": "fund/100",
+      "value_cents": 23037500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-d0d857397da1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/property/st-homeowner-prop-tax-re",
+      "target": "revenue/taxes/property",
       "value_cents": 23037500,
       "kind": "external",
       "transfer_id": "",
@@ -6481,8 +8104,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/property/supple-sec-roll-current",
+      "target": "revenue/taxes/property",
+      "value_cents": 146012600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e50db54eadf0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/property/unitary-utility-tax",
       "target": "fund/100",
+      "value_cents": 56964600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f724b5f092b0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/property/unitary-utility-tax",
+      "target": "revenue/taxes/property",
       "value_cents": 56964600,
       "kind": "external",
       "transfer_id": "",
@@ -6519,8 +8180,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/property/vlf-comp-fund",
+      "target": "revenue/taxes/property",
+      "value_cents": 1269044400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-66a3e9a4a142"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
       "target": "fund/100",
+      "value_cents": 74777200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-ca5f3d40aa1f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
+      "target": "revenue/taxes/sales",
       "value_cents": 74777200,
       "kind": "external",
       "transfer_id": "",
@@ -6557,8 +8256,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/taxes/sales/sales-and-use-tax",
+      "target": "revenue/taxes/sales",
+      "value_cents": 4116056600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1d2fcac8bfbc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            127
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/use-of-money-and-property/cell-tower-rent",
       "target": "fund/100",
+      "value_cents": 10810600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-55559c202e21"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/use-of-money-and-property/cell-tower-rent",
+      "target": "revenue/use-of-money-and-property",
       "value_cents": 10810600,
       "kind": "external",
       "transfer_id": "",
@@ -6595,8 +8332,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/use-of-money-and-property/interest-earned-trustee",
+      "target": "revenue/use-of-money-and-property",
+      "value_cents": 19625100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-8693fc4bd315"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/use-of-money-and-property/interest-income",
       "target": "fund/100",
+      "value_cents": 596400000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-02a8b42887a5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/use-of-money-and-property/interest-income",
+      "target": "revenue/use-of-money-and-property",
       "value_cents": 596400000,
       "kind": "external",
       "transfer_id": "",
@@ -6633,6 +8408,25 @@
       "derived": false
     },
     {
+      "source": "revenue-line/use-of-money-and-property/misc-rental-income",
+      "target": "revenue/use-of-money-and-property",
+      "value_cents": 9647700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1027a504132e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/use-of-money-and-property/multi-service-center-rentals",
       "target": "fund/100",
       "value_cents": 6961900,
@@ -6652,8 +8446,46 @@
       "derived": false
     },
     {
+      "source": "revenue-line/use-of-money-and-property/multi-service-center-rentals",
+      "target": "revenue/use-of-money-and-property",
+      "value_cents": 6961900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-12ba1e3c48fc"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
       "source": "revenue-line/use-of-money-and-property/rental-of-property",
       "target": "fund/100",
+      "value_cents": 333680600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-3400e216e473"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            129
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/use-of-money-and-property/rental-of-property",
+      "target": "revenue/use-of-money-and-property",
       "value_cents": 333680600,
       "kind": "external",
       "transfer_id": "",
@@ -7281,6 +9113,83 @@
     {
       "source": "revenue-line/use-of-money-and-property/use-of-money-and-prop",
       "target": "fund/740",
+      "value_cents": 12500000,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-41d360814bd4"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            140
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/use-of-money-and-property/use-of-money-and-prop",
+      "target": "revenue/use-of-money-and-property",
+      "value_cents": 838093200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-02605d1c6cb5",
+        "fisc-f-0446ae316ad5",
+        "fisc-f-0826406e8a61",
+        "fisc-f-0c9f85f05ee5",
+        "fisc-f-133f7dae5723",
+        "fisc-f-26e7edcbbbe6",
+        "fisc-f-279c1b8bdf50",
+        "fisc-f-331c638b0b96",
+        "fisc-f-3740a092f849",
+        "fisc-f-3f50ee383c43",
+        "fisc-f-461e553473b3",
+        "fisc-f-46818c77540d",
+        "fisc-f-49ada3ace101",
+        "fisc-f-5ed408251f33",
+        "fisc-f-5ef98bc623f0",
+        "fisc-f-63b0623e9c5d",
+        "fisc-f-6c087ff7807d",
+        "fisc-f-6f8115d9fd96",
+        "fisc-f-7cbf821ab44a",
+        "fisc-f-7fa73a1a72da",
+        "fisc-f-83494f719599",
+        "fisc-f-83d184cf2f0c",
+        "fisc-f-8a9d29bf4865",
+        "fisc-f-92a1eaefd4a7",
+        "fisc-f-9ac26e6e405e",
+        "fisc-f-a2b07d601092",
+        "fisc-f-c65b27a2de71",
+        "fisc-f-d95362b8c457",
+        "fisc-f-e90e9f41a314",
+        "fisc-f-ea08e02a30e8",
+        "fisc-f-fd92f1ec0d0f",
+        "fisc-f-ffab44473784"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            131,
+            132,
+            133,
+            134,
+            135,
+            136,
+            137,
+            138,
+            139
+          ]
+        }
+      ],
+      "derived": false
+    },
+    {
+      "source": "revenue-line/use-of-money-and-property/use-of-money-and-prop",
+      "target": "revenue/use-of-money-and-property",
       "value_cents": 12500000,
       "kind": "internal_service",
       "transfer_id": "",
