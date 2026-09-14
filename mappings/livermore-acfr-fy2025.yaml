@@ -679,8 +679,8 @@ rules:
       - {label: "General government", category: general-government}
       - {label: "Fire", category: fire}
       - {label: "Police", category: police}
-      - {label: "Public Works", category: public-works}
-      - {label: "Community Development", category: community-development}
+      - {label: "Public Works", category: public-works-function}
+      - {label: "Community Development", category: community-development-function}
       - {label: "Economic Development", category: economic-development}
       - {label: "Library", category: library-function}
       - {label: "Redevelopment", category: redevelopment}

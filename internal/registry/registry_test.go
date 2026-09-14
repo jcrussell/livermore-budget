@@ -401,7 +401,7 @@ func TestLoadRealRegistries(t *testing.T) {
 	if diff := cmp.Diff(wantUnassignable, unassignable); diff != "" {
 		t.Errorf("non-assignable slugs mismatch (-want +got):\n%s", diff)
 	}
-	if got, want := len(derived), 14; got != want {
+	if got, want := len(derived), 16; got != want {
 		t.Errorf("derived categories = %d %v, want %d", got, derived, want)
 	}
 
@@ -546,8 +546,16 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		}
 	}
 
-	// The cross-AXIS refusal, which does not relax. Load enforces it; this
-	// says so against the committed pair rather than against a fixture.
+	// The cross-AXIS refusal, which does not relax and which covers BOTH
+	// tiers: a fact's `department` field holds a division on pp.167-170 and a
+	// DEPARTMENT on pp.85-125's funding-source rows, and row_path joins
+	// whichever it holds to a category. Load enforces it; this says so against
+	// the committed pair rather than against a fixture.
+	for _, d := range r.Departments() {
+		if _, isCategory := r.Category(d.Slug); isCategory {
+			t.Errorf("department %q is also a taxonomy category slug", d.Slug)
+		}
+	}
 	for _, d := range r.Divisions() {
 		if _, isCategory := r.Category(d.Slug); isCategory {
 			t.Errorf("division %q is also a taxonomy category slug", d.Slug)

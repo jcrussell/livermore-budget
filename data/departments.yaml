@@ -55,10 +55,18 @@
 # says" is the defect this project exists to refuse. `city-council` naming both
 # a department and its sole division is the document's own structure.
 #
-# WHAT DOES NOT RELAX: no division slug may equal a data/taxonomy.yaml category
-# slug. A fact's row_path is `<division>/<category>` (internal/fact.RowPath), so
-# a string spanning those two AXES is genuinely ambiguous, where a department
-# and a division sharing a name is not.
+# WHAT DOES NOT RELAX: no slug in EITHER tier may equal a data/taxonomy.yaml
+# category slug. A fact's row_path joins the slug its `department` field holds
+# to its category on a "/" (internal/fact.RowPath), so a string spanning those
+# two AXES is genuinely ambiguous, where a department and a division sharing a
+# name is not.
+#
+# The rule reaches the department tier because that field now holds both:
+# pp.167-170 and pp.85-125's upper block name a DIVISION, and pp.85-125's
+# funding-source rows name a DEPARTMENT. Three taxonomy slugs carry a
+# `-function` suffix rather than their mechanical form for this reason, and
+# the suffix is on that side because every slug here is a transform of a
+# printed heading and nothing here is derived.
 #
 # EVERYTHING HERE IS PUBLISHED. The slugs are mechanical transforms of printed
 # labels, and the parentage is printed too — each ALL-CAPS heading opens its

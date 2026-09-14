@@ -451,6 +451,19 @@ divisions:
 `,
 			want: `departments.yaml: division "patrol": slug: duplicate slug`,
 		}, {
+			// The same refusal one tier up, and it is not decorative: a
+			// pp.85-125 funding-source row names a DEPARTMENT, so a department
+			// slug reaches row_path and can be the ambiguous half.
+			name: "department slug that is also a category",
+			departments: `
+schema_version: 1
+departments:
+  - {slug: debt-services, label: "Debt Services", document_term: "DEBT SERVICES", pages: [168]}
+divisions:
+  - {slug: patrol, label: "Patrol", department: debt-services, pages: [168]}
+`,
+			want: `departments.yaml: department "debt-services": slug: is also a taxonomy.yaml category slug`,
+		}, {
 			// THE ONE COLLISION THAT MATTERS. A department and a division may
 			// share a name -- the city prints five such pairs -- but a division
 			// and a category may not, because row_path joins exactly those two.

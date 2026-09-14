@@ -1408,11 +1408,19 @@ categories:
 
   # The rest of the function axis, from ACFR p168 (Changes in Fund Balances
   # of Governmental Funds, mapped at scope acfr-changes-in-fund-balances).
-  # Every page below is the ACFR's. One slug is derived: the mechanical
-  # `library` is a division slug in data/departments.yaml and the registry
-  # refuses one string on both axes, because row_path joins them.
-  # `community-development` and `public-works` coincide with DEPARTMENT slugs,
-  # which enter no row_path and collide with nothing; they stay mechanical.
+  # Every page below is the ACFR's. THREE slugs are derived, all for one
+  # reason: the mechanical `library`, `community-development` and
+  # `public-works` are already slugs in data/departments.yaml -- the first a
+  # division, the other two DEPARTMENTS -- and the registry refuses one string
+  # on both axes, because a fact's row_path joins them on a "/".
+  #
+  # The two department collisions were harmless until pp.85-125's funding-source
+  # rows began naming a department, which put a department slug into row_path
+  # for the first time. The suffix moved on this side rather than in
+  # departments.yaml because a department slug there is a mechanical transform
+  # of a printed ALL-CAPS heading and that file derives nothing, while a suffix
+  # here names the axis the entry classifies -- which is what `library-function`
+  # already did.
 
   #@cite p0168 (ACFR) "Fire   17,593,133   18,160,089"
   - slug: fire
@@ -1433,22 +1441,36 @@ categories:
       ACFR p168, not a Budget Book page.
 
   #@cite p0168 (ACFR) "Public Works   7,125,447   9,801,590"
-  - slug: public-works
+  - slug: public-works-function
     label: "Public Works"
     document_term: "Public Works"
     kinds: [expenditure]
     pages: [168]
-    note: >-
-      ACFR p168, not a Budget Book page.
+    derived: true
+    rationale: >-
+      The mechanical slug is `public-works`, which is already a DEPARTMENT slug
+      in data/departments.yaml, and the registry refuses a department/category
+      collision because a fact's row_path joins exactly those two axes. The
+      suffix names the axis this entry classifies.
+    source_note: >-
+      ACFR p168, not a Budget Book page; the Public Works row of the Changes in
+      Fund Balances statement.
 
   #@cite p0168 (ACFR) "Community Development   26,435,968   22,366,625"
-  - slug: community-development
+  - slug: community-development-function
     label: "Community Development"
     document_term: "Community Development"
     kinds: [expenditure]
     pages: [168]
-    note: >-
-      ACFR p168, not a Budget Book page.
+    derived: true
+    rationale: >-
+      The mechanical slug is `community-development`, which is already a
+      DEPARTMENT slug in data/departments.yaml, and the registry refuses a
+      department/category collision because a fact's row_path joins exactly
+      those two axes. The suffix names the axis this entry classifies.
+    source_note: >-
+      ACFR p168, not a Budget Book page; the Community Development row of the
+      Changes in Fund Balances statement.
 
   #@cite p0168 (ACFR) "Economic Development   -   2,355,266"
   - slug: economic-development
