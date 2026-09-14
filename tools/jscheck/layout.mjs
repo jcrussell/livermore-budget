@@ -25,7 +25,8 @@
 // what restackLinks itself does.
 
 import { loadApp, goldenGraph, spineConfig, stylesheet } from "./harness.mjs";
-import { openedWindow, openedWide, openedExpanded } from "./drill.mjs";
+import { openedWindow, openedWide, openedExpanded, openedAsShipped,
+  everyOpenedView, COLUMNS } from "./drill.mjs";
 
 /**
  * Lays the golden graph out exactly as render() does, under a given node sort
@@ -543,7 +544,7 @@ export async function checks() {
       detail: `schema_version ${app.SCHEMA_VERSION} is accepted and its neighbours are refused`,
     },
   ].concat(await labelChecks(app, graph)).concat(await wideChecks(app))
-    .concat(await expandedChecks());
+    .concat(await expandedChecks()).concat(await everyViewChecks());
 }
 
 /**
@@ -897,11 +898,125 @@ const EXPANDED = { marks: 41, column: 32, stack: "2.1px", over: 12,
  *
  * THE VERTICAL ANSWER IS THE GOOD ONE AND THE HORIZONTAL ANSWER IS NOT. No two
  * labels touch and no two draw the same words; twelve run past the gutter, the
- * worst by 56px of a 306px estimate. WHICH OF THOSE FIVE ACTUALLY OVERFLOWS IS
+ * worst by 56px of a 306px estimate. WHICH OF THOSE TWELVE ACTUALLY OVERFLOWS IS
  * A BROWSER QUESTION -- ADVANCE_EM is chosen to be wider than any system face
  * sets, so the direction this can be wrong in is calling a label too wide that
  * fits -- and the walk in fisc-rl4j is where it is settled. fisc-mvrt.
  */
+/**
+ * The marks whose words run past the room they have, over every view the drill
+ * opens -- named, and not counted.
+ *
+ * WHICH VIEWS ARE MEASURED IS NOT A CHOICE THIS FILE MAKES. The three arms
+ * above it measure windows a caller picked, and a step added anywhere leaves
+ * them measuring the shape somebody chose last time; drill.mjs's
+ * everyOpenedView re-opens from the overview at every rung and reads its
+ * children off drillable on the DRAWN chart, so a column this file never heard
+ * of arrives on its own. The view count is that walker's own pin and is not
+ * restated here.
+ *
+ * OVER THE DOCUMENTS' OWN WORDS. Every other builder in drill.mjs relabels
+ * three families of spine nodes so an arm can tell which document a label was
+ * read from, and a label check run on those would measure words no reader is
+ * shown -- four of them a whole " category" wider than the page draws.
+ *
+ * THE SET AND NOT ITS SIZE. A count is what let this file's expanded arm go on
+ * saying five while its own pin said twelve: nothing in a number says which
+ * mark joined or left. Each id below is a mark whose label is wider than the
+ * 240px it has at ADVANCE_EM, which is deliberately wider than any system face
+ * sets -- so this is an upper bound on a real defect rather than a count of it,
+ * and fisc-rl4j's browser walk is what settles which of them a rendered face
+ * actually overflows.
+ */
+const OVER_GUTTER = {
+  "FY 2025-26": [
+    "department/innovation-and-economic-development",
+    "dept/administrative-services", "dept/community-development-admin",
+    "dept/innovation-and-economic-devel", "dept/public-works-administration",
+    "fund/202", "fund/282", "fund/283", "fund/513", "fund/551", "fund/552",
+    "fund/623", "fund/730",
+    "revenue-line/charges-for-services/administrative-cost-recovery",
+    "revenue-line/charges-for-services/engineering-inspection-fees",
+    "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee",
+    "revenue-line/contributions-outsourced/contribution-outside-services",
+    "revenue-line/intergovernmental/state-motor-veh-in-lieu-mvil",
+    "revenue-line/taxes/other/real-property-transfer-tax",
+    "revenue-line/taxes/other/residential-construction-tax",
+    "revenue-line/taxes/property/rpttf-receipts-and-other-proptax",
+    "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
+    "revenue-line/use-of-money-and-property/multi-service-center-rentals",
+  ],
+  // TWO OF THIS COLUMN'S MARKS ARE DERIVED AND NEITHER IS IN THE OTHER'S.
+  // gap/expenditure/services-and-supplies is the declared 250,000 shortfall
+  // p0067 prints in FY2026-27 and not in FY2025-26, and it is the widest label
+  // the tree draws anywhere; residual/fund-group/general carries a different
+  // endpoint's words in each column.
+  "FY 2026-27": [
+    "department/innovation-and-economic-development",
+    "dept/administrative-services", "dept/community-development-admin",
+    "dept/innovation-and-economic-devel", "dept/public-works-administration",
+    "fund/280", "fund/282", "fund/283", "fund/320", "fund/513", "fund/551",
+    "fund/552", "fund/623", "fund/730",
+    "gap/expenditure/services-and-supplies", "residual/fund-group/general",
+    "revenue-line/charges-for-services/administrative-cost-recovery",
+    "revenue-line/charges-for-services/engineering-inspection-fees",
+    "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee",
+    "revenue-line/contributions-outsourced/contribution-outside-services",
+    "revenue-line/intergovernmental/state-motor-veh-in-lieu-mvil",
+    "revenue-line/taxes/other/real-property-transfer-tax",
+    "revenue-line/taxes/other/residential-construction-tax",
+    "revenue-line/taxes/property/rpttf-receipts-and-other-proptax",
+    "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
+    "revenue-line/use-of-money-and-property/multi-service-center-rentals",
+  ],
+};
+
+/**
+ * Every view the drill tree opens, measured for the two things a label may do
+ * to another and the one thing it may do to the chart's edge.
+ */
+async function everyViewChecks() {
+  const out = [];
+  for (const col of COLUMNS) {
+    const app = await openedAsShipped([], col);
+    const over = new Set();
+    const overlapped = [];
+    const alike = [];
+    let views = 0;
+    const walk = await everyOpenedView(app, () => {
+      views++;
+      const fits = labelFit(app, app.layOut(app.projection));
+      for (const f of fits) if (f.clearance < 0) over.add(f.id);
+      const stack = tightestStack(fits);
+      if (stack && stack.gap <= 0) overlapped.push(`${stack.above} over ${stack.below}`);
+      const same = sameWords(fits);
+      if (same.length) alike.push(same[0]);
+    });
+    const ids = [...over].sort();
+    const want = OVER_GUTTER[col.label];
+    out.push({
+      name: `${col.label}: no view the drill opens stacks one label on another, or draws two marks a reader would read the same`,
+      // THE RULE, AND IT HAS NO LITERAL. Zero is the only value either of these
+      // may take, on any view, whatever the tree grows -- unlike the gutter
+      // below, which states a cost the chart's width makes real.
+      ok: walk.refused === "" && views === col.openedViews &&
+          overlapped.length === 0 && alike.length === 0,
+      detail: `${views} view(s) walked (want ${col.openedViews}${walk.refused ? `, refused at ${walk.refused}` : ""}); ` +
+        `${overlapped.length ? overlapped[0] : "no two labels touch"}; ` +
+        `${alike.length ? alike[0] : "no two marks draw the same words"}`,
+    });
+    out.push({
+      name: `${col.label}: the marks whose words run past the gutter are the ones this file names, and no others`,
+      ok: ids.join("|") === want.join("|"),
+      detail: ids.join("|") === want.join("|")
+        ? `${ids.length} mark(s) wider than the ${app.LABEL_GUTTER - 10}px they have, across ${views} view(s), each named`
+        : `arrived ${JSON.stringify(ids.filter((id) => !want.includes(id)))}, ` +
+          `left ${JSON.stringify(want.filter((id) => !ids.includes(id)))}`,
+    });
+  }
+  return out;
+}
+
 async function expandedChecks() {
   const app = await openedExpanded();
   const laid = app.layOut(app.projection);
@@ -912,7 +1027,7 @@ async function expandedChecks() {
   const over = fits.filter((f) => f.clearance < 0);
   const worst = tightest(fits);
   return [{
-    name: "a column drawn out to every mark it holds draws no two labels over each other, and five of them past the gutter",
+    name: "a column drawn out to every mark it holds draws no two labels over each other, and states what the gesture costs the gutter",
     ok: fits.length === EXPANDED.marks && column.length === EXPANDED.column &&
         ambiguous.length === 0 && Boolean(stack) && stack.gap > 0 &&
         px(stack.gap) === EXPANDED.stack && over.length === EXPANDED.over &&

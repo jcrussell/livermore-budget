@@ -318,7 +318,7 @@ function countsLineFor(drawn, mine, total, aboveTotal) {
  * argument: 135 and not the 141 rows a category-grain link would carry, the
  * six being rows that print a dash inside a category cell that is not zero.
  */
-const COLUMNS = [
+export const COLUMNS = [
   {
     stem: "sankey", label: "FY 2025-26", step: "fund-flows", golden: goldenFundFlows,
     spine: goldenGraph,
@@ -875,7 +875,7 @@ function measure(app, doc) {
  * @param {(where: string, depth: number) => Promise<void> | void} visit
  * @returns {Promise<{visited: number, refused: string}>}
  */
-async function everyOpenedView(app, visit) {
+export async function everyOpenedView(app, visit) {
   let visited = 0;
   // THE WHOLE TREE, NOT ONE EDGE OF IT, and that is what the rewrite buys.
   // This read the drawn chart for its children and the GOLDEN SPINE for its
