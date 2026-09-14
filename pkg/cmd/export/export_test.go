@@ -830,10 +830,13 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 	// published column -- takes the bare stem and the other three are suffixed,
 	// the historical two by year AND basis because their basis is not the
 	// published one. department-spending publishes the same four columns and
-	// names them by the same rule, which is what makes the rule visible as a
-	// rule rather than as one document's spelling.
+	// names them by the same rule, and department-funding a third set of four,
+	// which is what makes the rule visible as a rule rather than as one
+	// document's spelling.
 	if diff := cmp.Diff([]string{
 		"changes-in-fund-balances",
+		"department-funding", "department-funding-2024-actual",
+		"department-funding-2025-revised", "department-funding-2027",
 		"department-spending", "department-spending-2024-actual",
 		"department-spending-2025-revised", "department-spending-2027",
 		"fund-balances",
@@ -927,6 +930,8 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	}
 	want := []string{
 		"changes-in-fund-balances",
+		"department-funding", "department-funding-2024-actual",
+		"department-funding-2025-revised", "department-funding-2027",
 		"department-spending", "department-spending-2024-actual",
 		"department-spending-2025-revised", "department-spending-2027",
 		"fund-balances",
@@ -1242,10 +1247,11 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"and the smallest fund is less than a thirty-thousandth of it. Money " +
 				"Budget Book pp.127-140 print for no fund at all passes the group's mark " +
 				"to a node of its own beside the funds, so what the group takes in here " +
-				"is what its funds take in. Only the General Fund continues into the " +
-				"divisions that spend it: Budget Book pp.167-170 decompose that fund " +
-				"alone, so every other fund ends the drill \u2014 not missing, but not " +
-				"broken down in any published schedule.",
+				"is what its funds take in. Every fund a department draws on opens " +
+				"further: the General Fund into the divisions that spend it, from Budget " +
+				"Book pp.167-170, and every other fund into the departments it pays for, " +
+				"from pp.85-125. A fund no department's funding schedule names ends the " +
+				"drill \u2014 not missing, but not broken down in any published schedule.",
 		},
 		{
 			Key:   "fund",
@@ -1351,6 +1357,42 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"because pp.72-75 print the transfers each fund makes to the Capital " +
 				"Improvement Program under a heading of their own and p76 does not list " +
 				"them.",
+		},
+		{
+			// THE SECOND STEP OPENING TIER 3 OF THE FUND GROUP'S WINDOW, and
+			// the only place on the site where two steps share an (After,
+			// From). validateSteps admits that exactly when both name a role
+			// and the roles differ, so `general_fund` takes fund/100 into
+			// pp.167-170's divisions and `fund` takes the other sixty into
+			// pp.85-125's departments.
+			//
+			// NO CAPS, WHICH IS A MEASUREMENT. The widest fund this step opens
+			// draws 5 departments (fund/240 in FY2023-24 actual, 3 in both
+			// adopted columns) against fund/100's 11, and fund/100 opens
+			// elsewhere.
+			Key:             "fund-departments",
+			After:           []string{"fund-group"},
+			From:            3,
+			Role:            "fund",
+			Projection:      project.DepartmentFundingProjection,
+			YearProjections: map[string]string{"sankey": "department-funding", "sankey-2027": "department-funding-2027"},
+			Keep:            []int{2},
+			Tiers:           []int{2, 3, 4},
+			Back:            "All funds",
+			Tail:            "departments",
+			Description: "The fund group this fund belongs to is on the left and the " +
+				"city departments it pays for are on the right — that fund's rows " +
+				"of Budget Book pp.85-125, rescaled to its total. The two sides of the " +
+				"fund in the middle are read from two different schedules and are not " +
+				"one figure: what it takes in is its revenue, from pp.127-140, and what " +
+				"leaves it here is what the departments draw on it. Either side may be " +
+				"the larger. The difference is money the city moves between its own " +
+				"funds and into or out of accumulated balance, which pp.66-67 print for " +
+				"the fund group as a whole and no published schedule breaks down by " +
+				"fund. A department here is the WHOLE department across every fund that " +
+				"pays it, which is a coarser thing than the divisions the General Fund " +
+				"opens into — five names belong to both tiers, so do not read one " +
+				"as the other.",
 		},
 	}
 	if diff := cmp.Diff(want, spine.Steps); diff != "" {
@@ -1461,16 +1503,28 @@ func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		drop []string
 		want []string
 	}{
+		// LOSING pp.127-140 LOSES THE FUNDING STEP TOO, which is the one
+		// entry here that is not a projection standing on its own. The
+		// fund-departments step opens tier 3 of the fund GROUP's window, so it
+		// needs pp.85-125 for the document it draws and pp.127-140 for the
+		// chart it opens from; views() guards it on both, and validateSteps
+		// would refuse the view outright if it did not.
 		{"no fund-flows", []string{project.FundFlowsProjection},
 			[]string{"object-category", "transfers"}},
 		{"no department-spending", []string{project.DepartmentSpendingProjection},
-			[]string{"fund-group", "fund", "division", "revenue-category", "transfers"}},
+			[]string{"fund-group", "fund", "division", "revenue-category", "transfers",
+				"fund-departments"}},
 		{"no transfers-by-fund", []string{project.TransfersByFundProjection},
-			[]string{"fund-group", "fund", "division", "revenue-category", "object-category"}},
+			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
+				"fund-departments"}},
+		{"no department-funding", []string{project.DepartmentFundingProjection},
+			[]string{"fund-group", "fund", "division", "revenue-category", "object-category",
+				"transfers"}},
 		{"neither detail document", []string{project.FundFlowsProjection,
 			project.DepartmentSpendingProjection}, []string{"transfers"}},
 		{"no step document at all", []string{project.FundFlowsProjection,
-			project.DepartmentSpendingProjection, project.TransfersByFundProjection}, nil},
+			project.DepartmentSpendingProjection, project.TransfersByFundProjection,
+			project.DepartmentFundingProjection}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := stepKeys(views(result{Projections: without(tc.drop...)})[0].Steps)
@@ -2016,6 +2070,25 @@ func TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 func TestTheDepartmentSpending2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "department-spending-2027",
 		"department-spending-2027.golden.json")
+}
+
+// TestTheDepartmentFundingFixtureIsTheDocumentTheSiteDraws and its 2027 twin pin
+// the captures the fund-departments window is measured over.
+//
+// ONE PER PUBLISHED SPINE YEAR, for the cross-tab pair's reason and a sharper
+// one: the two columns draw different FUNDS. Measured off these two captures --
+// 58 funds reach a department in FY2025-26 and 55 in FY2026-27, out of the 63
+// the schedule names in every column -- so a window measured over one capture
+// twice could not see a fund stop being decomposed, which is the whole state
+// this step's openability declaration exists to keep the reader out of.
+func TestTheDepartmentFundingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, project.DepartmentFundingProjection,
+		"department-funding.golden.json")
+}
+
+func TestTheDepartmentFunding2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, "department-funding-2027",
+		"department-funding-2027.golden.json")
 }
 
 // TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws keeps the capture of

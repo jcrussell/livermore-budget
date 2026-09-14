@@ -15,10 +15,12 @@ const DepartmentSpendingProjection = "department-spending"
 // DepartmentSpendingScope is the schedule this document is of: Budget Book
 // pp.85-125's UPPER block, Expenditures by Category.
 //
-// THE LOWER BLOCK OF THE SAME ELEVEN PAGES IS NOT IN IT, and that is a fact
-// about the facts rather than a preference. Department Funding Sources rows
-// carry no department at all -- they are {label, category, fund, fund_group} --
-// so a document keyed on a division cannot place one of them. Adding the two
+// THE LOWER BLOCK OF THE SAME ELEVEN PAGES IS NOT IN IT, and the reason is the
+// tier it is keyed on rather than a missing field. Department Funding Sources
+// rows carry a DEPARTMENT -- the ALL-CAPS tier of data/departments.yaml -- where
+// this block's rows carry a DIVISION, and five slugs name both, so a document
+// keyed on a division cannot place one of them without asking which tier it is
+// holding. [departmentFunding] is the document that draws them. Adding the two
 // blocks together would also double the city's expenditure, which is what the
 // two ties-to-spine checks over these pages each reconcile separately.
 const DepartmentSpendingScope = "departmentwide-expenditures"
@@ -438,9 +440,10 @@ func departmentSpendingCaveats() []Caveat {
 				"under each object heading whatever fund pays for it, so no row here carries " +
 				"a fund or a fund group. That is the page rather than a gap -- the fund " +
 				"breakdown is the LOWER block of the same eleven pages, Department Funding " +
-				"Sources, which no document draws yet. A division drawn here therefore " +
-				"belongs to no fund group, and a chart that colours by group leaves it " +
-				"unshaded.",
+				"Sources, which this site draws as its own chart. The two are not the same " +
+				"grain and are not to be joined: that block prints one row per DEPARTMENT " +
+				"and this one per DIVISION. A division drawn here therefore belongs to no " +
+				"fund group, and a chart that colours by group leaves it unshaded.",
 			AppliesTo: []string{},
 		},
 		{

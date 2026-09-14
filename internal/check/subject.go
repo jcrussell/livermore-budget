@@ -183,6 +183,20 @@ type departmentSpendingBuilder interface {
 	Document(facts []fact.Fact, o project.Options) (*project.DepartmentSpendingDocument, error)
 }
 
+// departmentFundingBuilder is a projection whose document is pp.85-125's
+// funding-source graph.
+//
+// A SIXTH INTERFACE FOR departmentSpendingBuilder's REASON, and the near miss
+// here is the sharpest of the five. This document and the cross-tab are of the
+// SAME ELEVEN PAGES and both are nodes and links with no headline, so sharing a
+// type would be easy to argue for and wrong: they are two readings of one
+// figure at two grains, and the checks that are of the drill-down's shape would
+// then be handed a document built from the other block of the same pages.
+type departmentFundingBuilder interface {
+	Name() string
+	Document(facts []fact.Fact, o project.Options) (*project.DepartmentFundingDocument, error)
+}
+
 // transfersByFundBuilder is a projection whose document is p76's transfer
 // network.
 //
@@ -232,6 +246,11 @@ type projection struct {
 	// [Subject.DepartmentSpendingDocuments] for the one that is of this shape
 	// alone.
 	DepartmentSpending *project.DepartmentSpendingDocument
+	// DepartmentFunding is the built funding-source graph, or nil. Read it
+	// through [Subject.LinkedDocuments] for the structural checks; no check is
+	// of this shape alone, because funding-sources-tie-to-spine reads the FACTS
+	// and is what this scope's arithmetic rests on.
+	DepartmentFunding *project.DepartmentFundingDocument
 	// TransfersByFund is the built transfer network, or nil. Read it through
 	// [Subject.LinkedDocuments] for the structural checks; no check is of this
 	// shape alone, because transfers-detail-ties-to-spine reads the FACTS and
@@ -417,6 +436,9 @@ func (s *Subject) linkedDocuments() []linked {
 		case p.DepartmentSpending != nil:
 			out = append(out, linked{projection: p,
 				Nodes: p.DepartmentSpending.Nodes, Links: p.DepartmentSpending.Links})
+		case p.DepartmentFunding != nil:
+			out = append(out, linked{projection: p,
+				Nodes: p.DepartmentFunding.Nodes, Links: p.DepartmentFunding.Links})
 		case p.TransfersByFund != nil:
 			out = append(out, linked{projection: p,
 				Nodes: p.TransfersByFund.Nodes, Links: p.TransfersByFund.Links})
@@ -845,6 +867,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		t, isTrends := p.(trendsBuilder)
 		ff, isFundFlows := p.(fundFlowsBuilder)
 		ds, isSpending := p.(departmentSpendingBuilder)
+		df, isFunding := p.(departmentFundingBuilder)
 		tr, isTransfers := p.(transfersByFundBuilder)
 
 		for _, o := range want {
@@ -859,6 +882,8 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				built.FundFlows, err = ff.Document(facts, o)
 			case isSpending:
 				built.DepartmentSpending, err = ds.Document(facts, o)
+			case isFunding:
+				built.DepartmentFunding, err = df.Document(facts, o)
 			case isTransfers:
 				built.TransfersByFund, err = tr.Document(facts, o)
 			}

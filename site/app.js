@@ -381,7 +381,24 @@ function openedKey() {
  * step document happens to carry would be this file deciding what a tier
  * means, which paintBreadcrumb's comment refuses.
  *
- * @param {{tier: number, role?: string}} node
+ * AND A FOURTH MATCH THAT IS A LOOKUP RATHER THAN A RULE: whether the year's
+ * own document for that step decomposes THIS NODE. A role says what a node is,
+ * which is the right question for a flow endpoint and the wrong one for a fund
+ * -- Budget Book pp.85-125 name no row for 6 of the 61 funds the drill-down
+ * draws in FY2025-26, and nothing about fund/511 distinguishes it from
+ * fund/512. The packager reads the set off each year's document
+ * (export.openableNodes) so this file decides nothing: a step that ships no
+ * `opens` declares no such set and every node at its tier opens, which is what
+ * the transfers step and every step before this one did.
+ *
+ * IT IS HERE AND NOT IN drillDown, because the affordance is the thing at
+ * stake. The click already fails closed -- filterLinks refuses a node its
+ * document does not carry, in words -- and what that produces is a mark drawn
+ * with the triangle, announced as openable, that banners when a reader
+ * activates it. Measured before this clause existed, over both committed
+ * columns: drillDown(fund/511) failed and left the chart on fund-group/capital.
+ *
+ * @param {{id?: string, tier: number, role?: string}} node
  * @returns {FiscDrillStep | null}
  */
 function stepFor(node) {
@@ -390,9 +407,35 @@ function stepFor(node) {
     if (!s.after.includes(key)) continue;
     if (s.from !== node.tier) continue;
     if (s.role && s.role !== node.role) continue;
+    if (!stepDecomposes(s, node.id)) continue;
     return s;
   }
   return null;
+}
+
+/**
+ * Whether the year's document for `step` draws anything under `id`.
+ *
+ * TRUE WHEN NOTHING SAYS OTHERWISE, and the asymmetry is deliberate. The
+ * packager omits `opens` from a step that declares no set, and refuses to ship
+ * an EMPTY one -- a window whose document decomposes nothing at its opened tier
+ * is a rung no reader could reach, and export.stepDocuments reports it by name
+ * rather than writing `[]` here for this function to read as "nothing opens".
+ * So a missing key has exactly one meaning and this can default open.
+ *
+ * A NODE WITH NO ID IS OPEN FOR THE SAME REASON. stepFor is asked about a
+ * `{tier, role}` shape by callers that have no node in hand, and answering
+ * "closed" to those would close a rung on a question that was never asked.
+ *
+ * @param {FiscDrillStep} step
+ * @param {string | undefined} id
+ * @returns {boolean}
+ */
+function stepDecomposes(step, id) {
+  if (!id) return true;
+  const entry = stepDocFor(step);
+  if (!entry || !Array.isArray(entry.opens)) return true;
+  return entry.opens.includes(id);
 }
 
 /**

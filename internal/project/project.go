@@ -223,6 +223,25 @@ func PublishedDocuments() []PublishedDocument {
 		})
 	}
 
+	// THE FUNDING SOURCES PUBLISH ALL FOUR COLUMNS, on the cross-tab's argument
+	// one block down the same eleven pages: this is the only document that
+	// draws pp.85-125's LOWER block, and unprojectedScopes' declaration for
+	// that schedule retires only when it is drawn EXHAUSTIVELY.
+	//
+	// Two of the four are unreachable from any chart until a reader switches
+	// year, and the spine publishes no actual and no revised column at all; the
+	// document says so in a caveat of its own rather than leaving a reader to
+	// discover that two of its columns tie to no citywide total.
+	funding := departmentFundingSlices()
+	for _, o := range funding {
+		out = append(out, PublishedDocument{
+			Projection: DepartmentFundingProjection,
+			Stem:       stemOrPanic(DepartmentFundingProjection, o, funding),
+			Scopes:     DepartmentFundingScopes(),
+			Columns:    slices.Clone(o.Columns),
+		})
+	}
+
 	// THE TRANSFER NETWORK PUBLISHES THE TWO ADOPTED COLUMNS AND p76 PRINTS
 	// FOUR, which is the opposite shape from the two documents above and is not
 	// a narrower promise. The other two publish four because the corpus carries
@@ -297,6 +316,27 @@ func departmentSpendingSlices() []Options {
 	out := make([]Options, 0, len(cols))
 	for _, c := range cols {
 		out = append(out, Options{Columns: []Column{c}, Scopes: DepartmentSpendingScopes()})
+	}
+	return out
+}
+
+// departmentFundingSlices is every document the funding sources publish, as
+// [departmentFunding.Slices] would declare them over a corpus carrying
+// pp.85-125's lower block across the four printed columns.
+//
+// STATED HERE RATHER THAN READ OFF THE FACTS, for the reason [PublishedDocuments]
+// gives: a published set that consulted the corpus would agree with it by
+// construction and could not report that the corpus stopped covering it.
+func departmentFundingSlices() []Options {
+	cols := []Column{
+		{FiscalYear: 2024, Basis: mapping.BasisActual},
+		{FiscalYear: 2025, Basis: mapping.BasisRevised},
+		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
+		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	}
+	out := make([]Options, 0, len(cols))
+	for _, c := range cols {
+		out = append(out, Options{Columns: []Column{c}, Scopes: DepartmentFundingScopes()})
 	}
 	return out
 }
@@ -704,6 +744,7 @@ func Registry(l labels) []Projection {
 		&Trends{Labels: l},
 		&fundFlows{Labels: l},
 		&departmentSpending{Labels: l},
+		&departmentFunding{Labels: l},
 		&transfersByFund{Labels: l},
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},

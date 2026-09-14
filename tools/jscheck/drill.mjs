@@ -26,6 +26,7 @@ import { join } from "node:path";
 import {
   loadApp, goldenFundFlows, goldenFundFlows2027, goldenGraph, goldenGraph2027, plannedFetch,
   goldenSpending, goldenSpending2027, spendingGapDeclaration,
+  goldenFunding, goldenFunding2027, openableFrom,
   goldenTransfers, goldenTransfers2027,
   stepDescriptions, stepShapes, spineRenderTiers,
   settle, refusals, twoYearConfig, repoRoot, residualDeclaration,
@@ -101,10 +102,13 @@ function stepAs(i, words) {
 }
 
 const PAGE = {
-  // FIVE STEPS AND A TREE, NOT A CHAIN OF FIVE: three of them are one chain --
-  // a fund group opens into its funds, a fund into its divisions, a division
-  // into what it spends on -- and two more open from the spine's own chart
-  // (after ""), one tier each, which stepFor tells apart by tier and role.
+  // SEVEN STEPS AND A TREE, NOT A CHAIN: three are one chain -- a fund group
+  // opens into its funds, a fund into its divisions, a division into what it
+  // spends on -- three more open from the spine's own chart (after ""), one
+  // tier each, and the seventh is a SECOND edge out of the fund group's window,
+  // sharing (after, from) with the fund step and told apart from it by role
+  // alone. stepFor resolves all seven by key, tier and role rather than by
+  // depth, which is what a tree needs and a path cannot express.
   steps: [
     stepAs(0, { projection: "fund-flows", back: "All fund groups", tail: "funds",
       residual: residualDeclaration() }),
@@ -124,6 +128,14 @@ const PAGE = {
     // that opens the end its links come FROM.
     stepAs(5, { projection: "transfers-by-fund", back: "All money coming in",
       tail: "funds" }),
+    // THE SEVENTH STEP IS THE SECOND EDGE OUT OF THE FUND GROUP'S WINDOW, and
+    // the only place on the site where two steps open ONE tier of ONE chart.
+    // stepAs copies its role off data.go, so what tells it from the step above
+    // is the declaration the packager ships rather than a spelling here:
+    // `general_fund` opens fund/100 into pp.167-170's divisions and `fund`
+    // opens the other sixty into pp.85-125's departments.
+    stepAs(6, { projection: "department-funding", back: "All funds",
+      tail: "departments" }),
   ],
   // Measured: the spine's 58 links over 25 nodes cite 58 of its 120 facts;
   // the 62 it does not draw are the printed zeros and the stocks.
@@ -139,30 +151,16 @@ const PAGE = {
   // spends on more than a handful of object categories. Pinned so that stops
   // being true loudly.
   inert: "dept/patrol",
-  // HOW MANY VIEWS THE TREE OPENS, counted by walking it rather than by adding
-  // the declarations up: ten revenue categories, six fund groups, four object
-  // categories and transfers/in at depth 1; fund/100 at depth 2, ALONE, because
-  // the fund step's role opens the General Fund and leaves the other sixty
-  // funds as the ends of the chain; and its 23 divisions at depth 3. Neither a
-  // revenue category's window nor an object category's offers anything at all,
-  // and neither does a kept flank -- no step names those charts. The transfers
-  // rung offers nothing either, for a different reason: it draws p76's payer
-  // ends and funds, and no step opens from THAT chart. Measured over both
-  // published columns.
-  openedViews: 45,
-  // HOW MANY OF THEM DRAW A SECOND DOCUMENT'S RIBBONS: the ten revenue
-  // categories, the six fund groups and the four object categories, all at
-  // depth 1, each keeping a flank of the spine it was opened from. The fund
-  // and division windows keep a flank too and it is NOT counted here, because
-  // the document it comes off is the one they draw. THE TRANSFERS RUNG IS NOT
-  // COUNTED EITHER, and that is the measurement that says its step is not a
-  // window: it opened a 45th view and this figure did not move, because a step
-  // keeping no flank carries no ribbon across. This is the evidence for
-  // splitting the counts line in two: nearly half the views the page opens
-  // state both documents' figures, so folding one into a trailing clause built
-  // for a residual would be a footnote over anything from a tenth of the
-  // ribbons (Licenses & Permits) to twelve of thirteen (the General Fund).
-  carryingViews: 20,
+  // HOW MANY VIEWS THE TREE OPENS AND HOW MANY CARRY A SECOND DOCUMENT'S
+  // RIBBONS ARE PER COLUMN NOW, in COLUMNS, and that move is itself the
+  // measurement. They were one pair of numbers here because both published
+  // columns opened the same 45 views: ten revenue categories, six fund groups,
+  // four object categories and transfers/in at depth 1; fund/100 ALONE at depth
+  // 2, because the fund step's role opened the General Fund and left the other
+  // sixty funds as the ends of the chain; and its 23 divisions at depth 3. The
+  // fund-departments step opens those sixty, and the two columns do not open
+  // the same ones -- pp.85-125 print a row for 6 of capital's funds in FY2025-26
+  // and 5 in FY2026-27 -- so one figure can no longer describe both.
   // THE COLUMN ORDER THE SPINE DECLARES, off data.go rather than typed. Its
   // three tiers are the ones the document carries, so the fold it asks for
   // changes no mark; what it decides is which column is "left-hand" and which
@@ -220,6 +218,27 @@ function factIDsOf(doc) {
   const ids = new Set();
   for (const l of doc.links) for (const id of l.fact_ids) ids.add(id);
   return ids;
+}
+
+/**
+ * The committed capture for one column whose `projection` field is `name`.
+ *
+ * KEYED ON WHAT THE FILE CALLS ITSELF, not on the stem: the packager writes
+ * `projection: "fund-flows"` into fund-flows-2027.json too, which is what lets
+ * one carried_from resolve under either column. A name this does not know is a
+ * throw rather than a fallback, because the number it would be used for is a
+ * DENOMINATOR -- one silently taken from the wrong document reads as a client
+ * that is counting correctly.
+ *
+ * @param {any} col
+ * @param {string} name
+ */
+function goldenNamed(col, name) {
+  const load = { sankey: col.spine, "fund-flows": col.golden,
+    "department-spending": col.spending, "transfers-by-fund": col.transfers,
+    "department-funding": col.funding }[name];
+  if (!load) throw new Error(`no committed capture for a document calling itself "${name}"`);
+  return load();
 }
 
 /**
@@ -305,6 +324,19 @@ const COLUMNS = [
     spine: goldenGraph,
     spendingStem: "department-spending", spending: goldenSpending,
     transfersStem: "transfers-by-fund", transfers: goldenTransfers,
+    fundingStem: "department-funding", funding: goldenFunding,
+    // THE CAPITAL FUNDS THE FUNDING SCHEDULE NAMES NO ROW FOR, so the chart
+    // draws them as ends. Two here and three in FY2026-27 -- fund/512 takes a
+    // Park Fee row in this column and none in the next -- which is the whole
+    // reason the openability set is read per year off the document.
+    capitalShut: ["fund/511", "fund/513"],
+    // HOW MANY VIEWS THE TREE OPENS IN THIS COLUMN, and how many of them draw a
+    // second document's ribbons. PER COLUMN SINCE THE FUND-DEPARTMENTS STEP,
+    // because the two columns no longer open the same tree: 76 here against 74
+    // in FY2026-27, the difference being the funds pp.85-125 name a row for in
+    // one column and not the other. A single figure described both while the
+    // only thing below depth 1 was fund/100's divisions.
+    openedViews: 76, carryingViews: 51,
     // p76 OPENED FROM THE SPINE: the 8 paying ends and the 9 funds they reach,
     // and one ribbon under a pixel. THE HAIRLINE IS THE SCHEDULE AND NOT THE
     // LAYOUT, which is why there is no cap here to fold it away: the page
@@ -477,6 +509,9 @@ const COLUMNS = [
     spine: goldenGraph2027,
     spendingStem: "department-spending-2027", spending: goldenSpending2027,
     transfersStem: "transfers-by-fund-2027", transfers: goldenTransfers2027,
+    fundingStem: "department-funding-2027", funding: goldenFunding2027,
+    capitalShut: ["fund/511", "fund/512", "fund/513"],
+    openedViews: 74, carryingViews: 49,
     // THE SAME SHAPE AND A DIFFERENT TOTAL, pinned in both columns for this
     // file's reason: p76 prints 22 rows in both budget years and nine of them
     // are a dash in both, so the drawn shape is identical -- and the figures
@@ -580,6 +615,11 @@ const SPENDING_CAVEATS = [
   "no-fund-axis-on-these-pages", "the-ribbons-are-a-cross-tab",
   "the-boundary-is-not-classified-here",
 ];
+const FUNDING_CAVEATS = [
+  "constraint-tier-is-our-reading", "a-department-here-is-not-a-division",
+  "a-fund-takes-in-more-than-it-pays-departments",
+  "two-of-the-four-columns-tie-to-no-citywide-total",
+];
 const TRANSFERS_CAVEATS = [
   "one-figure-is-two-ribbons", "a-fund-is-drawn-once-per-end",
   "only-the-budget-columns-are-published",
@@ -603,17 +643,52 @@ function refsFor(stem, ids) {
  * the day a step is inserted before it -- which is the packager's own rule
  * (export.stepDocuments) reached from this side.
  */
-function stepDocsFor(flows, spending, transfers) {
+function stepDocsFor(flows, spending, transfers, funding, plan) {
   return PAGE.steps.map((s) => {
     let stem = flows;
     if (s.projection === "department-spending") stem = spending;
     if (s.projection === "transfers-by-fund") stem = transfers;
+    if (s.projection === "department-funding") stem = funding;
     let caveats = FUND_FLOWS_CAVEATS;
     if (stem.startsWith("department-spending")) caveats = SPENDING_CAVEATS;
     if (stem.startsWith("transfers-by-fund")) caveats = TRANSFERS_CAVEATS;
-    return { stem, path: `data/${stem}.json`, caveats: refsFor(stem, caveats) };
+    if (stem.startsWith("department-funding")) caveats = FUNDING_CAVEATS;
+    // THE OPENABILITY SET IS DERIVED HERE THE WAY THE PACKAGER DERIVES IT, off
+    // the same committed capture. A step keeping no flank gets none, and the
+    // key is omitted rather than sent empty -- which is what the wire does,
+    // `opens` carrying omitempty, and what lets the client read an absent key
+    // as "this step declares no set" and nothing else.
+    const entry = { stem, path: `data/${stem}.json`, caveats: refsFor(stem, caveats) };
+    // OFF THE DOCUMENT THE RUNG WILL ACTUALLY FETCH, which on a probe is the
+    // PLANTED one. Derived from the committed capture instead, a check that
+    // plants a category of its own would have that category declared
+    // unopenable by a set read from a file the page is not being served --
+    // green because the gate fired, over a probe whose whole subject is what
+    // happens when it opens.
+    const served = plan && plan[entry.path] && plan[entry.path].doc;
+    const opens = openableFrom(served || DOCS[stem](), s);
+    if (opens) entry.opens = opens;
+    return entry;
   });
 }
+
+/**
+ * The committed capture behind each stem the spine's steps can draw.
+ *
+ * ONE TABLE RATHER THAN A CHAIN OF ifs, because stepDocsFor now needs the
+ * DOCUMENT and not only its name: the openability set is read off the file the
+ * rung will fetch, so the two have to be the same file.
+ */
+const DOCS = {
+  "fund-flows": goldenFundFlows,
+  "fund-flows-2027": goldenFundFlows2027,
+  "department-spending": goldenSpending,
+  "department-spending-2027": goldenSpending2027,
+  "transfers-by-fund": goldenTransfers,
+  "transfers-by-fund-2027": goldenTransfers2027,
+  "department-funding": goldenFunding,
+  "department-funding-2027": goldenFunding2027,
+};
 
 /**
  * The spine page carrying the chain, opened through main() on `column`'s year
@@ -643,6 +718,8 @@ async function opened(plan, tweak, column = COLUMNS[0], extra) {
   config.projections["department-spending-2027"] = "data/department-spending-2027.json";
   config.projections["transfers-by-fund"] = "data/transfers-by-fund.json";
   config.projections["transfers-by-fund-2027"] = "data/transfers-by-fund-2027.json";
+  config.projections["department-funding"] = "data/department-funding.json";
+  config.projections["department-funding-2027"] = "data/department-funding-2027.json";
   config.render_tiers = PAGE.renderTiers;
   config.steps = PAGE.steps;
   config.years = config.years.map((y, i) => Object.assign({}, y, {
@@ -651,7 +728,8 @@ async function opened(plan, tweak, column = COLUMNS[0], extra) {
     caveats: refsFor(y.stem, SPINE_CAVEATS),
     steps: stepDocsFor(i === 0 ? "fund-flows" : "fund-flows-2027",
       i === 0 ? "department-spending" : "department-spending-2027",
-      i === 0 ? "transfers-by-fund" : "transfers-by-fund-2027"),
+      i === 0 ? "transfers-by-fund" : "transfers-by-fund-2027",
+      i === 0 ? "department-funding" : "department-funding-2027", plan),
   }));
   if (tweak) tweak(config);
   const spineOf = (/** @type {() => any} */ load) => {
@@ -681,6 +759,8 @@ async function opened(plan, tweak, column = COLUMNS[0], extra) {
     "data/department-spending-2027.json": { doc: goldenSpending2027() },
     "data/transfers-by-fund.json": { doc: goldenTransfers() },
     "data/transfers-by-fund-2027.json": { doc: goldenTransfers2027() },
+    "data/department-funding.json": { doc: goldenFunding() },
+    "data/department-funding-2027.json": { doc: goldenFunding2027() },
   }, plan || {}));
   const app = loadApp(Object.assign({ config, fetch, checkedStem: column.stem }, extra || {}));
   const body = app.dom.document.node();
@@ -771,8 +851,9 @@ function measure(app, doc) {
 /**
  * Every view the chain opens, each reached through the real entry points and
  * visited while it is on screen: the six fund groups at depth 1, and under
- * each, every node the depth-1 chart offers to open -- which is the General
- * Fund's 23 divisions and nothing under the other five.
+ * each, every node the depth-1 chart offers to open -- which is every fund
+ * pp.85-125 print a funding row for, plus the General Fund's 23 divisions a
+ * rung further in.
  *
  * EVERY VIEW, NOT A SAMPLE, for the reason the two page loops this replaces
  * gave: one defect showed up on every drill and one on none of them, and a
@@ -950,13 +1031,17 @@ async function at(app, ...ids) {
  * draws for that case is latent -- and a latent path with no figure beside it
  * is one a later document reaches with nothing to notice.
  *
- * THE TRANSFERS RUNG MOVED TWO OF THESE AND THE ARITHMETIC IS CHECKABLE BY EYE:
- * `nodes` by the 17 marks of the 45th view -- p76's 8 payer ends and the 9 funds
- * they reach, in both budget years -- and `opens` by the one mark on the
- * OVERVIEW that started opening, transfers/in. Nothing in that view opens, which
- * is why `opens` moved by one rather than by anything to do with its size.
+ * THE FUND-DEPARTMENTS RUNG MOVED BOTH OF THESE AND THE TWO DELTAS CHECK EACH
+ * OTHER. `opens` went 45 -> 76 and `nodes` 385 -> 478: 31 more marks carry the
+ * triangle and 93 more marks are drawn, and 93 is exactly 31 x 3. That is the
+ * measurement rather than a coincidence -- a fund window draws the group kept
+ * from the chart above, the fund itself, and the departments it pays -- so the
+ * ratio says every one of the 31 funds the walk opens pays exactly ONE
+ * department. The only multi-department window below the General Fund is
+ * fund/240's, which the cap folds away and which walkFundDepartments reaches by
+ * expanding the column first.
  */
-const MARKS = { nodes: 385, opens: 45, derivedOnly: 17, both: 0, expands: 9 };
+const MARKS = { nodes: 478, opens: 76, derivedOnly: 17, both: 0, expands: 9 };
 
 // The lines of render() that hang the affordance on the mark, pinned whole.
 //
@@ -1034,7 +1119,7 @@ async function gestureChecks() {
   const walk = await everyOpenedView(app, (where) => look(where));
   out.push({
     name: "a node that opens is drawn as one, a node that expands is drawn as one, and a node that does neither is drawn as neither",
-    ok: walk.refused === "" && walk.visited === PAGE.openedViews && wrong.length === 0 &&
+    ok: walk.refused === "" && walk.visited === COLUMNS[0].openedViews && wrong.length === 0 &&
         tally.nodes === MARKS.nodes && tally.opens === MARKS.opens &&
         tally.derivedOnly === MARKS.derivedOnly && tally.both === MARKS.both &&
         tally.expands === MARKS.expands,
@@ -1429,12 +1514,19 @@ export async function checks() {
       // fund-flows-2027.json too, which is what lets one carried_from resolve
       // under either column.
       const stem = app.projection.projection;
-      let golden = col.golden();
-      if (stem === "department-spending") golden = col.spending();
-      if (stem === "transfers-by-fund") golden = col.transfers();
+      const golden = goldenNamed(col, stem);
+      // AND THE CHART ABOVE IS READ OFF THE MARKS, NOT ASSUMED TO BE THE SPINE.
+      // It was the spine's 120 facts for as long as every window that kept a
+      // foreign flank was opened FROM the spine; the fund-departments window is
+      // opened from the fund group's, so its flank is pp.127-140's 280 and a
+      // fixed denominator here would have called the client's correct sentence
+      // wrong. The stem a carried mark records is the same thing app.js reads,
+      // which is what makes the two agree only when the client is right.
+      const guest = [...new Set(app.projection.nodes.map((n) => n.carried_from).filter(Boolean))]
+        .find((f) => f !== stem);
       said.push(Object.assign({ where, depth, got: app.dom.byId.get("counts-line").textContent },
-        countsLineFor(app.projection, factIDsOf(golden),
-          golden.metadata.counts.facts, col.spine().metadata.counts.facts)));
+        countsLineFor(app.projection, factIDsOf(golden), golden.metadata.counts.facts,
+          goldenNamed(col, guest || "sankey").metadata.counts.facts)));
       // THE COLUMNS THE CHART ASKED FOR, NOT THE ONES THE STEP OFFERS. A step
       // may declare more columns than the budget draws (activeTiers), and a
       // widened column this reader never asked for is not a column that came
@@ -1455,13 +1547,13 @@ export async function checks() {
     const stepAsked = fetch.asked.filter((p) => p.startsWith("data/fund-flows"));
     out.push({
       name: `${col.label}: every node the tree offers to open draws when opened, at every depth`,
-      ok: walk.refused === "" && walk.visited === PAGE.openedViews && drawn.length === walk.visited &&
+      ok: walk.refused === "" && walk.visited === col.openedViews && drawn.length === walk.visited &&
           Boolean(worstDeep) && worstDeep.where.endsWith(" > " + PAGE.inert) &&
           worstDeep.smallest.toFixed(2) === col.worstDeep && short.length === 0 &&
           stepAsked.join() === `data/${col.step}.json`,
       detail: walk.refused
         ? `after ${walk.visited} view(s), refused: ${walk.refused}`
-        : `${walk.visited} views opened (want ${PAGE.openedViews}) from ${JSON.stringify(stepAsked)}; ` +
+        : `${walk.visited} views opened (want ${col.openedViews}) from ${JSON.stringify(stepAsked)}; ` +
           `smallest ribbon over all of them ${Math.min(...drawn.map((d) => d.smallest)).toFixed(3)}px; ` +
           `the narrowest depth-3 ribbon is ` +
           `${worstDeep ? `${worstDeep.where} at ${worstDeep.smallest.toFixed(2)}px` : "nowhere"} ` +
@@ -1489,15 +1581,25 @@ export async function checks() {
     const wrong = said.filter((c) => c.got !== c.want);
     out.push({
       name: `${col.label}: every opened view's counts line weighs each document's ribbons against that document's own total`,
-      ok: said.length === PAGE.openedViews && wrong.length === 0 &&
-          carrying.length === PAGE.carryingViews &&
-          carrying.every((c) => c.depth === 1),
+      ok: said.length === col.openedViews && wrong.length === 0 &&
+          carrying.length === col.carryingViews &&
+          carrying.every((c) => c.depth === 1 || c.depth === 2) &&
+          // AND A DEPTH-2 CARRIER IS THE FUND-DEPARTMENTS WINDOW AND NOTHING
+          // ELSE. This read `depth === 1` and its comment said a carried count
+          // below depth 1 was the check going red -- true while the only window
+          // that switched document was opened off the spine. The
+          // fund-departments window is opened off the fund group's, at depth 2,
+          // and keeps a fund-flows flank on a department-funding chart; so the
+          // shape is admitted by NAME rather than the depth clause loosened,
+          // and a third document appearing at depth 2 is still red.
+          carrying.filter((c) => c.depth === 2)
+            .every((c) => c.where.split(" > ").length === 2 && c.where.startsWith("fund-group/")),
       detail: wrong.length
         ? `${wrong.length} of ${said.length} view(s) misreport: ${wrong.slice(0, 2)
             .map((c) => `${c.where} says "${c.got}" for "${c.want}"`).join("; ")}`
         : `${said.length} view(s) each read what the goldens say they must; ` +
           `${carrying.length} of them carry another document's ribbons (want ` +
-          `${PAGE.carryingViews}), at depth(s) ` +
+          `${col.carryingViews}), at depth(s) ` +
           `${JSON.stringify([...new Set(carrying.map((c) => c.depth))])}; the widest flank is ` +
           `${carrying.reduce((a, b) => (b.carried > a.carried ? b : a)).where} at ` +
           `${Math.max(...carrying.map((c) => c.carried))} carried ribbon(s)`,
@@ -2445,6 +2547,7 @@ export async function checks() {
   // COLUMNS[].category off the committed goldens.
   for (const col of COLUMNS) out.push(...(await walkCategory(col)));
   for (const col of COLUMNS) out.push(...(await walkTransfers(col)));
+  for (const col of COLUMNS) out.push(...(await walkFundDepartments(col)));
   // EACH GROUP BELOW REPORTS ITS OWN THROW, which is run.mjs's rule about a
   // check applied one level down. These groups drive the shipped declaration,
   // so a step that stops being a window takes mustOpen's throw out of the
@@ -2724,6 +2827,139 @@ export async function checks() {
  * step's {2,3} draws the receiving half, and the arm below asserts no
  * `transfer-to/` mark reaches the chart rather than leaving that to the counts.
  */
+/**
+ * pp.85-125's funding sources opened from a fund, which is the rung that turns
+ * sixty ends of the chain into rungs.
+ *
+ * TWO ARMS AND THEY ARE DIFFERENT CLAIMS. The first opens a fund the group's
+ * window DRAWS; the second opens one the cap FOLDS, after the reader has drawn
+ * the column out, and that second chain is the whole argument for this step
+ * existing at all. Measured off the committed captures: the fund-group window
+ * caps tier 3 at 8, so 53 of the 61 funds in FY2025-26 sit inside an aggregate,
+ * and EVERY fund the reader can open without expanding draws exactly one
+ * department. The only multi-department window on the site below the General
+ * Fund is behind the expansion.
+ *
+ * THE TIE IS COMPUTED FROM THE GOLDENS ON BOTH SIDES, walkTransfers' rule: the
+ * ribbons this rung draws are the funding document's own links for that fund,
+ * and the figure the chart above draws into the same fund is pp.127-140's. They
+ * are NOT equal and are not meant to be -- the step's description says so in
+ * the chart's own words -- so what is asserted is that each side is what its
+ * own document prints, and the direction of the difference is reported rather
+ * than assumed.
+ */
+async function walkFundDepartments(col) {
+  const out = [];
+  const funding = col.funding();
+  const flows = col.golden();
+  const step = stepByKey("fund-departments");
+  const fundStep = stepByKey("fund");
+
+  // THE TWO STEPS SHARE (after, from) AND ARE TOLD APART BY ROLE, which is the
+  // declaration this whole rung rests on and is read off data.go rather than
+  // spelled here. validateSteps refuses two steps sharing all three.
+  out.push({
+    name: `${col.label} departments: the fund column carries two steps, told apart by role alone`,
+    ok: step.after.join() === fundStep.after.join() && step.from === fundStep.from &&
+        step.role === "fund" && fundStep.role === "general_fund" &&
+        JSON.stringify(step.tiers) === JSON.stringify([2, 3, 4]) &&
+        JSON.stringify(step.keep) === JSON.stringify([2]) &&
+        step.projection === COLUMNS[0].fundingStem && !step.caps.length,
+    detail: `both open tier ${step.from} of ${JSON.stringify(step.after)}; roles ` +
+      `"${fundStep.role}" and "${step.role}"; this one draws tiers ` +
+      `${JSON.stringify(step.tiers)} keeping ${JSON.stringify(step.keep)} of ` +
+      `${step.projection} (the OPENING year's stem; ${col.fundingStem} is this year's, and the ` +
+      `per-year join is the packager's), with ${step.caps.length} cap(s) -- the widest fund it ` +
+      `opens draws ` +
+      `${Math.max(...[...new Set(funding.links.map((l) => l.source))]
+        .filter((id) => id !== "fund/100")
+        .map((id) => funding.links.filter((l) => l.source === id).length))} department(s)`,
+  });
+
+  // ---------------------------------------------- a fund the group DRAWS
+  const { app } = await opened(null, null, col);
+  await mustOpen(app, "fund-group/special-revenue");
+  const drawnFund = app.projection.nodes
+    .filter((n) => n.tier === 3 && app.drillable(n)).map((n) => n.id).sort()[0];
+  const outcome = await openInto(app, drawnFund);
+  const at2 = outcome === "drew" ? words(app) : null;
+  const drew = outcome === "drew" ? app.projection : null;
+  const ribbons = drew ? drew.links.filter((l) => l.source === drawnFund) : [];
+  const wantOut = funding.links.filter((l) => l.source === drawnFund)
+    .reduce((a, l) => a + l.value_cents, 0);
+  const gotOut = ribbons.reduce((a, l) => a + l.value_cents, 0);
+  // THE FLANK IS THE SINGLE-GRAIN LINK AND NOT EVERY RIBBON INTO THE FUND.
+  // fund-flows holds the same revenue at two grains -- a line into the fund and
+  // the rollup of its category into the same fund -- which its own
+  // mixed-grain-double-counts caveat is about, and summing both came to exactly
+  // twice the figure the chart above draws. The fund group's window keeps the
+  // (2,3) column, so that is the ribbon this window carries down.
+  const wantIn = flows.links
+    .filter((l) => l.target === drawnFund && l.source.startsWith("fund-group/"))
+    .reduce((a, l) => a + l.value_cents, 0);
+  const gotIn = drew ? drew.links.filter((l) => l.target === drawnFund)
+    .reduce((a, l) => a + l.value_cents, 0) : 0;
+  const columnsDrawn = drew
+    ? [...new Set(app.layOut(drew).nodes.slice().sort((a, b) => a.x0 - b.x0).map((n) => n.tier))]
+    : [];
+  out.push({
+    name: `${col.label} departments: a fund the group's window draws opens into its own funding rows, with the group kept beside it`,
+    ok: outcome === "drew" && app.drilled.length === 2 &&
+        drew.projection === "department-funding" &&
+        JSON.stringify(columnsDrawn) === JSON.stringify([2, 3, 4]) &&
+        ribbons.length > 0 && gotOut === wantOut && gotIn === wantIn &&
+        ribbons.every((l) => l.target.startsWith("department/")) &&
+        at2.crumbControls.join("|") === "← All fund groups|← All funds",
+    detail: outcome === "drew"
+      ? `opened ${drawnFund} at depth ${app.drilled.length} into ${drew.projection}, columns ` +
+        `${JSON.stringify(columnsDrawn)}; ${ribbons.length} department ribbon(s) summing ` +
+        `${gotOut} (pp.85-125 print ${wantOut}) against ${gotIn} kept from the chart above ` +
+        `(pp.127-140 print ${wantIn}), so the fund ` +
+        `${gotOut > gotIn ? "pays departments MORE than its revenue" : "takes in more than it pays departments"}` +
+        `; breadcrumb ${JSON.stringify(at2.crumbControls)}`
+      : `opening ${drawnFund} came to "${outcome}"`,
+  });
+
+  // ------------------------- a fund the cap FOLDS, reached by expanding first
+  //
+  // THE CHAIN THIS STEP DEPENDS ON, END TO END: the group's window caps tier 3
+  // at 8, the reader draws the column out (fisc-ko1j.12.6), and the fund they
+  // then open was inside the aggregate. fund/240 is chosen because it is the
+  // measurement: it is in special-revenue's tail in BOTH columns and it is the
+  // only fund below the General Fund that opens into more than one department,
+  // so without the expansion no reader ever sees this window draw a second
+  // ribbon.
+  const { app: app2 } = await opened(null, null, col);
+  await mustOpen(app2, "fund-group/special-revenue");
+  const foldedBefore = app2.projection.nodes.find((n) => n.id === "fund/240");
+  const tail = app2.projection.nodes.find((n) => app2.isAggregate(n.id));
+  app2.expandTier(tail);
+  await settle();
+  const drawnAfter = app2.projection.nodes.find((n) => n.id === "fund/240");
+  const opensAfter = Boolean(drawnAfter) && app2.drillable(drawnAfter);
+  const deep = await openInto(app2, "fund/240");
+  const deepDoc = deep === "drew" ? app2.projection : null;
+  const deepRibbons = deepDoc ? deepDoc.links.filter((l) => l.source === "fund/240") : [];
+  const wantDeep = funding.links.filter((l) => l.source === "fund/240");
+  out.push({
+    name: `${col.label} departments: a fund the cap folds away is reachable by expanding the column, and opens into every department it pays`,
+    ok: !foldedBefore && Boolean(drawnAfter) && opensAfter && deep === "drew" &&
+        app2.drilled.length === 2 && deepDoc.projection === "department-funding" &&
+        deepRibbons.length === wantDeep.length && deepRibbons.length === 3 &&
+        deepRibbons.reduce((a, l) => a + l.value_cents, 0) ===
+          wantDeep.reduce((a, l) => a + l.value_cents, 0) &&
+        deepRibbons.map((l) => l.target).sort().join() ===
+          wantDeep.map((l) => l.target).sort().join(),
+    detail: `fund/240 is ${foldedBefore ? "DRAWN" : "inside the tail"} on the capped column and ` +
+      `${drawnAfter ? "drawn" : "STILL NOT DRAWN"} once it is expanded, where it ` +
+      `${opensAfter ? "opens" : "DOES NOT OPEN"}; opening it came to "${deep}" at depth ` +
+      `${app2.drilled.length} with ${deepRibbons.length} department ribbon(s) ` +
+      `${JSON.stringify(deepRibbons.map((l) => l.target))} (pp.85-125 print ` +
+      `${wantDeep.length}: ${JSON.stringify(wantDeep.map((l) => l.target))})`,
+  });
+  return out;
+}
+
 async function walkTransfers(col) {
   const out = [];
   const { app, fetch, body } = await opened(null, null, col);
@@ -4113,18 +4349,29 @@ async function categoryProbes() {
       direct = String((e && e.message) || e);
     }
     out.push({
-      name: "a category of one line opens with no share on the line, and one with none is refused by name rather than handed to d3-sankey empty",
+      // THE CATEGORY WITH NO LINES IS NOT OFFERED AT ALL NOW, AND THE REFUSAL
+      // BEHIND IT IS STILL PROVED. This asserted a BANNER: the mark was drawn
+      // as openable, the reader activated it, and filterLinks' sentence was
+      // what they got. The openability set the packager ships closes that mark
+      // before it is drawn -- the probe category is the source of no rollup, so
+      // it is not in `opens` -- so the click is not offered and no banner is
+      // painted. Both halves are asserted rather than one swapped for the
+      // other: 0 banners because nothing was offered, AND filterToNode still
+      // refusing by name when it is called directly, because that guard is what
+      // stands behind every route this set does not cover.
+      name: "a category of one line opens with no share on the line, and one with none is not offered at all, the filter behind it still refusing by name",
       ok: one === "drew" && Boolean(only) && onlyShare === "" &&
           Boolean(probeCentre) && centreShare === "" && groups.length === 2 &&
           oneShares.every((sh) => sh.startsWith("\u25c7 our ")) &&
-          none === "failed" && app.drilled.length === 0 && banners.length === 1 &&
-          banners[0].includes("nothing flows between tiers 1, 0 for node revenue/empty") &&
+          none === "failed" && app.drilled.length === 0 && banners.length === 0 &&
+          app.stepFor(spine.nodes.find((n) => n.id === "revenue/empty")) === null &&
           direct.includes("nothing flows between tiers 1, 0 for node revenue/empty"),
       detail: `one line: ${one}, the line's share reads ${JSON.stringify(onlyShare)}, the centre's ` +
         `${JSON.stringify(centreShare)} and ` +
         `its ${groups.length} fund groups' ${JSON.stringify(oneShares)}; no lines: ${none} with ${banners.length} ` +
-        `banner(s)${banners.length ? ` reading "${banners[0]}"` : ""}; filterFromNode directly: ` +
-        `${JSON.stringify(direct)}`,
+        `banner(s)${banners.length ? ` reading "${banners[0]}"` : ""}, and stepFor answers ` +
+        `${JSON.stringify(app.stepFor(spine.nodes.find((n) => n.id === "revenue/empty")))}; ` +
+        `filterToNode directly: ${JSON.stringify(direct)}`,
     });
   }
 
@@ -4353,6 +4600,11 @@ async function walkChain(col) {
   const capital = words(app);
   const capitalOpens = app.projection.nodes.filter((n) => app.drillable(n)).map((n) => n.id);
   const capitalFunds = app.projection.nodes.filter((n) => n.id.startsWith("fund/")).length;
+  // AND THE FUNDS THIS GROUP DRAWS THAT DO NOT OPEN, named rather than counted.
+  // They are the whole subject of the arm below: pp.85-125 print no row for
+  // them, so the chart has nothing to open them into and must not offer to.
+  const capitalShut = app.projection.nodes
+    .filter((n) => n.id.startsWith("fund/") && !app.drillable(n)).map((n) => n.id).sort();
   app.drillUp(0);
 
   const stepFile = `data/${col.step}.json`;
@@ -4488,19 +4740,34 @@ async function walkChain(col) {
       `depth ${back0b.depth} reading "${back0b.counts}"`,
   });
   out.push({
-    name: `${col.label} chain: a group whose funds no schedule decomposes says nothing opens further, rather than naming a column that is not there`,
-    // THE FUNDS ARE DRAWN AND NONE OF THEM OPENS, which is a stronger claim
-    // than "the column is empty": pp.167-170 are the General Fund's schedule,
-    // so capital's ten marks are ends of the chain rather than rungs, and the
-    // step's role is what says so. Before that role every one of them offered
-    // a click that banners.
-    ok: capital.depth === 1 && capitalOpens.length === 0 && capitalFunds > 0 &&
-        capital.hint === "This is Capital Funds, broken into its parts. Nothing here opens " +
-          "further; go back to open another. A single click, or Space, follows one node's money." +
-          EXPANDS_SENTENCE &&
+    name: `${col.label} chain: a non-General group's funds open exactly where pp.85-125 print a row for them, and the rest are drawn as ends`,
+    // THE CLAIM THIS ARM MAKES IS NOW A SPLIT AND NOT A ZERO. It read
+    // "capitalOpens.length === 0", because pp.167-170 are the General Fund's
+    // schedule and every other fund was the end of the chain -- the state the
+    // fund step's `general_fund` role existed to keep honest. pp.85-125's
+    // funding sources end it for most of them: measured on this column, the
+    // group draws 8 fund marks and the ones the schedule names open.
+    //
+    // BOTH SIDES ARE PINNED BY NAME, which is what makes this the proof of the
+    // openability set rather than a count that moves with the data. The funds
+    // that do NOT open are the ones no department's funding schedule draws on,
+    // and they differ by column -- two in FY2025-26 and three in FY2026-27 --
+    // which is exactly why no role and no hand-written list could express the
+    // gate and the packager reads it off each year's document instead.
+    //
+    // Measured before that set existed, on this very chart: every one of the 8
+    // marks was drillable and drillDown(fund/511) failed with a refusal banner.
+    ok: capital.depth === 1 && capitalFunds === 8 &&
+        capitalOpens.length + capitalShut.length === capitalFunds &&
+        capitalShut.join() === col.capitalShut.join() &&
+        capitalOpens.every((id) => id.startsWith("fund/")) &&
+        capital.hint === "This is Capital Funds, broken into its parts. Double click a node in " +
+          "the right-hand column to open it further, or tab to one and press Enter. A single " +
+          "click, or Space, follows one node's money." + EXPANDS_SENTENCE &&
         capital.desc.startsWith("Opened into Capital Funds. " + groupStep.description),
-    detail: `opened into capital: ${capitalFunds} fund mark(s) drawn and ` +
-      `${capitalOpens.length ? capitalOpens.join(", ") + " WRONGLY open" : "none opens"}; ` +
+    detail: `opened into capital: ${capitalFunds} fund mark(s) drawn, ${capitalOpens.length} ` +
+      `open and ${capitalShut.length} drawn as ends -- ${JSON.stringify(capitalShut)} (want ` +
+      `${JSON.stringify(col.capitalShut)}), which pp.85-125 print no funding row for; ` +
       `hint "${capital.hint}"`,
   });
   return out;

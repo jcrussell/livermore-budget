@@ -1065,6 +1065,8 @@ func (*constraintTierVocabulary) Run(_ context.Context, s *Subject) (Result, err
 			caveats = p.FundFlows.Metadata.Caveats
 		case p.Graph != nil:
 			caveats = p.Graph.Metadata.Caveats
+		case p.DepartmentFunding != nil:
+			caveats = p.DepartmentFunding.Metadata.Caveats
 		}
 		// TWO FINDINGS, NOT ONE, now that a caveat has an id as well as a
 		// sentence. A caveat is looked up by ID and then its TEXT is compared,

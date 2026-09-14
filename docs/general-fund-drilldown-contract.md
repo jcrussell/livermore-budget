@@ -262,7 +262,7 @@ documents, so a reader cannot find the two pages disagreeing about it.
 | 1 | printed revenue rows that were not a printed zero | 93 |
 | 2 | fund groups, each the **source** of its own funds' rollups and the target of nothing | 6 |
 | 3 | funds that took in money this column | 61 |
-| 4 | divisions, not departments — a fact's `department` field holds a division slug | 23 |
+| 4 | divisions, not departments — a fact of THIS document's scopes holds a division slug in its `department` field; pp.85-125's funding rows hold a department in the same field, which is why `department-funding` draws them at `department/<slug>` and not at `dept/<slug>` | 23 |
 | 5 | division x object cells that were not a printed zero | 44 |
 
 The tier-1 count is 93 and not the 101 rows `data/taxonomy.yaml` declares,
@@ -279,19 +279,23 @@ carry.
   eleven departments, and the $13,222,668 difference is transfers out plus the
   change in working capital, printed on pp.66-67 and not carried here. There is
   **no invented sink node** — the caveat says so instead.
-- **What the fund groups other than the General Fund spend.** pp.167-170
-  decompose that fund alone. The money is not missing; the schedule that would
-  break it down is not published. pp.72-75 give a per-fund expenses column and
-  are the schedule a wider key would be for.
+- **What the fund groups other than the General Fund spend, BY OBJECT CATEGORY.**
+  pp.167-170 decompose that fund alone, and at that grain the money is not
+  missing but the schedule is not published. What IS published for every fund is
+  pp.85-125's Department Funding Sources — which departments each fund pays for
+  — and `department-funding` draws it, which is what the fund column of this
+  document opens into for every fund but 100. pp.72-75 give a per-fund expenses
+  column and are the schedule a wider key would be for.
 
   **No count is given here on purpose.** It is not six and it is not fixed: the
   published columns carry six fund groups, of which five stop short, except
   FY2023-24, which carries a seventh — permanent — and stops six. The caveat in
   each document computes its own, and this is the third place that literal was
   found, after the caveat itself and a page lede.
-- **Transfers between funds.** p76's legs are scope `transfers-by-fund` and no
-  projection selects it, because it overlaps `revenue-by-fund` on `transfer_in`.
-  It needs a document of its own (fisc-9gh).
+- **Transfers between funds.** p76's legs are scope `transfers-by-fund`, which
+  this document does not select because the two overlap `revenue-by-fund` on
+  `transfer_in`. They have a document of their own, `transfers-by-fund`, which
+  the spine's Transfers In opens into (fisc-9gh, 0835e29).
 
 ## Drawing it: the fold
 
@@ -398,9 +402,10 @@ and a wide screen must not show a reader less than a narrow one.
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
 | 0 | `sankey` | the spine, whole | a fund group (tier 2); or a revenue category (tier 0); or an object category (tier 5) | — |
-| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them | the General Fund (tier 3), and no other fund | tier 3 at 8 |
+| 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them | a fund (tier 3) — the General Fund into its divisions, every other fund pp.85-125 name into its departments | tier 3 at 8 |
 | 2 | `fund-flows` | `{2,3,4}` keeping tier 2: the group, the opened fund, the divisions that spend it — widening to `{2,3,4,5}`, their object-category cells, where there is room for a fourth column | a division (tier 4) | tier 4 at 24; tier 5 at 8 (categories) |
 | 3 | `fund-flows` | `{3,4,5}` keeping tier 3: the fund, the opened division, its object categories | nothing | tier 5 at 8 |
+| 2 | `department-funding` | `{2,3,4}` keeping tier 2: the group, the opened fund, the departments pp.85-125 print it paying for | nothing | — |
 | 1 | `fund-flows` | `{1,0,2}` keeping tier 2: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
 
 The steps are a tree and not a chain: three open from the spine's chart, told
@@ -419,14 +424,34 @@ keeps `fund-group/general` at 76,360 and opening it drew 157,873,470 leaving —
 157,797,110 of node height with no ribbon under it. `export.validateSteps`
 refuses that declaration by name.
 
-**Only the General Fund opens into divisions.** pp.167-170 decompose that fund
-alone, so the fund step declares `role: "general_fund"` and the other sixty funds
-are the ends of the chain rather than rungs — drawn, coloured and terminal, which
-is what the only-the-General-Fund caveat says in words. Without that role every
-drawn fund offers a click that can only banner. Measured through the whole tree:
-6 fund groups, 10 revenue categories and 4 object categories open at depth 1;
-`fund/100` alone at depth 2; and its 23 divisions at depth 3 — 44 opened views,
-the same in both published columns.
+**Only the General Fund opens into DIVISIONS, and every other fund a department
+draws on opens into DEPARTMENTS.** pp.167-170 decompose that fund alone, so the
+fund step declares `role: "general_fund"`; `fund-departments` is its sibling,
+declared with `role: "fund"` on the same `(after, from)` — the one place on the
+site where two steps open one tier of one chart, which `validateSteps` admits
+exactly when both name a role and the roles differ.
+
+**A role cannot say which funds pp.85-125 name, so the packager reads it off the
+document.** Six of the 61 funds this document draws in FY2025-26 and seven of
+the 60 in FY2026-27 are named by no row of those pages, and nothing about
+`fund/511` distinguishes it from `fund/512`; the set is different in every
+printed column — 13 funds in FY2023-24 against 6 in FY2025-26 — while a step is
+declared once for every year the view lists. So `export.openableNodes` computes,
+per year and per window step, the node ids at its `from` that the document it
+draws decomposes, and ships them as `steps[].opens`. `site/app.js`'s `stepFor`
+takes that as a fourth match beside the key, the tier and the role; a step with
+no `opens` declares no set and every node at its tier opens, which is what every
+step before this one did. Measured without it, over both committed columns:
+`drillDown(fund/511)` failed and left the chart on `fund-group/capital`, over a
+mark drawn with the open affordance.
+
+Measured through the whole tree, and the two columns no longer agree: 6 fund
+groups, 10 revenue categories, 4 object categories and `transfers/in` open at
+depth 1; 31 funds and 29 funds at depth 2 in FY2025-26 and FY2026-27
+respectively, plus `fund/100`; and its 23 divisions at depth 3 — **76 opened
+views in FY2025-26 and 74 in FY2026-27**, where before this step both columns
+opened 45. The figures in the three paragraphs `fisc-iize` names are still those
+of the `{0,3,4}` chain and are not re-measured here.
 
 **The step document is the spine year's, joined on column.** A spine stem
 opens into the `fund-flows` stem carrying the same fiscal year on the same

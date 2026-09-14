@@ -382,7 +382,26 @@ var unviewedDocuments = map[string]string{
 	// year to be opened from, which is the same shape as fund-flows' pair.
 	project.DepartmentSpendingProjection + "-2024-actual":  spendingNoSpineColumn,
 	project.DepartmentSpendingProjection + "-2025-revised": spendingNoSpineColumn,
+
+	// AND THE FUNDING SOURCES' TWO HISTORICAL COLUMNS, which is the same shape
+	// a third time and for the third schedule of the same eleven pages. The
+	// fund-departments step opens tier 3 of the fund group's window into this
+	// projection and joins on Column, so each spine year reaches its own
+	// column and the two the spine does not print reach none.
+	project.DepartmentFundingProjection + "-2024-actual":  fundingNoSpineColumn,
+	project.DepartmentFundingProjection + "-2025-revised": fundingNoSpineColumn,
 }
+
+const fundingNoSpineColumn = "a published column of pp.85-125's Department Funding Sources " +
+	"that the chart cannot reach even though its fund-departments step has landed. A fund " +
+	"opens into this document one fiscal year at a time, joining on Column, and pp.66-67 " +
+	"print no actual and no revised column -- so there is no spine year to open this one " +
+	"from. It is published because pp.85-125 DO print those two columns and this is the " +
+	"only document that draws that block: drawing two of the four would leave " +
+	"internal/check's unprojectedScopes entry half true rather than retired. Those two " +
+	"columns also tie to no citywide figure at all, which the document says in a caveat of " +
+	"its own. caveats.html lists its caveats, which indexes the document rather than " +
+	"rendering it and does not retire this entry"
 
 const spendingNoSpineColumn = "a published column of the departmentwide cross-tab that the " +
 	"chart cannot reach even though its object-category step has landed. The spine opens " +
@@ -476,6 +495,23 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 		}
 	}
 	return nil
+}
+
+// stepByKey is the declared step with this key, and whether one was declared.
+//
+// A STEP IS NAMED AND NOT COUNTED, which is fisc-7e1g's rule arriving on the
+// producing side. Every guarded block here appends, so the index of a step
+// declared in an earlier block is a fact about how many blocks ran rather than
+// about the step -- and a later block asking "is the fund-group chart there to
+// open from" by index would be asking a different question on a corpus that
+// lost a schedule.
+func stepByKey(steps []export.DrillStep, key string) (export.DrillStep, bool) {
+	for _, s := range steps {
+		if s.Key == key {
+			return s, true
+		}
+	}
+	return export.DrillStep{}, false
 }
 
 // stepStems is the per-year join a drill step declares: for each of the
@@ -696,11 +732,12 @@ func views(built result) []export.View {
 					"fund column and the smallest fund is less than a thirty-thousandth " +
 					"of it. Money Budget Book pp.127-140 print for no fund at all passes " +
 					"the group's mark to a node of its own beside the funds, so what the " +
-					"group takes in here is what its funds take in. Only " +
-					"the General Fund continues into the divisions that spend it: Budget " +
-					"Book pp.167-170 decompose that fund alone, so every other fund ends " +
-					"the drill — not missing, but not broken down in " +
-					"any published schedule.",
+					"group takes in here is what its funds take in. Every fund a " +
+					"department draws on opens further: the General Fund into the " +
+					"divisions that spend it, from Budget Book pp.167-170, and every " +
+					"other fund into the departments it pays for, from pp.85-125. A fund " +
+					"no department's funding schedule names ends the drill — not " +
+					"missing, but not broken down in any published schedule.",
 			},
 			{
 				// THE ROLE IS THE MIRROR OF THE OTHER TWO GATES, and it is
@@ -965,6 +1002,99 @@ func views(built result) []export.View {
 					"because pp.72-75 print the transfers each fund makes to the Capital " +
 					"Improvement Program under a heading of their own and p76 does not list " +
 					"them.",
+			},
+		}...)
+	}
+	// THE FUND COLUMN OPENS AT LAST, AND IT IS THE STEP THIS CHART HAS BEEN
+	// MISSING. pp.167-170 are the General Fund's schedule and decompose that
+	// fund alone, so until this step existed every OTHER fund the drill-down
+	// draws was the end of the chain -- which is what the `general_fund` role
+	// on the step above exists to keep honest, by not offering a click it
+	// cannot answer. pp.85-125's lower block is the only published schedule
+	// that says what any other fund pays for.
+	//
+	// A SIBLING OF THAT STEP AND NOT A REPLACEMENT FOR IT. Both open tier 3 of
+	// the fund group's window; they are told apart by Role, which validateSteps
+	// requires to be distinct and non-empty on both. fund/100 is `general_fund`
+	// wherever it is drawn, so it keeps opening into its 23 divisions -- a
+	// finer answer than its eleven departments -- and this step takes the other
+	// sixty.
+	//
+	// IT IS DECLARED APART FROM THE FUND-FLOWS BLOCK AND GUARDED ON IT, because
+	// it needs two things and the two can fail separately: pp.85-125's lower
+	// block, for the document it draws, and pp.127-140, for the chart it opens
+	// FROM. A corpus that lost the revenue schedule would have no fund-group
+	// window for this rung to hang off, and validateSteps would refuse the view
+	// by name rather than the site dropping one page.
+	//
+	// APPENDED LAST RATHER THAN BESIDE THE STEP IT MIRRORS. tools/jscheck reads
+	// declared steps by key now (fisc-7e1g) and not by position, so the order
+	// is no longer load-bearing -- but an INSERT into the first literal moves
+	// every index after it, and the cheapest way not to depend on having fixed
+	// all of them is not to insert.
+	//
+	// NO CAP, MEASURED RATHER THAN ASSUMED. The widest fund this step opens
+	// draws 5 departments (fund/240 in FY2023-24 actual; 3 in both adopted
+	// columns), against the 11 on fund/100, which opens elsewhere. A cap
+	// declared over a column that never reaches it is a fold no reader has ever
+	// seen, pinned inert.
+	//
+	// NO GAP AND NO RESIDUAL. A gap would claim every other node this step
+	// opens balances, and the two sides of a fund here are two schedules that
+	// are not meant to be equal -- the caveat on the document says so, and the
+	// description below says it on the chart. A residual is for an endpoint of
+	// the chart above that the drawn document cannot decompose; the flank this
+	// window keeps is carried verbatim off that chart, so there is none.
+	//
+	// ONE GUARD AND NOT TWO NESTED ONES, so the literal below sits at the
+	// indent every other step literal here sits at. tools/jscheck/harness.mjs
+	// slices step entries on a brace at a fixed depth and cross-checks the
+	// count against the `Key:`, `From:` and `After:` fields it finds -- it
+	// threw rather than dropping the step, which is the guard working, and
+	// keeping the shape uniform is cheaper than widening the parse.
+	_, openable := stepByKey(spine.Steps, "fund-group")
+	if years := stepStems(export.PrimaryProjection, project.DepartmentFundingProjection,
+		projections); openable && years[export.PrimaryProjection] != "" {
+		spine.Steps = append(spine.Steps, []export.DrillStep{
+			{
+				Key:             "fund-departments",
+				After:           []string{"fund-group"},
+				From:            3,
+				Role:            "fund",
+				Projection:      years[export.PrimaryProjection],
+				YearProjections: years,
+				// [the group | this fund | the departments it pays for].
+				// The step before it draws tier 2 to the LEFT of tier 3, so
+				// the group stays the left column here -- the same window
+				// the General Fund's opens into, one document over.
+				Keep:  []int{2},
+				Tiers: []int{2, 3, 4},
+				Back:  "All funds",
+				Tail:  "departments",
+				// THE DIFFERENCE IS NAMED IN BOTH DIRECTIONS, and the first
+				// draft of this sentence was not. It said the difference is
+				// what the city "transfers out of the fund and adds to its
+				// reserves" -- the fund step's wording, which is true of
+				// fund/100 and false of a fund that pays departments MORE than
+				// its revenue. Measured over both committed columns: 7 of the
+				// 54 funds this step opens in FY2025-26 and 5 of the 52 in
+				// FY2026-27 pay out more than pp.127-140 give them, the widest
+				// being fund/240 at 1,064,044 against 322,600. A sentence that
+				// is wrong on one window in eight is worse than no sentence,
+				// because only the reader who checks can tell which they have.
+				Description: "The fund group this fund belongs to is on the left and the " +
+					"city departments it pays for are on the right \u2014 that fund's rows " +
+					"of Budget Book pp.85-125, rescaled to its total. The two sides of the " +
+					"fund in the middle are read from two different schedules and are not " +
+					"one figure: what it takes in is its revenue, from pp.127-140, and what " +
+					"leaves it here is what the departments draw on it. Either side may be " +
+					"the larger. The difference is money the city moves between its own " +
+					"funds and into or out of accumulated balance, which pp.66-67 print for " +
+					"the fund group as a whole and no published schedule breaks down by " +
+					"fund. A department here is the WHOLE department across every fund that " +
+					"pays it, which is a coarser thing than the divisions the General Fund " +
+					"opens into \u2014 five names belong to both tiers, so do not read one " +
+					"as the other.",
 			},
 		}...)
 	}

@@ -223,13 +223,29 @@ change.
 | 2 | fund group | `fund-group/<type>` |
 | 2 | the paying end of one printed transfer | `transfer-from/<number>` |
 | 3 | fund | `fund/<number>` |
-| 4 | department | `dept/<slug>` |
+| 4 | division — one of `data/departments.yaml`'s mixed-case row groups | `dept/<slug>` |
+| 4 | department — one of its ALL-CAPS headings | `department/<slug>` |
 | 5 | object category | `expenditure/<slug>` |
 | 5 | the receiving end of one printed transfer | `transfer-to/<number>` |
 
 Plus the flow endpoints that are not part of that hierarchy: `transfers/in`
 (tier 0), `transfers/out` (tier 5), `fund-balance/reserve-increase` (tier 5),
 `fund-balance/draw` (tier 0), `fund-balance/contribution` (tier 5).
+
+**`department/` and `dept/` are two id forms at ONE tier, and they have to be.**
+`data/departments.yaml` keeps two namespaces because the pages do: pp.167-170
+print the General Fund by DIVISION and pp.85-125's funding schedule prints one
+block per DEPARTMENT. Five slugs are in both populations — `city-council`,
+`city-manager`, `city-attorney`, `general-services`, `administrative-services` —
+each naming a department and the sole division beneath it, and inventing five
+names the city does not print is the defect this project exists to refuse. An id
+form is read by cutting at the FIRST slash, so one prefix over both tiers would
+make `dept/city-council` mean the department in one document and the division in
+another. That is the same collision `revenue-line/` was given its own prefix to
+avoid. The alternative considered and rejected was `dept/department/<slug>`,
+which reads as a deeper id under the division form and which `declaredTier` would
+resolve to tier 4 by the wrong rule — the prefix would be `dept`, and the reason
+it is right would be invisible.
 
 **`transfer-from/` and `transfer-to/` are ENDS of a movement and not the funds
 themselves**, which is why they are id forms rather than a second use of
@@ -324,10 +340,13 @@ from, and `DrillStep.Side` says so rather than letting a client infer it from th
 tier numbers.
 
 The remaining tier-0 node and the three tier-5 nodes that are flow ENDS rather
-than containers do not open, and the `Role` on each step is what closes them — as
-a further `Role` closes the sixty funds pp.167-170 do not decompose. What those
-rungs draw, and how the year is joined, is stated in
-`docs/general-fund-drilldown-contract.md`.
+than containers do not open, and the `Role` on each step is what closes them. The
+sixty funds pp.167-170 do not decompose are closed to the DIVISION step by a
+`Role` in the same way and opened by a step of their own into pp.85-125's
+departments; which of them that step can open is not a role question at all, and
+is read off each year's document as `steps[].opens`. What those rungs draw, how
+the year is joined, and why openability had to be derived rather than declared,
+are stated in `docs/general-fund-drilldown-contract.md`.
 Depth 0 is this document drawn whole, unchanged by any of it.
 
 Those counts are per TIER and include the flow endpoints, which is why they are

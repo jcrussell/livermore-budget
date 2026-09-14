@@ -868,13 +868,22 @@ async function labelChecks(app, spine) {
  * rather than floors. The stack gap is what one line of label has to itself:
  * 12px is what a line claims (ASCENT_PX + DESCENT_PX), so 2.1px is the air
  * over 32 marks, stated so that a rule change halving it is visible here rather
- * than staying green until it crosses. `over` is the other: five of the column's
- * labels are wider than the 250px gutter under this file's deliberately
- * pessimistic 0.6em advance, and that is the cost of the gesture stated as a
- * number rather than asserted away.
+ * than staying green until it crosses. `over` is the other: twelve of the
+ * column's labels are wider than the 250px gutter under this file's
+ * deliberately pessimistic 0.6em advance, and that is the cost of the gesture
+ * stated as a number rather than asserted away.
+ *
+ * `over` WENT FROM FIVE TO TWELVE WHEN THE FUNDS BECAME OPENABLE, and the cause
+ * is in labelWidth rather than in the layout: it measures the words a reader
+ * sees, nodeFlags included, and every fund pp.85-125 print a funding row for now
+ * draws the open marker beside its figure. Measured on this column, worst first:
+ * fund/221 goes from 36.0px past the gutter to 55.8px, which is the marker's
+ * three value-width characters and nothing else. The vertical answer did not
+ * move at all -- the stack is still 2.1px over 32 marks -- because a marker
+ * widens a label and does not add a line.
  */
-const EXPANDED = { marks: 41, column: 32, stack: "2.1px", over: 5,
-  worst: "fund/221", worstBy: "-36.0px" };
+const EXPANDED = { marks: 41, column: 32, stack: "2.1px", over: 12,
+  worst: "fund/221", worstBy: "-55.8px" };
 
 /**
  * What a reader gets when they draw a folded column out: the shape the cap
@@ -887,8 +896,8 @@ const EXPANDED = { marks: 41, column: 32, stack: "2.1px", over: 5,
  * the shape could be reached only by editing a step nothing measured it at all.
  *
  * THE VERTICAL ANSWER IS THE GOOD ONE AND THE HORIZONTAL ANSWER IS NOT. No two
- * labels touch and no two draw the same words; five run past the gutter, the
- * worst by 36px of a 276px estimate. WHICH OF THOSE FIVE ACTUALLY OVERFLOWS IS
+ * labels touch and no two draw the same words; twelve run past the gutter, the
+ * worst by 56px of a 306px estimate. WHICH OF THOSE FIVE ACTUALLY OVERFLOWS IS
  * A BROWSER QUESTION -- ADVANCE_EM is chosen to be wider than any system face
  * sets, so the direction this can be wrong in is calling a label too wide that
  * fits -- and the walk in fisc-rl4j is where it is settled. fisc-mvrt.

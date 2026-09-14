@@ -568,6 +568,20 @@ func (r *Registry) DivisionLabel(slug string) (string, bool) {
 	return d.Label, true
 }
 
+// DepartmentLabel is the city's own words for a department slug -- the ALL-CAPS
+// tier -- and whether departments.yaml lists it.
+//
+// SEPARATE FROM [Registry.DivisionLabel] BECAUSE THE SLUGS OVERLAP. Five names
+// are in both tiers, so a single lookup would answer whichever map it consulted
+// first and a caller could not tell which tier it had been given.
+func (r *Registry) DepartmentLabel(slug string) (string, bool) {
+	d, ok := r.departments[slug]
+	if !ok {
+		return "", false
+	}
+	return d.Label, true
+}
+
 // FundGroup reports whether name is a fund type funds.yaml actually uses.
 //
 // The answer comes from the loaded file rather than from this package's known

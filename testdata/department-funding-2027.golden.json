@@ -1,0 +1,2203 @@
+{
+  "schema_version": 1,
+  "projection": "department-funding",
+  "metadata": {
+    "generated_by": "testdata/department-funding-2027.golden.json (captured from fisc export; see testdata/README.md)",
+    "scope": "department-funding-sources",
+    "currency": "USD",
+    "units": "cents",
+    "fiscal_year": 2027,
+    "fiscal_year_label": "FY 2026-27",
+    "basis": "adopted",
+    "sources": [
+      {
+        "doc_id": "livermore-budget-fy2026-2027",
+        "pages": [
+          85,
+          89,
+          93,
+          97,
+          101,
+          102,
+          105,
+          108,
+          111,
+          115,
+          119,
+          120,
+          124,
+          125
+        ]
+      }
+    ],
+    "counts": {
+      "facts": 78,
+      "facts_cited": 67,
+      "facts_uncited": 11,
+      "nodes": 72,
+      "links": 67
+    },
+    "caveats": [
+      {
+        "id": "constraint-tier-is-our-reading",
+        "summary": "A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.",
+        "text": "A fund's constraint tier is OUR reading of the Description of Funds narrative (Budget Book pp. 258-261), not something the city printed. Each fund node carries the note it was read from. \"unknown\" means the document does not establish a restriction; it is a classification, not a gap.",
+        "applies_to": []
+      },
+      {
+        "id": "a-department-here-is-not-a-division",
+        "summary": "These rows are printed once per DEPARTMENT; the divisions drawn elsewhere on this site are a finer tier, and five names belong to both.",
+        "text": "Budget Book pp.85-125 print two blocks per page and they are keyed on different things. The upper block is Expenditures by Category, printed by DIVISION; this one is Department Funding Sources, printed once per DEPARTMENT. data/departments.yaml keeps those as two tiers because the city's own pages do, and five names are in both -- City Council, City Manager, City Attorney, General Services and Administrative Services each name a department and a division beneath it. A mark here is the whole department across every fund; a mark named the same on the General Fund's drill-down is one division of it. Do not read one as the other, and do not add them.",
+        "applies_to": []
+      },
+      {
+        "id": "a-fund-takes-in-more-than-it-pays-departments",
+        "summary": "What a fund pays departments here is not what that fund takes in, and the two are printed by different schedules.",
+        "text": "The chart that opens this one draws a fund's REVENUE, from Budget Book pp.127-140. What leaves the fund here is what pp.85-125 print the city's departments drawing on it. Those are two schedules and not one figure read twice: the difference is money the city transfers out of the fund and adds to its reserves, which pp.66-67 print for the fund GROUP and no published schedule attributes to a fund. A fund drawn here taking in more than it pays out is that difference and is not a gap in these pages.",
+        "applies_to": []
+      },
+      {
+        "id": "two-of-the-four-columns-tie-to-no-citywide-total",
+        "summary": "The FY2023-24 actual and FY2024-25 revised columns reconcile to each department's own printed total and to nothing citywide.",
+        "text": "Budget Book pp.66-67 print two adopted columns and no actual and no revised one, so the citywide check this project runs over these rows (funding-sources-tie-to-spine) can compare only the two adopted years. The other two columns reconcile to each department's own printed Total Department Funding Sources at build time and to no citywide figure at all. Five of the eleven departments miss that printed total by exactly one dollar, every one of them in the FY2023-24 actual column and every one declared in the mapping as the city's own rounding.",
+        "applies_to": []
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "id": "fund-group/capital",
+      "label": "Capital Funds",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund_group",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund-group/debt-service",
+      "label": "Debt Service Funds",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund_group",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund-group/enterprise",
+      "label": "Enterprise Funds",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund_group",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund-group/general",
+      "label": "General Fund",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund_group",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund-group/internal-service",
+      "label": "Internal Service Funds",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund_group",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund-group/special-revenue",
+      "label": "Special Revenue Funds",
+      "tier": 2,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "fund_group",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "fund/100",
+      "label": "General Fund",
+      "tier": 3,
+      "parent": "fund-group/general",
+      "constraint_tier": "discretionary",
+      "role": "general_fund",
+      "derived": false,
+      "rationale": "General revenues not levied or collected for another fund; available for any general city service.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/200",
+      "label": "Low Income Housing Fund",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "In-lieu housing fees collected from developers and other community housing projects; spendable only on housing.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/201",
+      "label": "Housing Successor Agency",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Assets and liabilities assumed from the former Redevelopment Agency Low-Moderate Income Fund; used for low and moderate income housing programs.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/202",
+      "label": "SOEF (Social Op Endowment)",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Listed among local/state/federal assistance for community development, housing and human services activities.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/203",
+      "label": "Mortgage Assistance",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Housing and human services assistance funds; spendable only on the assisted housing program.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/204",
+      "label": "HHS Loan Fund",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Housing and human services loan funds; repayments revolve back into the same program.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/205",
+      "label": "CAL Home Reuse",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "State CalHome program reuse funds; restricted to the program's owner-occupied housing purposes.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/206",
+      "label": "Calif Begin Program",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "State BEGIN down-payment assistance program funds; restricted to that program.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/210",
+      "label": "Horizons",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "unknown",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Youth/community program fund. The description only lumps it with local assistance and grants, while the fund detail (p136) shows charges for services plus a General Fund transfer, so no legal restriction is established.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/221",
+      "label": "Asset Seizure - Dept of Justice",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Federal DOJ equitable sharing forfeiture proceeds; restricted to law enforcement use.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/222",
+      "label": "Asset Seizure - Treasury",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Federal Treasury forfeiture proceeds; restricted to law enforcement use.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/223",
+      "label": "Grant - HUD EDI Special Grant",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "HUD Economic Development Initiative special grant; spendable only per the grant award.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/224",
+      "label": "Grant - CDBG",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Community Development Block Grant funds; restricted to HUD-eligible activities.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/225",
+      "label": "Grant - Home Grant",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "HOME Investment Partnerships grant funds; restricted to eligible affordable-housing activities.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/240",
+      "label": "Grant - State Grant Fund",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "State grants for streets, solid waste, safety and community programs; spendable only per each grant agreement.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/241",
+      "label": "Opioid Settlement",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "unknown",
+      "role": "fund",
+      "derived": false,
+      "rationale": "No entry in the Description of Funds (pp258-261). Opioid settlement receipts are ordinarily restricted to remediation, but the budget document does not say so.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/242",
+      "label": "PD COPS Grant",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Police COPS grant funds; restricted to the granted police programs. Classified from the fund name only — it has no Description of Funds entry.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/282",
+      "label": "Host Community Impact Fee",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Host community impact fees from the Altamont and Vasco Road landfills; restricted to promoting the arts in Livermore.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/283",
+      "label": "City Street Sweeping Fee",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Ratepayer fee collected through solid waste collection charges; spent on street sweeping.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/284",
+      "label": "Public Art Fee",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Development fees under LMC 12.51 (Art in Public Places); restricted to public art.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/285",
+      "label": "Vehicle Impound Fee",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "30% of vehicle impound fees; restricted to police programs that reduce vehicle collisions.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/286",
+      "label": "Accessibility Compliance",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "State-mandated CASp fee collected with business licenses; restricted to the certified access specialist program.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/287",
+      "label": "PEG Capital Fees",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Public, Educational and Government access fees from cable TV franchises; restricted to PEG capital use.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/288",
+      "label": "Import Mitigation Fee",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Waste import mitigation fee within the solid waste management group; restricted to source reduction and recycling programs.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/289",
+      "label": "Solid Waste & Recycling Fee",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Solid waste and recycling fees; restricted to source reduction and beverage container recycling programs.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/310",
+      "label": "Downtown LMD",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Landscape maintenance district assessments; spendable only within the benefited district.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/311",
+      "label": "Other LMD",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Landscape maintenance district assessments; spendable only within the benefited district.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/320",
+      "label": "El Charro CFD 2009-1 Maint",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Community facilities district special taxes; spendable only within the benefited district.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/321",
+      "label": "Other Maintenance CFDs",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Community facilities district special taxes; spendable only within the benefited district.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/330",
+      "label": "Library Donations",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Donations to the Library; donor-designated to specific community programs.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/331",
+      "label": "Police Donations",
+      "tier": 3,
+      "parent": "fund-group/special-revenue",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Donations to the Police Department; donor-designated to specific community programs.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/400",
+      "label": "2020 COPS Series A",
+      "tier": 3,
+      "parent": "fund-group/debt-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Accumulates principal and interest payments for the 2020 COP Series A.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/401",
+      "label": "2020 COPS Series B",
+      "tier": 3,
+      "parent": "fund-group/debt-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Accumulates principal and interest payments for the 2020 COP Series B.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/402",
+      "label": "2022 COPS",
+      "tier": 3,
+      "parent": "fund-group/debt-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Accumulates principal and interest payments for the 2022 COP.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/510",
+      "label": "Traffic Impact Fee (TIF)",
+      "tier": 3,
+      "parent": "fund-group/capital",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Traffic impact fees paid by developers; restricted to interchange and local street improvement projects.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/550",
+      "label": "County Measure D",
+      "tier": 3,
+      "parent": "fund-group/capital",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Alameda County Measure D waste-management funds; restricted to recycling and source reduction purposes.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/551",
+      "label": "County Meas BB-Bike/Pedestrian",
+      "tier": 3,
+      "parent": "fund-group/capital",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Alameda County Measure BB bicycle/pedestrian pass-through; restricted to those street projects by the voter-approved measure.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/552",
+      "label": "County Meas BB-Local St & Rd",
+      "tier": 3,
+      "parent": "fund-group/capital",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Alameda County Measure BB local streets and roads pass-through; restricted to street construction and maintenance.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/553",
+      "label": "County Measure F Veh Reg Fee",
+      "tier": 3,
+      "parent": "fund-group/capital",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "County Measure F vehicle registration fee; restricted to transportation projects.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/560",
+      "label": "State - Gas Tax",
+      "tier": 3,
+      "parent": "fund-group/capital",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "State gasoline tax subventions; restricted by state law to street and road purposes.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/561",
+      "label": "State - SB1",
+      "tier": 3,
+      "parent": "fund-group/capital",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "SB 1 Road Maintenance and Rehabilitation Account funds; restricted by state law to eligible road work.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/600",
+      "label": "Airport",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Airport operating revenues and FAA grants; restricted to airport operations, related 2020 COP Series B debt service, and airport capital.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/610",
+      "label": "Stormwater",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Self-supporting storm water operations funded by ratepayer charges; restricted to storm water service.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/612",
+      "label": "Storm Drain",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Storm drain impact fees; restricted to storm drain infrastructure.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/620",
+      "label": "Wastewater",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Self-supporting wastewater disposal plant, export pipeline and urban run-off operations funded by ratepayer charges.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/622",
+      "label": "Wastewater Replacement",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Ratepayer-funded reserve for replacement of wastewater system assets.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/623",
+      "label": "Wastewater Connection Fees",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Wastewater connection (impact) fees; restricted to wastewater capacity and capital.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/640",
+      "label": "Water",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Self-supporting municipal water service funded by user charges, including related 2020 COP Series B debt service.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/642",
+      "label": "Water Replacement",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Ratepayer-funded reserve for replacement of water system assets.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/643",
+      "label": "Water Connection Fees",
+      "tier": 3,
+      "parent": "fund-group/enterprise",
+      "constraint_tier": "restricted-by-law",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Water connection (impact) fees; restricted to future water storage and capacity.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/700",
+      "label": "General Liability",
+      "tier": 3,
+      "parent": "fund-group/internal-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Departmental charges funding the city's self-insured general liability risk management program.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/710",
+      "label": "Workers Comp Insurance",
+      "tier": 3,
+      "parent": "fund-group/internal-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Departmental charges funding the city's self-insured workers' compensation program.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/720",
+      "label": "Information Technology",
+      "tier": 3,
+      "parent": "fund-group/internal-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Departmental charges funding city software, hardware, IT governance and cybersecurity.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/730",
+      "label": "Fleet & Equipment Services",
+      "tier": 3,
+      "parent": "fund-group/internal-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Departmental charges funding maintenance and acquisition of the city fleet and small equipment.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "fund/740",
+      "label": "Facilities Rehab Program",
+      "tier": 3,
+      "parent": "fund-group/internal-service",
+      "constraint_tier": "committed",
+      "role": "fund",
+      "derived": false,
+      "rationale": "Departmental charges funding repair and maintenance of city facilities.",
+      "source_note": "data/funds.yaml, our reading of Budget Book pp.258-261"
+    },
+    {
+      "id": "department/administrative-services",
+      "label": "Administrative Services",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/city-attorney",
+      "label": "City Attorney",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/city-council",
+      "label": "City Council",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/city-manager",
+      "label": "City Manager",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/community-development",
+      "label": "Community Development",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/fire-department",
+      "label": "Fire Department",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/general-services",
+      "label": "General Services",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/innovation-and-economic-development",
+      "label": "Innovation & Economic Development",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/library-department",
+      "label": "Library Department",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/police-department",
+      "label": "Police Department",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    },
+    {
+      "id": "department/public-works",
+      "label": "Public Works",
+      "tier": 4,
+      "parent": "",
+      "constraint_tier": "",
+      "role": "whole_department",
+      "derived": false,
+      "rationale": "",
+      "source_note": ""
+    }
+  ],
+  "links": [
+    {
+      "source": "fund/100",
+      "target": "department/administrative-services",
+      "value_cents": 673904600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c1a5eafd843b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            97
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/city-attorney",
+      "value_cents": 287281100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-85a36cbfcc90"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            93
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/city-council",
+      "value_cents": 23212900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-791fed4b5075"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            85
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/city-manager",
+      "value_cents": 531666000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-80c7f6b9bb5e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            89
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/community-development",
+      "value_cents": 2129353900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-47d4c8abb55f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/fire-department",
+      "value_cents": 3016945400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f90fc71736f8"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            105
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/general-services",
+      "value_cents": 367162600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-0504f2c841e0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            108
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/innovation-and-economic-development",
+      "value_cents": 402168000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-3e3436e06284"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            111
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/library-department",
+      "value_cents": 819675600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-fc69d002b950"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            115
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/police-department",
+      "value_cents": 5542879800,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f5b95ed98742"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            119
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/100",
+      "target": "department/public-works",
+      "value_cents": 1107208000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-2cd50829d4fa"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/200",
+      "target": "department/community-development",
+      "value_cents": 259147600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-2aed42575da1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/201",
+      "target": "department/community-development",
+      "value_cents": 1900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-44fa87bb129f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/202",
+      "target": "department/community-development",
+      "value_cents": 15679800,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-fb67958e5834"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/203",
+      "target": "department/community-development",
+      "value_cents": 12715400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e900cc42c608"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/204",
+      "target": "department/community-development",
+      "value_cents": 33300000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-ec40a724f71b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/205",
+      "target": "department/community-development",
+      "value_cents": 24200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-90eca8ab3643"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/206",
+      "target": "department/community-development",
+      "value_cents": 12200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4bc2f07fbd97"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            101
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/210",
+      "target": "department/police-department",
+      "value_cents": 123378400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-0fd2ab775e68"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            119
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/221",
+      "target": "department/police-department",
+      "value_cents": 5311300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1975f88daa93"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            119
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/222",
+      "target": "department/police-department",
+      "value_cents": 5000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-7198fa0619fb"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            119
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/223",
+      "target": "department/community-development",
+      "value_cents": 18030000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c23ae0164697"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/224",
+      "target": "department/community-development",
+      "value_cents": 44365600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-a0248fc0c84b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/225",
+      "target": "department/community-development",
+      "value_cents": 12283400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f24de4135359"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/240",
+      "target": "department/community-development",
+      "value_cents": 10267600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6ae8f0b05a84"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/240",
+      "target": "department/fire-department",
+      "value_cents": 2420000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5217e37d2788"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            105
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/240",
+      "target": "department/library-department",
+      "value_cents": 13627900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-72d52760e141"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            115
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/241",
+      "target": "department/community-development",
+      "value_cents": 9091700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-926e4f3dbc7c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/242",
+      "target": "department/police-department",
+      "value_cents": 10000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b18c445aa4d9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            119
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/282",
+      "target": "department/public-works",
+      "value_cents": 2427400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-1bfcea887ee1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/283",
+      "target": "department/public-works",
+      "value_cents": 49804000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-177165942bf7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/284",
+      "target": "department/library-department",
+      "value_cents": 26359700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-33349199fb1a"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            115
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/285",
+      "target": "department/police-department",
+      "value_cents": 2152600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-6cba6cadf223"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            120
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/286",
+      "target": "department/community-development",
+      "value_cents": 3000000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b322393c27d7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/287",
+      "target": "department/city-manager",
+      "value_cents": 140100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-9dfbd11c1fd9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            89
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/288",
+      "target": "department/public-works",
+      "value_cents": 100000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b23d4cf6e400"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/289",
+      "target": "department/public-works",
+      "value_cents": 35262100,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-dc1cb9a242e3"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/310",
+      "target": "department/public-works",
+      "value_cents": 78303600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-94508121e539"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/311",
+      "target": "department/public-works",
+      "value_cents": 297950400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-80b95eb76126"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/320",
+      "target": "department/public-works",
+      "value_cents": 40826300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-42d4ebe0d698"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            124
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/321",
+      "target": "department/public-works",
+      "value_cents": 19854200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b902d6beb217"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/330",
+      "target": "department/library-department",
+      "value_cents": 12533500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f9074c40a499"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            115
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/331",
+      "target": "department/police-department",
+      "value_cents": 1065500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b853d5a597e0"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            120
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/400",
+      "target": "department/general-services",
+      "value_cents": 53130000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-0f42b732418d"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            108
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/401",
+      "target": "department/general-services",
+      "value_cents": 388117300,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b09b02e4e54b"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            108
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/402",
+      "target": "department/general-services",
+      "value_cents": 255742500,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-84511a88fc30"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            108
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/510",
+      "target": "department/community-development",
+      "value_cents": 8500000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-5bffc7500ff7"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/550",
+      "target": "department/public-works",
+      "value_cents": 50578400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-3af5c12925be"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/551",
+      "target": "department/community-development",
+      "value_cents": 5200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-b369b43ea231"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/552",
+      "target": "department/community-development",
+      "value_cents": 16145000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4bae17699060"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/553",
+      "target": "department/community-development",
+      "value_cents": 6170000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-4b61df7c4ea6"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/560",
+      "target": "department/community-development",
+      "value_cents": 10200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-97a64e7121f1"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/561",
+      "target": "department/community-development",
+      "value_cents": 200000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-df5e65b07ce3"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            102
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/600",
+      "target": "department/innovation-and-economic-development",
+      "value_cents": 397108600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-8299d9c03efb"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            111
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/610",
+      "target": "department/public-works",
+      "value_cents": 459749900,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-bd287e5eb354"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/612",
+      "target": "department/public-works",
+      "value_cents": 637400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c38004a5a7cf"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/620",
+      "target": "department/public-works",
+      "value_cents": 2610960000,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-7467e8013f3e"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/622",
+      "target": "department/public-works",
+      "value_cents": 67785200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-e74d068a08f5"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/623",
+      "target": "department/public-works",
+      "value_cents": 107943200,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-532851f92a19"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/640",
+      "target": "department/public-works",
+      "value_cents": 2038191600,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-dc6bb84d0515"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/642",
+      "target": "department/public-works",
+      "value_cents": 71057400,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-28f17b022ccd"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/643",
+      "target": "department/public-works",
+      "value_cents": 1363700,
+      "kind": "external",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-9312744f7a25"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/700",
+      "target": "department/city-attorney",
+      "value_cents": 651795200,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-f3e531cc4592"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            93
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/710",
+      "target": "department/city-attorney",
+      "value_cents": 295083700,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-554276088b2f"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            93
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/720",
+      "target": "department/administrative-services",
+      "value_cents": 755578900,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-ebe47806d326"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            97
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/730",
+      "target": "department/public-works",
+      "value_cents": 548423200,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-c3552c5c92e9"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    },
+    {
+      "source": "fund/740",
+      "target": "department/public-works",
+      "value_cents": 378570500,
+      "kind": "internal_service",
+      "transfer_id": "",
+      "fact_ids": [
+        "fisc-f-291a215e029c"
+      ],
+      "locators": [
+        {
+          "doc_id": "livermore-budget-fy2026-2027",
+          "pages": [
+            125
+          ]
+        }
+      ],
+      "derived": false,
+      "partition": false
+    }
+  ]
+}

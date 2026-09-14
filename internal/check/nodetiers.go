@@ -47,8 +47,17 @@ var hierarchyTiers = map[string]int{
 	"transfer-from": 2,
 	"fund":          3,
 	"dept":          4,
-	"expenditure":   5,
-	"transfer-to":   5,
+	// `department/` IS A SEPARATE FORM FROM `dept/`, AT THE SAME TIER, and the
+	// table's own key is why. `dept/` holds pp.167-170's divisions and
+	// `department/` holds pp.85-125's ALL-CAPS departments; data/departments.yaml
+	// keeps those as two namespaces because the pages do, and five slugs are in
+	// both -- city-council, city-manager, city-attorney, general-services and
+	// administrative-services. declaredTier cuts an id at its FIRST slash, so
+	// one prefix over both tiers would make `dept/city-council` mean the
+	// department in one document and the division in another.
+	"department":  4,
+	"expenditure": 5,
+	"transfer-to": 5,
 }
 
 // endpointTiers are the five flow endpoints, which sit OUTSIDE the hierarchy and

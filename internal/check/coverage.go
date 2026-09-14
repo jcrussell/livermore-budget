@@ -132,44 +132,6 @@ var unprojectedScopes = map[string]string{
 		"$170,000 on top of that, seventeen units, which is why the tolerance that admits its " +
 		"$10,000 in FY2025 comes nowhere near admitting FY2024. The four blocks are the ones the " +
 		"PAGE prints, and General Government is inside one of them.",
-
-	fundingSourcesScope: "Budget Book pp.85-125, Department Funding Sources: the per-fund " +
-		"decomposition of pp.66-67's TOTAL EXPENDITURES rows, not additional money. Its 78 " +
-		"printed rows sum, per fund group, to those pages' expenditure cells -- capital " +
-		"1,061,355 / 969,934, debt-service 6,984,597 / 6,969,898, enterprise 57,053,730 / " +
-		"57,547,970, general 144,650,802 / 149,014,579, internal-service 25,077,367 / " +
-		"26,294,515, special-revenue 19,267,561 / 11,808,000, total 254,095,412 / " +
-		"252,604,896 -- so drawing them into the fund-group spine doubles the city's " +
-		"expenditure. ALL SEVEN GROUPS ARE LISTED ON PURPOSE: an earlier draft omitted " +
-		"internal-service, and the five that were left sum to 229,018,045, which is a " +
-		"DIFFERENT published headline -- the sankey's external expenditure -- so a reader " +
-		"adding the list up landed on a real figure that was not this schedule's total. WHAT IS RECONCILED IS THE TWO BUDGET COLUMNS AND NOTHING ELSE: " +
-		"funding-sources-tie-to-spine ties 14 cells, seven fund groups over FY2026 adopted " +
-		"and FY2027 adopted, of which eleven tie to the cent against the spine, two are the " +
-		"permanent group agreeing at zero against a spine that prints no Permanent column " +
-		"at all (fisc-u8o), and one -- internal-service FY2027 -- ties instead against " +
-		"26,294,515, the figure five other schedules print where p0067 prints 26,544,515 " +
-		"(fisc-av0w). The two historical columns, 156 of the 312 facts, tie to each " +
-		"department's own printed Total Department Funding Sources at build time and to " +
-		"nothing on the spine, because pp.66-67 print no actual or revised column; five of " +
-		"the eleven departments miss that printed total by exactly one dollar, every one in " +
-		"the FY2023-24 Actual column, declared as stated_total_deltas. THE FUND NUMBER ON " +
-		"EACH ROW IS NOT COVERED BY THE ARITHMETIC AT ALL -- it is hand-typed 78 times, " +
-		"and what the arithmetic catches is a fund of the wrong TYPE, because that moves " +
-		"money between groups and breaks a sum, while a same-type substitution such as " +
-		"Water 640 for CIP Water 641 moves nothing. It is checked instead by " +
-		"row-funds-match-their-anchors, because these eleven rules declare " +
-		"row_labels_name_funds: their row labels are printed fund names, so the number " +
-		"typed beside each one is read against the label the page prints (fisc-90fp). " +
-		"rule-funds-match-their-headings still never enters, because it reads column " +
-		"funds and these rules declare none. THE BLOCK ABOVE THIS ONE IS DRAWN AND THIS " +
-		"ONE IS NOT, and what separates them is no longer what the rows carry: these 78 " +
-		"rows now name their department, so each of these facts has the axis a department " +
-		"page would draw it on. What is missing is the projection (fisc-4ua.2), not the " +
-		"data. The two blocks name different TIERS of data/departments.yaml -- the upper " +
-		"one a division, because it is printed by division, and this one a department, " +
-		"because it is printed once per department -- so a projection reading both has to " +
-		"know which it is holding.",
 }
 
 // projectionsBuild asserts every slice of the fact store that a projection was

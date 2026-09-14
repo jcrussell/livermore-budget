@@ -67,7 +67,7 @@
       {
         "id": "only-the-general-fund-is-decomposed",
         "summary": "Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.",
-        "text": "Only the General Fund has a spending side. Budget Book pp.167-170 decompose that fund alone, so the other 5 fund groups' revenue ends at their funds -- the money is not missing, the schedule that would break it down is not published.",
+        "text": "Only the General Fund has a spending side IN THIS DOCUMENT. Budget Book pp.167-170 decompose that fund alone, so the other 5 fund groups' revenue ends at their funds here -- the money is not missing. What IS published for every fund is pp.85-125's Department Funding Sources, which says which departments each fund pays for; this site draws that as a chart of its own. What no schedule publishes is any other fund's spending broken down by object category, which is the grain this document holds the General Fund at.",
         "applies_to": [
           "fund-group/capital",
           "fund-group/debt-service",

@@ -849,6 +849,88 @@ export function goldenSpending2027() {
 }
 
 /**
+ * The node ids at a step's `from` that `doc` decomposes: what the packager
+ * ships as a year's `steps[].opens` (export.openableNodes), read off the same
+ * document rather than copied from a list.
+ *
+ * THE HARNESS BUILDS THE YEAR CONFIG AND SO IT HAS TO BUILD THIS TOO. Every
+ * other per-year field here is composed the way the packager composes it --
+ * the counts line, the chart title, the caveat refs -- and this is the same
+ * kind of thing one step further in. What makes it safe is that it is a
+ * DERIVATION over the committed capture and not a spelling of a set: the
+ * goldens are pinned against `fisc export` by Go tests, so the input is the
+ * site's, and drill.mjs's walk opens every id this returns.
+ *
+ * TWO THINGS NARROW IT AND THEY ARE NOT THE SAME THING. The far end must land
+ * in a column BEYOND the centre -- not merely in a tier the step draws, which a
+ * fund's ribbon from its own group satisfies and which would declare all sixty
+ * funds openable. And the ribbon must run in the direction windowFor will draw
+ * it: that call asks the step document for the half AWAY from the kept flank,
+ * so a ribbon pointing INTO the opened node from beyond it is not a chart.
+ *
+ * THE SECOND OF THOSE IS LATENT ON THE COMMITTED CORPUS, measured rather than
+ * assumed: every published document runs its ribbons coarse-to-fine across each
+ * window's centre, so no shipped step can tell a direction-aware reading from a
+ * direction-blind one. It is checked in seam.mjs over a document that can.
+ *
+ * @param {{nodes: {id: string, tier: number}[], links: {source: string, target: string}[]}} doc
+ * @param {{from: number, tiers: number[], keep?: number[]}} step
+ * @returns {string[] | null} null for a step that keeps no flank and declares no set
+ */
+export function openableFrom(doc, step) {
+  const keep = step.keep || [];
+  if (!keep.length) return null;
+  const tiers = step.tiers;
+  const m = keep.length;
+  const n = tiers.length;
+  const matches = (/** @type {number[]} */ want) => want.every((t, k) => t === keep[k]);
+  const left = matches(tiers.slice(0, m).reverse());
+  const right = !left && matches(tiers.slice(n - m));
+  if (!left && !right) {
+    throw new Error(`a step keeping tier(s) ${keep.join(", ")} and drawing ` +
+      `${tiers.join(", ")} has neither end as that flank, so which half it opens ` +
+      `a node into cannot be read`);
+  }
+  const outward = left ? tiers.slice(m + 1) : tiers.slice(0, n - 1 - m);
+  const tier = new Map(doc.nodes.map((d) => [d.id, d.tier]));
+  const out = new Set();
+  for (const l of doc.links) {
+    const near = left ? l.source : l.target;
+    const far = left ? l.target : l.source;
+    if (tier.get(near) !== step.from) continue;
+    if (!outward.includes(/** @type {number} */ (tier.get(far)))) continue;
+    out.add(near);
+  }
+  if (!out.size) {
+    throw new Error(`a step opening tier ${step.from} draws no ribbon into tier(s) ` +
+      `${outward.join(", ")}, so the rung is one no reader could ever reach`);
+  }
+  return [...out].sort();
+}
+
+/**
+ * Budget Book pp.85-125's LOWER block as `fisc export` writes it, one loader
+ * per published spine column.
+ *
+ * TWO LOADERS AND NOT A YEAR PARAMETER, for goldenSpending2027's reason and a
+ * sharper case than that one's: these two columns draw different FUNDS.
+ * Measured off the captures -- 58 funds reach a department in FY2025-26 and 55
+ * in FY2026-27, out of the 63 the schedule names in every column -- so a check
+ * served one capture under both paths could not see a fund stop being
+ * decomposed, which is exactly the state the fund-departments step's
+ * openability set exists to keep a reader out of.
+ */
+export function goldenFunding() {
+  return JSON.parse(
+    readFileSync(join(repoRoot, "testdata", "department-funding.golden.json"), "utf8"));
+}
+
+export function goldenFunding2027() {
+  return JSON.parse(
+    readFileSync(join(repoRoot, "testdata", "department-funding-2027.golden.json"), "utf8"));
+}
+
+/**
  * Budget Book p76 as `fisc export` writes it, one loader per published spine
  * column.
  *

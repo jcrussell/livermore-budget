@@ -19,7 +19,7 @@
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
   KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes, parseSpineRenderTiers,
-  parseSpendingGaps,
+  parseSpendingGaps, openableFrom,
 } from "./harness.mjs";
 
 export async function checks() {
@@ -656,6 +656,81 @@ export async function checks() {
           `${JSON.stringify(none.threw)}; an empty list throws ` +
           `${JSON.stringify(empty.threw)} rather than reading as a chart drawn whole; a ` +
           `source with no spine view throws ${JSON.stringify(noView.threw)}`,
+    });
+  }
+
+  // ----------------------------------- the openability set is DIRECTION-AWARE
+  //
+  // THE TWO THINGS THIS DERIVATION CAN GET WRONG AND STILL LOOK RIGHT, and the
+  // second was found by running the mutation rather than by reading.
+  //
+  // The far end must land BEYOND the centre: a fund has a ribbon from its own
+  // group at a tier the step draws, so a rule keyed on "a tier this step draws"
+  // declares every fund openable, which is the state the set exists to end.
+  //
+  // AND THE RIBBON MUST RUN THE WAY windowFor WILL DRAW IT. That is a separate
+  // guard and it is LATENT on every committed document -- each of them runs
+  // coarse-to-fine across its window's centre -- so the first fixture written
+  // for this passed with the direction removed. `d -> shut` below is the shape
+  // that separates them: a ribbon pointing INTO the opened tier from beyond it,
+  // which a direction-blind reading calls a chart and filterFromNode does not.
+  // Both flanks are driven, because the left reads a link's SOURCE and the right
+  // its TARGET, and the Go half got that wrong by deriving which flank it had
+  // from arithmetic true of both (export.openableNodes).
+  {
+    const doc = {
+      nodes: [
+        { id: "g", tier: 2 }, { id: "opens", tier: 3 }, { id: "shut", tier: 3 },
+        { id: "d", tier: 4 },
+      ],
+      links: [
+        // Both funds are fed by the group; only one pays anything onward, and
+        // the fine column points back at the other -- which is the ribbon a
+        // direction-blind reading would call a chart.
+        { source: "g", target: "opens" }, { source: "g", target: "shut" },
+        { source: "opens", target: "d" }, { source: "d", target: "shut" },
+      ],
+    };
+    const left = openableFrom(doc, { from: 3, tiers: [2, 3, 4], keep: [2] });
+    // THE MIRROR IS ITS OWN DOCUMENT AND NOT THE SAME ONE READ BACKWARDS. A
+    // right flank opens a node on the ribbon pointing AT it -- filterToNode,
+    // where the left one uses filterFromNode -- so the shape that exercises it
+    // is a document whose finer column is the SOURCE, which is the revenue
+    // category window's shape: its lines roll up into the category it opens.
+    const mirror = {
+      nodes: [
+        { id: "line", tier: 4 }, { id: "opens", tier: 3 }, { id: "shut", tier: 3 },
+        { id: "g", tier: 2 },
+      ],
+      links: [
+        { source: "line", target: "opens" },
+        { source: "opens", target: "g" }, { source: "shut", target: "g" },
+      ],
+    };
+    const right = openableFrom(mirror, { from: 3, tiers: [4, 3, 2], keep: [2] });
+    let empty = "";
+    try {
+      openableFrom({ nodes: [{ id: "a", tier: 3 }], links: [] },
+        { from: 3, tiers: [2, 3, 4], keep: [2] });
+    } catch (e) { empty = String((e && e.message) || e); }
+    let neither = "";
+    try {
+      openableFrom(doc, { from: 3, tiers: [2, 3, 4], keep: [9] });
+    } catch (e) { neither = String((e && e.message) || e); }
+    out.push({
+      name: "the openability set reads the ribbon OUT of a node, not any ribbon touching it",
+      ok: JSON.stringify(left) === JSON.stringify(["opens"]) &&
+          JSON.stringify(right) === JSON.stringify(["opens"]) &&
+          openableFrom(doc, { from: 3, tiers: [2, 3] }) === null &&
+          empty.includes("no ribbon into tier(s) 4") &&
+          neither.includes("neither end as that flank"),
+      detail: `a left flank at {2,3,4} opens ${JSON.stringify(left)} (want ["opens"]: "shut" is ` +
+        `fed by the group and pays nothing on); the mirror document as a right flank at ` +
+        `{4,3,2} opens ${JSON.stringify(right)} (want ["opens"]: "shut" points at the flank and ` +
+        `nothing points at it); a step with no keep declares no set ` +
+        `(${openableFrom(doc, { from: 3, tiers: [2, 3] })}); a document with nothing beyond the ` +
+        `opened tier throws ${JSON.stringify(empty)}; a keep at neither end throws ` +
+        `${JSON.stringify(neither)}`,
     });
   }
 

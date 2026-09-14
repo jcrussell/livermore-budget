@@ -63,15 +63,21 @@ const (
 
 // Node roles, which say what a node is for without the client parsing its id.
 const (
-	roleRevenueSource  = "revenue_source"
-	roleRevenueLine    = "revenue_line"
-	roleFundGroup      = "fund_group"
-	roleFund           = "fund"
-	roleGeneralFund    = "general_fund"
-	roleDepartment     = "department"
-	roleObjectCategory = "object_category"
-	roleTransferIn     = "transfer_in"
-	roleTransferOut    = "transfer_out"
+	roleRevenueSource = "revenue_source"
+	roleRevenueLine   = "revenue_line"
+	roleFundGroup     = "fund_group"
+	roleFund          = "fund"
+	roleGeneralFund   = "general_fund"
+	roleDepartment    = "department"
+	// roleWholeDepartment is the ALL-CAPS tier of data/departments.yaml, which
+	// only [departmentFunding] draws. It is not roleDepartment: that one is on
+	// a `dept/<division>` node, and five slugs name a department and a division
+	// beneath it, so one role over both tiers would be a vocabulary that cannot
+	// tell the two apart at exactly the ids where it matters.
+	roleWholeDepartment = "whole_department"
+	roleObjectCategory  = "object_category"
+	roleTransferIn      = "transfer_in"
+	roleTransferOut     = "transfer_out"
 	// roleTransferSource and roleTransferSink are the payer's and the
 	// receiver's end of one printed movement, which only [transfersByFund]
 	// draws. They are not roleTransferIn and roleTransferOut: those two are the
@@ -102,6 +108,14 @@ const (
 	prefixFundGroup   = "fund-group/"
 	prefixFund        = "fund/"
 	prefixDept        = "dept/"
+	// prefixDepartment is the ALL-CAPS department tier, and it is a SEPARATE
+	// form from prefixDept rather than a deeper id under it. `dept/` holds
+	// divisions, five slugs name a department and a division beneath it, and an
+	// id form is read by cutting at the first slash -- so `dept/city-council`
+	// under both tiers would mean the department in one document and the
+	// division in another. `revenue-line/` is the precedent: a form gets its own
+	// prefix when the alternative is one prefix answering to two things.
+	prefixDepartment = "department/"
 	// prefixTransfers is the flow endpoints outside the hierarchy. Nothing on
 	// THE SPINE is parented to them; the prefix exists so transferEndpoints can
 	// recognise a transfer node without a list of ids to keep in step.
@@ -231,6 +245,17 @@ type labels interface {
 	// a fact's `department` field holds. A miss is not an error: the slug is
 	// shown instead.
 	DivisionLabel(slug string) (string, bool)
+	// DepartmentLabel is the city's own words for a DEPARTMENT slug, which is
+	// the other thing a fact's `department` field holds: pp.85-125's funding
+	// rows name the ALL-CAPS tier where every other department-bearing rule
+	// names a division. A miss is not an error, as DivisionLabel's is not.
+	//
+	// IT IS A SECOND METHOD AND NOT A WIDENED FIRST ONE. Five slugs name a
+	// department and a division beneath it, so one lookup over both tiers would
+	// answer either -- and which of the two it answered would depend on the map
+	// it happened to consult first, at exactly the five ids where the caller
+	// most needs to know which tier it is holding.
+	DepartmentLabel(slug string) (string, bool)
 	// LinesPrintedAs is the line slugs a printed row label resolves to under a
 	// category, for the kind the fact carries. A fact names the row it was read
 	// from in free text and names no slug, so this is the only route from a

@@ -21,7 +21,12 @@ type stubFundFlows struct {
 	tiers     map[int]string
 	notes     map[int]string
 	divisions map[string]string
-	lines     map[lineKey][]string
+	// departments is the ALL-CAPS tier, kept apart from divisions for the
+	// reason data/departments.yaml keeps two namespaces: five slugs name both,
+	// so one map would answer either and a projection reading the wrong tier
+	// would be invisible here.
+	departments map[string]string
+	lines       map[lineKey][]string
 }
 
 // lineKey is the three-part question the projection asks the registry about a
@@ -34,6 +39,14 @@ func (s stubFundFlows) ConstraintTier(n int) string   { return s.tiers[n] }
 func (s stubFundFlows) RestrictionNote(n int) string  { return s.notes[n] }
 func (s stubFundFlows) DivisionLabel(d string) (string, bool) {
 	v, ok := s.divisions[d]
+	return v, ok
+}
+
+// DepartmentLabel answers from a map of its own, so a fixture can give a
+// department and a division the same slug and still tell which tier a
+// projection asked for.
+func (s stubFundFlows) DepartmentLabel(d string) (string, bool) {
+	v, ok := s.departments[d]
 	return v, ok
 }
 
