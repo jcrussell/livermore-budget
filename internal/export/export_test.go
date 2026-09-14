@@ -1109,11 +1109,12 @@ func TestTheDisabledYearToggleKeepsItsSelectionUnderTheCursor(t *testing.T) {
 // RENDERING, and the distinction is the whole of what this test is worth.
 //
 // Nothing in this tree parses or renders CSS (fisc-6at): tools/jscheck reads
-// style.css only to harvest custom-property names, and the two tests below this
-// one match selector strings. So this cannot say that --measure applies to any
-// element a template renders, that a line comes out at 68 characters, or that
-// the chart and the wide tables stayed at the container width. Those are read
-// in a browser after `make site` and nowhere else.
+// style.css to harvest custom-property names and to read .chart-wrap's width
+// allowance as text, and the two tests below this one match selector strings.
+// So this cannot say that --measure applies to any element a template renders,
+// that a line comes out at 68 characters, or that the wide tables stayed at the
+// container width. Those are read in a browser after `make site` and nowhere
+// else.
 //
 // What it CAN say is that the three hand-written measures became one token and
 // stay one: 68ch on .lede, 46em on .caveat and main's 1180px inherited by
@@ -1147,7 +1148,8 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	// THE CONTAINER RULE ITSELF, not the number anywhere in the file. Grepping
 	// for "max-width: 1180px" passes over a stylesheet that split this rule in
 	// two and clamped `main` to the reading measure while leaving .page-head at
-	// 1180px -- which squeezes the chart, the exact defect this arm is for.
+	// 1180px -- which squeezes the page's tiles and tables, and squeezed the
+	// chart too until .chart-wrap took a width of its own (fisc-5e2b).
 	// Mutation-measured: that split was green.
 	const container = "main,\n.page-head {\n  max-width: 1180px;"
 	// THE PRINT BLOCK OPENS WHAT THE PAGE FOLDS. Declared only -- this cannot
@@ -1162,7 +1164,7 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 	}
 	if !strings.Contains(css, container) {
 		t.Error("style.css no longer sets main and .page-head together to 1180px, so the " +
-			"measure has been applied to the chart's own column rather than to the " +
+			"measure has been applied to the page's own column rather than to the " +
 			"prose in it")
 	}
 }

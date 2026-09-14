@@ -356,6 +356,12 @@ const NAMES = [
   // and the TEXT -- a box measured from a label this file spelled itself would
   // be a box the page never draws.
   "columnOf", "labelPlacement", "markCents", "fmtShortSigned",
+  // AND THE QUALIFIER, which is the second thing a mark's words can come from.
+  // A label check that measured d.label alone would measure the document rather
+  // than the drawing, and it is the drawing that repeats a word: labelQualifiers
+  // is what decides a mark gets a second line and labelLineShift is where that
+  // line goes.
+  "labelQualifiers", "labelLineShift",
   // THE WINDOW. drill.mjs drives it through drillDown like everything else
   // here; windowFor is reached directly for the refusals, which have no route
   // through a click because export.validateSteps refuses them first. The rest
@@ -417,6 +423,20 @@ const customProperties = new Set(
   [...readFileSync(join(repoRoot, "site", "style.css"), "utf8")
     .matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]),
 );
+
+/**
+ * The stylesheet the site ships, as text.
+ *
+ * READ AS TEXT AND NOT AS CSS, and every caller has to keep that in mind:
+ * nothing in this tree renders or parses a stylesheet (fisc-6at), so a check
+ * over this string can say what style.css DECLARES and never what a browser
+ * laid out. That is still worth having where the declaration is a number the
+ * page's own geometry has to agree with -- the chart's width allowance is one,
+ * and it is the only figure in the file that app.js can contradict.
+ */
+export function stylesheet() {
+  return readFileSync(join(repoRoot, "site", "style.css"), "utf8");
+}
 
 export function loadApp(opts = {}) {
   // A bare Set is the old signature and still means "the ids the page

@@ -3565,6 +3565,85 @@ function labelPlacement(d, last) {
 }
 
 /**
+ * The qualifier each mark needs to be told from the ones drawn beside it: its
+ * parent's label, on every mark whose own label another mark in the same column
+ * also carries, and nothing at all anywhere else.
+ *
+ * AN AMBIGUITY IS A PROPERTY OF THE COLUMN AND NOT OF THE NODE, which is why
+ * this is here and not in the document. fund-flows names a tier-5 cell by its
+ * object category and carries the division in `parent`. In a division's own
+ * window that is the right label -- the division is the mark to its left and
+ * the breadcrumb says it -- and in the fund window, whose fourth column draws
+ * the largest cells of eight different divisions, it draws six marks reading
+ * "Wages & Benefits". The pair does not fit on one line either way: measured by
+ * tools/jscheck/layout.mjs, "Fire Administration — Services & Supplies" wants
+ * 348px of a gutter that is 250px wide, so the qualifier is a line of its own
+ * and is spent only where a reader could not otherwise tell two marks apart.
+ *
+ * THE PARENT IS LOOKED UP IN THE DOCUMENT, NOT IN THE LAID GRAPH. A window
+ * draws the tiers its step declares, so a mark's parent is routinely not on
+ * screen -- and the qualifier is the word for where the mark came from, which
+ * is a fact about the document rather than about what is drawn.
+ *
+ * A DUPLICATE WHOSE PARENT IS UNNAMEABLE GETS "" AND STAYS AMBIGUOUS. There is
+ * no such mark on the committed corpus; the label check names one if it appears
+ * rather than this inventing a word for it.
+ *
+ * @param {LaidNode[]} nodes
+ * @returns {Map<string, string>}
+ */
+function labelQualifiers(nodes) {
+  /** @type {Map<string, LaidNode[]>} */
+  const sharing = new Map();
+  for (const n of nodes) {
+    const key = columnOf(n) + "\u0000" + n.label;
+    const seen = sharing.get(key);
+    if (seen) seen.push(n);
+    else sharing.set(key, [n]);
+  }
+  /** @type {Map<string, string>} */
+  const out = new Map();
+  for (const shared of sharing.values()) {
+    if (shared.length < 2) continue;
+    for (const n of shared) {
+      const parent = projection
+        ? projection.nodes.find((p) => p.id === n.parent)
+        : null;
+      out.set(n.id, parent ? parent.label : "");
+    }
+  }
+  return out;
+}
+
+/**
+ * The dy each of a qualified label's two lines is drawn at, relative to the
+ * line before it.
+ *
+ * THE QUALIFIER GOES ABOVE THE LABEL IN BOTH PLACEMENTS, and the two differ in
+ * what that costs. An outward label is anchored on its rect's middle, so the
+ * pair straddles the middle and the block stays centred on the mark it names.
+ * An interior one is already sitting in the NODE_PADDING gap above its rect,
+ * with nowhere below to go, so the qualifier is lifted a whole line further and
+ * the label line does not move.
+ *
+ * THE INTERIOR BRANCH IS REASONED AND NOT MEASURED. No column but the last
+ * repeats a label on the committed corpus -- measured over all six goldens, the
+ * only duplicates anywhere are fund-flows' 44 tier-5 cells, and tier 5 is drawn
+ * last in every window that reaches it -- so nothing draws this branch and no
+ * check can see it. fisc-xhqt carries the measurement and what would retire it;
+ * the vertical arm in tools/jscheck/layout.mjs is what would name an interior
+ * pair if a real document ever drew one.
+ *
+ * @param {string} anchor
+ * @returns {{qualifier: string, label: string}}
+ */
+function labelLineShift(anchor) {
+  return anchor === "middle"
+    ? { qualifier: "-1.15em", label: "1.15em" }
+    : { qualifier: "-0.6em", label: "1.15em" };
+}
+
+/**
  * Draws a laid-out graph. Pass the result of layOut(); omitted, it lays the
  * current projection out itself, which is the non-atomic path and is only for
  * a caller that has nothing else on the page to keep consistent.
@@ -3693,6 +3772,9 @@ function render(laid) {
   // contrast check requires, and it is why the chart still reads for someone
   // who cannot separate two of the hues.
   const lastColumn = Math.max(...graph.nodes.map(columnOf));
+  const qualified = labelQualifiers(graph.nodes);
+  /** @param {LaidNode} d */
+  const qualifierOf = (d) => qualified.get(d.id) || "";
   const label = node.append("text")
     .attr("class", "halo")
     .attr("y", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).y)
@@ -3700,7 +3782,27 @@ function render(laid) {
     .attr("x", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).x)
     .attr("text-anchor", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).anchor);
 
-  label.append("tspan").text(/** @param {LaidNode} d */ (d) => d.label);
+  // AN UNQUALIFIED LABEL DRAWS EXACTLY WHAT IT DREW BEFORE. The qualifier tspan
+  // is empty on those marks and carries neither an x nor a dy, so it starts no
+  // line and shifts nothing; only a mark a reader could confuse with another
+  // pays the second line.
+  label.append("tspan")
+    .attr("class", "qualifier")
+    .attr("x", /** @param {LaidNode} d */ (d) =>
+      (qualifierOf(d) ? labelPlacement(d, lastColumn).x : null))
+    .attr("dy", /** @param {LaidNode} d */ (d) =>
+      (qualifierOf(d)
+        ? labelLineShift(labelPlacement(d, lastColumn).anchor).qualifier
+        : null))
+    .text(/** @param {LaidNode} d */ (d) => qualifierOf(d));
+  label.append("tspan")
+    .attr("x", /** @param {LaidNode} d */ (d) =>
+      (qualifierOf(d) ? labelPlacement(d, lastColumn).x : null))
+    .attr("dy", /** @param {LaidNode} d */ (d) =>
+      (qualifierOf(d)
+        ? labelLineShift(labelPlacement(d, lastColumn).anchor).label
+        : null))
+    .text(/** @param {LaidNode} d */ (d) => d.label);
   label.append("tspan")
     .attr("class", "value")
     .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(markCents(d)));

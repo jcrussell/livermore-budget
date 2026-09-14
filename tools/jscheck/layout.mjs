@@ -24,7 +24,7 @@
 // chart a reader sees. Pre-restack figures appear only where a check is about
 // what restackLinks itself does.
 
-import { loadApp, goldenGraph, spineConfig } from "./harness.mjs";
+import { loadApp, goldenGraph, spineConfig, stylesheet } from "./harness.mjs";
 import { openedWindow, openedWide } from "./drill.mjs";
 
 /**
@@ -205,9 +205,39 @@ const VALUE_PX = 11;
  * tspan is counted, because a derived node's label is three characters longer
  * than its neighbours' and that is exactly the case a fit check is about.
  */
-function labelWidth(app, d) {
+function labelWidth(app, d, qualifier) {
   const value = "  " + app.fmtShortSigned(app.markCents(d)) + (d.derived ? "  \u25c7" : "");
-  return d.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM;
+  const label = d.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM;
+  // THE WIDEST LINE IS THE BOX, not the sum. A qualified mark draws its
+  // parent's name on a line of its own above the label, so the two do not add
+  // up -- which is the whole reason the qualifier is a second line and not a
+  // longer first one: the pair on one line wants 348px of a 250px gutter.
+  return Math.max(label, (qualifier || "").length * LABEL_PX * ADVANCE_EM);
+}
+
+// THE INK ONE LINE CLAIMS ABOVE AND BELOW ITS BASELINE, over-estimated on
+// purpose the way ADVANCE_EM is: they sum to the full 12px font size, where a
+// real face's cap height and descender leave some of it unused. So a gap this
+// file calls clear is clear everywhere, and the direction it can be wrong in is
+// refusing a pair of labels that would have missed each other.
+const ASCENT_PX = 9;
+const DESCENT_PX = 3;
+
+/**
+ * The vertical run one mark's label draws over: one line where the mark needs
+ * no qualifier, and the qualifier's line plus the label's where it does.
+ *
+ * THE SHIFTS COME OFF THE PAGE. labelLineShift is what render() hands the two
+ * tspans, so this measures where the lines are drawn rather than where this
+ * file would have put them.
+ */
+function labelBlock(app, place, qualifier) {
+  const em = (v) => (v ? parseFloat(v) * LABEL_PX : 0);
+  const first = place.y + em(place.dy);
+  if (!qualifier) return { top: first - ASCENT_PX, bottom: first + DESCENT_PX };
+  const shift = app.labelLineShift(place.anchor);
+  const top = first + em(shift.qualifier);
+  return { top: top - ASCENT_PX, bottom: top + em(shift.label) + DESCENT_PX };
 }
 
 /** The x-range a label of this width occupies, anchored this way at this x. */
@@ -256,15 +286,85 @@ function roomFor(app, columns, col) {
 function labelFit(app, graph) {
   const columns = columnsOf(app, graph);
   const last = Math.max(...columns.keys());
+  // THE WORDS THE PAGE WOULD DRAW, from the page's own rule. A fit measured
+  // from d.label alone measures the document; what a reader sees is the
+  // document plus whatever labelQualifiers adds to tell two marks apart.
+  const qualifiers = app.labelQualifiers(graph.nodes);
   return graph.nodes.map((n) => {
     const place = app.labelPlacement(n, last);
-    const width = labelWidth(app, n);
+    const qualifier = qualifiers.get(n.id) || "";
+    const width = labelWidth(app, n, qualifier);
     const box = boxAt(place.anchor, place.x, width);
     const col = app.columnOf(n);
     const room = roomFor(app, columns, col);
-    return { node: n, id: n.id, col, last, place, width, box, room,
+    return { node: n, id: n.id, col, last, place, width, box, room, qualifier,
+             words: (qualifier ? qualifier + " / " : "") + n.label,
+             block: labelBlock(app, place, qualifier),
              clearance: Math.min(box.left - room.from, room.to - box.right) };
   });
+}
+
+/**
+ * Every pair of marks a reader would see the same words on: same column, same
+ * drawn label, qualifier and all.
+ *
+ * THE DEFECT STATED AS A PROPERTY. fund-flows labels a tier-5 cell by its object
+ * category and carries the division in `parent`, so the fund window's fourth
+ * column drew six marks reading "Wages & Benefits" and a reader could tell them
+ * apart only by following a ribbon back (fisc-og1n). Two marks a reader cannot
+ * tell apart is the thing, at any tier and in any window, so this asks it of
+ * the words rather than of the tier.
+ */
+function sameWords(fits) {
+  const seen = new Map();
+  for (const f of fits) {
+    const key = f.col + "\u0000" + f.words;
+    seen.set(key, (seen.get(key) || []).concat([f.id]));
+  }
+  return [...seen.entries()]
+    .filter((e) => e[1].length > 1)
+    .map((e) => `column ${e[0].split("\u0000")[0]} draws ${e[1].length} marks ` +
+                `reading "${e[0].split("\u0000")[1]}" (${e[1].join(", ")})`);
+}
+
+/** The tightest vertical gap between two label blocks of one column. */
+function tightestStack(fits) {
+  let worst = null;
+  const columns = new Set(fits.map((f) => f.col));
+  for (const col of columns) {
+    const stacked = fits.filter((f) => f.col === col).sort((a, b) => a.block.top - b.block.top);
+    for (let i = 1; i < stacked.length; i++) {
+      const gap = stacked[i].block.top - stacked[i - 1].block.bottom;
+      if (!worst || gap < worst.gap) {
+        worst = { gap, col, above: stacked[i - 1].id, below: stacked[i].id };
+      }
+    }
+  }
+  return worst;
+}
+
+/**
+ * The widest the stylesheet lets the chart figure draw, in px.
+ *
+ * A DECLARATION, NOT A RENDERING, and the comment on TestTheStylesheetHasOneTextMeasure
+ * is the same warning: nothing here parses CSS, so this reads .chart-wrap's
+ * allowance as text and can say only what style.css says. What that is worth is
+ * that the number has to agree with one app.js computes -- the width a window of
+ * four columns is laid out at -- and the two live in files nothing else compares.
+ *
+ * IT PINS THE SHAPE OF THE DECLARATION AND NOT ONLY ITS NUMBER. An equivalent
+ * rule written with clamp() would go red here; that is the cost of reading a
+ * stylesheet with a regex, and the direction it fails in is the safe one.
+ */
+function chartAllowance(css) {
+  const rule = /\.chart-wrap\s*\{([^}]*)\}/.exec(css);
+  if (!rule) return { px: null, why: "style.css declares no .chart-wrap rule" };
+  const room = /--chart-room:\s*min\(\s*(\d+)px/.exec(rule[1]);
+  if (!room) return { px: null, why: `.chart-wrap declares no --chart-room cap: ${rule[1].trim()}` };
+  if (!/(^|[\s;])width:\s*var\(--chart-room\)/.test(rule[1])) {
+    return { px: null, why: ".chart-wrap caps --chart-room but does not take its width from it" };
+  }
+  return { px: Number(room[1]), why: "" };
 }
 
 /**
@@ -464,6 +564,16 @@ async function wideChecks(app) {
     threw = String((e && e.message) || e);
   }
   const fits = labelFit(wide, laid);
+  // AND THE WINDOW ONE RUNG FURTHER IN, which is where the other half of the
+  // labelling decision is measured: a division's own window draws that
+  // division's two cells side by side, so labelling a cell by its division --
+  // the short label that would have fitted the fourth column -- draws "Patrol"
+  // twice. Both windows have to come out unambiguous or neither rule is right.
+  const inner = await openedWide(4, WIDE_PATH.concat([DIVISION_WINDOW]));
+  const innerFits = labelFit(inner, inner.layOut(inner.projection));
+  const ambiguous = sameWords(fits).concat(sameWords(innerFits));
+  const stack = tightestStack(fits);
+  const allowance = chartAllowance(stylesheet());
   return [
     {
       // THE GUTTER DECISION, MEASURED. LABEL_GUTTER does not grow with the
@@ -505,6 +615,54 @@ async function wideChecks(app) {
         `run between columns (want ${app.LABEL_GUTTER}px, ` +
         `${WIDE_GEOMETRY.width - app.LABEL_GUTTER}px and ${app.BAND}px)`,
     },
+    {
+      // THE DEFECT AS A PROPERTY OF WHAT IS DRAWN. Not "tier 5 carries its
+      // division": that is one fix's shape, and two of them were refused by
+      // measurement before this one was written. What a reader needs is that no
+      // two marks standing in one column say the same thing, which is asked of
+      // the words here and is false under either of the two labels the document
+      // could have carried on its own.
+      name: "no column of the fund window or of a division's own draws two marks a reader would read the same",
+      ok: ambiguous.length === 0 && fits.length > 0 && innerFits.length > 0,
+      detail: ambiguous.length === 0
+        ? `${fits.length} marks over ${new Set(fits.map((f) => f.col)).size} columns and ` +
+          `${innerFits.length} over ${new Set(innerFits.map((f) => f.col)).size}, ` +
+          `${fits.filter((f) => f.qualifier).length + innerFits.filter((f) => f.qualifier).length} ` +
+          `of them qualified, and every one reads differently from its neighbours`
+        : ambiguous.join("; "),
+    },
+    {
+      // WHAT THE SECOND LINE COSTS, AND IT IS PAID IN THE ONE DIRECTION THE
+      // GUTTER CANNOT HELP WITH. A qualified label is two lines tall where its
+      // neighbours are one, and the fourth column stacks nine of them; the
+      // check is that the block still misses the block below it. MEASURED, and
+      // the figure is the argument for the shape: the tightest pair here clears
+      // by more than the tightest pair of SINGLE-line labels in the same
+      // window's third column, so the qualifier costs a reader nothing the
+      // chart was not already spending.
+      name: "a qualifier's second line still clears the label stacked below it",
+      ok: Boolean(stack) && stack.gap >= 0,
+      detail: stack
+        ? `tightest stack in the four-column window is column ${stack.col}, ` +
+          `${stack.above} over ${stack.below}, clearing ${px(stack.gap)}`
+        : "the window stacked no two labels in one column, so nothing here measured a gap",
+    },
+    {
+      // THE CONTAINER AGAINST THE DRAWING, which is the pair nothing else in
+      // the tree compares. The chart is an <svg> with a viewBox, so a container
+      // narrower than the width app.js lays the chart out at does not clip it
+      // and does not reflow it -- it draws the same picture smaller, and a
+      // reader who asks for a fourth column gets a fifth less chart (fisc-5e2b).
+      name: "the stylesheet lets a four-column chart draw at the width app.js lays it out at",
+      ok: allowance.px !== null && allowance.px >= app.chartWidth(4),
+      detail: allowance.px === null
+        ? allowance.why
+        : `style.css allows the chart ${allowance.px}px and app.js lays four columns ` +
+          `out at ${app.chartWidth(4)}px` +
+          (allowance.px >= app.chartWidth(4)
+            ? ""
+            : `, so it draws at ${Math.round((allowance.px / app.chartWidth(4)) * 100)}% of that`),
+    },
   ];
 }
 
@@ -540,6 +698,12 @@ const MIDDLE_OUTWARD = { crowded: 4, of: 6 };
 // divisions | those divisions into the object cells the tier-5 cap leaves],
 // measured over the committed FY 2025-26 capture.
 const WIDE_PATH = ["fund-group/general", "fund/100"];
+
+// And the division opened out of it, which is the window where the SHORT label
+// is the right one: Patrol's two cells, with Patrol beside them and in the
+// breadcrumb. Patrol because it is the largest division of the fund window's
+// fourth column and draws both of its cells.
+const DIVISION_WINDOW = "dept/patrol";
 const WIDE_BANDS = { keys: "0:1 1:2 2:3", sizes: "1/23/30" };
 
 // What four columns are laid out at. PINNED BOTH WAYS: chartWidth(3) is 1180

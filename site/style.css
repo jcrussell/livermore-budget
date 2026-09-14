@@ -59,8 +59,9 @@
   /* ONE MEASURE FOR PROSE, and it is a token because it was three numbers.
      .lede carried 68ch, .caveat carried 46em, and everything else -- list
      items, the footer, provenance's rows -- inherited main's 1180px, which is
-     the width the CHART needs. Three measures applied by hand is what a reader
-     sees as lines of three different lengths on one page.
+     the width of the page's widest non-prose element rather than of a line of
+     text. Three measures applied by hand is what a reader sees as lines of
+     three different lengths on one page.
 
      DECLARED ONCE, IN :root ONLY. The dark blocks below redeclare colour
      tokens on purpose; a second --measure there would be a second answer to a
@@ -555,8 +556,31 @@ button[aria-pressed="true"] {
   border: 1.5px solid var(--muted);
 }
 
+/* THE CHART IS NOT PROSE AND WILL NOT TAKE THE PROSE CONTAINER'S WIDTH. main is
+   1180px because that is what the page's text, tiles and tables sit in, and the
+   chart is the one element on it whose width is a measurement: app.js lays a
+   window of four columns out at chartWidth(4), and an <svg> with a viewBox
+   inside a 1180px box draws that whole picture at 78% -- every label a fifth
+   smaller on the wide viewport that was the reason to draw a fourth column.
+   Asking for more columns and getting less chart is the defect (fisc-5e2b).
+
+   SO THE FIGURE BREAKS OUT OF THE MEASURE AND NOTHING ELSE DOES. The 50% is
+   half of main, so the negative margin centres a box wider than its container
+   on that container; where the viewport is too narrow to want one, the min()
+   collapses the width to the room there is and the margin with it to zero, so
+   the small-viewport rules below meet a .chart-wrap the same width as the
+   prose.
+
+   1513px IS chartWidth(4) AND IS PINNED, NOT COPIED: tools/jscheck/layout.mjs
+   reads this declaration and app.js's own chartWidth, and goes red if the
+   allowance is ever less than the width the page lays a four-column window out
+   at. The 56px is the 40px of body padding plus a 16px cushion for a classic
+   scrollbar, which 100vw counts and the reader's window does not. */
 .chart-wrap {
   position: relative;
+  --chart-room: min(1513px, calc(100vw - 56px));
+  width: var(--chart-room);
+  margin-inline: calc(50% - var(--chart-room) / 2);
 }
 
 svg.sankey {
@@ -590,6 +614,15 @@ svg.sankey tspan.value {
 }
 
 svg.sankey tspan.flag {
+  fill: var(--muted);
+}
+
+/* WHERE A MARK CAME FROM, not a second name for it. The qualifier is the line
+   labelQualifiers gives a mark whose label another mark in the same column also
+   carries -- "Patrol" above "Wages & Benefits" -- and it is drawn muted at the
+   label's own size: subordinate to the words it disambiguates, and still the
+   size the label fit was measured at. */
+svg.sankey tspan.qualifier {
   fill: var(--muted);
 }
 
@@ -1003,13 +1036,13 @@ details > summary {
 /* ---------- the measure ---------- */
 
 /* THE PROSE THAT HAD NO MEASURE. Everything below inherited main's 1180px,
-   which is the width the CHART needs -- app.js lays every diagram out at
-   1180x820 -- and is roughly twice a comfortable line for reading.
+   which is roughly twice a comfortable line for reading.
 
    WHAT IS DELIBERATELY NOT HERE, because these are figures rather than prose
    and clamping them would be the defect this rule is meant to fix: main and
    .page-head keep 1180px, .figures keeps its auto-fit grid, and .card,
-   .chart-wrap, .table-scroll and table keep the full container. A chart or a
+   .table-scroll and table keep the full container -- .chart-wrap takes MORE
+   than the container, for the reason written on its own rule. A chart or a
    seven-column table narrowed to a reading measure is unreadable in a
    different way.
 
