@@ -684,6 +684,7 @@ func views(built result) []export.View {
 				// of 0.12px and 0.05px; capped it draws 19 ribbons and none of
 				// them is sub-pixel, in either column.
 				Caps: []export.TierCap{{Tier: 3, Cap: 8}},
+				Noun: "fund group",
 				Back: "All fund groups",
 				Tail: "funds",
 				// THE RESIDUAL IS THE CHECK'S DECLARATION, READ, NOT COPIED.
@@ -798,6 +799,7 @@ func views(built result) []export.View {
 				// divisions: the tail read "36 smaller divisions" over a column
 				// of object-category cells before this Tail was declared.
 				Caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "categories"}},
+				Noun: "fund",
 				Back: "All funds",
 				Tail: "divisions",
 				// WHAT THIS CENTRE DOES NOT CLAIM, said in the chart's own
@@ -829,6 +831,7 @@ func views(built result) []export.View {
 				Keep:  []int{3},
 				Tiers: []int{3, 4, 5},
 				Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
+				Noun:  "division",
 				Back:  "All divisions",
 				Tail:  "categories",
 				Description: "The fund that pays for this division is on the left and the " +
@@ -870,6 +873,7 @@ func views(built result) []export.View {
 				// five of the six. With one cap left there is nothing for a
 				// second noun to count, so Tail is not respelled here.
 				Caps: []export.TierCap{{Tier: 1, Cap: 8}},
+				Noun: "revenue category",
 				Back: "All revenue categories",
 				Tail: "lines",
 				Description: "The lines Budget Book pp.127-140 print under this revenue " +
@@ -930,6 +934,7 @@ func views(built result) []export.View {
 				Keep:            []int{2},
 				Tiers:           []int{2, 5, 4},
 				Caps:            []export.TierCap{{Tier: 4, Cap: 8}},
+				Noun:            "object category",
 				Back:            "All object categories",
 				Tail:            "divisions",
 				Gaps:            check.SpendingGaps(),
@@ -991,6 +996,7 @@ func views(built result) []export.View {
 				Projection:      years[export.PrimaryProjection],
 				YearProjections: years,
 				Tiers:           []int{2, 3},
+				Noun:            "money coming in",
 				Back:            "All money coming in",
 				Tail:            "funds",
 				Description: "Budget Book p76, Summary of Transfers: the funds that pay each " +
@@ -1069,6 +1075,7 @@ func views(built result) []export.View {
 				// the General Fund's opens into, one document over.
 				Keep:  []int{2},
 				Tiers: []int{2, 3, 4},
+				Noun:  "fund",
 				Back:  "All funds",
 				Tail:  "departments",
 				// THE DIFFERENCE IS NAMED IN BOTH DIRECTIONS, and the first

@@ -2155,7 +2155,7 @@ function restoreFocus(hadFocus) {
 function paintChartName() {
   // EVERY RUNG, OUTERMOST FIRST, so a reader two deep hears the whole path:
   // "opened into General Fund, then Patrol". One rung reads as it always did.
-  const trail = drilled.map((_, k) => labelOfRung(k)).join(", then ");
+  const trail = trailOfRungs().join(", then ");
   const title = maybeEl("chart-title");
   if (title && shownYear && shownYear.chart_title) {
     title.textContent = drilled.length
@@ -2475,6 +2475,36 @@ function labelOfRung(k) {
   const doc = docAt(k);
   const n = doc ? doc.nodes.find((x) => x.id === rung.id) : null;
   return n ? n.label : rung.id;
+}
+
+/**
+ * The rungs' names, outermost first, with any two that read alike told apart.
+ *
+ * THE COLLISION IS THE CITY'S AND NOT THIS PAGE'S. Budget Book p66 prints
+ * "General Fund" as a fund-group column header and p255 prints it as fund 100's
+ * name, so a reader two rungs into that group is told "opened into General
+ * Fund, then General Fund" and nothing says which is which. Neither label can
+ * be changed: both are the words the city printed over the box, and this
+ * projection's rule is that pp.66-67's words win.
+ *
+ * SO THE TRAIL IS WHERE IT IS RESOLVED, and with the step's declared noun --
+ * `tier === 2 ? "fund group" : "fund"` is the construct paintBreadcrumb's
+ * comment refuses, one function further out. EVERY member of a colliding set is
+ * qualified rather than all but the last: "General Fund (fund group), then
+ * General Fund" leaves the second one still asking which General Fund it is.
+ *
+ * A rung whose step declares no noun is drawn unqualified. The packager refuses
+ * one (validateSteps), and inventing a word here to cover a config that got
+ * past it would be this file naming the tiers after all.
+ * @returns {string[]}
+ */
+function trailOfRungs() {
+  const words = drilled.map((_, k) => labelOfRung(k));
+  return words.map((w, k) => {
+    if (!words.some((other, j) => j !== k && other === w)) return w;
+    const noun = drilled[k].step && drilled[k].step.noun;
+    return noun ? w + " (" + noun + ")" : w;
+  });
 }
 
 /**

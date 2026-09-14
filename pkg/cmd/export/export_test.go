@@ -1234,6 +1234,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Keep:            []int{0},
 			Tiers:           []int{0, 2, 3},
 			Caps:            []export.TierCap{{Tier: 3, Cap: 8}},
+			Noun:            "fund group",
 			Back:            "All fund groups",
 			Tail:            "funds",
 			// READ OFF THE CHECK, NOT SPELLED, because the check is the
@@ -1262,6 +1263,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Tiers: []int{2, 3, 4, 5},
 			Widen: []int{5},
 			Caps:  []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "categories"}},
+			Noun:  "fund",
 			Back:  "All funds",
 			Tail:  "divisions",
 			Description: "The fund group this fund belongs to is on the left and the " +
@@ -1280,6 +1282,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Keep:  []int{3},
 			Tiers: []int{3, 4, 5},
 			Caps:  []export.TierCap{{Tier: 5, Cap: 8}},
+			Noun:  "division",
 			Back:  "All divisions",
 			Tail:  "categories",
 			Description: "The fund that pays for this division is on the left and the " +
@@ -1296,6 +1299,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Keep:            []int{2},
 			Tiers:           []int{1, 0, 2},
 			Caps:            []export.TierCap{{Tier: 1, Cap: 8}},
+			Noun:            "revenue category",
 			Back:            "All revenue categories",
 			Tail:            "lines",
 			Description: "The lines Budget Book pp.127-140 print under this revenue " +
@@ -1316,6 +1320,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Keep:            []int{2},
 			Tiers:           []int{2, 5, 4},
 			Caps:            []export.TierCap{{Tier: 4, Cap: 8}},
+			Noun:            "object category",
 			Back:            "All object categories",
 			Tail:            "divisions",
 			// READ OFF THE CHECK FOR check.ResidualNodes' REASON, one field
@@ -1346,6 +1351,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Projection:      project.TransfersByFundProjection,
 			YearProjections: map[string]string{"sankey": "transfers-by-fund", "sankey-2027": "transfers-by-fund-2027"},
 			Tiers:           []int{2, 3},
+			Noun:            "money coming in",
 			Back:            "All money coming in",
 			Tail:            "funds",
 			Description: "Budget Book p76, Summary of Transfers: the funds that pay each " +
@@ -1378,6 +1384,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			YearProjections: map[string]string{"sankey": "department-funding", "sankey-2027": "department-funding-2027"},
 			Keep:            []int{2},
 			Tiers:           []int{2, 3, 4},
+			Noun:            "fund",
 			Back:            "All funds",
 			Tail:            "departments",
 			Description: "The fund group this fund belongs to is on the left and the " +

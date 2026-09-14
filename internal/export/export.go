@@ -622,6 +622,24 @@ type DrillStep struct {
 	// drilling into a third tier would have been given "categories" and nothing
 	// would have said so.
 	Tail string `json:"tail"`
+	// Noun is the singular noun for a node opened on this step -- "fund group",
+	// "division" -- which the client spends only to tell two rungs of one trail
+	// apart when the documents print them in the same words.
+	//
+	// REQUIRED, THOUGH MOST TRAILS NEVER DRAW IT. The collision is the city's
+	// rather than this site's: Budget Book p66 prints "General Fund" as a
+	// fund-group column header and p255 prints it as fund 100's name, so a reader
+	// two rungs in is told "opened into General Fund, then General Fund" with
+	// nothing saying which is which. Neither label may be changed without
+	// inventing words for a box the city named, so the trail is where it is
+	// resolved.
+	//
+	// DECLARED FOR Back's AND Tail's REASON: a tier number does not know what the
+	// reader calls the things in it, and singularising Back is that same
+	// inference with a harder grammar. Optional would be worse than absent -- a
+	// step shipping none would compose an unqualified duplicate in silence, on
+	// the first document whose words happen to collide.
+	Noun string `json:"noun"`
 	// Description is the chart's long description once a node has opened on
 	// this step: what the columns are and what the marks mean, in the caller's
 	// words, like [View.ChartDescription] is for a chart's opening state. The
@@ -1225,6 +1243,10 @@ func (v View) validateSteps(built map[string][]byte) error {
 			return fmt.Errorf(
 				"view %q declares step %d with no back label, so the breadcrumb out of an "+
 					"opened node would be a button with no words in it", v.Path, i)
+		case s.Noun == "":
+			return fmt.Errorf(
+				"view %q declares step %d with no noun, so two rungs of one trail drawing "+
+					"the same words could not be told apart", v.Path, i)
 		case s.Description == "":
 			return fmt.Errorf(
 				"view %q declares step %d with no description, so a reader who cannot see "+

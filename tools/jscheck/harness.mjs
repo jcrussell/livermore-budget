@@ -431,6 +431,10 @@ const NAMES = [
   // while the committed corpus ties, and isGap is what tells it from a residual.
   "markGap", "gapID", "isGap",
   "loadDocument", "labelOfRung", "openableColumns", "joinOr", "linkClass", "markContra",
+  // THE TRAIL, NOT ONLY ONE RUNG'S WORDS. labelOfRung answers for a rung alone
+  // and cannot see a sibling it reads the same as, so the qualifying rule is
+  // its own function and is reached here rather than re-spelled.
+  "trailOfRungs",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
   // THE LABEL RULE AND THE WORDS IT PLACES. layout.mjs measures whether a label
   // has room where it was anchored, which needs the rule, the column it keys on

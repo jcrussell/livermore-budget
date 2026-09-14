@@ -110,15 +110,15 @@ const PAGE = {
   // alone. stepFor resolves all seven by key, tier and role rather than by
   // depth, which is what a tree needs and a path cannot express.
   steps: [
-    stepAs(0, { projection: "fund-flows", back: "All fund groups", tail: "funds",
+    stepAs(0, { projection: "fund-flows", back: "All fund groups", tail: "funds", noun: "fund group",
       residual: residualDeclaration() }),
-    stepAs(1, { back: "All funds", tail: "divisions" }),
-    stepAs(2, { back: "All divisions", tail: "categories" }),
-    stepAs(3, { projection: "fund-flows", back: "All revenue categories", tail: "lines" }),
+    stepAs(1, { back: "All funds", tail: "divisions", noun: "fund" }),
+    stepAs(2, { back: "All divisions", tail: "categories", noun: "division" }),
+    stepAs(3, { projection: "fund-flows", back: "All revenue categories", tail: "lines", noun: "revenue category" }),
     // THE LAST STEP OPENS THE SPINE'S RIGHT-HAND COLUMN, and its gap set is
     // read off internal/check the way the fund-group step's residual is: one
     // declaration, two readers, and no third spelling to drift.
-    stepAs(4, { projection: "department-spending", back: "All object categories",
+    stepAs(4, { projection: "department-spending", back: "All object categories", noun: "object category",
       tail: "divisions", gaps: spendingGapDeclaration() }),
     // THE SIXTH STEP IS THE ONLY ONE THAT KEEPS NO FLANK, and stepAs is what
     // makes that visible here rather than declared twice: data.go omits Keep,
@@ -126,7 +126,7 @@ const PAGE = {
     // copies none -- which is what the wire does, `keep` carrying omitempty.
     // It is also the only one carrying a `side`, and the only step on the site
     // that opens the end its links come FROM.
-    stepAs(5, { projection: "transfers-by-fund", back: "All money coming in",
+    stepAs(5, { projection: "transfers-by-fund", back: "All money coming in", noun: "money coming in",
       tail: "funds" }),
     // THE SEVENTH STEP IS THE SECOND EDGE OUT OF THE FUND GROUP'S WINDOW, and
     // the only place on the site where two steps open ONE tier of ONE chart.
@@ -134,7 +134,7 @@ const PAGE = {
     // is the declaration the packager ships rather than a spelling here:
     // `general_fund` opens fund/100 into pp.167-170's divisions and `fund`
     // opens the other sixty into pp.85-125's departments.
-    stepAs(6, { projection: "department-funding", back: "All funds",
+    stepAs(6, { projection: "department-funding", back: "All funds", noun: "fund",
       tail: "departments" }),
   ],
   // Measured: the spine's 58 links over 25 nodes cite 58 of its 120 facts;
@@ -710,7 +710,7 @@ const DOCS = {
  * and the hint name the node the reader clicked in the words of the chart
  * they clicked it on -- the spine's -- and not the step document's.
  */
-async function opened(plan, tweak, column = COLUMNS[0], extra) {
+async function opened(plan, tweak, column = COLUMNS[0], extra, shippedWords = false) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   config.projections["fund-flows-2027"] = "data/fund-flows-2027.json";
@@ -734,6 +734,13 @@ async function opened(plan, tweak, column = COLUMNS[0], extra) {
   if (tweak) tweak(config);
   const spineOf = (/** @type {() => any} */ load) => {
     const spine = load();
+    // THE SHIPPED WORDS, FOR THE ONE ARM THAT NEEDS THE COLLISION ITSELF. The
+    // three relabels below exist to tell a spine node from the step document's
+    // copy of the same id, and they also hide the duplication the site really
+    // draws -- fund-group/general and fund/100 are both "General Fund" in the
+    // committed goldens. An arm measuring what trailOfRungs does about that
+    // cannot run against words chosen so it never happens.
+    if (shippedWords) return spine;
     spine.nodes.find((n) => n.id === "fund-group/general").label = "General Fund group";
     // THE SAME FOR THE CATEGORY, for the same reason: both documents print
     // "Property Taxes" for revenue/taxes/property, and the rung, the title and
@@ -969,6 +976,21 @@ export async function openedChain(path, extra) {
   const { app, fetch, main } = await opened(null, null, COLUMNS[0], extra);
   for (const id of path) await mustOpen(app, id);
   return { app, fetch, main };
+}
+
+/**
+ * A chain opened over the documents' own words, with no fixture relabelling.
+ *
+ * EVERY OTHER BUILDER HERE RENAMES THREE SPINE NODES so an arm can tell which
+ * document a label was read from. That is the right fixture for those arms and
+ * the wrong one for a trail: it removes the collision the shipped site has.
+ * @param {string[]} path the nodes to open, outermost first
+ * @param {object} [column]
+ */
+export async function openedAsShipped(path, column = COLUMNS[0]) {
+  const { app } = await opened(null, null, column, undefined, true);
+  for (const id of path) await mustOpen(app, id);
+  return app;
 }
 
 /**
@@ -4770,6 +4792,42 @@ async function walkChain(col) {
       `${JSON.stringify(col.capitalShut)}), which pp.85-125 print no funding row for; ` +
       `hint "${capital.hint}"`,
   });
+
+  // THE TRAIL OVER THE DOCUMENTS' OWN WORDS, which is the only fixture this
+  // question can be asked on: every other builder here relabels the spine's
+  // fund-group/general, and that relabelling is what removes the collision.
+  const shipped = await openedAsShipped(["fund-group/general", "fund/100"], col);
+  const shippedWords = words(shipped);
+  const rungWords = shipped.trailOfRungs();
+  const groupNoun = stepByKey("fund-group").noun;
+  const fundNoun = stepByKey("fund").noun;
+  out.push({
+    name: `${col.label}: no two rungs of one trail draw the same words, over the labels the site ships`,
+    // BOTH LABELS ARE THE CITY'S. Budget Book p66 prints "General Fund" over a
+    // fund-group column and p255 prints it as fund 100's name, so the trail is
+    // the only place the two can be told apart -- and EVERY member of the
+    // colliding set is qualified, because leaving the last one plain leaves it
+    // still asking which General Fund it is.
+    ok: rungWords.length === 2 &&
+        new Set(rungWords).size === rungWords.length &&
+        rungWords[0] === `General Fund (${groupNoun})` &&
+        rungWords[1] === `General Fund (${fundNoun})` &&
+        shippedWords.title.endsWith(
+          `, opened into General Fund (${groupNoun}), then General Fund (${fundNoun})`) &&
+        shippedWords.desc.startsWith(
+          `Opened into General Fund (${groupNoun}), then General Fund (${fundNoun}). `),
+    detail: `the shipped goldens label fund-group/general and fund/100 alike, and the trail ` +
+      `reads ${JSON.stringify(rungWords)}; title "${shippedWords.title}"`,
+  });
+  out.push({
+    name: `${col.label}: every declared step names the noun a rung of its own is qualified with`,
+    // A CLIENT CANNOT INVENT ONE. trailOfRungs draws a rung whose step declares
+    // no noun unqualified rather than naming the tier, so an undeclared noun
+    // puts the duplication back with nothing on the page saying so.
+    ok: PAGE.steps.every((st) => typeof st.noun === "string" && st.noun !== ""),
+    detail: PAGE.steps.map((st) => `${st.key}=${JSON.stringify(st.noun)}`).join(", "),
+  });
+
   return out;
 }
 

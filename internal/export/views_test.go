@@ -253,7 +253,7 @@ func chartView(breaks func(*export.View)) export.View {
 		RenderTiers: []int{0, 2}, ChartSubject: "by something",
 		ChartDescription: "A description.",
 		Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
-			Tiers: []int{0, 3}, Back: "All groups",
+			Tiers: []int{0, 3}, Back: "All groups", Noun: "thing",
 			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: "Opened."}},
 	}
 	breaks(&v)
@@ -268,7 +268,7 @@ func chainView(breaks func(*export.View)) export.View {
 	return chartView(func(v *export.View) {
 		v.Steps = append(v.Steps, export.DrillStep{Key: "funds", After: []string{"groups"},
 			From: 3, Tiers: []int{3, 4},
-			Back: "All funds", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}},
+			Back: "All funds", Noun: "thing", Tail: "divisions", Caps: []export.TierCap{{Tier: 4, Cap: 8}},
 			Description: "Opened again."})
 		breaks(v)
 	})
@@ -314,10 +314,10 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 		// signs are declarable or only one of the two arms that read the sign
 		// has ever been satisfied.
 		export.DrillStep{Key: "cats", After: []string{""}, From: 0, Keep: []int{2},
-			Tiers: []int{1, 0, 2}, Back: "All categories", Tail: "lines",
+			Tiers: []int{1, 0, 2}, Back: "All categories", Noun: "thing", Tail: "lines",
 			Description: "Opened the other way."},
 		export.DrillStep{Key: "funds", After: []string{"groups"},
-			From: 3, Tiers: []int{3, 4}, Back: "All funds", Tail: "divisions",
+			From: 3, Tiers: []int{3, 4}, Back: "All funds", Noun: "thing", Tail: "divisions",
 			Description: "Opened again."})
 	if _, err := export.Write(export.Options{
 		Dir:         dir,
@@ -454,11 +454,11 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 	steps := func(breaks func([]export.DrillStep)) []export.DrillStep {
 		s := []export.DrillStep{
 			{Key: "a", After: []string{""}, From: 2, Projection: "fund-flows",
-				Tiers: []int{0, 3, 4}, Back: "Back", Tail: "funds", Description: "One."},
+				Tiers: []int{0, 3, 4}, Back: "Back", Noun: "thing", Tail: "funds", Description: "One."},
 			{Key: "b", After: []string{""}, From: 0, Tiers: []int{0, 3},
-				Back: "Back", Tail: "lines", Description: "Two."},
+				Back: "Back", Noun: "thing", Tail: "lines", Description: "Two."},
 			{Key: "c", After: []string{"a", "b"}, From: 3, Projection: "fund-flows",
-				Tiers: []int{3, 4}, Back: "Back", Tail: "divisions", Description: "Three."},
+				Tiers: []int{3, 4}, Back: "Back", Noun: "thing", Tail: "divisions", Description: "Three."},
 		}
 		breaks(s)
 		return s
@@ -704,7 +704,7 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
 					Projection:      "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."}}},
+					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
 				Title: "Caveats", Lede: "A lede."},
 		},
@@ -895,7 +895,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "trends.html", Nav: "Revenue tables", Template: export.TrendsTemplate,
 				Projection: "sankey",
 				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
-					Tiers: []int{0, 3}, Back: "b", Tail: "t",
+					Tiers: []int{0, 3}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"the chart would isolate on a click while this view believes it opens"},
 		{"a root on a template that publishes none", []export.View{ok,
@@ -934,6 +934,13 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill with no back label", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Back = "" })},
 			"a button with no words in it"},
+		// THE NOUN A RUNG IS QUALIFIED WITH WHEN THE DOCUMENTS COLLIDE. Budget
+		// Book p66 prints "General Fund" over a fund-group column and p255
+		// prints it as fund 100's name, so a trail two rungs in draws one
+		// phrase twice and the noun is the only thing that tells them apart.
+		{"a drill with no noun", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Noun = "" })},
+			"two rungs of one trail drawing the same words"},
 		// THE OPENED CHART'S OWN WORDS, for ChartDescription's reason one
 		// rung down: without them the <desc> a screen reader hears at depth 1
 		// is the opening state's, over a chart that no longer draws it.
@@ -1009,7 +1016,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 				// the lists differ, so a comparison of them whole says nothing.
 				v.Steps = append(v.Steps, export.DrillStep{Key: "x",
 					After: []string{"funds", "groups"}, From: 3, Tiers: []int{0, 4},
-					Back: "Back", Tail: "things", Description: "Opened a third time."})
+					Back: "Back", Noun: "thing", Tail: "things", Description: "Opened a third time."})
 			})},
 			"both opening tier 3 of step \"groups\"'s chart"},
 		// A CYCLE IS UNDECLARABLE BECAUSE OF THIS ARM, so this is the arm that
@@ -1068,7 +1075,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step opening the outer tier of a two-deep flank above it", []export.View{ok,
 			deepWindowView(func(v *export.View) {
 				v.Steps = append(v.Steps, export.DrillStep{Key: "outer", After: []string{"groups"},
-					From: 1, Tiers: []int{1, 6}, Back: "All of them", Tail: "things",
+					From: 1, Tiers: []int{1, 6}, Back: "All of them", Noun: "thing", Tail: "things",
 					Description: "Opened off the outer kept column."})
 			})},
 			"which KEEPS that tier"},
@@ -1128,7 +1135,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a step opening the tier the chart above kept", []export.View{ok,
 			windowView(func(v *export.View) {
 				v.Steps = append(v.Steps, export.DrillStep{Key: "cats", After: []string{"groups"},
-					From: 0, Keep: []int{2}, Tiers: []int{1, 0, 2}, Back: "All categories",
+					From: 0, Keep: []int{2}, Tiers: []int{1, 0, 2}, Back: "All categories", Noun: "thing",
 					Tail: "lines", Description: "Opened off the kept flank."})
 			})},
 			"which KEEPS that tier"},
@@ -1160,7 +1167,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			{Path: "extra.html", Nav: "Extra", Template: export.SankeyTemplate,
 				Projection: "sankey",
 				Steps: []export.DrillStep{{Key: "g", After: []string{""}, From: 2,
-					Keep: []int{0}, Tiers: []int{0, 2, 3}, Back: "b", Tail: "t",
+					Keep: []int{0}, Tiers: []int{0, 2, 3}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"drills and declares no render tiers"},
 		// A RESIDUAL NEEDS A SECOND DOCUMENT AND A REASON. The first case
@@ -1401,7 +1408,7 @@ func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 			RenderTiers: []int{0, 2, 5},
 			Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
 				Tiers: []int{0, 2},
-				Back:  "All fund groups", Tail: "funds", Description: "One."}}}},
+				Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
 	}); err != nil {
@@ -3145,13 +3152,13 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 		{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 			Tiers: []int{0, 3, 4},
 			Caps:  []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
-			Back:  "All fund groups", Tail: "funds", Description: "Opened."},
+			Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "Opened."},
 		// A SECOND ROOT, ON THE OTHER SIDE AND IN A ROLE, so that the wire
 		// comparison below has a non-zero value of every walked field to lose.
 		{Key: "category", After: []string{""}, From: 0, Side: export.SideSource, Role: "revenue_source",
 			Projection: "fund-flows", Tiers: []int{1, 3},
 			Caps: []export.TierCap{{Tier: 1, Cap: 8}, {Tier: 3, Cap: 8, Tail: "funds"}},
-			Back: "All revenue categories", Tail: "lines", Description: "Opened a category."},
+			Back: "All revenue categories", Noun: "thing", Tail: "lines", Description: "Opened a category."},
 		// AND A CHILD, BECAUSE TWO ROOTS BOTH CARRY After [""]. A comparison of
 		// the zero value against the zero value is what this declaration is
 		// arranged to avoid, and it was reached anyway on the one field whose
@@ -3160,7 +3167,7 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 		// and the whole drill leaves the site with every gate green.
 		{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
 			Caps: []export.TierCap{{Tier: 5, Cap: 8}},
-			Back: "All divisions", Tail: "categories", Description: "Opened a division."},
+			Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Opened a division."},
 	}
 	dir := t.TempDir()
 	if _, err := export.Write(export.Options{
@@ -3277,10 +3284,10 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 						Tiers: []int{0, 3},
-						Back:  "All fund groups", Tail: "funds", Description: "One."},
+						Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
 					{Key: "fund", After: []string{"group"}, From: 3, Projection: secondStepDoc,
 						Tiers: []int{0, 3},
-						Back:  "All funds", Tail: "things", Description: "Two."},
+						Back:  "All funds", Noun: "thing", Tail: "things", Description: "Two."},
 				}}},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
@@ -3373,9 +3380,9 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 			Steps: []export.DrillStep{
 				{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
+					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
 				{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
-					Back: "All divisions", Tail: "categories", Description: "Two."},
+					Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
 			},
 		}
 		breaks(&v)
@@ -3503,9 +3510,9 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
 						YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-						Tiers:           []int{0, 3, 4}, Back: "All fund groups", Tail: "funds", Description: "One."},
+						Tiers:           []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
 					{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
-						Back: "All divisions", Tail: "categories", Description: "Two."},
+						Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
 				}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
 				Title: "What these figures do not say", Lede: "A lede."},
