@@ -1021,11 +1021,43 @@ let laidNodes = [];
 /** @type {LaidNode | LaidLink | null} */
 let pinned = null;
 /**
+ * How long after one activation of a node a later event on the same node is
+ * taken to be part of that same activation, in milliseconds.
+ *
+ * ONE WINDOW FOR TWO ECHOES, because they are the same problem twice. Assistive
+ * tech may synthesise a click from the Enter or Space it has just delivered,
+ * and a pointer always delivers two clicks before the dblclick they compose
+ * into. In both cases a later event belongs to an activation already handled,
+ * and in both cases the only thing telling it from a real second activation is
+ * how soon it arrived on the same node.
+ */
+const ACTIVATION_WINDOW = 500;
+
+/**
  * The node and timestamp of the last Enter/Space activation, so that the click
  * some assistive tech synthesises from that same key press does not undo it.
  * @type {{id:string, at:number}}
  */
 let keyActivation = { id: "", at: -Infinity };
+
+/**
+ * The node a click last isolated, when, and what had been isolated before it,
+ * so that the double click a pair of clicks composes into can put that back.
+ *
+ * THE CLICK IS NOT DEBOUNCED, AND THIS IS WHAT THAT COSTS. A mark carrying both
+ * handlers delivers click, click, dblclick. Waiting the window out before
+ * acting on the first would put ACTIVATION_WINDOW of lag on every isolate, on
+ * every node, to serve a gesture most readers never make -- so the clicks act
+ * at once and the dblclick puts back what they changed. That is keyActivation's
+ * shape with the replaced state carried along beside the timestamp.
+ *
+ * `was` IS RECORDED ONCE PER WINDOW AND NOT ONCE PER CLICK. The second click of
+ * a pair arrives with the first click's isolation already applied, so
+ * refreshing `was` on it would record the state the gesture itself produced and
+ * faithfully restore that.
+ * @type {{id:string, at:number, was:string}}
+ */
+let clickIsolate = { id: "", at: -Infinity, was: "" };
 
 /**
  * Every node of the document being laid out, by id, so fundGroupOf can walk
@@ -1819,6 +1851,87 @@ function openNode(id) {
 }
 
 /**
+ * One click on a node: it follows that node's money, whether or not the node
+ * also opens.
+ *
+ * NAMED RATHER THAN INLINE IN render(), and that is what makes the gesture
+ * checkable at all. The stub tools/jscheck runs against answers no "#chart"
+ * selector, so d3 lays its selection over a null node and every handler
+ * render() registers is registered on nothing -- a closure there executes in no
+ * check, however many checks the page has. Here it is reached by name.
+ *
+ * THE ECHO GUARD IS ON THE ACTIVATION AND NOT ON THE DEVICE: a click on the
+ * node a key has just activated is that key's own click, synthesised by
+ * assistive tech that would otherwise undo what the key did. Every other click
+ * still isolates, including one synthesised by tech that sent no key at all.
+ * @param {LaidNode} d
+ * @param {number} at the event's timestamp
+ */
+function clickNode(d, at) {
+  pin(d);
+  if (d.id === keyActivation.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
+  const within = d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW;
+  clickIsolate = { id: d.id, at: at, was: within ? clickIsolate.was : isolated };
+  setIsolated(isolated === d.id ? "" : d.id);
+}
+
+/**
+ * A double click on a node: it opens the node, having first put back whatever
+ * the two clicks underneath it isolated.
+ *
+ * THE RESTORE IS OBSERVABLE ON A NODE THAT DOES NOT OPEN, and that is where it
+ * earns its place. On one that does, drawChart clears the isolation anyway --
+ * an id from the chart being replaced need not exist on the chart replacing it
+ * -- so there the restore buys only the frame: the emphasis the reader sees
+ * last before the redraw is their own, rather than a flash of the node they
+ * happen to be double clicking.
+ *
+ * THE RECORD IS SPENT WHETHER OR NOT ANYTHING OPENED, so a later double click
+ * on the same node cannot restore a state two gestures old.
+ * @param {LaidNode} d
+ * @param {number} at the event's timestamp
+ */
+function doubleClickNode(d, at) {
+  if (d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW) {
+    setIsolated(clickIsolate.was);
+  }
+  clickIsolate = { id: "", at: -Infinity, was: "" };
+  if (drillable(d)) openNode(d.id);
+}
+
+/**
+ * Enter or Space on a node: Enter opens a node that opens, and Space follows
+ * the money.
+ *
+ * SPACE IS THE COST OF THE SPLIT AND IS ANNOUNCED RATHER THAN HIDDEN. A
+ * role="button" conventionally activates on Space, and here Space is the one
+ * key that never opens. nodeDescription says so on the mark, paintChartHint
+ * says so on the page, and aria-keyshortcuts carries both keys -- because the
+ * convention this departs from is one a reader is entitled to rely on until
+ * told otherwise.
+ *
+ * ENTER FALLS BACK TO THE ISOLATE ON A NODE THAT DOES NOT OPEN, rather than
+ * doing nothing. A role="button" with a dead Enter is worse than one whose
+ * Enter and Space agree, and on those marks they always did: 319 of the 343
+ * nodes the chain's views draw open into nothing, and their aria-pressed
+ * toggle is the only thing an activation there could mean.
+ * @param {LaidNode} d
+ * @param {string} key
+ * @param {number} at the event's timestamp
+ */
+function keyNode(d, key, at) {
+  keyActivation = { id: d.id, at: at };
+  // Escape unpins while leaving focus where it was, so the panel can be
+  // empty here even though focus already pinned this node once.
+  pin(d);
+  if (key === "Enter" && drillable(d)) {
+    openNode(d.id);
+    return;
+  }
+  setIsolated(isolated === d.id ? "" : d.id);
+}
+
+/**
  * Puts focus somewhere real after a drill has replaced the chart.
  *
  * A KEYBOARD DRILL DESTROYS THE ELEMENT THAT WAS FOCUSED. The node a reader
@@ -1982,19 +2095,28 @@ function paintChartHint() {
   // shorter true sentence. internal/export refuses the view that would produce
   // it; a config handed to this file has still said it.
   const where = column ? " in the " + column + " column" : "";
+  // THE ISOLATE IS NAMED ON EVERY VIEW, including one where nothing opens. It
+  // is the gesture every node of every chart has, and the sentence that used to
+  // stop at "nothing here opens further" left a reader on those charts told
+  // only what they could not do.
+  //
+  // AND SPACE IS NAMED BECAUSE IT IS THE SURPRISE. A role="button" activates on
+  // Space by convention and here Space never opens; a reader is entitled to
+  // that convention until the page says otherwise, so the page says otherwise.
+  const follows = " A single click, or Space, follows one node's money.";
   if (drilled.length) {
     hint.textContent = "This is " + labelOfRung(drilled.length - 1) +
       ", broken into its parts. " +
       (anyOpens
-        ? "Click a node" + where + " to open it further, or tab to one and press Enter."
-        : "Nothing here opens further; go back to open another.");
+        ? "Double click a node" + where + " to open it further, or tab to one and press Enter."
+        : "Nothing here opens further; go back to open another.") + follows;
     return;
   }
   const swatches = buildLegendCount();
   hint.textContent = (anyOpens
-    ? "Click a node" + where + " to open it into its parts, " +
+    ? "Double click a node" + where + " to open it into its parts, " +
       "or tab to one and press Enter."
-    : "Nothing on this chart opens.") +
+    : "Nothing on this chart opens.") + follows +
     (swatches ? " A fund swatch follows one group's money without opening anything." : "");
 }
 
@@ -2565,11 +2687,57 @@ function linkClass(d) {
 
 /**
  * The classes a node is drawn with.
+ *
+ * `opens` IS AN AFFORDANCE AND NOT A RESTATEMENT OF THE DOCUMENT. The other two
+ * say what a mark IS -- an inference, a reduction of the category it is printed
+ * under -- and are read off the node. This one says what the reader may do to
+ * it, which is why it is drillable's answer: whether a mark opens depends on
+ * the view's declared steps and on the chart it is drawn on, not on any field
+ * the packager wrote.
+ *
+ * THERE IS NO `expands` CLASS, DELIBERATELY. An aggregate is the other mark a
+ * reader might expect to open, and nothing in this file can expand one.
+ * Measured over the chain: 9 of the 44 views it opens draw an aggregate, so a
+ * class and a marker promising an expansion would be a promise broken on nine
+ * charts -- which is the same half-contract as a gesture nothing signals, one
+ * layer down. fisc-ko1j.12.6 is the wave that makes it true.
  * @param {LaidNode} d
  * @returns {string}
  */
 function nodeClass(d) {
-  return "node" + (d.derived ? " derived" : "") + (isContraNode(d) ? " contra" : "");
+  return "node" + (d.derived ? " derived" : "") + (isContraNode(d) ? " contra" : "") +
+    (drillable(d) ? " opens" : "");
+}
+
+/**
+ * The markers one node's label carries in its flag tspan.
+ *
+ * GLYPHS AND NOT WORDS: the label is already at the edge of its gutter. Each is
+ * spelled out somewhere a reader can reach -- the diamond by the legend, the
+ * tooltip and the derived list, the triangle by nodeDescription and by the
+ * chart hint.
+ *
+ * THE FLAG TSPAN IS THE ONLY CHANNEL LEFT. Hue is spoken for by the palette's
+ * contrast rule, the dashed rect by `derived`, --critical by `contra`, and a
+ * dash pattern by the two a ribbon already carries. A glyph in the label
+ * survives forced-colors and greyscale, costs no hue, and is read aloud.
+ *
+ * BOTH COMPOSE, because nothing stops a node being an inference that also
+ * opens. They draw in that order with nothing between them, so the pair costs
+ * the label two glyph widths -- which is the width tools/jscheck/layout.mjs
+ * fits it against, by calling this rather than by spelling it a second time.
+ *
+ * THE PAIR IS LATENT ON THE COMMITTED CORPUS AND LATENT IS HOW IT SHIPS.
+ * Measured over the overview and all 44 views the chain opens: 17 marks carry
+ * the diamond alone and 44 the triangle alone, and no mark carries both. A rule
+ * written only for the marks that exist would be a rule the first derived
+ * openable node breaks silently, in the label's own gutter.
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+function nodeFlags(d) {
+  const marks = (d.derived ? "\u25c7" : "") + (drillable(d) ? "\u25b8" : "");
+  return marks ? "  " + marks : "";
 }
 
 /**
@@ -3751,15 +3919,19 @@ function render(laid) {
     .attr("class", /** @param {LaidNode} d */ (d) => nodeClass(d))
     .attr("tabindex", 0)
     .attr("role", "button")
-    // aria-pressed ONLY WHERE ACTIVATION IS A TOGGLE. The isolation is one, and
-    // the legend announces its copy of it the same way; applyEmphasis keeps
-    // this in step. Opening a node is NOT: it replaces the chart and the node
-    // itself is gone from the result, so there is no pressed state to return
-    // to and nothing the attribute could ever be true of. Announcing a toggle
-    // that never toggles is worse than announcing nothing, because a reader who
-    // hears "not pressed" is told there is a state to change.
-    .attr("aria-pressed", /** @param {LaidNode} d */ (d) => (drillable(d) ? null : "false"))
+    // aria-pressed ON EVERY NODE, BECAUSE EVERY NODE IS A TOGGLE. It is the
+    // isolation, and the legend announces its copy of it the same way;
+    // applyEmphasis keeps this in step. A node that opens is no exception: its
+    // single click and its Space isolate exactly as every other node's do.
+    // OPENING IS NOT THE TOGGLE and must never be announced as one -- it
+    // replaces the chart and takes the node with it, so there is no pressed
+    // state to return to. What a node opens into is announced by the label.
+    .attr("aria-pressed", "false")
     .attr("aria-label", /** @param {LaidNode} d */ (d) => nodeDescription(d))
+    // BOTH KEYS ON EVERY NODE, because both activate every node. Which of them
+    // opens is nodeDescription's sentence: aria-keyshortcuts is a list of keys
+    // and has no slot for what a key means, so it can only fail to mention one.
+    .attr("aria-keyshortcuts", "Enter Space")
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointerleave", hideTip)
@@ -3785,43 +3957,46 @@ function render(laid) {
     //
     // Focus itself must not isolate. Tabbing the columns would strobe the
     // whole chart, which is also why a held key is ignored.
-    // ACTIVATION MEANS DIFFERENT THINGS ON DIFFERENT PAGES, declared per view
-    // rather than decided here, and that is the answer to fisc-ppkq's third
-    // objection: the click and the keydown are already spoken for by
-    // setIsolated, and a second meaning on the same activation of the same
-    // element is a new interaction contract rather than a reuse.
     //
-    // It is declared and not overloaded. A page with a drill has TWO drawn
-    // tiers, and isolating a node on a two-column graph says almost nothing --
-    // every link a node has is already adjacent to it, so dimming the rest
-    // dims a column the reader was not looking at. A page without one has
-    // three, where following one fund group through the middle is the whole
-    // point. So the pages that drill are exactly the pages that do not need to
-    // isolate, and no page has to do both from one gesture.
+    // A SECOND MEANING ON ONE ACTIVATION OF ONE ELEMENT IS A NEW INTERACTION
+    // CONTRACT AND NOT A REUSE, which is fisc-ppkq's third objection and still
+    // holds. What has changed is the answer to it: the contract is now TWO
+    // gestures rather than one. A single click and Space isolate, on every node
+    // of every view; a double click and Enter open the nodes that open. Neither
+    // gesture carries two meanings, and no view has to choose.
+    //
+    // AN OPENED CHART IS WORTH ISOLATING ON, which is what makes two gestures
+    // necessary rather than merely possible. A window is three columns at its
+    // narrowest, and tools/jscheck/drill.mjs walks the chain and measures it:
+    // all 44 views it opens draw three at the page's own budget, and at a
+    // four-column budget one of them draws four. None draws two. So every
+    // opened view has a middle column, and dimming everything not adjacent to
+    // one node takes real ribbons off it.
+    //
+    // AND THE ISOLATE IS THE GESTURE MOST MARKS HAVE. Of the 343 nodes those
+    // views draw, 24 open. Putting the drill on the single click would give 7%
+    // of an opened chart's marks one meaning and 93% of them another, on the
+    // same mark shape, told apart only by trying one.
     .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
       e.stopPropagation();
-      pin(d);
-      const echo = d.id === keyActivation.id && e.timeStamp - keyActivation.at < 500;
-      if (echo) return;
-      if (drillable(d)) {
-        openNode(d.id);
-        return;
-      }
-      setIsolated(isolated === d.id ? "" : d.id);
+      clickNode(d, e.timeStamp);
+    })
+    // THE DOUBLE CLICK IS WIRED ON EVERY NODE AND NOT ONLY ON ONE THAT OPENS.
+    // A reader who double clicks a mark that does not open has still made two
+    // clicks, and those two have already toggled the isolation on and off
+    // again; without this the gesture would silently discard whatever was
+    // isolated before it. preventDefault is for the text selection a double
+    // click otherwise leaves across the label.
+    .on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
+      e.stopPropagation();
+      e.preventDefault();
+      doubleClickNode(d, e.timeStamp);
     })
     .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       if (e.repeat) return;
       e.preventDefault();
-      keyActivation = { id: d.id, at: e.timeStamp };
-      // Escape unpins while leaving focus where it was, so the panel can be
-      // empty here even though focus already pinned this node once.
-      pin(d);
-      if (drillable(d)) {
-        openNode(d.id);
-        return;
-      }
-      setIsolated(isolated === d.id ? "" : d.id);
+      keyNode(d, e.key, e.timeStamp);
     });
 
   node.append("rect")
@@ -3871,10 +4046,7 @@ function render(laid) {
     .text(/** @param {LaidNode} d */ (d) => "  " + fmtShortSigned(markCents(d)));
   label.append("tspan")
     .attr("class", "flag")
-    // A short marker, not the word: the label is already at the edge of its
-    // gutter. The dashed outline, the legend, the tooltip and the table all
-    // spell out what the diamond means.
-    .text(/** @param {LaidNode} d */ (d) => (d.derived ? "  ◇" : ""));
+    .text(/** @param {LaidNode} d */ (d) => nodeFlags(d));
 
   paint();
   applyEmphasis();
@@ -3926,10 +4098,8 @@ function applyEmphasis() {
     return !d.sourceLinks.concat(d.targetLinks).some((l) =>
       l.source.id === isolated || l.target.id === isolated);
   });
-  // Left alone on a node that opens rather than toggles; see render(), which
-  // does not give it the attribute at all.
   svg.selectAll("g.node").attr("aria-pressed", /** @param {LaidNode} d */ (d) =>
-    (drillable(d) ? null : String(d.id === isolated && isolated !== "")));
+    String(d.id === isolated && isolated !== ""));
 }
 
 /* ------------------------------------------------------------------ *
@@ -3953,17 +4123,20 @@ function linkDescription(d) {
  * @returns {string}
  */
 function nodeDescription(d) {
-  // WHAT ACTIVATING IT DOES, for a reader who cannot see that some marks open
-  // and others dim. aria-pressed was correctly removed from a node that opens
-  // -- there is no state to return to -- and removing it left a node announcing
-  // NOTHING about the difference: the same words for a mark that replaces the
-  // whole chart and one that dims the rest of it.
-  // EVERY NODE SAYS WHAT ACTIVATING IT DOES. This gave the opening sentence to
-  // drillable nodes and nothing at all to the others on the same page -- so
-  // the eleven revenue categories, which still isolate and still carry a
-  // toggling aria-pressed, announced no action whatever while the mark beside
-  // them announced one.
-  const what = drillable(d) ? ", opens into its parts" : ", follow this money";
+  // WHAT EACH GESTURE DOES, for a reader who cannot see which marks carry the
+  // triangle. Every node says it, because every node has two gestures now and a
+  // mark that named neither would leave a keyboard reader to discover the
+  // difference by pressing keys and watching a chart they cannot watch.
+  //
+  // THE SENTENCE NAMES SPACE ON A NODE THAT OPENS AND NOT ON ONE THAT DOES NOT,
+  // which is not an inconsistency: on a mark that opens, Space is the key that
+  // does the OTHER thing, and that is the whole of what has to be learned. On a
+  // mark that does not, every activation means the same thing and there is no
+  // split to announce.
+  const what = drillable(d)
+    ? ", opens into its parts on a double click or Enter; a single click or Space follows " +
+      "this money"
+    : ", follow this money";
   const note = contraNote(d);
   // THE CROSS-TAB SENTENCE REACHES A READER WHO CANNOT SEE THE RIBBONS. The
   // class on the ribbon and the chip in the tooltip both need eyes; a mark

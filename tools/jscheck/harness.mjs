@@ -458,6 +458,16 @@ const NAMES = [
   // the swatches buildLegend actually created planted, is the only order in
   // which that loop executes. render() still calls it; this adds no behaviour.
   "paint",
+  // THE GESTURES, REACHED BY NAME BECAUSE render() CANNOT BE. The stub answers
+  // no "#chart" selector, so d3 lays render()'s selections over a null node:
+  // no <g> is created, no attribute is written and no handler is registered.
+  // A click or keydown closure written inline there would execute in no check
+  // however many checks this directory grows, which is why the three gestures
+  // are functions in app.js rather than closures. nodeClass and nodeFlags are
+  // here for the same reason one layer over: the class and the marker a node
+  // is drawn with are unreadable off a chart that draws nothing.
+  "clickNode", "doubleClickNode", "keyNode", "ACTIVATION_WINDOW",
+  "nodeClass", "nodeFlags",
 ];
 
 // main IS DELIBERATELY NOT IN NAMES. It is invoked at file scope, so by the time
@@ -632,6 +642,10 @@ export function loadApp(opts = {}) {
     // identical whether the reader chose it or nobody did, and the difference
     // is the whole of whether the next media change moves the page.
     ` get columnBudget() { return columnBudget; },` +
+    // isolated IS A `let` TOO, and it is the whole subject of the gesture
+    // split: which node's money the chart is following is not derivable from
+    // the stack, from the projection or from any DOM the stub can see.
+    ` get isolated() { return isolated; },` +
     ` get columnOverride() { return columnOverride; } };\n`;
   runInContext(src + exported, ctx, { filename: "app.js" });
 
@@ -641,7 +655,7 @@ export function loadApp(opts = {}) {
   }
   // The getters answer undefined only if the binding vanished; null and "" are
   // their legitimate empty states, so they are checked for presence separately.
-  for (const n of ["projection", "drilled", "fetched"]) {
+  for (const n of ["projection", "drilled", "fetched", "isolated"]) {
     if (!(n in app)) throw new Error(`app.js no longer defines ${n}`);
   }
   app.d3 = sandbox.d3;

@@ -106,8 +106,9 @@
        can be opened at all. */}}
 <p class="lede">
   <span id="lede-year">{{.FiscalYearLabel}} {{.Basis}}</span>.
-  {{- if .Drill}} <span id="chart-hint">Click a node in the right-hand column to open it into
-  its parts, or tab to one and press Enter.</span>{{end}}
+  {{- if .Drill}} <span id="chart-hint">Double click a node in the right-hand column to open it
+  into its parts, or tab to one and press Enter. A single click, or Space, follows one node's
+  money.</span>{{end}}
 </p>
 <div class="card">
   <div class="controls">
@@ -116,11 +117,11 @@
   <div class="legend" aria-label="How to read the marks">
     <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
     <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
-    {{- /* WHAT A CLICK DOES IS PER VIEW, so what this sentence promises has to
-           be too. On a page that drills, activating a node OPENS it and does
-           not isolate -- see site/app.js's node handlers and export.Drill --
-           so the old wording would have been an instruction that does nothing
-           on either of the site's two drilling pages. */}}
+    {{- /* WHAT A CLICK DOES IS THE SAME ON EVERY VIEW, and this sentence says
+           only that. A single click follows one node's money wherever it
+           lands; opening is the double click, and which marks take one is
+           per view and so is painted into #chart-hint rather than served
+           here. */}}
     <span class="subtle">Hover, tap or tab to a flow for its amount, fact ids and sources.
       {{- /* NO PROMISE ABOUT THE SWATCHES ON A PAGE THAT DRILLS. This said the
              fund swatches still follow one group's money, and on spending.html

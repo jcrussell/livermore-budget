@@ -749,6 +749,13 @@ svg.sankey .node.dim {
   opacity: 0.3;
 }
 
+/* EVERY NODE KEEPS THE POINTER, which is a measurement and not an oversight. A
+   single click follows one node's money whatever the node is, so there is no
+   mark here whose cursor would be more truthful for not being a pointer --
+   moving it onto .node.opens would take it off every mark that does not open,
+   which a click still does something to. Which marks ALSO open is carried by
+   the `opens` marker in the label's flag tspan, where it costs no hue, survives
+   forced-colors and greyscale, and is read aloud. */
 svg.sankey .node {
   cursor: pointer;
 }

@@ -199,14 +199,21 @@ const VALUE_PX = 11;
 /**
  * How wide the three tspans of one node's label draw.
  *
- * THE WORDS COME OFF THE PAGE. markCents and fmtShortSigned are the same two
- * functions render() hands the value tspan, so this measures the string a
- * reader sees rather than one this file spelled for itself -- and the flag
- * tspan is counted, because a derived node's label is three characters longer
- * than its neighbours' and that is exactly the case a fit check is about.
+ * THE WORDS COME OFF THE PAGE. markCents, fmtShortSigned and nodeFlags are the
+ * same three functions render() hands the value and flag tspans, so this
+ * measures the string a reader sees rather than one this file spelled for
+ * itself -- and the flag tspan is counted, because a marked node's label is
+ * characters longer than its neighbours' and that is exactly the case a fit
+ * check is about.
+ *
+ * THE MARKERS ARE ASKED FOR AND NOT SPELLED HERE, which is the whole of why
+ * nodeFlags is called. A copy of its rule would measure the markers this file
+ * knew about, so a marker added to the page would leave every label below
+ * measured a glyph narrower than it draws -- silently, and in the one direction
+ * these deliberate over-estimates are chosen NOT to be wrong in.
  */
 function labelWidth(app, d, qualifier) {
-  const value = "  " + app.fmtShortSigned(app.markCents(d)) + (d.derived ? "  \u25c7" : "");
+  const value = "  " + app.fmtShortSigned(app.markCents(d)) + app.nodeFlags(d);
   const label = d.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM;
   // THE WIDEST LINE IS THE BOX, not the sum. A qualified mark draws its
   // parent's name on a line of its own above the label, so the two do not add

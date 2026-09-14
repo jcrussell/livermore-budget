@@ -823,6 +823,197 @@ async function at(app, ...ids) {
   for (const id of ids) await mustOpen(app, id);
 }
 
+/**
+ * What a node is drawn as, over the overview and every view the chain opens.
+ *
+ * PINNED AND NOT BOUNDED, for this file's reason, and one of these figures is
+ * load-bearing in a way the others are not. The arm below asserts that a mark
+ * carries `opens` exactly when drillable says it opens -- and that sentence is
+ * TRUE OF A PAGE WHERE NOTHING OPENS AT ALL, both sides being false everywhere.
+ * `opens` is what stops the arm passing that way: it says the corpus actually
+ * puts marks on both sides of the question.
+ *
+ * `both` IS ZERO AND IS PINNED BECAUSE IT IS ZERO. No mark on either committed
+ * capture is an inference that also opens, so the composed marker nodeFlags
+ * draws for that case is latent -- and a latent path with no figure beside it
+ * is one a later document reaches with nothing to notice.
+ */
+const MARKS = { nodes: 368, opens: 44, derivedOnly: 17, both: 0 };
+
+// The lines of render() that hang the affordance on the mark, pinned whole.
+//
+// THESE ARMS MEASURE THE RULES AND NOT WHAT render() DOES WITH THEM, which is
+// layout.mjs's LABEL_SELECTION problem and the same cause: the stub answers no
+// "#chart" selector, so d3 lays every selection render() builds over a null
+// node. No <g> is created, no attribute is written, and no handler is
+// registered -- measured directly: D3.select("#chart").size() is 0 and an
+// .attr() accessor is invoked zero times. So the class, the marker and the
+// three gestures are reachable here only because they are NAMED in app.js, and
+// that they are the ones the chart is drawn and wired with is this pin's claim
+// rather than any arm's.
+//
+// WHICH IS ALSO WHY THE GESTURES ARE FUNCTIONS AND NOT CLOSURES. A body written
+// inline on that selection executes in no check in this directory, however many
+// checks it grows.
+const GESTURE_WIRING = [
+  '.attr("class", /** @param {LaidNode} d */ (d) => nodeClass(d))',
+  '.text(/** @param {LaidNode} d */ (d) => nodeFlags(d))',
+  '.attr("aria-keyshortcuts", "Enter Space")',
+  "clickNode(d, e.timeStamp);",
+  "doubleClickNode(d, e.timeStamp);",
+  "keyNode(d, e.key, e.timeStamp);",
+  '.on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {',
+];
+
+/**
+ * The affordance and the two gestures behind it.
+ *
+ * ONE COLUMN AND NOT BOTH. Every arm here is about what a mark offers and what
+ * an activation does, neither of which reads a figure off the document -- and
+ * the walk in the first arm visits both captures' shapes through the same
+ * entry points the per-column suites already pin.
+ */
+async function gestureChecks() {
+  const out = [];
+
+  // ---------------------------------------------- a node that opens says so
+  const { app } = await opened();
+  /** Every laid node of a chart on screen, against what it is drawn as. */
+  const tally = { nodes: 0, opens: 0, derivedOnly: 0, both: 0 };
+  const wrong = [];
+  const look = (where) => {
+    for (const n of app.layOut(app.projection).nodes) {
+      const classes = app.nodeClass(n).split(" ");
+      const flags = app.nodeFlags(n);
+      const opens = app.drillable(n);
+      tally.nodes++;
+      if (opens) tally.opens++;
+      if (n.derived && !opens) tally.derivedOnly++;
+      if (n.derived && opens) tally.both++;
+      // THE CLASS AND THE MARKER ARE ONE CLAIM AND ARE ASSERTED AS ONE. A
+      // marker with no class is an affordance the stylesheet cannot reach; a
+      // class with no marker is one nothing renders. Either alone is the half
+      // contract this wave exists to refuse.
+      if (classes.includes("opens") !== opens ||
+          flags.includes("▸") !== opens ||
+          flags.includes("◇") !== Boolean(n.derived)) {
+        wrong.push(`${where} > ${n.id} is drawn "${app.nodeClass(n)}" / "${flags}" but ` +
+          `${opens ? "opens" : "does not open"}`);
+      }
+    }
+  };
+  look("the overview");
+  const walk = await everyOpenedView(app, (where) => look(where));
+  out.push({
+    name: "a node that opens is drawn as one, and a node that does not is not",
+    ok: walk.refused === "" && walk.visited === PAGE.openedViews && wrong.length === 0 &&
+        tally.nodes === MARKS.nodes && tally.opens === MARKS.opens &&
+        tally.derivedOnly === MARKS.derivedOnly && tally.both === MARKS.both,
+    detail: wrong.length
+      ? `${wrong.length} of ${tally.nodes} mark(s) are drawn as something they are not: ` +
+        wrong.slice(0, 3).join("; ")
+      : `over the overview and ${walk.visited} opened view(s), ${tally.nodes} mark(s) ` +
+        `(want ${MARKS.nodes}): ${tally.opens} carry "opens" and the triangle (want ` +
+        `${MARKS.opens}), ${tally.derivedOnly} the diamond alone (want ${MARKS.derivedOnly}), ` +
+        `${tally.both} both (want ${MARKS.both}, so the composed marker is latent); every ` +
+        `one of them agrees with drillable`,
+  });
+
+  out.push({
+    name: "the chart is drawn and wired with the rules these arms measure",
+    ok: GESTURE_WIRING.every((q) => app.source.includes(q)),
+    detail: (() => {
+      const gone = GESTURE_WIRING.filter((q) => !app.source.includes(q));
+      return gone.length === 0
+        ? `all ${GESTURE_WIRING.length} lines of render()'s node selection read nodeClass, ` +
+          `nodeFlags and the three gesture functions, so the affordance measured above is ` +
+          `the affordance drawn and the gestures driven below are the gestures bound`
+        : `render()'s node selection no longer reads them: ${gone.length} of ` +
+          `${GESTURE_WIRING.length} lines are gone, starting "${gone[0]}"`;
+    })(),
+  });
+
+  // ------------------------------------------ Enter opens and Space isolates
+  //
+  // DRIVEN THROUGH keyNode AND NOT THROUGH A SYNTHESISED KeyboardEvent, for
+  // GESTURE_WIRING's reason: there is no element to dispatch one at. The key
+  // filter, e.repeat and preventDefault stay in the closure and are pinned as
+  // text; what a key MEANS is here.
+  const { app: keys } = await opened();
+  const opensID = "fund-group/general";
+  const closedID = "transfers/in";
+  const nodeAt = (a, id) => a.layOut(a.projection).nodes.find((n) => n.id === id);
+  const after = async (a, run) => { run(); await settle(); 
+    return { depth: a.drilled.length, top: topOf(a), isolated: a.isolated }; };
+
+  const enter = await after(keys, () => keys.keyNode(nodeAt(keys, opensID), "Enter", 1000));
+  keys.drillUp(0);
+  const space = await after(keys, () => keys.keyNode(nodeAt(keys, opensID), " ", 5000));
+  keys.drillUp(0);
+  // AND ENTER STILL ACTIVATES A MARK WITH NOTHING TO OPEN, which is the half of
+  // the split that is not a split: a role="button" whose Enter does nothing is
+  // worse than one whose two keys agree, and on these marks they always did.
+  const closedEnter = await after(keys, () => keys.keyNode(nodeAt(keys, closedID), "Enter", 9000));
+  out.push({
+    name: "Enter opens and Space isolates, and neither does the other",
+    ok: enter.depth === 1 && enter.top === opensID && enter.isolated === "" &&
+        space.depth === 0 && space.isolated === opensID &&
+        closedEnter.depth === 0 && closedEnter.isolated === closedID,
+    detail: `Enter on ${opensID} left the chart at depth ${enter.depth} on ` +
+      `"${enter.top || "the overview"}" following "${enter.isolated}" (a drill clears the ` +
+      `isolation, so "" is the whole of what Enter may leave); Space on the same mark left ` +
+      `depth ${space.depth} following "${space.isolated}"; Enter on ${closedID}, which opens ` +
+      `into nothing, left depth ${closedEnter.depth} following "${closedEnter.isolated}"`,
+  });
+
+  // --------------------------- a double click opens, and puts the isolate back
+  //
+  // THE SEED IS THE WHOLE ARM. A double click delivers click, click, dblclick,
+  // and on a chart with nothing isolated those two clicks toggle an isolation
+  // on and off again and land back on "" without any help -- so an arm run from
+  // the empty state is green whether or not the restore exists. It starts from
+  // a mark the reader was already following instead, which is the only state
+  // the two answers differ in.
+  const { app: clicks } = await opened();
+  const seed = "revenue/taxes/sales";
+  const marks = (id) => nodeAt(clicks, id);
+  clicks.clickNode(marks(seed), 0);
+  const seeded = clicks.isolated;
+  clicks.clickNode(marks(closedID), 1000);
+  const firstClick = clicks.isolated;
+  clicks.clickNode(marks(closedID), 1050);
+  const secondClick = clicks.isolated;
+  const closedDouble = await after(clicks, () => clicks.doubleClickNode(marks(closedID), 1060));
+
+  // A SECOND PAGE AND NOT THE SAME ONE WOUND BACK. setIsolated is a toggle, so
+  // seeding the same mark again on a chart still following it CLEARS the seed
+  // -- the arm would then start from the empty state its own comment above says
+  // it must not.
+  const { app: opensClicks } = await opened();
+  const openMarks = (id) => nodeAt(opensClicks, id);
+  opensClicks.clickNode(openMarks(seed), 0);
+  const reseeded = opensClicks.isolated;
+  opensClicks.clickNode(openMarks(opensID), 1000);
+  opensClicks.clickNode(openMarks(opensID), 1050);
+  const opensDouble = await after(opensClicks,
+    () => opensClicks.doubleClickNode(openMarks(opensID), 1060));
+  out.push({
+    name: "a double click opens, and leaves the isolation the reader had",
+    ok: seeded === seed && firstClick === closedID && secondClick === "" &&
+        closedDouble.depth === 0 && closedDouble.isolated === seed &&
+        reseeded === seed && opensDouble.depth === 1 && opensDouble.top === opensID &&
+        opensDouble.isolated === "",
+    detail: `following "${seeded}", a double click on ${closedID} went "${firstClick}" then ` +
+      `"${secondClick}" under the reader and came back to "${closedDouble.isolated}" at depth ` +
+      `${closedDouble.depth} (want "${seed}", nothing opened); the same gesture on ${opensID} ` +
+      `opened it to depth ${opensDouble.depth} on "${opensDouble.top}" following ` +
+      `"${opensDouble.isolated}", which drawChart cleared on the way -- so what the restore is ` +
+      `witnessed by is the mark that does not open`,
+  });
+
+  return out;
+}
+
 export async function checks() {
   const out = [];
 
@@ -1884,7 +2075,8 @@ export async function checks() {
     }
   };
   for (const fn of [gapAtTheCentre, categoryProbes, keylessSteps, severalParents, windowChecks,
-    objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe, widenedColumns]) {
+    objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe, widenedColumns,
+    gestureChecks]) {
     out.push(...(await group(fn)));
   }
 
@@ -2286,7 +2478,8 @@ async function walkCategory(col) {
         rows1 === want.links && at1.counts === want.counts &&
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into Property Taxes category` &&
         at1.crumbControls.join("|") === "← All revenue categories" && at1.crumbHere === "Property Taxes category" &&
-        at1.hint === "This is Property Taxes category, broken into its parts. Nothing here opens further; go back to open another." &&
+        at1.hint === "This is Property Taxes category, broken into its parts. Nothing here " +
+          "opens further; go back to open another. A single click, or Space, follows one node's money." &&
         at1.legend === 0 && !anyOpens1 &&
         at1.desc === "Opened into Property Taxes category. " + step.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
@@ -3191,7 +3384,7 @@ async function columnAndPartitionChecks() {
   const hint = three.maybeEl("chart-hint").textContent;
   out.push({
     name: "three openable columns are joined as a list, and joinOr is that rule at every length",
-    ok: hint.includes("Click a node in the left-hand, middle or right-hand column") &&
+    ok: hint.includes("Double click a node in the left-hand, middle or right-hand column") &&
       three.joinOr([]) === "" && three.joinOr(["a"]) === "a" &&
       three.joinOr(["a", "b"]) === "a or b" &&
       three.joinOr(["a", "b", "c"]) === "a, b or c",
@@ -3642,9 +3835,9 @@ async function walkChain(col) {
     // nodes in the right-hand column. A hint naming the middle column alone
     // would leave two gestures nothing on the page invites, and this is the
     // sentence a reader who cannot see the marks is given.
-    ok: at0.hint === "Click a node in the left-hand, middle or right-hand column to open it into " +
-        "its parts, or tab to one and press Enter. A fund swatch follows one group's money " +
-        "without opening anything." &&
+    ok: at0.hint === "Double click a node in the left-hand, middle or right-hand column to open " +
+        "it into its parts, or tab to one and press Enter. A single click, or Space, follows one node's money. A fund swatch follows " +
+        "one group's money without opening anything." &&
         at0.legend === 6 && at0.desc === served,
     detail: `hint "${at0.hint}"; legend ${at0.legend} swatches`,
   });
@@ -3665,8 +3858,8 @@ async function walkChain(col) {
         rows1 === col.general.links &&
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into General Fund group` &&
         at1.crumbControls.join("|") === "← All fund groups" && at1.crumbHere === "General Fund group" &&
-        at1.hint === "This is General Fund group, broken into its parts. Click a node in the " +
-          "right-hand column to open it further, or tab to one and press Enter." &&
+        at1.hint === "This is General Fund group, broken into its parts. Double click a node " +
+          "in the right-hand column to open it further, or tab to one and press Enter. A single click, or Space, follows one node's money." &&
         at1.legend === 0 &&
         at1.desc === "Opened into General Fund group. " + groupStep.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
@@ -3719,7 +3912,8 @@ async function walkChain(col) {
         at3.title.endsWith(", opened into General Fund group, then General Fund, then Patrol") &&
         at3.crumbControls.join("|") === "← All fund groups|← All funds|← All divisions" &&
         at3.crumbHere === "Patrol" &&
-        at3.hint === "This is Patrol, broken into its parts. Nothing here opens further; go back to open another." &&
+        at3.hint === "This is Patrol, broken into its parts. Nothing here opens further; go " +
+          "back to open another. A single click, or Space, follows one node's money." &&
         at3.desc === "Opened into General Fund group, then General Fund, then Patrol. " +
           divisionStep.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
@@ -3765,7 +3959,8 @@ async function walkChain(col) {
     // step's role is what says so. Before that role every one of them offered
     // a click that banners.
     ok: capital.depth === 1 && capitalOpens.length === 0 && capitalFunds > 0 &&
-        capital.hint === "This is Capital Funds, broken into its parts. Nothing here opens further; go back to open another." &&
+        capital.hint === "This is Capital Funds, broken into its parts. Nothing here opens " +
+          "further; go back to open another. A single click, or Space, follows one node's money." &&
         capital.desc.startsWith("Opened into Capital Funds. " + groupStep.description),
     detail: `opened into capital: ${capitalFunds} fund mark(s) drawn and ` +
       `${capitalOpens.length ? capitalOpens.join(", ") + " WRONGLY open" : "none opens"}; ` +
