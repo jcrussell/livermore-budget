@@ -42,19 +42,7 @@ type vacancy struct {
 
 // declaredVacuous is the whole list, and every entry earns its place by naming
 // what would have to exist for the check to have a subject.
-var declaredVacuous = map[string]vacancy{
-	"transfer-legs-pair": {
-		bead: "fisc-9gh",
-		reason: "no link carries a transfer_id. The tier hierarchy has now landed and " +
-			"did NOT retire this: p76's legs are in scope transfers-by-fund, and no " +
-			"projection selects it. It cannot simply be added to the drill-down " +
-			"either -- measured, transfers-by-fund and revenue-by-fund both publish " +
-			"transfer_in and overlap by 21,045,597 in FY2026, so one document holding " +
-			"both would double it, which projection-scopes-are-disjoint refuses. " +
-			"Retiring this needs a document of its own for p76 plus a Link.TransferID " +
-			"derived from the two legs' shared (doc_id, page, offset)",
-	},
-}
+var declaredVacuous = map[string]vacancy{}
 
 // declaration is one declared vacancy and what its check actually reported on
 // this run.

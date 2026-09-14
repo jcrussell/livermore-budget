@@ -170,6 +170,22 @@ type departmentSpendingBuilder interface {
 	Document(facts []fact.Fact, o project.Options) (*project.DepartmentSpendingDocument, error)
 }
 
+// transfersByFundBuilder is a projection whose document is p76's transfer
+// network.
+//
+// A FIFTH INTERFACE FOR departmentSpendingBuilder's REASON, and the case here
+// is sharper than that one's. This document is the only one in the project
+// whose links come in PAIRS -- two per printed figure, one for each end of a
+// movement -- so every count taken off it is twice what a document of cells
+// would mean by the same number. fund-flows-counts-reconcile re-derives
+// facts_cited_twice and drill-reconciles-across-documents indexes drill-downs by
+// column; handed this shape, both would report on a document neither was
+// written about.
+type transfersByFundBuilder interface {
+	Name() string
+	Document(facts []fact.Fact, o project.Options) (*project.TransfersByFundDocument, error)
+}
+
 // projection is one built graph, with the options it was built under.
 //
 // The options are carried because they are the difference between a graph that
@@ -203,6 +219,11 @@ type projection struct {
 	// [Subject.DepartmentSpendingDocuments] for the one that is of this shape
 	// alone.
 	DepartmentSpending *project.DepartmentSpendingDocument
+	// TransfersByFund is the built transfer network, or nil. Read it through
+	// [Subject.LinkedDocuments] for the structural checks; no check is of this
+	// shape alone, because transfers-detail-ties-to-spine reads the FACTS and
+	// is what this scope's arithmetic rests on.
+	TransfersByFund *project.TransfersByFundDocument
 }
 
 // linked is one document's nodes and links, whatever shape carried them.
@@ -383,6 +404,9 @@ func (s *Subject) linkedDocuments() []linked {
 		case p.DepartmentSpending != nil:
 			out = append(out, linked{projection: p,
 				Nodes: p.DepartmentSpending.Nodes, Links: p.DepartmentSpending.Links})
+		case p.TransfersByFund != nil:
+			out = append(out, linked{projection: p,
+				Nodes: p.TransfersByFund.Nodes, Links: p.TransfersByFund.Links})
 		}
 	}
 	return out
@@ -808,6 +832,7 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 		t, isTrends := p.(trendsBuilder)
 		ff, isFundFlows := p.(fundFlowsBuilder)
 		ds, isSpending := p.(departmentSpendingBuilder)
+		tr, isTransfers := p.(transfersByFundBuilder)
 
 		for _, o := range want {
 			built := projection{Name: p.Name(), Options: o}
@@ -821,6 +846,8 @@ func buildProjections(ps []project.Projection, facts []fact.Fact, version string
 				built.FundFlows, err = ff.Document(facts, o)
 			case isSpending:
 				built.DepartmentSpending, err = ds.Document(facts, o)
+			case isTransfers:
+				built.TransfersByFund, err = tr.Document(facts, o)
 			}
 			if err != nil {
 				// Recorded, not returned: see ProjectionFailure. The loop goes

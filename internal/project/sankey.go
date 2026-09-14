@@ -63,15 +63,22 @@ const (
 
 // Node roles, which say what a node is for without the client parsing its id.
 const (
-	roleRevenueSource           = "revenue_source"
-	roleRevenueLine             = "revenue_line"
-	roleFundGroup               = "fund_group"
-	roleFund                    = "fund"
-	roleGeneralFund             = "general_fund"
-	roleDepartment              = "department"
-	roleObjectCategory          = "object_category"
-	roleTransferIn              = "transfer_in"
-	roleTransferOut             = "transfer_out"
+	roleRevenueSource  = "revenue_source"
+	roleRevenueLine    = "revenue_line"
+	roleFundGroup      = "fund_group"
+	roleFund           = "fund"
+	roleGeneralFund    = "general_fund"
+	roleDepartment     = "department"
+	roleObjectCategory = "object_category"
+	roleTransferIn     = "transfer_in"
+	roleTransferOut    = "transfer_out"
+	// roleTransferSource and roleTransferSink are the payer's and the
+	// receiver's end of one printed movement, which only [transfersByFund]
+	// draws. They are not roleTransferIn and roleTransferOut: those two are the
+	// spine's single flow endpoints, and a step's Role is how `fisc export`
+	// tells one node at a tier from another.
+	roleTransferSource          = "transfer_source"
+	roleTransferSink            = "transfer_destination"
 	roleReserveIncrease         = "reserve_increase"
 	roleFundBalanceDraw         = "fund_balance_draw"
 	roleFundBalanceContribution = "fund_balance_contribution"
@@ -95,15 +102,29 @@ const (
 	prefixFundGroup   = "fund-group/"
 	prefixFund        = "fund/"
 	prefixDept        = "dept/"
-	// prefixTransfers is the flow endpoints outside the hierarchy. Nothing is
-	// parented to them; the prefix exists so transferEndpoints can recognise a
-	// transfer node without a list of ids to keep in step.
+	// prefixTransfers is the flow endpoints outside the hierarchy. Nothing on
+	// THE SPINE is parented to them; the prefix exists so transferEndpoints can
+	// recognise a transfer node without a list of ids to keep in step.
 	prefixTransfers = "transfers/"
+	// prefixTransferFrom and prefixTransferTo are the two ends of one printed
+	// movement, and they exist because `fund/<a> -> fund/<b>` cannot be drawn:
+	// the link runs tier 3 to tier 3, which node-tiers-are-declared refuses and
+	// d3-sankey cannot lay out. See [transfersByFund] for the whole argument.
+	prefixTransferFrom = "transfer-from/"
+	prefixTransferTo   = "transfer-to/"
 )
 
-// nodeTransfersIn is the flow endpoint every transfer arrives from. It sits
-// OUTSIDE the hierarchy -- nothing is parented to it and it aggregates nothing --
-// and carries tier 0 only so the diagram lays out left to right.
+// nodeTransfersIn is the flow endpoint every transfer arrives from. On the
+// spine it sits OUTSIDE the hierarchy -- nothing is parented to it and it
+// aggregates nothing -- and carries tier 0 only so the diagram lays out left to
+// right.
+//
+// IT IS A FOLD IN ONE DOCUMENT, and the exception is exact rather than a
+// weakening. [transfersByFund] parents every payer's end to it, and those
+// legs come to p76's printed grand total -- $21,525,997 in FY2025-26 and
+// $21,624,633 in FY2026-27 -- which is the spine's own transfers/in to the
+// cent. So the fold says what a fold says there, while the spine's node still
+// aggregates nothing.
 const nodeTransfersIn = "transfers/in"
 
 // nodeTransfersOut is its mirror, and the two are not symmetric in use.
@@ -385,14 +406,20 @@ type Link struct {
 	Target     string   `json:"target"`
 	ValueCents int64    `json:"value_cents"`
 	Kind       LinkKind `json:"kind"`
-	// TransferID pairs the two legs of one transfer. It is "" on every link
-	// today -- NOT because the p76 transfer schedule is unmapped. p76 is mapped
-	// and published at scope transfers-by-fund, and no projection selects that
-	// scope, so its legs are in no graph. Populating
-	// this needs a document of p76's own plus an id derived from the two legs'
-	// shared (doc_id, page, offset): fisc-9gh, not fisc-5gk.3. Until then any
-	// check of the form "every transfer_id has two equal legs" is vacuous and
-	// must report itself as vacuous rather than as a pass.
+	// TransferID pairs the two legs of one transfer: the printed figure both
+	// were read from, as [transferID] spells it.
+	//
+	// ONE PROJECTION POPULATES IT AND THE REST LEAVE IT "", which is a property
+	// of the schedules rather than of this field. A leg can only carry a
+	// pairing where the document draws each end of a movement separately, and
+	// only [transfersByFund] does: the spine nets p76's 22 movements into
+	// fund-group cells before a pairing could attach to anything, and the
+	// drill-down cannot select that scope at all -- it publishes transfer_in
+	// from pp.127-140, and the two scopes overlap.
+	//
+	// transfer-legs-pair is what reads it, and a "" leg is invisible to that
+	// check by construction: it skips an empty id, so blanking one leg of a
+	// pair leaves the other reporting one leg where it wants two.
 	TransferID string `json:"transfer_id"`
 	// FactIDs cite every fact this link sums, ascending. More than one means
 	// contra rows netted into their parent category.
@@ -1301,14 +1328,15 @@ func transferCaveat(h Headline, col Column, links []Link) Caveat {
 	// than one document's caveats has to key on (id, document) rather than on
 	// id alone, and cannot assume one text per id.
 	const id = "transfer-legs-unpaired"
-	const unpaired = "Transfer legs are unpaired: no link carries a transfer_id. Budget " +
-		"Book p76's transfer schedule is mapped and published, but at scope " +
-		"transfers-by-fund, and this document is of all-funds-gross -- so none of its " +
-		"facts is in this graph. They cannot simply be added to it: transfers-by-fund " +
+	const unpaired = "Transfer legs are unpaired IN THIS DOCUMENT: no link here carries a " +
+		"transfer_id. Budget Book p76's transfer schedule is mapped and published, but at " +
+		"scope transfers-by-fund, and this document is of all-funds-gross -- so none of " +
+		"its facts is in this graph. They cannot simply be added to it: transfers-by-fund " +
 		"and revenue-by-fund both publish transfer_in over the same money, which the " +
-		"projection-scopes-are-disjoint check refuses. Pairing the legs needs a document " +
-		"of p76's own and a transfer_id derived from the two legs' shared page and " +
-		"offset (fisc-9gh). "
+		"projection-scopes-are-disjoint check refuses. The legs ARE paired one document " +
+		"over: transfers-by-fund draws each end of every figure p76 prints as its own " +
+		"link, the two carrying the same transfer_id, and this chart's Transfers In opens " +
+		"into it. "
 	in, out := h.InternalTransferInCents, h.InternalTransferOutCents
 
 	// AppliesTo IS READ OFF THE LINKS, not inferred from the totals above.

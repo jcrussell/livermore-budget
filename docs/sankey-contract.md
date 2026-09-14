@@ -221,13 +221,41 @@ change.
 | 0 | revenue source | `revenue/<slug>` |
 | 1 | revenue line — one printed row of a category | `revenue-line/<slug>` |
 | 2 | fund group | `fund-group/<type>` |
+| 2 | the paying end of one printed transfer | `transfer-from/<number>` |
 | 3 | fund | `fund/<number>` |
 | 4 | department | `dept/<slug>` |
 | 5 | object category | `expenditure/<slug>` |
+| 5 | the receiving end of one printed transfer | `transfer-to/<number>` |
 
 Plus the flow endpoints that are not part of that hierarchy: `transfers/in`
 (tier 0), `transfers/out` (tier 5), `fund-balance/reserve-increase` (tier 5),
 `fund-balance/draw` (tier 0), `fund-balance/contribution` (tier 5).
+
+**`transfer-from/` and `transfer-to/` are ENDS of a movement and not the funds
+themselves**, which is why they are id forms rather than a second use of
+`fund/<number>`. Budget Book p76 prints money moving between the city's own
+funds, so the natural link is `fund/<a>` to `fund/<b>` — tier 3 to tier 3, which
+the ordering rule refuses and which `d3-sankey` cannot lay out, both ends taking
+the same column index. Neither escape works either: a rollup would claim the
+payer folds into the receiver, and `partition: true` would claim p76 is one table
+read along a second axis when it is money moving. Two rejected alternatives are
+worth naming, because both look cheaper. `fund-group/<payer type>` to
+`fund/<receiver>` needs no new vocabulary at all and throws away the payer's
+identity, which is the entire content of the page. A third same-tier exception
+repeals the left-to-right invariant for every document and still does not draw,
+since `indexOf` gives both ends one column.
+
+They take the spine's own tiers for the same end of the chart — a payer's end at
+2 with the fund groups, a receiver's at 5 with the object categories — so a link
+runs tier 2 to tier 3, coarse to fine, and needs no exception anywhere. Only
+`transfers-by-fund` publishes them.
+
+**One flow endpoint is a container in one document.** `transfers/in` carries no
+link in `transfers-by-fund` and every `transfer-from/` node is parented to it, so
+there it is a fold root rather than an end. `node-hierarchy-well-formed` allows
+that exactly where the endpoint draws no flow of its own: on the spine the same
+id is the source of the city's transfer inflow, and a node parented to it there
+is still refused.
 
 **Tier 1 is a printed row, and it was empty rather than free.** Earlier revisions
 gave tier 1 as a `constraint/<tier>` node between the revenue source and the fund
@@ -267,10 +295,10 @@ each states its own below rather than inheriting the spine's.
 which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
 neither a fund nor a department axis.
 
-**All three of the spine's drawn columns open, and every rung is a WINDOW** —
-the node the reader clicked in the middle, with three columns the narrowest such
-window and the one a narrow viewport is shown; a step may declare more, and
-what each rung draws at what width is stated in
+**All three of the spine's drawn columns open, and every rung but one is a
+WINDOW** — the node the reader clicked in the middle, with three columns the
+narrowest such window and the one a narrow viewport is shown; a step may declare
+more, and what each rung draws at what width is stated in
 `docs/general-fund-drilldown-contract.md`. `index.html`
 declares a tree of steps in `views()`, not a chain: the six tier-2 fund groups
 open into `fund-flows` for the same fiscal year, keeping this document's own
@@ -281,9 +309,23 @@ fund groups for it; and the four tier-5 `expenditure/` nodes open into
 `department-spending` — the fund groups that fund the category, the category
 itself, and the divisions that spend it. From an opened fund group the General
 Fund opens into its divisions and a division into its object categories, three
-rungs deep. The two tier-0 and three tier-5 nodes that are flow ENDS rather than
-containers do not open, and the `Role` on those two steps is what closes them —
-as a third `Role` closes the sixty funds pp.167-170 do not decompose. What those
+rungs deep.
+
+**`transfers/in` opens too, and it is the one rung that is not a window.** It is
+a flow END rather than a container on the spine, so it has no parts to put a
+window around; the step keeps no flank and draws `transfers-by-fund`'s two
+columns alone — the funds that pay each transfer on the left, the funds that
+receive them on the right. A kept flank has to be ADJACENT to the opened tier in
+the chart on screen, and the column beside tier 0 in `{0, 2, 5}` is tier 2, which
+is the tier this rung's own left-hand column draws; keeping it would name one
+tier at two columns. It is also the only rung that opens a SOURCE: `transfers/in`
+has nothing pointing at it, so the end that opened is the end its links come
+from, and `DrillStep.Side` says so rather than letting a client infer it from the
+tier numbers.
+
+The remaining tier-0 node and the three tier-5 nodes that are flow ENDS rather
+than containers do not open, and the `Role` on each step is what closes them — as
+a further `Role` closes the sixty funds pp.167-170 do not decompose. What those
 rungs draw, and how the year is joined, is stated in
 `docs/general-fund-drilldown-contract.md`.
 Depth 0 is this document drawn whole, unchanged by any of it.

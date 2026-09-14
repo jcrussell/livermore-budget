@@ -659,12 +659,21 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 // this caveat carries, and it asserts the two halves separately because they
 // went stale for different reasons.
 //
-// THE STALE REASON. Until ced45b4 the caveat said the legs were unpaired
-// "because the p76 transfer schedule is not yet mapped (fisc-5gk.3)". p76 was
-// mapped and published in that commit and the legs stayed unpaired, because its
-// facts are at scope transfers-by-fund and no projection selects it. The
-// sentence was true when written in 45235d3 and nobody went back, which is the
-// failure mode this test exists to make loud.
+// THE STALE REASON, AND IT HAS NOW GONE STALE TWICE IN THE SAME PLACE. The
+// caveat first said the legs were unpaired "because the p76 transfer schedule
+// is not yet mapped (fisc-5gk.3)"; the page was mapped and the legs stayed
+// unpaired, because its facts are at scope transfers-by-fund and no projection
+// selected it. It then said pairing them "needs a document of p76's own and a
+// transfer_id derived from the two legs' shared page and offset (fisc-9gh)";
+// that document exists, and this chart's Transfers In opens into it. Both
+// sentences were true when written and neither was revisited, which is the
+// failure mode this test exists to make loud -- so the stale list below names a
+// promise of work rather than one wording, and grows by one entry each time.
+//
+// WHAT IS STILL TRUE IS SCOPED TO THIS DOCUMENT. The spine's own links carry no
+// transfer_id and cannot: internal/project nets p76's rows into fund-group
+// cells before a pairing could attach to anything. The caveat has to say that
+// about THIS graph without telling a reader the pairing does not exist.
 //
 // THE PRINTED COLUMN. The residual is not a discrepancy: the city prints it
 // under a heading of its own. The figure asserted here is the one
@@ -675,18 +684,25 @@ func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {
 	g := buildGraph(t, spineFacts(t, testYear), testOptions())
 	text := caveatText(g)
 
-	for _, stale := range []string{"not yet mapped", "not mapped yet", "fisc-5gk.3"} {
+	for _, stale := range []string{
+		"not yet mapped", "not mapped yet", "fisc-5gk.3",
+		// The pairing is done. A caveat naming the bead for it, or saying what
+		// it would take, tells a reader the chart cannot do what it does.
+		"fisc-9gh", "Pairing the legs needs",
+	} {
 		if strings.Contains(text, stale) {
-			t.Errorf("a caveat still says %q; p76 has been mapped and published since ced45b4:\n%s",
-				stale, text)
+			t.Errorf("a caveat still promises work that has landed (%q); p76 is mapped, "+
+				"published AND drawn with its legs paired:\n%s", stale, text)
 		}
 	}
 	for _, want := range []string{
 		"Transfers Out to CIP", // the printed heading
 		"$38,086,737",          // p0073.txt:58, and this document's own residual
 		"PDF p73",              // the site labels citations "PDF p" + the PDF page index
-		"fisc-9gh",             // the bead that would actually pair the legs
-		"transfers-by-fund",    // where p76's facts are, which is why they are not here
+		// The document that DOES pair them, which is what a reader who has just
+		// been told this graph does not needs pointed at. It is also where p76's
+		// facts are, which is why they are not in this graph.
+		"transfers-by-fund",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("no caveat says %q:\n%s", want, text)

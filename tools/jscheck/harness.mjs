@@ -849,6 +849,32 @@ export function goldenSpending2027() {
 }
 
 /**
+ * Budget Book p76 as `fisc export` writes it, one loader per published spine
+ * column.
+ *
+ * TWO LOADERS AND NOT A YEAR PARAMETER, for goldenSpending2027's reason: p76
+ * prints different figures in its two budget columns, so each document ties to
+ * its own printed grand total and a check served one capture under both paths
+ * could not see a year join to the wrong document.
+ *
+ * THIS IS THE ONE FIXTURE WHOSE RIBBONS SUM TO TWICE ITS SCHEDULE, and it is
+ * not a defect in the capture. The page names both ends of every movement, so
+ * the document draws a receiving leg AND a paying leg for each printed figure,
+ * carrying one transfer_id between them. The transfers step draws the receiving
+ * half; a check that summed every link here and compared it with p76 would be
+ * out by a factor of two by construction.
+ */
+export function goldenTransfers() {
+  return JSON.parse(
+    readFileSync(join(repoRoot, "testdata", "transfers-by-fund.golden.json"), "utf8"));
+}
+
+export function goldenTransfers2027() {
+  return JSON.parse(
+    readFileSync(join(repoRoot, "testdata", "transfers-by-fund-2027.golden.json"), "utf8"));
+}
+
+/**
  * The gap set as internal/check/departmentwide.go declares it: the tier-5 node
  * id an object category is drawn at, and the reason the two schedules print
  * that cell at two figures.

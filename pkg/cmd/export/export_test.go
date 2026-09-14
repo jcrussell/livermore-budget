@@ -382,10 +382,19 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 	// close reason reads "Not published: no facts, facts.jsonl byte-identical".
 	// Refused on every page, because the claim could reappear on either.
 	for name, page := range pages {
-		for _, stale := range []string{"not yet mapped", "not mapped yet", "fisc-5gk.3"} {
+		for _, stale := range []string{
+			"not yet mapped", "not mapped yet", "fisc-5gk.3",
+			// AND THE SECOND STALE PROMISE, which replaced the first and went
+			// the same way: the caveat said pairing the legs "needs a document
+			// of p76's own" and named the bead for it. That document is
+			// published and this page's Transfers In opens into it, so a reader
+			// meeting the sentence is told the site cannot do what it does.
+			"fisc-9gh", "Pairing the legs needs",
+		} {
 			if strings.Contains(page, stale) {
-				t.Errorf("the exported %s says %q; Budget Book p76 has been mapped and "+
-					"published at scope transfers-by-fund since ced45b4", name, stale)
+				t.Errorf("the exported %s promises work that has landed (%q); Budget Book "+
+					"p76 is mapped, published at scope transfers-by-fund AND drawn with "+
+					"its legs paired", name, stale)
 			}
 		}
 	}
@@ -401,7 +410,10 @@ func TestTheSiteDoesNotSayThePSeventySixScheduleIsUnmapped(t *testing.T) {
 		t.Fatal("caveats.html now ships a config blob; this test's substring search would " +
 			"pass on JSON no reader reads, which is what it was rewritten to stop doing")
 	}
-	for _, want := range []string{"Transfers Out to CIP", "fisc-9gh"} {
+	// "transfers-by-fund" replaces the bead id the stale list now refuses: what
+	// a reader needs is the document that DOES pair the legs, not the work that
+	// was going to build it.
+	for _, want := range []string{"Transfers Out to CIP", "transfers-by-fund"} {
 		if !strings.Contains(caveats, want) {
 			t.Errorf("the exported caveats.html does not say %q, so the residual is "+
 				"unexplained rather than cited", want)
@@ -827,6 +839,7 @@ func TestBuildProjectionsRunsThePipeline(t *testing.T) {
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",
+		"transfers-by-fund", "transfers-by-fund-2027",
 	}, keys(got)); diff != "" {
 		t.Errorf("projection names (-want +got):\n%s", diff)
 	}
@@ -919,6 +932,7 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 		"fund-balances",
 		"fund-flows", "fund-flows-2024-actual", "fund-flows-2025-revised", "fund-flows-2027",
 		"revenue-trends", "sankey", "sankey-2027",
+		"transfers-by-fund", "transfers-by-fund-2027",
 	}
 	got := keys(built)
 	sort.Strings(got)
@@ -1311,6 +1325,33 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"division spends whatever pays for it: it carries no fund at all, so " +
 				"no division here takes the colour of a fund group.",
 		},
+		{
+			// THE ONLY STEP THAT KEEPS NO FLANK AND THE ONLY ONE THAT OPENS A
+			// SOURCE, which are one fact rather than two: transfers/in is a
+			// tier-0 node with nothing pointing at it, so the end that opened
+			// is the end its links come FROM, and a window's centre is the
+			// target of one half and the source of the other -- validateSteps
+			// refuses Keep and Side declared together for exactly that reason.
+			Key:             "transfers",
+			After:           []string{""},
+			From:            0,
+			Side:            export.SideSource,
+			Role:            "transfer_in",
+			Projection:      project.TransfersByFundProjection,
+			YearProjections: map[string]string{"sankey": "transfers-by-fund", "sankey-2027": "transfers-by-fund-2027"},
+			Tiers:           []int{2, 3},
+			Back:            "All money coming in",
+			Tail:            "funds",
+			Description: "Budget Book p76, Summary of Transfers: the funds that pay each " +
+				"transfer the city makes to itself are on the left, and the funds that " +
+				"receive them are on the right. One ribbon is one figure the page prints, " +
+				"and a fund that both pays and receives is drawn once on each side, under " +
+				"the same name. This is the money coming IN, which is what the mark on " +
+				"the citywide chart counts; what the city transfers OUT is larger, " +
+				"because pp.72-75 print the transfers each fund makes to the Capital " +
+				"Improvement Program under a heading of their own and p76 does not list " +
+				"them.",
+		},
 	}
 	if diff := cmp.Diff(want, spine.Steps); diff != "" {
 		t.Errorf("the spine's steps (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGE "+
@@ -1410,21 +1451,36 @@ func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 		}
 		return out
 	}
-	noFlows := views(result{Projections: without(project.FundFlowsProjection)})[0].Steps
-	if len(noFlows) != 1 || noFlows[0].Key != "object-category" {
-		t.Errorf("with no fund-flows document built the spine declares %d step(s) (%v), want "+
-			"the object-category step alone", len(noFlows), stepKeys(noFlows))
-	}
-	noSpending := views(result{Projections: without(project.DepartmentSpendingProjection)})[0].Steps
-	if len(noSpending) != 4 || slices.ContainsFunc(noSpending, func(s export.DrillStep) bool {
-		return s.Key == "object-category"
-	}) {
-		t.Errorf("with no department-spending document built the spine declares %d step(s) "+
-			"(%v), want the four fund-flows steps", len(noSpending), stepKeys(noSpending))
-	}
-	neither := without(project.FundFlowsProjection, project.DepartmentSpendingProjection)
-	if steps := views(result{Projections: neither})[0].Steps; len(steps) != 0 {
-		t.Errorf("the spine declares %d step(s) with neither step document built", len(steps))
+	//
+	// ASSERTED AS THE KEYS THAT SURVIVE rather than as a count, because three
+	// projections now join separately and a count alone would let a corpus lose
+	// one document and gain a step somewhere else without the difference
+	// showing.
+	for _, tc := range []struct {
+		name string
+		drop []string
+		want []string
+	}{
+		{"no fund-flows", []string{project.FundFlowsProjection},
+			[]string{"object-category", "transfers"}},
+		{"no department-spending", []string{project.DepartmentSpendingProjection},
+			[]string{"fund-group", "fund", "division", "revenue-category", "transfers"}},
+		{"no transfers-by-fund", []string{project.TransfersByFundProjection},
+			[]string{"fund-group", "fund", "division", "revenue-category", "object-category"}},
+		{"neither detail document", []string{project.FundFlowsProjection,
+			project.DepartmentSpendingProjection}, []string{"transfers"}},
+		{"no step document at all", []string{project.FundFlowsProjection,
+			project.DepartmentSpendingProjection, project.TransfersByFundProjection}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := stepKeys(views(result{Projections: without(tc.drop...)})[0].Steps)
+			if len(got) == 0 {
+				got = nil
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("the spine's steps (-want +got):\n%s", diff)
+			}
+		})
 	}
 }
 
@@ -1960,6 +2016,32 @@ func TestTheDepartmentSpendingFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 func TestTheDepartmentSpending2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "department-spending-2027",
 		"department-spending-2027.golden.json")
+}
+
+// TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws keeps the capture of
+// Budget Book p76 honest.
+//
+// THIS DOCUMENT IS THE ONE SHAPE tools/jscheck CANNOT INFER FROM ANOTHER. Every
+// other captured document draws one ribbon per printed cell; this one draws TWO
+// per printed figure, a receiving leg and a paying one carrying the same
+// transfer_id, so a harness handed any other fixture would measure a chart whose
+// ribbons sum to the schedule rather than to twice it. The transfers step draws
+// the receiving legs alone, and whether the fold it hangs off is the one
+// `fisc export` writes is exactly what this compares.
+func TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, project.TransfersByFundProjection,
+		"transfers-by-fund.golden.json")
+}
+
+// TestTheTransfersByFund2027FixtureIsTheDocumentTheSiteDraws is the same claim
+// over the spine's other year, and the two documents are NOT interchangeable
+// even though they are the same shape: p76 prints different figures in the two
+// budget columns, so each ties to its own printed grand total -- $21,525,997 in
+// FY2025-26 and $21,624,633 in FY2026-27 -- and a harness driven over one
+// capture twice could not see a year join to the wrong document.
+func TestTheTransfersByFund2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
+	fixtureIsTheDocumentExported(t, "transfers-by-fund-2027",
+		"transfers-by-fund-2027.golden.json")
 }
 
 // fixtureIsTheDocumentExported compares one committed capture line for line

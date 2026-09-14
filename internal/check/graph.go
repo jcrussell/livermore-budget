@@ -720,23 +720,24 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 
 // transferLegsPair asserts every transfer_id has two equal legs.
 //
-// It is vacuous today and expected to stay so for a while, and it is declared as
-// such in vacuity.go so that --strict can be the CI gate meanwhile.
+// ONE DOCUMENT GIVES IT A SUBJECT AND THE REST CANNOT. A leg can only carry a
+// pairing where a document draws each end of a movement as its own link, which
+// is transfers-by-fund alone: the spine nets p76's rows into fund-group cells
+// before a pairing could attach to anything -- cellKey is
+// (kind, category, fund_group) and netCells never reads a fact's fund -- and the
+// drill-down cannot select that scope at all, because it and revenue-by-fund
+// both publish transfer_in over the same money.
 //
-// No link carries a transfer_id. A rule can now express the pairing -- a row
-// declares a Counterpart and one printed figure becomes two facts citing it --
-// but this check reads LINKS, and internal/project keys cells on
-// (kind, category, fund_group) and never reads a fact's fund, so p76's 22
-// printed legs net into 9 fund-group cells before a pairing could be attached
-// to anything. Retiring it needs leg-level links, which is the node tier
-// hierarchy, plus a Link.TransferID derived from the two legs' shared
-// (doc_id, page, offset). That is fisc-9gh; mapping p76 does not do it, and
-// fisc-4rh -- which settled the fact shape and is cited below for that -- was
-// read as though it would.
+// AN EMPTY ID IS SKIPPED AND THAT IS WHAT MAKES THE CHECK FAILABLE, which reads
+// backwards until the mutation is stated. Blanking ONE leg does not hide the
+// pair: the other leg still carries the id, and this reports it as one leg where
+// it wants two. Run, 51 checks green beforehand: blanking a single receiving
+// leg's TransferID turns this FAIL with two findings, one per published column.
 //
-// Reporting this as a pass would tell a reader the legs had been checked against
-// each other when nothing has ever looked at them, which is the reason
-// StatusVacuous exists.
+// WHAT IT DOES NOT WITNESS. That the two legs are the same printed figure is the
+// PROJECTION's guarantee -- pairTransferLegs refuses a group that is not one
+// receiving and one paying leg of equal value -- so a finding here means the
+// document drew half a movement, not that the page disagrees with itself.
 type transferLegsPair struct{}
 
 var _ Check = (*transferLegsPair)(nil)
@@ -745,8 +746,8 @@ func (*transferLegsPair) ID() string { return "transfer-legs-pair" }
 func (*transferLegsPair) Tier() int  { return 1 }
 func (*transferLegsPair) Full() bool { return false }
 func (*transferLegsPair) Description() string {
-	return "every transfer_id names exactly two links of equal value — vacuous until a link can " +
-		"carry one (fisc-9gh)"
+	return "every transfer_id names exactly two links of equal value, over the documents that " +
+		"draw each end of a movement as its own link"
 }
 
 func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
@@ -783,7 +784,7 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 		subjects: len(ids),
 		unit:     "transfer ids",
 		held:     fmt.Sprintf("%d transfer ids, each with two equal legs", len(ids)),
-		nothing:  "no link carries a transfer_id, so no pairing has been checked (fisc-9gh)",
+		nothing:  "no link carries a transfer_id, so no pairing has been checked",
 		findings: findings,
 	}.result(), nil
 }
@@ -831,9 +832,26 @@ func describeLegs(legs []project.Link) string {
 //     hierarchy inside out.
 //   - no node is its own ancestor. Parent is one string so a cycle needs at
 //     least two nodes, and a client folding one would not terminate.
-//   - no node is parented to a FLOW ENDPOINT. transfers/in and the fund-balance
-//     nodes sit outside the hierarchy and aggregate nothing, so a node folding
-//     into one would disappear into a box that is not a level.
+//   - no node is parented to a FLOW ENDPOINT THAT CARRIES A FLOW HERE.
+//     transfers/in and the fund-balance nodes sit outside the hierarchy on the
+//     spine and aggregate nothing, so a node folding into one would disappear
+//     into a box that is not a level.
+//
+// THE ENDPOINT ARM IS PER DOCUMENT, AND THE CONDITION IS THE ENDPOINT'S OWN
+// LINKS. "Flow endpoint" is a role a node plays in a document rather than a
+// property of its id: what makes folding into one lose money is that the box
+// already has a flow of its own, so the child's money is both inside it and
+// beside it. An endpoint that touches NO link in the document under test has no
+// such flow -- it is a container the document drew to hold its own subtree --
+// and the fold is then ordinary. Measured on the committed corpus, this is
+// exactly one node in one document: transfers-by-fund draws transfers/in with
+// no link at all and parents every payer's end to it, and those ends come to
+// p76's printed grand total, $21,525,997 in FY2025-26 and $21,624,633 in
+// FY2026-27. On the spine the same id is the source of the transfer inflow, so
+// a node parented to it there is refused exactly as before.
+//
+// IT IS NOT A TOLERANCE, and the mutation says so: give transfers/in a single
+// link in that document and every one of its children is a finding again.
 //
 // SUBJECTS ARE THE PARENTED NODES, so this stays honestly vacuous over a
 // document with no hierarchy — the spine — and goes live over the first one that
@@ -847,17 +865,27 @@ func (*nodeHierarchyWellFormed) Tier() int  { return 1 }
 func (*nodeHierarchyWellFormed) Full() bool { return false }
 func (*nodeHierarchyWellFormed) Description() string {
 	return "every node.parent resolves to a node of the same document, at a strictly coarser " +
-		"tier, with no node its own ancestor and none parented to a flow endpoint"
+		"tier, with no node its own ancestor and none parented to a flow endpoint that " +
+		"carries a flow in that same document"
 }
 
 func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
-	parented, docs := 0, 0
+	parented, docs, endpointParents := 0, 0, 0
 
 	for _, p := range s.linkedDocuments() {
 		byID := make(map[string]project.Node, len(p.Nodes))
 		for _, n := range p.Nodes {
 			byID[n.ID] = n
+		}
+		// The nodes this document draws a link at either end of. An endpoint
+		// among them is playing the part its id names; one that is not is a
+		// box, and the doc comment says why that difference is the whole of
+		// the endpoint arm below.
+		flowing := make(map[string]bool, 2*len(p.Links))
+		for _, l := range p.Links {
+			flowing[l.Source] = true
+			flowing[l.Target] = true
 		}
 		some := false
 		for _, n := range p.Nodes {
@@ -876,11 +904,16 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 				continue
 			}
 			if _, isEndpoint := endpointTiers[n.Parent]; isEndpoint {
-				findings = append(findings, finding(p.String(),
-					"node %q is parented to %q, which is a flow endpoint rather than a "+
-						"level. Endpoints sit outside the hierarchy and aggregate nothing",
-					n.ID, n.Parent))
-				continue
+				if flowing[n.Parent] {
+					findings = append(findings, finding(p.String(),
+						"node %q is parented to %q, a flow endpoint this document draws a "+
+							"flow at. An endpoint carrying its own flow sits outside the "+
+							"hierarchy, so a node folding into one is both inside that box "+
+							"and beside it",
+						n.ID, n.Parent))
+					continue
+				}
+				endpointParents++
 			}
 			if parent.Tier >= n.Tier {
 				findings = append(findings, finding(p.String(),
@@ -906,7 +939,9 @@ func (*nodeHierarchyWellFormed) Run(_ context.Context, s *Subject) (Result, erro
 		unit:     "parented nodes",
 		held: fmt.Sprintf("%d parented nodes across %d document(s) with a hierarchy, each "+
 			"resolving to a node of its own document at a strictly coarser tier, none its "+
-			"own ancestor and none folding into a flow endpoint", parented, docs),
+			"own ancestor and none folding into a flow endpoint its own document draws a "+
+			"flow at; %d fold into an endpoint that carries no flow there and is a "+
+			"container rather than an end", parented, docs, endpointParents),
 		nothing: "no node carries a parent, so no document publishes a hierarchy to be " +
 			"well-formed",
 		findings: findings,

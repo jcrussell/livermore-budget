@@ -71,36 +71,6 @@ const acfrFundBalancesScope = "acfr-fund-balances"
 // cells against the spine. Retiring a declaration here costs nothing, which is
 // what makes the automatic retirement safe.
 var unprojectedScopes = map[string]string{
-	transfersDetailScope: "Budget Book p76, Summary of Transfers: the per-fund decomposition " +
-		"of pp.66-67's TRANSFER IN and TRANSFER OUT rows, not additional money. Its 22 " +
-		"printed rows sum, per receiving fund group, to those pages' TRANSFER IN cells " +
-		"exactly in both budget years -- general 480,400 / 486,735, enterprise 13,247,000 / " +
-		"13,330,000, debt-service 6,984,597 / 6,969,898, special-revenue 814,000 / 838,000 " +
-		"-- so drawing them into the fund-group spine doubles the city's transfers. Each " +
-		"row publishes TWO facts from one printed figure, the receiving leg and the paying " +
-		"one, so 88 in all. WHAT RECONCILES THEM IS NOT UNIFORM AND THE DIFFERENCE MATTERS: " +
-		"the IN side ties to the spine exactly, cell for cell, with no constant and no " +
-		"exception. The OUT side does not and cannot -- pp.66-67's TRANSFER OUT includes " +
-		"transfers to the CIP, which p76 does not list -- so it ties only after adding a " +
-		"figure read off pp.72-75, which are neither mapped nor fixtures and are therefore " +
-		"hand-typed into the check. And the permanent in-leg is a published zero reconciled " +
-		"against an absent spine column, because pp.66-67 print no Permanent group at all " +
-		"(fisc-u8o); it is covered by no arithmetic here. The two historical columns are " +
-		"not published: they miss p76's own printed grand total by 6,858,051 and by exactly " +
-		"5,000,000, and the spine prints no actual or revised column to tie them to. " +
-		"THE PAYER AT EACH ROW'S FAR END IS NOT COVERED BY THE ARITHMETIC AT ALL, and " +
-		"is checked separately: it is hand-typed 44 times, the page cannot check it (a " +
-		"counterpart is resolved downstream of every comparison against the city's own " +
-		"totals), and five of p76's payer labels match an operating fund AND its CIP " +
-		"twin -- every twin type: capital, so a leg under the wrong twin moves inside " +
-		"the collapsed non-major cell and ties anyway. row-funds-match-their-anchors " +
-		"resolves the printed row anchors against data/funds.yaml instead -- its own " +
-		"summary line carries the count, which is why one is not repeated here. Three " +
-		"declared payers it cannot reach: p76 prints three continuation rows whose " +
-		"\"Transfer From\" carries over from the row above, so they have no printed " +
-		"anchor on their own line. A fund tier in the graph is fisc-gxa.2 / fisc-oxf; " +
-		"leg-level links carrying a transfer_id are fisc-9gh.",
-
 	acfrGeneralFundScope: "ACFR MD&A p41, the General Fund's condensed Statement of Revenues, " +
 		"Expenditures and Changes in Fund Balances: 20 FY2024-25 figures at the millions " +
 		"grain, where the pp.167-169 schedules print dollars. The page prints FOUR blocks " +

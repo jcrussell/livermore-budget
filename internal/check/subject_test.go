@@ -276,21 +276,15 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"headline-ties-to-facts":                StatusPass,
 		"headline-transfer-residual":            StatusPass,
 		"headline-naive-expenditure":            StatusPass,
-		// ONE VACUOUS CHECK REMAINS OF THE FIVE fisc-0ux ENUMERATED, and the
-		// two that were here until the drill-down landed are now PASSES: the
-		// document carries node.parent on 523 nodes and a constraint tier on
-		// 247, so both have subjects for the first time.
-		//
-		// fact-funds-resolve left this list when fisc-5gk.1 mapped pp.127-140,
-		// whose columns are per FUND rather than per fund group.
-		//
-		// transfer-legs-pair stays, and the tier hierarchy did NOT retire it,
-		// which was the expectation this line used to encode. p76's legs are in
-		// scope transfers-by-fund and no projection selects it -- and it cannot
-		// simply be added to the drill-down, because transfers-by-fund and
-		// revenue-by-fund overlap by 21,045,597 of FY2026 transfer_in and one
-		// document holding both would double it (fisc-9gh).
-		"transfer-legs-pair":              StatusVacuous,
+		// NONE OF THE FIVE fisc-0ux ENUMERATED IS VACUOUS OVER THIS CORPUS, and
+		// transfer-legs-pair was the last of them. It reads LINKS, and what it
+		// needed was a document drawing each end of a printed movement as its
+		// own link: the spine nets p76's rows into fund-group cells before a
+		// pairing could attach to anything, and the drill-down cannot select
+		// that scope, because it and revenue-by-fund both publish transfer_in
+		// and one document holding both would double it. transfers-by-fund is
+		// that document, and declaredVacuous is empty as a result.
+		"transfer-legs-pair":              StatusPass,
 		"node-hierarchy-well-formed":      StatusPass,
 		"constraint-tier-vocabulary":      StatusPass,
 		"fact-departments-resolve":        StatusPass,

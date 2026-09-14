@@ -29,13 +29,26 @@ import (
 // OWN KEY. declaredTier cuts an id at its FIRST slash, and a category slug is
 // already one or two segments (`revenue/taxes/property` is tier 0), so a line
 // nested under `revenue/` would be read as its own parent's form.
+//
+// `transfer-from/` AND `transfer-to/` ARE FORMS AND NOT ENDPOINTS, which is why
+// they are here and not in endpointTiers beside `transfers/in`. That table is
+// keyed by NAME because it holds five nodes; these two are one node per fund
+// and could not be enumerated. They are the two ends of a printed movement
+// rather than the funds themselves -- Budget Book p76 prints money moving
+// between the city's own funds, and `fund/<a>` to `fund/<b>` runs tier 3 to
+// tier 3, which the ordering claim below refuses and d3-sankey cannot lay out
+// with both ends taking one column index. Their tiers are the spine's own for
+// the same end of the chart: a payer's end at 2 with the fund groups, a
+// receiver's at 5 with the object categories.
 var hierarchyTiers = map[string]int{
-	"revenue":      0,
-	"revenue-line": 1,
-	"fund-group":   2,
-	"fund":         3,
-	"dept":         4,
-	"expenditure":  5,
+	"revenue":       0,
+	"revenue-line":  1,
+	"fund-group":    2,
+	"transfer-from": 2,
+	"fund":          3,
+	"dept":          4,
+	"expenditure":   5,
+	"transfer-to":   5,
 }
 
 // endpointTiers are the five flow endpoints, which sit OUTSIDE the hierarchy and

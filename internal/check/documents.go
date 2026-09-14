@@ -218,6 +218,13 @@ func documentShape(p projection) string {
 		// spending-window-reconciles, which holds this document's object
 		// categories against the spine's cell by cell.
 		return "cross-tab, no headline"
+	case p.TransfersByFund != nil:
+		// The same six structural checks that read Subject.Linked, plus
+		// transfer-legs-pair, which is the only check in the tree that reads
+		// Link.TransferID and had no subject at all until this shape existed.
+		// The arithmetic this document rests on is transfers-detail-ties-to-spine,
+		// which reads the FACTS and is therefore not named here.
+		return "paired legs, no headline"
 	default:
 		return ""
 	}

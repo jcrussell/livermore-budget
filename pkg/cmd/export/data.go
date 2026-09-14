@@ -906,6 +906,68 @@ func views(built result) []export.View {
 			},
 		}...)
 	}
+	// THE SPINE'S TRANSFERS IN OPENS INTO p76, AND THIS IS THE ONLY STEP ON THE
+	// SITE THAT IS NOT A WINDOW. The three above keep a flank of the chart the
+	// reader came from; this one keeps none, and the reason is positional
+	// rather than editorial. A kept flank has to be a column ADJACENT to the
+	// opened tier in the chart on screen, and on the spine's own {0,2,5} the
+	// column beside tier 0 is tier 2 -- which is the tier this step's own
+	// left-hand column draws. Keeping it would name one tier at two columns,
+	// which validateSteps refuses by name.
+	//
+	// IT IS ALSO THE ONLY STEP THAT OPENS A SOURCE. transfers/in is a tier-0
+	// node with nothing pointing at it, and filterToNode asked for it answers an
+	// empty graph with no error -- the id is known, so the guard on an unknown
+	// one does not fire -- and d3-sankey dies on the empty graph with a
+	// RangeError. Side says which end opened, so the client picks filterFromNode
+	// instead. DECLARED AND NOT INFERRED: "the opened tier is below every tier
+	// this step draws, so it must be a source" is true of the columns that exist
+	// and says nothing a third document would have to obey.
+	//
+	// THE ROLE IS WHAT MAKES IT REACHABLE. The revenue-category step also opens
+	// tier 0 of this same chart after "", and validateSteps refuses two steps
+	// sharing an (After, From, Role). That step names "revenue_source", which is
+	// what leaves transfers/in and fund-balance/draw closed; this one names
+	// transfers/in's own role, so the two partition the column instead of
+	// colliding on it.
+	//
+	// ONE SIDE OF p76 IS DRAWN AND BOTH ARE PUBLISHED. The document carries a
+	// receiving leg and a paying leg for every printed figure; this step's
+	// {2,3} draws the receiving legs, whose subtree hangs off transfers/in. The
+	// paying legs end at tier 5, which the spine pins transfers/out at, and a
+	// node decomposing that would have to be FINER than its own parent -- the
+	// tier order forbids it, and fisc-ko1j.12.10 is where the other half goes.
+	//
+	// NO CAP AND NO GAP. The drawn columns are 8 payer ends and 9 receiving
+	// funds in both budget years, which is under any cap worth declaring, and
+	// the receiving legs come to p76's printed grand total -- $21,525,997 in
+	// FY2025-26 and $21,624,633 in FY2026-27 -- which is the spine's own
+	// transfers/in to the cent, so the opened node has nothing to fall short by.
+	if years := stepStems(export.PrimaryProjection, project.TransfersByFundProjection, projections); years[export.PrimaryProjection] != "" {
+		spine.Steps = append(spine.Steps, []export.DrillStep{
+			{
+				Key:             "transfers",
+				After:           []string{""},
+				From:            0,
+				Side:            export.SideSource,
+				Role:            "transfer_in",
+				Projection:      years[export.PrimaryProjection],
+				YearProjections: years,
+				Tiers:           []int{2, 3},
+				Back:            "All money coming in",
+				Tail:            "funds",
+				Description: "Budget Book p76, Summary of Transfers: the funds that pay each " +
+					"transfer the city makes to itself are on the left, and the funds that " +
+					"receive them are on the right. One ribbon is one figure the page prints, " +
+					"and a fund that both pays and receives is drawn once on each side, under " +
+					"the same name. This is the money coming IN, which is what the mark on " +
+					"the citywide chart counts; what the city transfers OUT is larger, " +
+					"because pp.72-75 print the transfers each fund makes to the Capital " +
+					"Improvement Program under a heading of their own and p76 does not list " +
+					"them.",
+			},
+		}...)
+	}
 	out := []export.View{spine}
 
 	// THE TABLES COME AFTER THE CHARTS THEY BELONG TO. Listed before them the

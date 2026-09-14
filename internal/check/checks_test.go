@@ -1891,9 +1891,10 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 	t.Run("the scope is now projected", func(t *testing.T) {
 		// The spine facts, relabelled into the declared scope, and a projection
 		// built OF that scope — which is what fisc-gxa.2 will do for real.
+		withUnprojectedScope(t, testDeclaredScope, testDeclaredReason)
 		facts := testFacts()
 		for i := range facts {
-			facts[i].Scope = transfersDetailScope
+			facts[i].Scope = testDeclaredScope
 		}
 		fact.Sort(facts)
 		s := factsSubject(t, facts)
@@ -1903,7 +1904,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 				Columns: []project.Column{{
 					FiscalYear: facts[0].FiscalYear, Basis: facts[0].Basis,
 				}},
-				Scopes: []string{transfersDetailScope},
+				Scopes: []string{testDeclaredScope},
 			},
 		}}
 		// The check is run directly rather than through the whole set: this
@@ -1927,6 +1928,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		// the string here and the string in mappings/ have drifted apart.
 		// testSubject rather than factsSubject, so every fact IS projected and
 		// the only thing left for the check to report is the declaration.
+		withUnprojectedScope(t, testDeclaredScope, testDeclaredReason)
 		s := testSubject(t)
 		s.Files = []*mapping.File{{
 			DocID: testDoc,
@@ -1952,6 +1954,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 	// exists for was unreachable, and the two need different fixes: delete the
 	// entry, or find out why the rules stopped writing the string.
 	t.Run("a scope no rule writes is not a scope that is fully drawn", func(t *testing.T) {
+		withUnprojectedScope(t, testDeclaredScope, testDeclaredReason)
 		s := testSubject(t)
 		s.Files = []*mapping.File{{
 			DocID: testDoc,
@@ -1963,7 +1966,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 			Name: "detail",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2026, Basis: project.PublishedBasis}},
-				Scopes:  []string{transfersDetailScope},
+				Scopes:  []string{testDeclaredScope},
 			},
 		})
 		res, err := (&factsAreProjected{}).Run(context.Background(), s)
@@ -1996,9 +1999,10 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 		// Two columns of one declared scope, and a projection of ONE of them --
 		// the shape a revenue-trends over the two adopted years alone would have
 		// had, leaving 462 of 924 facts declared and saying nothing.
+		withUnprojectedScope(t, testDeclaredScope, testDeclaredReason)
 		facts := testFacts()
 		for i := range facts {
-			facts[i].Scope = transfersDetailScope
+			facts[i].Scope = testDeclaredScope
 		}
 		other := make([]fact.Fact, 0, len(facts))
 		for _, f := range facts {
@@ -2015,7 +2019,7 @@ func TestAStaleUnprojectedScopeDeclarationFails(t *testing.T) {
 			Name: "half",
 			Options: project.Options{
 				Columns: []project.Column{{FiscalYear: 2027, Basis: facts[0].Basis}},
-				Scopes:  []string{transfersDetailScope},
+				Scopes:  []string{testDeclaredScope},
 			},
 		}}
 		res, err := (&factsAreProjected{}).Run(context.Background(), s)
@@ -2634,3 +2638,110 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 		}
 	})
 }
+
+// TestAnEndpointCarryingNoFlowMayBeAParent covers node-hierarchy-well-formed's
+// one exception, over the document it exists for, and the mutation that closes
+// it again.
+//
+// THE FIXTURE CANNOT WITNESS THIS, which is why the subject is the committed
+// corpus rather than testSubject. That fixture is a miniature of one spine year
+// and builds no transfers-by-fund document at all, so a case added to
+// TestNodeHierarchyWellFormedIsFailable's table would be green because the shape
+// never arrived -- a test passing because the gate fired earlier, which is a
+// different guarantee from one passing because the defect was prevented.
+func TestAnEndpointCarryingNoFlowMayBeAParent(t *testing.T) {
+	const id = "node-hierarchy-well-formed"
+	// Spelled rather than imported, endpointTiers' own rule at the same place:
+	// this is a second reading of the id the projection writes, and taking it
+	// from the producer would make the two agree by construction.
+	const endpoint = "transfers/in"
+
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("load the committed corpus: %v", err)
+	}
+	var doc *project.TransfersByFundDocument
+	for i := range s.Projections {
+		if d := s.Projections[i].TransfersByFund; d != nil {
+			doc = d
+			break
+		}
+	}
+	if doc == nil {
+		t.Fatal("the committed corpus builds no transfers-by-fund document, so this test " +
+			"would assert the exception over a shape that is not there")
+	}
+
+	// THE TWO HALVES OF THE EXCEPTION, ASSERTED SEPARATELY, because either one
+	// alone is satisfied by a document this check would have passed anyway: a
+	// document folding nothing into the endpoint, or one whose endpoint is
+	// absent. Both have to hold for the arm below to be the thing under test.
+	folded := 0
+	for _, n := range doc.Nodes {
+		if n.Parent == endpoint {
+			folded++
+		}
+	}
+	if folded == 0 {
+		t.Fatalf("no node of %s folds into %q, so the exception has no subject",
+			doc.Projection, endpoint)
+	}
+	for _, l := range doc.Links {
+		if l.Source == endpoint || l.Target == endpoint {
+			t.Fatalf("%s draws a link at %q (%s -> %s), so this document is not the "+
+				"container case the exception is for", doc.Projection, endpoint, l.Source, l.Target)
+		}
+	}
+	if res := resultFor(t, runChecks(t, s), id); res.Status != StatusPass {
+		t.Fatalf("status = %s over the committed corpus, want pass: %s",
+			res.Status, findingDetails(res))
+	}
+
+	// THE MUTATION. One link at the endpoint and the same fold is refused
+	// again, once per node that takes it. The link is not otherwise well formed
+	// and does not need to be -- this arm reads the ENDS of the links a document
+	// draws and nothing else.
+	doc.Links = append(doc.Links, project.Link{
+		Source: endpoint, Target: doc.Nodes[0].ID, Kind: project.KindInternalTransfer,
+	})
+	res := resultFor(t, runChecks(t, s), id)
+	if res.Status != StatusFail {
+		t.Fatalf("status = %s with a link drawn at %q, want fail", res.Status, endpoint)
+	}
+	if got := strings.Count(findingDetails(res), "a flow endpoint this document draws a flow at"); got != folded {
+		t.Errorf("%d findings name the endpoint, want one per folded node (%d): %s",
+			got, folded, findingDetails(res))
+	}
+}
+
+// withUnprojectedScope declares one scope unprojected for the duration of a
+// test.
+//
+// A CASE ABOUT THE DECLARATION MECHANISM MUST NOT BORROW A LIVE DECLARATION.
+// Two of the cases below drove the mechanism through transfers-by-fund's real
+// entry, and went red the day that entry retired -- which is staleDeclarations
+// working exactly as designed, reported as a failure of the tests that watch
+// it. What they are about is what the check does with AN entry, so they install
+// their own and the map in coverage.go is free to empty out.
+func withUnprojectedScope(t *testing.T, scope, reason string) {
+	t.Helper()
+	prev := unprojectedScopes
+	next := make(map[string]string, len(prev)+1)
+	for k, v := range prev {
+		next[k] = v
+	}
+	next[scope] = reason
+	unprojectedScopes = next
+	t.Cleanup(func() { unprojectedScopes = prev })
+}
+
+// testDeclaredScope is the scope the cases above declare, and it is deliberately
+// not a scope this repository carries: a fixture naming a real schedule would
+// read as a claim about that schedule.
+const testDeclaredScope = "fixture-detail-scope"
+
+// testDeclaredReason is shaped like the entries in coverage.go, because
+// TestUnprojectedScopesAreDeclarations holds those to naming a document and a
+// reason rather than an intention.
+const testDeclaredReason = "Budget Book p00, a fixture schedule: the per-fund decomposition " +
+	"of a spine row, not additional money, so drawing it into the spine would double it."

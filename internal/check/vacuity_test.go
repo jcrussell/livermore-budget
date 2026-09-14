@@ -123,12 +123,7 @@ func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
 // should pass on one -- otherwise the entry outlives the work it was waiting
 // for, which is exactly the failure mode a declaration is supposed to prevent.
 func TestAStaleDeclarationFailsWithOrWithoutStrict(t *testing.T) {
-	var declared string
-	for id := range declaredVacuous {
-		if declared == "" || id < declared {
-			declared = id
-		}
-	}
+	declared, _ := testVacancy(t)
 
 	for _, strict := range []bool{false, true} {
 		// The declared check now PASSES: the work landed and the entry did not
@@ -226,12 +221,7 @@ func TestTheCommittedCorpusIsStrictClean(t *testing.T) {
 // A genuine error still fails the run. That is Counts.Error's job in Failed(),
 // and it says the checker could not tell rather than claiming a bead landed.
 func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
-	declared := ""
-	for id := range declaredVacuous {
-		if declared == "" || id < declared {
-			declared = id
-		}
-	}
+	declared, _ := testVacancy(t)
 
 	t.Run("errored", func(t *testing.T) {
 		broke := &fake{id: declared, err: errors.New("the manifest is unreadable")}
@@ -275,4 +265,46 @@ func TestADeclarationSurvivesACheckThatReachedNoVerdict(t *testing.T) {
 				c.res.Status, rep.StaleDeclarations())
 		}
 	}
+}
+
+// withDeclaredVacancy declares one vacancy for the duration of a test.
+//
+// A CASE ABOUT THE DECLARATION MECHANISM MUST NOT BORROW A LIVE DECLARATION,
+// withUnprojectedScope's argument one map over, and here it is sharper: the
+// tree now declares NO vacancy at all, so the two cases below picked the
+// lowest id of an empty map and drove the whole mechanism through "". They
+// were green only while some check in this repository had nothing to look at,
+// which is a state the backlog exists to end -- the tests that watch the
+// mechanism would have retired with the last thing it excused.
+func withDeclaredVacancy(t *testing.T, id string, v vacancy) {
+	t.Helper()
+	prev := declaredVacuous
+	next := make(map[string]vacancy, len(prev)+1)
+	for k, val := range prev {
+		next[k] = val
+	}
+	next[id] = v
+	declaredVacuous = next
+	t.Cleanup(func() { declaredVacuous = prev })
+}
+
+// testVacancy is the declaration the cases below install. The id is a real
+// check, because Declaration.Ran distinguishes "this run had no such check"
+// from a stale entry and a made-up id would exercise the wrong arm.
+func testVacancy(t *testing.T) (string, vacancy) {
+	t.Helper()
+	const id = "transfer-legs-pair"
+	// THE BEAD IS DELIBERATELY NOT A fisc- ID. `make beadrefs` reads every
+	// tracked file and refuses an id naming no bead, on the ground that a
+	// pointer to nothing reads as though the work is tracked -- and a fixture
+	// bead points at nothing by construction. What the two cases below need of
+	// this field is only that StaleReason repeats it, so a string that could
+	// not be mistaken for a real id serves better than one that could.
+	v := vacancy{
+		bead: "the-bead-this-fixture-stands-in-for",
+		reason: "a fixture declaration, installed by the test that drives this mechanism " +
+			"rather than borrowed from the tree, which declares no vacancy of its own",
+	}
+	withDeclaredVacancy(t, id, v)
+	return id, v
 }

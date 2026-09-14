@@ -223,6 +223,24 @@ func PublishedDocuments() []PublishedDocument {
 		})
 	}
 
+	// THE TRANSFER NETWORK PUBLISHES THE TWO ADOPTED COLUMNS AND p76 PRINTS
+	// FOUR, which is the opposite shape from the two documents above and is not
+	// a narrower promise. The other two publish four because the corpus carries
+	// four and drawing two would leave an unprojectedScopes entry half true;
+	// here the corpus carries two, because p76's historical columns miss its own
+	// printed grand total by $6,858,051 and by exactly $5,000,000 and the rules
+	// read and skip them. So this IS the whole schedule, and stating two columns
+	// is what makes a corpus that lost one reportable.
+	transfers := transfersByFundSlices()
+	for _, o := range transfers {
+		out = append(out, PublishedDocument{
+			Projection: TransfersByFundProjection,
+			Stem:       stemOrPanic(TransfersByFundProjection, o, transfers),
+			Scopes:     TransfersByFundScopes(),
+			Columns:    slices.Clone(o.Columns),
+		})
+	}
+
 	// The two ACFR ten-year schedules, one document each: two row axes, two
 	// scopes, and seriesSpec's one-schedule rule keeps them apart. Their
 	// columns are stated by [HistoryColumns], for TrendsColumns' reason.
@@ -279,6 +297,25 @@ func departmentSpendingSlices() []Options {
 	out := make([]Options, 0, len(cols))
 	for _, c := range cols {
 		out = append(out, Options{Columns: []Column{c}, Scopes: DepartmentSpendingScopes()})
+	}
+	return out
+}
+
+// transfersByFundSlices is every document the transfer network publishes, as
+// [transfersByFund.Slices] would declare them over a corpus carrying p76's two
+// adopted columns.
+//
+// STATED HERE RATHER THAN READ OFF THE FACTS, for the reason [PublishedDocuments]
+// gives: a published set that consulted the corpus would agree with it by
+// construction and could not report that the corpus stopped covering it.
+func transfersByFundSlices() []Options {
+	cols := []Column{
+		{FiscalYear: 2026, Basis: mapping.BasisAdopted},
+		{FiscalYear: 2027, Basis: mapping.BasisAdopted},
+	}
+	out := make([]Options, 0, len(cols))
+	for _, c := range cols {
+		out = append(out, Options{Columns: []Column{c}, Scopes: TransfersByFundScopes()})
 	}
 	return out
 }
@@ -667,6 +704,7 @@ func Registry(l labels) []Projection {
 		&Trends{Labels: l},
 		&fundFlows{Labels: l},
 		&departmentSpending{Labels: l},
+		&transfersByFund{Labels: l},
 		&FundBalanceChanges{Labels: l},
 		&FundBalances{Labels: l},
 	}
