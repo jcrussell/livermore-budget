@@ -338,6 +338,11 @@ const NAMES = [
   "markGap", "gapID", "isGap",
   "loadDocument", "labelOfRung", "openableColumns", "joinOr", "linkClass", "markContra",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
+  // THE LABEL RULE AND THE WORDS IT PLACES. layout.mjs measures whether a label
+  // has room where it was anchored, which needs the rule, the column it keys on
+  // and the TEXT -- a box measured from a label this file spelled itself would
+  // be a box the page never draws.
+  "columnOf", "labelPlacement", "markCents", "fmtShortSigned",
   // THE WINDOW. drill.mjs drives it through drillDown like everything else
   // here; windowFor is reached directly for the refusals, which have no route
   // through a click because export.validateSteps refuses them first. The rest

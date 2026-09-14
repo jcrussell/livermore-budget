@@ -3307,6 +3307,63 @@ function layOut(doc) {
 }
 
 /**
+ * The column a node was drawn in, as an index into the declared order.
+ *
+ * NOT d.depth, WHICH IS THE LONGEST PATH TO THE NODE and answers a different
+ * question. The two agree on a chart every path through which is the same
+ * length -- the spine's is -- which is why labelling keyed on depth for as long
+ * as the spine was the only chart. Measured on the committed corpus: the
+ * fund-group window {0,2,3} draws one node in column 2 whose depth is 1,
+ * because no ribbon reaches it from column 1.
+ *
+ * NOT d3's d.layer EITHER: layer is the clamped output of the aligner this same
+ * declaration is handed to, so reading it back is a second source of one fact.
+ * The exception is a view that declares no column order at all, where
+ * sankeyJustify chose the columns and d.layer is the only record of what it
+ * chose.
+ *
+ * @param {LaidNode} d
+ * @returns {number}
+ */
+function columnOf(d) {
+  const tiers = activeTiers();
+  // d3 clamps an aligner's answer into the drawn range, so a node whose tier
+  // the view does not declare is drawn in column 0 and is labelled as one.
+  return tiers.length ? Math.max(0, tiers.indexOf(d.tier)) : d.layer;
+}
+
+/**
+ * Where a node's label goes: the side it is anchored on, and the point it is
+ * anchored at.
+ *
+ * A LABEL MAY RUN OUTWARD ONLY INTO A GUTTER. The extent reserves LABEL_GUTTER
+ * px outside the first and last columns and nothing at all between columns, so
+ * the first column's label reads leftward out of the chart and the last
+ * column's rightward. An interior column has neither gutter: a label anchored
+ * to the right of its rect claims the band the next column's ribbons arrive
+ * through, and the further right that column sits the less of that band is
+ * left. Centred over its own rect it claims half as much on each side, in the
+ * NODE_PADDING gap above the rect rather than across the middle of it.
+ *
+ * AN INTERIOR COLUMN IS NOT A FUTURE SHAPE. Three columns have one already:
+ * the spine's fund groups, and the centre of every window a step opens.
+ *
+ * @param {LaidNode} d
+ * @param {number} last the largest column index this chart drew
+ * @returns {{anchor: string, x: number, y: number, dy: string|null}}
+ */
+function labelPlacement(d, last) {
+  const col = columnOf(d);
+  const middle = (d.y0 + d.y1) / 2;
+  if (col === 0) return { anchor: "end", x: d.x0 - 10, y: middle, dy: "0.35em" };
+  if (col >= last) return { anchor: "start", x: d.x1 + 10, y: middle, dy: "0.35em" };
+  // NO dy ON THE INTERIOR PLACEMENT: the baseline is already where the text
+  // belongs, 5px clear of the rect's top edge, and a half-em shift down would
+  // drop the glyphs onto the rect the label names.
+  return { anchor: "middle", x: (d.x0 + d.x1) / 2, y: d.y0 - 5, dy: null };
+}
+
+/**
  * Draws a laid-out graph. Pass the result of layOut(); omitted, it lays the
  * current projection out itself, which is the non-atomic path and is only for
  * a caller that has nothing else on the page to keep consistent.
@@ -3434,12 +3491,13 @@ function render(laid) {
   // Every node is directly labelled. That is the relief the palette's
   // contrast check requires, and it is why the chart still reads for someone
   // who cannot separate two of the hues.
+  const lastColumn = Math.max(...graph.nodes.map(columnOf));
   const label = node.append("text")
     .attr("class", "halo")
-    .attr("y", /** @param {LaidNode} d */ (d) => (d.y0 + d.y1) / 2)
-    .attr("dy", "0.35em")
-    .attr("x", /** @param {LaidNode} d */ (d) => (d.depth === 0 ? d.x0 - 10 : d.x1 + 10))
-    .attr("text-anchor", /** @param {LaidNode} d */ (d) => (d.depth === 0 ? "end" : "start"));
+    .attr("y", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).y)
+    .attr("dy", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).dy)
+    .attr("x", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).x)
+    .attr("text-anchor", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).anchor);
 
   label.append("tspan").text(/** @param {LaidNode} d */ (d) => d.label);
   label.append("tspan")

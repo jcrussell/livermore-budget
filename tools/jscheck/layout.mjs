@@ -25,6 +25,7 @@
 // what restackLinks itself does.
 
 import { loadApp, goldenGraph, spineConfig } from "./harness.mjs";
+import { openedWindow } from "./drill.mjs";
 
 /**
  * Lays the golden graph out exactly as render() does, under a given node sort
@@ -184,7 +185,105 @@ const ALTERNATIVES = {
 
 const usd = (n) => "$" + Math.round(n).toLocaleString();
 
-export function checks() {
+// THE ADVANCE A LABEL IS MEASURED AT, and an over-estimate on purpose. The
+// stylesheet sets `system-ui`, which is a different face on every platform, so
+// no harness can know the true advance -- 0.6em is wider than mixed-case
+// English sets in any of the usual system faces, so a label this says fits fits
+// everywhere, and the direction it can be wrong in is refusing a label that
+// would have fitted.
+const ADVANCE_EM = 0.6;
+const LABEL_PX = 12;
+const VALUE_PX = 11;
+
+/**
+ * How wide the three tspans of one node's label draw.
+ *
+ * THE WORDS COME OFF THE PAGE. markCents and fmtShortSigned are the same two
+ * functions render() hands the value tspan, so this measures the string a
+ * reader sees rather than one this file spelled for itself -- and the flag
+ * tspan is counted, because a derived node's label is three characters longer
+ * than its neighbours' and that is exactly the case a fit check is about.
+ */
+function labelWidth(app, d) {
+  const value = "  " + app.fmtShortSigned(app.markCents(d)) + (d.derived ? "  \u25c7" : "");
+  return d.label.length * LABEL_PX * ADVANCE_EM + value.length * VALUE_PX * ADVANCE_EM;
+}
+
+/** The x-range a label of this width occupies, anchored this way at this x. */
+function boxAt(anchor, x, width) {
+  const left = anchor === "end" ? x - width : anchor === "middle" ? x - width / 2 : x;
+  return { left, right: left + width };
+}
+
+/** Every column the graph drew, as an x-range, keyed by app.js's own index. */
+function columnsOf(app, graph) {
+  const out = new Map();
+  for (const n of graph.nodes) {
+    const c = app.columnOf(n);
+    if (!out.has(c)) out.set(c, { x0: n.x0, x1: n.x1 });
+  }
+  return out;
+}
+
+/**
+ * The x-range a column's labels may claim.
+ *
+ * EACH COLUMN OWNS HALF THE BAND ON EITHER SIDE OF IT, and the two outermost
+ * own the gutter out to the edge of the chart. The half is the line worth
+ * drawing because past it a label is nearer the next column's marks than its
+ * own, and because the next column's labels are coming the other way.
+ *
+ * THIS IS NOT READ OFF labelPlacement, which is the point: the rule says where
+ * a label goes and this says what room exists, so the two can disagree.
+ */
+function roomFor(app, columns, col) {
+  const last = Math.max(...columns.keys());
+  const me = columns.get(col);
+  const before = columns.get(col - 1);
+  const after = columns.get(col + 1);
+  return {
+    from: col === 0 || !before ? 0 : (before.x1 + me.x0) / 2,
+    to: col >= last || !after ? app.CHART_WIDTH : (me.x1 + after.x0) / 2,
+  };
+}
+
+/** Every label of a laid graph, boxed where app.js puts it, against its room. */
+function labelFit(app, graph) {
+  const columns = columnsOf(app, graph);
+  const last = Math.max(...columns.keys());
+  return graph.nodes.map((n) => {
+    const place = app.labelPlacement(n, last);
+    const width = labelWidth(app, n);
+    const box = boxAt(place.anchor, place.x, width);
+    const col = app.columnOf(n);
+    const room = roomFor(app, columns, col);
+    return { node: n, id: n.id, col, last, place, width, box, room,
+             clearance: Math.min(box.left - room.from, room.to - box.right) };
+  });
+}
+
+/**
+ * The gap app.js leaves between a rect and a label anchored outward from it,
+ * read off a label that IS anchored that way rather than copied as a literal.
+ */
+function outwardGap(fits) {
+  const outer = fits.find((f) => f.col >= f.last);
+  return outer.place.x - outer.node.x1;
+}
+
+/** The same label anchored outward instead -- what the middle column escaped. */
+function outward(fit, gap) {
+  return boxAt("start", fit.node.x1 + gap, fit.width);
+}
+
+const px = (n) => n.toFixed(1) + "px";
+
+/** The tightest fit of a set, for a detail line that names a node. */
+function tightest(fits) {
+  return fits.slice().sort((a, b) => a.clearance - b.clearance)[0];
+}
+
+export async function checks() {
   // THE PAGE index.html SHIPS, NOT loadApp'S BARE DEFAULT: the config carries
   // the column order data.go declares, which is what alignFor reads.
   const app = loadApp({ config: spineConfig() });
@@ -319,6 +418,117 @@ export function checks() {
           app.understands(app.SCHEMA_VERSION + 1, "x") === false &&
           app.understands(app.SCHEMA_VERSION - 1, "x") === false,
       detail: `schema_version ${app.SCHEMA_VERSION} is accepted and its neighbours are refused`,
+    },
+  ].concat(await labelChecks(app, graph));
+}
+
+// The two windows the label checks run over, and what each is for. Read off the
+// committed corpus by the same drill a reader clicks.
+const OBJECT_WINDOW = "expenditure/wages-and-benefits";
+const FUND_GROUP_WINDOW = "fund-group/general";
+
+// Nodes of the fund-group window whose declared column is not d3's longest path
+// to them, and the one that is. MEASURED, and the evidence that columnOf and
+// d.depth are different questions on a chart the site already draws: the
+// residual has no ribbon reaching it from the middle column, so its longest
+// path is one while the view declares it third.
+const DEPTH_DISAGREES = ["residual/fund-group/general"];
+
+// What the spine's middle column escapes by being centred: anchored outward
+// from its rects instead, 4 of its 6 labels reach past the midline into the
+// half of the band belonging to the column they run at. PINNED, not bounded,
+// because the interesting direction is DOWN -- a chart whose middle labels all
+// fitted outward would make the centring unnecessary, and a `>= 1` would go on
+// passing while that was true.
+const MIDDLE_OUTWARD = { crowded: 4, of: 6 };
+
+// The label selection itself, pinned as whole lines.
+//
+// THE ARMS BELOW MEASURE labelPlacement AND NOT WHAT render() DOES WITH IT. The
+// stub answers no "#chart" selector, so no check here can read an attribute
+// back off a drawn <text>; the rule and its use are two claims and only one of
+// them is reachable. The mutation says how much that matters: with these lines
+// reverted to `d.depth === 0` and labelPlacement left untouched in the file,
+// every other arm here stayed green. This is the one that goes red.
+//
+// Whole lines, the way the figure phrases below are whole sentences: a
+// substring of one of these matches the comment that argues for it.
+const LABEL_SELECTION = [
+  "const lastColumn = Math.max(...graph.nodes.map(columnOf));",
+  '.attr("y", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).y)',
+  '.attr("dy", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).dy)',
+  '.attr("x", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).x)',
+  '.attr("text-anchor", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).anchor)',
+];
+
+/**
+ * Where every label lands, on the spine and inside a window.
+ *
+ * WHY A WINDOW AND NOT THE SPINE ALONE. Every path through the spine is the
+ * same length, so d3's depth and the column the view declares agree on all 25
+ * of its nodes and a rule keyed on either reads the same. A check written there
+ * cannot tell the two apart and would be green because the gate fired rather
+ * than because the rule is right. The windows are where they come apart.
+ */
+async function labelChecks(app, spine) {
+  const object = await openedWindow(OBJECT_WINDOW);
+  const group = await openedWindow(FUND_GROUP_WINDOW);
+  const inWindow = labelFit(object, object.layOut(object.projection));
+  const onSpine = labelFit(app, spine);
+  const middle = onSpine.filter((f) => f.col > 0 && f.col < f.last);
+  const gap = outwardGap(onSpine);
+  const crowded = middle.filter((f) => outward(f, gap).right > f.room.to);
+  const groupLaid = group.layOut(group.projection);
+  const disagree = groupLaid.nodes.filter((n) => group.columnOf(n) !== n.depth).map((n) => n.id);
+
+  return [
+    {
+      // THE MUTATION THIS ARM IS FOR: restore `d.depth === 0 ? ... : ...` on
+      // the label selection and the window's middle column is anchored outward
+      // again, past the midline, and this goes red naming the node.
+      name: "every label in the object-category window is anchored on a side it has room on",
+      ok: inWindow.length > 0 && inWindow.every((f) => f.clearance >= 0) &&
+          new Set(inWindow.map((f) => f.col)).size === 3,
+      detail: inWindow.length === 0
+        ? "the window drew no nodes, so nothing here measured a label at all"
+        : `${inWindow.length} labels over ${new Set(inWindow.map((f) => f.col)).size} columns; ` +
+          `tightest ${tightest(inWindow).id} anchored ${tightest(inWindow).place.anchor} ` +
+          `with ${px(tightest(inWindow).clearance)} to spare`,
+    },
+    {
+      // The same shape as "nodeRank beats every one of them": the rule is
+      // asserted AND the alternative it was chosen over is measured, so the day
+      // the alternative starts fitting this says so instead of staying quiet.
+      name: "the spine's middle column is centred because anchoring it outward does not fit",
+      ok: middle.length === MIDDLE_OUTWARD.of &&
+          middle.every((f) => f.clearance >= 0 && f.place.anchor === "middle") &&
+          crowded.length === MIDDLE_OUTWARD.crowded,
+      detail: `${middle.length} middle labels anchored ` +
+              `${[...new Set(middle.map((f) => f.place.anchor))].join("/")}, tightest ` +
+              `${px(tightest(middle).clearance)} clear; anchored outward instead, ` +
+              `${crowded.length} of ${middle.length} cross into the next column's half of the ` +
+              `band (app.js's rule is chosen against ${MIDDLE_OUTWARD.crowded} of ` +
+              `${MIDDLE_OUTWARD.of})`,
+    },
+    {
+      name: "the label selection draws with the rule these arms measure",
+      ok: LABEL_SELECTION.every((q) => app.source.includes(q)),
+      detail: (() => {
+        const missing = LABEL_SELECTION.filter((q) => !app.source.includes(q));
+        return missing.length === 0
+          ? `all ${LABEL_SELECTION.length} lines of render()'s label selection read ` +
+            `labelPlacement, so the placement measured above is the placement drawn`
+          : `render()'s label selection no longer reads labelPlacement: ${missing.length} of ` +
+            `${LABEL_SELECTION.length} lines are gone, starting "${missing[0]}"`;
+      })(),
+    },
+    {
+      name: "a label keys on the column the view declares, not on d3's longest path",
+      ok: JSON.stringify(disagree) === JSON.stringify(DEPTH_DISAGREES),
+      detail: `of the fund-group window's ${groupLaid.nodes.length} nodes, ` +
+              `${disagree.length} sit${disagree.length === 1 ? "s" : ""} in a column ` +
+              `d3's depth does not name: ` +
+              (disagree.join(", ") || "none, so this chart cannot tell the two rules apart"),
     },
   ];
 }

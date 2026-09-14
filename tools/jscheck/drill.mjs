@@ -719,6 +719,26 @@ async function everyOpenedView(app, visit) {
   return { visited, refused: "" };
 }
 
+/**
+ * The spine's first published column, opened into one node, for a caller in
+ * another module.
+ *
+ * layout.mjs NEEDS A WINDOW AND THIS FILE IS WHERE ONE IS BUILT. The label rule
+ * it measures keys on the column a view DECLARES, and the spine cannot tell
+ * that rule from one keyed on d3's longest path -- every path through the spine
+ * is the same length, so the two agree on all 25 of its nodes. A check written
+ * over the spine alone is green because the gate fired. Rebuilding the page
+ * config there instead would be a second copy of PAGE, which is the thing this
+ * file's steps are read off Go to avoid.
+ *
+ * @param {string} id the node to open
+ */
+export async function openedWindow(id) {
+  const { app } = await opened();
+  await mustOpen(app, id);
+  return app;
+}
+
 /** A spine opened into one node, or into a node and then one beneath it. */
 async function at(app, ...ids) {
   app.drillUp(0);

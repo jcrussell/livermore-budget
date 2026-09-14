@@ -77,6 +77,37 @@ read a 69-line fix and returned 5.
 The distribution table above stays pinned at `ab71b7a`, because it is a
 snapshot; the totals move with every lane.
 
+## Deferring the loop to a merge concentrates its yield into pass 1
+
+`fisc-6lfh`, note of 2026-09-12, over E13's spine-merge lane (`fisc-ko1j.1`
+through `.6`), range `0923016..HEAD` as that note was written. Review ran **once,
+at the end of a six-commit lane**, rather than after each commit — the first lane
+here to do so.
+
+Measured, four passes, stopping on the condition rather than at the cap:
+
+| pass | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|
+| findings | **24** | 16 | 4 | 3 |
+
+47 in all, 16 fixed in-pass and 31 filed. Pass 1's 24 is the figure the deferral
+produced, and the bead says so in those terms: it read **4,824 hand-written
+insertions**, where the first passes of the lanes in the tables above read one
+commit's worth.
+
+Introduced-by-fix ran **15 of 47, 32%** — 0 of pass 1's 24, then 8 of 16, 4 of 4
+and 3 of 3 — against the **23%** of `fisc-yj4w`'s three 2026-08-31 lanes and the
+**35%** of `fisc-yj4w.14`. The share rises with pass number harder than either
+earlier measurement: by pass 3 every finding was the previous pass's.
+
+**What this does not measure**, in the spirit of the comparability caveats
+`fisc-6lfh` already carries: whether reviewing those six commits one at a time
+would have returned fewer than 47, or the same 47 spread thinner. What is
+measured is that one deferred loop over six commits did not decay — its last
+pass still returned 3 — and that its first pass was reading six commits at once.
+The lane is Go seams, a client and a jscheck suite, so it compares to the
+2026-08-31 drill lane and not to `fisc-yj4w.14`'s templates and CSS.
+
 ## The fixes are the size of the feature
 
 Insertions, `.beads` excluded:

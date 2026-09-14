@@ -191,6 +191,15 @@ Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
   `.gitignore` fix, a docs typo. Everywhere else a single pass is not the gate.
 - Run `/code-review` over the **range**, not the last commit. A lane's goldens,
   its check, its export seam and its client are one claim.
+- **On a branch of several lanes, run the loop once at the merge**, not once per
+  lane. Same triage, same three-to-five passes, over the whole branch. A later
+  lane reshapes the declarations an earlier one wrote, so a per-lane pass spends
+  itself on shapes that are gone by the time the branch lands.
+- **Deferring the review never defers the check.** Each lane still ships its
+  jscheck arm and its stated mutation in its own commit (`fisc-rx1d`), and every
+  finding a lane does not fix is still a bead in the session that found it. A
+  lane that lands with neither is a lane nothing can see go wrong, whenever the
+  review happens.
 - Triage before you fix. Every finding is WRONG-OUTPUT, FAIL-OPEN, FALSE-CLAIM,
   DESIGN or HYGIENE.
 - **Fix WRONG-OUTPUT and FAIL-OPEN in the pass; file the other three**, unless
