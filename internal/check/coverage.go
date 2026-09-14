@@ -162,14 +162,14 @@ var unprojectedScopes = map[string]string{
 		"row_labels_name_funds: their row labels are printed fund names, so the number " +
 		"typed beside each one is read against the label the page prints (fisc-90fp). " +
 		"rule-funds-match-their-headings still never enters, because it reads column " +
-		"funds and these rules declare none. THE BLOCK ABOVE THIS ONE IS NOW DRAWN AND THIS " +
-		"ONE IS NOT, and the difference is what these rows carry rather than an order of " +
-		"work: the upper block's rows name a division, so department-spending draws all four " +
-		"of its printed columns as a division-by-object cross-tab. These rows name NO " +
-		"DEPARTMENT AT ALL -- they are {label, category, fund, fund_group}, and the " +
-		"department is in rule_id, which is an identity field no projection reads. So " +
-		"drawing this schedule as department pages (fisc-4ua.2) needs `department:` on its " +
-		"78 mapping rows first, which moves 312 fact ids and is a commit of its own.",
+		"funds and these rules declare none. THE BLOCK ABOVE THIS ONE IS DRAWN AND THIS " +
+		"ONE IS NOT, and what separates them is no longer what the rows carry: these 78 " +
+		"rows now name their department, so each of these facts has the axis a department " +
+		"page would draw it on. What is missing is the projection (fisc-4ua.2), not the " +
+		"data. The two blocks name different TIERS of data/departments.yaml -- the upper " +
+		"one a division, because it is printed by division, and this one a department, " +
+		"because it is printed once per department -- so a projection reading both has to " +
+		"know which it is holding.",
 }
 
 // projectionsBuild asserts every slice of the fact store that a projection was

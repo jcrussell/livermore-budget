@@ -3366,7 +3366,7 @@ rules:
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
+      - {label: "General Fund", category: department-funding-sources, department: city-council, fund: 100, fund_group: general}
 
   # --------------------------------------------------------------------------
   - id: funding-city-manager
@@ -3387,8 +3387,8 @@ rules:
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "PEG Capital Fees", category: department-funding-sources, fund: 287, fund_group: special-revenue}
+      - {label: "General Fund", category: department-funding-sources, department: city-manager, fund: 100, fund_group: general}
+      - {label: "PEG Capital Fees", category: department-funding-sources, department: city-manager, fund: 287, fund_group: special-revenue}
 
   # --------------------------------------------------------------------------
   - id: funding-city-attorney
@@ -3425,9 +3425,9 @@ rules:
               two are over by one. All three of the revised and budget columns tie
               exactly on all eleven. Measured off the page, stated minus mapped.
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "General Liability", category: department-funding-sources, fund: 700, fund_group: internal-service}
-      - {label: "Workers Comp Insurance", category: department-funding-sources, fund: 710, fund_group: internal-service}
+      - {label: "General Fund", category: department-funding-sources, department: city-attorney, fund: 100, fund_group: general}
+      - {label: "General Liability", category: department-funding-sources, department: city-attorney, fund: 700, fund_group: internal-service}
+      - {label: "Workers Comp Insurance", category: department-funding-sources, department: city-attorney, fund: 710, fund_group: internal-service}
 
   # --------------------------------------------------------------------------
   - id: funding-administrative-services
@@ -3464,8 +3464,8 @@ rules:
               two are over by one. All three of the revised and budget columns tie
               exactly on all eleven. Measured off the page, stated minus mapped.
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "Information Technology", category: department-funding-sources, fund: 720, fund_group: internal-service}
+      - {label: "General Fund", category: department-funding-sources, department: administrative-services, fund: 100, fund_group: general}
+      - {label: "Information Technology", category: department-funding-sources, department: administrative-services, fund: 720, fund_group: internal-service}
 
   # --------------------------------------------------------------------------
   - id: funding-community-development
@@ -3502,32 +3502,32 @@ rules:
           - {fiscal_year: 2027}
         omitted_rows: ["General Fund", "Low Income Housing Fund", "Housing Successor Agency", "SOEF (Social Op Endowment)", "Mortgage Assistance", "HHS Loan Fund", "Cal Home Reuse", "California Begin Program"]
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "Low Income Housing Fund", category: department-funding-sources, fund: 200, fund_group: special-revenue}
-      - {label: "Housing Successor Agency", category: department-funding-sources, fund: 201, fund_group: special-revenue}
-      - {label: "SOEF (Social Op Endowment)", category: department-funding-sources, fund: 202, fund_group: special-revenue}
-      - {label: "Mortgage Assistance", category: department-funding-sources, fund: 203, fund_group: special-revenue}
-      - {label: "HHS Loan Fund", category: department-funding-sources, fund: 204, fund_group: special-revenue}
-      - {label: "Cal Home Reuse", category: department-funding-sources, fund: 205, fund_group: special-revenue}
-      - {label: "California Begin Program", category: department-funding-sources, fund: 206, fund_group: special-revenue}
-      - {label: "Local Housing Trust", category: department-funding-sources, fund: 207, fund_group: special-revenue}
-      - {label: "Grant - HUD EDI Special Grant", category: department-funding-sources, fund: 223, fund_group: special-revenue}
-      - {label: "Grant - CDBG", category: department-funding-sources, fund: 224, fund_group: special-revenue}
-      - {label: "Grant - Home Grant", category: department-funding-sources, fund: 225, fund_group: special-revenue}
-      - {label: "FEMA Funding", category: department-funding-sources, fund: 226, fund_group: special-revenue}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
-      - {label: "Opioid Settlement", category: department-funding-sources, fund: 241, fund_group: special-revenue}
-      - {label: "Accessibility Compliance", category: department-funding-sources, fund: 286, fund_group: special-revenue}
-      - {label: "Human Services Facility Fee", category: department-funding-sources, fund: 290, fund_group: special-revenue}
-      - {label: "Open Space Acquisition & Mgmt", category: department-funding-sources, fund: 300, fund_group: special-revenue}
-      - {label: "Doolan Canyon Preserve Endow", category: department-funding-sources, fund: 470, fund_group: permanent}
-      - {label: "Traffic Impact Fee (TIF)", category: department-funding-sources, fund: 510, fund_group: capital}
-      - {label: "Park Fee - AB 1600", category: department-funding-sources, fund: 512, fund_group: capital}
-      - {label: "County Meas BB-Bike/Pedestrian", category: department-funding-sources, fund: 551, fund_group: capital}
-      - {label: "County Meas BB-Local St & Rd", category: department-funding-sources, fund: 552, fund_group: capital}
-      - {label: "County Measure F Veh Reg Fee", category: department-funding-sources, fund: 553, fund_group: capital}
-      - {label: "State - Gas Tax", category: department-funding-sources, fund: 560, fund_group: capital}
-      - {label: "State - SB1", category: department-funding-sources, fund: 561, fund_group: capital}
+      - {label: "General Fund", category: department-funding-sources, department: community-development, fund: 100, fund_group: general}
+      - {label: "Low Income Housing Fund", category: department-funding-sources, department: community-development, fund: 200, fund_group: special-revenue}
+      - {label: "Housing Successor Agency", category: department-funding-sources, department: community-development, fund: 201, fund_group: special-revenue}
+      - {label: "SOEF (Social Op Endowment)", category: department-funding-sources, department: community-development, fund: 202, fund_group: special-revenue}
+      - {label: "Mortgage Assistance", category: department-funding-sources, department: community-development, fund: 203, fund_group: special-revenue}
+      - {label: "HHS Loan Fund", category: department-funding-sources, department: community-development, fund: 204, fund_group: special-revenue}
+      - {label: "Cal Home Reuse", category: department-funding-sources, department: community-development, fund: 205, fund_group: special-revenue}
+      - {label: "California Begin Program", category: department-funding-sources, department: community-development, fund: 206, fund_group: special-revenue}
+      - {label: "Local Housing Trust", category: department-funding-sources, department: community-development, fund: 207, fund_group: special-revenue}
+      - {label: "Grant - HUD EDI Special Grant", category: department-funding-sources, department: community-development, fund: 223, fund_group: special-revenue}
+      - {label: "Grant - CDBG", category: department-funding-sources, department: community-development, fund: 224, fund_group: special-revenue}
+      - {label: "Grant - Home Grant", category: department-funding-sources, department: community-development, fund: 225, fund_group: special-revenue}
+      - {label: "FEMA Funding", category: department-funding-sources, department: community-development, fund: 226, fund_group: special-revenue}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: community-development, fund: 240, fund_group: special-revenue}
+      - {label: "Opioid Settlement", category: department-funding-sources, department: community-development, fund: 241, fund_group: special-revenue}
+      - {label: "Accessibility Compliance", category: department-funding-sources, department: community-development, fund: 286, fund_group: special-revenue}
+      - {label: "Human Services Facility Fee", category: department-funding-sources, department: community-development, fund: 290, fund_group: special-revenue}
+      - {label: "Open Space Acquisition & Mgmt", category: department-funding-sources, department: community-development, fund: 300, fund_group: special-revenue}
+      - {label: "Doolan Canyon Preserve Endow", category: department-funding-sources, department: community-development, fund: 470, fund_group: permanent}
+      - {label: "Traffic Impact Fee (TIF)", category: department-funding-sources, department: community-development, fund: 510, fund_group: capital}
+      - {label: "Park Fee - AB 1600", category: department-funding-sources, department: community-development, fund: 512, fund_group: capital}
+      - {label: "County Meas BB-Bike/Pedestrian", category: department-funding-sources, department: community-development, fund: 551, fund_group: capital}
+      - {label: "County Meas BB-Local St & Rd", category: department-funding-sources, department: community-development, fund: 552, fund_group: capital}
+      - {label: "County Measure F Veh Reg Fee", category: department-funding-sources, department: community-development, fund: 553, fund_group: capital}
+      - {label: "State - Gas Tax", category: department-funding-sources, department: community-development, fund: 560, fund_group: capital}
+      - {label: "State - SB1", category: department-funding-sources, department: community-development, fund: 561, fund_group: capital}
 
   # --------------------------------------------------------------------------
   - id: funding-fire
@@ -3548,8 +3548,8 @@ rules:
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
+      - {label: "General Fund", category: department-funding-sources, department: fire-department, fund: 100, fund_group: general}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: fire-department, fund: 240, fund_group: special-revenue}
 
   # --------------------------------------------------------------------------
   - id: funding-general-services
@@ -3575,10 +3575,10 @@ rules:
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "2020 COPS Series A", category: department-funding-sources, fund: 400, fund_group: debt-service}
-      - {label: "2020 COPS Series B", category: department-funding-sources, fund: 401, fund_group: debt-service}
-      - {label: "2022 COPS", category: department-funding-sources, fund: 402, fund_group: debt-service}
+      - {label: "General Fund", category: department-funding-sources, department: general-services, fund: 100, fund_group: general}
+      - {label: "2020 COPS Series A", category: department-funding-sources, department: general-services, fund: 400, fund_group: debt-service}
+      - {label: "2020 COPS Series B", category: department-funding-sources, department: general-services, fund: 401, fund_group: debt-service}
+      - {label: "2022 COPS", category: department-funding-sources, department: general-services, fund: 402, fund_group: debt-service}
 
   # --------------------------------------------------------------------------
   - id: funding-innovation-and-economic-development
@@ -3605,9 +3605,9 @@ rules:
           - {fiscal_year: 2026}
           - {fiscal_year: 2027}
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "Public Art Fee", category: department-funding-sources, fund: 284, fund_group: special-revenue}
-      - {label: "Airport", category: department-funding-sources, fund: 600, fund_group: enterprise}
+      - {label: "General Fund", category: department-funding-sources, department: innovation-and-economic-development, fund: 100, fund_group: general}
+      - {label: "Public Art Fee", category: department-funding-sources, department: innovation-and-economic-development, fund: 284, fund_group: special-revenue}
+      - {label: "Airport", category: department-funding-sources, department: innovation-and-economic-development, fund: 600, fund_group: enterprise}
 
   # --------------------------------------------------------------------------
   - id: funding-library
@@ -3639,10 +3639,10 @@ rules:
               two are over by one. All three of the revised and budget columns tie
               exactly on all eleven. Measured off the page, stated minus mapped.
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
-      - {label: "Public Art Fee", category: department-funding-sources, fund: 284, fund_group: special-revenue}
-      - {label: "Library Donations", category: department-funding-sources, fund: 330, fund_group: special-revenue}
+      - {label: "General Fund", category: department-funding-sources, department: library-department, fund: 100, fund_group: general}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: library-department, fund: 240, fund_group: special-revenue}
+      - {label: "Public Art Fee", category: department-funding-sources, department: library-department, fund: 284, fund_group: special-revenue}
+      - {label: "Library Donations", category: department-funding-sources, department: library-department, fund: 330, fund_group: special-revenue}
 
   # --------------------------------------------------------------------------
   - id: funding-police
@@ -3690,16 +3690,16 @@ rules:
               two are over by one. All three of the revised and budget columns tie
               exactly on all eleven. Measured off the page, stated minus mapped.
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "Horizons", category: department-funding-sources, fund: 210, fund_group: special-revenue}
-      - {label: "Asset Seizure - County", category: department-funding-sources, fund: 211, fund_group: special-revenue}
-      - {label: "Grant - Federal Grant Fund", category: department-funding-sources, fund: 220, fund_group: special-revenue}
-      - {label: "Asset Seizure - Dep of Justice", category: department-funding-sources, fund: 221, fund_group: special-revenue}
-      - {label: "Asset Seizure - Treasury", category: department-funding-sources, fund: 222, fund_group: special-revenue}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
-      - {label: "PD COPS Grant", category: department-funding-sources, fund: 242, fund_group: special-revenue}
-      - {label: "Vehicle Impound Fee", category: department-funding-sources, fund: 285, fund_group: special-revenue}
-      - {label: "Police Donations", category: department-funding-sources, fund: 331, fund_group: special-revenue}
+      - {label: "General Fund", category: department-funding-sources, department: police-department, fund: 100, fund_group: general}
+      - {label: "Horizons", category: department-funding-sources, department: police-department, fund: 210, fund_group: special-revenue}
+      - {label: "Asset Seizure - County", category: department-funding-sources, department: police-department, fund: 211, fund_group: special-revenue}
+      - {label: "Grant - Federal Grant Fund", category: department-funding-sources, department: police-department, fund: 220, fund_group: special-revenue}
+      - {label: "Asset Seizure - Dep of Justice", category: department-funding-sources, department: police-department, fund: 221, fund_group: special-revenue}
+      - {label: "Asset Seizure - Treasury", category: department-funding-sources, department: police-department, fund: 222, fund_group: special-revenue}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: police-department, fund: 240, fund_group: special-revenue}
+      - {label: "PD COPS Grant", category: department-funding-sources, department: police-department, fund: 242, fund_group: special-revenue}
+      - {label: "Vehicle Impound Fee", category: department-funding-sources, department: police-department, fund: 285, fund_group: special-revenue}
+      - {label: "Police Donations", category: department-funding-sources, department: police-department, fund: 331, fund_group: special-revenue}
 
   # --------------------------------------------------------------------------
   - id: funding-public-works
@@ -3757,27 +3757,27 @@ rules:
               two are over by one. All three of the revised and budget columns tie
               exactly on all eleven. Measured off the page, stated minus mapped.
     rows:
-      - {label: "General Fund", category: department-funding-sources, fund: 100, fund_group: general}
-      - {label: "Grant - State Grant Fund", category: department-funding-sources, fund: 240, fund_group: special-revenue}
-      - {label: "Host Community Impact Fee", category: department-funding-sources, fund: 282, fund_group: special-revenue}
-      - {label: "City Street Sweeping Fee", category: department-funding-sources, fund: 283, fund_group: special-revenue}
-      - {label: "Import Mitigation Fee", category: department-funding-sources, fund: 288, fund_group: special-revenue}
-      - {label: "Solid Waste & Recycling Fee", category: department-funding-sources, fund: 289, fund_group: special-revenue}
-      - {label: "Downtown LMD", category: department-funding-sources, fund: 310, fund_group: special-revenue}
-      - {label: "Other LMD", category: department-funding-sources, fund: 311, fund_group: special-revenue}
-      - {label: "El Charro CFD 2009-1 Maint", category: department-funding-sources, fund: 320, fund_group: special-revenue}
-      - {label: "Other Maintenance CFDs", category: department-funding-sources, fund: 321, fund_group: special-revenue}
-      - {label: "County Measure D", category: department-funding-sources, fund: 550, fund_group: capital}
-      - {label: "Stormwater", category: department-funding-sources, fund: 610, fund_group: enterprise}
-      - {label: "Storm Drain", category: department-funding-sources, fund: 612, fund_group: enterprise}
-      - {label: "Wastewater", category: department-funding-sources, fund: 620, fund_group: enterprise}
-      - {label: "Wastewater Replacement", category: department-funding-sources, fund: 622, fund_group: enterprise}
-      - {label: "Wastewater Connection Fees", category: department-funding-sources, fund: 623, fund_group: enterprise}
-      - {label: "Water", category: department-funding-sources, fund: 640, fund_group: enterprise}
-      - {label: "Water Replacement", category: department-funding-sources, fund: 642, fund_group: enterprise}
-      - {label: "Water Connection Fees", category: department-funding-sources, fund: 643, fund_group: enterprise}
-      - {label: "Fleet & Equipment Services", category: department-funding-sources, fund: 730, fund_group: internal-service}
-      - {label: "Facilities Rehab Pgm", category: department-funding-sources, fund: 740, fund_group: internal-service}
+      - {label: "General Fund", category: department-funding-sources, department: public-works, fund: 100, fund_group: general}
+      - {label: "Grant - State Grant Fund", category: department-funding-sources, department: public-works, fund: 240, fund_group: special-revenue}
+      - {label: "Host Community Impact Fee", category: department-funding-sources, department: public-works, fund: 282, fund_group: special-revenue}
+      - {label: "City Street Sweeping Fee", category: department-funding-sources, department: public-works, fund: 283, fund_group: special-revenue}
+      - {label: "Import Mitigation Fee", category: department-funding-sources, department: public-works, fund: 288, fund_group: special-revenue}
+      - {label: "Solid Waste & Recycling Fee", category: department-funding-sources, department: public-works, fund: 289, fund_group: special-revenue}
+      - {label: "Downtown LMD", category: department-funding-sources, department: public-works, fund: 310, fund_group: special-revenue}
+      - {label: "Other LMD", category: department-funding-sources, department: public-works, fund: 311, fund_group: special-revenue}
+      - {label: "El Charro CFD 2009-1 Maint", category: department-funding-sources, department: public-works, fund: 320, fund_group: special-revenue}
+      - {label: "Other Maintenance CFDs", category: department-funding-sources, department: public-works, fund: 321, fund_group: special-revenue}
+      - {label: "County Measure D", category: department-funding-sources, department: public-works, fund: 550, fund_group: capital}
+      - {label: "Stormwater", category: department-funding-sources, department: public-works, fund: 610, fund_group: enterprise}
+      - {label: "Storm Drain", category: department-funding-sources, department: public-works, fund: 612, fund_group: enterprise}
+      - {label: "Wastewater", category: department-funding-sources, department: public-works, fund: 620, fund_group: enterprise}
+      - {label: "Wastewater Replacement", category: department-funding-sources, department: public-works, fund: 622, fund_group: enterprise}
+      - {label: "Wastewater Connection Fees", category: department-funding-sources, department: public-works, fund: 623, fund_group: enterprise}
+      - {label: "Water", category: department-funding-sources, department: public-works, fund: 640, fund_group: enterprise}
+      - {label: "Water Replacement", category: department-funding-sources, department: public-works, fund: 642, fund_group: enterprise}
+      - {label: "Water Connection Fees", category: department-funding-sources, department: public-works, fund: 643, fund_group: enterprise}
+      - {label: "Fleet & Equipment Services", category: department-funding-sources, department: public-works, fund: 730, fund_group: internal-service}
+      - {label: "Facilities Rehab Pgm", category: department-funding-sources, department: public-works, fund: 740, fund_group: internal-service}
 
   # ==========================================================================
   # DEPARTMENTWIDE EXPENDITURES BY CATEGORY, pp.85-125 -- scope

@@ -154,23 +154,24 @@ var fundingSourcesExceptions = []fundingSourcesException{{
 // those checks tie the graph to the facts it was built from and not to the
 // document.
 //
-// AND THE SECOND GUARD DOES NOT REACH HERE EITHER. netCells refuses a fact
-// carrying a department, which is what makes a mis-scoped pp.167-170 rule fail
-// loudly; these rows carry no department, only a fund. As with pp.127-140 the
-// scope string and this check are the whole of it.
+// AND THE SECOND GUARD NOW REACHES HERE, which it did not when this check was
+// written. netCells refuses a fact carrying a department, and these rows now
+// carry the department whose schedule they are -- so a rule mis-scoped to
+// `all-funds-gross` fails when the projection is built, naming the fact and its
+// department, rather than leaving the scope string and this check as the whole
+// of it.
 //
-// THAT THEY CARRY NO DEPARTMENT IS A CONSTRAINT AND NOT A CHOICE, which is
-// worth knowing before reading the paragraph above as an oversight.
-// fact-departments-resolve resolves the field against a DIVISION, and six of
+// WHAT UNBLOCKED IT was fact-departments-resolve learning the department tier.
+// The field used to resolve against a DIVISION alone and six of
 // data/departments.yaml's eleven departments are not division slugs, so typing
-// it here reddens six of the eleven rules. fisc-xudn owns the decision.
+// it here reddened six of the eleven rules; it now resolves against either tier
+// and counts the two separately.
 //
-// IT DOES NOT BLOCK THE OTHER BLOCK ON THESE PAGES. departmentwide-expenditures
-// reads the Expenditures by Category block above this one and carries a DIVISION
-// slug on every one of its 292 facts, which resolves. The two blocks sit on
-// opposite sides of this problem -- the upper one has a division to name, the
-// lower one has only a department -- so the decision constrains this scope and
-// not that one.
+// THE TWO BLOCKS ON THESE PAGES NAME DIFFERENT TIERS, and that is the document
+// rather than an inconsistency. departmentwide-expenditures reads the
+// Expenditures by Category block above this one and carries a DIVISION slug on
+// every one of its 292 facts, because that block is printed by division. This
+// block is printed once per DEPARTMENT with no division on any row.
 //
 // TIER 1, ZERO TOLERANCE, AND THE TOLERANCE QUESTION IS SETTLED BY THE PAGES.
 // Eleven of the twelve reconciled cells tie to the cent. The twelfth is a defect
