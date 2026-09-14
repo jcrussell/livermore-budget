@@ -556,6 +556,61 @@ button[aria-pressed="true"] {
   border: 1.5px solid var(--muted);
 }
 
+/* ---------- column control ---------- */
+
+/* THE YEAR TOGGLE'S SHAPE AND NOT ITS MECHANISM. A pill holding its controls,
+   because it sits beside that group and reads as its peer -- but a pair of
+   steppers rather than a segmented control, because a count is not a choice
+   from a list of peers: it has an order and a next value, which is what a +
+   and a - say and what a row of numbers would not. */
+.column-control {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--surface-1);
+}
+
+.column-control button {
+  border: 0;
+  background: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  min-height: 32px;
+  line-height: 1;
+}
+
+/* DISABLED IS THE SHIPPED STATE HERE TOO, and it is also the state at either
+   bound for the whole of a reader's visit -- three columns with the minus
+   dimmed is what most windows show. Say it visually, as the year group does.
+
+   THE OPACITY DOES NOT INVALIDATE A MEASURED RATIO, which is worth stating
+   because dimming the year group's FIELDSET did. WCAG 1.4.3 exempts an
+   inactive user interface component, and nothing here is a state indicator:
+   the number between the buttons is at full strength, and it is the number and
+   not the buttons that says what the chart is drawn at.
+
+   IT ALSO TAKES THE HOVER BACK, at (0,2,1) against `button:hover`'s (0,1,1).
+   Without that a disabled stepper lights up under the pointer exactly like a
+   live one -- the defect the year group's hover rule was narrowed to fix, one
+   control over. */
+.column-control button:disabled {
+  opacity: 0.55;
+  background: none;
+  cursor: default;
+}
+
+#column-count {
+  font-size: 13px;
+  color: var(--ink-2);
+  /* Wide enough for the widest count this page can show, so stepping does not
+     shuffle the buttons under the pointer that is stepping. */
+  min-width: 78px;
+  text-align: center;
+}
+
 /* THE CHART IS NOT PROSE AND WILL NOT TAKE THE PROSE CONTAINER'S WIDTH. main is
    1180px because that is what the page's text, tiles and tables sit in, and the
    chart is the one element on it whose width is a measurement: app.js lays a

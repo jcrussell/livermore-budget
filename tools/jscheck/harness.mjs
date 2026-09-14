@@ -50,6 +50,9 @@ const TEMPLATE_IDS = new Set([
   "chart-title", "counts-line", "derived-list", "derived-view", "detail", "figures",
   "figures-view", "flow-table", "hero", "lede-year", "legend", "page-basis",
   "sources-view", "table-view", "theme-toggle", "tooltip", "year-toggle",
+  // site/index.html.tmpl and site/chart.html.tmpl: the column control's two
+  // steppers and the count between them, which is also its live region.
+  "column-fewer", "column-count", "column-more",
 ]);
 
 /**
@@ -78,6 +81,13 @@ const TEMPLATE_ATTRIBUTES = {
   // to come back from until the reader opens one, and with JavaScript off
   // there never is.
   "breadcrumb": { hidden: "" },
+  // site/*.html.tmpl: <button id="column-fewer" ... disabled> and its twin.
+  // Shipped disabled for the year group's reason -- the column budget is
+  // entirely a client decision -- so without these two entries "wireColumns
+  // enables the control" would be true before app.js ran, which is the
+  // unfalsifiable shape the year toggle's entry above was added for.
+  "column-fewer": { disabled: "" },
+  "column-more": { disabled: "" },
 };
 
 /**
@@ -101,7 +111,7 @@ function byClass(root, sel) {
   return found;
 }
 
-function domStub(ids = TEMPLATE_IDS) {
+function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
   /** Every element the stub hands out, by id, so a check can read one back. */
   const byId = new Map();
 
@@ -231,14 +241,54 @@ function domStub(ids = TEMPLATE_IDS) {
     return nodes;
   };
   document.node = node;
-  const storage = new Map();
-  // What window.matchMedia("...").addEventListener was told to follow. main()
-  // guards on `typeof window.matchMedia === "function"`, so while matchMedia was
-  // undefined that branch never ran under any check and "the page follows the OS
-  // theme" was unfalsifiable.
+  const storage = new Map(Object.entries(seed || {}).map(([k, v]) => [k, String(v)]));
+  // What window.matchMedia("...").addEventListener was told to follow, BY QUERY
+  // and then by type. main() guards on `typeof window.matchMedia === "function"`,
+  // so while matchMedia was undefined that branch never ran under any check and
+  // "the page follows the OS theme" was unfalsifiable.
+  //
+  // KEYED BY QUERY BECAUSE THE PAGE NOW FOLLOWS TWO DIFFERENT ONES. While this
+  // was one flat list, a width listener and the OS-theme listener were
+  // indistinguishable in it, and setOSDark would have called both -- so "the
+  // page follows the viewport" would have been green under a page that followed
+  // the theme setting instead. The exported reader is followers() below; the map
+  // itself is deliberately not exported, so a check still reaching for the old
+  // `.change` throws rather than counting zero.
   const mediaListeners = {};
+  const OS_DARK = "(prefers-color-scheme: dark)";
   /** What the OS is currently asking for. See matchMedia below and setOSDark. */
   let osDark = false;
+  /**
+   * How wide the reader's window is, in CSS px.
+   *
+   * ZERO BY DEFAULT, AND THAT IS THE LOAD-BEARING CHOICE. A harness renders
+   * nothing, so it has no viewport, and every (min-width: N) query answers
+   * false -- which is what keeps the page at NARROW_COLUMNS and every figure
+   * pinned across this directory a figure of the chart it was measured on. A
+   * check that wants a wide window passes one and says why.
+   */
+  let viewportWidth = Number(viewport) || 0;
+  /**
+   * Whether a query matches, ANSWERED FROM THE QUERY ITSELF.
+   *
+   * It used to answer osDark to everything it was asked, which is the shape
+   * getComputedStyle's comment above names: a stub that answers a question it
+   * was never asked does not fail, it stops testing. A width query would have
+   * come back "the OS is in light mode" -> false, so a check driving the column
+   * control would have measured nothing at all. An unmodelled query THROWS by
+   * name rather than guessing.
+   */
+  const mediaMatches = (query) => {
+    if (query === OS_DARK) return osDark;
+    const min = /^\(min-width:\s*(\d+)px\)$/.exec(query);
+    if (min) return viewportWidth >= Number(min[1]);
+    throw new Error(`harness: matchMedia was asked ${JSON.stringify(query)}, ` +
+      "which this stub does not model");
+  };
+  const notify = (query) => {
+    const matches = mediaMatches(query);
+    for (const fn of ((mediaListeners[query] || {}).change) || []) fn({ matches, media: query });
+  };
   const windowListeners = {};
   return {
     byId,
@@ -246,17 +296,42 @@ function domStub(ids = TEMPLATE_IDS) {
     documentListeners,
     get focused() { return focused; },
     // Switches the OS theme and notifies whoever is following it, which is what
-    // a reader's machine does at sunset.
+    // a reader's machine does at sunset. It notifies the OS query ALONE: a
+    // width listener has no business firing because the sun went down.
     setOSDark(dark) {
       osDark = Boolean(dark);
-      for (const fn of mediaListeners.change || []) fn({ matches: osDark });
+      notify(OS_DARK);
     },
+    /**
+     * Resizes the reader's window and notifies every width query whose ANSWER
+     * CHANGED, which is the half of matchMedia that is not `.matches`: a
+     * browser fires a query when it crosses its threshold and not when the
+     * window merely moves, so a check that wants a listener called has to
+     * cross one.
+     */
+    setViewport(px) {
+      const was = {};
+      for (const q of Object.keys(mediaListeners)) was[q] = mediaMatches(q);
+      viewportWidth = Number(px) || 0;
+      for (const q of Object.keys(mediaListeners)) {
+        if (q !== OS_DARK && mediaMatches(q) !== was[q]) notify(q);
+      }
+    },
+    get viewportWidth() { return viewportWidth; },
+    /** Who is following one query, so a check can count them apart. */
+    followers: (query, type = "change") => ((mediaListeners[query] || {})[type] || []),
+    mediaMatches,
     windowListeners,
-    mediaListeners,
     localStorage: {
       getItem: (k) => (storage.has(k) ? storage.get(k) : null),
       setItem: (k, v) => storage.set(k, String(v)),
+      // REMOVAL IS A DISTINCT GESTURE AND NOT setItem(""). app.js clears the
+      // column override by removing the key, because a stored "" would read
+      // back as a choice this build cannot honour rather than as no choice.
+      removeItem: (k) => { storage.delete(k); },
     },
+    /** What the page has written, so a check can read a preference back. */
+    storage,
     // getComputedStyle ANSWERS FROM THE SHIPPED STYLESHEET, and that is not
     // polish. While it returned "#000000" for every name it was asked, it
     // returned a truthy colour for properties that DO NOT EXIST -- so renaming
@@ -268,7 +343,8 @@ function domStub(ids = TEMPLATE_IDS) {
     getComputedStyle: () => ({
       getPropertyValue: (name) => (customProperties.has(name) ? "#000000" : ""),
     }),
-    // matchMedia answers, and reports NOT-dark. app.js reads .matches for the
+    // matchMedia answers PER QUERY, through mediaMatches above. app.js reads
+    // .matches for the
     // opening palette and attaches a change listener to follow the OS mid-visit;
     // both are behaviour worth checking, and neither was reachable while this
     // was undefined. prefersDark() consults the saved theme first, so every
@@ -281,9 +357,9 @@ function domStub(ids = TEMPLATE_IDS) {
     // theme" could be asserted only as "a listener is attached", and the
     // listener could do the wrong thing in silence.
     matchMedia: (query) => ({
-      get matches() { return osDark; },
+      get matches() { return mediaMatches(query); },
       media: query,
-      addEventListener(type, fn) { (mediaListeners[type] ||= []).push(fn); },
+      addEventListener(type, fn) { ((mediaListeners[query] ||= {})[type] ||= []).push(fn); },
       removeEventListener() {},
     }),
     // No fetch by default: main() is meant to give up here, in app.js's own
@@ -339,10 +415,15 @@ const NAMES = [
   // THE COLUMN BUDGET AND THE SET IT TRIMS. activeTiers is what every column
   // reader on the page goes through, and a check that spelled a step's tiers
   // itself would measure the widened window under the narrow budget the page
-  // ships and call it wide. setColumnBudget is the seam fisc-ko1j.12.4's
-  // control will call, which is why a check drives the widening through it
-  // rather than by editing a step.
+  // ships and call it wide. setColumnBudget is the seam the column control
+  // calls, which is why a check drives the widening through it rather than by
+  // editing a step.
   "activeTiers", "drawnColumns", "setColumnBudget",
+  // AND THE TWO CONSTANTS THE CONTROL IS BOUNDED BY. WIDE_COLUMNS is the
+  // stylesheet's cap restated in the script, and layout.mjs compares the two
+  // rather than spelling either; COLUMN_QUERIES is the responsive rule, whose
+  // thresholds layout.mjs re-derives from that same cap's cushion.
+  "WIDE_COLUMNS", "COLUMN_QUERIES", "NARROW_COLUMNS",
   "STEPS", "stepFor", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
   "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
   // THE GAP, which is the other mark a rung can stand beside an opened node:
@@ -407,7 +488,17 @@ const NAMES = [
  * document path at all — a successful year, a rejected one, a malformed body.
  * Both are installed before app.js runs; see below for why that is the only
  * moment either can be installed.
- * @param {Set<string>|{ids?: Set<string>, config?: object, fetch?: Function}} [opts]
+ *
+ * opts.viewport is how wide the reader's window is, which decides what every
+ * (min-width: N) query answers; 0 -- no viewport at all -- is the default, and
+ * is what keeps the column budget at its floor for every check that does not
+ * ask otherwise.
+ *
+ * opts.storage seeds localStorage before app.js reads it, which is the only
+ * moment a saved preference can be there: wireColumns and wireTheme both read
+ * theirs during main(), at file scope.
+ * @param {Set<string>|{ids?: Set<string>, config?: object, fetch?: Function,
+ *   checkedStem?: string, viewport?: number, storage?: object}} [opts]
  */
 /**
  * Every CSS custom property site/style.css defines, so the stub can tell a name
@@ -443,7 +534,7 @@ export function loadApp(opts = {}) {
   // rendered". Kept because that is what most checks want and an options
   // object for one field reads worse at every call site.
   const o = opts instanceof Set ? { ids: opts } : opts;
-  const stub = domStub(o.ids);
+  const stub = domStub(o.ids, o.viewport, o.storage);
   const sandbox = { console, Intl, ...stub };
   sandbox.window = sandbox;
   sandbox.globalThis = sandbox;
@@ -535,7 +626,13 @@ export function loadApp(opts = {}) {
   const exported = `\n;globalThis.__harness = { ${NAMES.join(", ")},` +
     ` get projection() { return projection; },` +
     ` get drilled() { return drilled; },` +
-    ` get fetched() { return fetched; } };\n`;
+    ` get fetched() { return fetched; },` +
+    // columnBudget AND columnOverride ARE `let` BINDINGS TOO, and the second is
+    // the one a check cannot infer: a budget of 3 at a narrow viewport looks
+    // identical whether the reader chose it or nobody did, and the difference
+    // is the whole of whether the next media change moves the page.
+    ` get columnBudget() { return columnBudget; },` +
+    ` get columnOverride() { return columnOverride; } };\n`;
   runInContext(src + exported, ctx, { filename: "app.js" });
 
   const app = sandbox.__harness;

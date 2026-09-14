@@ -567,7 +567,7 @@ function stepDocsFor(flows, spending) {
  * and the hint name the node the reader clicked in the words of the chart
  * they clicked it on -- the spine's -- and not the step document's.
  */
-async function opened(plan, tweak, column = COLUMNS[0]) {
+async function opened(plan, tweak, column = COLUMNS[0], extra) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   config.projections["fund-flows-2027"] = "data/fund-flows-2027.json";
@@ -609,7 +609,7 @@ async function opened(plan, tweak, column = COLUMNS[0]) {
     "data/department-spending.json": { doc: goldenSpending() },
     "data/department-spending-2027.json": { doc: goldenSpending2027() },
   }, plan || {}));
-  const app = loadApp({ config, fetch, checkedStem: column.stem });
+  const app = loadApp(Object.assign({ config, fetch, checkedStem: column.stem }, extra || {}));
   const body = app.dom.document.node();
   app.dom.document.getElementById("flow-table").selectable = { tbody: body };
   const main = app.dom.document.node();
@@ -779,9 +779,13 @@ export async function openedWindow(id) {
  *
  * layout.mjs NEEDS A CHART OF FOUR COLUMNS AND THIS FILE IS WHERE ONE IS BUILT,
  * which is openedWindow's argument at one more column: the band count and the
- * label room are claims about a shape no reader can reach until
- * fisc-ko1j.12.4's control ships, and rebuilding the page config there would be
- * a second copy of PAGE.
+ * label room are claims about a shape a reader reaches only on a wide window,
+ * and rebuilding the page config there would be a second copy of PAGE.
+ *
+ * IT STATES THE BUDGET RATHER THAN LETTING THE PAGE DECIDE, which is what keeps
+ * these measurements measurements: what the control gives a reader depends on
+ * their viewport, and openedChain below is the entry point for a check that
+ * wants that instead.
  *
  * @param {number} budget
  * @param {string[]} path the nodes to open, outermost first
@@ -791,6 +795,26 @@ export async function openedWide(budget, path) {
   app.setColumnBudget(budget);
   for (const id of path) await mustOpen(app, id);
   return app;
+}
+
+/**
+ * The page opened down a path at the budget the PAGE decided, with the fetch
+ * and the planted <main> beside it.
+ *
+ * openedWide's sibling, and the difference between them is the whole of what
+ * this is for. That one moves the budget through setColumnBudget, which is how
+ * a check MEASURES a chart no shipped viewport reaches; this one leaves the
+ * budget where wireColumns put it, which is how a check DRIVES the control that
+ * moves it. Asserting "the reader's + redrew the rung" against a budget the
+ * check had already set would assert nothing.
+ *
+ * @param {string[]} path the nodes to open, outermost first
+ * @param {object} [extra] loadApp options -- a viewport, a seeded localStorage
+ */
+export async function openedChain(path, extra) {
+  const { app, fetch, main } = await opened(null, null, COLUMNS[0], extra);
+  for (const id of path) await mustOpen(app, id);
+  return { app, fetch, main };
 }
 
 /** A spine opened into one node, or into a node and then one beneath it. */
@@ -3822,11 +3846,11 @@ async function windowAt(col, budget, path, tweak) {
  * fill.
  *
  * WHAT THIS IS EVIDENCE FOR. pkg/cmd/export/data.go declares the fund step at
- * tiers {2,3,4,5} widening by {5}, and no reader can see the fourth column yet:
- * the budget is NARROW_COLUMNS for everyone until fisc-ko1j.12.4 ships the
- * control, and the harness's matchMedia answers not-matching. So the widened
- * declaration is a claim nothing on the page exercises, which is the shape
- * fisc-rx1d is about -- these arms are what exercise it.
+ * tiers {2,3,4,5} widening by {5}, and a reader sees the fourth column only on
+ * a window wide enough to buy it or after asking for it: the harness has no
+ * viewport, so every page loaded here opens at NARROW_COLUMNS. These arms are
+ * what exercise the widened declaration at the shape it was declared for;
+ * lifecycle.mjs is where the control that gets a reader there is driven.
  *
  * THE NARROW WINDOW IS PINNED BESIDE IT, AND THAT PAIRING IS THE POINT. With
  * the widening taken back off the step, the wide arm goes red and the narrow

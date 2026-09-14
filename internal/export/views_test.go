@@ -2729,6 +2729,37 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	}
 }
 
+// TestTheColumnControlShipsInertOnEveryChartPage closes the same fail-open
+// TestEachYearCarriesItsOwnBasisAndTitle names one control over:
+// tools/jscheck's DOM stub fabricates any id in TEMPLATE_IDS, so every check
+// that presses this control passes whether or not the templates render it. If
+// they stop, maybeEl returns null, wireColumns' `if (fewer && more)` swallows
+// it, and the reader silently loses the only way to ask for a fourth column
+// while every jscheck arm about it stays green.
+//
+// AND IT ASSERTS THE disabled ATTRIBUTE, not merely the element. The control is
+// entirely a client behaviour -- app.js lays the chart out and these buttons
+// move only the budget it is laid out at -- so a template that shipped them
+// live would hand a reader with JavaScript off two buttons that do nothing,
+// which is the year fieldset's argument and the same remedy.
+func TestTheColumnControlShipsInertOnEveryChartPage(t *testing.T) {
+	dir := chartAndSpine(t)
+	for _, page := range []string{export.IndexPath, "spending.html"} {
+		html := readFile(t, dir, page)
+		for _, want := range []string{
+			`<button type="button" id="column-fewer" aria-label="Fewer columns" disabled>`,
+			`<button type="button" id="column-more" aria-label="More columns" disabled>`,
+			`<span id="column-count" aria-live="polite">`,
+		} {
+			if !strings.Contains(html, want) {
+				t.Errorf("%s does not render %s, so the column control is either absent or "+
+					"ships live; app.js enables it and jscheck cannot tell either case "+
+					"from a working page", page, want)
+			}
+		}
+	}
+}
+
 // TestAClosedFlowTableIsNotDescribedAsListedBelow is the a11y claim
 // index.html.tmpl's disclosure comment argues, enforced rather than restated: a
 // closed <details> is collapsed for assistive technology as well as visually,

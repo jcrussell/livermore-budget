@@ -82,6 +82,25 @@
       {{- end}}
     </fieldset>
     {{- end}}
+    {{- /* THE COLUMN CONTROL, AND IT SHIPS DISABLED for the year group's
+           reason one control over. How many columns the chart draws is
+           entirely a client decision -- app.js lays the chart out and these
+           buttons only move the budget it is laid out at -- so with JavaScript
+           off pressing one would change nothing, and a control that lies is
+           worse than one that is absent. app.js enables them and immediately
+           re-disables whichever one is at its bound, which is how the floor of
+           three columns is discoverable without a sentence explaining it.
+
+           THE COUNT IS THE LIVE REGION, rather than a visible count beside a
+           hidden one. The words a screen reader should hear are the words on
+           screen, and two elements saying the same thing are two things to
+           keep in step. It ships empty because app.js owns the number: with
+           JavaScript off there is no chart for it to be a count OF. */}}
+    <div class="column-control" role="group" aria-label="Chart columns">
+      <button type="button" id="column-fewer" aria-label="Fewer columns" disabled>&minus;</button>
+      <span id="column-count" aria-live="polite"></span>
+      <button type="button" id="column-more" aria-label="More columns" disabled>+</button>
+    </div>
     <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
   </div>
 </header>

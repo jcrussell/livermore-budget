@@ -465,7 +465,7 @@ const BAND = 319;
  * THE DRAWING SCALES, THE CONTAINER DOES NOT. The viewBox is what fits this
  * width into whatever room style.css gives the <svg>, so a wider chart in the
  * same container is the same picture drawn smaller. That is why the column
- * budget is asked of the viewport (fisc-ko1j.12.4) rather than taken whenever
+ * budget is asked of the viewport (COLUMN_QUERIES) rather than taken whenever
  * a step offers one.
  *
  * @param {number} n
@@ -846,16 +846,79 @@ let drilled = [];
  */
 const NARROW_COLUMNS = 3;
 /**
+ * The most columns this page has room to draw.
+ *
+ * IT IS A MEASUREMENT OF THE STYLESHEET, NOT A TASTE. style.css caps
+ * .chart-wrap's --chart-room at chartWidth(4), and the chart is an <svg> with a
+ * viewBox: a budget above this does not draw a wider chart, it draws the same
+ * picture smaller. tools/jscheck/layout.mjs reads the cap off the shipped
+ * declaration and this constant off the shipped script, so raising one without
+ * the other goes red rather than shipping a reader who asks for a column and
+ * gets less chart.
+ *
+ * NOTHING ASKS FOR A FIFTH EITHER: the widest step this site declares is the
+ * fund step's four tiers, so a budget of 5 would change no chart on the page
+ * even with room for one. Both halves of what reopening that needs are in
+ * fisc-ipif.
+ */
+const WIDE_COLUMNS = 4;
+
+/**
+ * The viewport widths that buy a column beyond the floor, and what each buys.
+ *
+ * 1569 IS chartWidth(4) PLUS THE STYLESHEET'S OWN 56px CUSHION, and it is that
+ * rather than a round 1500 because the threshold has to be the width at which
+ * the fourth column FITS: --chart-room is calc(100vw - 56px) below its cap, so
+ * at a 1500px viewport a four-column chart is drawn at 95% of the width it was
+ * laid out at. A breakpoint chosen for looking like a breakpoint reintroduces
+ * the defect in miniature. layout.mjs re-derives this from the two files.
+ *
+ * ASKED THROUGH matchMedia AND NOT THROUGH resize, because a query is the
+ * question being asked -- "is there room for another column" is a threshold,
+ * not a stream of widths -- and because matchMedia is already feature-checked
+ * here for the OS theme and already observable to a check.
+ *
+ * ONE-DIRECTIONAL, AND THE FLOOR IS NARROW_COLUMNS. A wide viewport can ADD a
+ * column; a narrow one cannot take the page below three, because three is what
+ * a window IS -- windowFor refuses fewer -- and because chartWidth is a fixed
+ * design width scaled by the viewBox, so narrowing the window shrinks the
+ * picture rather than reflowing it (see chartWidth). Nothing here reads a
+ * viewport as a reason to draw FEWER columns than the floor.
+ */
+const COLUMN_QUERIES = [
+  { query: "(min-width: 1569px)", columns: WIDE_COLUMNS },
+];
+
+/**
  * How many columns the chart may draw, which is what decides whether a step's
  * widened columns are asked for (activeTiers).
  *
- * A PLAIN VALUE, AND THE READER CANNOT MOVE IT YET. fisc-ko1j.12.4 owns the
- * control -- a matchMedia query for the room a fourth column needs, plus a
- * manual override -- and setColumnBudget is the seam it will call. Until then
- * every reader gets NARROW_COLUMNS, which is the width every figure pinned over
- * this page was measured at.
+ * A MODULE-LEVEL let, AND THAT IS NOT THE THING RENDER_TIERS FORBIDS. That
+ * comment refuses a constant because a tier set is WHICH TIERS A DOCUMENT IS
+ * DRAWN AT -- a property of a hierarchy, which only a view can declare, and
+ * which applied to the wrong document refuses or corrupts. A budget is a
+ * property of the READER'S WINDOW and it never names a tier: every tier drawn
+ * is still one the step declared, and the budget only chooses how many of them
+ * to take (activeTiers). So it is per-reader rather than per-view, and there is
+ * no document it could be wrong about.
+ *
+ * SEEDED BEFORE THE FIRST FETCH AND MOVED ONLY THROUGH setColumnBudget.
+ * wireColumns owns both.
  */
 let columnBudget = NARROW_COLUMNS;
+
+/**
+ * The column count the reader asked for, or null when they have not asked.
+ *
+ * THE READER OUTRANKS THE VIEWPORT UNTIL THEY HAND IT BACK. While this is set,
+ * a media query firing changes nothing -- otherwise a reader who stepped down
+ * to three would be silently returned to four by rotating a tablet. Stepping
+ * back to the count the viewport itself would give clears it, which is the only
+ * way back to following the window and is why this is a separate value rather
+ * than being read off columnBudget: the two are equal in exactly the state
+ * where the reader has NOT chosen.
+ */
+let columnOverride = null;
 
 /**
  * Sets how many columns the chart may draw, and says whether that moved.
@@ -4491,6 +4554,157 @@ function wireTheme() {
   sync();
 }
 
+/**
+ * How many columns the reader's window has room for, which is never fewer than
+ * the floor.
+ *
+ * matchMedia is feature-checked for prefersDark()'s reason and answered the
+ * same way when it is missing: a page that cannot ask about the viewport draws
+ * the narrow chart, which is a chart, rather than declining to draw one.
+ * @returns {number}
+ */
+function viewportColumns() {
+  if (typeof window.matchMedia !== "function") return NARROW_COLUMNS;
+  let most = NARROW_COLUMNS;
+  for (const q of COLUMN_QUERIES) {
+    if (q.columns > most && window.matchMedia(q.query).matches) most = q.columns;
+  }
+  return most;
+}
+
+/**
+ * The reader's saved choice, or null when there is none this build can honour.
+ *
+ * A SAVED VALUE OUT OF RANGE IS NOT CLAMPED, IT IS DISCARDED. A 5 left in
+ * storage by a build whose ceiling was higher is not a choice between the
+ * options this one offers, and clamping it to 4 would put the page in the
+ * overridden state -- deaf to the viewport -- on behalf of a reader who never
+ * asked for 4.
+ *
+ * localStorage throws rather than returning null in some privacy modes, which
+ * is why this is wrapped; wireTheme's setItem is wrapped for the same reason.
+ * @returns {number | null}
+ */
+function savedColumns() {
+  try {
+    const raw = localStorage.getItem("fisc-columns");
+    if (raw === null) return null;
+    const n = Math.floor(Number(raw));
+    if (!Number.isFinite(n) || n < NARROW_COLUMNS || n > WIDE_COLUMNS) return null;
+    return n;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Brings the +/- control back into agreement with the budget.
+ *
+ * DISABLED AT THE BOUNDS IS HOW THE FLOOR IS DISCOVERABLE. Three is not a
+ * number this page can explain in the header, and a minus that visibly cannot
+ * be pressed says it without a sentence. The attribute is set rather than the
+ * property, so it is the same thing the template ships and the same thing
+ * wireYears removes.
+ */
+function syncColumns() {
+  const count = maybeEl("column-count");
+  if (count) count.textContent = columnBudget + " columns";
+  const bound = (/** @type {string} */ id, /** @type {boolean} */ atBound) => {
+    const button = maybeEl(id);
+    if (!button) return;
+    if (atBound) button.setAttribute("disabled", "");
+    else button.removeAttribute("disabled");
+  };
+  bound("column-fewer", columnBudget <= NARROW_COLUMNS);
+  bound("column-more", columnBudget >= WIDE_COLUMNS);
+}
+
+/**
+ * Puts the wanted budget into effect and repaints the chart if that moved it.
+ *
+ * THE REPAINT IS redrawStack(drilled) AND NOTHING ELSE. The rung's document and
+ * the chart it was opened from are both already recorded, so the same stack
+ * reshaped at the new budget is the whole of the work: no rung is popped, no
+ * file is fetched a second time, and redrawStack shapes and lays out before it
+ * mutates a single element (fisc-bsg), so a budget that will not lay out leaves
+ * the reader on the chart they were already looking at rather than under
+ * another chart's controls.
+ *
+ * IT ASKS drawnColumns AND NOT columnBudget WHETHER TO REDRAW. The two are
+ * different questions: the overview is drawn at RENDER_TIERS whatever the
+ * budget, so raising it there changes no column and a redraw would only clear
+ * the reader's pin and their isolation for nothing.
+ *
+ * @param {boolean} redraw false during boot, where there is no document yet
+ */
+function applyColumns(redraw) {
+  const before = drawnColumns();
+  const moved = setColumnBudget(columnOverride === null ? viewportColumns() : columnOverride);
+  syncColumns();
+  if (!moved || !redraw || !projection) return;
+  if (drawnColumns() === before) return;
+  redrawStack(drilled);
+}
+
+/**
+ * Takes the reader's step, records it as theirs, and repaints.
+ *
+ * RECORDING IT IS WHAT MAKES IT SURVIVE THE NEXT MEDIA CHANGE. Setting the
+ * budget alone leaves columnOverride null, and the first query to fire after
+ * that -- a rotation, a window drag across the threshold -- silently returns
+ * the page to the viewport's answer over the reader's. lifecycle.mjs drives
+ * exactly that.
+ *
+ * @param {number} delta
+ */
+function stepColumns(delta) {
+  const want = Math.min(WIDE_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
+  if (want === columnBudget) return;
+  // BACK TO THE VIEWPORT'S OWN ANSWER IS A RELEASE, NOT A CHOICE. It is the
+  // reader's way of handing the decision back, and without it the first press
+  // of either button would deafen the page to the window for good.
+  const released = want === viewportColumns();
+  columnOverride = released ? null : want;
+  try {
+    if (released) localStorage.removeItem("fisc-columns");
+    else localStorage.setItem("fisc-columns", String(want));
+  } catch (e) { /* private mode: the choice still holds for this visit */ }
+  applyColumns(true);
+}
+
+/**
+ * Wires the column control and the queries that move it when the reader has
+ * expressed no preference.
+ *
+ * IT SETS THE BUDGET AND DOES NOT DRAW. main() calls this before the first
+ * fetch, for wireYears' reason -- every affordance is live for the whole of the
+ * opening fetch -- and at that point there is no document to lay out: a redraw
+ * here would reach redrawStack's "no document to open" and banner a refusal at
+ * a reader who has done nothing. The opening draw reads columnBudget like any
+ * other.
+ *
+ * The buttons ship disabled, as the year group does and for the same reason,
+ * and enabling them is this function's enhancement; syncColumns immediately
+ * re-disables whichever one is at its bound.
+ */
+function wireColumns() {
+  columnOverride = savedColumns();
+  const fewer = maybeEl("column-fewer");
+  const more = maybeEl("column-more");
+  if (fewer && more) {
+    fewer.removeAttribute("disabled");
+    more.removeAttribute("disabled");
+    fewer.addEventListener("click", () => stepColumns(-1));
+    more.addEventListener("click", () => stepColumns(1));
+  }
+  if (typeof window.matchMedia === "function") {
+    for (const q of COLUMN_QUERIES) {
+      window.matchMedia(q.query).addEventListener("change", () => applyColumns(true));
+    }
+  }
+  applyColumns(false);
+}
+
 /* ------------------------------------------------------------------ *
  * Boot
  * ------------------------------------------------------------------ */
@@ -5072,6 +5286,7 @@ function wireYears(years) {
 
 async function main() {
   wireTheme();
+  wireColumns();
   // Before the fetch, not after: FISC_CONFIG carries the projection's own
   // metadata block, and the headline the page has already rendered from it
   // server-side is read under the same contract as the graph.

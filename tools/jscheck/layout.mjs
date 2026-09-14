@@ -364,7 +364,18 @@ function chartAllowance(css) {
   if (!/(^|[\s;])width:\s*var\(--chart-room\)/.test(rule[1])) {
     return { px: null, why: ".chart-wrap caps --chart-room but does not take its width from it" };
   }
-  return { px: Number(room[1]), why: "" };
+  const cushion = /--chart-room:\s*min\([^)]*calc\(100vw\s*-\s*(\d+)px\)/.exec(rule[1]);
+  return {
+    px: Number(room[1]),
+    // WHAT THE CAP COSTS BELOW ITSELF, which is the other half of the same
+    // declaration and the half COLUMN_QUERIES has to agree with. Below the cap
+    // the chart gets 100vw minus this, so the viewport at which a chart of n
+    // columns FITS is chartWidth(n) + cushion -- not a round number, and a
+    // breakpoint picked for looking like one puts the reader back where
+    // fisc-5e2b found them, one column narrower.
+    cushion: cushion ? Number(cushion[1]) : null,
+    why: "",
+  };
 }
 
 /**
@@ -574,6 +585,18 @@ async function wideChecks(app) {
   const ambiguous = sameWords(fits).concat(sameWords(innerFits));
   const stack = tightestStack(fits);
   const allowance = chartAllowance(stylesheet());
+  // What each responsive threshold actually buys the chart, at the threshold.
+  // Math.min with the cap because a query above it is bounded by the cap, which
+  // is the arm above's subject rather than this one's.
+  const queryRoom = (app.COLUMN_QUERIES || []).map((/** @type {any} */ q) => {
+    const at = Number(/\(min-width:\s*(\d+)px\)/.exec(q.query)[1]);
+    return {
+      query: q.query,
+      columns: q.columns,
+      room: Math.min(allowance.px, at - allowance.cushion),
+      wants: app.chartWidth(q.columns),
+    };
+  });
   return [
     {
       // THE GUTTER DECISION, MEASURED. LABEL_GUTTER does not grow with the
@@ -653,15 +676,43 @@ async function wideChecks(app) {
       // narrower than the width app.js lays the chart out at does not clip it
       // and does not reflow it -- it draws the same picture smaller, and a
       // reader who asks for a fourth column gets a fifth less chart (fisc-5e2b).
-      name: "the stylesheet lets a four-column chart draw at the width app.js lays it out at",
-      ok: allowance.px !== null && allowance.px >= app.chartWidth(4),
+      // AND IT IS ASKED OF app.js's OWN CEILING RATHER THAN OF A LITERAL 4.
+      // WIDE_COLUMNS is what the column control will not go above; asking about
+      // the number 4 would leave raising that ceiling a change nothing here
+      // notices, which is the whole of the failure this arm is for.
+      name: "the stylesheet lets the widest chart app.js will draw draw at the width it lays it out at",
+      ok: allowance.px !== null && allowance.px >= app.chartWidth(app.WIDE_COLUMNS),
       detail: allowance.px === null
         ? allowance.why
-        : `style.css allows the chart ${allowance.px}px and app.js lays four columns ` +
-          `out at ${app.chartWidth(4)}px` +
-          (allowance.px >= app.chartWidth(4)
+        : `style.css allows the chart ${allowance.px}px and app.js lays its ceiling of ` +
+          `${app.WIDE_COLUMNS} columns out at ${app.chartWidth(app.WIDE_COLUMNS)}px` +
+          (allowance.px >= app.chartWidth(app.WIDE_COLUMNS)
             ? ""
-            : `, so it draws at ${Math.round((allowance.px / app.chartWidth(4)) * 100)}% of that`),
+            : `, so it draws at ` +
+              `${Math.round((allowance.px / app.chartWidth(app.WIDE_COLUMNS)) * 100)}% of that`),
+    },
+    {
+      // THE BREAKPOINTS AGAINST THE SAME DECLARATION, WHICH IS THE OTHER WAY
+      // THE PAIR CAN DISAGREE. The arm above says the CAP is wide enough for
+      // the ceiling; this one says every viewport at which the page ADDS a
+      // column has room for that column at the width it will be laid out at.
+      // A query threshold of 1500px passes the arm above untouched and still
+      // hands a reader a four-column chart drawn at 95% of itself, because
+      // below the cap the room is 100vw minus the cushion. Re-derived from the
+      // two shipped files rather than pinned as a number here.
+      //
+      // EVERY ENTRY, not the widest: a list is the shape of the responsive
+      // rule, and the arm has to stay true of the tier fisc-ipif would add.
+      name: "every viewport the page adds a column at has room for that column",
+      ok: allowance.px !== null && allowance.cushion !== null &&
+          queryRoom.length > 0 && queryRoom.every((q) => q.room >= q.wants),
+      detail: allowance.cushion === null
+        ? `.chart-wrap's --chart-room declares no calc(100vw - Npx) arm, so there is nothing to ` +
+          `derive a breakpoint from: ${allowance.why || "the cap parsed but the cushion did not"}`
+        : queryRoom.map((q) => `${q.query} buys ${q.columns} columns: at that width the ` +
+            `stylesheet gives the chart ${q.room}px and app.js lays ${q.columns} out at ` +
+            `${q.wants}px${q.room >= q.wants ? "" : " -- SHORT"}`).join("; ") +
+          ` (cushion ${allowance.cushion}px, read off the same declaration)`,
     },
   ];
 }

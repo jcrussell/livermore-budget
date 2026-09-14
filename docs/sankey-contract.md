@@ -269,7 +269,7 @@ neither a fund nor a department axis.
 
 **All three of the spine's drawn columns open, and every rung is a WINDOW** —
 the node the reader clicked in the middle, with three columns the narrowest such
-window and the one every reader is shown today; a step may declare more, and
+window and the one a narrow viewport is shown; a step may declare more, and
 what each rung draws at what width is stated in
 `docs/general-fund-drilldown-contract.md`. `index.html`
 declares a tree of steps in `views()`, not a chain: the six tier-2 fund groups

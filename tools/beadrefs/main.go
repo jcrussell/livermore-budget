@@ -57,10 +57,9 @@ var exempt = map[string]string{
 }
 
 // exemptIDs names tokens that are shaped like a bead id and are not one, with
-// what each actually is. Two exist, both in the client, and neither can be told
-// from a bead id by any rule -- `fisc-theme` and `fisc-year` are a localStorage
-// key and a radio-group name, and a bead id is `fisc-` plus a short token that
-// could equally be a word.
+// what each actually is. All of them are in the client, and none can be told
+// from a bead id by any rule: a localStorage key and a radio-group name both
+// read as `fisc-` plus a short token, and so does a bead id.
 //
 // Renaming them would be the better fix and is not free: AGENTS.md requires a
 // change to site/app.js to ship its jscheck guard in the same commit, and these
@@ -80,8 +79,9 @@ var exempt = map[string]string{
 // staleness test. That was measured rather than reasoned: renaming a key here to
 // a token in no other file left a full run green.
 var exemptIDs = map[string]exemptID{
-	"fisc-theme": {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice; also inlined in every site/*.html.tmpl"},
-	"fisc-year":  {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control; also in chart.html.tmpl"},
+	"fisc-theme":   {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice; also inlined in every site/*.html.tmpl"},
+	"fisc-year":    {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control; also in chart.html.tmpl"},
+	"fisc-columns": {file: "site/app.js", what: "the localStorage key holding the reader's chosen column count; also in tools/jscheck/lifecycle.mjs"},
 }
 
 type exemptID struct {

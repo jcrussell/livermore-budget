@@ -380,10 +380,11 @@ description (`fisc-vsu8`) and a changed cap went green on both sides at once:
 
 Every rung of that chain is a WINDOW: the node the reader clicked in the middle,
 one flank kept off the chart they clicked it on, and its own decomposition on
-the other side. **Three columns is the narrowest such window and the one every
-reader is shown today** — the client's column budget is 3 for everyone until
-`fisc-ko1j.12.4` ships the control that moves it, so the tier sets in the table
-below are what a narrow reader sees.
+the other side. **Three columns is the narrowest such window and the
+one most readers are shown** — the client's column budget starts at 3, and a
+window at least `chartWidth(4)` plus the stylesheet's cushion wide buys a fourth
+that the reader may also step back down to. The tier sets in the table below are
+what a narrow reader sees.
 
 A step may declare more columns than that budget draws: `widen` names the
 columns of its own `tiers` a narrower client does without, in the order it drops

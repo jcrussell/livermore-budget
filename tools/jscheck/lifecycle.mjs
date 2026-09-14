@@ -15,6 +15,12 @@
 // would boot a second page.
 
 import { loadApp, settle, twoYearConfig, plannedFetch, refusals, goldenGraph } from "./harness.mjs";
+// THE DRILL-CONFIGURED PAGE IS BUILT IN drill.mjs AND IS NOT REBUILT HERE. The
+// column budget only changes a chart in a window -- the overview is drawn at
+// RENDER_TIERS whatever the budget -- so the arm that says a budget change
+// redraws the rung needs a real window, and a second copy of that config here
+// is the thing drill.mjs's PAGE exists to avoid.
+import { openedChain } from "./drill.mjs";
 
 /**
  * Loads the page with a planted <main>, which is what makes a banner visible to
@@ -98,7 +104,7 @@ export async function checks() {
     // a race that did not occur (fisc-ty6).
     const opened = fetch.asked.includes("data/sankey.json");
     const escape = (app.dom.documentListeners.keydown || []).length;
-    const theme = (app.dom.mediaListeners.change || []).length;
+    const theme = app.dom.followers("(prefers-color-scheme: dark)").length;
     // The clicked year DID draw. Without this the check would pass over a page
     // that failed outright, which is a different bug with the same counts.
     const drew = app.dom.byId.get("lede-year");
@@ -517,6 +523,153 @@ export async function checks() {
         `; the page still reads "${lede ? lede.textContent : "(no lede)"}" and the flow table holds ` +
         `${body.children.length} rows against ${rowsFirst} before the click, so nothing was ` +
         `half-repainted -- and the banner NAMES ${bad.key} rather than reporting a generic throw`,
+    });
+  }
+
+  // ------------------------------------------------------ the column budget
+  //
+  // TWO CLAIMS, AND THE SECOND IS THE ONE WITH A DEFECT BEHIND IT. That a
+  // viewport wide enough for a fourth column opens the page at four is the easy
+  // half. That a reader who then steps DOWN is not silently overruled by the
+  // next media change is the half that has to be built for: setting the budget
+  // and leaving columnOverride null looks identical on screen, until the reader
+  // drags the window across the threshold and their choice evaporates.
+  //
+  // THE MEDIA CHANGE IS DRIVEN BY CROSSING THE THRESHOLD IN BOTH DIRECTIONS.
+  // Narrowing alone proves nothing here -- the viewport's own answer below the
+  // threshold is three, which is what the reader chose -- so the page has to be
+  // widened BACK for the two behaviours to differ at all.
+  {
+    const { app } = page({
+      config,
+      fetch: plannedFetch({ "data/sankey.json": { doc } }),
+      // Above COLUMN_QUERIES' only threshold, which is chartWidth(4) plus the
+      // stylesheet's own cushion. seam.mjs is what says the stub answers this.
+      viewport: 2000,
+    });
+    await settle();
+    const opened = app.columnBudget;
+    const more = app.dom.byId.get("column-more");
+    const fewer = app.dom.byId.get("column-fewer");
+    const disabled = (/** @type {any} */ b) => b.getAttribute("disabled") !== null;
+    // AT THE CEILING THE PLUS IS DEAD AND THE MINUS IS NOT, which is the pair
+    // that says wireColumns enabled the control at all: the template ships BOTH
+    // disabled, so "the minus is live" is false before app.js runs.
+    const atCeiling = [disabled(more), disabled(fewer)].join("/");
+
+    fewer.listeners.click[0]();
+    const chosen = app.columnBudget;
+    const saved = app.dom.storage.get("fisc-columns");
+    const atFloor = [disabled(more), disabled(fewer)].join("/");
+
+    app.dom.setViewport(800);
+    const narrowed = app.columnBudget;
+    app.dom.setViewport(2000);
+    const held = app.columnBudget;
+
+    // AND THE WAY BACK. Stepping to the count the viewport itself would give is
+    // how a reader hands the decision back; without it the first press of
+    // either button deafens the page to the window for the rest of the visit,
+    // and "wins until cleared" would name a state with no exit.
+    more.listeners.click[0]();
+    const released = app.columnOverride;
+    const cleared = app.dom.storage.has("fisc-columns");
+
+    out.push({
+      name: "a viewport that can carry four columns gets four, and a reader's step down holds against it",
+      ok: opened === 4 && atCeiling === "true/false" &&
+          chosen === 3 && saved === "3" && atFloor === "false/true" &&
+          narrowed === 3 && held === 3 &&
+          released === null && cleared === false,
+      detail: `a 2000px window opens at ${opened} columns with (more/fewer) disabled ${atCeiling}; ` +
+        `one press of the minus gives ${chosen}, stored as ${JSON.stringify(saved)}, with ` +
+        `disabled ${atFloor}; narrowing to 800px leaves ${narrowed} and widening back to 2000px ` +
+        `leaves ${held} -- the reader's choice outranks the window rather than being replaced by ` +
+        `it -- and stepping back up to the window's own answer clears the override to ` +
+        `${released} and removes the key (${cleared ? "still stored" : "gone"})`,
+    });
+  }
+
+  // A SAVED CHOICE IS READ BACK, AND ONE THIS BUILD CANNOT HONOUR IS NOT.
+  //
+  // savedColumns is reached exactly once, during wireColumns, so without a
+  // seeded localStorage nothing drives it and the whole of "your choice
+  // survives a reload" is a path no check enters. The out-of-range case is the
+  // arm with the judgement in it: a 5 left by a build with a higher ceiling is
+  // DISCARDED rather than clamped, because clamping would put the page in the
+  // overridden state -- deaf to the viewport -- on behalf of a reader who never
+  // chose 4.
+  {
+    const fetch = () => plannedFetch({ "data/sankey.json": { doc } });
+    const saved = page({ config, fetch: fetch(), storage: { "fisc-columns": "4" } });
+    const stale = page({ config, fetch: fetch(), storage: { "fisc-columns": "9" } });
+    await settle();
+    out.push({
+      name: "a saved column count is honoured on the next visit, and one out of range is discarded",
+      ok: saved.app.columnBudget === 4 && saved.app.columnOverride === 4 &&
+          stale.app.columnBudget === 3 && stale.app.columnOverride === null,
+      detail: `a stored "4" opens a page with no viewport at ${saved.app.columnBudget} columns ` +
+        `(override ${saved.app.columnOverride}), where the window alone would give 3; a stored ` +
+        `"9" opens at ${stale.app.columnBudget} with override ${stale.app.columnOverride}, so the ` +
+        `page follows the window rather than honouring a choice it cannot offer`,
+    });
+  }
+
+  // A BUDGET CHANGE REDRAWS THE RUNG THE READER IS ON, AND DOES NOTHING ELSE TO
+  // THE STACK.
+  //
+  // Four things have to be true at once and each has its own way of being
+  // false: the chart gains a column (the change took effect), the stack keeps
+  // both its rungs (it redrew rather than popped), nothing is fetched a second
+  // time (rung.doc is already recorded), and focus is still on the control for
+  // the rung the reader is on rather than the one above it. The last doubles as
+  // the pop detector: a popped stack restores focus to the OUTER rung's return
+  // control, which reads differently.
+  {
+    // The fund window, which is the only shape this site ships that has a
+    // fourth column to gain: the fund step declares tiers {2,3,4,5} widening
+    // by {5}. On the overview a budget change is correctly a no-op.
+    const { app, fetch, main } = await openedChain(["fund-group/general", "fund/100"]);
+    const crumb = app.dom.byId.get("breadcrumb");
+    const innermostControl = () => {
+      const buttons = (crumb.children || [])
+        .filter((c) => String(c.tagName || "").toLowerCase() === "button");
+      return buttons.length ? buttons[buttons.length - 1].textContent : "";
+    };
+    const wasOn = innermostControl();
+    // Focus in the chart, which is the state restoreFocus exists for: without
+    // it redrawStack has nothing to restore and "focus did not move" would be
+    // true because nothing had it.
+    app.dom.document.activeElement = app.dom.document.getElementById("chart");
+
+    const before = {
+      depth: app.drilled.length,
+      path: app.drilled.map((/** @type {any} */ r) => r.id).join(" > "),
+      columns: app.drawnColumns(),
+      asked: fetch.asked.length,
+    };
+    app.dom.byId.get("column-more").listeners.click[0]();
+    await settle();
+    const after = {
+      depth: app.drilled.length,
+      path: app.drilled.map((/** @type {any} */ r) => r.id).join(" > "),
+      columns: app.drawnColumns(),
+      asked: fetch.asked.length,
+    };
+    const focused = app.dom.focused ? app.dom.focused.textContent : "";
+    const banners = refusals(main).length;
+
+    out.push({
+      name: "a budget change redraws the rung the reader is on without popping it or refetching",
+      ok: before.columns === 3 && after.columns === 4 &&
+          before.depth === 2 && after.depth === 2 && after.path === before.path &&
+          after.asked === before.asked && banners === 0 &&
+          wasOn !== "" && focused === wasOn,
+      detail: `the fund window went from ${before.columns} to ${after.columns} columns; the stack ` +
+        `reads "${after.path}" at depth ${after.depth} (was "${before.path}" at ${before.depth}); ` +
+        `${after.asked} fetch(es) against ${before.asked} before the press, so rung.doc was reused; ` +
+        `${banners} banner(s); focus is on "${focused}" (was "${wasOn}"), which is the control for ` +
+        `the rung the reader is on and not the one above it`,
     });
   }
 

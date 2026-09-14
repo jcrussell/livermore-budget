@@ -138,12 +138,76 @@ export async function checks() {
     const app = loadApp({ fetch: plannedFetch({ "data/sankey.json": { doc } }) });
     await settle();
     const escape = (app.dom.documentListeners.keydown || []).length;
-    const theme = (app.dom.mediaListeners.change || []).length;
+    const theme = app.dom.followers("(prefers-color-scheme: dark)").length;
     out.push({
       name: "document-level and matchMedia listeners are observable",
       ok: escape === 1 && theme === 1,
       detail: `a page that opened cleanly carries ${escape} Escape handler(s) and ` +
         `${theme} prefers-color-scheme listener(s), both of which the stub used to discard`,
+    });
+  }
+
+  // THE STUB'S matchMedia CAN BE FOLLOWED FOR A WIDTH QUERY, and not only for
+  // the OS theme.
+  //
+  // WITHOUT THIS THE COLUMN-CONTROL CHECKS ARE GREEN BECAUSE THE SEAM ANSWERS
+  // NOTHING. `matches` used to return the osDark flag whatever it was asked, and
+  // every listener landed in one flat list -- so a page that followed
+  // (min-width: ...) would have reported "no room for a fourth column" at every
+  // width, and lifecycle.mjs's "a wide viewport gets four columns" would have
+  // been an assertion about a viewport the harness could not express. That is
+  // the fisc-dn9 shape and it is also the trap W0 hit: its first mutation went
+  // green because the arms measured a helper and not its use.
+  //
+  // THREE THINGS, AND THE THIRD IS THE ONE THAT MATTERS. That a width query
+  // answers from the width; that a follower registered on it is CALLED when the
+  // width crosses its threshold; and that the two queries are told apart --
+  // setOSDark must not call a width follower and setViewport must not call the
+  // theme's, or "the page follows the viewport" would be green under a page
+  // that followed the theme setting instead.
+  {
+    const app = loadApp({
+      viewport: 2000,
+      fetch: plannedFetch({ "data/sankey.json": { doc } }),
+    });
+    await settle();
+    const query = app.COLUMN_QUERIES[0].query;
+    const wideAt2000 = app.dom.mediaMatches(query);
+    const themeAt2000 = app.dom.mediaMatches("(prefers-color-scheme: dark)");
+    const widthFollowers = app.dom.followers(query).length;
+    const themeFollowers = app.dom.followers("(prefers-color-scheme: dark)").length;
+
+    // Crossing the threshold downward must call the width follower and leave
+    // the theme's alone; flipping the OS must do the reverse.
+    let widthCalls = 0;
+    let themeCalls = 0;
+    app.dom.followers(query).push(() => { widthCalls++; });
+    app.dom.followers("(prefers-color-scheme: dark)").push(() => { themeCalls++; });
+    app.dom.setViewport(800);
+    const narrowAt800 = app.dom.mediaMatches(query);
+    const afterResize = [widthCalls, themeCalls].join("/");
+    app.dom.setOSDark(true);
+    const afterTheme = [widthCalls, themeCalls].join("/");
+    // A width that does not cross the threshold fires nothing, which is what a
+    // browser does and what makes "the follower was called" mean a crossing.
+    app.dom.setViewport(700);
+    const afterNoCrossing = [widthCalls, themeCalls].join("/");
+    let threw = "";
+    try { app.dom.mediaMatches("(orientation: landscape)"); }
+    catch (e) { threw = String(e.message || e); }
+
+    out.push({
+      name: "the stub's matchMedia answers and can be followed for a WIDTH query, not only for the OS theme",
+      ok: wideAt2000 && !narrowAt800 && !themeAt2000 &&
+          widthFollowers === 1 && themeFollowers === 1 &&
+          afterResize === "1/0" && afterTheme === "1/1" && afterNoCrossing === "1/1" &&
+          threw.includes("does not model"),
+      detail: `${query} is ${wideAt2000} at 2000px and ${narrowAt800} at 800px while the OS ` +
+        `reports ${themeAt2000}, so the width is answered from the width and not from the theme ` +
+        `flag; the page registered ${widthFollowers} width follower(s) and ${themeFollowers} ` +
+        `theme follower(s); crossing the threshold called (width/theme) ${afterResize}, ` +
+        `flipping the OS called ${afterTheme}, and a resize that crosses nothing called ` +
+        `${afterNoCrossing}; an unmodelled query throws "${threw}"`,
     });
   }
 
