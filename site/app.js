@@ -2104,9 +2104,11 @@ function windowFor(onScreen, stepDoc, rung) {
   const tiers = step.tiers;
   const keep = step.keep[0];
   const at = tiers.indexOf(keep);
-  // ONE KEPT TIER AND NOT TWO, which the packager refuses too: a window slides
-  // by one column, and a second kept flank would be a fourth column with no
-  // side left to be on.
+  // ONE KEPT TIER AND NOT TWO, WHICH IS THIS FUNCTION'S OWN BOUND AND NOT THE
+  // PACKAGER'S. export.DrillStep takes a flank more than one column deep and
+  // validateSteps holds it to being contiguous and on one side; what is spelled
+  // below draws three columns and slides by one, so a deeper flank is refused
+  // here in words rather than half-drawn.
   if (!onScreen || step.keep.length !== 1 || tiers.length !== 3 ||
       tiers[1] !== step.from || (at !== 0 && at !== 2)) {
     throw new Error("cannot draw " + stepDoc.projection + ": this step keeps tier(s) " +

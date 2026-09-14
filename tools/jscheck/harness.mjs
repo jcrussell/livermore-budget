@@ -939,6 +939,14 @@ export function parseStepShapes(src) {
     // than either. So: nothing declared, nothing returned; something declared
     // and unreadable, refused.
     const keep = body.match(/Keep:\s*\[\]int\{([\d,\s]*)\}/);
+    // A WIDENING IS READ OR REFUSED FOR Keep's REASON, and the list matters
+    // here in the same way After's does: `widen` is the ORDER the columns beyond
+    // the window's three are dropped in, so a parse that read the first entry of
+    // two would have a check measure a chart trimmed to a width the site does
+    // not offer. The pattern spans newlines because gofmt is free to break the
+    // literal, and an entry it cannot read as []int is refused below rather
+    // than returned as no widening at all.
+    const widen = body.match(/Widen:\s*\[\]int\{([\d,\s]*)\}/);
     if (!from) throw new Error(`step ${i} in data.go declares no From this can read`);
     if (!tiers) throw new Error(`step ${i} in data.go declares no Tiers literal this can read`);
     if (!key) throw new Error(`step ${i} in data.go declares no Key this can read`);
@@ -948,6 +956,9 @@ export function parseStepShapes(src) {
     }
     if (/Keep:/.test(body) && !keep) {
       throw new Error(`step ${i} in data.go declares a Keep this cannot read as []int`);
+    }
+    if (/Widen:/.test(body) && !widen) {
+      throw new Error(`step ${i} in data.go declares a Widen this cannot read as []int`);
     }
     // THE LIST IS GO STRING LITERALS AND NOTHING ELSE. Reading only what the
     // quote pattern finds would take `[]string{"", stepKeyConst}` for a
@@ -980,6 +991,7 @@ export function parseStepShapes(src) {
     // shape carrying `keep: []` would have a client read an empty flank where
     // the site sends none.
     if (keep) shape.keep = keep[1].split(",").map((x) => x.trim()).filter(Boolean).map(Number);
+    if (widen) shape.widen = widen[1].split(",").map((x) => x.trim()).filter(Boolean).map(Number);
     out.push(shape);
   }
   // THE MARKERS ARE INDEPENDENT, which is the whole point: braces say how many

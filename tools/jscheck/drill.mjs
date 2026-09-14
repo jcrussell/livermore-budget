@@ -79,10 +79,11 @@ const RENDER_TIERS = spineRenderTiers();
 
 /**
  * One step as the packager ships it: the parsed shape -- key, after, side,
- * role, from, tiers, caps, keep -- under the words views() declares beside it.
+ * role, from, tiers, caps, keep, widen -- under the words views() declares
+ * beside it.
  *
  * THE OPTIONAL FIELDS ARE COPIED ONLY WHERE THE LITERAL DECLARES THEM, which is
- * what the wire does: all three carry `omitempty`, so a config built here with
+ * what the wire does: all four carry `omitempty`, so a config built here with
  * `keep: []` on every step would hand the client a shape data.go does not ship.
  * @param {number} i
  * @param {Record<string, any>} words
@@ -94,6 +95,7 @@ function stepAs(i, words) {
   if (shape.side) step.side = shape.side;
   if (shape.role) step.role = shape.role;
   if (shape.keep) step.keep = shape.keep;
+  if (shape.widen) step.widen = shape.widen;
   return Object.assign(step, words);
 }
 

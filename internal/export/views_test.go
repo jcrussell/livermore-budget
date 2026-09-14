@@ -343,6 +343,98 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 	}
 }
 
+// deepWindowView is a window whose flank is TWO columns deep: the chart on
+// screen draws tiers {1, 0, 2}, tier 2's nodes open, and tiers 0 and 1 -- the
+// two columns to their left there -- stay drawn to their left here, nearest
+// the centre first.
+//
+// A WELL-FORMED ONE, for windowView's reason: the cases that break a deep
+// flank are measured against the arm each is meant to trip, and
+// TestAWindowsFlankMayBeTwoColumnsDeep is what says the shape itself is
+// declarable.
+func deepWindowView(breaks func(*export.View)) export.View {
+	return chartView(func(v *export.View) {
+		v.RenderTiers = []int{1, 0, 2}
+		v.Steps[0].Keep = []int{0, 1}
+		v.Steps[0].Tiers = []int{1, 0, 2, 3}
+		breaks(v)
+	})
+}
+
+// TestAWindowsFlankMayBeTwoColumnsDeep is the control for the deep window and
+// the widened one: both are shapes a caller can declare, and the refusal table
+// breaks clauses of them rather than measuring a type that refuses four columns
+// outright.
+//
+// AND THE WIDENED ONE SHIPS BOTH DECLARATIONS. A widened column is a column of
+// `tiers` AND an entry in `widen`: the first says where it is drawn and the
+// second says it is the one to drop when the reader has no room for it. A
+// client reading only the first would draw it always, and one reading only the
+// second could not say which end it is at.
+func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
+	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
+	if err != nil {
+		t.Fatalf("read fund-flows golden: %v", err)
+	}
+	for _, tc := range []struct {
+		name string
+		view export.View
+		want []string
+	}{
+		{"a flank two columns deep",
+			deepWindowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" }),
+			[]string{`"keep":[0,1]`, `"tiers":[1,0,2,3]`}},
+		// THE WIDENED COLUMN IS THE OPENED NODE'S, at the end away from the
+		// kept flank, and the absent `widen` on the narrow window above is what
+		// says an undeclared one is undeclared rather than empty.
+		{"a window widened by one column",
+			windowView(func(v *export.View) {
+				v.Nav, v.Projection = "Extra", "fund-flows"
+				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{4}
+			}),
+			[]string{`"keep":[0]`, `"tiers":[0,2,3,4]`, `"widen":[4]`}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if _, err := export.Write(export.Options{
+				Dir:         dir,
+				Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+				Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+					Template: export.SankeyTemplate, Projection: "sankey"}, tc.view},
+				Docs:        budgetDocs(),
+				GeneratedBy: "fisc test",
+			}); err != nil {
+				t.Fatalf("Write refused it: %v", err)
+			}
+			page := readFile(t, dir, "extra.html")
+			for _, want := range tc.want {
+				if !strings.Contains(page, want) {
+					t.Errorf("the config carries no %s", want)
+				}
+			}
+		})
+	}
+	// A STEP THAT WIDENS BY NOTHING SHIPS NO KEY AT ALL, which is Keep's own
+	// absent-is-not-zero argument one field over: `"widen":[]` would have a
+	// client that reads the length ask for a column the packager never named.
+	dir := t.TempDir()
+	if _, err := export.Write(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Projection: "sankey"},
+			windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	}); err != nil {
+		t.Fatalf("Write refused a window that widens by nothing: %v", err)
+	}
+	if page := readFile(t, dir, "extra.html"); strings.Contains(page, `"widen"`) {
+		t.Error("the config carries a `widen` key over a step that declares none; an absent " +
+			"widening must be absent on the wire")
+	}
+}
+
 // TestAStepIsPlacedAgainstEveryChartItOpensFrom is the list's own arms, over a
 // step with TWO parents: it is accepted when both place it, refused when the
 // SECOND one cannot reach its From, and refused when they draw different
@@ -945,19 +1037,74 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chainView(func(v *export.View) { v.Steps[1].After = []string{""}; v.Steps[1].From = 5 })},
 			"step 1 drills from tier 5"},
 		// THE WINDOW'S OWN ARMS, one per thing the type now promises about a
-		// step that keeps a flank. windowView is a well-formed window --
-		// TestAStepMayKeepOneFlankOfTheChartItOpensFrom is what keeps these
-		// from being green because a window is refused outright -- and each
-		// case breaks one clause of it.
-		{"a step keeping two flanks", []export.View{ok,
+		// step that keeps a flank. windowView and deepWindowView are
+		// well-formed windows -- TestAStepMayKeepOneFlankOfTheChartItOpensFrom
+		// and TestAWindowsFlankMayBeTwoColumnsDeep are what keep these from
+		// being green because a window, or a deep one, is refused outright --
+		// and each case breaks one clause of them.
+		{"a window keeping a second flank where its centre is", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Keep = []int{0, 2} })},
-			"a window is the opened node with ONE flank"},
+			"one column each and one more for every widening -- 4 columns here, and not 3"},
+		// A FLANK IS CONTIGUOUS AND RUNS OUT FROM THE CENTRE, and these two
+		// break each half of that against a parent wide enough to say it: a
+		// flank with the chart's own column 1 missing from the middle of it,
+		// and one declared outermost-first, which would have the packager and
+		// the client disagree about which kept column is beside the node.
+		{"a flank with a gap in it", []export.View{ok,
+			deepWindowView(func(v *export.View) {
+				v.RenderTiers = []int{6, 1, 0, 2}
+				v.Steps[0].Keep = []int{0, 6}
+				v.Steps[0].Tiers = []int{6, 0, 2, 3}
+			})},
+			"a gap in it is a column the reader was looking at dropped out of the middle"},
+		{"a flank declared outermost first", []export.View{ok,
+			deepWindowView(func(v *export.View) { v.Steps[0].Keep = []int{1, 0} })},
+			"the kept columns are the ones at ONE end of what the step draws, outermost first"},
+		// THE ARM THAT REFUSES A CLICK ON A KEPT FLANK READS EVERY KEPT
+		// COLUMN. Against a one-deep flank the tier the child opens is the
+		// only one there is, so a parent keeping TWO is the shape that tells a
+		// membership test from a test of the first entry -- and it is the
+		// second entry, the OUTERMOST kept column, that the child opens here.
+		{"a step opening the outer tier of a two-deep flank above it", []export.View{ok,
+			deepWindowView(func(v *export.View) {
+				v.Steps = append(v.Steps, export.DrillStep{Key: "outer", After: []string{"groups"},
+					From: 1, Tiers: []int{1, 6}, Back: "All of them", Tail: "things",
+					Description: "Opened off the outer kept column."})
+			})},
+			"which KEEPS that tier"},
+		// A TIER IS A COLUMN. Two columns of one tier draw the same nodes
+		// twice, and the flank's own end could not be read off the list
+		// either, which is what every arm below indexes on.
+		{"a step drawing one tier twice", []export.View{ok,
+			chartView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 3, 0} })},
+			"which name tier 0 twice"},
+		// THE WIDENING'S OWN ARMS. A widened column is declared twice on
+		// purpose -- once as a column of Tiers and once as an entry in Widen,
+		// which says it is optional and when it goes -- so the two can be held
+		// against each other; and a step with no flank has no centre to widen
+		// out from, which is a different construct and not a wider window.
+		{"a widening on a step that keeps nothing", []export.View{ok,
+			windowView(func(v *export.View) { v.Steps[0].Keep, v.Steps[0].Widen = nil, []int{4} })},
+			"has no centre to add a column out from"},
+		{"a widening the step draws no column for", []export.View{ok,
+			windowView(func(v *export.View) { v.Steps[0].Widen = []int{4} })},
+			"one column each and one more for every widening -- 4 columns here, and not 3"},
+		{"a widening drawn somewhere other than the end away from the flank", []export.View{ok,
+			windowView(func(v *export.View) {
+				v.Steps[0].Tiers, v.Steps[0].Widen = []int{0, 2, 3, 4}, []int{3}
+			})},
+			"a widened column is on the opened node's side"},
+		{"a widening on the kept flank's own side", []export.View{ok,
+			windowView(func(v *export.View) {
+				v.Steps[0].Tiers, v.Steps[0].Widen = []int{1, 0, 2, 3}, []int{1}
+			})},
+			"a widening on the flank's side would push them off it"},
 		{"a window that also declares a side", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Side = export.SideSource })},
 			"is the TARGET of one half and the SOURCE of the other"},
 		{"a window that is not three columns", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 2} })},
-			"a window is three columns"},
+			"one column each and one more for every widening -- 3 columns here, and not 2"},
 		{"a window whose centre is not the opened tier", []export.View{ok,
 			windowView(func(v *export.View) { v.Steps[0].Tiers = []int{0, 3, 2} })},
 			"the node the reader clicked is the centre of a window"},

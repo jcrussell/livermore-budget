@@ -402,6 +402,82 @@ export async function checks() {
     });
   }
 
+  // A FLANK MAY BE MORE THAN ONE COLUMN DEEP, AND THE PARSE HAS TO SAY SO.
+  // `keep` is the kept columns nearest the centre first, so a parse that read
+  // the first entry of two would hand every check here a one-deep window where
+  // the site draws a two-deep one -- and nothing would go red, because a
+  // narrower window is a chart that lays out, measures and draws. Mutation:
+  // with the pattern back at `\{(\d+)\}` the two-entry literal below stops
+  // being read, which is this arm's whole subject.
+  {
+    const step = (/** @type {string} */ tail) =>
+      "\t\tspine.Steps = []export.DrillStep{\n\t\t\t{\n\t\t\t\tKey:   \"group\",\n" +
+      "\t\t\t\tAfter: []string{\"\"},\n\t\t\t\tFrom:  2,\n" +
+      `\t\t\t\tTiers: []int{1, 0, 2, 3},\n${tail}\t\t\t},\n\t\t}\n`;
+    const read = (/** @type {string} */ text) => {
+      try {
+        return { steps: parseStepShapes(text), threw: "" };
+      } catch (e) {
+        return { steps: [], threw: String((e && e.message) || e) };
+      }
+    };
+    const keepOf = (/** @type {{steps: any[], threw: string}} */ r) =>
+      r.threw ? `THREW ${r.threw}` : r.steps[0] && r.steps[0].keep ? r.steps[0].keep.join(",") : "absent";
+    const one = read(step("\t\t\t\tKeep:  []int{0},\n"));
+    const two = read(step("\t\t\t\tKeep:  []int{0, 1},\n"));
+    const deep = read(step("\t\t\t\tKeep:  []int{0, 1, 6},\n"));
+    out.push({
+      name: "a `Keep` of two tiers is read as two, not as the first of them",
+      ok: keepOf(one) === "0" && keepOf(two) === "0,1" && keepOf(deep) === "0,1,6" &&
+          two.steps[0].keep.length === 2,
+      detail: `a one-deep flank reads ${keepOf(one)}, a two-deep one reads ${keepOf(two)} ` +
+        `and a three-deep one reads ${keepOf(deep)}`,
+    });
+  }
+
+  // A WIDENING IS READ OR REFUSED, NEVER SILENTLY DEFAULTED, which is the rule
+  // the arm above holds `Keep` to arriving at the field beside it -- and it
+  // bites harder here, because `widen` is the ORDER the columns beyond the
+  // window's three are dropped in. A shape with no `widen` where data.go
+  // declares one is a step every check measures at its narrowest, which is a
+  // chart that lays out and draws and is not the one the site ships. Mutation:
+  // drop the `/Widen:/` refusal from parseStepShapes and the unreadable literal
+  // below comes back as no widening at all.
+  {
+    const step = (/** @type {string} */ tail) =>
+      "\t\tspine.Steps = []export.DrillStep{\n\t\t\t{\n\t\t\t\tKey:   \"group\",\n" +
+      "\t\t\t\tAfter: []string{\"\"},\n\t\t\t\tFrom:  2,\n" +
+      `\t\t\t\tTiers: []int{0, 2, 3, 4},\n\t\t\t\tKeep:  []int{0},\n${tail}\t\t\t},\n\t\t}\n`;
+    const read = (/** @type {string} */ text) => {
+      try {
+        return { steps: parseStepShapes(text), threw: "" };
+      } catch (e) {
+        return { steps: [], threw: String((e && e.message) || e) };
+      }
+    };
+    const widenOf = (/** @type {{steps: any[], threw: string}} */ r) =>
+      r.threw ? `THREW ${r.threw}` : r.steps[0] && r.steps[0].widen
+        ? r.steps[0].widen.join(",") : "absent";
+    const none = read(step(""));
+    const one = read(step("\t\t\t\tWiden: []int{4},\n"));
+    const two = read(step("\t\t\t\tWiden: []int{4, 5},\n"));
+    // AS gofmt MAY LEAVE IT. Broken over three lines the field is still one
+    // declaration, and the answers a reader can act on are the list or a
+    // throw; `absent` is the third one, and it is the one that ships.
+    const reflowed = read(step("\t\t\t\tWiden: []int{\n\t\t\t\t\t4,\n\t\t\t\t},\n"));
+    const unreadable = read(step("\t\t\t\tWiden: budgetColumns,\n"));
+    out.push({
+      name: "a `Widen` is read or refused rather than silently defaulted to no widening",
+      ok: widenOf(none) === "absent" && widenOf(one) === "4" && widenOf(two) === "4,5" &&
+          (reflowed.threw !== "" || widenOf(reflowed) === "4") &&
+          /Widen/.test(unreadable.threw),
+      detail: `a step declaring none reads ${widenOf(none)}; one entry reads ${widenOf(one)}; ` +
+        `two read ${widenOf(two)}; a literal broken over three lines reads ` +
+        `${widenOf(reflowed)}; one this cannot read as []int throws ` +
+        `${JSON.stringify(unreadable.threw)}`,
+    });
+  }
+
   // THE STEPS COME FROM EVERY []export.DrillStep LITERAL, NOT FROM THE FIRST.
   // views() declares the spine's steps under one guard per step DOCUMENT, so
   // that a corpus missing pp.127-140 keeps the drill that opens pp.85-125 -- and

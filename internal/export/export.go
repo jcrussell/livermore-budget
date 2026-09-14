@@ -550,28 +550,57 @@ type DrillStep struct {
 	// Tiers is the tier set drawn once a node has opened -- this step's
 	// RenderTiers, and a different declaration from the chart's before it.
 	Tiers []int `json:"tiers"`
-	// Keep is the one tier of the chart on screen that stays drawn beside the
-	// node the reader opened -- the flank they came from -- or empty for a step
-	// that draws the opened node's parts alone, which is every step the site
-	// ships today.
+	// Keep is the flank of the chart on screen that stays drawn beside the node
+	// the reader opened -- the columns they came from -- NEAREST THE CENTRE
+	// FIRST, or empty for a step that draws the opened node's parts alone, which
+	// is every step the site ships today.
 	//
 	// A SLICE AND NOT AN INT, because tier 0 is a real tier: it is the spine's
 	// revenue categories, and the flank a fund group's window keeps. An int's
 	// zero value would read as "keep tier 0" on every step that declares
 	// nothing at all, which is the absent-is-not-zero rule the fact store is
-	// built on (AGENTS.md, "Provenance invariants") arriving at this seam. At
-	// most one entry: a window keeps ONE flank, and validateSteps refuses two.
+	// built on (AGENTS.md, "Provenance invariants") arriving at this seam.
+	//
+	// ONE FLANK, AND IT MAY BE MORE THAN ONE COLUMN DEEP. The entries are
+	// columns of the parent chart's own order, contiguous and all on ONE side of
+	// the opened tier: two ends is two answers to which flank, and a gap is a
+	// column the reader was looking at dropped out of the middle of the ones
+	// that stay.
 	//
 	// WITH AN ENTRY IT MAKES THE WINDOW A PROPERTY OF THE TYPE. Tiers is then
-	// three columns with From in the MIDDLE, and Keep's tier at whichever end
-	// the parent's own column order names: kept to From's left in the chart on
-	// screen, kept column on the left here. The sign of that adjacency is what
-	// tells the client which way the window pushes -- declared and positional,
-	// not the tier-number inference paintBreadcrumb's comment in site/app.js
-	// refuses. validateSteps checks it against EVERY chart this step opens
-	// from, so a step reachable from two charts that disagree about which side
-	// its kept flank is on cannot be declared.
+	// the flank, the node that was opened and what it opens into -- one column
+	// each, plus one for every [DrillStep.Widen] entry -- with the flank at
+	// whichever end the parent's own column order names: kept to From's left in
+	// the chart on screen, kept columns on the left here and outermost first.
+	// The sign of that adjacency is what tells the client which way the window
+	// pushes -- declared and positional, not the tier-number inference
+	// paintBreadcrumb's comment in site/app.js refuses. validateSteps checks it
+	// against EVERY chart this step opens from, so a step reachable from two
+	// charts that disagree about which side its kept flank is on cannot be
+	// declared.
 	Keep []int `json:"keep,omitempty"`
+	// Widen is the tier this step adds for each column beyond the window's own
+	// three, in the order they are added: the first entry is the first column a
+	// reader with room for a fourth is shown, and a client with room for fewer
+	// drops them from the end of this order.
+	//
+	// WHICH SIDE AN ENTRY LANDS ON IS DERIVED, and it is the one thing at this
+	// seam that CAN be: a widened column is on the opened node's side, so it
+	// sits at the end of Tiers away from the kept flank, and the order outward
+	// from the centre is this list's own. The caller declares which columns are
+	// optional and in what order they go, Tiers says where they are drawn, and
+	// validateSteps refuses a pair that disagree -- two parties recording one
+	// shape independently rather than one declaration restated.
+	//
+	// A FLANK IS DEEPENED BY KEEPING A COLUMN, NOT BY WIDENING INTO ONE. Both
+	// end up as a fourth column and they are different claims: a kept column is
+	// drawn at its share of the centre and carries the chart the reader came
+	// from, and a widened one is part of what the opened node decomposes into.
+	//
+	// REFUSED ON A STEP THAT KEEPS NOTHING, which is a filter and not a window:
+	// it draws the opened node's parts alone, at whatever tiers it names, and
+	// has no centre for a column to be added out from.
+	Widen []int `json:"widen,omitempty"`
 	// Caps bounds the columns this step draws, one per tier that needs one; a
 	// tier with no cap is drawn whole.
 	//
@@ -1182,6 +1211,7 @@ func (v View) validateSteps(built map[string][]byte) error {
 			}
 		}
 		docs[i] = doc
+		repeated := repeatedTier(s.Tiers)
 		switch {
 		case len(s.Tiers) == 0:
 			return fmt.Errorf(
@@ -1248,36 +1278,87 @@ func (v View) validateSteps(built map[string][]byte) error {
 			return fmt.Errorf(
 				"view %q's step %d opens side %q; the sides are \"\", the node a link points "+
 					"at, and %q, the node it comes from", v.Path, i, s.Side, SideSource)
-		// A WINDOW KEEPS ONE FLANK, AND THESE FOUR ARMS ARE WHAT MAKE IT A
-		// PROPERTY OF THE TYPE rather than of the client that draws it. Two
-		// kept tiers are two answers to which flank; a side beside a kept
-		// flank is two answers to which end opened, because a window's centre
-		// is the target of one half and the source of the other; and a window
-		// that is not three columns with the opened tier in the middle is not
-		// the shape the reader was promised -- the node they clicked is the
-		// centre. The fourth is checked here and not per parent because Tiers
-		// is one declaration whatever chart the step was reached from.
-		case len(s.Keep) > 1:
+		// A WINDOW KEEPS ONE FLANK, AND THESE ARMS ARE WHAT MAKE IT A PROPERTY
+		// OF THE TYPE rather than of the client that draws it. A side beside a
+		// kept flank is two answers to which end opened, because a window's
+		// centre is the target of one half and the source of the other; a
+		// widening with no flank to widen out from is a filter dressed as a
+		// window; a column drawn twice leaves the flank's own end underived; and
+		// a window whose columns do not come to the flank, the opened node and
+		// what it opens into -- one each and one more per widening -- is not the
+		// shape the reader was promised. Checked here and not per parent because
+		// Tiers is one declaration whatever chart the step was reached from.
+		case len(s.Keep) > 0 && s.Side != "":
 			return fmt.Errorf(
-				"view %q's step %d keeps tiers %v; a window is the opened node with ONE "+
-					"flank of the chart it was opened on beside it, so the second entry is "+
-					"a second declaration of which flank that is", v.Path, i, s.Keep)
-		case len(s.Keep) == 1 && s.Side != "":
-			return fmt.Errorf(
-				"view %q's step %d keeps tier %d and opens side %q; a window's opened node "+
+				"view %q's step %d keeps tier(s) %v and opens side %q; a window's opened node "+
 					"is the TARGET of one half and the SOURCE of the other, so its side is "+
 					"both and a step declaring one would be two declarations of one thing",
-				v.Path, i, s.Keep[0], s.Side)
-		case len(s.Keep) == 1 && len(s.Tiers) != 3:
+				v.Path, i, s.Keep, s.Side)
+		case len(s.Widen) > 0 && len(s.Keep) == 0:
 			return fmt.Errorf(
-				"view %q's step %d keeps tier %d and draws tiers %v; a window is three "+
-					"columns -- the kept flank, the node that was opened, and what it opens "+
-					"into", v.Path, i, s.Keep[0], s.Tiers)
-		case len(s.Keep) == 1 && s.Tiers[1] != s.From:
+				"view %q's step %d widens by tier(s) %v and keeps no flank; a step that keeps "+
+					"nothing draws the opened node's parts alone and has no centre to add a "+
+					"column out from, so the widening names a construct this is not",
+				v.Path, i, s.Widen)
+		case repeated >= 0:
 			return fmt.Errorf(
-				"view %q's step %d keeps tier %d and draws tiers %v, whose middle column is "+
-					"tier %d and not the opened tier %d; the node the reader clicked is the "+
-					"centre of a window", v.Path, i, s.Keep[0], s.Tiers, s.Tiers[1], s.From)
+				"view %q's step %d draws tiers %v, which name tier %d twice; a tier is a "+
+					"column, two columns of one tier is the same nodes drawn twice, and which "+
+					"end a kept flank is at could not be read off the list either",
+				v.Path, i, s.Tiers, repeated)
+		case len(s.Keep) > 0 && len(s.Tiers) != len(s.Keep)+2+len(s.Widen):
+			return fmt.Errorf(
+				"view %q's step %d keeps tier(s) %v, widens by %d column(s) and draws tiers "+
+					"%v; a window is its kept flank, the node that was opened and what it opens "+
+					"into, one column each and one more for every widening -- %d columns here, "+
+					"and not %d",
+				v.Path, i, s.Keep, len(s.Widen), s.Tiers, len(s.Keep)+2+len(s.Widen), len(s.Tiers))
+		}
+		// WHICH END THE FLANK IS AT IS READ OFF Tiers ONCE, and every arm after
+		// this reads that answer rather than asking again. It is what makes
+		// [DrillStep.Widen]'s side derivable: the widened columns are the ones at
+		// the other end, so a list of tiers and an order out from the centre are
+		// between them a whole shape, and the per-parent arms below have only to
+		// agree that the chart the reader came from draws the flank on that side.
+		keptLeft := false
+		if m := len(s.Keep); m > 0 {
+			n := len(s.Tiers)
+			switch {
+			case slices.Equal(s.Tiers[:m], reversedTiers(s.Keep)):
+				keptLeft = true
+			case slices.Equal(s.Tiers[n-m:], s.Keep):
+			default:
+				return fmt.Errorf(
+					"view %q's step %d keeps tier(s) %v and draws tiers %v, whose ends are not "+
+						"that flank; the kept columns are the ones at ONE end of what the step "+
+						"draws, outermost first, and a widening on the flank's side would push "+
+						"them off it -- a flank two columns deep is declared by keeping two",
+					v.Path, i, s.Keep, s.Tiers)
+			}
+			centre := m
+			if !keptLeft {
+				centre = n - 1 - m
+			}
+			if s.Tiers[centre] != s.From {
+				return fmt.Errorf(
+					"view %q's step %d keeps tier(s) %v and draws tiers %v, whose column %d is "+
+						"tier %d and not the opened tier %d; the node the reader clicked is the "+
+						"centre of a window", v.Path, i, s.Keep, s.Tiers, centre, s.Tiers[centre], s.From)
+			}
+			if w := len(s.Widen); w > 0 {
+				drawn, want := s.Tiers[n-w:], s.Widen
+				if !keptLeft {
+					drawn, want = s.Tiers[:w], reversedTiers(s.Widen)
+				}
+				if !slices.Equal(drawn, want) {
+					return fmt.Errorf(
+						"view %q's step %d widens by tier(s) %v and draws tiers %v, whose %d "+
+							"column(s) away from the kept flank are %v; a widened column is on the "+
+							"opened node's side and the widening order is the order OUT from it, so "+
+							"a client dropping the last of them draws a narrower window and not a "+
+							"hole", v.Path, i, s.Widen, s.Tiers, w, drawn)
+				}
+			}
 		}
 		// EVERY PARENT PLACES THIS STEP, not the first one that happens to fit.
 		// A step reachable from a chart whose columns do not include its From
@@ -1322,8 +1403,11 @@ func (v View) validateSteps(built map[string][]byte) error {
 			// PER PARENT, because it is a property of the chart the reader came
 			// from: the same step may be reachable from a chart that draws the
 			// tier whole and from one that keeps it, and only the second is
-			// refused.
-			if len(p.keep) == 1 && p.keep[0] == s.From {
+			// refused. And of EVERY column of that chart's flank rather than the
+			// one nearest its centre: a flank two columns deep is drawn at its
+			// share of the centre in both of them, so both are node heights this
+			// step would open a whole decomposition out of.
+			if slices.Contains(p.keep, s.From) {
 				return fmt.Errorf(
 					"view %q's step %d opens tier %d of %s, which KEEPS that tier; a kept "+
 						"flank is drawn at its share of that chart's centre rather than whole, "+
@@ -1347,31 +1431,49 @@ func (v View) validateSteps(built map[string][]byte) error {
 			// index on it: the arm above places it for a named parent, and
 			// validate's badRoot arm places it against RenderTiers for the ""
 			// one.
-			ki, fi := slices.Index(p.tiers, s.Keep[0]), slices.Index(p.tiers, s.From)
-			switch {
-			case ki < 0:
-				return fmt.Errorf(
-					"view %q's step %d keeps tier %d and opens from %s, which draws tiers %v "+
-						"and does not include it; the flank the reader came from has to be a "+
-						"column they were looking at", v.Path, i, s.Keep[0], where, p.tiers)
-			case ki != fi-1 && ki != fi+1:
-				return fmt.Errorf(
-					"view %q's step %d keeps tier %d and opens tier %d of %s, which draws "+
-						"them as columns %d and %d of %v; a window slides by one column, and "+
-						"which way it slides is the SIGN of that adjacency",
-					v.Path, i, s.Keep[0], s.From, where, ki, fi, p.tiers)
-			case ki < fi && s.Tiers[0] != s.Keep[0]:
-				return fmt.Errorf(
-					"view %q's step %d keeps tier %d, which %s draws to the LEFT of the "+
-						"opened tier %d, and draws tiers %v, whose left column is tier %d; "+
-						"the kept flank stays on the side the reader saw it on",
-					v.Path, i, s.Keep[0], where, s.From, s.Tiers, s.Tiers[0])
-			case ki > fi && s.Tiers[2] != s.Keep[0]:
-				return fmt.Errorf(
-					"view %q's step %d keeps tier %d, which %s draws to the RIGHT of the "+
-						"opened tier %d, and draws tiers %v, whose right column is tier %d; "+
-						"the kept flank stays on the side the reader saw it on",
-					v.Path, i, s.Keep[0], where, s.From, s.Tiers, s.Tiers[2])
+			fi := slices.Index(p.tiers, s.From)
+			// THE FLANK WALKS OUT FROM THE OPENED NODE, one column of this chart
+			// per entry, in the direction s.Tiers already put it. Nearest the
+			// centre first is what lets these two orders be compared at all: the
+			// step's own list runs outward from the middle whichever end the flank
+			// is at, and the parent's runs left to right.
+			step := -1
+			if !keptLeft {
+				step = 1
+			}
+			for n, k := range s.Keep {
+				ki := slices.Index(p.tiers, k)
+				drawnSide := "RIGHT"
+				if ki < fi {
+					drawnSide = "LEFT"
+				}
+				switch {
+				case ki < 0:
+					return fmt.Errorf(
+						"view %q's step %d keeps tier %d and opens from %s, which draws tiers %v "+
+							"and does not include it; the flank the reader came from has to be a "+
+							"column they were looking at", v.Path, i, k, where, p.tiers)
+				case n == 0 && ki != fi-1 && ki != fi+1:
+					return fmt.Errorf(
+						"view %q's step %d keeps tier %d and opens tier %d of %s, which draws "+
+							"them as columns %d and %d of %v; a window slides by one column, and "+
+							"which way it slides is the SIGN of that adjacency",
+						v.Path, i, k, s.From, where, ki, fi, p.tiers)
+				case n == 0 && ki != fi+step:
+					return fmt.Errorf(
+						"view %q's step %d keeps tier %d, which %s draws to the %s of the "+
+							"opened tier %d, and draws tiers %v, which put it at the other end; "+
+							"the kept flank stays on the side the reader saw it on",
+						v.Path, i, k, where, drawnSide, s.From, s.Tiers)
+				case ki != fi+step*(n+1):
+					return fmt.Errorf(
+						"view %q's step %d keeps tier(s) %v and opens tier %d of %s, which draws "+
+							"tier %d as column %d of %v and the opened tier as column %d; a flank "+
+							"is the columns BESIDE EACH OTHER walking out from the node that was "+
+							"opened, so a gap in it is a column the reader was looking at dropped "+
+							"out of the middle of the ones that stay",
+						v.Path, i, s.Keep, s.From, where, k, ki, p.tiers, fi)
+				}
 			}
 		}
 		// ONE STEP PER (After, From, Role) OVER THE CROSS PRODUCT, AND A
@@ -1657,6 +1759,33 @@ func templateRendersSteps(name string) bool {
 // refuse.
 func templateRendersChartDeclarations(name string) bool {
 	return name == ChartTemplate
+}
+
+// repeatedTier returns a tier the list names twice, or -1.
+//
+// A COLUMN ORDER AND NOT A SET, which is why this is spelled out rather than
+// compared against a sorted copy: [DrillStep.Tiers] may be non-monotonic, and
+// {2, 5, 4} is three columns in that order.
+func repeatedTier(tiers []int) int {
+	seen := make(map[int]bool, len(tiers))
+	for _, t := range tiers {
+		if seen[t] {
+			return t
+		}
+		seen[t] = true
+	}
+	return -1
+}
+
+// reversedTiers is tiers back to front, in a copy.
+//
+// THE COPY IS THE POINT. slices.Reverse works in place, and the callers below
+// hold the caller's own [DrillStep] fields -- reversing one there would edit
+// the declaration the packager is about to ship.
+func reversedTiers(tiers []int) []int {
+	out := slices.Clone(tiers)
+	slices.Reverse(out)
+	return out
 }
 
 // endsASentence reports whether s closes with a terminator, which is what keeps
