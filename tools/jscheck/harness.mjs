@@ -468,6 +468,11 @@ const NAMES = [
   // is drawn with are unreadable off a chart that draws nothing.
   "clickNode", "doubleClickNode", "keyNode", "ACTIVATION_WINDOW",
   "nodeClass", "nodeFlags",
+  // THE EXPANSION, WHICH IS A REDRAW AND NOT A RUNG. expandTier and
+  // collapseTier are what the gesture and the breadcrumb chip call; a check
+  // drives them directly for the same reason it drives the gestures by name,
+  // and reaches the chip itself through the bar paintBreadcrumb fills.
+  "expandable", "expandTier", "collapseTier",
 ];
 
 // main IS DELIBERATELY NOT IN NAMES. It is invoked at file scope, so by the time

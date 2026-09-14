@@ -1035,6 +1035,26 @@ details > summary {
   font-weight: 600;
 }
 
+/* The one way back out of an expanded column, and it sits here because the mark
+   that was expanded is the mark expanding removes -- there is nothing left on
+   the chart to gesture at. Dashed, as every inferred mark on this page is: what
+   it undoes is our grouping and not a figure the city printed. */
+.crumb-expanded {
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink-2);
+  background: var(--surface-1);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+}
+
+.crumb-expanded:hover,
+.crumb-expanded:focus {
+  color: var(--ink-1);
+  border-color: var(--rule);
+}
+
 /* ---------- the caveats page ---------- */
 
 /* One document's section. The rule above each is what separates a schedule's

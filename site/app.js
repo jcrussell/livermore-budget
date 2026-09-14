@@ -815,6 +815,21 @@ let isolated = "";
  *   nothing to filter. It is the chart, not the file: docAt() answers for the
  *   file one depth up, and the flank the reader came from is the one they were
  *   looking at, capped tail, residual and all.
+ * @property {Set<number>} [expanded]  the tiers of THIS rung's chart the reader
+ *   has opened out, drawn at every mark they hold rather than at the step's cap.
+ *
+ *   ON THE RUNG AND NOT ON THE PAGE, because the stack is the path and an
+ *   expansion is a property of one chart on it. Tier 3 is capped in the
+ *   fund-group window and drawn whole in the fund window, and a page-level set
+ *   would carry "show me all of them" from the first into the second, out of a
+ *   pop, and into the next fiscal year -- whose column is not the same column.
+ *
+ *   IT IS CARRIED THROUGH A DRILL BY CONSTRUCTION, because `chart` above is
+ *   recorded rather than recomputed: a window opened from an expanded chart
+ *   keeps the flank as the reader saw it, expansion and all, with no code here.
+ *   LATENT on the committed corpus -- measured, every kept flank the shipped
+ *   steps declare is a single-node column or the spine's ten categories, so no
+ *   flank has ever carried a capped tail -- and latent is how it ships.
  * @property {number[]} [dropped]  the widened tiers this rung's document left
  *   empty, so activeTiers stops asking for them.
  *
@@ -1614,6 +1629,50 @@ function drillable(d) {
 }
 
 /**
+ * Whether a mark is a folded tail this chart can draw out into the marks it
+ * stands for.
+ *
+ * EXPANDING IS NOT OPENING, AND THIS IS NOT drillable's CLAUSE RELAXED.
+ * drillable excludes an aggregate for a reason that has not changed: it stands
+ * for several documents' worth of small rows and there is no node to open it
+ * INTO. What a reader may do to it is draw the column it was folded out of at
+ * full length, which is a redraw of the chart they are on rather than a rung.
+ * So the two predicates are disjoint by construction and nothing has to order
+ * them.
+ *
+ * BY THE CAP THIS RUNG DECLARES, NOT BY THE PREFIX ALONE. An aggregate can also
+ * arrive on a chart inside a kept flank, folded by the cap of the chart above;
+ * this rung's `expanded` set does not reach it, so offering the gesture there
+ * would be an affordance that redraws the same chart. Latent on the committed
+ * corpus, whose kept flanks are single-node columns, and latent is how it would
+ * ship.
+ *
+ * @param {{id: string, tier: number}} d
+ * @returns {boolean}
+ */
+function expandable(d) {
+  const rung = drilled.length ? drilled[drilled.length - 1] : null;
+  if (!rung || !isAggregate(d.id)) return false;
+  if (rung.expanded && rung.expanded.has(d.tier)) return false;
+  return (rung.step.caps || []).some((c) => c.tier === d.tier);
+}
+
+/**
+ * The tiers of the chart on screen the reader has drawn out, in the order the
+ * chart lays its columns out in.
+ *
+ * IN COLUMN ORDER BECAUSE THE BREADCRUMB SHOWS ONE CHIP PER TIER and two of
+ * them in an order nothing decides would swap between redraws of the same
+ * chart. activeTiers is the same list openableColumns names columns off.
+ * @returns {number[]}
+ */
+function expandedTiers() {
+  const rung = drilled.length ? drilled[drilled.length - 1] : null;
+  if (!rung || !rung.expanded) return [];
+  return activeTiers().filter((t) => rung.expanded.has(t));
+}
+
+/**
  * Whether focus is inside the chart or its breadcrumb, asked while the element
  * it is on still exists.
  *
@@ -1851,6 +1910,48 @@ function openNode(id) {
 }
 
 /**
+ * Draws the column a folded tail was cut out of at every mark it holds.
+ *
+ * NO FETCH AND NO RUNG. The marks are already in the rung's own document --
+ * capColumn discarded them on the way to the screen, not on the way off the
+ * wire -- so this is the chart the reader is on, reshaped. The breadcrumb does
+ * not move, because nothing has been opened.
+ *
+ * A REPLACED RUNG AND NOT A MUTATED ONE. redrawStack restores the whole stack
+ * when the reshape throws, and a set mutated in place would survive that
+ * restore -- leaving the reader on the chart they had, over a rung that says it
+ * is expanded and would redraw expanded at the next repaint.
+ *
+ * @param {{tier: number}} d
+ */
+function expandTier(d) {
+  const at = drilled.length - 1;
+  const rung = drilled[at];
+  if (!rung) return;
+  const expanded = new Set(rung.expanded || []);
+  expanded.add(d.tier);
+  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]));
+}
+
+/**
+ * Folds an expanded column back into its tail: what the breadcrumb's chip does.
+ *
+ * THE ONLY WAY BACK, AND THAT IS WHY IT IS A CONTROL RATHER THAN A GESTURE. The
+ * mark a reader expanded is the one mark expanding removes, so there is nothing
+ * left on the chart to double click; and Escape already means "pop one rung",
+ * which is unambiguous only while nothing else is stacked.
+ * @param {number} tier
+ */
+function collapseTier(tier) {
+  const at = drilled.length - 1;
+  const rung = drilled[at];
+  if (!rung || !rung.expanded || !rung.expanded.has(tier)) return;
+  const expanded = new Set(rung.expanded);
+  expanded.delete(tier);
+  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]));
+}
+
+/**
  * One click on a node: it follows that node's money, whether or not the node
  * also opens.
  *
@@ -1897,6 +1998,7 @@ function doubleClickNode(d, at) {
   }
   clickIsolate = { id: "", at: -Infinity, was: "" };
   if (drillable(d)) openNode(d.id);
+  else if (expandable(d)) expandTier(d);
 }
 
 /**
@@ -1926,6 +2028,13 @@ function keyNode(d, key, at) {
   pin(d);
   if (key === "Enter" && drillable(d)) {
     openNode(d.id);
+    return;
+  }
+  // THE SAME KEY FOR THE SAME KIND OF THING. Enter is "show me what is inside
+  // this mark" on both, and which of the two it does is the mark's business
+  // rather than a second keystroke's; Space still follows the money on either.
+  if (key === "Enter" && expandable(d)) {
+    expandTier(d);
     return;
   }
   setIsolated(isolated === d.id ? "" : d.id);
@@ -1971,10 +2080,16 @@ function restoreFocus(hadFocus) {
   // holds N return controls, and children[0] is the outermost -- the way back
   // to the overview -- which is not where a reader two rungs deep came from.
   // The last control is the one that closes the rung just opened.
+  //
+  // ASKED FOR BY CLASS AND NOT BY TAG, because the bar holds a second kind of
+  // button: one chip per expanded column, which undoes an expansion rather than
+  // a rung. Under "the last button" a keyboard drill onto a chart whose column
+  // the reader had expanded landed focus on the chip -- the one control in the
+  // bar that does not go back.
   const bar = maybeEl("breadcrumb");
   if (drilled.length && bar) {
     const controls = Array.from(bar.children || []).filter((c) =>
-      String(/** @type {any} */ (c).tagName || "").toLowerCase() === "button");
+      String(/** @type {any} */ (c).className || "").split(" ").indexOf("crumb-back") >= 0);
     if (focus(controls[controls.length - 1] || null)) return;
   }
   const chart = maybeEl("chart");
@@ -2104,12 +2219,21 @@ function paintChartHint() {
   // Space by convention and here Space never opens; a reader is entitled to
   // that convention until the page says otherwise, so the page says otherwise.
   const follows = " A single click, or Space, follows one node's money.";
+  // THE FOLDED TAIL IS NAMED ONLY WHERE THERE IS ONE, and it is a sentence of
+  // its own rather than a clause inside the opening one: on five of the nine
+  // views that draw a tail, the tail is the ONLY thing the chart offers, and
+  // "nothing here opens further" was the whole of what those readers were told.
+  const tails = Boolean(projection) && projection.nodes.some(expandable);
+  const expands = tails
+    ? " The folded mark is several of them drawn as one; double click it, or tab to it and " +
+      "press Enter, to draw them separately."
+    : "";
   if (drilled.length) {
     hint.textContent = "This is " + labelOfRung(drilled.length - 1) +
       ", broken into its parts. " +
       (anyOpens
         ? "Double click a node" + where + " to open it further, or tab to one and press Enter."
-        : "Nothing here opens further; go back to open another.") + follows;
+        : "Nothing here opens further; go back to open another.") + follows + expands;
     return;
   }
   const swatches = buildLegendCount();
@@ -2217,7 +2341,68 @@ function paintBreadcrumb() {
     return back;
   });
   const here = h("span", "crumb-here", labelOfRung(drilled.length - 1));
-  bar.replaceChildren(...controls, here);
+  // ONE CHIP PER EXPANDED COLUMN, AND IT IS THE ONLY WAY BACK. Expanding
+  // removes the mark that was expanded, so unlike every other state this page
+  // holds there is nothing on the chart left to gesture at; and the chart's own
+  // words cannot say it, because "32 funds" is not a thing the reader asked for
+  // until they asked for it.
+  //
+  // THE COUNT IS READ OFF THE CHART ON SCREEN rather than remembered from the
+  // tail's label. The tail said how many it hid; the chip says how many are
+  // drawn, which is the claim a reader can check by counting marks.
+  const chips = expandedTiers().map((tier) => {
+    const n = columnSize(tier);
+    const chip = h("button", "crumb-expanded",
+      "showing all " + n + " " + tailNoun(tier) + " ×");
+    chip.setAttribute("type", "button");
+    // THE GLYPH IS NOT THE LABEL. A screen reader reads "×" as "times" or as
+    // nothing at all, and a control whose accessible name is "showing all 32
+    // funds" does not say that pressing it stops showing them.
+    chip.setAttribute("aria-label",
+      "Showing all " + n + " " + tailNoun(tier) + "; fold the smallest back into one mark");
+    chip.addEventListener("click", () => collapseTier(tier));
+    return chip;
+  });
+  // THE CHIPS COME AFTER THE TRAIL, WHICH restoreFocus HAD TO BE TOLD ABOUT.
+  // It took the LAST <button> in this bar as the way back from the rung just
+  // opened; a chip is a button in this bar, so a keyboard drill onto a chart
+  // whose column was already expanded would have put focus on "fold these back"
+  // instead. It asks for the return control by class now.
+  bar.replaceChildren(...controls, here, ...chips);
+}
+
+/**
+ * How many marks of its own a drawn column holds.
+ *
+ * THE COLUMN'S OWN, NOT EVERY MARK AT THAT TIER. A residual, a gap and the
+ * endpoints carried with them are placed at a drawn tier and are not parts of
+ * the opened node -- isCarried is the page's one reader of that -- and a kept
+ * flank's marks are the chart above's. Counting them would put a number in the
+ * breadcrumb a reader counting marks in the column disagrees with.
+ * @param {number} tier
+ * @returns {number}
+ */
+function columnSize(tier) {
+  if (!projection) return 0;
+  return projection.nodes.filter((n) =>
+    n.tier === tier && !isCarried(n.id) && !n.carried_from).length;
+}
+
+/**
+ * What this rung's step calls the rows of one capped column.
+ *
+ * THE CAP'S WORD WHERE IT HAS ONE, which is capColumn's rule reached from the
+ * other side: one step caps two columns under two nouns, and a chip that said
+ * "funds" over the categories would be the tier-number-to-word mapping
+ * paintBreadcrumb refuses one function up.
+ * @param {number} tier
+ * @returns {string}
+ */
+function tailNoun(tier) {
+  const rung = drilled.length ? drilled[drilled.length - 1] : null;
+  if (!rung) return "items";
+  const cap = (rung.step.caps || []).find((c) => c.tier === tier);
+  return (cap && cap.tail) || rung.step.tail || "items";
 }
 
 /**
@@ -2385,7 +2570,11 @@ function sideOf(doc, rung, tiers, filter) {
   const parentOf = new Map();
   for (const tier of tiers) {
     const cap = (step.caps || []).find((c) => c.tier === tier);
-    if (!cap) continue;
+    // AN EXPANDED TIER IS SKIPPED HERE AND NOWHERE ELSE, which is what keeps
+    // the filter/cap/fold order above intact: the column is still filtered to
+    // what is inside the opened node and still folded to the tiers this chart
+    // draws, and the only stage it misses is the one the reader asked it to.
+    if (!cap || (rung.expanded && rung.expanded.has(tier))) continue;
     const column = shaped.nodes.filter((n) => n.tier === tier);
     const parent = column.every((n) => inside.has(n.id)) ? rung.id : "";
     parentOf.set(tier, parent);
@@ -2695,18 +2884,22 @@ function linkClass(d) {
  * the view's declared steps and on the chart it is drawn on, not on any field
  * the packager wrote.
  *
- * THERE IS NO `expands` CLASS, DELIBERATELY. An aggregate is the other mark a
- * reader might expect to open, and nothing in this file can expand one.
- * Measured over the chain: 9 of the 44 views it opens draw an aggregate, so a
- * class and a marker promising an expansion would be a promise broken on nine
- * charts -- which is the same half-contract as a gesture nothing signals, one
- * layer down. fisc-ko1j.12.6 is the wave that makes it true.
+ * `expands` IS THE SAME KIND OF CLAIM ABOUT THE OTHER GESTURE, and it is
+ * expandable's answer for expandable's reason. A folded tail is the other mark
+ * a reader expects something to happen on -- measured over the chain, 9 of the
+ * 44 views it opens draw one -- and what happens is a redraw of the column it
+ * was cut out of rather than a rung.
+ *
+ * THE TWO ARE DISJOINT AND THE CLASS DOES NOT ENFORCE THAT. drillable refuses
+ * an aggregate by name and expandable requires one, so no mark can carry both;
+ * that is a property of the two predicates, asserted where they are measured,
+ * rather than a precedence written here.
  * @param {LaidNode} d
  * @returns {string}
  */
 function nodeClass(d) {
   return "node" + (d.derived ? " derived" : "") + (isContraNode(d) ? " contra" : "") +
-    (drillable(d) ? " opens" : "");
+    (drillable(d) ? " opens" : "") + (expandable(d) ? " expands" : "");
 }
 
 /**
@@ -2722,21 +2915,28 @@ function nodeClass(d) {
  * dash pattern by the two a ribbon already carries. A glyph in the label
  * survives forced-colors and greyscale, costs no hue, and is read aloud.
  *
- * BOTH COMPOSE, because nothing stops a node being an inference that also
- * opens. They draw in that order with nothing between them, so the pair costs
+ * THEY COMPOSE, because nothing stops a node being an inference that also
+ * opens. They draw in that order with nothing between them, so a pair costs
  * the label two glyph widths -- which is the width tools/jscheck/layout.mjs
  * fits it against, by calling this rather than by spelling it a second time.
  *
- * THE PAIR IS LATENT ON THE COMMITTED CORPUS AND LATENT IS HOW IT SHIPS.
- * Measured over the overview and all 44 views the chain opens: 17 marks carry
- * the diamond alone and 44 the triangle alone, and no mark carries both. A rule
- * written only for the marks that exist would be a rule the first derived
- * openable node breaks silently, in the label's own gutter.
+ * ONE PAIR IS REAL AND THE OTHER IS LATENT, and the difference is worth
+ * stating. A folded tail is ALWAYS an inference -- capColumn writes derived on
+ * it because the city printed no line called "24 smaller funds" -- so every
+ * mark that expands carries the diamond beside the plus, on 9 of the 44 views
+ * the chain opens. The diamond-and-triangle pair is the one no committed
+ * document produces, and a rule written only for the marks that exist would be
+ * a rule the first derived openable node breaks silently, in the label's own
+ * gutter.
+ *
+ * NO MARK CARRIES THREE. Nothing can, because drillable and expandable are
+ * disjoint; the gutter was measured against two.
  * @param {LaidNode} d
  * @returns {string}
  */
 function nodeFlags(d) {
-  const marks = (d.derived ? "\u25c7" : "") + (drillable(d) ? "\u25b8" : "");
+  const marks = (d.derived ? "\u25c7" : "") + (drillable(d) ? "\u25b8" : "") +
+    (expandable(d) ? "\u229e" : "");
   return marks ? "  " + marks : "";
 }
 
@@ -4133,10 +4333,17 @@ function nodeDescription(d) {
   // does the OTHER thing, and that is the whole of what has to be learned. On a
   // mark that does not, every activation means the same thing and there is no
   // split to announce.
+  // AND WHAT THE FOLDED TAIL'S GESTURE DOES, in the words the chip that undoes
+  // it uses. "Opens into its parts" would be the wrong sentence on a mark that
+  // opens nothing: what the reader gets is this column drawn at every mark it
+  // holds, on the chart they are already on.
   const what = drillable(d)
     ? ", opens into its parts on a double click or Enter; a single click or Space follows " +
       "this money"
-    : ", follow this money";
+    : expandable(d)
+      ? ", draws all of them separately on a double click or Enter; a single click or Space " +
+        "follows this money"
+      : ", follow this money";
   const note = contraNote(d);
   // THE CROSS-TAB SENTENCE REACHES A READER WHO CANNOT SEE THE RIBBONS. The
   // class on the ribbon and the chip in the tooltip both need eyes; a mark

@@ -25,7 +25,7 @@
 // what restackLinks itself does.
 
 import { loadApp, goldenGraph, spineConfig, stylesheet } from "./harness.mjs";
-import { openedWindow, openedWide } from "./drill.mjs";
+import { openedWindow, openedWide, openedExpanded } from "./drill.mjs";
 
 /**
  * Lays the golden graph out exactly as render() does, under a given node sort
@@ -542,7 +542,8 @@ export async function checks() {
           app.understands(app.SCHEMA_VERSION - 1, "x") === false,
       detail: `schema_version ${app.SCHEMA_VERSION} is accepted and its neighbours are refused`,
     },
-  ].concat(await labelChecks(app, graph)).concat(await wideChecks(app));
+  ].concat(await labelChecks(app, graph)).concat(await wideChecks(app))
+    .concat(await expandedChecks());
 }
 
 /**
@@ -858,4 +859,64 @@ async function labelChecks(app, spine) {
               (disagree.join(", ") || "none, so this chart cannot tell the two rules apart"),
     },
   ];
+}
+
+/**
+ * The pins the expanded column has to hold.
+ *
+ * PINNED AND NOT BOUNDED, for this file's reason, and two of these are figures
+ * rather than floors. The stack gap is what one line of label has to itself:
+ * 12px is what a line claims (ASCENT_PX + DESCENT_PX), so 2.1px is the air
+ * over 32 marks, stated so that a rule change halving it is visible here rather
+ * than staying green until it crosses. `over` is the other: five of the column's
+ * labels are wider than the 250px gutter under this file's deliberately
+ * pessimistic 0.6em advance, and that is the cost of the gesture stated as a
+ * number rather than asserted away.
+ */
+const EXPANDED = { marks: 41, column: 32, stack: "2.1px", over: 5,
+  worst: "fund/221", worstBy: "-36.0px" };
+
+/**
+ * What a reader gets when they draw a folded column out: the shape the cap
+ * exists to prevent, now reachable on purpose.
+ *
+ * THE CAP'S OWN EVIDENCE SAYS THIS IS A BAD CHART -- 42 ribbons of which 9 lay
+ * out under a pixel -- and the reader has asked for it anyway, which is the
+ * whole of the feature. What this measures is what the words do, because a
+ * denser chart whose labels overlap is not denser, it is unreadable, and while
+ * the shape could be reached only by editing a step nothing measured it at all.
+ *
+ * THE VERTICAL ANSWER IS THE GOOD ONE AND THE HORIZONTAL ANSWER IS NOT. No two
+ * labels touch and no two draw the same words; five run past the gutter, the
+ * worst by 36px of a 276px estimate. WHICH OF THOSE FIVE ACTUALLY OVERFLOWS IS
+ * A BROWSER QUESTION -- ADVANCE_EM is chosen to be wider than any system face
+ * sets, so the direction this can be wrong in is calling a label too wide that
+ * fits -- and the walk in fisc-rl4j is where it is settled. fisc-mvrt.
+ */
+async function expandedChecks() {
+  const app = await openedExpanded();
+  const laid = app.layOut(app.projection);
+  const fits = labelFit(app, laid);
+  const column = fits.filter((f) => f.col === 2);
+  const stack = tightestStack(fits);
+  const ambiguous = sameWords(fits);
+  const over = fits.filter((f) => f.clearance < 0);
+  const worst = tightest(fits);
+  return [{
+    name: "a column drawn out to every mark it holds draws no two labels over each other, and five of them past the gutter",
+    ok: fits.length === EXPANDED.marks && column.length === EXPANDED.column &&
+        ambiguous.length === 0 && Boolean(stack) && stack.gap > 0 &&
+        px(stack.gap) === EXPANDED.stack && over.length === EXPANDED.over &&
+        over.every((f) => f.col === 2) &&
+        worst.id === EXPANDED.worst && px(worst.clearance) === EXPANDED.worstBy,
+    detail: `${fits.length} label(s) (want ${EXPANDED.marks}), ${column.length} of them in ` +
+      `the expanded column (want ${EXPANDED.column}); tightest vertically is ` +
+      `${stack ? `${stack.above} over ${stack.below} with ${px(stack.gap)}` : "nothing"} ` +
+      `(want ${EXPANDED.stack}, against the 12px one line of label claims) and ` +
+      `${ambiguous.length ? ambiguous[0] : "no two marks draw the same words"}; ` +
+      `${over.length} label(s) are wider than the gutter (want ${EXPANDED.over}, all in the ` +
+      `expanded column), worst ${worst.id} at ${px(worst.clearance)} (want ${EXPANDED.worst} ` +
+      `at ${EXPANDED.worstBy}) -- measured at this file's 0.6em advance, which is wider than ` +
+      `any system face sets`,
+  }];
 }

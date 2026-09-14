@@ -15,7 +15,7 @@ import { join } from "node:path";
 
 import {
   loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, goldenGraph2027, goldenFundFlows,
-  repoRoot,
+  goldenFundFlows2027, repoRoot,
 } from "./harness.mjs";
 
 /**
@@ -585,6 +585,7 @@ export async function checks() {
     ...(await restoredSelection()),
     ...(await themeFollowsTheOS()),
     ...(await yearSwitchClosesTheDrill()),
+    ...(await yearSwitchDropsTheExpansion()),
   ];
 }
 
@@ -768,4 +769,58 @@ async function yearSwitchClosesTheDrill() {
     });
   }
   return out;
+}
+
+/**
+ * A year switch takes the expansion with the rung it was made on.
+ *
+ * IT IS A DECISION AND NOT A CONSEQUENCE, which is why it is pinned in this
+ * file rather than in drill.mjs. "Show me all 32 funds" names a column of one
+ * year's document, and the other year's column is not that column -- fund/207
+ * prints a dash in FY2026-27, so special-revenue has 31 funds there. A page
+ * that remembered the expansion would answer a request the reader made about a
+ * chart they are no longer looking at, and it would answer it with a different
+ * number.
+ *
+ * WHAT MAKES IT TRUE is that the expansion is on the rung and showYear empties
+ * the stack -- which it already did, for the reason the arm above states. So
+ * this arm's subject is the choice of where the set LIVES: with a page-level
+ * set, both halves below stay green and this one turns red.
+ *
+ * THE TWO COMMITTED COLUMNS AND NOT ONE DOCUMENT SERVED TWICE, because the
+ * whole claim is about a column that differs between them.
+ * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
+ */
+async function yearSwitchDropsTheExpansion() {
+  const { app } = await chainedYears(
+    { "data/fund-flows-2027.json": { doc: goldenFundFlows2027() } },
+    { "sankey-2027": "data/fund-flows-2027.json" },
+  );
+  const group = "fund-group/special-revenue";
+  const funds = () => app.projection.nodes.filter((n) => n.tier === 3).length;
+  const tail = () => app.projection.nodes.find((n) => app.isAggregate(n.id));
+  await app.drillDown(group);
+  await settle();
+  const folded = { funds: funds(), tail: tail() ? tail().label : "" };
+  app.expandTier(tail());
+  await settle();
+  const opened = { funds: funds(), tail: tail() ? tail().label : "" };
+  clickYear(app, "sankey-2027");
+  await settle();
+  const between = app.drilled.length;
+  await app.drillDown(group);
+  await settle();
+  const after = { funds: funds(), tail: tail() ? tail().label : "" };
+  return [{
+    name: "a year switch drops the expansion with the rung it was made on",
+    ok: folded.funds === 9 && folded.tail === "24 smaller funds" &&
+        opened.funds === 32 && opened.tail === "" && between === 0 &&
+        after.funds === 9 && after.tail === "23 smaller funds",
+    detail: `FY 2025-26 drew ${folded.funds} fund mark(s) with a tail reading ` +
+      `"${folded.tail}"; expanded, ${opened.funds} mark(s) and ${opened.tail ? "a tail" : "no tail"}; ` +
+      `the switch left ${between} rung(s), and reopening the same group in FY 2026-27 drew ` +
+      `${after.funds} mark(s) with a tail reading "${after.tail}" -- that year's column is 31 ` +
+      `funds and not 32, so a remembered expansion would answer the reader's question about ` +
+      `a column they are no longer looking at`,
+  }];
 }

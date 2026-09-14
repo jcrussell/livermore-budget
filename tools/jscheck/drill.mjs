@@ -169,6 +169,17 @@ const PAGE = {
 const OPENABLE_COLUMNS = "left-hand|middle|right-hand";
 
 /**
+ * The sentence paintChartHint adds on a chart that draws a folded tail.
+ *
+ * SPELLED ONCE, because two of the three charts whose hint is pinned verbatim
+ * below draw one -- and on one of those two it is the ONLY thing the chart
+ * offers, the rest of that hint being "nothing here opens further". A copy per
+ * arm would be two places to edit and one place to forget.
+ */
+const EXPANDS_SENTENCE = " The folded mark is several of them drawn as one; double click it, " +
+  "or tab to it and press Enter, to draw them separately.";
+
+/**
  * The fund-group window of FY 2025-26's worst group, drawn under a step widened
  * to a tier that group's document has no node at: what it comes out as once the
  * empty column is dropped.
@@ -285,6 +296,19 @@ const COLUMNS = [
     // them lay out under a pixel.
     capped: { links: 19, hairlines: 0 }, uncapped: { links: 42, hairlines: 9 },
     tail: "24 smaller funds",
+    // AND HOW MANY THE COLUMN HOLDS ONCE THE READER EXPANDS IT, which is the
+    // number the breadcrumb chip prints. Not the tail's 24 plus the cap's 8 by
+    // arithmetic here: 32 is what pp.127-140 print special-revenue reaching in
+    // this column, and 31 is what the next year's column prints, fund/207
+    // having gone to a dash.
+    funds: 32,
+    // THE FUND WINDOW AT FOUR COLUMNS, which is where the OTHER cap engages:
+    // ribbons capped and expanded, and how many object categories pp.167-170
+    // print fund/100's divisions spending on. Identical in both published
+    // columns and pinned in each of them anyway, for this file's reason -- a
+    // figure stated once and reused is a figure one year's drill cannot see go
+    // wrong.
+    deepCapped: 54, deepExpanded: 68, categories: 44,
     // fund/100's share of the fund column's inflow, and how many times the
     // smallest fund's inflow it is: the two figures step 0's description
     // rounds to "half" and "less than a thirty-thousandth".
@@ -429,6 +453,8 @@ const COLUMNS = [
     worstDeep: "67.02",
     capped: { links: 19, hairlines: 0 }, uncapped: { links: 41, hairlines: 7 },
     tail: "23 smaller funds",
+    funds: 31,
+    deepCapped: 54, deepExpanded: 68, categories: 44,
     share: "50.79", ratio: 54786,
     // ONE MARK AND ONE RIBBON FEWER THAN FY2025-26, and the difference is the
     // endpoint set: general's change in working capital turns positive this
@@ -817,6 +843,26 @@ export async function openedChain(path, extra) {
   return { app, fetch, main };
 }
 
+/**
+ * The worst group's window with its folded tail drawn out, for a caller in
+ * another module.
+ *
+ * layout.mjs NEEDS THE SHAPE A READER CAN NOW ASK FOR. The uncapped column has
+ * been measurable since the cap landed -- by shaping the view under a step
+ * whose cap cannot engage -- and no label check ever ran over it, because no
+ * reader could reach it. A double click reaches it now, so what it does to the
+ * label gutter is a question about the page rather than about a hypothetical.
+ */
+export async function openedExpanded() {
+  const { app } = await opened();
+  await mustOpen(app, PAGE.worst);
+  const tail = app.layOut(app.projection).nodes.find((n) => app.isAggregate(n.id));
+  if (!tail) throw new Error(`${PAGE.worst} drew no folded tail to expand`);
+  app.expandTier(tail);
+  await settle();
+  return app;
+}
+
 /** A spine opened into one node, or into a node and then one beneath it. */
 async function at(app, ...ids) {
   app.drillUp(0);
@@ -838,7 +884,7 @@ async function at(app, ...ids) {
  * draws for that case is latent -- and a latent path with no figure beside it
  * is one a later document reaches with nothing to notice.
  */
-const MARKS = { nodes: 368, opens: 44, derivedOnly: 17, both: 0 };
+const MARKS = { nodes: 368, opens: 44, derivedOnly: 17, both: 0, expands: 9 };
 
 // The lines of render() that hang the affordance on the mark, pinned whole.
 //
@@ -879,22 +925,32 @@ async function gestureChecks() {
   // ---------------------------------------------- a node that opens says so
   const { app } = await opened();
   /** Every laid node of a chart on screen, against what it is drawn as. */
-  const tally = { nodes: 0, opens: 0, derivedOnly: 0, both: 0 };
+  const tally = { nodes: 0, opens: 0, derivedOnly: 0, both: 0, expands: 0 };
   const wrong = [];
   const look = (where) => {
     for (const n of app.layOut(app.projection).nodes) {
       const classes = app.nodeClass(n).split(" ");
       const flags = app.nodeFlags(n);
       const opens = app.drillable(n);
+      const expands = app.expandable(n);
       tally.nodes++;
       if (opens) tally.opens++;
       if (n.derived && !opens) tally.derivedOnly++;
       if (n.derived && opens) tally.both++;
+      if (expands) tally.expands++;
       // THE CLASS AND THE MARKER ARE ONE CLAIM AND ARE ASSERTED AS ONE. A
       // marker with no class is an affordance the stylesheet cannot reach; a
       // class with no marker is one nothing renders. Either alone is the half
       // contract this wave exists to refuse.
+      // AND THE THIRD PAIR, WHICH IS THE SAME CLAIM ABOUT THE OTHER GESTURE.
+      // A folded tail that draws no plus is an expansion nothing signals; a
+      // plus on a mark expandable refuses is a gesture that does nothing. The
+      // two predicates are asserted disjoint in the same breath, because
+      // nodeClass composes them without ordering them.
       if (classes.includes("opens") !== opens ||
+          classes.includes("expands") !== expands ||
+          flags.includes("⊞") !== expands ||
+          (opens && expands) ||
           flags.includes("▸") !== opens ||
           flags.includes("◇") !== Boolean(n.derived)) {
         wrong.push(`${where} > ${n.id} is drawn "${app.nodeClass(n)}" / "${flags}" but ` +
@@ -905,18 +961,21 @@ async function gestureChecks() {
   look("the overview");
   const walk = await everyOpenedView(app, (where) => look(where));
   out.push({
-    name: "a node that opens is drawn as one, and a node that does not is not",
+    name: "a node that opens is drawn as one, a node that expands is drawn as one, and a node that does neither is drawn as neither",
     ok: walk.refused === "" && walk.visited === PAGE.openedViews && wrong.length === 0 &&
         tally.nodes === MARKS.nodes && tally.opens === MARKS.opens &&
-        tally.derivedOnly === MARKS.derivedOnly && tally.both === MARKS.both,
+        tally.derivedOnly === MARKS.derivedOnly && tally.both === MARKS.both &&
+        tally.expands === MARKS.expands,
     detail: wrong.length
       ? `${wrong.length} of ${tally.nodes} mark(s) are drawn as something they are not: ` +
         wrong.slice(0, 3).join("; ")
       : `over the overview and ${walk.visited} opened view(s), ${tally.nodes} mark(s) ` +
         `(want ${MARKS.nodes}): ${tally.opens} carry "opens" and the triangle (want ` +
         `${MARKS.opens}), ${tally.derivedOnly} the diamond alone (want ${MARKS.derivedOnly}), ` +
-        `${tally.both} both (want ${MARKS.both}, so the composed marker is latent); every ` +
-        `one of them agrees with drillable`,
+        `${tally.both} both (want ${MARKS.both}, so the diamond-and-triangle pair is latent), ` +
+        `${tally.expands} carry "expands" and the plus (want ${MARKS.expands}, every one of ` +
+        `them a folded tail and so an inference too, which is where the composed marker is NOT ` +
+        `latent); every one of them agrees with drillable and expandable`,
   });
 
   out.push({
@@ -1011,6 +1070,253 @@ async function gestureChecks() {
       `witnessed by is the mark that does not open`,
   });
 
+  return out;
+}
+
+/**
+ * The tier the fund window folds its object categories at, and the tier the
+ * fund-group window folds its funds at.
+ *
+ * NAMED RATHER THAN SPELLED AT EACH USE, because the two arms below are about
+ * DIFFERENT columns of different charts and a bare 3 beside a bare 5 reads as a
+ * typo either way round. Both are read off the step the packager ships -- a cap
+ * this file spelled itself would be a cap the site need not declare.
+ */
+const FUND_TIER = PAGE.steps[0].caps[0].tier;
+const CATEGORY_TIER = PAGE.steps[1].caps.find((c) => c.tail === "categories").tier;
+
+/**
+ * The whole of a drawn chart, as two sorted lists a check can compare.
+ *
+ * NODES AND LINKS BOTH, because "redraws that column uncapped" is two claims:
+ * the marks the tail stood for are back, AND every ribbon that ran to the tail
+ * runs to the mark it was folded from. Comparing node ids alone would pass a
+ * chart whose 32 funds were drawn with the aggregate's 8 ribbons.
+ */
+function wholeOf(doc) {
+  return {
+    nodes: doc.nodes.map((n) => n.id).sort().join(","),
+    links: doc.links.map((l) => `${l.source}>${l.target}:${l.kind}=${l.value_cents}`).sort().join(","),
+  };
+}
+
+/** The breadcrumb's children, as the DOM was told to show them. */
+function crumbs(app) {
+  const bar = app.dom.byId.get("breadcrumb");
+  return bar ? bar.children.map((c) => `${c.className}:${c.textContent}`) : [];
+}
+
+/**
+ * Expanding a folded tail, which is the one gesture on this page that redraws
+ * the chart the reader is on rather than opening another.
+ *
+ * THE PIN IT MAKES REAL. COLUMNS[].uncapped has been measured since the cap
+ * landed, by shaping the same view under a step whose cap cannot engage -- a
+ * chart no reader could reach. This is the wave that makes it reachable, so the
+ * same tuple stops being a statement about a hypothetical shape and becomes one
+ * about a chart a double click draws.
+ */
+async function expansionChecks() {
+  const out = [];
+  // THE CAPS RAISED PAST EVERY COLUMN, which is how `uncapped` has always been
+  // measured. The expanded chart is compared against THIS chart and not only
+  // against its tuple, because "the column is drawn uncapped" and "the chart is
+  // the one an uncapped step would have drawn" are different claims and only
+  // the second rules out a redraw that moved something else.
+  const uncappedSteps = PAGE.steps.map((s) => Object.assign({}, s, {
+    caps: s.caps.map((c) => ({ tier: c.tier, cap: 1000 })),
+  }));
+  for (const col of COLUMNS) {
+    const { app } = await opened(null, null, col);
+    const { app: noCap } = await opened(null, (c) => { c.steps = uncappedSteps; }, col);
+    await at(app, PAGE.worst);
+    const capped = measure(app, app.projection);
+    // THE LAID NODE AND NOT THE DOCUMENT'S, because nodeClass asks isContraNode
+    // what runs into the mark, which is a question about the ribbons layOut
+    // attached rather than about the record the packager wrote.
+    const tail = app.layOut(app.projection).nodes.find((n) => app.isAggregate(n.id));
+    const offered = app.projection.nodes.filter((n) => app.expandable(n)).map((n) => n.id);
+    const marked = tail
+      ? `${app.nodeClass(tail)} / "${app.nodeFlags(tail)}"`
+      : "no tail drawn";
+    // DRIVEN THROUGH THE KEY AND NOT THROUGH expandTier, because what this arm
+    // is about is what a reader's gesture does. Space goes first and must NOT
+    // expand: it is the key that follows the money on every other mark, and a
+    // tail on which it expanded would be the split W4 announced broken on the
+    // one kind of mark whose other gesture is new.
+    app.keyNode(tail, " ", 0);
+    const spaceFollowed = app.isolated;
+    const spaceLeft = app.projection.nodes.filter((n) => app.isAggregate(n.id)).length;
+    app.keyNode(tail, "Enter", app.ACTIVATION_WINDOW * 10);
+    await settle();
+    const expanded = measure(app, app.projection);
+    const left = app.projection.nodes.filter((n) => app.isAggregate(n.id)).length;
+    // THE TWO MARKS THIS CHART WOULD REFUSE, ASKED OF THE PREDICATE DIRECTLY
+    // BECAUSE NO COMMITTED DOCUMENT DRAWS EITHER. An aggregate at a tier this
+    // rung declares no cap for can only have arrived inside a kept flank,
+    // folded by the chart above, where expanding would redraw the same chart;
+    // and a tier already expanded draws no tail of its own. Both are refused by
+    // clauses in expandable, and measured over the corpus nothing else can tell
+    // either clause is there -- dropping both leaves every other arm green.
+    const foreign = app.expandable({ id: app.aggregateID(CATEGORY_TIER), tier: CATEGORY_TIER });
+    const twice = app.expandable({ id: tail.id, tier: tail.tier });
+    await at(noCap, PAGE.worst);
+    const raised = wholeOf(noCap.projection);
+    const drew = wholeOf(app.projection);
+    out.push({
+      name: `${col.label}: Enter on the folded tail draws its column uncapped, and Space still follows its money`,
+      ok: Boolean(tail) && offered.join() === tail.id &&
+          marked === `node derived expands / "  ◇⊞"` &&
+          spaceFollowed === tail.id && spaceLeft === 1 &&
+          capped.links === col.capped.links && capped.hairlines === col.capped.hairlines &&
+          expanded.links === col.uncapped.links && expanded.hairlines === col.uncapped.hairlines &&
+          left === 0 && drew.nodes === raised.nodes && drew.links === raised.links &&
+          foreign === false && twice === false,
+      detail: `${PAGE.worst} drew "${tail ? tail.label : "no tail"}" as ${marked}, the only mark ` +
+        `of ${app.projection.nodes.length} the chart offers to expand (offered ` +
+        `${JSON.stringify(offered)}); capped it lays ${capped.links} ribbons, ` +
+        `${capped.hairlines} under 1px (want ${col.capped.links}, ${col.capped.hairlines}); ` +
+        `Space on it followed "${spaceFollowed}" and left ${spaceLeft} tail(s) drawn; Enter ` +
+        `expanded ${expanded.links} ribbons, ${expanded.hairlines} under 1px (want ` +
+        `${col.uncapped.links}, ${col.uncapped.hairlines}), ${left} tail(s) left; ` +
+        `a tail at tier ${CATEGORY_TIER}, which this step declares no cap for, is ` +
+        `${foreign ? "WRONGLY offered" : "refused"} and the expanded tier is ` +
+        `${twice ? "WRONGLY offered again" : "refused"}; against the ` +
+        `same view under a step whose cap cannot engage the nodes ` +
+        `${drew.nodes === raised.nodes ? "match" : "DIFFER"} and the ribbons ` +
+        `${drew.links === raised.links ? "match" : "DIFFER"}`,
+    });
+
+    // ------------------------------------------------ and the way back out
+    const chipCrumbs = crumbs(app);
+    const chip = app.dom.byId.get("breadcrumb").children
+      .find((c) => c.className === "crumb-expanded");
+    if (chip) chip.listeners.click.forEach((fn) => fn({}));
+    await settle();
+    const folded = measure(app, app.projection);
+    out.push({
+      name: `${col.label}: the breadcrumb says how many marks the expansion drew, and folds them back`,
+      ok: Boolean(chip) && chip.textContent === `showing all ${col.funds} ${PAGE.steps[0].tail} ×` &&
+          chipCrumbs.length === 3 && chipCrumbs[2].startsWith("crumb-expanded") &&
+          folded.links === col.capped.links && crumbs(app).length === 2,
+      detail: `expanded, the breadcrumb reads ${JSON.stringify(chipCrumbs)}; pressing the chip ` +
+        `left ${folded.links} ribbon(s) (want ${col.capped.links}) under a breadcrumb of ` +
+        `${JSON.stringify(crumbs(app))}`,
+    });
+
+    // ---------------------------- an expansion belongs to ONE chart on the stack
+    //
+    // DRIVEN THROUGH doubleClickNode AND THE BUDGET CONTROL, not through
+    // expandTier and a tier number: the arm above has already said what an
+    // expansion draws, and what this one is about is which chart it is a
+    // property of. The fund window is the one view the chain reaches that draws
+    // a folded tail AND offers something to open -- measured, the other eight
+    // offer nothing at all -- so it is the only place on the committed corpus
+    // where "expanded, then opened" is a state a reader can be in.
+    const { app: deep } = await opened(null, null, col);
+    deep.setColumnBudget(4);
+    await at(deep, "fund-group/general", "fund/100");
+    const narrow = measure(deep, deep.projection);
+    const categoryTail = deep.layOut(deep.projection).nodes
+      .find((n) => deep.isAggregate(n.id) && n.tier === CATEGORY_TIER);
+    deep.doubleClickNode(categoryTail, 0);
+    await settle();
+    const wide = measure(deep, deep.projection);
+    const wideWhole = wholeOf(deep.projection);
+    const categories = deep.projection.nodes.filter((n) => n.tier === CATEGORY_TIER).length;
+    const chipText = (a) => (crumbs(a).find((c) => c.startsWith("crumb-expanded:")) || "")
+      .replace("crumb-expanded:", "");
+    const expandedChip = chipText(deep);
+    // THE RUNG BELOW IT IS A FRESH ONE. Opening a division from an expanded
+    // chart must not carry "draw every category" into a chart whose categories
+    // are a different column of a different step, with a cap of its own.
+    await mustOpen(deep, PAGE.inert);
+    const inner = { chip: chipText(deep), depth: deep.drilled.length,
+      tails: deep.projection.nodes.filter((n) => deep.isAggregate(n.id)).length,
+      // THE CHART THE NEW RUNG RECORDED, which is what carries an expansion
+      // ACROSS a drill: a window's kept flank is a filter of this, so a flank
+      // taken from a column the reader had expanded would be drawn expanded
+      // with no code for it. LATENT on the committed corpus -- every kept flank
+      // the shipped steps declare is a single-node column or the spine's ten
+      // categories, so none has ever been a capped column -- which is why the
+      // recorded chart is asserted here rather than the drawn flank.
+      recorded: wholeOf(deep.drilled[2].chart) };
+    // AND THE WAY BACK LANDS ON THE EXPANDED CHART, because the expansion is on
+    // the rung the reader popped to rather than on the page.
+    deep.dom.document.activeElement = deep.dom.document.getElementById("chart");
+    deep.drillUp(2);
+    await settle();
+    const back = measure(deep, deep.projection);
+    const backFocus = deep.dom.focused ? deep.dom.focused.textContent : "";
+    // AND A RUNG OPENED AFRESH IS CAPPED AFRESH, which is the half a module
+    // variable would get wrong: it would make "show me all of them" a property
+    // of the reader rather than of the chart they said it on.
+    deep.drillUp(1);
+    await settle();
+    await mustOpen(deep, "fund/100");
+    const again = measure(deep, deep.projection);
+    out.push({
+      name: `${col.label}: an expansion is a property of the chart it was made on, not of the page`,
+      ok: narrow.links === col.deepCapped && wide.links === col.deepExpanded &&
+          categories === col.categories && expandedChip === `showing all ${col.categories} categories ×` &&
+          inner.chip === "" && inner.tails === 0 && inner.depth === 3 &&
+          inner.recorded.nodes === wideWhole.nodes && inner.recorded.links === wideWhole.links &&
+          back.links === wide.links && backFocus === "← All funds" &&
+          again.links === narrow.links,
+      detail: `the fund window at four columns lays ${narrow.links} ribbons capped (want ` +
+        `${col.deepCapped}); a double click on its tail left ${wide.links} (want ` +
+        `${col.deepExpanded}) over ${categories} categories (want ${col.categories}) under a ` +
+        `chip reading "${expandedChip}"; opening ${PAGE.inert} from there gave depth ` +
+        `${inner.depth} with ${inner.tails} tail(s) and a chip reading "${inner.chip}" (want ` +
+        `none: the expansion is the rung above's) over a parent chart it recorded ` +
+        `${inner.recorded.nodes === wideWhole.nodes && inner.recorded.links === wideWhole.links
+          ? "exactly as the reader saw it, expanded" : "AS SOMETHING ELSE"} -- which is what a ` +
+        `kept flank is filtered from, and so is how an expansion would cross a drill; Escape ` +
+        `came back to ` +
+        `${back.links} ribbons ` +
+        `with focus on "${backFocus}" (want the return control, not the chip); reopening the ` +
+        `fund from the group gave ${again.links} (want ${narrow.links}, capped afresh)`,
+    });
+
+    // ------------------------- a caveat about a folded row reaches ONE mark
+    //
+    // THE RISK THIS WAVE HAD TO SETTLE, and it could only be settled by
+    // planting one: capColumn records the tail's ids AND the descendants
+    // orphaned() removed so a caveat about a folded row still reaches the mark
+    // standing for it, and no committed caveat names a row that is ever in a
+    // tail. Expanded, `folds` is gone and the row is a mark of its own. Whether
+    // the two states report it once each or one of them reports it twice is a
+    // measurement, and latent is how it would have shipped.
+    const foldedID = tail.folds[0];
+    const CAVEAT = { id: "a-folded-row", summary: "A caveat about a row the cap folds.",
+      applies_to: [foldedID] };
+    const planted = () => {
+      const doc = col.golden();
+      doc.metadata.caveats = doc.metadata.caveats.concat([CAVEAT]);
+      return doc;
+    };
+    const { app: withCaveat } = await opened({ [`data/${col.step}.json`]: { doc: planted() } },
+      null, col);
+    await at(withCaveat, PAGE.worst);
+    const marksCarrying = () => withCaveat.projection.nodes
+      .filter((n) => withCaveat.caveatsFor(n.id).some((c) => c.id === CAVEAT.id))
+      .map((n) => n.id).sort();
+    const cappedMarks = marksCarrying();
+    const cappedTail = withCaveat.projection.nodes.find((n) => withCaveat.isAggregate(n.id));
+    withCaveat.expandTier(cappedTail);
+    await settle();
+    const expandedMarks = marksCarrying();
+    out.push({
+      name: `${col.label}: a caveat about a folded row marks the tail while it stands for it, and the row itself once it is drawn`,
+      ok: cappedMarks.join() === `aggregate/tail/${FUND_TIER},${PAGE.worst}` &&
+          expandedMarks.join() === `${PAGE.worst},${foldedID}`,
+      detail: `a caveat naming ${foldedID}, which the cap folds, is carried by ` +
+        `${JSON.stringify(cappedMarks)} on the capped chart and by ` +
+        `${JSON.stringify(expandedMarks)} on the expanded one: one mark in the column either ` +
+        `way, plus the group the row is inside, which is drawn as this window's centre and ` +
+        `reaches the caveat up the file's own hierarchy in both states`,
+    });
+  }
   return out;
 }
 
@@ -2076,7 +2382,7 @@ export async function checks() {
   };
   for (const fn of [gapAtTheCentre, categoryProbes, keylessSteps, severalParents, windowChecks,
     objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe, widenedColumns,
-    gestureChecks]) {
+    gestureChecks, expansionChecks]) {
     out.push(...(await group(fn)));
   }
 
@@ -2479,7 +2785,8 @@ async function walkCategory(col) {
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into Property Taxes category` &&
         at1.crumbControls.join("|") === "← All revenue categories" && at1.crumbHere === "Property Taxes category" &&
         at1.hint === "This is Property Taxes category, broken into its parts. Nothing here " +
-          "opens further; go back to open another. A single click, or Space, follows one node's money." &&
+          "opens further; go back to open another. A single click, or Space, follows one node's money." +
+          EXPANDS_SENTENCE &&
         at1.legend === 0 && !anyOpens1 &&
         at1.desc === "Opened into Property Taxes category. " + step.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
@@ -3960,7 +4267,8 @@ async function walkChain(col) {
     // a click that banners.
     ok: capital.depth === 1 && capitalOpens.length === 0 && capitalFunds > 0 &&
         capital.hint === "This is Capital Funds, broken into its parts. Nothing here opens " +
-          "further; go back to open another. A single click, or Space, follows one node's money." &&
+          "further; go back to open another. A single click, or Space, follows one node's money." +
+          EXPANDS_SENTENCE &&
         capital.desc.startsWith("Opened into Capital Funds. " + groupStep.description),
     detail: `opened into capital: ${capitalFunds} fund mark(s) drawn and ` +
       `${capitalOpens.length ? capitalOpens.join(", ") + " WRONGLY open" : "none opens"}; ` +
