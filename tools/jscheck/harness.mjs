@@ -306,7 +306,13 @@ function domStub(ids = TEMPLATE_IDS) {
 const NAMES = [
   "FUND_ORDER", "nodeRank", "restackLinks", "understands", "isFundGroup",
   "paintYearWords", "wireYears", "showYear", "maybeEl", "SCHEMA_VERSION",
-  "NODE_WIDTH", "NODE_PADDING", "CHART_WIDTH", "CHART_HEIGHT", "LABEL_GUTTER",
+  "NODE_WIDTH", "NODE_PADDING", "CHART_HEIGHT", "LABEL_GUTTER",
+  // chartWidth REPLACED THE CHART_WIDTH CONSTANT, and layout.mjs and fold.mjs
+  // build their own d3.sankey from it: a chart of four columns is laid out
+  // wider, so a harness holding the old constant would measure every crossing
+  // and every label clearance against a width the page no longer draws that
+  // chart at.
+  "chartWidth", "BAND",
   // layOut AND foldDocument ARE EXPORTED BECAUSE layout.mjs REIMPLEMENTED THE
   // FIRST OF THEM. Its layout() builds its own d3.sankey from the constants
   // above, which was fine while the only thing to get wrong was a constant --
@@ -330,6 +336,13 @@ const NAMES = [
   // measure one stage without the repaint. STEPS is the tree as app.js read it
   // off the config, and stepFor is its one reader.
   "shapeFor", "filterToNode", "filterFromNode", "capColumn", "drillable", "drillDown", "drillUp",
+  // THE COLUMN BUDGET AND THE SET IT TRIMS. activeTiers is what every column
+  // reader on the page goes through, and a check that spelled a step's tiers
+  // itself would measure the widened window under the narrow budget the page
+  // ships and call it wide. setColumnBudget is the seam fisc-ko1j.12.4's
+  // control will call, which is why a check drives the widening through it
+  // rather than by editing a step.
+  "activeTiers", "drawnColumns", "setColumnBudget",
   "STEPS", "stepFor", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
   "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
   // THE GAP, which is the other mark a rung can stand beside an opened node:

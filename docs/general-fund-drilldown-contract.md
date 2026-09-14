@@ -378,15 +378,27 @@ is held by a Go test — that test pins `views()` against a literal in the *test
 file* and reads nothing in `tools/jscheck`, which is how both a reworded
 description (`fisc-vsu8`) and a changed cap went green on both sides at once:
 
-Every rung of that chain is a WINDOW: three columns with the node the reader
-clicked in the middle, one flank kept off the chart they clicked it on and the
-other its own decomposition.
+Every rung of that chain is a WINDOW: the node the reader clicked in the middle,
+one flank kept off the chart they clicked it on, and its own decomposition on
+the other side. **Three columns is the narrowest such window and the one every
+reader is shown today** — the client's column budget is 3 for everyone until
+`fisc-ko1j.12.4` ships the control that moves it, so the tier sets in the table
+below are what a narrow reader sees.
+
+A step may declare more columns than that budget draws: `widen` names the
+columns of its own `tiers` a narrower client does without, in the order it drops
+them, and they sit at the end away from the kept flank. The fund step is the one
+that does — `{2,3,4,5}` widening by `{5}`, drawn as `{2,3,4}` at three columns
+and as all four where there is room — so its row below states both. A widened
+column the document leaves empty is dropped and the chart re-laid at the columns
+it has, rather than refused: five of the six fund groups have no tier-4 node,
+and a wide screen must not show a reader less than a narrow one.
 
 | depth | document | draws | opening a node draws | caps |
 |---|---|---|---|---|
 | 0 | `sankey` | the spine, whole | a fund group (tier 2); or a revenue category (tier 0); or an object category (tier 5) | — |
 | 1 | `fund-flows` | `{0,2,3}` keeping tier 0 of the chart above: the spine's own revenue categories on the left, the opened group in the middle, its funds on the right, with the money pp.127-140 split by no fund carried past the centre onto one derived mark beside them | the General Fund (tier 3), and no other fund | tier 3 at 8 |
-| 2 | `fund-flows` | `{2,3,4}` keeping tier 2: the group, the opened fund, the divisions that spend it | a division (tier 4) | tier 4 at 24 |
+| 2 | `fund-flows` | `{2,3,4}` keeping tier 2: the group, the opened fund, the divisions that spend it — widening to `{2,3,4,5}`, their object-category cells, where there is room for a fourth column | a division (tier 4) | tier 4 at 24; tier 5 at 8 (categories) |
 | 3 | `fund-flows` | `{3,4,5}` keeping tier 3: the fund, the opened division, its object categories | nothing | tier 5 at 8 |
 | 1 | `fund-flows` | `{1,0,2}` keeping tier 2: the lines pp.127-140 print under the opened category on the left, the category itself in the middle, and the spine's own fund groups for it on the right; a line printed as a reduction draws as a contra ribbon at its magnitude, into the centre | nothing | tier 1 at 8 (lines) |
 

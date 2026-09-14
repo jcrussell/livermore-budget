@@ -169,6 +169,24 @@ const PAGE = {
 const OPENABLE_COLUMNS = "left-hand|middle|right-hand";
 
 /**
+ * The fund-group window of FY 2025-26's worst group, drawn under a step widened
+ * to a tier that group's document has no node at: what it comes out as once the
+ * empty column is dropped.
+ *
+ * THE SAME TUPLE THE THREE-COLUMN WINDOW DRAWS, which is the claim. A dropped
+ * column is not a narrower version of the wide chart -- it is the chart the
+ * narrow budget draws, reshaped at the tier set that survived.
+ */
+const EMPTY_DROP = { nodes: 18, links: 19 };
+
+/**
+ * The same widened fund-group step on the one group whose document fills the
+ * fourth column: [the spine's revenue categories | the General Fund group | its
+ * funds | the divisions pp.167-170 decompose fund/100 into].
+ */
+const FILLED_WIDE = { nodes: 40, links: 38, bands: "10/1/25" };
+
+/**
  * Every fact id a committed document publishes, read off its own links.
  * @param {{links: {fact_ids: string[]}[]}} doc
  * @returns {Set<string>}
@@ -289,6 +307,14 @@ const COLUMNS = [
     // different quantities, and the step's description is what says so --
     // `fund` is [what it takes in, what its divisions spend].
     fund: { nodes: 25, links: 24, hairlines: 1 },
+    // THE SAME WINDOW WITH ROOM FOR A FOURTH COLUMN: [the group | fund/100 |
+    // its 23 divisions | the object-category cells they spend on]. `bands` is
+    // the ribbons crossing each pair of adjacent columns, left to right, which
+    // is what tools/jscheck/layout.mjs counts crossings inside and throws on a
+    // link that spans two of. `right` is where d3 put the last column's rect,
+    // which is chartWidth(4) - LABEL_GUTTER when the width was believed.
+    fundWide: { nodes: 34, links: 54, hairlines: 2, tail: "36 smaller categories",
+      bands: "1/23/30", right: 1263 },
     fundCentre: [15787347000, 14465080200],
     // THE RESIDUAL PER GROUP, IN CENTS, MEASURED OFF fisc export's OWN
     // sankey.json AND fund-flows.json (2026-09-11) under the check's
@@ -414,6 +440,12 @@ const COLUMNS = [
       counts: "12 flows between 14 nodes: 1 citing 86 of the document's 280 facts, " +
         "and 11 carried unchanged from the chart above, citing 11 of its 120 facts" },
     fund: { nodes: 25, links: 24, hairlines: 1 },
+    // THE SAME TUPLE AS FY 2025-26, WHICH IS A MEASUREMENT AND NOT A COPY.
+    // Both columns print 23 divisions for fund/100 and 44 object cells under
+    // them, and the tier-5 cap folds the same 36; the year's figures differ and
+    // the shape does not.
+    fundWide: { nodes: 34, links: 54, hairlines: 2, tail: "36 smaller categories",
+      bands: "1/23/30", right: 1263 },
     fundCentre: [16435814700, 14901457900],
     residual: {
       // 486,735 transfers in and NO draw -- general's change in working
@@ -741,6 +773,26 @@ export async function openedWindow(id) {
   return app;
 }
 
+/**
+ * The same page opened down a path at a stated column budget, for a caller in
+ * another module.
+ *
+ * layout.mjs NEEDS A CHART OF FOUR COLUMNS AND THIS FILE IS WHERE ONE IS BUILT,
+ * which is openedWindow's argument at one more column: the band count and the
+ * label room are claims about a shape no reader can reach until
+ * fisc-ko1j.12.4's control ships, and rebuilding the page config there would be
+ * a second copy of PAGE.
+ *
+ * @param {number} budget
+ * @param {string[]} path the nodes to open, outermost first
+ */
+export async function openedWide(budget, path) {
+  const { app } = await opened();
+  app.setColumnBudget(budget);
+  for (const id of path) await mustOpen(app, id);
+  return app;
+}
+
 /** A spine opened into one node, or into a node and then one beneath it. */
 async function at(app, ...ids) {
   app.drillUp(0);
@@ -783,9 +835,12 @@ export async function checks() {
       said.push(Object.assign({ where, depth, got: app.dom.byId.get("counts-line").textContent },
         countsLineFor(app.projection, factIDsOf(golden),
           golden.metadata.counts.facts, col.spine().metadata.counts.facts)));
-      const rung = app.drilled[app.drilled.length - 1];
+      // THE COLUMNS THE CHART ASKED FOR, NOT THE ONES THE STEP OFFERS. A step
+      // may declare more columns than the budget draws (activeTiers), and a
+      // widened column this reader never asked for is not a column that came
+      // out short.
       const has = new Set(app.projection.nodes.map((n) => n.tier));
-      const missing = rung.step.tiers.filter((t) => !has.has(t));
+      const missing = app.activeTiers().filter((t) => !has.has(t));
       if (missing.length) short.push(`${where} draws no tier ${missing.join(", ")}`);
     });
     // THE WORST DIVISION IS PINNED BY NAME AND BY WIDTH: Patrol's window at
@@ -1805,7 +1860,7 @@ export async function checks() {
     }
   };
   for (const fn of [gapAtTheCentre, categoryProbes, keylessSteps, severalParents, windowChecks,
-    objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe]) {
+    objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe, widenedColumns]) {
     out.push(...(await group(fn)));
   }
 
@@ -3710,3 +3765,154 @@ function templateDesc(file, description) {
   return m[1].replace(/\s+/g, " ").trim().replaceAll("{{.ChartDescription}}", description);
 }
 
+
+/**
+ * One window opened at a stated column budget, measured off the chart the page
+ * drew rather than off the declaration it drew it from.
+ *
+ * THE BUDGET IS SET BEFORE THE DRILL, because activeTiers is read while the
+ * rung is SHAPED -- the filter, the caps and the fold all take the tier set --
+ * so a budget raised afterwards would leave a chart on screen shaped at the old
+ * one and measured as though it were not.
+ *
+ * A FRESH PAGE PER MEASUREMENT. The budget is page state, and a check that
+ * raised it and left it raised would hand every arm after it a chart no reader
+ * is shown.
+ *
+ * @param {any} col the published column to open over
+ * @param {number} budget
+ * @param {string[]} path the nodes to open, outermost first
+ * @param {(c: any) => void} [tweak] the config edit, if this is a shape the
+ *   site does not ship
+ */
+async function windowAt(col, budget, path, tweak) {
+  const { app, main } = await opened(null, tweak, col);
+  app.setColumnBudget(budget);
+  for (const id of path) await mustOpen(app, id);
+  const laid = app.layOut(app.projection);
+  const widths = laid.links.map((l) => l.width);
+  const tail = app.projection.nodes.find((n) => app.isAggregate(n.id) && n.tier === 5);
+  return {
+    tiers: app.activeTiers().join(","),
+    columns: app.drawnColumns(),
+    // THE RIGHT-HAND EDGE OF THE DRAWING, WHICH IS WHAT SAYS THE WIDTH WAS
+    // BELIEVED. d3-sankey takes its column COUNT from topology and spreads it
+    // over whatever extent it is given, so a chart laid out at a width it
+    // cannot fill draws the columns it has further apart -- and the last
+    // column's rect is the one place that shows.
+    right: Math.max(...laid.nodes.map((n) => n.x1)),
+    banners: refusals(main).length,
+    nodes: app.projection.nodes.length,
+    links: app.projection.links.length,
+    hairlines: widths.filter((w) => w < 1).length,
+    tail: tail ? tail.label : "",
+    // Every adjacent pair of drawn columns, as the count of ribbons crossing
+    // it: layout.mjs's bands() throws on a link that spans more than one, so a
+    // band with nothing in it is a column no ribbon reaches.
+    bands: app.activeTiers().slice(1).map((t, k) => app.projection.links.filter((l) => {
+      const at = (/** @type {string} */ id) =>
+        (app.projection.nodes.find((n) => n.id === id) || { tier: -1 }).tier;
+      return at(l.source) === app.activeTiers()[k] && at(l.target) === t;
+    }).length).join("/"),
+  };
+}
+
+/**
+ * The fund window at four columns, and a widened column the document cannot
+ * fill.
+ *
+ * WHAT THIS IS EVIDENCE FOR. pkg/cmd/export/data.go declares the fund step at
+ * tiers {2,3,4,5} widening by {5}, and no reader can see the fourth column yet:
+ * the budget is NARROW_COLUMNS for everyone until fisc-ko1j.12.4 ships the
+ * control, and the harness's matchMedia answers not-matching. So the widened
+ * declaration is a claim nothing on the page exercises, which is the shape
+ * fisc-rx1d is about -- these arms are what exercise it.
+ *
+ * THE NARROW WINDOW IS PINNED BESIDE IT, AND THAT PAIRING IS THE POINT. With
+ * the widening taken back off the step, the wide arm goes red and the narrow
+ * one stays green: that is what tells "the fourth column was drawn" from "the
+ * fourth column was never asked for", which one arm over the shipped budget
+ * cannot say at all.
+ *
+ * THE EMPTY-COLUMN DROP IS DRIVEN ON A STEP THE SITE DOES NOT SHIP, because
+ * none that it ships has one: the fund step's tier 5 is drawn under every
+ * division fund/100 has. A fund-group step widened to tier 4 is a declaration
+ * export.validateSteps ACCEPTS -- the flank is at the left end, the widening at
+ * the other -- and five of the six groups have no tier-4 node, which is the
+ * state this drop exists for.
+ */
+async function widenedColumns() {
+  const out = [];
+  // THE WIDENING AS A STEP DECLARATION, OVER A COPY. config.steps is the shared
+  // STEP_SHAPES array, so a tweak that edited a step in place would hand every
+  // later check a page the packager does not ship.
+  const widenFundGroup = (/** @type {any} */ c) => {
+    c.steps = c.steps.map((/** @type {any} */ s) => (s.key === "fund-group"
+      ? Object.assign({}, s, { tiers: s.tiers.concat([4]), widen: [4] })
+      : s));
+  };
+  for (const col of COLUMNS) {
+    const path = ["fund-group/general", "fund/100"];
+    const narrow = await windowAt(col, 3, path);
+    const wide = await windowAt(col, 4, path);
+    const want = col.fundWide;
+    out.push({
+      name: `${col.label}: the fund window is three columns at the budget every reader gets`,
+      ok: narrow.columns === 3 && narrow.tiers === "2,3,4" && narrow.banners === 0 &&
+          narrow.nodes === col.fund.nodes && narrow.links === col.fund.links &&
+          narrow.hairlines === col.fund.hairlines && narrow.right === 1180 - 250,
+      detail: `${narrow.columns} column(s) at tiers {${narrow.tiers}}: ${narrow.nodes} nodes, ` +
+        `${narrow.links} links, ${narrow.hairlines} sub-pixel ribbon(s), bands ${narrow.bands}, ` +
+        `right edge ${narrow.right}px, ${narrow.banners} banner(s) ` +
+        `(want tiers {2,3,4}, ${col.fund.nodes}/${col.fund.links}/${col.fund.hairlines}, 930px)`,
+    });
+    out.push({
+      name: `${col.label}: the fund window draws its fourth column where there is room for one`,
+      ok: wide.columns === 4 && wide.tiers === "2,3,4,5" && wide.banners === 0 &&
+          wide.nodes === want.nodes && wide.links === want.links &&
+          wide.hairlines === want.hairlines && wide.tail === want.tail &&
+          wide.bands === want.bands && wide.right === want.right,
+      detail: `${wide.columns} column(s) at tiers {${wide.tiers}}: ${wide.nodes} nodes ` +
+        `(want ${want.nodes}), ${wide.links} links (want ${want.links}), ${wide.hairlines} ` +
+        `sub-pixel ribbon(s) (want ${want.hairlines}), bands ${wide.bands} (want ${want.bands}), ` +
+        `tail "${wide.tail}" (want "${want.tail}"), right edge ${wide.right}px ` +
+        `(want ${want.right}px), ${wide.banners} banner(s)`,
+    });
+  }
+  // THE DROP, AND THE SAME STEP ON THE ONE GROUP THAT FILLS THE COLUMN. Both
+  // are needed: the first says an empty widened column is dropped rather than
+  // banner or stretch the chart, and the second says the drop is a measurement
+  // of the document and not a widening that never worked.
+  const col = COLUMNS[0];
+  const empty = await windowAt(col, 4, [PAGE.worst], widenFundGroup);
+  // THE SHIPPED STEP ON THE SAME GROUP, so the arm can say the dropped chart IS
+  // the narrow one rather than only that it has three columns.
+  const asShipped = await windowAt(col, 3, [PAGE.worst]);
+  const filled = await windowAt(col, 4, ["fund-group/general"], widenFundGroup);
+  out.push({
+    name: "a widened column the document leaves empty is dropped, and the chart is re-laid at the columns it has",
+    ok: empty.columns === 3 && empty.tiers === "0,2,3" && empty.banners === 0 &&
+        empty.right === 1180 - 250 && empty.nodes === EMPTY_DROP.nodes &&
+        empty.links === EMPTY_DROP.links &&
+        empty.nodes === asShipped.nodes && empty.links === asShipped.links &&
+        empty.bands === asShipped.bands,
+    detail: `${PAGE.worst} widened to tier 4 draws ${empty.columns} column(s) at ` +
+      `{${empty.tiers}}: ${empty.nodes} nodes, ${empty.links} links, bands ` +
+      `${empty.bands}, right edge ${empty.right}px, ${empty.banners} banner(s) ` +
+      `(want 3 columns at {0,2,3}, ${EMPTY_DROP.nodes}/${EMPTY_DROP.links}, 930px, no ` +
+      `banner); the shipped three-column step draws ${asShipped.nodes} nodes, ` +
+      `${asShipped.links} links, bands ${asShipped.bands}`,
+  });
+  out.push({
+    name: "the same widened step keeps its fourth column on the one group whose document fills it",
+    ok: filled.columns === 4 && filled.tiers === "0,2,3,4" && filled.banners === 0 &&
+        filled.nodes === FILLED_WIDE.nodes && filled.links === FILLED_WIDE.links &&
+        filled.bands === FILLED_WIDE.bands,
+    detail: `fund-group/general widened to tier 4 draws ${filled.columns} column(s) at ` +
+      `{${filled.tiers}}: ${filled.nodes} nodes, ${filled.links} links, bands ` +
+      `${filled.bands}, right edge ${filled.right}px, ${filled.banners} banner(s) ` +
+      `(want 4 columns at {0,2,3,4}, ${FILLED_WIDE.nodes}/${FILLED_WIDE.links}, ` +
+      `bands ${FILLED_WIDE.bands})`,
+  });
+  return out;
+}

@@ -268,7 +268,10 @@ which is the whole of its 25. Tiers 3 and 4 are empty, because pp.66-67 publish
 neither a fund nor a department axis.
 
 **All three of the spine's drawn columns open, and every rung is a WINDOW** —
-three columns with the node the reader clicked in the middle. `index.html`
+the node the reader clicked in the middle, with three columns the narrowest such
+window and the one every reader is shown today; a step may declare more, and
+what each rung draws at what width is stated in
+`docs/general-fund-drilldown-contract.md`. `index.html`
 declares a tree of steps in `views()`, not a chain: the six tier-2 fund groups
 open into `fund-flows` for the same fiscal year, keeping this document's own
 revenue categories on the left and drawing the group's funds on the right; the

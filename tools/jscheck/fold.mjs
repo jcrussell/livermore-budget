@@ -532,7 +532,8 @@ function localLayout(app) {
     .nodeAlign(app.alignFor(app.RENDER_TIERS))
     .nodeSort((a, b) => app.nodeRank(a) - app.nodeRank(b) || b.value - a.value)
     .extent([[app.LABEL_GUTTER, 12],
-             [app.CHART_WIDTH - app.LABEL_GUTTER, app.CHART_HEIGHT - 12]]);
+             [app.chartWidth(app.drawnColumns()) - app.LABEL_GUTTER,
+              app.CHART_HEIGHT - 12]]);
   const graph = sankey({
     nodes: doc.nodes.map((n) => Object.assign({}, n)),
     links: doc.links.map((l) => Object.assign({}, l, { value: l.value_cents })),

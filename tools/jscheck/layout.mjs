@@ -25,7 +25,7 @@
 // what restackLinks itself does.
 
 import { loadApp, goldenGraph, spineConfig } from "./harness.mjs";
-import { openedWindow } from "./drill.mjs";
+import { openedWindow, openedWide } from "./drill.mjs";
 
 /**
  * Lays the golden graph out exactly as render() does, under a given node sort
@@ -53,7 +53,8 @@ function layout(app, nodeSort, align) {
     .nodePadding(app.NODE_PADDING)
     .nodeAlign(align || app.alignFor(app.RENDER_TIERS))
     .extent([[app.LABEL_GUTTER, 12],
-             [app.CHART_WIDTH - app.LABEL_GUTTER, app.CHART_HEIGHT - 12]]);
+             [app.chartWidth(app.drawnColumns()) - app.LABEL_GUTTER,
+              app.CHART_HEIGHT - 12]]);
   if (nodeSort !== "d3") sankey.nodeSort(nodeSort);
   return sankey({
     nodes: doc.nodes.map((n) => Object.assign({}, n)),
@@ -243,7 +244,11 @@ function roomFor(app, columns, col) {
   const after = columns.get(col + 1);
   return {
     from: col === 0 || !before ? 0 : (before.x1 + me.x0) / 2,
-    to: col >= last || !after ? app.CHART_WIDTH : (me.x1 + after.x0) / 2,
+    // THE CHART'S OWN RIGHT EDGE, AT ITS OWN COLUMN COUNT. A window of four
+    // columns is laid out wider than one of three, and the last column's label
+    // runs into the gutter that width put there.
+    to: col >= last || !after
+      ? app.chartWidth(app.drawnColumns()) : (me.x1 + after.x0) / 2,
   };
 }
 
@@ -419,7 +424,94 @@ export async function checks() {
           app.understands(app.SCHEMA_VERSION - 1, "x") === false,
       detail: `schema_version ${app.SCHEMA_VERSION} is accepted and its neighbours are refused`,
     },
-  ].concat(await labelChecks(app, graph));
+  ].concat(await labelChecks(app, graph)).concat(await wideChecks(app));
+}
+
+/**
+ * The bands of a four-column chart.
+ *
+ * WHY THE BAND COUNT IS THE THING TO CHECK. Everything this file measures --
+ * the crossings, the value they overlap, the room a label has -- is counted
+ * BAND BY BAND, and bands() refuses a ribbon that spans more than one column
+ * because a skipping ribbon passes over marks nothing would compare it against.
+ * A fourth column is the first shape in this tree with three of them, and it is
+ * also the first that could have produced a hole: d3-sankey takes its column
+ * count from topology, so a widened tier the document could not fill would draw
+ * three columns' worth of ribbons over four columns' worth of extent.
+ *
+ * IT ASSERTS bands() RAN, and not only that it did not throw. The two are
+ * different: a chart drawing no links at all would raise nothing and count
+ * nothing, and this file's own header is about a check that was green because
+ * it measured a helper rather than its use. So the sizes are summed against the
+ * graph's own link count and the columns against its own deepest node.
+ */
+async function wideChecks(app) {
+  const wide = await openedWide(4, WIDE_PATH);
+  const laid = wide.layOut(wide.projection);
+  const columns = Math.max(...laid.nodes.map((n) => n.depth)) + 1;
+  let keys = "";
+  let sizes = "";
+  let counted = 0;
+  let threw = "";
+  try {
+    // SORTED BY BAND, because the Map's own order is the order the links
+    // happened to arrive in and says nothing about the chart.
+    const b = [...bands(laid).entries()].sort((x, y) => x[0].localeCompare(y[0]));
+    keys = b.map((e) => e[0]).join(" ");
+    sizes = b.map((e) => e[1].length).join("/");
+    counted = b.reduce((n, e) => n + e[1].length, 0);
+  } catch (e) {
+    threw = String((e && e.message) || e);
+  }
+  const fits = labelFit(wide, laid);
+  return [
+    {
+      // THE GUTTER DECISION, MEASURED. LABEL_GUTTER does not grow with the
+      // column count because only the two end columns anchor outward; the two
+      // interior ones are centred over their own rects, in the NODE_PADDING gap
+      // above them. This is what says a fourth column did not take a gutter
+      // with it.
+      name: "every label in the four-column window has room where it was anchored",
+      ok: fits.length > 0 && fits.every((f) => f.clearance >= 0) &&
+          new Set(fits.map((f) => f.col)).size === 4,
+      detail: fits.length === 0
+        ? "the window drew no nodes, so nothing here measured a label at all"
+        : `${fits.length} labels over ${new Set(fits.map((f) => f.col)).size} columns; ` +
+          `tightest ${tightest(fits).id} anchored ${tightest(fits).place.anchor} ` +
+          `with ${px(tightest(fits).clearance)} to spare`,
+    },
+    {
+      name: "a four-column window lays out in three bands, each between adjacent columns",
+      ok: threw === "" && columns === 4 && keys === WIDE_BANDS.keys &&
+          sizes === WIDE_BANDS.sizes && counted === laid.links.length && counted > 0,
+      detail: threw !== ""
+        ? `bands() refused the four-column window: ${threw}`
+        : `${columns} columns and ${keys.split(" ").length} band(s) [${keys}] holding ` +
+          `${sizes} of the chart's ${laid.links.length} ribbons (want ${WIDE_BANDS.keys}, ` +
+          `${WIDE_BANDS.sizes}); every one of them spans exactly one column, which is ` +
+          `what bands() throws on`,
+    },
+    {
+      name: "the four-column window is laid out at its own width, not at the three-column one",
+      ok: app.chartWidth(4) === WIDE_GEOMETRY.width &&
+          app.chartWidth(3) === WIDE_GEOMETRY.narrow &&
+          Math.max(...laid.nodes.map((n) => n.x1)) === WIDE_GEOMETRY.width - app.LABEL_GUTTER &&
+          Math.min(...laid.nodes.map((n) => n.x0)) === app.LABEL_GUTTER &&
+          bandWidth(laid) === app.BAND,
+      detail: `chartWidth(3) is ${app.chartWidth(3)}px and chartWidth(4) is ` +
+        `${app.chartWidth(4)}px (want ${WIDE_GEOMETRY.narrow} and ${WIDE_GEOMETRY.width}); ` +
+        `the window draws from ${Math.min(...laid.nodes.map((n) => n.x0))}px to ` +
+        `${Math.max(...laid.nodes.map((n) => n.x1))}px with ${bandWidth(laid)}px of clear ` +
+        `run between columns (want ${app.LABEL_GUTTER}px, ` +
+        `${WIDE_GEOMETRY.width - app.LABEL_GUTTER}px and ${app.BAND}px)`,
+    },
+  ];
+}
+
+/** The clear run between one column's rects and the next's, as laid out. */
+function bandWidth(laid) {
+  const xs = [...new Set(laid.nodes.map((n) => n.x0))].sort((a, b) => a - b);
+  return xs[1] - laid.nodes.find((n) => n.x0 === xs[0]).x1;
 }
 
 // The two windows the label checks run over, and what each is for. Read off the
@@ -441,6 +533,19 @@ const DEPTH_DISAGREES = ["residual/fund-group/general"];
 // fitted outward would make the centring unnecessary, and a `>= 1` would go on
 // passing while that was true.
 const MIDDLE_OUTWARD = { crowded: 4, of: 6 };
+
+// The four-column chart the band and geometry arms run over: the fund window
+// one rung inside the General Fund group, which pkg/cmd/export/data.go widens
+// by tier 5. Its bands are [the group into the fund | the fund into its 23
+// divisions | those divisions into the object cells the tier-5 cap leaves],
+// measured over the committed FY 2025-26 capture.
+const WIDE_PATH = ["fund-group/general", "fund/100"];
+const WIDE_BANDS = { keys: "0:1 1:2 2:3", sizes: "1/23/30" };
+
+// What four columns are laid out at. PINNED BOTH WAYS: chartWidth(3) is 1180
+// because every figure in this file was measured at that width and a band
+// chosen for its own sake would move all of them at once.
+const WIDE_GEOMETRY = { narrow: 1180, width: 1513 };
 
 // The label selection itself, pinned as whole lines.
 //

@@ -419,14 +419,6 @@ const NODE_WIDTH = 14;
 const NODE_PADDING = 14;
 /** The surface gap that separates stacked ribbons, in px (1px each side). */
 const RIBBON_GAP = 2;
-/**
- * The chart is laid out at a fixed size and scaled by the viewBox, rather
- * than re-laid-out at the container's width. A sankey's labels do not reflow:
- * at 700px the three columns and their labels collide, and the only honest
- * fixes are a horizontal scrollbar or a fixed design width that shrinks as a
- * whole. This is the second.
- */
-const CHART_WIDTH = 1180;
 const CHART_HEIGHT = 820;
 
 /**
@@ -434,8 +426,58 @@ const CHART_HEIGHT = 820;
  * the widest label this data produces — "Fund Balance Contribution  $12.8M ◇"
  * at roughly 230px — because a label that does not fit must not be clipped,
  * and there is nowhere else for a sankey node's name to go.
+ *
+ * IT DOES NOT GROW WITH THE COLUMN COUNT. A gutter is what a label anchored
+ * OUTWARD runs into, and labelPlacement anchors outward on the two end columns
+ * alone: every interior label is centred above its own rect. So two gutters
+ * serve a chart of any width, and adding one per column would buy room for
+ * labels no column asks for.
  */
 const LABEL_GUTTER = 250;
+
+/**
+ * The clear horizontal run between one column's rects and the next's, in px:
+ * what a ribbon crosses.
+ *
+ * IT IS THE BAND AND NOT THE PITCH, which is what makes it the constant to
+ * hold fixed as columns are added. d3-sankey spreads its columns over the
+ * extent at (width - NODE_WIDTH)/(columns - 1), so a chart sized by chartWidth
+ * below gives every band exactly this many px whatever the count.
+ *
+ * 319 BECAUSE THREE COLUMNS MUST COME TO 1180 EXACTLY. That was the chart's
+ * fixed design width while three columns was the only shape, and every figure
+ * layout.mjs pins -- the crossings, the overlapped value, every label's
+ * clearance -- is of a chart laid out at it. A band chosen for its own sake
+ * would move all of them at once and none of them for a reason.
+ */
+const BAND = 319;
+
+/**
+ * How wide a chart of `n` columns is laid out, in px.
+ *
+ * The chart is laid out at a fixed size and scaled by the viewBox, rather than
+ * re-laid-out at the container's width. A sankey's labels do not reflow: at
+ * 700px the three columns and their labels collide, and the only honest fixes
+ * are a horizontal scrollbar or a fixed design width that shrinks as a whole.
+ * This is the second, and a fourth column makes the design width a function of
+ * the count rather than a constant.
+ *
+ * THE DRAWING SCALES, THE CONTAINER DOES NOT. The viewBox is what fits this
+ * width into whatever room style.css gives the <svg>, so a wider chart in the
+ * same container is the same picture drawn smaller. That is why the column
+ * budget is asked of the viewport (fisc-ko1j.12.4) rather than taken whenever
+ * a step offers one.
+ *
+ * @param {number} n
+ * @returns {number}
+ */
+function chartWidth(n) {
+  // A CHART HAS A COLUMN. d3-sankey divides by (columns - 1) and a count of 0
+  // or 1 has no band at all; clamping here keeps the width finite rather than
+  // letting a degenerate tier set reach the extent.
+  const columns = Math.max(1, n);
+  return 2 * LABEL_GUTTER + BAND * (columns - 1) + NODE_WIDTH * columns;
+}
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -773,6 +815,13 @@ let isolated = "";
  *   nothing to filter. It is the chart, not the file: docAt() answers for the
  *   file one depth up, and the flank the reader came from is the one they were
  *   looking at, capped tail, residual and all.
+ * @property {number[]} [dropped]  the widened tiers this rung's document left
+ *   empty, so activeTiers stops asking for them.
+ *
+ *   IT OUTLIVES THE BUDGET THAT REVEALED IT, and that is right rather than
+ *   convenient: "this document draws nothing at that tier" is a property of the
+ *   document, so a reader who widens the page later is not shown a column that
+ *   was empty when it was last asked for. A narrower budget drops it anyway.
  */
 
 /**
@@ -787,6 +836,50 @@ let isolated = "";
  * @type {Rung[]}
  */
 let drilled = [];
+/**
+ * The fewest columns any chart this page draws is laid out in: a window's kept
+ * flank, the node the reader opened and what it opens into.
+ *
+ * A FLOOR AND NOT A DEFAULT. export.validateSteps holds a window to exactly
+ * these three plus one per widening, so a budget under it would drop a column
+ * that is not optional and leave the centre against a wall.
+ */
+const NARROW_COLUMNS = 3;
+/**
+ * How many columns the chart may draw, which is what decides whether a step's
+ * widened columns are asked for (activeTiers).
+ *
+ * A PLAIN VALUE, AND THE READER CANNOT MOVE IT YET. fisc-ko1j.12.4 owns the
+ * control -- a matchMedia query for the room a fourth column needs, plus a
+ * manual override -- and setColumnBudget is the seam it will call. Until then
+ * every reader gets NARROW_COLUMNS, which is the width every figure pinned over
+ * this page was measured at.
+ */
+let columnBudget = NARROW_COLUMNS;
+
+/**
+ * Sets how many columns the chart may draw, and says whether that moved.
+ *
+ * THE CALLER REDRAWS, THIS DOES NOT. A budget change is a relayout of whatever
+ * is on screen, and the two callers that will want one -- a media query firing
+ * and a reader's override -- differ in what else they repaint; a redraw from
+ * inside here would also fire during the opening paint, before there is a
+ * document to lay out.
+ *
+ * CLAMPED RATHER THAN REFUSED, because the caller is a media query and not a
+ * declaration: a viewport with room for two columns is a real state, and a
+ * chart of two columns is not.
+ *
+ * @param {number} n
+ * @returns {boolean} whether the budget changed
+ */
+function setColumnBudget(n) {
+  const want = Math.max(NARROW_COLUMNS, Math.floor(Number(n)) || NARROW_COLUMNS);
+  if (want === columnBudget) return false;
+  columnBudget = want;
+  return true;
+}
+
 /**
  * The year's document as fetched, before any fold: what the overview is shaped
  * from, and what the first step opens a node of.
@@ -1194,10 +1287,47 @@ function drawnDoc() {
  * wrong answer here is not a wrong-looking chart, it is a throw inside
  * d3-sankey's ordering pass.
  *
+ * TRIMMED TO THE COLUMN BUDGET, WHICH IS WHERE A WIDENED COLUMN IS DROPPED. A
+ * step's `widen` names columns of its own `tiers` that a narrow client does
+ * without, in the order they go, so trimming is a filter over the set the step
+ * declares and never an addition to it -- and dropping from the END of that
+ * order is what makes a narrowed window a narrower window rather than a hole.
+ * A step declaring no widening is returned whole at any budget.
+ *
+ * AND THE COLUMNS THE RUNG ITSELF DROPPED, which is a different question with
+ * the same answer: a widened tier the drawn document left empty is not a
+ * column, whatever the budget (dropEmptyColumns).
+ *
  * @returns {number[]}
  */
 function activeTiers() {
-  return drilled.length ? drilled[drilled.length - 1].step.tiers : RENDER_TIERS;
+  if (!drilled.length) return RENDER_TIERS;
+  const rung = drilled[drilled.length - 1];
+  const tiers = rung.step.tiers;
+  const widen = rung.step.widen || [];
+  const drop = new Set(rung.dropped || []);
+  // THE COUNT IS RE-ASKED AFTER EVERY DROP, not computed once: a tier the rung
+  // already dropped as empty is an entry of this same order, and subtracting a
+  // fixed shortfall would "drop" it a second time and leave the window a column
+  // over budget.
+  for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > columnBudget; k--) {
+    drop.add(widen[k]);
+  }
+  return drop.size ? tiers.filter((t) => !drop.has(t)) : tiers;
+}
+
+/**
+ * How many columns wide the chart on screen is laid out.
+ *
+ * A CHART THAT DECLARES NO COLUMN ORDER IS LAID OUT NARROW. Its columns are
+ * d3's own inference from topology (alignFor), which is not known until after
+ * the layout the width is an input to -- and NARROW_COLUMNS is the width every
+ * such chart was drawn at before a step could ask for a fourth column.
+ *
+ * @returns {number}
+ */
+function drawnColumns() {
+  return activeTiers().length || NARROW_COLUMNS;
 }
 
 /**
@@ -1507,6 +1637,13 @@ function redrawStack(next) {
     const doc = drawnDoc();
     if (!doc) throw new Error("no document to open");
     drawn = shapeFor(doc);
+    // RESHAPED AND NOT JUST RE-LAID, so the chart drawn at three columns is the
+    // chart three columns would have drawn: the fold, the caps and the
+    // placeability test all take the tier set, and a document shaped at four
+    // columns and laid out at three would be a fourth shape nothing else
+    // produces. It terminates because each pass adds at least one entry of a
+    // finite `widen` list to the rung's dropped set and never removes one.
+    while (dropEmptyColumns(drawn)) drawn = shapeFor(doc);
     laid = layOut(drawn);
   } catch (e) {
     // BACK TO WHERE THE READER WAS, not to a blank page. shapeFor throws on a
@@ -1958,7 +2095,7 @@ function shapeFor(doc) {
   // and the two filters disagree about what "inside" means (filterFromNode).
   const drawn = (step.keep && step.keep.length)
     ? windowFor(rung.chart, doc, rung)
-    : sideOf(doc, rung, step.tiers, step.side === "source" ? filterFromNode : filterToNode);
+    : sideOf(doc, rung, activeTiers(), step.side === "source" ? filterFromNode : filterToNode);
   // LAST, AFTER THE CAP AND THE FOLD, because neither may touch it: the cap
   // ranks the group's own parts and the residual is not one of them, and the
   // fold merges by folded ends and these ends are the chart above's.
@@ -1973,6 +2110,42 @@ function shapeFor(doc) {
   // sends out, once everything that is going to stand beside it does. Only
   // markContra follows, and it reclassifies ribbons rather than moving a cent.
   return markContra(markGap(carryResidual(drawn, docAt(drilled.length - 1), rung), rung), doc);
+}
+
+/**
+ * Drops a widened column the drawn document left empty, so the chart is laid
+ * out at the columns it has.
+ *
+ * A COLUMN BUDGET IS A REQUEST AND NOT A SHAPE. d3-sankey takes its column
+ * count from TOPOLOGY -- the deepest node -- and clamps the aligner into it, so
+ * a tier set naming a column nothing is drawn in does not draw a narrower chart:
+ * it draws the columns it has, spread across an extent sized for one more, with
+ * every band wider than the one the label rule was measured against. Asking the
+ * drawn document instead is what openableColumns already does one sentence over,
+ * for the same reason: a declaration is not a promise the document fills it.
+ *
+ * DROPPED AND NOT REFUSED. Five of the six fund groups have no tier-4 node at
+ * all -- pp.167-170 decompose the General Fund and no other -- so a widened
+ * window that refused an empty column would turn those five into a banner, and
+ * a reader with a wide screen would be shown less than a reader with a narrow
+ * one. The narrower chart is exactly the one the narrow budget draws.
+ *
+ * ONLY A WIDENED COLUMN. The flank, the centre and the first column of the
+ * decomposition are what the step promised; an empty one of those is a fault in
+ * the view or the document, and sideOf's own guards say so by name.
+ *
+ * @param {FiscProjection} drawn
+ * @returns {boolean} whether anything was dropped
+ */
+function dropEmptyColumns(drawn) {
+  const rung = drilled.length ? drilled[drilled.length - 1] : null;
+  const widen = rung && rung.step.widen ? rung.step.widen : [];
+  if (!widen.length) return false;
+  const has = new Set(drawn.nodes.map((n) => n.tier));
+  const gone = activeTiers().filter((t) => widen.indexOf(t) >= 0 && !has.has(t));
+  if (!gone.length) return false;
+  rung.dropped = (rung.dropped || []).concat(gone);
+  return true;
 }
 
 /**
@@ -2060,8 +2233,17 @@ function sideOf(doc, rung, tiers, filter) {
 }
 
 /**
- * Three columns whose centre is the node the reader clicked: the flank they
- * came from on one side, the step document's decomposition on the other.
+ * A window on the node the reader clicked: the flank they came from on one
+ * side, the step document's decomposition on the other, and that node between
+ * them.
+ *
+ * THREE COLUMNS IS THE NARROWEST SHAPE AND NOT THE ONLY ONE. The flank is as
+ * many columns as the step keeps and the decomposition as many as it draws, so
+ * the centre is at index keep.length from the kept end whatever those are. The
+ * two ends are read the way export.validateSteps reads them -- the kept flank
+ * is Tiers' first keep.length columns REVERSED, because Keep is nearest-centre
+ * first, or its last keep.length in order -- so a declaration that passes the
+ * packager and a chart drawn here cannot disagree about which side is which.
  *
  * TWO QUESTIONS, SO TWO CALLS, AND NEITHER FILTER CHANGES. filterToNode keeps a
  * link whose TARGET is inside the clicked node; filterFromNode keeps one whose
@@ -2072,6 +2254,9 @@ function sideOf(doc, rung, tiers, filter) {
  *
  *   kept flank on the LEFT   kept: filterToNode(on screen), new: filterFromNode(step)
  *   kept flank on the RIGHT  kept: filterFromNode(on screen), new: filterToNode(step)
+ *
+ * EACH HALF IS ASKED FOR THE COLUMNS IT DRAWS, CENTRE INCLUDED, so the two
+ * overlap in exactly one column and the splice has something to splice on.
  *
  * WHICH WAY IT SLIDES IS THE POSITION OF THE KEPT TIER IN THE STEP'S OWN
  * COLUMN ORDER, and internal/export's validateSteps has already refused a step
@@ -2101,29 +2286,39 @@ function sideOf(doc, rung, tiers, filter) {
  */
 function windowFor(onScreen, stepDoc, rung) {
   const step = rung.step;
-  const tiers = step.tiers;
-  const keep = step.keep[0];
-  const at = tiers.indexOf(keep);
-  // ONE KEPT TIER AND NOT TWO, WHICH IS THIS FUNCTION'S OWN BOUND AND NOT THE
-  // PACKAGER'S. export.DrillStep takes a flank more than one column deep and
-  // validateSteps holds it to being contiguous and on one side; what is spelled
-  // below draws three columns and slides by one, so a deeper flank is refused
-  // here in words rather than half-drawn.
-  if (!onScreen || step.keep.length !== 1 || tiers.length !== 3 ||
-      tiers[1] !== step.from || (at !== 0 && at !== 2)) {
+  // THE COLUMNS ON SCREEN AND NOT THE COLUMNS DECLARED. A step may offer more
+  // than the budget draws, and a half shaped at a column the chart does not lay
+  // out would splice in nodes with nowhere to be.
+  const tiers = activeTiers();
+  const keep = step.keep || [];
+  const deep = keep.length;
+  const n = tiers.length;
+  // WHICH END THE FLANK IS AT IS READ OFF THE COLUMN ORDER, exactly as
+  // export.validateSteps reads it: a left flank is the first `deep` columns
+  // reversed, a right flank the last `deep` in order. Neither matching is a
+  // declaration this cannot draw, and a window drawn the wrong way round lays
+  // out fine and means something else -- so it is refused in words.
+  const flank = (/** @type {number[]} */ want) =>
+    want.length === deep && want.every((t, k) => t === keep[k]);
+  const keptLeft = deep > 0 && n >= deep + 2 && flank(tiers.slice(0, deep).reverse());
+  const keptRight = deep > 0 && n >= deep + 2 && flank(tiers.slice(n - deep));
+  const centre = keptLeft ? deep : n - 1 - deep;
+  if (!onScreen || (!keptLeft && !keptRight) || tiers[centre] !== step.from) {
     throw new Error("cannot draw " + stepDoc.projection + ": this step keeps tier(s) " +
-      step.keep.join(", ") + " and draws tiers " + tiers.join(", ") + " opening tier " +
-      step.from + ", which is not a window: a window is three columns with the opened tier " +
-      "in the middle, one kept flank at one end, and a chart on screen to take it from");
+      keep.join(", ") + " and draws tiers " + tiers.join(", ") + " opening tier " +
+      step.from + ", which is not a window: a window is the kept flank at ONE end, " +
+      "outermost first, the opened tier next to it, at least one column of what it " +
+      "opens into, and a chart on screen to take the flank from");
   }
-  const centre = tiers[1];
-  const opens = tiers[at === 0 ? 2 : 0];
-  const kept = at === 0
-    ? sideOf(onScreen, rung, [keep, centre], filterToNode)
-    : sideOf(onScreen, rung, [centre, keep], filterFromNode);
-  const fresh = at === 0
-    ? sideOf(stepDoc, rung, [centre, opens], filterFromNode)
-    : sideOf(stepDoc, rung, [opens, centre], filterToNode);
+  // THE CENTRE IS IN BOTH HALVES, and each half gets the columns on its own
+  // side of it: the flank plus the centre off the chart above, the centre plus
+  // everything the step opens it into off the step's document.
+  const kept = keptLeft
+    ? sideOf(onScreen, rung, tiers.slice(0, centre + 1), filterToNode)
+    : sideOf(onScreen, rung, tiers.slice(centre), filterFromNode);
+  const fresh = keptLeft
+    ? sideOf(stepDoc, rung, tiers.slice(centre), filterFromNode)
+    : sideOf(stepDoc, rung, tiers.slice(0, centre + 1), filterToNode);
 
   // carried_from IS SET WHERE IT IS ABSENT AND NEVER CLEARED. A flank node
   // that was already carried onto the chart above -- a residual's endpoint --
@@ -3281,7 +3476,11 @@ function layOut(doc) {
     // the library. nodeRank puts the crossing count back.
     .nodeSort(/** @param {LaidNode} a @param {LaidNode} b */ (a, b) =>
       nodeRank(a) - nodeRank(b) || b.value - a.value)
-    .extent([[LABEL_GUTTER, 12], [CHART_WIDTH - LABEL_GUTTER, CHART_HEIGHT - 12]]);
+    // THE EXTENT IS SIZED FROM THE COLUMNS THIS CHART DRAWS, and render() reads
+    // the same count for the viewBox: a drawing laid out at one width inside a
+    // viewBox of another is the whole chart stretched or squeezed.
+    .extent([[LABEL_GUTTER, 12],
+      [chartWidth(drawnColumns()) - LABEL_GUTTER, CHART_HEIGHT - 12]]);
 
   // d3-sankey mutates its input, so it gets a copy and the fetched document
   // stays the thing the table and the detail panel read from.
@@ -3375,7 +3574,7 @@ function render(laid) {
   if (!projection) return;
   const graph = laid || layOut(projection);
   const svg = D3.select("#chart");
-  const width = CHART_WIDTH;
+  const width = chartWidth(drawnColumns());
   const height = CHART_HEIGHT;
 
   // No width or height attributes: the viewBox plus width:100% in the

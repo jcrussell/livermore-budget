@@ -1239,8 +1239,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:  3,
 			Role:  "general_fund",
 			Keep:  []int{2},
-			Tiers: []int{2, 3, 4},
-			Caps:  []export.TierCap{{Tier: 4, Cap: 24}},
+			Tiers: []int{2, 3, 4, 5},
+			Widen: []int{5},
+			Caps:  []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "categories"}},
 			Back:  "All funds",
 			Tail:  "divisions",
 			Description: "The fund group this fund belongs to is on the left and the " +

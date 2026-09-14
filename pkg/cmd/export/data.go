@@ -721,14 +721,46 @@ func views(built result) []export.View {
 				// [the group | this fund | the divisions that spend it]. The
 				// step before it draws tier 2 to the LEFT of tier 3, so the
 				// group stays the left column here.
-				Keep:  []int{2},
-				Tiers: []int{2, 3, 4},
+				Keep: []int{2},
+				// A FOURTH COLUMN WHERE THERE IS ROOM FOR ONE, and tier 5 is
+				// what is there to draw: pp.167-170 print each of fund/100's 23
+				// divisions against the object categories it spends on, so the
+				// document carries 44 cells at tier 5 under those divisions and
+				// one 4->5 link each. Measured over the committed goldens, both
+				// columns: 6 nodes and 6 links at tiers {2,3}, 23 and 23 at
+				// {3,4}, 44 and 44 at {4,5} -- every adjacent pair of these four
+				// columns carries ribbons, which is the condition a sankey band
+				// is counted under (tools/jscheck/layout.mjs bands()).
+				//
+				// BOTH DECLARATIONS, AND THEY SAY DIFFERENT THINGS. Tiers is
+				// where the column is drawn -- at the end away from the kept
+				// flank, which is what makes the widening's side derivable --
+				// and Widen is which of those columns a client with less room
+				// does without, in the order it drops them. validateSteps
+				// refuses either one alone.
+				Tiers: []int{2, 3, 4, 5},
+				Widen: []int{5},
 				// THE DIVISION CAP HAS NEVER ENGAGED AND IS PINNED INERT: 23
 				// divisions against 24 in both committed columns. It is carried
 				// at the width it was declared at rather than tightened,
 				// because tightening it would fold a column no reader has ever
 				// seen folded on the strength of no measurement.
-				Caps: []export.TierCap{{Tier: 4, Cap: 24}},
+				//
+				// THE TIER-5 CAP IS WHAT MAKES THE WIDENED COLUMN DRAWABLE, and
+				// it is the fund-group cap's argument one column further out.
+				// Measured over the committed goldens at four columns, both
+				// years: uncapped, the 44 cells lay out as 44 marks with 11
+				// ribbons under a pixel and 11 nodes of no height at all --
+				// which is the state that cap's comment calls undrawable.
+				// Capped, the column draws 8 cells and a tail, no node is
+				// height-less and the 2 ribbons left under a pixel are the
+				// division column's own, at the same widths the three-column
+				// window draws them.
+				//
+				// AND IT NAMES ITS OWN NOUN, because the step's counts
+				// divisions: the tail read "36 smaller divisions" over a column
+				// of object-category cells before this Tail was declared.
+				Caps: []export.TierCap{{Tier: 4, Cap: 24}, {Tier: 5, Cap: 8, Tail: "categories"}},
 				Back: "All funds",
 				Tail: "divisions",
 				// WHAT THIS CENTRE DOES NOT CLAIM, said in the chart's own
