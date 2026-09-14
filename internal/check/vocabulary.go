@@ -227,16 +227,28 @@ var departmentSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 // is what reads it. Four claims, and the first is the one the other three used to
 // stand in for:
 //
-//   - the slug names a division data/departments.yaml lists, so a fact whose
-//     `department` joins to nothing cannot be published;
+//   - the slug names a division OR a department data/departments.yaml lists, so
+//     a fact whose `department` joins to nothing cannot be published;
 //   - the slug is well formed, so `Police` and `police_dept` are caught, and are
 //     reported as the shape problem they are rather than as a missing entry;
 //   - the same department is spelled one way across the whole store;
 //   - no department collides with a data/taxonomy.yaml category slug, which is
 //     the near miss the taxonomy warns about.
 //
+// THE FIRST CLAIM SPANS TWO TIERS, AND THAT WEAKENS NOTHING MEASURABLE. The
+// field holds a division on pp.167-170 and on pp.85-125's upper block, and a
+// DEPARTMENT on pp.85-125's Department Funding Sources block, whose schedule is
+// printed per department with no division on it — six of the eleven departments
+// are not division slugs, so one tier cannot hold both populations. What keeps
+// "resolves" from becoming "matches something, somewhere" is that the two tiers
+// are each closed and disjoint from the category axis: data/departments.yaml
+// refuses a duplicate slug within a tier and refuses EITHER tier's slug that is
+// also a data/taxonomy.yaml category, and the summary below reports the two
+// tiers separately, so a schedule silently resolving at the wrong grain shows up
+// as a count rather than passing unseen.
+//
 // THE LAST TWO ARE NOW BELT AND BRACES, and they stay. The registry refuses a
-// division whose slug is a category slug, so a resolving department cannot
+// slug that is a category slug on both tiers, so a resolving department cannot
 // collide — but this check is written against the [Vocabulary] interface rather
 // than against that one implementation, and an assertion that is currently
 // implied by a loader is not the same thing as one nobody makes.
@@ -254,8 +266,9 @@ func (*factDepartmentsResolve) ID() string { return "fact-departments-resolve" }
 func (*factDepartmentsResolve) Tier() int  { return 1 }
 func (*factDepartmentsResolve) Full() bool { return false }
 func (*factDepartmentsResolve) Description() string {
-	return "every department a fact carries is a division data/departments.yaml lists: a " +
-		"well-formed slug, spelled one way, that no category slug collides with"
+	return "every department a fact carries is a division or a department " +
+		"data/departments.yaml lists: a well-formed slug, spelled one way, that no " +
+		"category slug collides with"
 }
 
 func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error) {
@@ -263,6 +276,12 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 	subjects := 0
 	spellings := map[string][]string{} // normalized -> spellings as written
 	departments := map[string]bool{}
+	// Counted per TIER and reported separately below. One total would let the
+	// whole of pp.85-125 resolve at the department grain when it was meant to
+	// resolve at the division grain, or the reverse, and say the same number
+	// either way.
+	divisionFacts, departmentFacts := 0, 0
+	divisionSlugs, departmentSlugs := map[string]bool{}, map[string]bool{}
 
 	for _, f := range s.Facts {
 		if f.Department == "" {
@@ -289,10 +308,25 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 					"one segment", f.DocID, f.Page, f.RowLabel, f.Department))
 			continue
 		}
-		if _, ok := s.Vocabulary.Division(f.Department); !ok {
+		// Division first, then department, and a slug naming both counts as a
+		// division: five slugs name both tiers, because the city prints a
+		// department with a single division of the same name. The division is
+		// the finer grain and the one every rule that predates the funding
+		// schedule meant, so reading it as the coarser one would silently
+		// re-grain those facts in the tier counts below.
+		_, isDivision := s.Vocabulary.Division(f.Department)
+		switch {
+		case isDivision:
+			divisionFacts++
+			divisionSlugs[f.Department] = true
+		case s.Vocabulary.Department(f.Department):
+			departmentFacts++
+			departmentSlugs[f.Department] = true
+		default:
 			findings = append(findings, finding(f.ID,
-				"%s p%d %q: department %q is not a division %s lists, so the fact joins to "+
-					"nothing", f.DocID, f.Page, f.RowLabel, f.Department, departmentsFile))
+				"%s p%d %q: department %q is neither a division nor a department %s lists, "+
+					"so the fact joins to nothing",
+				f.DocID, f.Page, f.RowLabel, f.Department, departmentsFile))
 		}
 	}
 
@@ -311,9 +345,10 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 	return conclusion{
 		subjects: subjects,
 		unit:     "departments",
-		held: fmt.Sprintf("%d facts name one of %d divisions, each listed in %s: %s",
-			subjects, len(departments), departmentsFile,
-			joinComma(slices.Sorted(maps.Keys(departments)))),
+		held: fmt.Sprintf("%d facts name one of %d divisions and %d facts name one of %d "+
+			"departments, each listed in %s: %s",
+			divisionFacts, len(divisionSlugs), departmentFacts, len(departmentSlugs),
+			departmentsFile, joinComma(slices.Sorted(maps.Keys(departments)))),
 		nothing: "no fact carries a department: the citywide spine crosses category against " +
 			"fund group and has no department axis (pp.167-170 are fisc-5gk.2)",
 		findings: findings,

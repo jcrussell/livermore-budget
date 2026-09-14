@@ -46,6 +46,7 @@ func (noVocabulary) FundByLabel(label string) (registry.Fund, error) {
 func (noVocabulary) Division(string) (registry.Division, bool) {
 	return registry.Division{}, false
 }
+func (noVocabulary) Department(string) bool { return false }
 
 var _ check.Vocabulary = noVocabulary{}
 

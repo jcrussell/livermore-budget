@@ -597,13 +597,30 @@ func (r *Registry) Division(slug string) (Division, bool) {
 	return d.clone(), true
 }
 
-// department returns the departments.yaml entry for slug — the ALL-CAPS tier,
-// which no fact names directly.
+// Department reports whether slug is a department departments.yaml lists — the
+// ALL-CAPS tier.
+//
+// It answers a predicate rather than returning the entry because the entry's
+// type is unexported and a consumer's narrow interface could not name it. What
+// a consumer needs from this tier is whether a fact's `department` field joins:
+// Budget Book pp.85-125's funding-source rows name a DEPARTMENT where every
+// other department-bearing rule names a division, and six of the eleven
+// departments are not division slugs.
+func (r *Registry) Department(slug string) bool {
+	_, ok := r.departments[slug]
+	return ok
+}
+
+// departmentEntry returns the departments.yaml entry for slug.
+//
+// It is named apart from [Registry.Department] rather than overloading it: a
+// predicate and an accessor differing only in case is a pair a reader has to
+// look up, and the two are asked for by different callers.
 //
 // It exists because Division.Department is a slug, and a parent nothing can
 // resolve is a field a consumer cannot use: whoever holds a Division and wants
 // the heading above it needs this.
-func (r *Registry) department(slug string) (department, bool) {
+func (r *Registry) departmentEntry(slug string) (department, bool) {
 	d, ok := r.departments[slug]
 	if !ok {
 		return department{}, false

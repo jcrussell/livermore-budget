@@ -339,10 +339,19 @@ divisions:
 // fs.FS, so the tests exercise the real validation rather than a stub.
 func testVocabulary(t *testing.T) *registry.Registry {
 	t.Helper()
+	return vocabularyWithDepartments(t, testDepartmentsYAML)
+}
+
+// vocabularyWithDepartments is testVocabulary with departments.yaml supplied by
+// the caller, for a test whose subject is the department axis itself. It still
+// goes through Load, so a fixture that the real file's rules would refuse fails
+// here rather than standing in for one.
+func vocabularyWithDepartments(t *testing.T, departments string) *registry.Registry {
+	t.Helper()
 	reg, err := registry.Load(fstest.MapFS{
 		registry.FundsFile:       &fstest.MapFile{Data: []byte(testFundsYAML)},
 		registry.TaxonomyFile:    &fstest.MapFile{Data: []byte(testTaxonomyYAML)},
-		registry.DepartmentsFile: &fstest.MapFile{Data: []byte(testDepartmentsYAML)},
+		registry.DepartmentsFile: &fstest.MapFile{Data: []byte(departments)},
 	})
 	if err != nil {
 		t.Fatalf("load the fixture registries: %v", err)

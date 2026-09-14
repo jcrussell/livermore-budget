@@ -586,7 +586,8 @@ func TestTheCommittedTaxonomyTellsTheTransferDirectionsApart(t *testing.T) {
 // It is the clause the other three used to stand in for, and it is the one that
 // makes the axis a controlled vocabulary rather than a set of free strings the
 // check happens to like the shape of: a well-formed, consistently spelled,
-// non-colliding department that names no division still joins to nothing.
+// non-colliding department that names neither a division nor a department still
+// joins to nothing.
 //
 // The subject is built without a projection: internal/project refuses a
 // department-carrying fact outright, which is a different and also correct answer
@@ -599,8 +600,12 @@ func TestDepartmentsResolveAgainstTheRegistry(t *testing.T) {
 		want   string
 	}{
 		{"a listed division", "patrol", StatusPass, ""},
-		{"a division the registry does not list", "traffic", StatusFail,
-			`department "traffic" is not a division data/departments.yaml lists`},
+		// Either tier resolves: pp.85-125's funding-source rows name a
+		// DEPARTMENT, and `police-department` is one the fixture lists that
+		// names no division.
+		{"a listed department", "police-department", StatusPass, ""},
+		{"a slug the registry lists on neither tier", "traffic", StatusFail,
+			`department "traffic" is neither a division nor a department data/departments.yaml lists`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

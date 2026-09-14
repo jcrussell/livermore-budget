@@ -538,7 +538,7 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		"city-council", "city-manager", "city-attorney",
 		"general-services", "administrative-services",
 	} {
-		if _, ok := r.department(slug); !ok {
+		if _, ok := r.departmentEntry(slug); !ok {
 			t.Errorf("Department(%q) not found; it names both tiers", slug)
 		}
 		if _, ok := r.Division(slug); !ok {
@@ -563,7 +563,7 @@ func TestDepartmentsRegistryMatchesThePages(t *testing.T) {
 		if d.Label == "" {
 			t.Errorf("division %q has no label", d.Slug)
 		}
-		if _, ok := r.department(d.Department); !ok {
+		if _, ok := r.departmentEntry(d.Department); !ok {
 			t.Errorf("division %q names department %q, which does not resolve", d.Slug, d.Department)
 		}
 	}
@@ -596,7 +596,7 @@ func TestPublicWorksHeadingIsNotItsTotalRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load(%s): %v", realData, err)
 	}
-	d, ok := r.department("public-works")
+	d, ok := r.departmentEntry("public-works")
 	if !ok {
 		t.Fatal(`Department("public-works") not found`)
 	}

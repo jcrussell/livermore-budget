@@ -81,6 +81,19 @@ type Vocabulary interface {
 	// returns rather than for the field it answers about, so a reader here is
 	// told which tier resolves.
 	Division(slug string) (registry.Division, bool)
+	// Department reports whether slug is a department data/departments.yaml
+	// lists — the ALL-CAPS tier above [Vocabulary.Division].
+	//
+	// The `department` field holds EITHER tier, which is the document's doing
+	// rather than a relaxation: pp.167-170 and pp.85-125's upper block print a
+	// division per row, and pp.85-125's Department Funding Sources block prints
+	// one schedule PER DEPARTMENT with no division on it. Six of the eleven
+	// departments are not division slugs, so a check that resolved only
+	// divisions could not accept that schedule's natural axis at all.
+	//
+	// It is a predicate and not an accessor because the registry's department
+	// type is unexported; what this package needs is whether the fact joins.
+	Department(slug string) bool
 	// Funds is every fund the registry lists. The checks read it to learn the
 	// constraint tiers the file actually uses, rather than carrying a second
 	// copy of that closed vocabulary.
