@@ -286,6 +286,7 @@ rules:
     kind: revenue
     basis: audited
     scope: probe
+    grain: fund-group-by-category
     units: millions
     total_row: "Total Revenues"
     parts:
@@ -320,6 +321,7 @@ rules:
     kind: expenditure
     basis: audited
     scope: probe
+    grain: fund-group-by-category
     units: millions
     printed_decimals: 2
     total_row: "General Government:"

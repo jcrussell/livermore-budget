@@ -309,10 +309,26 @@ type Rollup struct {
 
 // Rule maps a contiguous block of rows into facts.
 type Rule struct {
-	ID    string       `yaml:"id"`
-	Kind  Kind         `yaml:"kind"`
-	Basis Basis        `yaml:"basis"`
-	Scope string       `yaml:"scope"`
+	ID    string `yaml:"id"`
+	Kind  Kind   `yaml:"kind"`
+	Basis Basis  `yaml:"basis"`
+	Scope string `yaml:"scope"`
+	// Grain names the lattice level this rule's figures are totals at: which
+	// of fund_group, fund, department and category the table it reads has an
+	// axis for. A rule reads one table at one grain, so it is a claim about
+	// the PAGE, made once, beside the scope -- and it is REQUIRED on a rule
+	// that publishes a fact and REFUSED on one that publishes none. A grain
+	// declared over zero facts is a declaration nothing can check against the
+	// store, which is the one shape a declaration here must not have; the two
+	// ACFR rules whose every row is skipped say what they read without saying
+	// what grain it would be at.
+	//
+	// THE PARSER CHECKS PRESENCE AND NOTHING ELSE. The level vocabulary and
+	// the derivation that checks a declaration against the axes a rule's facts
+	// populate live in internal/structure, which reads this package and so
+	// cannot be read by it. A grain that names no level, or one that names the
+	// wrong level, is refused there, over the whole store, by rule and by name.
+	Grain string       `yaml:"grain"`
 	Units amount.Units `yaml:"units"`
 
 	// Parts are the pages this logical table spans, in document order.

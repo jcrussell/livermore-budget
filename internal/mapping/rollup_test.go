@@ -52,6 +52,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -68,6 +69,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -91,6 +93,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -242,6 +245,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -434,6 +438,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -449,6 +454,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -536,6 +542,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -551,6 +558,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -620,6 +628,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:
@@ -635,6 +644,7 @@ rules:
     kind: expenditure
     basis: revised
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total"
     rows:

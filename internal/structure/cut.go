@@ -8,10 +8,12 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// A RULE READS ONE TABLE AT ONE GRAIN, which is what lets the level be derived
-// rather than declared while the fact format still carries no grain field.
-// Measured over the committed store: of the rules that produce facts, every one
-// populates a single axis union.
+// A RULE READS ONE TABLE AT ONE GRAIN, and says which in mappings/*.yaml as
+// its `grain:`. The declaration is what the lattice reads; the derivation below
+// is what makes it worth reading. Measured over the committed store: of the
+// rules that produce facts, every one populates a single axis union, so the
+// two can be compared rule by rule and a declaration the facts do not bear out
+// is refused rather than trusted.
 //
 // THE UNION IS OVER THE RULE'S FACTS, NOT PER FACT, and the difference is the
 // whole point. p76-transfers-in-enterprise sets a fund on 22 of its 24 facts
@@ -47,13 +49,39 @@ func ruleAxes(facts []fact.Fact) map[string]map[Axis]bool {
 	return out
 }
 
-// LevelOfRule is each rule's grain, derived from the axes its facts populate.
+// LevelOfRule is each fact-publishing rule's declared grain, checked against
+// the axes its facts populate.
+//
+// OVER THE WHOLE STORE AND EVERY RULE FILE, because four things are refused and
+// a subset of either would hide one: a grain naming no declared level; a rule
+// publishing facts with no grain declared; a declared grain the facts
+// contradict, named with both levels; and a grain declared on a rule the store
+// carries no fact for, which nothing could check. The parser refuses the last
+// two shapes it can see -- a missing grain on a publishing rule and a grain on
+// a rule whose every row or column is skipped -- and this is where the rest
+// is settled, against the facts rather than the YAML.
 //
 // A RULE WHOSE AXIS UNION MATCHES NO DECLARED LEVEL IS AN ERROR, never a
 // nearest match. A grain the lattice cannot name is a schedule nothing can
 // compare, and silently rounding it to a neighbour would compare it against
 // money it does not decompose.
-func LevelOfRule(facts []fact.Fact) (map[string]Level, error) {
+func LevelOfRule(facts []fact.Fact, files []*mapping.File) (map[string]Level, error) {
+	declared := map[string]Level{}
+	for _, f := range files {
+		for i := range f.Rules {
+			r := &f.Rules[i]
+			if r.Grain == "" {
+				continue
+			}
+			l := Level(r.Grain)
+			if !Declared(l) {
+				return nil, fmt.Errorf("rule %q declares grain %q, which is not a declared "+
+					"level; the levels are %v", r.ID, r.Grain, Levels())
+			}
+			declared[r.ID] = l
+		}
+	}
+
 	byAxes := map[string]Level{}
 	for l, axes := range levelAxes {
 		byAxes[axisKey(axes)] = l
@@ -64,12 +92,27 @@ func LevelOfRule(facts []fact.Fact) (map[string]Level, error) {
 		for a := range set {
 			axes = append(axes, a)
 		}
-		l, ok := byAxes[axisKey(axes)]
+		derived, ok := byAxes[axisKey(axes)]
 		if !ok {
 			return nil, fmt.Errorf("rule %q populates axes %s, which no declared level names",
 				rule, axisKey(axes))
 		}
-		out[rule] = l
+		want, ok := declared[rule]
+		if !ok {
+			return nil, fmt.Errorf("rule %q publishes facts at %q and declares no grain",
+				rule, derived)
+		}
+		if want != derived {
+			return nil, fmt.Errorf("rule %q declares grain %q, but its facts populate %s, "+
+				"which is level %q", rule, want, axisKey(axes), derived)
+		}
+		out[rule] = want
+	}
+	for rule, l := range declared {
+		if _, ok := out[rule]; !ok {
+			return nil, fmt.Errorf("rule %q declares grain %q and the store carries no fact "+
+				"of it; a grain over zero facts cannot be checked", rule, l)
+		}
 	}
 	return out, nil
 }

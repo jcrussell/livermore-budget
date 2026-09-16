@@ -24,6 +24,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     rows:
       - {label: "` + first + `", label_tail: "` + tail + `", category: "transfers/in"}
@@ -70,6 +71,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     rows:
       - {label: "Transfer From General Fund", label_tail: "to Stormwater", category: "transfers/in"}
@@ -253,6 +255,7 @@ rules:
   - id: r
     kind: revenue
     basis: adopted
+    grain: category
     units: dollars
     parts: [{page: 1, columns: [{fiscal_year: 2026}]}]
     rows:

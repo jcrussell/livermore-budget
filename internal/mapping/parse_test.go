@@ -79,6 +79,7 @@ rules:
   - id: dupe
     kind: revenue
     basis: adopted
+    grain: fund-group-by-category
     units: dollars
     parts: [{page: 1, columns: [{fund_group: general, fiscal_year: 2026}]}]
     rows: [{label: "A", category: a}]
@@ -100,7 +101,7 @@ func TestLoadDirIsDeterministic(t *testing.T) {
 	mk := func(doc, id string) string {
 		return "schema_version: 1\ndoc_id: " + doc + "\nrules:\n  - id: " + id +
 			"\n    kind: revenue\n    basis: adopted\n" +
-			"    units: dollars\n    parts: [{page: 1, columns: [{fiscal_year: 2026}]}]\n" +
+			"    grain: category\n    units: dollars\n    parts: [{page: 1, columns: [{fiscal_year: 2026}]}]\n" +
 			"    rows: [{label: \"A\", category: a}]\n"
 	}
 	fsys := fstest.MapFS{
@@ -336,7 +337,7 @@ func TestFutureSchemaVersionHasAHint(t *testing.T) {
 // rule so tests can introduce one specific defect.
 func base(extra string) string {
 	return "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n" +
-		"    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		"    kind: revenue\n    basis: adopted\n    grain: category\n    units: dollars\n" +
 		"    parts: [{page: 1, columns: [{fiscal_year: 2026}]}]\n" +
 		"    rows:\n      - {label: \"A\", category: a}\n" + extra
 }
@@ -459,7 +460,7 @@ func headerRule(headers string) string {
 // about a null entry -- which are claims about the COLUMN opposite it.
 func headerRuleCols(columns, headers string) string {
 	return "schema_version: 1\ndoc_id: d\nrules:\n  - id: r\n" +
-		"    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		"    kind: revenue\n    basis: adopted\n    grain: category\n    units: dollars\n" +
 		"    parts:\n      - page: 1\n" +
 		"        columns: " + columns + "\n" +
 		"        column_headers: " + headers + "\n" +
@@ -625,8 +626,8 @@ func TestParseRejectsDisagreeingColumnHeaders(t *testing.T) {
 				"    rows:\n      - {label: \"A\", category: a}\n"
 		}
 		return "schema_version: 1\ndoc_id: d\nrules:\n" +
-			"  - id: first\n    kind: revenue\n    basis: adopted\n    units: dollars\n" + part(a) +
-			"  - id: second\n    kind: expenditure\n    basis: adopted\n    units: dollars\n" + part(b)
+			"  - id: first\n    kind: revenue\n    basis: adopted\n    grain: category\n    units: dollars\n" + part(a) +
+			"  - id: second\n    kind: expenditure\n    basis: adopted\n    grain: category\n    units: dollars\n" + part(b)
 	}
 
 	agree := `["FY 2025-26", "FY 2026-27"]`
@@ -660,9 +661,9 @@ func TestParseRejectsAPartLeftOutOfTheColumnGuard(t *testing.T) {
 		return s + "    rows:\n      - {label: \"A\", category: a}\n"
 	}
 	src := "schema_version: 1\ndoc_id: d\nrules:\n" +
-		"  - id: guarded\n    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		"  - id: guarded\n    kind: revenue\n    basis: adopted\n    grain: category\n    units: dollars\n" +
 		part(`["FY 2025-26", "FY 2026-27"]`) +
-		"  - id: unguarded\n    kind: expenditure\n    basis: adopted\n    units: dollars\n" +
+		"  - id: unguarded\n    kind: expenditure\n    basis: adopted\n    grain: category\n    units: dollars\n" +
 		part("")
 
 	_, err := parse(strings.NewReader(src), "headers.yaml")
@@ -682,7 +683,7 @@ func TestParseRejectsAPartLeftOutOfTheColumnGuard(t *testing.T) {
 func TestLoadDirRejectsGridsDisagreeingAcrossFiles(t *testing.T) {
 	file := func(rule, headers string) string {
 		return "schema_version: 1\ndoc_id: shared-doc\nrules:\n  - id: " + rule +
-			"\n    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+			"\n    kind: revenue\n    basis: adopted\n    grain: category\n    units: dollars\n" +
 			"    parts:\n      - page: 1\n" +
 			"        columns: [{fiscal_year: 2026}, {fiscal_year: 2027}]\n" +
 			"        column_headers: " + headers + "\n" +

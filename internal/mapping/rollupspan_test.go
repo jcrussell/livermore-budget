@@ -28,6 +28,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Alpha"
     parts:
@@ -42,6 +43,7 @@ rules:
     kind: #KIND
     basis: adopted
     scope: #SCOPE
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Beta"
     parts:
@@ -188,6 +190,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Alpha"
     parts:

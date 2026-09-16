@@ -943,7 +943,57 @@ func validateRule(r *Rule, errf errFunc) error {
 	if err := validateRowLabelFunds(r, errf); err != nil {
 		return err
 	}
-	return validateTotalSpansParts(r, errf)
+	if err := validateTotalSpansParts(r, errf); err != nil {
+		return err
+	}
+	// Last, so that a rule refused for its own shape is refused for that and
+	// not for the declaration it is missing over it.
+	return validateGrain(r, errf)
+}
+
+// validateGrain holds a rule to Rule.Grain's two refusals: a publishing rule
+// declares one, a rule that publishes nothing does not.
+func validateGrain(r *Rule, errf errFunc) error {
+	switch {
+	case r.publishes() && r.Grain == "":
+		return cmdutil.WithHint(
+			errf(r.ID, "grain", "is required on a rule that publishes facts"),
+			"name the lattice level the table is printed at -- which of fund_group, "+
+				"fund, department and category it has an axis for; internal/structure "+
+				"checks the name against the facts the rule publishes")
+	case !r.publishes() && r.Grain != "":
+		return cmdutil.WithHint(
+			errf(r.ID, "grain", "is %q, but every row or every column of this rule is "+
+				"skipped or non-amount, so it publishes no fact", r.Grain),
+			"a grain declared over zero facts cannot be checked against the store; "+
+				"remove it until the rule publishes")
+	}
+	return nil
+}
+
+// publishes says whether any cell of this rule can become a fact: a row that
+// is neither skipped nor a non-amount quantity, read in a column that is
+// neither. Either alone publishes nothing.
+func (r *Rule) publishes() bool {
+	row := false
+	for i := range r.Rows {
+		if !r.Rows[i].Skip && r.Rows[i].Quantity == "" {
+			row = true
+			break
+		}
+	}
+	if !row {
+		return false
+	}
+	for i := range r.Parts {
+		for j := range r.Parts[i].Columns {
+			c := &r.Parts[i].Columns[j]
+			if !c.Skip && c.Quantity == "" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // validatePrintedDecimals checks the preconditions of a document-derived

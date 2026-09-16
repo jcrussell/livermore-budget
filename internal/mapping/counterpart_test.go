@@ -326,6 +326,7 @@ rules:
   - id: r
     kind: transfer_in
     basis: adopted
+    grain: fund-by-category
     units: dollars
     parts:
       - page: 76
@@ -371,6 +372,7 @@ rules:
   - id: r
     kind: transfer_in
     basis: adopted
+    grain: fund-by-category
     units: dollars
     parts:
       - page: 76
@@ -407,6 +409,7 @@ rules:
   - id: r
     kind: transfer_in
     basis: adopted
+    grain: fund-by-category
     units: dollars
     parts:
       - page: 76

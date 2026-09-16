@@ -223,7 +223,7 @@ func propertyTaxRule(t *testing.T) (*mapping.File, *mapping.Rule) {
 		Rules: []mapping.Rule{{
 			ID:   "gf-property-tax-detail",
 			Kind: mapping.KindRevenue, Basis: mapping.BasisAdopted,
-			Scope: "general-fund", Units: amount.Dollars,
+			Scope: "general-fund", Grain: "fund-group-by-category", Units: amount.Dollars,
 			TotalRow: "Total Property Taxes",
 			Rows:     rows,
 			Parts: []mapping.Part{{

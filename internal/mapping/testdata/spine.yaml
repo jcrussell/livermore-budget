@@ -14,6 +14,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "TOTAL REVENUES:"
     note: >-
@@ -87,6 +88,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "TOTAL EXPENDITURES:"
     note: >-

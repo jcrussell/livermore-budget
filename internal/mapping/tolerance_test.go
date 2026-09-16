@@ -159,6 +159,7 @@ rules:
     kind: transfer_in
     basis: audited
     scope: probe
+    grain: fund-group-by-category
     units: millions
     printed_decimals: 2
     total_row: "Total Other Financing Sources (Uses)"
@@ -359,6 +360,7 @@ rules:
     kind: revenue
     basis: audited
     scope: probe
+    grain: fund-group-by-category
     units: millions
     parts:
       - page: 41
@@ -508,6 +510,7 @@ rules:
     kind: revenue
     basis: audited
     scope: probe
+    grain: fund-group-by-category
     units: millions
     parts:
       - page: 41

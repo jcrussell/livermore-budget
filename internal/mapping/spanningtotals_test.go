@@ -28,6 +28,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total Environmental Services"
     #SPANS

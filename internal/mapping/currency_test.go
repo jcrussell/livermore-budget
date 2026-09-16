@@ -30,6 +30,7 @@ rules:
     kind: expenditure
     basis: actual
     scope: acfr-statistical
+    grain: fund-group-by-category
     units: dollars
     rows:
       - {label: "2016", category: debt-services}

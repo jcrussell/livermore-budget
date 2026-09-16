@@ -41,6 +41,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       Nine transfers into the General Fund. The section anchor carries its
@@ -88,6 +89,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       The first four transfers into Enterprise funds. The block stops at
@@ -130,6 +132,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       The rest of the Enterprise section, resumed after the wrapped label.
@@ -170,6 +173,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       Three transfers servicing debt. Two are paid by the General Fund; the
@@ -208,6 +212,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       One transfer, and the only published money this project has found for
@@ -248,6 +253,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       Three transfers into Special Revenue funds, and the last section on the

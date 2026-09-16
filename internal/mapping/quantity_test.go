@@ -88,6 +88,7 @@ rules:
     kind: revenue
     basis: audited
     scope: quantity-scope
+    grain: category
     units: dollars
     rows:
 ` + rows + `
@@ -193,6 +194,7 @@ rules:
     kind: revenue
     basis: audited
     scope: ratio-scope
+    grain: fund-group-by-category
     units: dollars
     rows:
       - {label: "Taxes", category: taxes/other}

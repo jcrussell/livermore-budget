@@ -24,6 +24,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: all-funds-gross
+    grain: fund-by-category
     units: dollars
     total_row: "Total Property Taxes"
     rows:

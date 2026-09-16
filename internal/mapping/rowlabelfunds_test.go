@@ -16,6 +16,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
 #DECL

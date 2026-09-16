@@ -3,11 +3,13 @@ package structure_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
@@ -29,6 +31,107 @@ func committedFacts(t *testing.T) []fact.Fact {
 		t.Fatalf("read the committed fact store: %v", err)
 	}
 	return facts
+}
+
+// committedFiles reads every rule file under mappings/, which is where each
+// rule declares its grain.
+func committedFiles(t *testing.T) []*mapping.File {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve the repository root: %v", err)
+	}
+	files, err := mapping.LoadDir(os.DirFS(root), "mappings")
+	if err != nil {
+		t.Fatalf("load the committed rule files: %v", err)
+	}
+	return files
+}
+
+// ruleDeclaring finds one rule declared at the given level, so a test can
+// mutate a declaration the store bears out rather than invent a rule.
+func ruleDeclaring(t *testing.T, files []*mapping.File, level structure.Level) *mapping.Rule {
+	t.Helper()
+	for _, f := range files {
+		for i := range f.Rules {
+			if f.Rules[i].Grain == string(level) {
+				return &f.Rules[i]
+			}
+		}
+	}
+	t.Fatalf("no committed rule declares grain %q; the fixture no longer covers this", level)
+	return nil
+}
+
+// TestADeclaredGrainIsHeldToTheFactsThatBearItOut is the whole reason the
+// declaration is worth having: `grain:` says what the page is printed at, and
+// the axes the rule's facts populate say the same thing from the store's side,
+// so the two are compared rule by rule and every way they can disagree is
+// refused with the rule named. A declaration nothing compares would be the
+// shape Rule.PrintedDecimals' doc comment calls the one a declaration here must
+// not have.
+//
+// Each arm mutates the committed declarations in memory and reads the refusal
+// off LevelOfRule, so the arm that goes red for a wrong `grain:` in
+// mappings/*.yaml is this one, run over the real store.
+func TestADeclaredGrainIsHeldToTheFactsThatBearItOut(t *testing.T) {
+	facts := committedFacts(t)
+
+	t.Run("a coarser grain than the facts populate names the rule and both levels", func(t *testing.T) {
+		files := committedFiles(t)
+		r := ruleDeclaring(t, files, structure.LevelFundByCategory)
+		r.Grain = string(structure.LevelFundGroupByCategory)
+		_, err := structure.LevelOfRule(facts, files)
+		if err == nil {
+			t.Fatal("a rule declaring fund-group-by-category over facts that name a fund was accepted")
+		}
+		for _, want := range []string{r.ID, `"fund-group-by-category"`, `"fund-by-category"`} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("refusal %q does not name %s", err, want)
+			}
+		}
+	})
+
+	t.Run("a grain naming no declared level is refused by name", func(t *testing.T) {
+		files := committedFiles(t)
+		r := ruleDeclaring(t, files, structure.LevelFundByCategory)
+		r.Grain = "fund-by-anything"
+		_, err := structure.LevelOfRule(facts, files)
+		if err == nil || !strings.Contains(err.Error(), r.ID) ||
+			!strings.Contains(err.Error(), `"fund-by-anything"`) {
+			t.Fatalf("LevelOfRule = %v, want a refusal naming the rule and the level it invented", err)
+		}
+	})
+
+	t.Run("a publishing rule that declares no grain is refused", func(t *testing.T) {
+		files := committedFiles(t)
+		r := ruleDeclaring(t, files, structure.LevelFundByCategory)
+		r.Grain = ""
+		_, err := structure.LevelOfRule(facts, files)
+		if err == nil || !strings.Contains(err.Error(), r.ID) ||
+			!strings.Contains(err.Error(), "declares no grain") {
+			t.Fatalf("LevelOfRule = %v, want a refusal naming the rule that publishes without a grain", err)
+		}
+	})
+
+	t.Run("a grain declared over no fact in the store is refused", func(t *testing.T) {
+		files := committedFiles(t)
+		r := ruleDeclaring(t, files, structure.LevelFundByCategory)
+		kept := make([]fact.Fact, 0, len(facts))
+		for i := range facts {
+			if facts[i].RuleID != r.ID {
+				kept = append(kept, facts[i])
+			}
+		}
+		if len(kept) == len(facts) {
+			t.Fatalf("rule %q has no facts to drop; the fixture no longer covers this", r.ID)
+		}
+		_, err := structure.LevelOfRule(kept, files)
+		if err == nil || !strings.Contains(err.Error(), r.ID) ||
+			!strings.Contains(err.Error(), "no fact") {
+			t.Fatalf("LevelOfRule = %v, want a refusal naming the rule whose grain nothing bears out", err)
+		}
+	})
 }
 
 // TestMeetIsTheGrainTwoCutsAgreeAt pins the four shapes the comparison depends
@@ -81,7 +184,7 @@ func TestALevelDoesNotRefineItself(t *testing.T) {
 // other governmental funds aggregated, so `scope` cannot carry the grain.
 func TestEveryRuleInTheStoreSitsAtADeclaredLevel(t *testing.T) {
 	facts := committedFacts(t)
-	byRule, err := structure.LevelOfRule(facts)
+	byRule, err := structure.LevelOfRule(facts, committedFiles(t))
 	if err != nil {
 		t.Fatalf("derive each rule's level: %v", err)
 	}
@@ -109,7 +212,7 @@ func TestEveryRuleInTheStoreSitsAtADeclaredLevel(t *testing.T) {
 // store instead of trusting it, and holds the placeholder rule to its reason.
 func TestEveryDeclaredCutSitsAtTheLevelItDeclares(t *testing.T) {
 	facts := committedFacts(t)
-	byRule, err := structure.LevelOfRule(facts)
+	byRule, err := structure.LevelOfRule(facts, committedFiles(t))
 	if err != nil {
 		t.Fatalf("derive each rule's level: %v", err)
 	}

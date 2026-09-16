@@ -144,6 +144,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "TOTAL REVENUES:"
     note: >-
@@ -225,6 +226,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "TOTAL EXPENDITURES:"
     note: >-
@@ -308,6 +310,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       One row: "TRANSFER IN:", money moving between the city's own funds. It
@@ -382,6 +385,7 @@ rules:
     kind: transfer_out
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       One row: "TRANSFER OUT:", the other leg of the internal transfers. Padded
@@ -451,6 +455,7 @@ rules:
     kind: fund_balance
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     note: >-
       The four fund-balance rows of the uses block, over the same padded 11-row
@@ -575,6 +580,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -596,6 +602,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -617,6 +624,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -638,6 +646,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -659,6 +668,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -680,6 +690,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     note: >-
@@ -706,6 +717,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     total_spans_parts: true
@@ -743,6 +755,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -764,6 +777,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -791,6 +805,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -812,6 +827,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -833,6 +849,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -855,6 +872,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -877,6 +895,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     total_spans_parts: true
@@ -914,6 +933,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     note: >-
@@ -940,6 +960,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -961,6 +982,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -982,6 +1004,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     note: >-
@@ -1007,6 +1030,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -1034,6 +1058,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     note: >-
@@ -1066,6 +1091,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     parts:
@@ -1087,6 +1113,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     total_spans_parts: true
@@ -1130,6 +1157,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: expenditure-by-department
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total"
     note: >-
@@ -1179,6 +1207,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Property Taxes"
     parts:
@@ -1216,6 +1245,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Sales Taxes"
     parts:
@@ -1237,6 +1267,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Other Taxes"
     total_spans_parts: true
@@ -1287,6 +1318,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Licenses & Permits"
     parts:
@@ -1326,6 +1358,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Fines & Forfeitures"
     parts:
@@ -1347,6 +1380,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Intergovernmental"
     parts:
@@ -1372,6 +1406,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Charges for Services"
     parts:
@@ -1411,6 +1446,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Use of Money And Property"
     parts:
@@ -1441,6 +1477,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Contributions Outsourced"
     total_spans_parts: true
@@ -1472,6 +1509,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Miscellaneous Revenue"
     parts:
@@ -1509,6 +1547,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Airport"
     parts:
@@ -1537,6 +1576,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Stormwater"
     parts:
@@ -1561,6 +1601,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Storm Drain"
     parts:
@@ -1582,6 +1623,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Wastewater"
     parts:
@@ -1606,6 +1648,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Wastewater Replacement"
     parts:
@@ -1627,6 +1670,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Wastewater Connection Fees"
     parts:
@@ -1648,6 +1692,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Water"
     parts:
@@ -1672,6 +1717,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Water Replacement"
     parts:
@@ -1693,6 +1739,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Water Connection Fees"
     parts:
@@ -1714,6 +1761,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Traffic Impact Fee (TIF)"
     parts:
@@ -1736,6 +1784,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total TVTC 20% Fee"
     parts:
@@ -1757,6 +1806,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Park Fee - AB 1600"
     parts:
@@ -1778,6 +1828,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Solid Waste & Recyc Impact Fee"
     parts:
@@ -1798,6 +1849,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total 2022 COP Construction Fund"
     parts:
@@ -1819,6 +1871,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total County Measure D"
     parts:
@@ -1840,6 +1893,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total County Meas BB-Bike/Pedestrian"
     parts:
@@ -1861,6 +1915,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total County Meas BB-Local St & Rd"
     parts:
@@ -1882,6 +1937,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total County Measure F Veh Reg Fee"
     parts:
@@ -1903,6 +1959,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total State - Gas Tax"
     total_spans_parts: true
@@ -1937,6 +1994,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total State - SB1"
     parts:
@@ -1958,6 +2016,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Developers Deposit"
     parts:
@@ -1979,6 +2038,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Transferable Development Cred"
     parts:
@@ -1999,6 +2059,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total 2020 COPS Series A"
     note: >-
@@ -2022,6 +2083,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total 2020 COPS Series B"
     note: >-
@@ -2045,6 +2107,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total 2022 COPS"
     parts:
@@ -2066,6 +2129,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Doolan Canyon Preserve Endow"
     note: >-
@@ -2089,6 +2153,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Low Income Housing Fund"
     parts:
@@ -2116,6 +2181,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Housing Successor Agency"
     parts:
@@ -2137,6 +2203,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total SOEF (Social Op Endowment)"
     parts:
@@ -2158,6 +2225,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Mortgage Assistance"
     parts:
@@ -2179,6 +2247,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total HHS Loan Fund"
     parts:
@@ -2199,6 +2268,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Cal Home Reuse"
     parts:
@@ -2220,6 +2290,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total California Begin Program"
     parts:
@@ -2241,6 +2312,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Local Housing Trust"
     parts:
@@ -2261,6 +2333,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Horizons"
     parts:
@@ -2283,6 +2356,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Police Evidence"
     parts:
@@ -2304,6 +2378,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Grant - Federal Grant Fund"
     parts:
@@ -2324,6 +2399,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Asset Seizure - Dep of Justice"
     parts:
@@ -2344,6 +2420,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Asset Seizure - Treasury"
     parts:
@@ -2364,6 +2441,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Grant - HUD EDI Special Grant"
     parts:
@@ -2384,6 +2462,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Grant - CDBG"
     parts:
@@ -2406,6 +2485,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Grant - Home Grant"
     parts:
@@ -2426,6 +2506,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total FEMA Funding"
     parts:
@@ -2446,6 +2527,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Grant - State Grant Fund"
     parts:
@@ -2469,6 +2551,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Opioid Settlement"
     parts:
@@ -2489,6 +2572,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total PD COPS Grant"
     parts:
@@ -2509,6 +2593,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Grant - Local & Other Grants"
     parts:
@@ -2529,6 +2614,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Downtown Revitalization Fee"
     parts:
@@ -2549,6 +2635,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Host Community Impact Fee"
     parts:
@@ -2570,6 +2657,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total City Street Sweeping Fee"
     parts:
@@ -2590,6 +2678,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Public Art Fee"
     parts:
@@ -2610,6 +2699,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Vehicle Impound Fee"
     parts:
@@ -2630,6 +2720,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Accessibility Compliance"
     parts:
@@ -2651,6 +2742,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total PEG Capital Fees"
     parts:
@@ -2671,6 +2763,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Import Mitigation Fee"
     note: >-
@@ -2694,6 +2787,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Solid Waste & Recycling Fee"
     parts:
@@ -2714,6 +2808,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Human Services Facility Fee"
     parts:
@@ -2734,6 +2829,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Open Space Acquisition & Mgmt"
     total_spans_parts: true
@@ -2769,6 +2865,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Downtown LMD"
     parts:
@@ -2791,6 +2888,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Other LMD"
     parts:
@@ -2812,6 +2910,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total El Charro CFD 2009-1 Maint"
     parts:
@@ -2833,6 +2932,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Other Maintenance CFDs"
     parts:
@@ -2854,6 +2954,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Library Donations"
     parts:
@@ -2874,6 +2975,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Police Donations"
     parts:
@@ -2895,6 +2997,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total General Liability"
     total_spans_parts: true
@@ -2929,6 +3032,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Workers Comp Insurance"
     parts:
@@ -2951,6 +3055,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Information Technology"
     parts:
@@ -2971,6 +3076,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Fleet & Equipment Services"
     parts:
@@ -2993,6 +3099,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: revenue-by-fund
+    grain: fund-by-category
     units: dollars
     total_row: "Total Facilities Rehab Pgm"
     parts:
@@ -3056,6 +3163,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: transfers-by-fund
+    grain: fund-by-category
     units: dollars
     note: >-
       Nine transfers into the General Fund. The section anchor carries its
@@ -3114,6 +3222,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: transfers-by-fund
+    grain: fund-by-category
     units: dollars
     note: >-
       Six transfers into Enterprise funds, three of them paid by other
@@ -3165,6 +3274,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: transfers-by-fund
+    grain: fund-by-category
     units: dollars
     note: >-
       Three transfers into Debt Service funds. FY2026 sums to 6,984,597 and
@@ -3196,6 +3306,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: transfers-by-fund
+    grain: fund-by-category
     units: dollars
     note: >-
       One transfer into a Permanent fund, and both budget figures are "-" --
@@ -3225,6 +3336,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: transfers-by-fund
+    grain: fund-by-category
     units: dollars
     note: >-
       Three transfers into Special Revenue funds. FY2026 sums to 814,000 and
@@ -3352,6 +3464,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3373,6 +3486,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3395,6 +3509,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3434,6 +3549,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3472,6 +3588,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3534,6 +3651,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3556,6 +3674,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3585,6 +3704,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3614,6 +3734,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3649,6 +3770,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3706,6 +3828,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: department-funding-sources
+    grain: fund-by-department-by-category
     units: dollars
     total_row: "Total Department Funding Sources"
     row_labels_name_funds: true
@@ -3829,6 +3952,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -3850,6 +3974,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -3871,6 +3996,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -3892,6 +4018,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -3913,6 +4040,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -3945,6 +4073,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -3966,6 +4095,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -3996,6 +4126,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4017,6 +4148,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4055,6 +4187,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4080,6 +4213,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4106,6 +4240,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4127,6 +4262,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4148,6 +4284,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4174,6 +4311,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4196,6 +4334,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4221,6 +4360,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4243,6 +4383,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4269,6 +4410,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4307,6 +4449,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4336,6 +4479,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4357,6 +4501,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4379,6 +4524,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4401,6 +4547,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4423,6 +4570,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4448,6 +4596,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4482,6 +4631,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-
@@ -4513,6 +4663,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     parts:
@@ -4534,6 +4685,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: departmentwide-expenditures
+    grain: department-by-category
     units: dollars
     total_row: "Division Total"
     note: >-

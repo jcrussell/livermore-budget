@@ -404,6 +404,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: fixture
+    grain: fund-group-by-category
     units: dollars
     total_row: "TOTAL:"
     parts:
@@ -735,6 +736,7 @@ rules:
     kind: revenue
     basis: adopted
     scope: fixture
+    grain: fund-group-by-category
     units: dollars
     total_row: "TOTAL:"
     parts:

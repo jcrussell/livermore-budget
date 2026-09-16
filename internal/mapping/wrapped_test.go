@@ -26,6 +26,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: gf-expenditure-detail
+    grain: fund-by-department-by-category
     units: dollars
     rows:
       - {label: "Wages & Benefits", category: wages-and-benefits, department: innovation}
@@ -208,6 +209,7 @@ rules:
     kind: expenditure
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     rows:
       - {label: "Wages", category: wages-and-benefits}

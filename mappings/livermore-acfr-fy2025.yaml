@@ -215,6 +215,7 @@ rules:
     kind: transfer_in
     basis: audited
     scope: acfr-general-fund-summary
+    grain: fund-group-by-category
     units: millions
     total_row: "Total Other Financing Sources (Uses)"
     note: >-
@@ -247,6 +248,7 @@ rules:
     kind: fund_balance
     basis: audited
     scope: acfr-general-fund-summary
+    grain: fund-group-by-category
     units: millions
     note: >-
       The three fund-balance lines the statement closes with. THIS RULE
@@ -326,6 +328,7 @@ rules:
     kind: revenue
     basis: audited
     scope: acfr-general-fund-summary
+    grain: fund-group-by-category
     units: millions
     total_row: "Total Revenues"
     note: >-
@@ -392,6 +395,7 @@ rules:
     kind: expenditure
     basis: audited
     scope: acfr-general-fund-summary
+    grain: fund-group-by-category
     units: millions
     printed_decimals: 2
     total_row: "General Government:"
@@ -523,6 +527,7 @@ rules:
     kind: fund_balance
     basis: audited
     scope: acfr-fund-balances
+    grain: fund-group-by-category
     units: dollars
     total_row: "Total general fund"
     note: >-
@@ -562,6 +567,7 @@ rules:
     kind: fund_balance
     basis: audited
     scope: acfr-fund-balances
+    grain: category
     units: dollars
     total_row: "Total all other governmental funds"
     note: >-
@@ -600,6 +606,7 @@ rules:
     kind: revenue
     basis: audited
     scope: acfr-changes-in-fund-balances
+    grain: category
     units: dollars
     total_row: "Total revenues"
     note: >-
@@ -646,6 +653,7 @@ rules:
     kind: expenditure
     basis: audited
     scope: acfr-changes-in-fund-balances
+    grain: category
     units: dollars
     total_row: "Total Expenditures"
     note: >-
@@ -694,6 +702,7 @@ rules:
     kind: fund_balance
     basis: audited
     scope: acfr-changes-in-fund-balances
+    grain: category
     units: dollars
     note: >-
       The statement's own subtotal, Excess of Revenues over (under)

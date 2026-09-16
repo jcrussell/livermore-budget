@@ -56,7 +56,7 @@ func p67Rule(t *testing.T, headers []string) (*Resolver, *Rule, *Part) {
 		fmt.Fprintf(&rows, "      - {label: \"row%d\", category: c}\n", i)
 	}
 	src := "schema_version: 1\ndoc_id: livermore-budget-fy2026-2027\nrules:\n" +
-		"  - id: p67\n    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		"  - id: p67\n    kind: revenue\n    basis: adopted\n    grain: fund-group-by-category\n    units: dollars\n" +
 		"    parts:\n      - page: 67\n" +
 		"        labels_from: 66\n" +
 		"        section: \"FY 2026-27\"\n        section_ordinal: 4\n" +
@@ -121,7 +121,7 @@ func p66Rule(t *testing.T, headers []string) (*Resolver, *Rule, *Part) {
 		fmt.Fprintf(&rows, "      - {label: %s, category: c}\n", quote(l))
 	}
 	src := "schema_version: 1\ndoc_id: livermore-budget-fy2026-2027\nrules:\n" +
-		"  - id: p66\n    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		"  - id: p66\n    kind: revenue\n    basis: adopted\n    grain: fund-group-by-category\n    units: dollars\n" +
 		"    parts:\n      - page: 66\n" +
 		"        section: \"REVENUES:\"\n        section_ordinal: 1\n" +
 		"        stop_at: \"TOTAL REVENUES:\"\n" +
@@ -232,7 +232,7 @@ func p67RuleWithColumns(t *testing.T, headers []string) (*Resolver, *Rule, *Part
 		cols[i] = fmt.Sprintf("{fund_group: g%d, fiscal_year: 202%d}", i, i%8)
 	}
 	src := "schema_version: 1\ndoc_id: livermore-budget-fy2026-2027\nrules:\n" +
-		"  - id: p67\n    kind: revenue\n    basis: adopted\n    units: dollars\n" +
+		"  - id: p67\n    kind: revenue\n    basis: adopted\n    grain: fund-group-by-category\n    units: dollars\n" +
 		"    parts:\n      - page: 67\n" +
 		"        section: \"FY 2026-27\"\n        section_ordinal: 4\n" +
 		"        stop_at: \"$\"\n" +
@@ -362,6 +362,7 @@ rules:
   - id: sparse
     kind: revenue
     basis: adopted
+    grain: fund-group-by-category
     units: dollars
     parts:
       - page: 1
@@ -443,6 +444,7 @@ rules:
   - id: fused
     kind: revenue
     basis: adopted
+    grain: fund-group-by-category
     units: dollars
     parts:
       - page: 1
@@ -584,6 +586,7 @@ rules:
   - id: wrap
     kind: revenue
     basis: adopted
+    grain: fund-group-by-category
     units: dollars
     parts:
       - page: 1
@@ -643,7 +646,7 @@ func cipRule(t *testing.T, page int, section, stopAt, label string) (*Resolver, 
 	headers = append(headers, "TOTAL")
 
 	src := "schema_version: 1\ndoc_id: livermore-cip-fy2026-2030\nrules:\n" +
-		"  - id: cip\n    kind: expenditure\n    basis: adopted\n    units: dollars\n" +
+		"  - id: cip\n    kind: expenditure\n    basis: adopted\n    grain: fund-group-by-category\n    units: dollars\n" +
 		"    parts:\n      - page: " + fmt.Sprint(page) + "\n" +
 		"        section: " + quote(section) + "\n" +
 		"        stop_at: " + quote(stopAt) + "\n" +
@@ -746,6 +749,7 @@ rules:
   - id: cip
     kind: expenditure
     basis: adopted
+    grain: fund-group-by-category
     units: dollars
     parts:
       - page: 40

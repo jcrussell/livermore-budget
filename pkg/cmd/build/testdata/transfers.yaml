@@ -30,6 +30,7 @@ rules:
     kind: transfer_out
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     parts:
       - page: 76
@@ -54,6 +55,7 @@ rules:
     kind: transfer_in
     basis: adopted
     scope: all-funds-gross
+    grain: fund-group-by-category
     units: dollars
     total_row: "TOTAL TRANSFERS IN:"
     parts:
