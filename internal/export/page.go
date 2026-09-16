@@ -1885,7 +1885,7 @@ type trendPoint struct {
 type trendsBody struct {
 	Series []struct {
 		Label         string       `json:"label"`
-		Fund          int          `json:"fund"`
+		Fund          *int         `json:"fund"`
 		FundName      string       `json:"fund_name"`
 		FundGroup     string       `json:"fund_group"`
 		Kind          string       `json:"kind"`
@@ -1944,8 +1944,13 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		if fund == "" {
 			// A fund the registry does not name renders as its number, which is
 			// what the document's own fallback intends: the number is on the
-			// page and is never nothing.
-			fund = fmt.Sprintf("Fund %d", s.Fund)
+			// page and is never nothing. A series under no fund at all has no
+			// row header in this view, and is refused rather than headed "".
+			if s.Fund == nil {
+				return trendsPageData{}, fmt.Errorf("%s series %q names no fund and no "+
+					"fund name; this view's row header is the fund", v.Projection, s.Label)
+			}
+			fund = fmt.Sprintf("Fund %d", *s.Fund)
 		}
 		cells, placed, err := buildCells(s.Points, columns, meta.Columns, pageTextBase)
 		if err != nil {

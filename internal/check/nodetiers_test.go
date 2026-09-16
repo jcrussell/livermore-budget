@@ -263,10 +263,9 @@ func TestAFundNodeNamesAFundNumber(t *testing.T) {
 			t.Errorf("declaredTier(%q) = not a declared form, want tier 3", id)
 		}
 	}
-	// fund/0 is refused with the non-numbers: 0 is this codebase's NO-FUND
-	// sentinel, not a fund. fact.ColumnPath omits the segment entirely when
-	// Fund == 0 and every spine fact ships "fund":0 meaning "this schedule has
-	// no fund axis", so `fund/0` is `fund/general` wearing a number.
+	// fund/0 is refused with the non-numbers: no fund is numbered 0. A fact
+	// with no fund publishes null and fact.ColumnPath writes no segment for
+	// one, so `fund/0` is `fund/general` wearing a number.
 	for _, id := range []string{"fund/0", "fund/general", "fund/", "fund", "revenue/", "dept"} {
 		if tier, ok := declaredTier(id); ok {
 			t.Errorf("declaredTier(%q) = %d, true; want it refused", id, tier)

@@ -266,10 +266,10 @@ func (*trendSeriesAreComplete) Run(_ context.Context, s *Subject) (Result, error
 				continue
 			}
 			findings = append(findings, finding(sr.SeriesID,
-				"%s series %q (fund %d) has no point in %s, and no entry in "+
+				"%s series %q (fund %s) has no point in %s, and no entry in "+
 					"incompleteSeries declares that gap. A missing point publishes nothing "+
 					"to disagree with, so no other check can see it",
-				p.Name, sr.Label, sr.Fund, project.Describe(missing)))
+				p.Name, sr.Label, fact.FundString(sr.Fund), project.Describe(missing)))
 		}
 	}
 	findings = append(findings, staleSeriesDeclarations(seen, declared)...)

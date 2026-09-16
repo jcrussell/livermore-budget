@@ -81,7 +81,7 @@ func revenueDetailFacts(t *testing.T, scope string) []fact.Fact {
 			Category:    "taxes/property",
 			ColumnPath:  columnPath,
 			FundGroup:   "general",
-			Fund:        100,
+			Fund:        fact.FundNumber(100),
 			Sign:        sign,
 			Units:       "dollars",
 			AmountCents: r.cents,

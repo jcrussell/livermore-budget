@@ -98,7 +98,7 @@ func TestTransfersDetailIsFailable(t *testing.T) {
 			f := &s.Facts[i]
 			if f.Scope == transfersDetailScope && f.Kind == mapping.KindTransferOut &&
 				f.FundGroup == "enterprise" && f.AmountCents == 46000000 {
-				f.FundGroup, f.Fund = "general", 100
+				f.FundGroup, f.Fund = "general", fact.FundNumber(100)
 				moved++
 			}
 		}
@@ -143,8 +143,8 @@ func TestTransfersDetailIsFailable(t *testing.T) {
 			f := &s.Facts[i]
 			// Low Income Hsng 200 (special-revenue) -> its CIP twin 812
 			// (capital). Both are inside the collapsed pair.
-			if f.Scope == transfersDetailScope && f.Fund == 200 {
-				f.Fund, f.FundGroup = 812, "capital"
+			if f.Scope == transfersDetailScope && f.Fund != nil && *f.Fund == 200 {
+				f.Fund, f.FundGroup = fact.FundNumber(812), "capital"
 				swapped++
 			}
 		}
@@ -284,7 +284,7 @@ func TestAPermanentPayerIsCompared(t *testing.T) {
 		RuleID: "p76-transfers-in-permanent", Kind: mapping.KindTransferOut,
 		Basis: mapping.BasisAdopted, Scope: transfersDetailScope, FiscalYear: 2026,
 		RowPath: "transfers/out", Category: "transfers/out",
-		ColumnPath: "permanent/fund/300", FundGroup: "permanent", Fund: 300,
+		ColumnPath: "permanent/fund/300", FundGroup: "permanent", Fund: fact.FundNumber(300),
 		Units: "dollars", AmountCents: 99999999,
 	})
 

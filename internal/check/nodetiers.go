@@ -263,11 +263,11 @@ func declaredTier(id string) (int, bool) {
 	// would otherwise pass as a tier-3 node while naming no fund at all, one
 	// hyphen away from the real `fund-group/general`.
 	//
-	// ZERO IS REFUSED WITH THE NON-NUMBERS, because 0 is this codebase's
-	// no-fund sentinel rather than a fund: fact.ColumnPath omits the segment
-	// entirely when Fund == 0, and every one of the spine's facts ships
-	// "fund":0 meaning "this schedule has no fund axis". `fund/0` is therefore
-	// the same defect as `fund/general` wearing a number.
+	// ZERO IS REFUSED WITH THE NON-NUMBERS, because no fund is numbered 0: a
+	// fact with no fund publishes null, and the mapping side, which still
+	// spells its absence 0 (fisc-12jt), never writes the segment at all --
+	// fact.ColumnPath omits it. `fund/0` is therefore the same defect as
+	// `fund/general` wearing a number.
 	if prefix == "fund" {
 		n, err := strconv.Atoi(rest)
 		if err != nil || n == 0 {

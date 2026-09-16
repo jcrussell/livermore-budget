@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
@@ -498,8 +499,8 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	swappedFacts := 0
 	for i := range s.Facts {
 		f := &s.Facts[i]
-		if f.RuleID == "funding-public-works" && f.Fund == 640 {
-			f.Fund = 641
+		if f.RuleID == "funding-public-works" && f.Fund != nil && *f.Fund == 640 {
+			f.Fund = fact.FundNumber(641)
 			swappedFacts++
 		}
 	}

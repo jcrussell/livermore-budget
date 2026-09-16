@@ -76,10 +76,14 @@ which year it covers.
 That worked example is real: `fisc-s-ce9117881328` and its four fact ids are
 computed off the committed store, not invented for the document.
 
-Every key is present on every object, in declaration order. **No `omitempty`, no
-`null`** — `fact.Fact`'s discipline and `internal/project`'s, for the reason
-stated in both: a key that vanishes when it is empty makes a diff between two
-releases read as a structural change.
+Every key is present on every object, in declaration order. **No `omitempty`** —
+`fact.Fact`'s discipline and `internal/project`'s, for the reason stated in both:
+a key that vanishes when it is empty makes a diff between two releases read as a
+structural change. **And no `null`**, though that is this document's own
+property and not the store's: `fund` is the one key the store publishes `null`
+in, for an absent fund, and every series here sits under a numbered fund. The
+ACFR fund-balance documents publish `null` there on every series (see
+`docs/acfr-history-contract.md`).
 
 Money is an integer `amount_cents`, and it is **signed**. **Nine** of the 924
 points are negative: General Fund ERAF and RPTTF Reduction, four columns each,

@@ -15,7 +15,7 @@ func fundFlowsSubject() *Subject {
 	col := project.Column{FiscalYear: 2026, Basis: mapping.BasisAdopted}
 	mk := func(id, scope string, cents int64) fact.Fact {
 		return fact.Fact{ID: id, Scope: scope, Kind: mapping.KindRevenue,
-			Category: "taxes/property", FundGroup: "general", Fund: 100,
+			Category: "taxes/property", FundGroup: "general", Fund: fact.FundNumber(100),
 			FiscalYear: col.FiscalYear, Basis: col.Basis, AmountCents: cents}
 	}
 	facts := []fact.Fact{

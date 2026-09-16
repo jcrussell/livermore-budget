@@ -341,15 +341,15 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 		// this block IS the fund axis, and a fact of this scope with no fund is
 		// a row of the upper block wearing this one's name -- which would be
 		// drawn here as though the page had attributed it to a fund it does not
-		// name. Zero is the no-fund sentinel and is refused with the absence.
-		if fa.Fund == 0 || fa.FundGroup == "" {
+		// name. An absent fund is refused with an absent group.
+		if fa.Fund == nil || fa.FundGroup == "" {
 			return nil, cmdutil.WithHint(
-				fmt.Errorf("department-funding: fact %s (%s) names fund %d and fund group %q",
-					fa.ID, fa.Department, fa.Fund, fa.FundGroup),
+				fmt.Errorf("department-funding: fact %s (%s) names fund %s and fund group %q",
+					fa.ID, fa.Department, fact.FundString(fa.Fund), fa.FundGroup),
 				"pp.85-125's lower block prints one row per paying fund, so a fact of this "+
 					"scope with no fund has nothing to hang a ribbon from")
 		}
-		k := fundingKey{fund: fa.Fund, department: fa.Department}
+		k := fundingKey{fund: *fa.Fund, department: fa.Department}
 		// ONE FUND GROUP PER (fund, department) CELL, refused rather than
 		// last-wins. The group decides the link's kind, so two rows of one cell
 		// disagreeing about it would publish whichever was read last as the
@@ -357,7 +357,7 @@ func netDepartmentFunding(facts []fact.Fact) (map[fundingCell]*cellSum, error) {
 		if g, ok := groups[k]; ok && g != fa.FundGroup {
 			return nil, cmdutil.WithHint(
 				fmt.Errorf("department-funding: fund %d under %s is printed under fund group "+
-					"%q and %q", fa.Fund, fa.Department, g, fa.FundGroup),
+					"%q and %q", *fa.Fund, fa.Department, g, fa.FundGroup),
 				"the fund group at the paying end decides whether a ribbon is an internal "+
 					"service charge, and a cell with two of them has two answers")
 		}

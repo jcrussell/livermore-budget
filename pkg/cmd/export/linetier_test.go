@@ -139,8 +139,8 @@ func TestThePrintedZeroRowsAreNotNodes(t *testing.T) {
 				}
 				zeros++
 				if cited[f.ID] {
-					t.Errorf("fact %s (%s %q, fund %d) prints a dash and some link cites it",
-						f.ID, f.Category, f.RowLabel, f.Fund)
+					t.Errorf("fact %s (%s %q, fund %s) prints a dash and some link cites it",
+						f.ID, f.Category, f.RowLabel, fact.FundString(f.Fund))
 				}
 			}
 			// The identity the document publishes, restated as the claim this
@@ -350,7 +350,7 @@ func netByCategory(facts []fact.Fact, year int, basis string) []project.Link {
 		kind     mapping.Kind
 		category string
 		group    string
-		fund     int
+		fund     string
 	}
 	byRow := map[string]int64{}
 	selected := revenueRows(facts, year, basis)
@@ -366,7 +366,7 @@ func netByCategory(facts []fact.Fact, year int, basis string) []project.Link {
 		if byRow[rowOf(f)] == 0 {
 			continue
 		}
-		k := key{f.Kind, f.Category, f.FundGroup, f.Fund}
+		k := key{f.Kind, f.Category, f.FundGroup, fact.FundString(f.Fund)}
 		if ids[k] == nil {
 			ids[k] = map[string]bool{}
 			pages[k] = map[string]map[int]bool{}
@@ -393,7 +393,7 @@ func netByCategory(facts []fact.Fact, year int, basis string) []project.Link {
 			kind = project.KindInternalService
 		}
 		out = append(out, project.Link{
-			Source: source, Target: fmt.Sprintf("fund/%d", k.fund),
+			Source: source, Target: "fund/" + k.fund,
 			ValueCents: cents[k], Kind: kind,
 			FactIDs: sortedSet(ids[k]), Locators: locatorsOf(pages[k]),
 		})
@@ -417,7 +417,7 @@ func revenueRows(facts []fact.Fact, year int, basis string) []fact.Fact {
 
 // rowOf addresses one printed row of one fund: the finest cell pp.127-140 print.
 func rowOf(f fact.Fact) string {
-	return fmt.Sprintf("%s\x1f%s\x1f%d", f.Category, f.RowLabel, f.Fund)
+	return fmt.Sprintf("%s\x1f%s\x1f%s", f.Category, f.RowLabel, fact.FundString(f.Fund))
 }
 
 func sortedSet(m map[string]bool) []string {

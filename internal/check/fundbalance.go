@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/fact"
 )
 
 // categoryFundBalanceChange is the third line this identity is over. The other
@@ -81,16 +82,20 @@ func (*fundBalanceIdentity) Description() string {
 //
 // THE FUND IS IN IT FOR A CASE THE CORPUS DOES NOT YET HAVE, and it is here now
 // because getting it wrong later would be silent. Every fund-balance fact today
-// carries fund 0 -- the spine and ACFR p41 both publish per fund GROUP -- but
+// carries no fund -- the spine and ACFR p41 both publish per fund GROUP -- but
 // pp.68-75 print a balance per FUND, and without this field funds 100 and 101 of
 // one group would collapse onto one key, be reported as a spurious duplicate,
 // and BOTH be excluded from the identity. A check that quietly stops examining
 // the rows a coverage lane just added is the failure this whole file is about.
+//
+// The fund is fact.FundString's rendering rather than the fact's pointer,
+// because a pointer keys a map by address and two facts naming fund 100 would
+// be two balances.
 type fundBalanceKey struct {
 	docID      string
 	scope      string
 	fundGroup  string
-	fund       int
+	fund       string
 	fiscalYear int
 	basis      string
 }
@@ -100,8 +105,8 @@ func (k fundBalanceKey) String() string {
 	if group == "" {
 		group = "(no fund group)"
 	}
-	if k.fund != 0 {
-		group = fmt.Sprintf("%s fund %d", group, k.fund)
+	if k.fund != fact.FundString(nil) {
+		group = fmt.Sprintf("%s fund %s", group, k.fund)
 	}
 	return fmt.Sprintf("%s %s %s FY%d %s", k.docID, k.scope, group, k.fiscalYear, k.basis)
 }
@@ -146,7 +151,7 @@ func (*fundBalanceIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 			continue
 		}
 		k := fundBalanceKey{
-			docID: f.DocID, scope: f.Scope, fundGroup: f.FundGroup, fund: f.Fund,
+			docID: f.DocID, scope: f.Scope, fundGroup: f.FundGroup, fund: fact.FundString(f.Fund),
 			fiscalYear: f.FiscalYear, basis: string(f.Basis),
 		}
 		b := balances[k]

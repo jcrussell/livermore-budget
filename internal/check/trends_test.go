@@ -66,7 +66,7 @@ func trendsTestFacts(t *testing.T) []fact.Fact {
 				Category:    "taxes/property",
 				ColumnPath:  columnPath,
 				FundGroup:   "general",
-				Fund:        100,
+				Fund:        fact.FundNumber(100),
 				Sign:        mapping.SignPositive,
 				Units:       "dollars",
 				AmountCents: r.cents[i],

@@ -49,7 +49,7 @@ func historyDoc(series ...historySeries) []byte {
 		}
 		out = append(out, map[string]any{
 			"series_id": fmt.Sprintf("fisc-s-%012d", i), "label": s.label,
-			"fund": 0, "fund_name": "", "fund_group": s.group,
+			"fund": nil, "fund_name": "", "fund_group": s.group,
 			"kind": s.kind, "category": "fund-balance/committed",
 			"category_label": "Committed", "points": pts,
 		})

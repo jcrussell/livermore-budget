@@ -870,7 +870,7 @@ type lineRollup struct {
 func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[expKey]*cellSum, error) {
 	rev := map[revKey]*cellSum{}
 	exp := map[expKey]*cellSum{}
-	expFund := 0
+	var expFund *int
 	for i := range facts {
 		fa := &facts[i]
 		switch fa.Scope {
@@ -880,11 +880,11 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 					fmt.Errorf("fund-flows: fact %s carries no category", fa.ID),
 					"a revenue node is a category, so a fact without one has no source end")
 			}
-			if fa.Fund == 0 {
+			if fa.Fund == nil {
 				return nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund", fa.ID, fa.Category),
-					"this document's tier 3 IS the fund; 0 is the no-fund sentinel and "+
-						"would collapse every fund group into one box")
+					"this document's tier 3 IS the fund, and a fact without one has no box "+
+						"to land in")
 			}
 			if fa.FundGroup == "" {
 				return nil, nil, cmdutil.WithHint(
@@ -895,7 +895,7 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			if lineErr != nil {
 				return nil, nil, lineErr
 			}
-			add(rev, revKey{fa.Kind, fa.Category, line, fa.FundGroup, fa.Fund}, fa)
+			add(rev, revKey{fa.Kind, fa.Category, line, fa.FundGroup, *fa.Fund}, fa)
 		case scopeExpenditureByDepartment:
 			if fa.Department == "" {
 				return nil, nil, cmdutil.WithHint(
@@ -907,34 +907,32 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 					fmt.Errorf("fund-flows: fact %s (%s) carries no category", fa.ID, fa.Department),
 					"an object-category node is a category")
 			}
-			// THE FUND IS REQUIRED, for the reason the revenue side's is:
-			// 0 is the no-fund sentinel, and an expenditure side of fund-0
-			// facts would build a document whose every department node is
-			// parented to fund/100 and whose every division link is sourced
-			// from it -- attributing the whole of the spending to the General
-			// Fund on no evidence at all. Nothing downstream would see it: the
-			// amounts are unchanged, so expenditure-detail-ties-to-spine still
-			// ties, and fact-funds-resolve only examines facts that DO name a
-			// fund. Refused here, which also lets expFund use 0 as an honest
-			// "not yet seen".
-			if fa.Fund == 0 {
+			// THE FUND IS REQUIRED, for the reason the revenue side's is: an
+			// expenditure side of fundless facts would build a document whose
+			// every department node is parented to fund/100 and whose every
+			// division link is sourced from it -- attributing the whole of the
+			// spending to the General Fund on no evidence at all. Nothing
+			// downstream would see it: the amounts are unchanged, so
+			// expenditure-detail-ties-to-spine still ties, and
+			// fact-funds-resolve only examines facts that DO name a fund.
+			if fa.Fund == nil {
 				return nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund", fa.ID, fa.Department),
 					"this document parents every department to the fund that pays it, and "+
-						"0 is the no-fund sentinel rather than a fund")
+						"a fact naming none has no parent to give it")
 			}
 			// ONE FUND ON THE WHOLE EXPENDITURE SIDE. The tier-5 id carries the
 			// division and not the fund, so two funds spending on one
 			// division/object would land two cells on one link and
 			// checkDistinctLinks would report it as a duplicate rather than as
-			// what it is.
-			if expFund == 0 {
+			// what it is. expFund is nil until the first fact names one.
+			if expFund == nil {
 				expFund = fa.Fund
 			}
-			if fa.Fund != expFund {
+			if *fa.Fund != *expFund {
 				return nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: the expenditure side names funds %d and %d",
-						expFund, fa.Fund),
+						*expFund, *fa.Fund),
 					"pp.167-170 are a General Fund schedule and this document's department "+
 						"axis assumes it; pp.72-75 give a per-fund expenses column and are "+
 						"the schedule a wider key would be for")
@@ -945,9 +943,9 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 				"document does not select", fa.ID, fa.Scope)
 		}
 	}
-	if expFund != 0 && expFund != generalFund {
+	if expFund != nil && *expFund != generalFund {
 		return nil, nil, fmt.Errorf("fund-flows: the expenditure side is fund %d, want %d",
-			expFund, generalFund)
+			*expFund, generalFund)
 	}
 	return rev, exp, nil
 }

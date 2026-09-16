@@ -104,13 +104,14 @@ func (sp seriesSpec) document(facts []fact.Fact, o Options) (*TrendsDocument, er
 		// which row that is. Disagreement means two different rows hashed to one
 		// series id, which is the one thing an identity must not do -- fail
 		// closed rather than publish a series whose label describes half of it.
-		if s.FundGroup != f.FundGroup || s.Fund != f.Fund ||
+		if s.FundGroup != f.FundGroup || !fact.SameFund(s.Fund, f.Fund) ||
 			s.Kind != string(f.Kind) || s.Category != f.Category {
 			return nil, fmt.Errorf(
-				"%s: series %s is two different rows: %s p%d %q is %s/%s/fund %d/%s, "+
-					"but an earlier fact of the same series is %s/%s/fund %d/%s",
-				sp.name, id, f.DocID, f.Page, f.RowLabel, f.Kind, f.Category, f.Fund, f.FundGroup,
-				s.Kind, s.Category, s.Fund, s.FundGroup)
+				"%s: series %s is two different rows: %s p%d %q is %s/%s/fund %s/%s, "+
+					"but an earlier fact of the same series is %s/%s/fund %s/%s",
+				sp.name, id, f.DocID, f.Page, f.RowLabel, f.Kind, f.Category,
+				fact.FundString(f.Fund), f.FundGroup,
+				s.Kind, s.Category, fact.FundString(s.Fund), s.FundGroup)
 		}
 		s.Points = append(s.Points, Point{
 			FiscalYear:  f.FiscalYear,
@@ -178,12 +179,13 @@ func (sp seriesSpec) build(facts []fact.Fact, o Options) ([]byte, error) {
 }
 
 // fundName is the city's name for a fund, falling back to "" so the client
-// shows the number. A miss is not an error, as with a category label.
-func (sp seriesSpec) fundName(number int) string {
-	if sp.labels == nil {
+// shows the number. A miss is not an error, as with a category label; a series
+// under no numbered fund has no name to look up.
+func (sp seriesSpec) fundName(fund *int) string {
+	if sp.labels == nil || fund == nil {
 		return ""
 	}
-	name, ok := sp.labels.FundName(number)
+	name, ok := sp.labels.FundName(*fund)
 	if !ok {
 		return ""
 	}

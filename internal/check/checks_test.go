@@ -698,10 +698,12 @@ func TestDepartmentsAreCheckedForWhatIsCheckable(t *testing.T) {
 	}
 }
 
-// TestFundNumbersResolveAgainstTheRegistry covers the axis bd show fisc-1wr.1 names
-// and nothing had a caller for: registry.Fund. Every fact carries fund 0 today, so
-// the check is vacuous — and fisc-5gk.1 starts emitting real fund numbers, at which
-// point the join key has to resolve and has to agree with the fund group beside it.
+// TestFundNumbersResolveAgainstTheRegistry covers the join key a fact's fund is:
+// it has to resolve in data/funds.yaml and has to agree with the fund group
+// beside it. The 0 row is the retired no-fund sentinel: an absent fund is null,
+// and a 0 reaching the store is refused by name before the registry is asked,
+// because under 0 a figure with no fund axis and a row whose fund resolved to
+// nothing shared one address.
 func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -713,11 +715,12 @@ func TestFundNumbersResolveAgainstTheRegistry(t *testing.T) {
 		{"a listed fund", 100, "general", StatusPass, ""},
 		{"a fund the registry does not list", 999, "general", StatusFail, "not in data/funds.yaml"},
 		{"a listed fund under the wrong group", 100, "enterprise", StatusFail, `is type "general"`},
+		{"the retired no-fund sentinel", 0, "general", StatusFail, "fund 0 names no fund"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			facts := testFacts()
-			facts[0].Fund = tt.fund
+			facts[0].Fund = fact.FundNumber(tt.fund)
 			facts[0].FundGroup = tt.group
 			res := resultFor(t, runChecks(t, factsSubject(t, facts)), "fact-funds-resolve")
 
@@ -2131,7 +2134,7 @@ func revenueFact(t *testing.T, category, group string, fund int, cents int64) fa
 	t.Helper()
 	f := testCell{mapping.KindRevenue, category, group, cents}.fact()
 	f.Scope = revenueDetailScope
-	f.Fund = fund
+	f.Fund = fact.FundNumber(fund)
 	f.RowLabel = "a line item under " + category
 	return f
 }
@@ -2142,7 +2145,7 @@ func transfersFact(t *testing.T, category, group string, cents int64) fact.Fact 
 	t.Helper()
 	f := testCell{mapping.KindTransferIn, category, group, cents}.fact()
 	f.Scope = transfersDetailScope
-	f.Fund = 100
+	f.Fund = fact.FundNumber(100)
 	f.RowLabel = "Transfer From Somewhere to " + group
 	return f
 }
@@ -2388,7 +2391,7 @@ func TestTheGeneralFundTransfersInException(t *testing.T) {
 	t.Run("false claim: the schedule does publish the row", func(t *testing.T) {
 		f := testCell{mapping.KindTransferIn, "transfers/in", "general", 10_000}.fact()
 		f.Scope = revenueDetailScope
-		f.Fund = 100
+		f.Fund = fact.FundNumber(100)
 		facts := append(testFacts(), tying...)
 		facts = append(facts, f)
 		fact.Sort(facts)

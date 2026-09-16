@@ -34,7 +34,7 @@ func ruleAxes(facts []fact.Fact) map[string]map[Axis]bool {
 		if f.FundGroup != "" {
 			set[AxisFundGroup] = true
 		}
-		if f.Fund != 0 {
+		if f.Fund != nil {
 			set[AxisFund] = true
 		}
 		if f.Department != "" {

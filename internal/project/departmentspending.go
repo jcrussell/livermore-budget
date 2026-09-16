@@ -335,16 +335,16 @@ func netDepartmentSpending(facts []fact.Fact) (map[spendKey]*cellSum, error) {
 				"this document's tier 5 IS the object category the row is printed under")
 		}
 		// A FUND IS REFUSED RATHER THAN REQUIRED, which inverts the drill-down's
-		// guard on purpose. Every fact of this scope carries fund 0 and
-		// fund_group "" because these rows have no fund axis; one that carried a
+		// guard on purpose. Every fact of this scope carries no fund and no
+		// fund_group because these rows have no fund axis; one that carried a
 		// fund would be a fact of the LOWER block, or of pp.167-170, wearing
 		// this scope -- and it would be drawn here as though the page had
 		// printed it with no fund, which is the claim the no-fund-axis caveat
 		// makes to every reader of the file.
-		if fa.Fund != 0 || fa.FundGroup != "" {
+		if fa.Fund != nil || fa.FundGroup != "" {
 			return nil, cmdutil.WithHint(
-				fmt.Errorf("department-spending: fact %s (%s) names fund %d and fund group %q",
-					fa.ID, fa.Department, fa.Fund, fa.FundGroup),
+				fmt.Errorf("department-spending: fact %s (%s) names fund %s and fund group %q",
+					fa.ID, fa.Department, fact.FundString(fa.Fund), fa.FundGroup),
 				"pp.85-125's upper block prints what a division spends whatever pays for it, "+
 					"so a fact of this scope with a fund is a row of another schedule under "+
 					"this one's name")

@@ -97,7 +97,7 @@ func TestMergeableAddressIsTheProjectionsKeyPlusWhatSelectionFixes(t *testing.T)
 //
 // REFUSED: a pair that shares no cellAddress and does share a mergeableAddress.
 // all-funds-gross and revenue-by-fund are that case and are the check's own
-// worked example -- the spine carries fund 0 where the detail carries fund
+// worked example -- the spine carries no fund where the detail carries fund
 // numbers, so they share zero six-field addresses and 74 five-field ones while
 // being the same $299,969,007.
 //

@@ -68,7 +68,7 @@ func fundingFacts(t *testing.T, mutate func(f *fact.Fact)) []fact.Fact {
 			Department:  c.department,
 			ColumnPath:  columnPath,
 			FundGroup:   c.group,
-			Fund:        c.fund,
+			Fund:        fact.FundNumber(c.fund),
 			AmountCents: c.cents,
 		}
 		if mutate != nil {
@@ -197,7 +197,7 @@ func TestADepartmentIsNotADivision(t *testing.T) {
 // says anything.
 func TestAFundFoldsIntoTheGroupTheRegistrySays(t *testing.T) {
 	doc := buildFunding(t, fundingFacts(t, func(f *fact.Fact) {
-		if f.Fund == 640 {
+		if *f.Fund == 640 {
 			f.FundGroup = "special-revenue"
 		}
 	}))
@@ -268,8 +268,8 @@ func TestTheFundingGraphRefusesWhatItCannotPlace(t *testing.T) {
 		},
 		{
 			name:  "a fact naming no fund",
-			facts: fundingFacts(t, func(f *fact.Fact) { f.Fund = 0 }),
-			want:  "names fund 0",
+			facts: fundingFacts(t, func(f *fact.Fact) { f.Fund = nil }),
+			want:  "names fund (absent)",
 		},
 		{
 			name:  "a fact naming no fund group",

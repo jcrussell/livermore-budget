@@ -83,10 +83,7 @@ func coordOf(f *fact.Fact, a Axis) string {
 	case AxisFundGroup:
 		return orAbsent(f.FundGroup)
 	case AxisFund:
-		if f.Fund == 0 {
-			return "(absent)"
-		}
-		return fmt.Sprintf("%d", f.Fund)
+		return fact.FundString(f.Fund)
 	case AxisDepartment:
 		return orAbsent(f.Department)
 	case AxisCategory:

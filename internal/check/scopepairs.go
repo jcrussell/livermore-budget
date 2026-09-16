@@ -30,7 +30,7 @@ func (p scopePair) String() string { return p.a + " + " + p.b }
 // That is fisc-gkv point B, and it is the half of this check that no measurement
 // can supply. Measured on the committed store, all-funds-gross and
 // revenue-by-fund share ZERO keys of (kind, category, fund_group, fund, year,
-// basis) -- the spine carries fund 0 and the detail carries fund numbers -- and
+// basis) -- the spine carries no fund and the detail carries fund numbers -- and
 // they are nevertheless the same $299,969,007, cell for cell, which
 // revenue-detail-ties-to-spine proves at zero tolerance. A key comparison alone
 // would call that pair disjoint and let one projection publish both.
@@ -140,7 +140,7 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 	shared := sharedKeys(s.Facts)
 	// A DECLARATION MUST HOLD UNDER THE COARSEST GRAIN A PROJECTION CAN REACH,
 	// not only the finest. That grain is cellAddress minus fund, because the
-	// spine carries fund 0 where the detail carries fund numbers, so measuring
+	// spine carries no fund where the detail carries fund numbers, so measuring
 	// only cellAddress let a declaration assert a safety that did not hold
 	// (fisc-tlbp). It is NOT netCells' own three fields: see mergeableAddress.
 	sharedNet := sharedMergeableKeys(s.Facts)
@@ -164,7 +164,7 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 					"can reach: these scopes share no (kind, category, fund_group, fund, "+
 					"fiscal year, basis) address, but %d of (kind, category, fund_group, "+
 					"fiscal year, basis) -- the same key without the FUND, which is what a "+
-					"projection merges on because the spine carries fund 0 where the detail "+
+					"projection merges on because the spine carries no fund where the detail "+
 					"carries fund numbers. A projection selecting both would merge those cells",
 				reason, len(sharedNet[p])))
 		}
@@ -264,10 +264,11 @@ func (*projectionScopesAreDisjoint) Run(_ context.Context, s *Subject) (Result, 
 // not by the finest one a document could key on. That is mergeableAddress below
 // -- this address without the fund -- and ARM 2 measures both (fisc-tlbp).
 type cellAddress struct {
-	Kind       mapping.Kind
-	Category   string
-	FundGroup  string
-	Fund       int
+	Kind      mapping.Kind
+	Category  string
+	FundGroup string
+	// Fund is fact.FundString's rendering: a pointer would key by address.
+	Fund       string
 	FiscalYear int
 	Basis      mapping.Basis
 }
@@ -285,7 +286,7 @@ type cellAddress struct {
 // grain a projection can realize.
 //
 // It is therefore cellAddress MINUS FUND, and fund is the whole of the
-// difference. That is not a small distinction: the spine carries fund 0 and the
+// difference. That is not a small distinction: the spine carries no fund and the
 // detail schedules carry fund numbers, so a spine cell and a detail cell for the
 // same category in the same year are a collision no cellAddress comparison can
 // see.
@@ -393,7 +394,7 @@ func sharedKeys(facts []fact.Fact) map[scopePair]map[cellAddress]bool {
 		}
 		a := addr{
 			Kind: f.Kind, Category: f.Category, FundGroup: f.FundGroup,
-			Fund: f.Fund, FiscalYear: f.FiscalYear, Basis: f.Basis,
+			Fund: fact.FundString(f.Fund), FiscalYear: f.FiscalYear, Basis: f.Basis,
 		}
 		if byScope[f.Scope] == nil {
 			byScope[f.Scope] = map[addr]bool{}

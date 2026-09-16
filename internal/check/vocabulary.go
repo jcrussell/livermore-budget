@@ -358,12 +358,13 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 // factFundsResolve asserts every fund number a fact carries is a fund
 // data/funds.yaml lists.
 //
-// Every fact carries fund 0 today: the citywide spine's columns are fund GROUPS,
-// and pp.66-67 print no per-fund column. So this is vacuous, and vacuous is the
-// honest report rather than absence — registry.Fund exists, nothing called it
-// before this check, and fisc-5gk.1 starts emitting facts with a real fund number,
-// at which point the join key every fact carries has to resolve or the fact joins
-// to nothing.
+// A fact with no fund is not a subject: the citywide spine's columns are fund
+// GROUPS and pp.66-67 print no per-fund column, so its facts carry null there
+// and there is nothing to resolve. A fact carrying 0 IS a subject, and is
+// refused before the registry is asked: no fund is numbered 0, and 0 was the
+// spelling of absence this store retired, so one reaching the file is either a
+// misread column or the sentinel back -- and the sentinel put a fund-group
+// total and a printed dash at one address.
 type factFundsResolve struct{}
 
 var _ Check = (*factFundsResolve)(nil)
@@ -384,21 +385,30 @@ func (*factFundsResolve) Run(_ context.Context, s *Subject) (Result, error) {
 	subjects := 0
 
 	for _, f := range s.Facts {
-		if f.Fund == 0 {
+		if f.Fund == nil {
 			continue
 		}
 		subjects++
-		entry, ok := s.Vocabulary.Fund(f.Fund)
+		fund := *f.Fund
+		if fund == 0 {
+			findings = append(findings, finding(f.ID,
+				"%s p%d %q: fund 0 names no fund. An absent fund is null; 0 is the retired "+
+					"no-fund sentinel, under which a figure with no fund axis and a row whose "+
+					"fund resolved to nothing shared one address",
+				f.DocID, f.Page, f.RowLabel))
+			continue
+		}
+		entry, ok := s.Vocabulary.Fund(fund)
 		if !ok {
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q: fund %d is not in data/funds.yaml, so the fact joins to nothing",
-				f.DocID, f.Page, f.RowLabel, f.Fund))
+				f.DocID, f.Page, f.RowLabel, fund))
 			continue
 		}
 		if f.FundGroup != "" && entry.Type != f.FundGroup {
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q: fund %d (%s) is type %q in data/funds.yaml but the fact carries "+
-					"fund group %q", f.DocID, f.Page, f.RowLabel, f.Fund, entry.Name,
+					"fund group %q", f.DocID, f.Page, f.RowLabel, fund, entry.Name,
 				entry.Type, f.FundGroup))
 		}
 	}

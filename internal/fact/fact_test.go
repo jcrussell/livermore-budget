@@ -796,15 +796,16 @@ func TestACounterpartPublishesTheFarLegFromTheSameFigure(t *testing.T) {
 		t.Fatalf("both legs published as %s; one figure would be one fact and the "+
 			"payer would be unpublishable", near.ID)
 	}
-	if far.Kind != mapping.KindTransferOut || far.FundGroup != "special-revenue" || far.Fund != 200 {
-		t.Errorf("far leg = %s %s fund %d, want transfer_out special-revenue 200",
-			far.Kind, far.FundGroup, far.Fund)
+	if far.Kind != mapping.KindTransferOut || far.FundGroup != "special-revenue" ||
+		!SameFund(far.Fund, FundNumber(200)) {
+		t.Errorf("far leg = %s %s fund %s, want transfer_out special-revenue 200",
+			far.Kind, far.FundGroup, FundString(far.Fund))
 	}
 	// The near leg takes its fund from the ROW where the row declares one, and
 	// its group from the column, which is the per-field override p76 needs:
 	// the section is the receiving group, the row is the receiving fund.
-	if near.FundGroup != "general" || near.Fund != 100 {
-		t.Errorf("near leg = %s fund %d, want general 100", near.FundGroup, near.Fund)
+	if near.FundGroup != "general" || !SameFund(near.Fund, FundNumber(100)) {
+		t.Errorf("near leg = %s fund %s, want general 100", near.FundGroup, FundString(near.Fund))
 	}
 	if far.Derived || near.Derived {
 		t.Error("a leg is marked derived; both are read off a printed figure")

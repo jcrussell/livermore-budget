@@ -42,10 +42,11 @@ new check. Differences of content, not of shape:
   and labels the column chips and cell tooltips `unaudited` instead. The
   document's basis and the page's label are two different claims and this is the
   one place they diverge.
-- **`fund` is 0 on every series and `fund_name` is `""`.** These schedules'
-  rows are a fund's components or an aggregate across funds, never a numbered
-  fund. The tables render no Fund column; the printed block headings carry the
-  identity instead.
+- **`fund` is `null` on every series and `fund_name` is `""`.** These
+  schedules' rows are a fund's components or an aggregate across funds, never a
+  numbered fund, and no fund is numbered 0 -- `null` is the store's own spelling
+  of an absent fund, carried through from `fact.Fact.Fund`. The tables render no
+  Fund column; the printed block headings carry the identity instead.
 - **p167's two blocks print the same row labels** (Nonspendable, Restricted,
   Committed, Unassigned — both blocks; Assigned — General Fund only). The
   series id tells them apart, as does `fund_group`: `general` on the General

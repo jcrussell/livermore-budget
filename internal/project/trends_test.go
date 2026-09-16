@@ -48,7 +48,7 @@ func trendFacts(t *testing.T, rule, label string, fund int, group string, cents 
 			Category:    "taxes/property",
 			ColumnPath:  columnPath,
 			FundGroup:   group,
-			Fund:        fund,
+			Fund:        fact.FundNumber(fund),
 			Sign:        mapping.SignPositive,
 			Units:       "dollars",
 			AmountCents: cents[i],
@@ -102,14 +102,16 @@ func TestTrendsGroupsPrintedRowsAcrossColumns(t *testing.T) {
 	}
 	for _, s := range d.Series {
 		if len(s.Points) != 4 {
-			t.Errorf("series %s (fund %d) has %d points, want 4", s.SeriesID, s.Fund, len(s.Points))
+			t.Errorf("series %s (fund %s) has %d points, want 4", s.SeriesID, fact.FundString(s.Fund), len(s.Points))
 		}
 	}
 	if d.Series[0].SeriesID == d.Series[1].SeriesID {
 		t.Fatal("two funds printing the same row label share a series id")
 	}
-	if d.Series[0].Fund != 100 || d.Series[1].Fund != 310 {
-		t.Errorf("funds = %d, %d; want them in fund order", d.Series[0].Fund, d.Series[1].Fund)
+	if !fact.SameFund(d.Series[0].Fund, fact.FundNumber(100)) ||
+		!fact.SameFund(d.Series[1].Fund, fact.FundNumber(310)) {
+		t.Errorf("funds = %s, %s; want them in fund order",
+			fact.FundString(d.Series[0].Fund), fact.FundString(d.Series[1].Fund))
 	}
 	if got := d.Series[0].FundName; got != "General Fund" {
 		t.Errorf("fund_name = %q, want the registry's name -- the row label alone is ambiguous", got)
@@ -300,7 +302,7 @@ func TestTrendsRefusesASeriesThatIsTwoRows(t *testing.T) {
 	// Same series tuple, different fund: only reachable by corrupting the store,
 	// which is the point -- the refusal is what makes the id's uniqueness a
 	// checked property rather than an assumption.
-	facts[1].Fund = 999
+	facts[1].Fund = fact.FundNumber(999)
 	_, err := buildTrendsErr(t, facts)
 	if err == nil {
 		t.Fatal("Document = nil error over a series carrying two different rows")

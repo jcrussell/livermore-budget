@@ -69,7 +69,18 @@ type Fact struct {
 
 	ColumnPath string `json:"column_path"`
 	FundGroup  string `json:"fund_group"`
-	Fund       int    `json:"fund"`
+	// Fund is the fund the column names, and nil -- published as null -- where
+	// it names none. NIL IS NOT 0. Two absences arrive here and both are real:
+	// a schedule with no fund axis at all (pp.66-67's columns are fund groups),
+	// and a row on an axis the schedule does carry whose fund resolves to
+	// nothing (p76's LAVWMA row names a joint powers authority, not a City
+	// fund). Spelled 0, the two collided: a $13.2M fund-group total and a
+	// printed dash at one address, and on the dash's own record a real printed
+	// zero in amount_cents beside a 0 that meant absence. The mapping side
+	// still spells its absence 0 (fisc-12jt); fundOfColumn is the one place
+	// that becomes nil, and fact-funds-resolve refuses a 0 that reaches the
+	// store.
+	Fund *int `json:"fund"`
 
 	// Sign says how this row relates to its category; it is NOT an instruction
 	// to negate. AmountCents is always the figure as the document printed it,
@@ -103,6 +114,42 @@ type Fact struct {
 	// must be able to rely on the distinction being stated rather than
 	// inferred from a key's absence.
 	Derived bool `json:"derived"`
+}
+
+// FundNumber is the fund coordinate naming fund n, for a caller that has a
+// number and needs the pointer Fact.Fund is.
+func FundNumber(n int) *int { return &n }
+
+// fundOfColumn is the mapping side's fund as a fact's. mapping.Column spells
+// an absent fund 0, and this is the only place that spelling crosses into the
+// store: ColumnPath reads the same 0 and is hashed into every fact id, which is
+// why the mapping side keeps it (fisc-12jt).
+func fundOfColumn(n int) *int {
+	if n == 0 {
+		return nil
+	}
+	return &n
+}
+
+// FundString renders a fund coordinate for a message: the number, or
+// "(absent)" for none. The spelling matches internal/structure's for a
+// coordinate a fact does not carry, so a finding and a cut name the same thing
+// the same way.
+func FundString(fund *int) string {
+	if fund == nil {
+		return "(absent)"
+	}
+	return strconv.Itoa(*fund)
+}
+
+// SameFund reports whether two fund coordinates agree: both absent, or both
+// the same number. Comparing the pointers compares addresses, which two facts
+// naming fund 100 never share.
+func SameFund(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
 
 // MakeID returns the content-addressed id for a fact's identity.
@@ -332,7 +379,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			Department:  v.Row.Department,
 			ColumnPath:  columnPath,
 			FundGroup:   col.FundGroup,
-			Fund:        col.Fund,
+			Fund:        fundOfColumn(col.Fund),
 			Sign:        sign,
 			Units:       rule.Units,
 			AmountCents: int64(v.Cents),
@@ -400,7 +447,7 @@ func FromValues(f *mapping.File, rule *mapping.Rule, values []mapping.Value) ([]
 			Department:  cpRow.Department,
 			ColumnPath:  cpPath,
 			FundGroup:   cpCol.FundGroup,
-			Fund:        cpCol.Fund,
+			Fund:        fundOfColumn(cpCol.Fund),
 			Sign:        sign,
 			Units:       rule.Units,
 			AmountCents: int64(v.Cents),

@@ -172,7 +172,12 @@ type Series struct {
 	// published because Label is NOT unique across funds: "Property Taxes" is
 	// printed by four of them and "Use of Money & Prop" by thirty-eight, so a
 	// series named by its row alone is ambiguous on sight.
-	Fund      int    `json:"fund"`
+	//
+	// Fund is null where the row sits under no numbered fund: the ACFR's
+	// fund-balance schedules print a fund's components and an aggregate across
+	// funds, never a fund. It is fact.Fact.Fund carried through, for that
+	// field's reason -- 0 would be a fund, and no fund is numbered 0.
+	Fund      *int   `json:"fund"`
 	FundName  string `json:"fund_name"`
 	FundGroup string `json:"fund_group"`
 	Kind      string `json:"kind"`
@@ -316,6 +321,15 @@ func sortPoints(points []Point, cols []Column) {
 	sort.SliceStable(points, func(i, j int) bool { return at(points[i]) < at(points[j]) })
 }
 
+// fundBefore orders two fund coordinates that differ: no fund sorts ahead of
+// every numbered one, and numbers sort as numbers.
+func fundBefore(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == nil
+	}
+	return *a < *b
+}
+
 // sortSeries puts the document in reading order: fund by number, and within a
 // fund the order the schedule prints the rows.
 //
@@ -334,8 +348,8 @@ func sortSeries(series []Series) {
 		return page, offset
 	}
 	sort.Slice(series, func(i, j int) bool {
-		if series[i].Fund != series[j].Fund {
-			return series[i].Fund < series[j].Fund
+		if !fact.SameFund(series[i].Fund, series[j].Fund) {
+			return fundBefore(series[i].Fund, series[j].Fund)
 		}
 		pi, oi := at(series[i])
 		pj, oj := at(series[j])

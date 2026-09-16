@@ -89,7 +89,7 @@ func fundFlowsOptions() Options {
 
 // fundFlowsFact is one fact at an address. The amount is what nets.
 func fundFlowsFact(scope string, kind mapping.Kind, category, department, group string,
-	fund int, cents int64, id string) fact.Fact {
+	fund *int, cents int64, id string) fact.Fact {
 	return fact.Fact{
 		ID: id, DocID: testDoc, Scope: scope, Kind: kind, Category: category,
 		Department: department, FundGroup: group, Fund: fund, RowLabel: printedRow(category),
@@ -100,12 +100,12 @@ func fundFlowsFact(scope string, kind mapping.Kind, category, department, group 
 func fundFlowsFacts() []fact.Fact {
 	const rev, exp = ScopeRevenueByFund, scopeExpenditureByDepartment
 	return []fact.Fact{
-		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 100, 1000, "a"),
-		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "enterprise", 500, 2000, "b"),
+		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1000, "a"),
+		fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "enterprise", fact.FundNumber(500), 2000, "b"),
 		// A printed zero: a fact that earns no link.
-		fundFlowsFact(rev, mapping.KindTransferIn, "transfers/in", "", "general", 100, 0, "c"),
-		fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "general", 100, 600, "d"),
-		fundFlowsFact(exp, mapping.KindExpenditure, "services-and-supplies", "police", "general", 100, 400, "e"),
+		fundFlowsFact(rev, mapping.KindTransferIn, "transfers/in", "", "general", fact.FundNumber(100), 0, "c"),
+		fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "general", fact.FundNumber(100), 600, "d"),
+		fundFlowsFact(exp, mapping.KindExpenditure, "services-and-supplies", "police", "general", fact.FundNumber(100), 400, "e"),
 	}
 }
 
@@ -385,7 +385,7 @@ func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 	labels.names[700] = "Fleet Maintenance"
 	labels.types[700] = "internal-service"
 	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
-		"taxes/property", "", "internal-service", 700, 500, "f"))
+		"taxes/property", "", "internal-service", fact.FundNumber(700), 500, "f"))
 
 	got := map[LinkKind]Link{}
 	for _, l := range buildFundFlows(t, facts, labels).Links {
@@ -440,7 +440,7 @@ func TestAPrintedZeroIsNotInItsLinesRollup(t *testing.T) {
 	labels.names[600] = "Capital Projects"
 	labels.types[600] = "capital"
 	facts := append(fundFlowsFacts(), fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
-		"taxes/property", "", "capital", 600, 0, "z"))
+		"taxes/property", "", "capital", fact.FundNumber(600), 0, "z"))
 
 	doc := buildFundFlows(t, facts, labels)
 	var rollup *Link
@@ -517,14 +517,14 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 		{
 			name: "a revenue fact naming no fund",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 0, 1, "z"),
+				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", nil, 1, "z"),
 			},
 			want: "names no fund",
 		},
 		{
 			name: "an expenditure fact naming no department",
 			facts: []fact.Fact{
-				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "", "general", 100, 1, "z"),
+				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			want: "carries no department",
 		},
@@ -533,8 +533,8 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			// spending on one division/object would collide on one link.
 			name: "two funds on the expenditure side",
 			facts: []fact.Fact{
-				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "general", 100, 1, "y"),
-				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "enterprise", 500, 1, "z"),
+				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "general", fact.FundNumber(100), 1, "y"),
+				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police", "enterprise", fact.FundNumber(500), 1, "z"),
 			},
 			want: "names funds",
 		},
@@ -545,14 +545,14 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			// every row nobody declared.
 			name: "a revenue row no line is printed as",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/sales", "", "general", 100, 1, "z"),
+				fundFlowsFact(rev, mapping.KindRevenue, "taxes/sales", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			want: "no data/taxonomy.yaml line under",
 		},
 		{
 			name: "a revenue row two lines claim",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 100, 1, "z"),
+				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "z"),
 			},
 			labels: func(l stubFundFlows) stubFundFlows {
 				l.lines = map[lineKey][]string{
@@ -567,7 +567,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			name: "a revenue fact carrying no row label",
 			facts: []fact.Fact{
 				func() fact.Fact {
-					f := fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 100, 1, "z")
+					f := fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "z")
 					f.RowLabel = ""
 					return f
 				}(),
@@ -577,7 +577,7 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 		{
 			name: "a fund the registry does not list",
 			facts: []fact.Fact{
-				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", 999, 1, "z"),
+				fundFlowsFact(rev, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(999), 1, "z"),
 			},
 			want: "is in no data/funds.yaml entry",
 		},
@@ -640,7 +640,7 @@ func TestFundFlowsSlicesDeclareOnlyColumnsBothSchedulesCarry(t *testing.T) {
 	facts := fundFlowsFacts()
 	// A second column, revenue only.
 	extra := fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue, "taxes/property", "",
-		"general", 100, 5, "x")
+		"general", fact.FundNumber(100), 5, "x")
 	extra.FiscalYear = testYear + 1
 	facts = append(facts, extra)
 
@@ -698,16 +698,16 @@ func TestATransferInLinkIsNotExternal(t *testing.T) {
 	}
 }
 
-// TestTheExpenditureSideRefusesAFundlessFact: 0 is the no-fund sentinel, and an
-// expenditure side of fund-0 facts would parent every department to fund/100 and
-// source every division link from it -- attributing the whole of the spending to
-// the General Fund on no evidence. Nothing downstream would see it: the amounts
-// are unchanged, so expenditure-detail-ties-to-spine still ties, and
-// fact-funds-resolve only examines facts that DO name a fund.
+// TestTheExpenditureSideRefusesAFundlessFact: an expenditure side of fundless
+// facts would parent every department to fund/100 and source every division
+// link from it -- attributing the whole of the spending to the General Fund on
+// no evidence. Nothing downstream would see it: the amounts are unchanged, so
+// expenditure-detail-ties-to-spine still ties, and fact-funds-resolve only
+// examines facts that DO name a fund.
 func TestTheExpenditureSideRefusesAFundlessFact(t *testing.T) {
 	facts := []fact.Fact{
 		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,
-			"wages-and-benefits", "police", "general", 0, 600, "d"),
+			"wages-and-benefits", "police", "general", nil, 600, "d"),
 	}
 	_, err := (&fundFlows{Labels: fundFlowsLabels()}).Document(facts, fundFlowsOptions())
 	if err == nil || !strings.Contains(err.Error(), "names no fund") {
@@ -723,9 +723,9 @@ func TestATierFiveParentIsCutAtTheFirstSlash(t *testing.T) {
 	labels := fundFlowsLabels()
 	labels.stubLabels["fund-balance/ending"] = "Ending Balance"
 	facts := []fact.Fact{
-		fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue, "taxes/property", "", "general", 100, 1, "a"),
+		fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue, "taxes/property", "", "general", fact.FundNumber(100), 1, "a"),
 		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,
-			"fund-balance/ending", "police", "general", 100, 600, "d"),
+			"fund-balance/ending", "police", "general", fact.FundNumber(100), 600, "d"),
 	}
 	doc := buildFundFlows(t, facts, labels)
 	for _, n := range doc.Nodes {

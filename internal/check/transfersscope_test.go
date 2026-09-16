@@ -98,7 +98,7 @@ func TestEveryP76LegNamesAFundOrSaysWhyNot(t *testing.T) {
 				"unaddressable and its id is hashed over the gap",
 				f.RowLabel, f.RowPath, f.ColumnPath)
 		}
-		if f.Fund == 0 {
+		if f.Fund == nil {
 			noFund[f.RowLabel]++
 		}
 	}

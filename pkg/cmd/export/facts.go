@@ -330,6 +330,24 @@ func factCSVHeader() []string {
 	return out
 }
 
+// factCSVNullable is the set of columns the store may publish null in: the
+// pointer fields of fact.Fact, read off the type for factCSVHeader's reason. A
+// literal set would let a field go nullable without the CSV learning it, and
+// the transcoder would then refuse the committed store as not the store.
+func factCSVNullable() map[string]bool {
+	t := reflect.TypeOf(fact.Fact{})
+	out := map[string]bool{}
+	for i := range t.NumField() {
+		f := t.Field(i)
+		tag, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+		if tag == "" || tag == "-" || f.Type.Kind() != reflect.Pointer {
+			continue
+		}
+		out[tag] = true
+	}
+	return out
+}
+
 // factsCSV transcodes the store's JSONL into CSV, value for value.
 //
 // TRANSCODED RATHER THAN RE-SERIALISED FROM []fact.Fact, and that is what makes
@@ -350,6 +368,7 @@ func factCSVHeader() []string {
 // the amount is. The column says cents in its name.
 func factsCSV(raw []byte) ([]byte, error) {
 	header := factCSVHeader()
+	nullable := factCSVNullable()
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
 	if err := w.Write(header); err != nil {
@@ -359,7 +378,7 @@ func factsCSV(raw []byte) ([]byte, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.UseNumber()
 	for line := 1; ; line++ {
-		row, err := csvRow(dec, header)
+		row, err := csvRow(dec, header, nullable)
 		if errors.Is(err, io.EOF) {
 			break
 		}
@@ -386,7 +405,7 @@ func factsCSV(raw []byte) ([]byte, error) {
 // would otherwise ship a short row in silence, which is the shape of defect
 // this whole file exists to refuse. Fail closed, naming the key and the
 // position.
-func csvRow(dec *json.Decoder, header []string) ([]string, error) {
+func csvRow(dec *json.Decoder, header []string, nullable map[string]bool) ([]string, error) {
 	tok, err := dec.Token()
 	if err != nil {
 		// The ONLY place io.EOF means "done". Everywhere below it means the
@@ -426,7 +445,7 @@ func csvRow(dec *json.Decoder, header []string) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("reading the value of %q: %w", key, unexpectedEnd(err))
 		}
-		cell, err := csvCell(val)
+		cell, err := csvCell(val, nullable[key])
 		if err != nil {
 			return nil, fmt.Errorf("key %q: %w", key, err)
 		}
@@ -445,7 +464,13 @@ func unexpectedEnd(err error) error {
 
 // csvCell renders one JSON scalar. A number keeps its source literal; there is
 // no numeric type here at all.
-func csvCell(v any) (string, error) {
+//
+// A NULL IS A CELL ONLY IN A NULLABLE COLUMN. The store publishes null in
+// exactly its pointer fields -- fund, where null is an absent fund and 0 would
+// be a fund -- and the CSV spells that absence as an empty cell, which is how
+// its string axes already spell theirs: an empty department is a row with no
+// department. Anywhere else a null means the file is not the store.
+func csvCell(v any, nullable bool) (string, error) {
 	switch t := v.(type) {
 	case json.Number:
 		return t.String(), nil
@@ -454,12 +479,25 @@ func csvCell(v any) (string, error) {
 	case bool:
 		return strconv.FormatBool(t), nil
 	case nil:
-		// The store publishes no nulls (fact.Fact has no omitempty and no
-		// pointers), so one appearing means the file is not the store.
-		return "", fmt.Errorf("value is null, which the fact store never publishes")
+		if nullable {
+			return "", nil
+		}
+		return "", fmt.Errorf("value is null, which the fact store publishes in no column but %s",
+			describeNullable())
 	default:
 		return "", fmt.Errorf("value %v is not a scalar; a fact has no nested values", v)
 	}
+}
+
+// describeNullable lists the nullable columns for a refusal, so the message
+// names what the store does allow rather than only what it does not.
+func describeNullable() string {
+	var names []string
+	for name := range factCSVNullable() {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return strings.Join(names, ", ")
 }
 
 // pageIndex describes each shard in the terms the provenance view publishes.

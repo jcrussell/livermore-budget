@@ -375,18 +375,18 @@ func (r transferRow) endpoints() (transferEnds, transferEnds, error) {
 
 // transferFundEnds is the three id forms one leg's fund takes.
 func transferFundEnds(fa *fact.Fact) (transferEnds, error) {
-	if fa.Fund == 0 {
+	if fa.Fund == nil {
 		return transferEnds{}, cmdutil.WithHint(
 			fmt.Errorf("transfers-by-fund: fact %s (%s p%d %q) is a %s leg naming no fund",
 				fa.ID, fa.DocID, fa.Page, fa.RowLabel, fa.Kind),
-			"both ends of a movement are fund nodes here, and 0 is this project's no-fund "+
-				"sentinel rather than a fund")
+			"both ends of a movement are fund nodes here, and a leg naming none has no "+
+				"node to be")
 	}
-	n := strconv.Itoa(fa.Fund)
+	n := strconv.Itoa(*fa.Fund)
 	return transferEnds{
 		from: endpoint{id: prefixTransferFrom + n, tier: tierFundGroup, role: roleTransferSource,
 			parent: nodeTransfersIn},
-		fund: endpoint{id: prefixFund + n, tier: tierFund, role: transferFundRole(fa.Fund)},
+		fund: endpoint{id: prefixFund + n, tier: tierFund, role: transferFundRole(*fa.Fund)},
 		to:   endpoint{id: prefixTransferTo + n, tier: tierObjectCategory, role: roleTransferSink},
 	}, nil
 }

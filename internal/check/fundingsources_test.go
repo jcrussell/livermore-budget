@@ -336,9 +336,9 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 			t.Errorf("%s: %q resolves to no fund: %v", f.ID, f.RowLabel, err)
 			continue
 		}
-		if entry.Number != f.Fund {
+		if f.Fund == nil || entry.Number != *f.Fund {
 			t.Errorf("%s: p%d prints %q, which is fund %d (%s), and the rule declares "+
-				"fund %d", f.ID, f.Page, f.RowLabel, entry.Number, entry.Name, f.Fund)
+				"fund %s", f.ID, f.Page, f.RowLabel, entry.Number, entry.Name, fact.FundString(f.Fund))
 		}
 		if entry.Type != f.FundGroup {
 			t.Errorf("%s: p%d %q is fund %d, type %q in data/funds.yaml, and the rule "+

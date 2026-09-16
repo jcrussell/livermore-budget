@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,8 +56,8 @@ func historyFacts(t *testing.T, scope, rule, label string, kind mapping.Kind,
 }
 
 // balancesFixture is p167's shape in miniature: the two blocks print the same
-// row label, and only the rule and the column path tell them apart -- both
-// carry fund 0, unlike the trends schedule, whose same-label rows sit in
+// row label, and only the rule and the column path tell them apart -- neither
+// carries a fund, unlike the trends schedule, whose same-label rows sit in
 // different funds.
 func balancesFixture(t *testing.T) []fact.Fact {
 	t.Helper()
@@ -242,9 +243,58 @@ func TestHistoryIsDeterministic(t *testing.T) {
 	if string(first) != string(second) {
 		t.Error("two builds over the same facts differ")
 	}
-	if strings.Contains(string(first), "null") {
-		t.Error("the document contains a null; absent strings are \"\" and absent slices []")
+	// THE ONE NULL THIS DOCUMENT PUBLISHES IS fund, AND ON EVERY SERIES. These
+	// schedules print a fund's components and an aggregate across funds, never
+	// a numbered fund, so fact.Fact.Fund is nil on each of their facts and the
+	// series carries it through as null -- not 0, which would be a fund.
+	// Absent strings are still "" and absent slices still [].
+	var doc map[string]any
+	if err := json.Unmarshal(first, &doc); err != nil {
+		t.Fatalf("decode: %v", err)
 	}
+	nulls := nullKeys(doc)
+	series := doc["series"].([]any)
+	want := make([]string, len(series))
+	for i := range want {
+		want[i] = "fund"
+	}
+	if len(series) == 0 {
+		t.Fatal("the fixture built no series, so the null arm below asserts nothing")
+	}
+	if !reflect.DeepEqual(nulls, want) {
+		t.Errorf("null-valued keys = %v, want %v: one fund per series and no other null",
+			nulls, want)
+	}
+}
+
+// nullKeys is every key whose value is null, in document order, so a test can
+// say WHERE a document publishes null rather than only whether it does.
+func nullKeys(v any) []string {
+	var out []string
+	var walk func(v any)
+	walk = func(v any) {
+		switch t := v.(type) {
+		case map[string]any:
+			keys := make([]string, 0, len(t))
+			for k := range t {
+				keys = append(keys, k)
+			}
+			slices.Sort(keys)
+			for _, k := range keys {
+				if t[k] == nil {
+					out = append(out, k)
+					continue
+				}
+				walk(t[k])
+			}
+		case []any:
+			for _, e := range t {
+				walk(e)
+			}
+		}
+	}
+	walk(v)
+	return out
 }
 
 // fixturePage reads one page fixture: verbatim corpus bytes, sha256-equal to

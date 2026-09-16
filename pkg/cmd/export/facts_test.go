@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -289,6 +290,84 @@ func TestTheCSVQuotesTokensThatCarryACommaAndRoundTrips(t *testing.T) {
 		t.Fatal("no field carries a comma, so this test asserts nothing about quoting")
 	}
 	t.Logf("%d fields carry a comma and survived the round trip", quoted)
+}
+
+// TestTheCSVSpellsAnAbsentFundAsAnEmptyCellAndRefusesNullElsewhere is the CSV's
+// side of "absent is not zero". The store publishes null in exactly one column,
+// fund, where nil is an absent fund and 0 would be a fund; the CSV spells that
+// absence as an empty cell, as its string axes already spell theirs. A null in
+// any other column still means the file is not the store.
+//
+// OVER THE COMMITTED STORE, AND BOTH SPELLINGS MUST OCCUR: a store whose every
+// fund were absent, or none, would let one arm pass vacuously.
+func TestTheCSVSpellsAnAbsentFundAsAnEmptyCellAndRefusesNullElsewhere(t *testing.T) {
+	raw, facts := committedStore(t)
+	out, err := factsCSV(raw)
+	if err != nil {
+		t.Fatalf("factsCSV: %v", err)
+	}
+	rows, err := csv.NewReader(bytes.NewReader(out)).ReadAll()
+	if err != nil {
+		t.Fatalf("read back the CSV: %v", err)
+	}
+	col := -1
+	for i, name := range rows[0] {
+		if name == "fund" {
+			col = i
+		}
+	}
+	if col < 0 {
+		t.Fatal("the CSV has no fund column")
+	}
+	absent, named := 0, 0
+	for i, f := range facts {
+		got := rows[i+1][col]
+		if f.Fund == nil {
+			absent++
+			if got != "" {
+				t.Fatalf("line %d names no fund and the CSV cell is %q, want empty", i+1, got)
+			}
+			continue
+		}
+		named++
+		if want := strconv.Itoa(*f.Fund); got != want {
+			t.Fatalf("line %d names fund %s and the CSV cell is %q", i+1, want, got)
+		}
+	}
+	if absent == 0 || named == 0 {
+		t.Fatalf("%d facts name no fund and %d name one; both spellings must occur for "+
+			"this test to see either", absent, named)
+	}
+
+	// A null anywhere but a nullable column is refused, and the refusal names
+	// the column it landed in.
+	lines := bytes.SplitN(raw, []byte("\n"), 2)
+	var first map[string]any
+	if err := json.Unmarshal(lines[0], &first); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	var b bytes.Buffer
+	b.WriteByte('{')
+	for _, name := range factCSVHeader() {
+		if b.Len() > 1 {
+			b.WriteByte(',')
+		}
+		v := []byte("null")
+		if name != "amount_cents" {
+			var err error
+			if v, err = json.Marshal(first[name]); err != nil {
+				t.Fatalf("encode %s: %v", name, err)
+			}
+		}
+		fmt.Fprintf(&b, "%q:%s", name, v)
+	}
+	b.WriteByte('}')
+	nulled := append(append(b.Bytes(), '\n'), lines[1]...)
+	if _, err := factsCSV(nulled); err == nil {
+		t.Fatal("factsCSV accepted a null amount_cents")
+	} else if !strings.Contains(err.Error(), "amount_cents") || !strings.Contains(err.Error(), "null") {
+		t.Errorf("error %q does not name the null and the column it is in", err)
+	}
 }
 
 // TestTheCSVRefusesALineMissingAKey closes csv.Writer's own gap: it enforces no

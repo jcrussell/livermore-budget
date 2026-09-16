@@ -196,7 +196,7 @@ func TestTheCrossTabRefusesAFactThatCarriesAFund(t *testing.T) {
 	}{
 		{"a fund number", func(f *fact.Fact) {
 			if f.Department == "maintenance" {
-				f.Fund = 100
+				f.Fund = fact.FundNumber(100)
 			}
 		}, "names fund 100"},
 		{"a fund group", func(f *fact.Fact) {
