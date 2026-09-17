@@ -369,8 +369,9 @@ type stepView struct {
 	Stem    string      `json:"stem"`
 	Path    string      `json:"path"`
 	Caveats []caveatRef `json:"caveats"`
-	// Opens is every node id at the step's From that this year's document
-	// actually decomposes, or nil for a step that declares no such set.
+	// Opens is every node id this year's document actually decomposes under
+	// the step -- at the step's From where it keeps a flank and at any tier
+	// where it keeps none -- or nil for a step that declares no such set.
 	//
 	// DERIVED FROM THE DOCUMENT, NEVER DECLARED, and that is the whole of what
 	// makes it safe. [DrillStep.Role] gates a tier by what its nodes ARE, which
