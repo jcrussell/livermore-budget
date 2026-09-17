@@ -29,7 +29,11 @@ type rungsDoc struct {
 	// the reason, so the arm reading it can tell a rung Go declined from one
 	// it missed.
 	Skipped []skippedStep `json:"skipped"`
-	Columns []rungColumn  `json:"columns"`
+	// Reasons is the one sentence behind each drawnTier.Unanswered code, so a
+	// column Go declines to answer says why once rather than on every rung,
+	// and an arm reading a code this table does not carry can refuse it.
+	Reasons map[string]string `json:"reasons"`
+	Columns []rungColumn      `json:"columns"`
 }
 
 type skippedStep struct {
@@ -45,32 +49,60 @@ type rungColumn struct {
 }
 
 // A rung is one opened path at one column budget: the step that opened its
-// last node, the tiers the window draws, and for every cap the step declares
-// on a drawn tier, what the cap does to that column.
+// last node and, for every column the window draws, in the order it draws
+// them, what that column holds.
 type rung struct {
 	Path  []string    `json:"path"`
 	Width int         `json:"width"`
 	Step  string      `json:"step"`
-	Tiers []int       `json:"tiers"`
-	Caps  []capAnswer `json:"caps"`
+	Draws []drawnTier `json:"draws"`
 }
 
-// capAnswer is what one cap does to one column of one rung. Candidates is
-// how many document nodes the window reaches at that tier; Drawn is how many
-// of them are drawn as themselves and Hidden how many the folded tail stands
-// for.
+// drawnTier is one column of one rung. ONE LIST IN COLUMN ORDER, rather than
+// a tier list beside a cap list beside an id list: three spellings of one
+// shape drift, and revenue-category's order is [1,0,2], which no
+// centre-first convention would have spelled.
 //
-// THE FOLD ENGAGES ONLY ABOVE CAP+1, because folding one node into a tail of
-// one draws the same number of marks and loses a name. That threshold is the
-// client's, measured at the shipped site: special-revenue's 32 funds draw
-// eight and a tail of 24, and a column of nine under a cap of eight draws all
-// nine.
-type capAnswer struct {
-	Tier       int `json:"tier"`
-	Cap        int `json:"cap"`
-	Candidates int `json:"candidates"`
-	Drawn      int `json:"drawn"`
-	Hidden     int `json:"hidden"`
+// Role is centre for the opened node's own column, flank for a column of
+// s.Keep, and outward for one the step opens the node into. A flank carries
+// Unanswered and nothing else: it is the half of the chart on screen that
+// the client's windowFor carries over, which this walk does not model, and
+// an empty IDs beside the reason would invite a green against an empty
+// client column. Cap is 0 where the step declares none, which is the value
+// validateSteps refuses on a declared cap.
+//
+// Candidates is how many document nodes the window reaches at the tier;
+// IDs, sorted, is which of them the column draws as themselves and Hidden
+// how many the folded tail stands for. THE FOLD ENGAGES ONLY ABOVE CAP+1,
+// because folding one node into a tail of one draws the same number of
+// marks and loses a name. That threshold is the client's, measured at the
+// shipped site: special-revenue's 32 funds draw eight and a tail of 24, and
+// a column of nine under a cap of eight draws all nine.
+type drawnTier struct {
+	Tier       int      `json:"tier"`
+	Role       string   `json:"role"`
+	Unanswered string   `json:"unanswered,omitempty"`
+	Cap        int      `json:"cap,omitempty"`
+	Candidates int      `json:"candidates,omitempty"`
+	IDs        []string `json:"ids,omitempty"`
+	Hidden     int      `json:"hidden,omitempty"`
+}
+
+const (
+	roleCentre  = "centre"
+	roleFlank   = "flank"
+	roleOutward = "outward"
+)
+
+// reasonKeptFlank is the one Unanswered code the walk emits today, keyed
+// into rungsDoc.Reasons.
+const reasonKeptFlank = "kept-flank"
+
+var rungReasons = map[string]string{
+	reasonKeptFlank: "the column is the kept flank of the chart on screen, which the client's " +
+		"windowFor carries over from the rung above rather than reading off the document this " +
+		"step draws; this walk reads only that document, so it does not say which nodes the " +
+		"flank holds",
 }
 
 // rungGraph is as much of a projection document as a rung needs: which tier
@@ -108,7 +140,7 @@ type rungLink struct {
 // them, so the day one of them competes with a cap the arm reading this
 // artifact goes red rather than this function guessing which side wins.
 func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error) {
-	doc := rungsDoc{SchemaVersion: 1}
+	doc := rungsDoc{SchemaVersion: 2, Reasons: rungReasons}
 	skipped := map[string]string{}
 	for _, year := range spine.YearStems {
 		raw, ok := projections[year]
@@ -232,9 +264,9 @@ func (w rungWalker) walk(chart []rungNode, openedKey string, path []string, out 
 	return nil
 }
 
-// answer is one rung at this walker's budget: the window's tiers, what each
-// declared cap does, and the chart the rung leaves on screen for the next
-// step to open from.
+// answer is one rung at this walker's budget: what every column the window
+// draws holds, and the chart the rung leaves on screen for the next step to
+// open from.
 func (w rungWalker) answer(g rungGraph, s export.DrillStep, opened string, keptLeft bool, outward []int) (rung, []rungNode, error) {
 	// THE BUDGET DROPS WIDENED COLUMNS FROM THE END OF WIDEN'S ORDER, which is
 	// DrillStep.Widen's contract, and a widened column the document leaves
@@ -284,50 +316,80 @@ func (w rungWalker) answer(g rungGraph, s export.DrillStep, opened string, keptL
 		}
 	}
 	capOn := map[int]int{}
-	// AN EMPTY LIST AND NOT NULL: a rung with no cap on any drawn tier says
-	// so with [], which a reader iterates, rather than with a null it cannot.
-	caps := []capAnswer{}
 	for _, c := range s.Caps {
+		// A CAP ON THE KEPT FLANK IS REFUSED, NOT LEFT UNCOMPARED. The client's
+		// sideOf applies every declared cap to both halves of the window, so a
+		// cap here would fold a column this walk answers with a reason instead
+		// of ids, and nothing would hold the client to it.
+		if slices.Contains(s.Keep, c.Tier) {
+			return rung{}, nil, fmt.Errorf("step %q caps tier %d, which is a flank it keeps off the chart above and not a column of the document it draws", s.Key, c.Tier)
+		}
 		if !slices.Contains(active, c.Tier) {
 			continue
 		}
-		ids, reached := candidates[c.Tier]
-		if !reached {
+		if _, reached := candidates[c.Tier]; !reached {
 			return rung{}, nil, fmt.Errorf("step %q caps tier %d, which its window does not open a node into", s.Key, c.Tier)
 		}
 		capOn[c.Tier] = c.Cap
-		a := capAnswer{Tier: c.Tier, Cap: c.Cap, Candidates: len(ids), Drawn: len(ids)}
-		if len(ids) > c.Cap+1 {
-			a.Drawn, a.Hidden = c.Cap, len(ids)-c.Cap
+	}
+	// A FOLD ABOVE A DRAWN DEEPER TIER IS REFUSED, because the two sides would
+	// count that deeper tier differently in silence: the client's capColumn
+	// removes a folded node's descendants before the next tier is ranked, and
+	// this walk reached the next tier from the frontier before the fold.
+	// Inert on the corpus, measured: fund is the only step with two outward
+	// tiers, and its 23 divisions sit under a cap of 24.
+	for k, t := range outward[:len(outward)-1] {
+		deeper := outward[k+1]
+		if c, capped := capOn[t]; capped && len(candidates[t]) > c+1 && slices.Contains(active, deeper) {
+			return rung{}, nil, fmt.Errorf("step %q folds tier %d (%d under a cap of %d) while drawing tier %d beyond it, which this walk reaches from the unfolded column and the client from the folded one", s.Key, t, len(candidates[t]), c, deeper)
 		}
-		caps = append(caps, a)
 	}
 	size := func(id string) int64 { return max(inflow[id], outflow[id]) }
-	next := []rungNode{{ID: opened, Tier: s.From, Role: role[opened]}}
-	for _, t := range outward {
-		ids, ok := candidates[t]
-		if !ok {
-			break
-		}
-		// THE RANKING IS THE CLIENT'S: by the larger of what flows in and what
-		// flows out, largest first, ties by id. Which nodes survive a fold is
-		// which nodes the next step can be asked to open.
-		if c, capped := capOn[t]; capped && len(ids) > c+1 {
-			ids = slices.Clone(ids)
-			sort.SliceStable(ids, func(i, j int) bool {
-				si, sj := size(ids[i]), size(ids[j])
-				if si != sj {
-					return si > sj
-				}
-				return ids[i] < ids[j]
+	// ONE PASS IN COLUMN ORDER ANSWERS EVERY DRAWN TIER AND BUILDS THE CHART
+	// THE RUNG LEAVES ON SCREEN from the same ranked slice, so what the
+	// artifact says a column draws and what the next step is offered cannot
+	// be two readings of the fold.
+	draws := make([]drawnTier, 0, len(active))
+	var next []rungNode
+	for _, t := range active {
+		switch {
+		case t == s.From:
+			draws = append(draws, drawnTier{Tier: t, Role: roleCentre, Candidates: 1, IDs: []string{opened}})
+			next = append(next, rungNode{ID: opened, Tier: t, Role: role[opened]})
+		case slices.Contains(s.Keep, t):
+			draws = append(draws, drawnTier{Tier: t, Role: roleFlank, Unanswered: reasonKeptFlank})
+		case slices.Contains(outward, t):
+			ids, reached := candidates[t]
+			if !reached {
+				return rung{}, nil, fmt.Errorf("step %q draws tier %d, which its window does not reach at %d columns", s.Key, t, w.width)
+			}
+			// THE RANKING IS THE CLIENT'S: by the larger of what flows in and
+			// what flows out, largest first, ties by id. Which nodes survive a
+			// fold is which nodes the next step can be asked to open.
+			if c, capped := capOn[t]; capped && len(ids) > c+1 {
+				ids = slices.Clone(ids)
+				sort.SliceStable(ids, func(i, j int) bool {
+					si, sj := size(ids[i]), size(ids[j])
+					if si != sj {
+						return si > sj
+					}
+					return ids[i] < ids[j]
+				})
+				ids = ids[:c]
+			}
+			for _, id := range ids {
+				next = append(next, rungNode{ID: id, Tier: t, Role: role[id]})
+			}
+			draws = append(draws, drawnTier{
+				Tier: t, Role: roleOutward, Cap: capOn[t],
+				Candidates: len(candidates[t]), IDs: slices.Sorted(slices.Values(ids)),
+				Hidden: len(candidates[t]) - len(ids),
 			})
-			ids = ids[:c]
-		}
-		for _, id := range ids {
-			next = append(next, rungNode{ID: id, Tier: t, Role: role[id]})
+		default:
+			return rung{}, nil, fmt.Errorf("step %q draws tier %d, which is neither its centre, a flank it keeps, nor a tier it opens into", s.Key, t)
 		}
 	}
-	return rung{Width: w.width, Step: s.Key, Tiers: active, Caps: caps}, next, nil
+	return rung{Width: w.width, Step: s.Key, Draws: draws}, next, nil
 }
 
 func mapKeysBool(m map[string]bool) func(func(string) bool) {
@@ -341,7 +403,7 @@ func mapKeysBool(m map[string]bool) func(func(string) bool) {
 }
 
 // encodeRungs is the artifact's one encoding: indented, so a regenerated
-// file's diff can be read by eye against the rule capAnswer states.
+// file's diff can be read by eye against the rule drawnTier states.
 func encodeRungs(doc rungsDoc) ([]byte, error) {
 	b, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {

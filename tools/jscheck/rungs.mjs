@@ -10,22 +10,30 @@
 // pkg/cmd/export's TestTheRungArtifactIsWhatGoComputes refuses one that is not
 // what Go computes.
 //
-// WHAT IS COMPARED, PER RUNG AND PER BUDGET: the tiers the window draws, and
-// for every cap the step declares on a drawn tier, how many document nodes the
-// column draws as themselves and how many its folded tail stands for -- read
-// off the tail's own label, "24 smaller funds". The uncapped columns and the
-// derived marks the client adds (a residual, a gap, a carried endpoint) are not
-// Go's to count and are not compared; a derived mark competing with a cap is
-// the day this goes red by design.
+// WHAT IS COMPARED, PER RUNG AND PER BUDGET: the columns the window draws, in
+// order, and for every column Go answers -- the centre and every tier the
+// step opens the node into, capped or not -- WHICH document nodes it draws as
+// themselves, as a set of ids, and how many its folded tail stands for, read
+// off the tail's own label, "24 smaller funds". A column Go declines to answer
+// carries a reason code instead, which must name an entry of the artifact's
+// reasons table: today that is the kept flank, the half of the chart on screen
+// windowFor carries over, which Go's walk of the step's own document cannot
+// see. The derived marks the client adds (a residual, a gap, a folded tail) are
+// not Go's to count and are excluded from the id set; a derived mark competing
+// with a cap is the day this goes red by design.
 //
-// MUTATION: perturb one cap in testdata/rungs.json by 1. The Go test goes red
-// because the artifact is no longer what Go computes, and this arm goes red
-// naming the rung and the budget where the client drew a different column.
+// MUTATION: rename one id, or perturb one candidates or cap figure by 1, in
+// testdata/rungs.json. The Go test goes red because the artifact is no longer
+// what Go computes, and this arm goes red naming the rung, the tier and the
+// budget where the client drew a different column.
 //
-// COMPLETENESS BOTH WAYS. A rung the walk visits that the artifact does not
-// answer is red unless the step that opened it is one the artifact declares
-// skipped, and a rung the artifact answers that the walk never visits is red
-// too -- so neither side can be a silent subset of the other.
+// COMPLETENESS BOTH WAYS, AT TWO GRAINS. A rung the walk visits that the
+// artifact does not answer is red unless the step that opened it is one the
+// artifact declares skipped, and a rung the artifact answers that the walk
+// never visits is red too -- so neither side can be a silent subset of the
+// other. Within a rung the same holds per column: every tier the client draws
+// needs a compared entry or a Go-declared reason, and an entry for a tier the
+// client does not draw is red.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -33,28 +41,34 @@ import { repoRoot, settle } from "./harness.mjs";
 import { COLUMNS, openedWide } from "./drill.mjs";
 
 const ARTIFACT = JSON.parse(readFileSync(join(repoRoot, "testdata", "rungs.json"), "utf8"));
-if (ARTIFACT.schema_version !== 1) {
-  throw new Error(`testdata/rungs.json declares schema_version ${ARTIFACT.schema_version}; this module reads 1`);
+if (ARTIFACT.schema_version !== 2) {
+  throw new Error(`testdata/rungs.json declares schema_version ${ARTIFACT.schema_version}; this module reads 2`);
 }
 const SKIPPED = new Set(ARTIFACT.skipped.map((s) => s.step));
+const REASONS = new Set(Object.keys(ARTIFACT.reasons || {}));
+if (REASONS.size === 0) throw new Error("testdata/rungs.json declares no reasons table");
 
 /** @param {string[]} path */
 const keyOf = (path) => path.join(" > ");
 
 /**
  * What the client drew for the rung on screen: its tiers, and for every tier
- * how many document nodes it draws as themselves and how many its folded tail
+ * which document nodes it draws as themselves and how many its folded tail
  * says it stands for.
  * @param {any} app
  */
 function drawn(app) {
   const nodes = app.projection.nodes;
-  /** @type {Record<number, {real: number, hidden: number}>} */
+  /** @type {Record<number, {ids: string[], hidden: number}>} */
   const byTier = {};
   for (const t of app.activeTiers()) {
     const at = nodes.filter((n) => n.tier === t);
-    const real = at.filter((n) => !n.derived && !app.isAggregate(n.id) && !app.isResidual(n.id) &&
-      !app.isGap(n.id) && !app.isCarried(n.id)).length;
+    // A DOCUMENT NODE AND NOTHING THE CLIENT ADDED. The aggregate, residual
+    // and gap tests are implied by !derived and kept because they say what is
+    // being excluded; isCarried is not implied, a residual's endpoint being a
+    // printed node the chart above lent this one.
+    const ids = at.filter((n) => !n.derived && !app.isAggregate(n.id) && !app.isResidual(n.id) &&
+      !app.isGap(n.id) && !app.isCarried(n.id)).map((n) => n.id).sort();
     const tails = at.filter((n) => app.isAggregate(n.id));
     if (tails.length > 1) throw new Error(`tier ${t} draws ${tails.length} folded tails`);
     let hidden = 0;
@@ -63,7 +77,7 @@ function drawn(app) {
       if (!m) throw new Error(`the folded tail at tier ${t} is labelled ${JSON.stringify(tails[0].label)}, which does not say how many it stands for`);
       hidden = Number(m[1]);
     }
-    byTier[t] = { real, hidden };
+    byTier[t] = { ids, hidden };
   }
   return { tiers: app.activeTiers().slice(), byTier };
 }
@@ -127,6 +141,8 @@ export async function checks() {
       let skipped = 0;
       let compared = 0;
       let engaged = 0;
+      let idsCompared = 0;
+      let declined = 0;
       for (const [key, { step, got }] of seen) {
         const want = expected.get(key);
         if (!want) {
@@ -137,45 +153,83 @@ export async function checks() {
           continue;
         }
         expected.delete(key);
+        const where = `${key} at ${width} columns`;
         if (want.step !== step) {
-          wrong.push(`${key} at ${width} columns opened under step ${step}, Go says ${want.step}`);
+          wrong.push(`${where} opened under step ${step}, Go says ${want.step}`);
         }
-        if (want.tiers.join(",") !== got.tiers.join(",")) {
-          wrong.push(`${key} at ${width} columns draws tiers ${got.tiers.join(",")}, Go says ${want.tiers.join(",")}`);
+        // THE COLUMN ORDER IS ONE LIST ON BOTH SIDES, so a tier drawn that Go
+        // does not answer, a tier Go answers that is not drawn, and the same
+        // tiers in another order are all the same disagreement.
+        const wantTiers = want.draws.map((/** @type {any} */ d) => d.tier);
+        if (wantTiers.join(",") !== got.tiers.join(",")) {
+          wrong.push(`${where} draws tiers ${got.tiers.join(",")}, Go says ${wantTiers.join(",")}`);
         }
-        for (const cap of want.caps) {
-          compared++;
-          if (cap.hidden > 0) engaged++;
-          const mine = got.byTier[cap.tier];
-          if (!mine) {
-            wrong.push(`${key} at ${width} columns: tier ${cap.tier} is capped at ${cap.cap} and not drawn`);
+        for (const d of want.draws) {
+          const mine = got.byTier[d.tier];
+          if (!mine) continue; // reported above as a tier disagreement
+          if (d.unanswered) {
+            // A REASON GO GIVES MUST BE ONE THE ARTIFACT DEFINES, and it must
+            // stand alone: an answer beside a reason would be compared or
+            // not depending on which field a reader looked at first.
+            if (!REASONS.has(d.unanswered)) {
+              throw new Error(`${where}, tier ${d.tier}: Go declines with reason ${JSON.stringify(d.unanswered)}, which testdata/rungs.json's reasons table does not name`);
+            }
+            if (d.ids || d.cap || d.candidates || d.hidden) {
+              throw new Error(`${where}, tier ${d.tier}: Go both declines (${d.unanswered}) and answers`);
+            }
+            declined++;
             continue;
           }
-          if (mine.real !== cap.drawn || mine.hidden !== cap.hidden) {
-            wrong.push(`${key} at ${width} columns, tier ${cap.tier} under cap ${cap.cap}: app.js draws ` +
-              `${mine.real} and hides ${mine.hidden}; Go says ${cap.drawn} drawn and ${cap.hidden} hidden of ${cap.candidates}`);
+          // THE IDS AS A SET, which is what the column holds, and the reach
+          // as a count: what the client draws plus what its tail hides is
+          // how many document nodes the window reached, which is Go's
+          // candidates, and the one figure of an unfolded column the id set
+          // does not already say.
+          idsCompared++;
+          // OMITTED IS ZERO HERE AND NOWHERE ELSE: Go writes a 0 hidden or cap
+          // as no field at all, and a reader that compared undefined would
+          // fail every unfolded column.
+          const hidden = d.hidden || 0;
+          const ids = (d.ids || []).slice().sort();
+          if (ids.join("\u001f") !== mine.ids.join("\u001f") || mine.hidden !== hidden) {
+            const missing = ids.filter((id) => !mine.ids.includes(id));
+            const extra = mine.ids.filter((id) => !ids.includes(id));
+            wrong.push(`${where}, tier ${d.tier} (${d.role}${d.cap ? ` under cap ${d.cap}` : ""}): app.js draws ` +
+              `${mine.ids.length} and hides ${mine.hidden}; Go says ${ids.length} drawn and ${hidden} hidden of ` +
+              `${d.candidates}` + (missing.length ? `; Go draws and app.js does not: ${missing.join(", ")}` : "") +
+              (extra.length ? `; app.js draws and Go does not: ${extra.join(", ")}` : ""));
           }
+          if (mine.ids.length + mine.hidden !== (d.candidates || 0)) {
+            wrong.push(`${where}, tier ${d.tier}: app.js reaches ${mine.ids.length + mine.hidden} document node(s) ` +
+              `and Go says ${d.candidates || 0}`);
+          }
+          if (!(d.cap > 0)) continue;
+          compared++;
+          if (hidden > 0) engaged++;
           // THE CAP ITSELF, NOT ONLY WHAT GO SAYS IT DID. A column the client
           // folded is drawn at exactly its cap, and an unfolded one holds at
           // most cap+1 -- capColumn's own threshold, a tail of one being no
-          // fold. Without this, a cap perturbed alone in the artifact, drawn
+          // fold. Without this, a cap perturbed alone in the artifact, ids
           // and hidden left as Go computed them, is seen by the Go test and by
           // nothing here.
-          if (mine.real > cap.cap + 1 || (mine.hidden > 0 && mine.real !== cap.cap)) {
-            wrong.push(`${key} at ${width} columns, tier ${cap.tier}: app.js draws ${mine.real} and hides ` +
-              `${mine.hidden} under a cap Go declares as ${cap.cap}`);
+          if (mine.ids.length > d.cap + 1 || (mine.hidden > 0 && mine.ids.length !== d.cap)) {
+            wrong.push(`${where}, tier ${d.tier}: app.js draws ${mine.ids.length} and hides ` +
+              `${mine.hidden} under a cap Go declares as ${d.cap}`);
           }
         }
       }
       const unvisited = [...expected.keys()];
       const rungs = column.rungs.filter((r) => r.width === width).length;
 
+      // THE GATES COUNT CAPPED COLUMNS AND ID SETS SEPARATELY. Counting every
+      // drawn column as "compared" would turn "a cap was checked" into "a
+      // column exists"; idsCompared is the gate the uncapped columns add.
       out.push({
-        name: `${col.label} at ${width} columns: every capped column the client draws is the one Go computed`,
-        ok: wrong.length === 0 && compared > 0 && engaged > 0,
+        name: `${col.label} at ${width} columns: every column the client draws is the one Go computed`,
+        ok: wrong.length === 0 && compared > 0 && engaged > 0 && idsCompared > 0,
         detail: wrong.length === 0
-          ? `${compared} capped column(s) over ${rungs} rung(s) agree with testdata/rungs.json, ` +
-            `${engaged} of them with the fold engaged`
+          ? `${idsCompared} column(s) over ${rungs} rung(s) draw the ids testdata/rungs.json says, ` +
+            `${compared} of them under a cap and ${engaged} with the fold engaged; ${declined} declined with a reason`
           : `${wrong.length} disagreement(s):\n      ${wrong.join("\n      ")}`,
       });
       out.push({
