@@ -25,7 +25,7 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		t.Fatalf("status = %s, findings:\n  %v", res.Status, res.Findings)
 	}
 	for _, want := range []string{
-		"5 comparison(s) of 6 cut(s)",
+		"5 comparison(s) of 10 cut(s)",
 		"revenue-detail -> spine at fund-group-by-category",
 		"transfers-detail -> spine at fund-group-by-category",
 		"general-fund-departments -> spine at fund-group-by-category",
@@ -38,6 +38,9 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		"no money is described by both",
 		"neither is the reference",
 		"share no common coarsening",
+		// The ACFR against the Budget Book: a lattice containment with no
+		// column in common, refused by the declared bases.
+		`"revenue-detail" prints [actual revised adopted] columns and "acfr-general-fund-summary" prints [audited]; there is no column both print`,
 	} {
 		if !strings.Contains(res.Summary, want) {
 			t.Errorf("summary does not say %q", want)

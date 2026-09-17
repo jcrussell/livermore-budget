@@ -15,10 +15,9 @@ import "github.com/jcrussell/livermore-budget/internal/mapping"
 // its own key type and its own copy of the comparison. The comparison is
 // Contain and the pairs fall out of the lattice.
 func BudgetBookCuts() []Cut {
-	every := []mapping.Kind{
-		mapping.KindRevenue, mapping.KindExpenditure,
-		mapping.KindTransferIn, mapping.KindTransferOut, mapping.KindFundBalance,
-	}
+	// The detail schedules print an actual, a revised and two adopted columns;
+	// pp.66-67 and p76 print the two adopted columns only.
+	budgetBookDetail := []mapping.Basis{mapping.BasisActual, mapping.BasisRevised, mapping.BasisAdopted}
 	return []Cut{
 		{
 			// pp.66-67, the citywide control totals every other Budget Book
@@ -26,8 +25,9 @@ func BudgetBookCuts() []Cut {
 			Name:      "spine",
 			Scope:     "all-funds-gross",
 			Level:     LevelFundGroupByCategory,
-			Kinds:     every,
+			Kinds:     everyKind,
 			Reference: true,
+			Bases:     []mapping.Basis{mapping.BasisAdopted},
 		},
 		{
 			// pp.127-140, revenue and transfers in per fund.
@@ -35,6 +35,7 @@ func BudgetBookCuts() []Cut {
 			Scope: "revenue-by-fund",
 			Level: LevelFundByCategory,
 			Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn},
+			Bases: budgetBookDetail,
 		},
 		{
 			// p76, both legs of every transfer, per fund.
@@ -42,6 +43,7 @@ func BudgetBookCuts() []Cut {
 			Scope: "transfers-by-fund",
 			Level: LevelFundByCategory,
 			Kinds: []mapping.Kind{mapping.KindTransferIn, mapping.KindTransferOut},
+			Bases: []mapping.Basis{mapping.BasisAdopted},
 		},
 		{
 			// pp.167-170, General Fund expenditure by department and object.
@@ -54,6 +56,7 @@ func BudgetBookCuts() []Cut {
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			FundGroups:     []string{"general"},
 			DepartmentTier: "division",
+			Bases:          budgetBookDetail,
 		},
 		{
 			// pp.85-125, expenditure by department and object across every
@@ -63,6 +66,7 @@ func BudgetBookCuts() []Cut {
 			Level:          LevelDepartmentByCategory,
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			DepartmentTier: "division",
+			Bases:          budgetBookDetail,
 		},
 		{
 			// pp.171-176, which department's money comes from which fund. The
@@ -76,7 +80,105 @@ func BudgetBookCuts() []Cut {
 			Kinds:          []mapping.Kind{mapping.KindExpenditure},
 			Placeholders:   []Axis{AxisCategory},
 			DepartmentTier: "department",
+			Bases:          budgetBookDetail,
 		},
+	}
+}
+
+// everyKind is the kind set of a schedule that prints all five.
+var everyKind = []mapping.Kind{
+	mapping.KindRevenue, mapping.KindExpenditure,
+	mapping.KindTransferIn, mapping.KindTransferOut, mapping.KindFundBalance,
+}
+
+// ACFRCuts are the ACFR's schedules as cuts of the same hierarchy.
+//
+// EVERY COLUMN IS AUDITED, and that is what keeps them apart from the Budget
+// Book by declaration rather than by luck. p41's General Fund summary sits at
+// the spine's own level and pp.127-140 by fund decompose that level, so the
+// lattice offers a containment between two documents with no column in
+// common; the declared bases refuse it by name.
+//
+// ONE SCOPE PRINTS TWO GRAINS AND IS TWO CUTS. p167 prints the General Fund's
+// fund balance components with the fund group named, and every other
+// governmental fund's aggregated with no group at all -- a coarser grain under
+// one scope -- so each rule is its own cut, selected by rule id.
+func ACFRCuts() []Cut {
+	audited := []mapping.Basis{mapping.BasisAudited}
+	return []Cut{
+		{
+			// p41, the General Fund's revenues, expenditures, transfers and
+			// fund balance for one audited year, at the spine's own grain.
+			Name:       "acfr-general-fund-summary",
+			Scope:      "acfr-general-fund-summary",
+			Level:      LevelFundGroupByCategory,
+			Kinds:      everyKind,
+			FundGroups: []string{"general"},
+			Bases:      audited,
+		},
+		{
+			// pp.168-169, ten audited years of all governmental funds combined,
+			// with no fund group printed anywhere.
+			Name:  "acfr-changes-in-fund-balances",
+			Scope: "acfr-changes-in-fund-balances",
+			Level: LevelCategory,
+			Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindExpenditure, mapping.KindFundBalance},
+			Bases: audited,
+		},
+		{
+			// p167, the General Fund's GASB 54 components with the group named.
+			Name:       "acfr-fund-balances/general",
+			Scope:      "acfr-fund-balances",
+			Rules:      []string{"acfr-p0167-general-fund-balances"},
+			Level:      LevelFundGroupByCategory,
+			Kinds:      []mapping.Kind{mapping.KindFundBalance},
+			FundGroups: []string{"general"},
+			Bases:      audited,
+		},
+		{
+			// p167, every other governmental fund's components, aggregated.
+			Name:  "acfr-fund-balances/other-governmental",
+			Scope: "acfr-fund-balances",
+			Rules: []string{"acfr-p0167-other-governmental-fund-balances"},
+			Level: LevelCategory,
+			Kinds: []mapping.Kind{mapping.KindFundBalance},
+			Bases: audited,
+		},
+	}
+}
+
+// AllCuts is every declared cut, Budget Book and ACFR: one cut per scope, and
+// two for the scope that prints two grains. Measured against the store by
+// TestEveryScopeInTheStoreIsACut.
+func AllCuts() []Cut {
+	return append(BudgetBookCuts(), ACFRCuts()...)
+}
+
+// BudgetBookIdentities are the same-figure relations between the Budget Book's
+// peers, and there is one.
+//
+// pp.127-140 print each fund's Transfers In inside that fund's block, at the
+// RECEIVING end; p76 prints every transfer with both its legs, and its
+// receiving leg is the same movement at the same fund. Measured over the
+// committed store: 22 shared cells over the two adopted columns, 42,183,495.00
+// on each side, identical to the cent. Both readings stay, each with its own
+// locator chain, because p76 is the citation a reader clicking a transfer OUT
+// lands on and pp.127-140 is the one a reader of a fund's revenue lands on;
+// the identity is what lets a view take one and not the other by name.
+func BudgetBookIdentities() []Identity {
+	return []Identity{{
+		Name:  "a-transfer-in-is-printed-at-both-ends",
+		A:     "revenue-detail",
+		B:     "transfers-detail",
+		Kinds: []mapping.Kind{mapping.KindTransferIn},
+		Reason: "pp.127-140 print a fund's Transfers In at the receiving fund and p76 prints the " +
+			"same movements at the paying end; one figure, two schedules, two provenance chains",
+	}}
+}
+
+func init() {
+	if err := ValidateIdentities(AllCuts(), BudgetBookIdentities()); err != nil {
+		panic("internal/structure: " + err.Error())
 	}
 }
 

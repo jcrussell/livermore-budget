@@ -256,6 +256,12 @@ func Comparable(a, b Cut, at Level) error {
 // as a defect. The spine can answer that question -- it carries the fund group
 // -- which is why pp.167-170 reconcile there and not here.
 //
+// NO COLUMN BOTH PRINT. The ACFR prints audited figures and the Budget Book
+// prints adopted ones, so pp.127-140 by fund and p41's General Fund summary
+// are a lattice containment with no column in common, and comparing them
+// would report every one of p41's cells as a rule the finer schedule dropped.
+// A pair sharing no basis is not a comparison and is refused by name.
+//
 // THE DEPARTMENT AXIS IS TWO VOCABULARIES. pp.167-170 and pp.85-125's upper
 // block name DIVISIONS; pp.171-176 name DEPARTMENTS, one tier up. Compared at a
 // level carrying the department axis the two sides share no key, and the
@@ -299,6 +305,17 @@ func restrict(a, b Cut, at Level) (restriction, error) {
 					r.fundGroups, c.Name, c.Level, c.Name)
 			}
 		}
+	}
+	shared := false
+	for _, basis := range a.Bases {
+		if b.prints(basis) {
+			shared = true
+			break
+		}
+	}
+	if !shared {
+		return r, fmt.Errorf("%q prints %v columns and %q prints %v; there is no column both print",
+			a.Name, a.Bases, b.Name, b.Bases)
 	}
 	if hasAxis(at, AxisDepartment) && a.DepartmentTier != b.DepartmentTier {
 		return r, fmt.Errorf("%q names departments at the %q tier and %q at the %q tier; compared "+

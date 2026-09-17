@@ -200,6 +200,7 @@ func All() []Check {
 		&fundingSourcesTiesToSpine{},
 		&departmentwideTiesToSpine{},
 		&cutsTieAlongTheLattice{},
+		&peersOverlapOnlyByDeclaredIdentity{},
 		&trendPointsTieToFacts{},
 		&trendSeriesAreComplete{},
 

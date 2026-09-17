@@ -128,6 +128,9 @@ func TestFixtureVerdicts(t *testing.T) {
 		// And the one comparison that drives all of those off the lattice:
 		// the fixture carries the spine and no cut that decomposes it.
 		"cuts-tie-along-the-lattice": "vacuous over 0",
+		// And the peer half of the same comparison: the fixture carries one
+		// cut, so there is no pair at one level to overlap.
+		"peers-overlap-only-by-declared-identity": "vacuous over 0",
 		// Same reason one step further on: no revenue-by-fund fact means the
 		// trends projection declares no slice, builds no document, and there is
 		// neither a point nor a series to examine.
@@ -150,7 +153,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 24, Vacuous: 28, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 29, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -172,8 +175,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 28 {
-		t.Fatalf("vacuous count = %d, want 28", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 29 {
+		t.Fatalf("vacuous count = %d, want 29", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")

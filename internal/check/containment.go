@@ -9,11 +9,11 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// cutsTieAlongTheLattice asserts that the Budget Book's schedules are cuts of
-// one hierarchy: every finer cut sums to the coarser cut it decomposes, every
-// pair that meets below both agrees with the spine at the grain they share,
-// and the cells that do not tie are held apart by a declared exception that
-// pins both sides to what the pages print.
+// cutsTieAlongTheLattice asserts that the published schedules are cuts of one
+// hierarchy: every finer cut sums to the coarser cut it decomposes, every pair
+// that meets below both agrees with the spine at the grain they share, and the
+// cells that do not tie are held apart by a declared exception that pins both
+// sides to what the pages print.
 //
 // ONE COMPARISON, DRIVEN OFF THE LATTICE, IN PLACE OF ONE FILE PER PAIR. The
 // pairs are not listed here: every two cuts are handed to structure.Compare,
@@ -50,13 +50,13 @@ func (*cutsTieAlongTheLattice) ID() string { return "cuts-tie-along-the-lattice"
 func (*cutsTieAlongTheLattice) Tier() int  { return 1 }
 func (*cutsTieAlongTheLattice) Full() bool { return false }
 func (*cutsTieAlongTheLattice) Description() string {
-	return "every Budget Book cut sums to the coarser cut it decomposes, or agrees with the spine " +
+	return "every cut sums to the coarser cut it decomposes, or agrees with the spine " +
 		"at the grain both decompose, to the cent, except the cells a declared exception pins on " +
 		"both sides to a printed residual"
 }
 
 func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error) {
-	cuts := structure.BudgetBookCuts()
+	cuts := structure.AllCuts()
 	exceptions := structure.BudgetBookExceptions()
 
 	var findings []Finding
@@ -81,6 +81,15 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 				findings = append(findings, finding("cuts", "%v", err))
 			}
 		}
+	}
+
+	// EVERY FACT IS IN ONE CUT OR A DECLARED RESIDUE. A comparison covers the
+	// cuts' facts and a view sums them; a fact outside every cut is outside
+	// both, and this arm is what keeps that from being silent.
+	residue := structure.BudgetBookResidue()
+	coverage, uncovered := structure.Covered(s.Facts, cuts, residue)
+	for _, f := range coverage {
+		findings = append(findings, finding("coverage", "%s", f))
 	}
 
 	// A CUT NO FACT FALLS IN IS NOT COMPARED, and is named. Over the committed
@@ -161,6 +170,12 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 		"the pair meets: %s", subjects, len(clauses), len(cuts)-len(empty), strings.Join(clauses, "; "))
 	if len(held) > 0 {
 		summary += ". Held apart: " + strings.Join(held, "; ")
+	}
+	if uncovered > 0 {
+		summary += fmt.Sprintf(". %d fact(s) fall in no cut, each under a declared residue:", uncovered)
+		for _, r := range residue {
+			summary += fmt.Sprintf(" (%s, %s, %s) %s;", r.Scope, r.Rule, r.Kind, r.Reason)
+		}
 	}
 	if len(refused) > 0 {
 		summary += fmt.Sprintf(". %d pair(s) are not comparisons and were refused by name: %s",

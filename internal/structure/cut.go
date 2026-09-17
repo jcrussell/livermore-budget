@@ -171,6 +171,17 @@ type Cut struct {
 	// the spine, pp.66-67: the citywide control totals, printed for exactly
 	// the columns the city adopted. At most one cut may carry it.
 	Reference bool
+	// Bases are the column bases the pages print. Required, and a claim about
+	// the pages: the ACFR prints audited figures and the Budget Book prints
+	// adopted ones, so a lattice containment between the two -- pp.127-140 by
+	// fund decompose p41's General Fund summary by axes -- has no column both
+	// print, and is refused rather than reported as every cell dropped.
+	Bases []mapping.Basis
+	// Rules selects the rules this cut reads, for a scope whose pages print
+	// two grains: ACFR p167 prints the General Fund with its group named and
+	// the other governmental funds aggregated, in one scope, and each is a
+	// cut. Empty means every rule of the scope.
+	Rules []string
 	// Placeholders are axes whose field the facts populate and whose pages
 	// carry no such axis, each with the reason it is not one.
 	//
@@ -217,10 +228,23 @@ func (c Cut) admits(f *fact.Fact) bool {
 	if f.Scope != c.Scope {
 		return false
 	}
+	if len(c.Rules) > 0 && !contains(c.Rules, f.RuleID) {
+		return false
+	}
 	if len(c.FundGroups) > 0 && !contains(c.FundGroups, f.FundGroup) {
 		return false
 	}
 	return containsKind(c.Kinds, f.Kind)
+}
+
+// prints says whether the cut declares a basis.
+func (c Cut) prints(b mapping.Basis) bool {
+	for _, have := range c.Bases {
+		if have == b {
+			return true
+		}
+	}
+	return false
 }
 
 func contains(haystack []string, needle string) bool {
@@ -282,6 +306,10 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 					c.Name, g, c.Level)
 			}
 		}
+		if len(c.Bases) == 0 {
+			return nil, fmt.Errorf("cut %q declares no basis; which columns its pages print is a claim "+
+				"about the pages and not a default", c.Name)
+		}
 		derived, ok := c.DerivedLevel(byRule, facts)
 		if !ok {
 			if c.admitsNone(facts) {
@@ -289,6 +317,38 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 				continue
 			}
 			return nil, fmt.Errorf("cut %q selects facts at no single level", c.Name)
+		}
+		// THE DECLARED BASES ARE HELD TO THE STORE FROM BOTH SIDES. A basis the
+		// facts carry and the cut does not declare is a column the comparison
+		// would silently leave out; a declared basis no fact carries is a claim
+		// nothing bears out. Both are refused by name.
+		seen := map[mapping.Basis]bool{}
+		for i := range facts {
+			f := &facts[i]
+			if !c.admits(f) {
+				continue
+			}
+			if !c.prints(f.Basis) {
+				return nil, fmt.Errorf("cut %q carries a %q column and declares bases %v", c.Name, f.Basis, c.Bases)
+			}
+			seen[f.Basis] = true
+		}
+		for _, b := range c.Bases {
+			if !seen[b] {
+				return nil, fmt.Errorf("cut %q declares basis %q and carries no such column", c.Name, b)
+			}
+		}
+		for _, r := range c.Rules {
+			found := false
+			for i := range facts {
+				if facts[i].RuleID == r && facts[i].Scope == c.Scope {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, fmt.Errorf("cut %q selects rule %q, which produces no fact in scope %q", c.Name, r, c.Scope)
+			}
 		}
 		want := derived
 		for _, a := range c.Placeholders {
