@@ -73,7 +73,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		t.Fatalf("the artifact answers for %d column(s) and the spine lists %d year(s)", len(doc.Columns), len(spine.YearStems))
 	}
 	widths := map[int]bool{}
-	var engaged, unfoldedOverCap, uncappedIDs, plural int
+	var engaged, unfoldedOverCap, uncappedIDs, plural, unflanked int
 	distinct := map[string]bool{}
 	widened := false
 	for _, col := range doc.Columns {
@@ -159,6 +159,12 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			if len(s.Keep) > 0 && centres != 1 {
 				at("draws %d centre column(s)", centres)
 			}
+			if len(s.Keep) == 0 {
+				unflanked++
+				if centres != 0 {
+					at("keeps no flank and draws %d centre column(s)", centres)
+				}
+			}
 			if flanks != len(s.Keep) {
 				at("draws %d flank column(s) and the step keeps %d", flanks, len(s.Keep))
 			}
@@ -179,8 +185,16 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	// EACH OF THESE IS A SHAPE THE ARM COULD PASS WITHOUT COMPARING ANYTHING.
 	// The corpus supplies them today at, respectively, special-revenue's
 	// funds under fund-group; enterprise's 9 funds under the same cap of 8;
-	// fund-departments' tier 4, which no step caps; and fund's tier 5, which
-	// only the fourth column buys.
+	// fund-departments' tier 4, which no step caps; fund's tier 5, which
+	// only the fourth column buys; and transfers/in under the transfers step,
+	// which keeps no flank.
+	//
+	// THE LAST TWO GUARDS ARE ONE REGRESSION SEEN FROM BOTH SIDES. The walk
+	// once skipped every step that keeps no flank and wrote the skip into the
+	// artifact, and the arm let every rung under a skipped step by. A walk
+	// that quietly did so again would leave every other guard here green and
+	// the transfers rung unanswered, so the artifact must answer under such a
+	// step and must declare nothing skipped.
 	if engaged == 0 {
 		t.Error("no cap engages on any rung at any width, so a cap perturbed in this artifact could not be seen")
 	}
@@ -195,6 +209,12 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	}
 	if !widened {
 		t.Error("no path is answered at both widths with a different number of columns, so a walk that ignored Widen would be invisible")
+	}
+	if unflanked == 0 {
+		t.Error("no rung is answered under a step that keeps no flank, so the transfers step is unanswered and the arm has nothing to hold the client to there")
+	}
+	if len(doc.Skipped) != 0 {
+		t.Errorf("the artifact declares %d step(s) skipped and the walk reaches every declared step, so a rung under one would pass the arm unanswered: %+v", len(doc.Skipped), doc.Skipped)
 	}
 }
 

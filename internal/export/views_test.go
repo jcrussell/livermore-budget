@@ -3272,6 +3272,11 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
+	// {0, 2} ARE TIERS BOTH DOCUMENTS DECOMPOSE A NODE INTO -- the spine draws
+	// its categories into its groups there, and fund-flows folds its category-
+	// to-fund ribbons to the same pair -- because stepDocuments refuses a step
+	// whose document decomposes nothing, on a step that keeps no flank as on
+	// one that does, and that refusal is not the one under test.
 	write := func(secondStepDoc string) error {
 		_, err := export.Write(export.Options{
 			Dir: t.TempDir(),
@@ -3283,10 +3288,10 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 				RenderTiers: []int{0, 2, 5},
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-						Tiers: []int{0, 3},
+						Tiers: []int{0, 2},
 						Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
-					{Key: "fund", After: []string{"group"}, From: 3, Projection: secondStepDoc,
-						Tiers: []int{0, 3},
+					{Key: "fund", After: []string{"group"}, From: 2, Projection: secondStepDoc,
+						Tiers: []int{0, 2},
 						Back:  "All funds", Noun: "thing", Tail: "things", Description: "Two."},
 				}}},
 			Docs:        budgetDocs(),
@@ -3295,11 +3300,11 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 		return err
 	}
 	if err := write("sankey"); err != nil {
-		t.Errorf("a step switching back to the spine at tiers {0, 3} was refused: %v; "+
-			"those are the spine's tiers, not fund-flows', and validate cannot relate them", err)
+		t.Errorf("a step switching back to the spine at tiers {0, 2} was refused: %v; "+
+			"the numbers are fund-flows' too, and validate cannot relate one document's to another's", err)
 	}
 	if err := write(""); err == nil {
-		t.Error("a step redrawing fund-flows' own {0, 3} was accepted; opening a node " +
+		t.Error("a step redrawing fund-flows' own {0, 2} was accepted; opening a node " +
 			"would redraw the chart it was opened from")
 	} else if !strings.Contains(err.Error(), "already draws") {
 		t.Errorf("got %v, want the same-tiers refusal", err)

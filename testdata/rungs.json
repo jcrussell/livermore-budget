@@ -1,11 +1,6 @@
 {
   "schema_version": 2,
-  "skipped": [
-    {
-      "step": "transfers",
-      "reason": "keeps no flank, so it has no window direction to walk a document in"
-    }
-  ],
+  "skipped": [],
   "reasons": {
     "kept-flank": "the column is the kept flank of the chart on screen, which the client's windowFor carries over from the rung above rather than reading off the document this step draws; this walk reads only that document, so it does not say which nodes the flank holds"
   },
@@ -2539,6 +2534,46 @@
         },
         {
           "path": [
+            "transfers/in"
+          ],
+          "width": 3,
+          "step": "transfers",
+          "draws": [
+            {
+              "tier": 2,
+              "role": "outward",
+              "candidates": 8,
+              "ids": [
+                "transfer-from/100",
+                "transfer-from/282",
+                "transfer-from/286",
+                "transfer-from/311",
+                "transfer-from/510",
+                "transfer-from/560",
+                "transfer-from/620",
+                "transfer-from/640"
+              ]
+            },
+            {
+              "tier": 3,
+              "role": "outward",
+              "candidates": 9,
+              "ids": [
+                "fund/100",
+                "fund/210",
+                "fund/310",
+                "fund/400",
+                "fund/401",
+                "fund/402",
+                "fund/610",
+                "fund/622",
+                "fund/642"
+              ]
+            }
+          ]
+        },
+        {
+          "path": [
             "expenditure/capital-outlay"
           ],
           "width": 4,
@@ -5077,6 +5112,46 @@
               "unanswered": "kept-flank"
             }
           ]
+        },
+        {
+          "path": [
+            "transfers/in"
+          ],
+          "width": 4,
+          "step": "transfers",
+          "draws": [
+            {
+              "tier": 2,
+              "role": "outward",
+              "candidates": 8,
+              "ids": [
+                "transfer-from/100",
+                "transfer-from/282",
+                "transfer-from/286",
+                "transfer-from/311",
+                "transfer-from/510",
+                "transfer-from/560",
+                "transfer-from/620",
+                "transfer-from/640"
+              ]
+            },
+            {
+              "tier": 3,
+              "role": "outward",
+              "candidates": 9,
+              "ids": [
+                "fund/100",
+                "fund/210",
+                "fund/310",
+                "fund/400",
+                "fund/401",
+                "fund/402",
+                "fund/610",
+                "fund/622",
+                "fund/642"
+              ]
+            }
+          ]
         }
       ]
     },
@@ -7541,6 +7616,46 @@
               "tier": 2,
               "role": "flank",
               "unanswered": "kept-flank"
+            }
+          ]
+        },
+        {
+          "path": [
+            "transfers/in"
+          ],
+          "width": 3,
+          "step": "transfers",
+          "draws": [
+            {
+              "tier": 2,
+              "role": "outward",
+              "candidates": 8,
+              "ids": [
+                "transfer-from/100",
+                "transfer-from/282",
+                "transfer-from/286",
+                "transfer-from/311",
+                "transfer-from/510",
+                "transfer-from/560",
+                "transfer-from/620",
+                "transfer-from/640"
+              ]
+            },
+            {
+              "tier": 3,
+              "role": "outward",
+              "candidates": 9,
+              "ids": [
+                "fund/100",
+                "fund/210",
+                "fund/310",
+                "fund/400",
+                "fund/401",
+                "fund/402",
+                "fund/610",
+                "fund/622",
+                "fund/642"
+              ]
             }
           ]
         },
@@ -10019,6 +10134,46 @@
               "tier": 2,
               "role": "flank",
               "unanswered": "kept-flank"
+            }
+          ]
+        },
+        {
+          "path": [
+            "transfers/in"
+          ],
+          "width": 4,
+          "step": "transfers",
+          "draws": [
+            {
+              "tier": 2,
+              "role": "outward",
+              "candidates": 8,
+              "ids": [
+                "transfer-from/100",
+                "transfer-from/282",
+                "transfer-from/286",
+                "transfer-from/311",
+                "transfer-from/510",
+                "transfer-from/560",
+                "transfer-from/620",
+                "transfer-from/640"
+              ]
+            },
+            {
+              "tier": 3,
+              "role": "outward",
+              "candidates": 9,
+              "ids": [
+                "fund/100",
+                "fund/210",
+                "fund/310",
+                "fund/400",
+                "fund/401",
+                "fund/402",
+                "fund/610",
+                "fund/622",
+                "fund/642"
+              ]
             }
           ]
         }

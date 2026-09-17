@@ -34,6 +34,12 @@
 // other. Within a rung the same holds per column: every tier the client draws
 // needs a compared entry or a Go-declared reason, and an entry for a tier the
 // client does not draw is red.
+//
+// THE SKIP ALLOWANCE IS READ AND IS EMPTY. The artifact declares no step
+// skipped, so every rung the walk reaches is one Go must answer; the branch
+// stays because the allowance is Go's to write, by name, and an arm that
+// stopped reading it would turn a future declared skip into a red it could
+// not explain.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -236,8 +242,10 @@ export async function checks() {
         name: `${col.label} at ${width} columns: Go answers every rung the walk reaches, and no other`,
         ok: unanswered.length === 0 && unvisited.length === 0 && seen.size === col.openedViews,
         detail: unanswered.length === 0 && unvisited.length === 0
-          ? `${seen.size} rung(s) visited (the column pins ${col.openedViews}), ${rungs} answered, ` +
-            `${skipped} under a step the artifact declares skipped (${[...SKIPPED].join(", ") || "none"})`
+          ? `${seen.size} rung(s) visited (the column pins ${col.openedViews}), ${rungs} answered` +
+            (SKIPPED.size
+              ? `, ${skipped} let by under a step the artifact declares skipped (${[...SKIPPED].join(", ")})`
+              : `; the artifact declares no step skipped`)
           : `${unanswered.length} rung(s) the walk reached that Go does not answer: ${unanswered.join("; ") || "none"}` +
             `; ${unvisited.length} rung(s) Go answers that the walk never reached: ${unvisited.join("; ") || "none"}`,
       });

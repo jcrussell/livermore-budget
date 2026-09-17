@@ -390,19 +390,22 @@ type stepView struct {
 	// Measured before this field existed, over both committed columns:
 	// drillDown(fund/511) failed and left the chart on fund-group/capital.
 	//
-	// ONLY ON A STEP THAT KEEPS A FLANK, which is what makes the derivation
-	// possible rather than a preference. A window's centre is the opened node
-	// and windowFor draws its far half out of the step's own document, so From
-	// IS a tier of that document there; on a step that keeps nothing the two
-	// hierarchies are unrelated ([DrillStep]'s own doc comment) and a set read
-	// at tier From of the wrong hierarchy would close a rung that works. The
-	// transfers step is that case: From is the spine's tier 0 and the document
-	// it draws has no tier 0 at all.
+	// AT FROM ON A STEP THAT KEEPS A FLANK, AND AT ANY TIER ON ONE THAT DOES
+	// NOT. A window's centre is the opened node and windowFor draws its far
+	// half out of the step's own document, so From IS a tier of that document
+	// there. On a step that keeps nothing the two hierarchies are unrelated
+	// ([DrillStep]'s own doc comment): the client's filter asks the document
+	// for the id and never for its tier, so the set is every node the document
+	// decomposes on the step's declared side, and the tier and role of the
+	// chart on screen are what narrow it to the ones a reader is offered. The
+	// transfers step is that case: From is the spine's tier 0, and its document
+	// carries transfers/in at tier 0 too, with the eight payer ends that
+	// decompose it as its children rather than at the end of any ribbon.
 	//
 	// OMITTED WHEN EMPTY, AND AN EMPTY SET IS REFUSED rather than shipped, so
-	// the absent key has exactly one meaning. A window step whose document
-	// decomposes nothing at all at From is a rung no reader can reach, which
-	// stepDocuments reports by name.
+	// the absent key has exactly one meaning. A step whose document decomposes
+	// nothing at all is a rung no reader can reach, which stepDocuments
+	// reports by name.
 	Opens []string `json:"opens,omitempty"`
 }
 
@@ -1363,26 +1366,6 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 	return out, cited, nil
 }
 
-// openGraph is as much of a step's document as [stepView.Opens] needs: which
-// tier each node sits at, and which nodes each link joins.
-//
-// SHAPE-BLIND EVERYWHERE ELSE AND NOT HERE, which is worth saying rather than
-// leaving as an exception a reader has to notice. stepDocument reads metadata
-// alone because which tiers a document holds is the client's business; this
-// reads the graph because the question it answers -- can this node be opened at
-// all -- is one only the graph can answer, and answering it in the client would
-// mean fetching every step document on page load.
-type openGraph struct {
-	Nodes []struct {
-		ID   string `json:"id"`
-		Tier int    `json:"tier"`
-	} `json:"nodes"`
-	Links []struct {
-		Source string `json:"source"`
-		Target string `json:"target"`
-	} `json:"links"`
-}
-
 // Flank is which side a window step keeps its flank on and the tiers it opens
 // a node OUT into, in the order they are drawn away from the centre: keptLeft
 // when Keep is the left end of Tiers, and ok false when neither end of Tiers is
@@ -1416,18 +1399,27 @@ func Flank(s DrillStep) (keptLeft bool, outward []int, ok bool) {
 	return false, nil, false
 }
 
-// openableNodes is [stepView.Opens] for one step and one year: every node at
-// the step's From that this document draws a ribbon out of, INTO the column the
-// window opens it into.
+// openableNodes is [stepView.Opens] for one step and one year: every node
+// this document decomposes on the side the step opens it from, at the step's
+// From on a window step and at any tier on a step that keeps no flank.
 //
-// TWO THINGS NARROW IT AND THEY ARE NOT ONE THING. The far end must land in a
-// column BEYOND the centre: a fund the drill-down draws has a ribbon from its
-// fund group at a tier this step lists, so "touches a link whose other end is a
-// tier the step draws" is true of every fund in the column and declares all
-// sixty openable. And the ribbon must run the way windowFor will draw it --
-// filterFromNode when the flank is on the left, filterToNode when it is on the
-// right -- so a ribbon pointing INTO the opened node from beyond it is not a
-// chart.
+// TWO ARMS, BECAUSE THE TWO KINDS OF STEP ASK THE DOCUMENT DIFFERENT
+// QUESTIONS. A window step's centre is the opened node, so the question is
+// which nodes at From draw a ribbon OUT into the columns beyond the centre;
+// a step that keeps nothing draws a single filtered chart, so the question is
+// which nodes the chart is non-empty for, which is [ReachOf] under the step's
+// own tiers on its declared side, asked of every node the document carries.
+// The transfers step is why the second arm exists: transfers/in touches no
+// ribbon at all, and what decomposes it is its children.
+//
+// THE WINDOW ARM NARROWS BY TWO THINGS AND THEY ARE NOT ONE THING. The far end
+// must land in a column BEYOND the centre: a fund the drill-down draws has a
+// ribbon from its fund group at a tier this step lists, so "touches a link
+// whose other end is a tier the step draws" is true of every fund in the
+// column and declares all sixty openable. And the ribbon must run the way
+// windowFor will draw it -- filterFromNode when the flank is on the left,
+// filterToNode when it is on the right -- so a ribbon pointing INTO the opened
+// node from beyond it is not a chart.
 //
 // THE SECOND GUARD IS LATENT ON EVERY COMMITTED DOCUMENT, measured and not
 // assumed: all of them run their ribbons coarse-to-fine across each window's
@@ -1441,9 +1433,35 @@ func Flank(s DrillStep) (keptLeft bool, outward []int, ok bool) {
 // drift. validateSteps has already refused a step whose ends are not its flank,
 // so the default arm below cannot be reached through a validated view -- it is
 // there because this function is also handed steps by its own test.
+//
+// SHAPE-BLIND EVERYWHERE ELSE AND NOT HERE. stepDocument reads metadata alone
+// because which tiers a document holds is the client's business; this reads
+// the graph because the question it answers -- can this node be opened at all
+// -- is one only the graph can answer, and answering it in the client would
+// mean fetching every step document on page load.
 func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]string, error) {
+	g, err := DecodeGraph(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", stem, err)
+	}
+	opens := map[string]bool{}
 	if len(s.Keep) == 0 {
-		return nil, nil
+		for _, n := range g.Nodes {
+			r, err := ReachOf(g, n.ID, s.Side == SideSource, s.Tiers)
+			if err != nil {
+				return nil, fmt.Errorf("view %q's step %d opens %q: %w", v.Path, i, stem, err)
+			}
+			if len(r.At) > 0 {
+				opens[n.ID] = true
+			}
+		}
+		if len(opens) == 0 {
+			return nil, fmt.Errorf(
+				"view %q's step %d draws tiers %v of %q and that document decomposes no node "+
+					"into them, so the rung is one no reader could ever reach",
+				v.Path, i, s.Tiers, stem)
+		}
+		return slices.Sorted(maps.Keys(opens)), nil
 	}
 	keptLeft, outward, ok := Flank(s)
 	if !ok {
@@ -1452,15 +1470,10 @@ func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]strin
 				"flank, so which half of %q it opens a node into cannot be read",
 			v.Path, i, s.Keep, s.Tiers, stem)
 	}
-	var g openGraph
-	if err := json.Unmarshal(raw, &g); err != nil {
-		return nil, fmt.Errorf("decode %s graph: %w", stem, err)
-	}
 	tier := make(map[string]int, len(g.Nodes))
 	for _, nd := range g.Nodes {
 		tier[nd.ID] = nd.Tier
 	}
-	opens := map[string]bool{}
 	for _, l := range g.Links {
 		near, far := l.Source, l.Target
 		if !keptLeft {

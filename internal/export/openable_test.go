@@ -105,20 +105,81 @@ func TestOpenableNodesReadsWhichEndTheFlankIsAt(t *testing.T) {
 	}
 }
 
-// TestOpenableNodesDeclaresNoSetForAStepThatKeepsNothing keeps the absent key's
-// one meaning.
-//
-// From and Tiers belong to different hierarchies on a step that keeps no flank
-// — the transfers step's From is the spine's tier 0 and the document it draws
-// has no tier 0 at all — so a set read there would close a rung that works.
-func TestOpenableNodesDeclaresNoSetForAStepThatKeepsNothing(t *testing.T) {
-	got, err := openableNodes(View{Path: "index.html"}, 0,
-		DrillStep{From: 0, Tiers: []int{2, 3}}, "stem", openableDoc(t))
-	if err != nil {
-		t.Fatalf("openableNodes: %v", err)
+// hierarchyDoc is the transfers document's shape at its smallest: a root no
+// ribbon touches, whose two children at tier 2 each pay one fund at tier 3,
+// and a fund that pays on to a tier the step does not draw.
+func hierarchyDoc(t *testing.T) []byte {
+	t.Helper()
+	type node struct {
+		ID     string `json:"id"`
+		Tier   int    `json:"tier"`
+		Parent string `json:"parent,omitempty"`
 	}
-	if got != nil {
-		t.Errorf("openableNodes = %v, want nil for a step that keeps no flank", got)
+	type link struct {
+		Source string `json:"source"`
+		Target string `json:"target"`
+	}
+	raw, err := json.Marshal(struct {
+		Nodes []node `json:"nodes"`
+		Links []link `json:"links"`
+	}{
+		Nodes: []node{{"root", 0, ""}, {"payer-a", 2, "root"}, {"payer-b", 2, "root"},
+			{"fund-x", 3, ""}, {"fund-y", 3, ""}, {"far", 5, ""}},
+		Links: []link{{"payer-a", "fund-x"}, {"payer-b", "fund-y"}, {"fund-x", "far"}},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	return raw
+}
+
+// TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy is the arm
+// the transfers step needs, and the fixture is why a ribbon reading cannot
+// supply it.
+//
+// "root" TOUCHES NO RIBBON, the way transfers/in touches none in either
+// direction on Budget Book p76's document: what decomposes it is its
+// children. A reading that asked which nodes draw a ribbon out would answer
+// the two payers and never the root, and the client, which filters by parent
+// chain, would offer a click Go said nothing about. The side is read too:
+// declared SideSource the set is the nodes whose subtree pays, and declared
+// "" it is the nodes whose subtree is paid, and no node is in both.
+//
+// "fund-x" IS IN NEITHER SET ON THE SOURCE SIDE, though it pays "far": that
+// end has no ancestor at a drawn tier, so the ribbon is one the client drops
+// before it counts anything, and a set that included fund-x would offer a
+// click that draws nothing.
+func TestOpenableNodesReadsAStepThatKeepsNothingThroughTheHierarchy(t *testing.T) {
+	v := View{Path: "index.html"}
+	cases := []struct {
+		name string
+		step DrillStep
+		want []string
+	}{
+		{"the paying side", DrillStep{From: 0, Tiers: []int{2, 3}, Side: SideSource}, []string{"payer-a", "payer-b", "root"}},
+		{"the paid side", DrillStep{From: 0, Tiers: []int{2, 3}}, []string{"fund-x", "fund-y"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := openableNodes(v, 0, tc.step, "stem", hierarchyDoc(t))
+			if err != nil {
+				t.Fatalf("openableNodes: %v", err)
+			}
+			if diff := cmp.Diff(tc.want, got); diff != "" {
+				t.Errorf("a step that keeps nothing opens (-want +got):\n%s", diff)
+			}
+		})
+	}
+	// THE REFUSAL HOLDS ON THIS ARM TOO: a step whose tiers place no end of
+	// any ribbon is a rung no reader could reach, not an absent key.
+	_, err := openableNodes(v, 3, DrillStep{From: 0, Tiers: []int{7, 8}, Side: SideSource}, "stem", hierarchyDoc(t))
+	if err == nil {
+		t.Fatal("openableNodes accepted a step whose tiers place nothing")
+	}
+	for _, want := range []string{"index.html", "step 3", "no reader could ever reach"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not name %q", err, want)
+		}
 	}
 }
 
