@@ -286,43 +286,6 @@ func TestARefusedPairIsNamedRatherThanCompared(t *testing.T) {
 	}
 }
 
-// TestTheKnownExceptionsAreTheWholeResidual pins what the generic comparison
-// reports that the hand-written checks declare as exceptions. It is the honest
-// half of the reproduction: the machinery generalises and the ARGUMENTS do not.
-//
-// REVENUE. pp.127-140 print no General Fund transfer in. p76 does --
-// internal/check/revenuedetail.go declares it and prints the figure, 480,400 in
-// FY2026 -- so the spine has a cell the revenue schedule never had. Two cells,
-// one per published column.
-//
-// TRANSFERS. pp.66-67's TRANSFER OUT includes transfers to CIP that p76 does not
-// list, which internal/check/transfersdetail.go carries as a toCIP add-back
-// across three clauses. This comparison is one clause, so it reports them.
-func TestTheKnownExceptionsAreTheWholeResidual(t *testing.T) {
-	facts := committedFacts(t)
-	for _, c := range []struct {
-		name         string
-		fine, coarse string
-		wantFindings int
-	}{
-		{"pp.127-140 against the spine: the General Fund transfer in p76 prints and they do not",
-			"revenue-detail", "spine", 2},
-		{"p76 against the spine: the transfers to CIP pp.66-67 include and p76 does not list",
-			"transfers-detail", "spine", 8},
-	} {
-		t.Run(c.name, func(t *testing.T) {
-			got, err := structure.Contain(facts, cutNamed(t, c.fine), cutNamed(t, c.coarse))
-			if err != nil {
-				t.Fatalf("contain: %v", err)
-			}
-			if len(got.Findings) != c.wantFindings {
-				t.Errorf("residual is %d cells, want %d:\n  %v",
-					len(got.Findings), c.wantFindings, got.Findings)
-			}
-		})
-	}
-}
-
 func cutNamed(t *testing.T, name string) structure.Cut {
 	t.Helper()
 	for _, c := range structure.BudgetBookCuts() {

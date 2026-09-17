@@ -263,6 +263,7 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"transfers-detail-ties-to-spine":        StatusPass,
 		"funding-sources-tie-to-spine":          StatusPass,
 		"departmentwide-ties-to-spine":          StatusPass,
+		"cuts-tie-along-the-lattice":            StatusPass,
 		"trend-points-tie-to-facts":             StatusPass,
 		"trend-series-are-complete":             StatusPass,
 		"row-funds-match-their-anchors":         StatusPass,

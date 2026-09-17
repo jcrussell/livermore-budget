@@ -162,6 +162,15 @@ type Cut struct {
 	// FundGroups pins the cut to the groups its pages cover. Empty means all
 	// six, which is a claim about the pages and not a default.
 	FundGroups []string
+	// DepartmentTier says which tier of data/departments.yaml the pages name
+	// on the department axis: "division" or "department". Required on a cut
+	// whose level carries that axis, because the two tiers are two
+	// vocabularies and a comparison across them shares no key.
+	DepartmentTier string
+	// Reference marks the cut whose columns every agreement is held to. It is
+	// the spine, pp.66-67: the citywide control totals, printed for exactly
+	// the columns the city adopted. At most one cut may carry it.
+	Reference bool
 	// Placeholders are axes whose field the facts populate and whose pages
 	// carry no such axis, each with the reason it is not one.
 	//
@@ -230,4 +239,78 @@ func containsKind(haystack []mapping.Kind, needle mapping.Kind) bool {
 		}
 	}
 	return false
+}
+
+// ValidateCuts holds a set of cuts to the store and to each other: every cut
+// sits at the level its facts put it at once its placeholders are dropped,
+// every cut at a level with a department axis says which tier it names, no two
+// cuts share a name, and at most one is the reference.
+//
+// A CUT NO FACT FALLS IN IS RETURNED, NOT REFUSED. A declared level over zero
+// facts is a claim nothing can check, and a cut that lost its every rule would
+// sit in a comparison as a side that prints nothing -- so the caller gets the
+// names and decides, because a fixture that maps one schedule is not a corpus
+// that lost five.
+func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty []string, err error) {
+	names := map[string]bool{}
+	references := 0
+	for _, c := range cuts {
+		if names[c.Name] {
+			return nil, fmt.Errorf("cut %q is declared twice", c.Name)
+		}
+		names[c.Name] = true
+		if !Declared(c.Level) {
+			return nil, fmt.Errorf("cut %q declares level %q, which is not declared", c.Name, c.Level)
+		}
+		if c.Reference {
+			references++
+		}
+		switch {
+		case hasAxis(c.Level, AxisDepartment) && c.DepartmentTier == "":
+			return nil, fmt.Errorf("cut %q is at %q, which carries the department axis, and does not say "+
+				"which tier of data/departments.yaml its pages name", c.Name, c.Level)
+		case !hasAxis(c.Level, AxisDepartment) && c.DepartmentTier != "":
+			return nil, fmt.Errorf("cut %q declares department tier %q at %q, which carries no department axis",
+				c.Name, c.DepartmentTier, c.Level)
+		case c.DepartmentTier != "" && c.DepartmentTier != "division" && c.DepartmentTier != "department":
+			return nil, fmt.Errorf("cut %q declares department tier %q; the tiers are division and department",
+				c.Name, c.DepartmentTier)
+		}
+		for _, g := range c.FundGroups {
+			if !hasAxis(c.Level, AxisFundGroup) {
+				return nil, fmt.Errorf("cut %q is pinned to fund group %q at %q, which carries no fund group axis",
+					c.Name, g, c.Level)
+			}
+		}
+		derived, ok := c.DerivedLevel(byRule, facts)
+		if !ok {
+			if c.admitsNone(facts) {
+				empty = append(empty, c.Name)
+				continue
+			}
+			return nil, fmt.Errorf("cut %q selects facts at no single level", c.Name)
+		}
+		want := derived
+		for _, a := range c.Placeholders {
+			want = Drop(want, a)
+		}
+		if want != c.Level {
+			return nil, fmt.Errorf("cut %q declares level %q and its facts put it at %q (placeholders %v dropped from %q)",
+				c.Name, c.Level, want, c.Placeholders, derived)
+		}
+	}
+	if references > 1 {
+		return nil, fmt.Errorf("%d cuts are declared the reference; the columns of an agreement are one cut's", references)
+	}
+	return empty, nil
+}
+
+// admitsNone says whether no fact falls in the cut.
+func (c Cut) admitsNone(facts []fact.Fact) bool {
+	for i := range facts {
+		if c.admits(&facts[i]) {
+			return false
+		}
+	}
+	return true
 }

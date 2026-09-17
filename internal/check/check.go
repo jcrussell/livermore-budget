@@ -199,6 +199,7 @@ func All() []Check {
 		&transfersDetailTiesToSpine{},
 		&fundingSourcesTiesToSpine{},
 		&departmentwideTiesToSpine{},
+		&cutsTieAlongTheLattice{},
 		&trendPointsTieToFacts{},
 		&trendSeriesAreComplete{},
 
