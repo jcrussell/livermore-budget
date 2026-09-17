@@ -811,7 +811,7 @@ export function goldenGraph2027() {
 }
 
 /**
- * The residual set as internal/check/drillreconcile.go declares it: spine
+ * The residual set as internal/check/residual.go declares it: spine
  * endpoint id to the reason a fund-level schedule cannot decompose it.
  *
  * READ OFF THE GO SOURCE RATHER THAN SPELLED HERE. The set has one
@@ -827,7 +827,7 @@ export function goldenGraph2027() {
  */
 export function residualDeclaration() {
   return parseResidualLiteral(
-    readFileSync(join(repoRoot, "internal", "check", "drillreconcile.go"), "utf8"));
+    readFileSync(join(repoRoot, "internal", "check", "residual.go"), "utf8"));
 }
 
 /**
@@ -961,57 +961,76 @@ export function goldenTransfers2027() {
 }
 
 /**
- * The gap set as internal/check/departmentwide.go declares it: the tier-5 node
- * id an object category is drawn at, and the reason the two schedules print
- * that cell at two figures.
+ * The gap set as internal/structure/cuts.go declares it: the tier-5 node id
+ * an object category is drawn at, and the reason the two schedules print that
+ * cell at two figures. It is the exceptions the departmentwide cut declares
+ * against the spine, which is what check.SpendingGaps derives from.
  *
  * READ OFF THE GO SOURCE FOR residualDeclaration's REASON. The site ships
- * check.SpendingGaps(), which is this table keyed by node id; a literal here
- * would be a second copy, and the object-category window would be measured
- * under a set the site may no longer declare.
+ * check.SpendingGaps(), which is this declaration keyed by node id; a literal
+ * here would be a second copy, and the object-category window would be
+ * measured under a set the site may no longer declare.
  *
  * THE KEYS ARE THE DECLARATION AND THE SENTENCE IS NOT. SpendingGaps composes
- * each reason with the column, both printed figures and the bead in front of
+ * each reason with the column, both pinned figures and the bead in front of
  * the text parsed here, and internal/check's own
  * TestSpendingGapsIsTheSameDeclarationTheCheckReads is what holds those figures
- * to the table. What this side needs is WHICH nodes carry a gap, and a reason
- * the client can be seen to put on the mark verbatim -- composing the prefix
- * here would be the second spelling the parse exists to avoid.
+ * to the declaration. What this side needs is WHICH nodes carry a gap, and a
+ * reason the client can be seen to put on the mark verbatim -- composing the
+ * prefix here would be the second spelling the parse exists to avoid.
  */
 export function spendingGapDeclaration() {
   return parseSpendingGaps(
-    readFileSync(join(repoRoot, "internal", "check", "departmentwide.go"), "utf8"));
+    readFileSync(join(repoRoot, "internal", "structure", "cuts.go"), "utf8"));
 }
 
 /**
  * The parse behind [spendingGapDeclaration], over source text so seam.mjs can
  * drive it over literals the file does not contain.
  *
- * Counted twice, by entries parsed and by `category:` fields present, so an
- * entry in a shape the pattern cannot follow throws rather than leaving the
- * window measured under a shorter set. The node id is composed from the
- * category the way internal/check's spendingCategoryNode does, which is the one
- * thing about the shipped map this cannot read out of a literal.
+ * BudgetBookExceptions is a slice literal of Exception entries, one `{ ... },`
+ * block at two tabs each; the ones this reads are those whose Cut is the
+ * departmentwide cut. Counted twice, by categories pinned and by node ids
+ * returned, so an entry in a shape the pattern cannot follow throws rather
+ * than leaving the window measured under a shorter set. The node id is
+ * composed from the category the way internal/check's spendingCategoryNode
+ * does, which is the one thing about the shipped map this cannot read out of
+ * a literal.
  * @param {string} src
  * @returns {Record<string, string>}
  */
 export function parseSpendingGaps(src) {
-  const m = src.match(/var departmentwideExceptions = \[\]departmentwideException\{\{([\s\S]*?)\n\}\}\n/);
-  if (!m) {
-    throw new Error("internal/check/departmentwide.go declares no departmentwideExceptions " +
-      "literal to read");
+  const fn = src.match(/func BudgetBookExceptions\(\) \[\]Exception \{\n([\s\S]*?)\n\}\n/);
+  if (!fn) {
+    throw new Error("internal/structure/cuts.go declares no BudgetBookExceptions literal to read");
   }
+  const entries = fn[1].split(/\n\t\t\{\n/).slice(1).map((e) => e.split(/\n\t\t\},/)[0]);
   const out = {};
-  const entry = /category:\s*"((?:[^"\\]|\\.)*)",[\s\S]*?reason:\s*((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+),/g;
-  let e;
-  while ((e = entry.exec(m[1])) !== null) {
-    const pieces = e[2].match(/"(?:[^"\\]|\\.)*"/g) || [];
-    out["expenditure/" + JSON.parse(`"${e[1]}"`)] = pieces.map((p) => JSON.parse(p)).join("");
+  const categories = new Set();
+  let read = 0;
+  for (const e of entries) {
+    const cut = e.match(/^\t\t\tCut:\s+"((?:[^"\\]|\\.)*)"/m);
+    if (!cut) throw new Error("an exception entry names no Cut the pattern can follow");
+    if (JSON.parse(`"${cut[1]}"`) !== "departmentwide") continue;
+    read++;
+    const reason = e.match(/^\t\t\tReason:\s*((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+),/m);
+    if (!reason) {
+      throw new Error("a departmentwide exception carries no Reason the pattern can follow");
+    }
+    const text = (reason[1].match(/"(?:[^"\\]|\\.)*"/g) || []).map((p) => JSON.parse(p)).join("");
+    const cells = e.match(/AxisCategory: "(?:[^"\\]|\\.)*"/g) || [];
+    if (cells.length === 0) throw new Error("a departmentwide exception pins no category");
+    for (const c of cells) {
+      const category = JSON.parse(c.slice("AxisCategory: ".length));
+      categories.add(category);
+      const id = "expenditure/" + category;
+      out[id] = id in out ? out[id] + " " + text : text;
+    }
   }
-  const declared = (m[1].match(/^\tcategory:/gm) || []).length;
   const got = Object.keys(out).length;
-  if (got === 0 || got !== declared) {
-    throw new Error(`parsed ${got} gap entries from a literal declaring ${declared} categories`);
+  if (read === 0 || got === 0 || got !== categories.size) {
+    throw new Error(`parsed ${got} gap entries from ${read} departmentwide exception(s) pinning ` +
+      `${categories.size} categories`);
   }
   for (const [id, reason] of Object.entries(out)) {
     if (!reason) throw new Error(`gap node ${id} parsed with an empty reason`);
@@ -1032,7 +1051,7 @@ export function parseSpendingGaps(src) {
  */
 export function parseResidualLiteral(src) {
   const m = src.match(/var residualNodes = map\[string\]string\{\n([\s\S]*?)\n\}\n/);
-  if (!m) throw new Error("internal/check/drillreconcile.go declares no residualNodes map literal to read");
+  if (!m) throw new Error("internal/check/residual.go declares no residualNodes map literal to read");
   const out = {};
   const entry = /"((?:[^"\\]|\\.)*)":\s*((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+),/g;
   let e;

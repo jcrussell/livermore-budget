@@ -1,0 +1,128 @@
+package check
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/structure"
+)
+
+// TestEveryExceptionResidualIsPrintedWhereItSaysItIs holds each exception's
+// Printed claim to the page line it cites.
+//
+// AN EXCEPTION IS A CLAIM ABOUT THE PAGES, and cuts-tie-along-the-lattice can
+// only hold it to the FACTS: it re-sums both sides from the store the pins were
+// read from, so a residual typed from memory rather than from a page would
+// agree with itself on every run. This is the arm that reads the page. The
+// rows are typed off data/extracted by hand, one per printed figure an
+// exception rests on, and the residual each exception declares is recomputed
+// from those figures the way its Printed string says: verbatim where one line
+// prints it, as the difference of two lines on one page for enterprise, and as
+// the difference of two pages' figures for the fund-group entry. The by-object
+// entry prints on no page and is held by
+// TestDepartmentwideExceptionFiguresAreNotPrintedAndTheirDifferenceIs instead.
+//
+// EVERY EXCEPTION IS EITHER IN THE TABLE OR GROUNDED IN ONE THAT IS. An
+// exception this test does not know is a finding, so a new one cannot land with
+// a Printed claim nothing reads.
+func TestEveryExceptionResidualIsPrintedWhereItSaysItIs(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	doc, ok := s.Docs[budgetDoc]
+	if !ok {
+		t.Fatalf("no extraction for %s", budgetDoc)
+	}
+	line := func(page, n int) string {
+		t.Helper()
+		text, err := doc.Page(page)
+		if err != nil {
+			t.Fatalf("page %d: %v", page, err)
+		}
+		lines := strings.Split(text, "\n")
+		if n < 1 || n > len(lines) {
+			t.Fatalf("p%04d has %d lines and the citation names line %d", page, len(lines), n)
+		}
+		return lines[n-1]
+	}
+	// One printed figure: the page and line the exception cites, and the token
+	// as the page prints it.
+	type printed struct {
+		page, line int
+		token      string
+	}
+	cents := func(p printed) int64 {
+		t.Helper()
+		if !strings.Contains(line(p.page, p.line), p.token) {
+			t.Errorf("p%04d.txt:%d no longer prints %s", p.page, p.line, p.token)
+		}
+		c, err := amount.Parse(p.token, amount.Dollars)
+		if err != nil {
+			t.Fatalf("Parse(%q): %v", p.token, err)
+		}
+		return int64(c)
+	}
+	// The exception name, the figures its Printed string cites, and how the
+	// residual is read off them.
+	table := map[string]struct {
+		figures  []printed
+		residual func(v []int64) int64
+	}{
+		"pp.127-130-print-no-general-fund-transfer-in-2026": {
+			[]printed{{66, 24, "480,400"}}, func(v []int64) int64 { return v[0] }},
+		"pp.127-130-print-no-general-fund-transfer-in-2027": {
+			[]printed{{66, 24, "486,735"}}, func(v []int64) int64 { return v[0] }},
+		"p76-lists-no-transfer-to-the-cip-2026-enterprise": {
+			[]printed{{73, 55, "9,393,147"}, {73, 53, "40,000"}}, func(v []int64) int64 { return v[0] - v[1] }},
+		"p76-lists-no-transfer-to-the-cip-2026-internal-service": {
+			[]printed{{73, 53, "40,000"}}, func(v []int64) int64 { return v[0] }},
+		"p76-lists-no-transfer-to-the-cip-2026-non-major": {
+			[]printed{{73, 56, "28,693,590"}}, func(v []int64) int64 { return v[0] }},
+		"p76-lists-no-transfer-to-the-cip-2027-enterprise": {
+			[]printed{{75, 55, "14,832,000"}, {75, 53, "612,000"}}, func(v []int64) int64 { return v[0] - v[1] }},
+		"p76-lists-no-transfer-to-the-cip-2027-internal-service": {
+			[]printed{{75, 53, "612,000"}}, func(v []int64) int64 { return v[0] }},
+		"p76-lists-no-transfer-to-the-cip-2027-non-major": {
+			[]printed{{75, 56, "35,930,251"}}, func(v []int64) int64 { return v[0] }},
+		"p0067-internal-service-is-250000-high-by-fund-group": {
+			[]printed{{67, 34, "26,544,515"}, {183, 64, "26,294,515"}}, func(v []int64) int64 { return v[0] - v[1] }},
+	}
+
+	exceptions := structure.BudgetBookExceptions()
+	byName := map[string]structure.Exception{}
+	for _, e := range exceptions {
+		byName[e.Name] = e
+	}
+	seen := map[string]bool{}
+	for _, e := range exceptions {
+		row, ok := table[e.Name]
+		if !ok {
+			if g, grounded := byName[e.SameResidualAs]; grounded && table[g.Name].figures != nil {
+				continue
+			}
+			t.Errorf("exception %s cites %q and this test reads no page for it; add its printed "+
+				"figures here or ground it in an exception that has them", e.Name, e.Printed)
+			continue
+		}
+		seen[e.Name] = true
+		var v []int64
+		for _, p := range row.figures {
+			v = append(v, cents(p))
+			if !strings.Contains(e.Printed, p.token) {
+				t.Errorf("exception %s rests on %s and its Printed string does not cite it: %q",
+					e.Name, p.token, e.Printed)
+			}
+		}
+		if got := row.residual(v); got != e.Residual {
+			t.Errorf("exception %s declares a residual of %s and the pages it cites give %s",
+				e.Name, structure.Cents(e.Residual), structure.Cents(got))
+		}
+	}
+	for name := range table {
+		if !seen[name] {
+			t.Errorf("this test reads pages for %q and no exception of that name is declared", name)
+		}
+	}
+}

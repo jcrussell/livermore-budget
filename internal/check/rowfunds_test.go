@@ -428,7 +428,7 @@ func TestRowFundsCatchesASameGroupEndSwap(t *testing.T) {
 //
 // Measured with the arm in place: `fisc verify` goes red on
 // row-funds-match-their-anchors alone, with 1 finding over 118 row anchors,
-// while fact-funds-resolve and funding-sources-tie-to-spine both stay PASS --
+// while fact-funds-resolve and cuts-tie-along-the-lattice both stay PASS --
 // 640 and 641 are both `enterprise` in data/funds.yaml, so no money leaves its
 // group and no sum moves. Deleting the BARE-LABEL arm from Run -- the second of
 // the two gated on ru.RowLabelsNameFunds, not the phrased-label refusal above it
@@ -484,7 +484,7 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 	// twin-swap shapes report PASS over the same swap.
 	//
 	// THE FACTS HAVE TO BE MUTATED TOO, and the first version of this did not do
-	// it. factFundsResolve and fundingSourcesTiesToSpine read s.Facts;
+	// it. factFundsResolve and cutsTieAlongTheLattice read s.Facts;
 	// everything above reads s.Files. Mutating only the rules left both of them
 	// looking at an unmutated store, so they passed because they never saw the
 	// swap -- green because the gate fired, in a block whose own comment says it
@@ -508,7 +508,7 @@ func TestRowFundsCatchesABareLabelTwinTheGateDoesNot(t *testing.T) {
 		t.Fatal("no fact carries funding-public-works fund 640; the green half would " +
 			"pass over an unmutated store, which is what it exists to refuse")
 	}
-	for _, c := range []Check{&factFundsResolve{}, &fundingSourcesTiesToSpine{}} {
+	for _, c := range []Check{&factFundsResolve{}, &cutsTieAlongTheLattice{}} {
 		got, err := c.Run(t.Context(), s)
 		if err != nil {
 			t.Fatalf("%s: %v", c.ID(), err)

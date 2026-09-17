@@ -313,7 +313,7 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 		//
 		// The arithmetic does not settle it: fact-funds-resolve catches a fund
 		// whose TYPE disagrees with the group typed beside it, and
-		// funding-sources-tie-to-spine catches a fund that leaves its group, but
+		// cuts-tie-along-the-lattice catches a fund that leaves its group, but
 		// a same-type substitution passes both, and all four of Public Works'
 		// CIP twins carry their operating fund's own type.
 		//
@@ -352,8 +352,9 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 	}
 }
 
-// TestP0067IsTheOutlierAndFivePagesDisagree is what makes
-// fundingSourcesExceptions a check rather than a tolerance.
+// TestP0067IsTheOutlierAndFivePagesDisagree is what makes the by-fund-group
+// exception structure.BudgetBookExceptions declares a check rather than a
+// tolerance.
 //
 // The entry claims two figures, and BOTH are printed. If either stops being
 // printed the exception is a claim about a document that no longer says it, and
@@ -393,7 +394,7 @@ func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
 
 	if !strings.Contains(page(67), outlier) {
 		t.Errorf("p0067 no longer prints %s. If the city reissued the page, delete the "+
-			"fundingSourcesExceptions entry rather than re-pointing it (fisc-av0w)", outlier)
+			"by-fund-group exception rather than re-pointing it (fisc-av0w)", outlier)
 	}
 	for _, p := range []int{183, 75, 205, 209} {
 		if !strings.Contains(page(p), agreed) {
@@ -453,233 +454,21 @@ func TestP0067IsTheOutlierAndFivePagesDisagree(t *testing.T) {
 	}
 }
 
-// TestTheExceptionCannotAbsorbAnythingElse is the mutation proof for the one
-// declared exception, run as a test rather than only stated in a commit message.
-//
-// An exception that merely skipped its cell would be indistinguishable from the
-// mapping quietly losing $250,000, and it would keep passing if the detail moved
-// again. So the entry asserts BOTH printed figures, and each of the three ways
-// it can go wrong is exercised here.
-func TestTheExceptionCannotAbsorbAnythingElse(t *testing.T) {
-	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
-	if err != nil {
-		t.Fatalf("Load: %v", err)
-	}
-
-	run := func(t *testing.T, mutate func(f *fact.Fact) bool) Result {
-		t.Helper()
-		s := *base
-		s.Facts = append([]fact.Fact(nil), base.Facts...)
-		hits := 0
-		for i := range s.Facts {
-			if mutate(&s.Facts[i]) {
-				hits++
-			}
-		}
-		if hits == 0 {
-			t.Fatal("the mutation matched no fact, so this test proves nothing")
-		}
-		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), &s)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
-		return res
-	}
-
-	// The unmutated corpus passes, or nothing below means anything.
-	if res := run(t, func(f *fact.Fact) bool { return f.Scope == fundingSourcesScope }); res.Status != StatusPass {
-		t.Fatalf("the committed corpus does not pass: %s", res.Summary)
-	}
-
-	t.Run("the detail moves off the printed figure", func(t *testing.T) {
-		res := run(t, func(f *fact.Fact) bool {
-			if f.Scope != fundingSourcesScope || f.FiscalYear != 2027 ||
-				f.FundGroup != "internal-service" {
-				return false
-			}
-			f.AmountCents += 100
-			return true
-		})
-		if res.Status != StatusFail {
-			t.Errorf("moving the exception's own side by a dollar left the check %s: %s",
-				res.Status, res.Summary)
-		}
-	})
-
-	t.Run("the spine cell is corrected", func(t *testing.T) {
-		// If p0067 were reissued and the corpus republished at 26,294,515, the
-		// cell would tie on its own and the exception must be DELETED. The
-		// check says so rather than silently continuing to pass.
-		res := run(t, func(f *fact.Fact) bool {
-			if f.Scope != spineScope || f.Kind != mapping.KindExpenditure ||
-				f.FiscalYear != 2027 || f.FundGroup != "internal-service" ||
-				f.Category != "services-and-supplies" {
-				return false
-			}
-			f.AmountCents -= 25000000
-			return true
-		})
-		if res.Status != StatusFail {
-			t.Errorf("correcting the spine cell left the check %s, so a stale exception "+
-				"would survive its own retirement: %s", res.Status, res.Summary)
-		}
-		var told bool
-		for _, f := range res.Findings {
-			if strings.Contains(f.Detail, "delete this exception") {
-				told = true
-			}
-		}
-		if !told {
-			t.Errorf("no finding says to delete the entry: %+v", res.Findings)
-		}
-	})
-
-	t.Run("the entry is removed", func(t *testing.T) {
-		// The third way the exception can go wrong, and the one the commit
-		// message claimed was covered while the sub-test below mutated a
-		// different group. Without the
-		// entry the cell is compared against the spine like any other and the
-		// 250,000 is a plain difference.
-		saved := fundingSourcesExceptions
-		t.Cleanup(func() { fundingSourcesExceptions = saved })
-		fundingSourcesExceptions = nil
-
-		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), base)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
-		if res.Status != StatusFail {
-			t.Fatalf("with no exception declared the check reported %s, so the entry is "+
-				"absorbing nothing and could be deleted: %s", res.Status, res.Summary)
-		}
-		if len(res.Findings) != 1 {
-			t.Errorf("deleting the one entry produced %d findings, want 1: %+v",
-				len(res.Findings), res.Findings)
-		}
-		if !strings.Contains(res.Findings[0].Subject, "internal-service") {
-			t.Errorf("the finding is not about the cell the entry names: %+v",
-				res.Findings[0])
-		}
-	})
-
-	t.Run("an entry naming a cell neither scope produces is a finding", func(t *testing.T) {
-		// An exception is consulted only from inside the union loop, so a key
-		// nothing produces would reconcile nothing while the summary went on
-		// advertising it. Deleting the applied[] arm in fundingsources.go makes
-		// this pass silently.
-		saved := fundingSourcesExceptions
-		t.Cleanup(func() { fundingSourcesExceptions = saved })
-		stale := saved[0]
-		stale.fundGroup = "no-such-group"
-		fundingSourcesExceptions = []fundingSourcesException{stale}
-
-		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), base)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
-		if res.Status != StatusFail {
-			t.Fatalf("an inert exception left the check %s: %s", res.Status, res.Summary)
-		}
-		var told bool
-		for _, f := range res.Findings {
-			if strings.Contains(f.Detail, "reconciles nothing") {
-				told = true
-			}
-		}
-		if !told {
-			t.Errorf("no finding reports the exception as inert: %+v", res.Findings)
-		}
-	})
-
-	t.Run("the exception is not counted among the cells that tie", func(t *testing.T) {
-		// `held` says every counted cell equals the spine to the cent, and the
-		// exception deliberately does not, so counting it made the PASS line
-		// claim 14 where 13 hold. Moving subjects++ back above the exception
-		// arm makes this red.
-		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), base)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
-		if !strings.HasPrefix(res.Summary, "13 cells over 2 ") {
-			t.Errorf("the summary counts the exception among the cells that tie:\n%s",
-				res.Summary)
-		}
-		if !strings.Contains(res.Summary, "are NOT among the 13") {
-			t.Errorf("the summary does not hold the exception apart from the count:\n%s",
-				res.Summary)
-		}
-	})
-
-	t.Run("a pair the spine stopped publishing does not make the entry stale", func(t *testing.T) {
-		// The union loop skips an unreconciled (year, basis) before reaching the
-		// exception arm, so without the reconcile guard the check would tell a
-		// reader to delete a still-valid entry the day pp.66-67 stopped printing
-		// an FY2027 column. That is a change in the DOCUMENT, not a declaration
-		// going stale, and the two need different fixes. Dropping the
-		// `if !reconcile[...]` guard makes this red.
-		s := *base
-		s.Facts = nil
-		dropped := 0
-		for _, f := range base.Facts {
-			if f.Scope == spineScope && f.FiscalYear == 2027 {
-				dropped++
-				continue
-			}
-			s.Facts = append(s.Facts, f)
-		}
-		if dropped == 0 {
-			t.Fatal("the spine carries no FY2027 facts, so this test proves nothing")
-		}
-
-		res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), &s)
-		if err != nil {
-			t.Fatalf("Run: %v", err)
-		}
-		for _, f := range res.Findings {
-			if strings.Contains(f.Detail, "reconciles nothing") {
-				t.Errorf("the entry is reported stale because the SPINE lost its column: %+v", f)
-			}
-		}
-		// AND IT MUST STOP ADVERTISING THE RECONCILIATION IT NO LONGER MAKES.
-		// `held` used to loop over every declared entry, so this subject
-		// reported "FY2027 adopted internal-service is reconciled against
-		// $26,294,515.00" beside an exempt count of zero -- coverage claimed
-		// and not provided. Dropping the applied[] guard in the held loop makes
-		// this red.
-		if strings.Contains(res.Summary, "is reconciled against") {
-			t.Errorf("the summary still advertises an exception the loop never applied:\n%s",
-				res.Summary)
-		}
-		if strings.Contains(res.Summary, "are NOT among") {
-			t.Errorf("the summary holds apart an exception that did not fire:\n%s",
-				res.Summary)
-		}
-	})
-
-	t.Run("another group cannot hide behind it", func(t *testing.T) {
-		res := run(t, func(f *fact.Fact) bool {
-			if f.Scope != fundingSourcesScope || f.FiscalYear != 2026 ||
-				f.FundGroup != "enterprise" {
-				return false
-			}
-			f.AmountCents += 25000000
-			return true
-		})
-		if res.Status != StatusFail {
-			t.Errorf("a 250,000 error in a cell the exception does not name left the "+
-				"check %s: %s", res.Status, res.Summary)
-		}
-	})
-}
-
 // TestTheScopeIsWhatStopsTheDoubling is the measured form of the argument the
-// rule file and unprojectedScopes both make in words.
+// rule file makes in words, and it is what the cut model refuses at the grain
+// rather than at the sum.
 //
 // Re-scoping these rules to all-funds-gross is a one-word edit in the YAML. What
 // it produces is not an error: internal/project's netCells has no refusal for a
 // fact carrying a fund the way it does for one carrying a department, so the
-// facts flow into the spine's own cells and the city's expenditure doubles. This
-// check is what sees it, and here is the doubling it sees.
+// facts flow into the spine's own cells and the city's expenditure doubles.
+// The cut check is what sees it, and it sees it BEFORE any cell is summed: the
+// spine cut declares fund-group-by-category, the moved facts put a second
+// grain under its scope, and structure.ValidateCuts refuses the cut by name as
+// selecting facts at no single level. Measured off the same run, the cells the
+// comparison would then have reported are named too: the moved facts land on
+// the spine under their own placeholder category and every real cut is
+// one-sided against it.
 func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
 	base, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -698,17 +487,23 @@ func TestTheScopeIsWhatStopsTheDoubling(t *testing.T) {
 		t.Fatalf("moved %d facts, want 312", moved)
 	}
 
-	res, err := (&fundingSourcesTiesToSpine{}).Run(t.Context(), &s)
+	res, err := (&cutsTieAlongTheLattice{}).Run(t.Context(), &s)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	// The scope is now empty, so this check reports vacuous rather than failing
-	// -- which is exactly why the vacuity is DECLARED and --strict is the gate.
-	// The doubling is visible in the spine instead.
-	if res.Status != StatusVacuous {
-		t.Errorf("with the scope emptied the check reported %s, not vacuous: %s",
-			res.Status, res.Summary)
+	if res.Status != StatusFail {
+		t.Fatalf("with pp.85-125's lower block re-scoped to the spine the cut check reported "+
+			"%s, not fail: %s", res.Status, res.Summary)
 	}
+	details := findingDetails(res)
+	for _, want := range []string{`cut "spine"`, "no single level"} {
+		if !strings.Contains(details, want) {
+			t.Errorf("no finding says %s; the refusal should name the cut and its grain:\n%s",
+				want, details)
+		}
+	}
+	// And the doubling it would otherwise publish, measured on the same facts:
+	// the spine's General Fund FY2026 expenditure is exactly twice p66's.
 	var general amount.Cents
 	for i := range s.Facts {
 		f := &s.Facts[i]

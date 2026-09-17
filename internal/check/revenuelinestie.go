@@ -3,12 +3,13 @@ package check
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // The id forms this check reads, spelled here because it works on the PUBLISHED
@@ -22,6 +23,24 @@ const (
 	fundGroupPrefix   = "fund-group/"
 	transfersInNode   = "transfers/in"
 )
+
+// The cut names structure.BudgetBookCuts gives pp.127-140 and pp.66-67, which
+// is how an exception names its pair. TestScopeConstantsNameDeclaredCuts holds
+// them to the declarations.
+const (
+	revenueDetailCut = "revenue-detail"
+	spineCut         = "spine"
+)
+
+// revenueDetailRestriction is the kind half of pp.127-140, and the spine side
+// of arm 1 is summed inside it: the schedule prints revenue and transfers in
+// and nothing else, and it spans every fund group, so there is no fund-group
+// half. Eleven fund blocks on pp.131-140 carry a Transfers In row inside one
+// printed `Total <fund>`, so leaving that kind out would leave the drill-down's
+// transfer flows summed into no cell while the spine still publishes them.
+var revenueDetailRestriction = detailRestriction{
+	Kinds: []mapping.Kind{mapping.KindRevenue, mapping.KindTransferIn},
+}
 
 // revenueLinesTieToTheirCategories asserts the drill-down's line tier decomposes
 // the spine's revenue rather than restating or reclassifying it.
@@ -294,22 +313,21 @@ func inflowCategory(byID map[string]project.Node, source string) (string, bool) 
 	return strings.TrimPrefix(node.Parent, revenueNodePrefix), true
 }
 
-// lineExceptions exempts the cells revenueDetailExceptions declares, which is
-// the SAME list revenue-detail-ties-to-spine reads.
+// lineExceptions holds apart the cells structure.BudgetBookExceptions declares
+// pp.127-140 do not print, which is the SAME declaration
+// cuts-tie-along-the-lattice reconciles the revenue-detail cut against the
+// spine with.
 //
-// SHARED RATHER THAN RESTATED. There is one exception in the corpus — the
-// General Fund's Transfers In, which pp.127-130 do not print — and a second copy
-// of it here would be a declaration that could stop agreeing with the first
-// without anything going red.
+// SHARED RATHER THAN RESTATED. There is one such argument in the corpus -- the
+// General Fund's Transfers In, which pp.127-130 do not print -- and a second
+// copy of it here would be a declaration that could stop agreeing with the
+// first without anything going red.
 //
-// IT IS NOT resolveRevenueExceptions, and the difference is which question each
-// answers. That one settles the HAND-OFF: whether transfers-by-fund has landed
-// and covers the key, reported on every run with the bead that closes it. Making
-// the same statement here would be this check asserting another check's
-// conclusion over a fact store it did not examine. What is this check's own
-// business is the arm below: the drill-down draws no such link, and if it ever
-// does, the exemption has become a false claim about the document and is excusing
-// a real figure.
+// WHAT IS THIS CHECK'S OWN BUSINESS is the arm below: the drill-down draws no
+// such link, and if it ever does, the exception has become a false claim about
+// the document and is excusing a real figure. Whether the spine's figure is the
+// one the exception pins is the containment check's arm and not this one's, so
+// a pin the spine does not produce is left to that check to refuse.
 func lineExceptions(detail, spine map[detailKey]cellSum,
 	reconcile map[yearBasis]bool) (func(detailKey) bool, []string, []Finding) {
 
@@ -317,43 +335,39 @@ func lineExceptions(detail, spine map[detailKey]cellSum,
 	var findings []Finding
 	exempted := map[detailKey]bool{}
 
-	for _, e := range revenueDetailExceptions {
-		var keys []detailKey
-		for k := range spine {
-			if e.matches(k) && reconcile[yearBasis{k.year, k.basis}] {
-				keys = append(keys, k)
-			}
-		}
-		sort.Slice(keys, func(i, j int) bool {
-			if keys[i].year != keys[j].year {
-				return keys[i].year < keys[j].year
-			}
-			return keys[i].basis < keys[j].basis
-		})
-		if len(keys) == 0 {
+	for _, e := range structure.BudgetBookExceptions() {
+		if e.Cut != revenueDetailCut || e.Against != spineCut {
 			continue
 		}
-		drawn := false
-		for _, k := range keys {
+		for _, p := range e.Cells {
+			// A cell the schedule prints at a figure of its own is drawn by
+			// the drill-down and compared like any other; only a cell the
+			// schedule has NO row for is held apart here.
+			if p.Cut.Present {
+				continue
+			}
+			k := detailKey{p.Year, mapping.Basis(p.Basis),
+				p.Coords[structure.AxisFundGroup], p.Coords[structure.AxisCategory]}
+			if !reconcile[yearBasis{k.year, k.basis}] {
+				continue
+			}
+			sp, ok := spine[k]
+			if !ok {
+				continue
+			}
 			if detail[k].present {
-				drawn = true
+				findings = append(findings, finding(e.Name,
+					"the drill-down draws a flow into %s, so the exception it is exempted by "+
+						"has stopped describing the document and is now excusing a figure the "+
+						"chart publishes", k))
+				continue
 			}
-		}
-		if drawn {
-			findings = append(findings, finding(e.String(),
-				"the drill-down draws a flow into this cell, so the exception it is "+
-					"exempted by has stopped describing the document and is now excusing a "+
-					"figure the chart publishes"))
-			continue
-		}
-		for _, k := range keys {
 			exempted[k] = true
+			notes = append(notes, fmt.Sprintf("%s is drawn by no link and is held apart: %s. "+
+				"It is the same declaration cuts-tie-along-the-lattice holds the "+
+				"revenue-detail cut apart from the spine with (%s); %s is published by the "+
+				"spine and reaches this chart through nothing", k, e.Reason, e.Bead, sp.cents))
 		}
-		notes = append(notes, fmt.Sprintf("%s is drawn by no link and is held apart: %s. It "+
-			"is exempted by the same declaration revenue-detail-ties-to-spine reads, which "+
-			"is where the hand-off to scope %q is settled (%s); %s is published by the spine "+
-			"and reaches this chart through nothing",
-			e.String(), e.reason, e.coveredBy, e.bead, describeCents(spine, keys)))
 	}
 	if len(exempted) == 0 {
 		return nil, notes, findings

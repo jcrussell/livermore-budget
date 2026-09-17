@@ -17,6 +17,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -250,19 +251,10 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"node-tiers-are-declared":                 StatusPass,
 		"link-kinds-match-their-facts":            StatusPass,
 		"fund-flows-counts-reconcile":             StatusPass,
-		"drill-reconciles-across-documents":       StatusPass,
-		"spending-window-reconciles":              StatusPass,
 		"revenue-lines-tie-to-their-categories":   StatusPass,
-		"projection-scopes-are-disjoint":          StatusPass,
 		"projections-build":                       StatusPass,
 		"published-projection-built":              StatusPass,
 		"documents-are-checked":                   StatusPass,
-		"facts-are-projected":                     StatusPass,
-		"expenditure-detail-ties-to-spine":        StatusPass,
-		"revenue-detail-ties-to-spine":            StatusPass,
-		"transfers-detail-ties-to-spine":          StatusPass,
-		"funding-sources-tie-to-spine":            StatusPass,
-		"departmentwide-ties-to-spine":            StatusPass,
 		"cuts-tie-along-the-lattice":              StatusPass,
 		"peers-overlap-only-by-declared-identity": StatusPass,
 		"trend-points-tie-to-facts":               StatusPass,
@@ -595,10 +587,15 @@ func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
 
 // TestFactsMovedOutOfEveryProjectionFail is the second blocker review found, and it
 // is the more dangerous of the two because it is a one-word edit to a rule file.
-// Twenty facts in a scope no projection draws are not failed by the graph checks —
-// they are invisible to them — and before facts-are-projected existed this exact
-// mutation took over half the city's revenue out of the published chart while every
-// check passed.
+// Twenty facts in a scope no cut reads are not failed by the graph checks -- they
+// are invisible to them -- and before anything read the whole store this exact
+// mutation took over half the city's revenue out of the published chart while
+// every check passed.
+//
+// THE ARM THAT SEES IT IS structure.Covered, run by cuts-tie-along-the-lattice:
+// every fact is admitted by exactly one cut or by a declared residue, and a
+// fact in neither is named. The scope the facts were moved to is one no cut
+// reads, so each is reported by id.
 func TestFactsMovedOutOfEveryProjectionFail(t *testing.T) {
 	root := repoWithoutPDFs(t)
 	const otherScope = "all-funds-gross-detail"
@@ -618,24 +615,30 @@ func TestFactsMovedOutOfEveryProjectionFail(t *testing.T) {
 
 	rep := loadAndRun(t, root)
 	if !rep.Failed() {
-		t.Error("moving facts out of every projection did not fail the run")
+		t.Error("moving facts out of every cut did not fail the run")
 	}
-	res := resultFor(t, rep, "facts-are-projected")
+	res := resultFor(t, rep, "cuts-tie-along-the-lattice")
 	if res.Status != StatusFail {
-		t.Fatalf("facts-are-projected = %s (%s), want fail", res.Status, res.Summary)
+		t.Fatalf("cuts-tie-along-the-lattice = %s (%s), want fail", res.Status, res.Summary)
 	}
-	if len(res.Findings) != len(moved) {
-		t.Errorf("findings = %d, want one per moved fact (%d)", len(res.Findings), len(moved))
-	}
+	named := map[string]bool{}
 	for _, f := range res.Findings {
-		if !moved[f.Subject] {
-			t.Errorf("finding names %q, which was not moved", f.Subject)
+		if f.Subject != "coverage" {
+			continue
 		}
-		if !strings.Contains(f.Detail, otherScope) {
-			t.Errorf("finding %q does not name the scope that is drawn by nothing", f.Detail)
+		for id := range moved {
+			if strings.Contains(f.Detail, id) {
+				named[id] = true
+				if !strings.Contains(f.Detail, otherScope) {
+					t.Errorf("finding %q does not name the scope no cut reads", f.Detail)
+				}
+			}
 		}
 	}
-	// The published slice still exists, so this is the coverage check firing and
+	if len(named) != len(moved) {
+		t.Errorf("%d of the %d moved facts are named by a coverage finding", len(named), len(moved))
+	}
+	// The published slice still exists, so this is the coverage arm firing and
 	// not a side effect of the projection disappearing.
 	if got := resultFor(t, rep, "published-projection-built").Status; got != StatusPass {
 		t.Errorf("published-projection-built = %s, want pass", got)
@@ -716,12 +719,12 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 // no projection is of them, Trends.Slices returns nil, and the old check went on
 // passing over the spine while the trends document silently stopped existing.
 //
-// The run is legitimately red TWICE here — 924 facts land in no projection and
-// no declaration excuses them, which is facts-are-projected doing its job — so
-// this asserts on published-projection-built's own result rather than on
-// rep.Failed(). Non-strict, because under --strict the two trend checks and
-// revenue-detail-ties-to-spine go newly undeclared-vacuous and add three more
-// reasons to the same run.
+// The run is legitimately red more than once here -- 924 facts land in no cut
+// and no residue excuses them, which is cuts-tie-along-the-lattice's coverage
+// arm doing its job -- so this asserts on published-projection-built's own
+// result rather than on rep.Failed(). Non-strict, because under --strict the
+// two trend checks go newly undeclared-vacuous and add more reasons to the same
+// run.
 func TestARetargetedScopeUnbuildsThePublishedTrendsDocument(t *testing.T) {
 	root := repoWithoutPDFs(t)
 	moved := 0
@@ -990,37 +993,43 @@ func TestContestedTotalsAreStillContested(t *testing.T) {
 // the caveat's two figures being an unguarded second copy.
 //
 // internal/project declares Published and Elsewhere so it can write a sentence.
-// fundingSourcesExceptions declares the SAME PAIR as spineCents and
-// printedCents, and funding-sources-tie-to-spine verifies BOTH against the
-// corpus on every run -- the detail sum against printedCents and the spine sum
-// against spineCents. So the check's copy is corpus-verified and the
-// projection's was not.
+// structure.BudgetBookExceptions declares the SAME PAIR as the by-fund-group
+// exception's two pins, and cuts-tie-along-the-lattice verifies BOTH against
+// the corpus on every run -- the funding-sources sum against the Cut pin and
+// the spine sum against the Against pin. So the exception's copy is
+// corpus-verified and the projection's was not.
 //
-// Tying them together is what makes the caveat's figures as good as the check's:
-// re-read the detail pages, update printedCents, and this goes red rather than
-// leaving the site publishing a stale "other schedules make it" figure and a
-// wrong difference with every other gate green. It also means the sibling
-// declarations cannot drift into disagreeing about which cell is contested.
+// Tying them together is what makes the caveat's figures as good as the
+// exception's: re-read the detail pages, update the pin, and this goes red
+// rather than leaving the site publishing a stale "other schedules make it"
+// figure and a wrong difference with every other gate green. It also means the
+// sibling declarations cannot drift into disagreeing about which cell is
+// contested.
 func TestContestedTotalsAgreeWithTheirCheckException(t *testing.T) {
 	for _, c := range project.ContestedTotals() {
 		var found bool
-		for _, e := range fundingSourcesExceptions {
-			if e.fundGroup != c.FundGroup || e.year != c.Column.FiscalYear ||
-				e.basis != c.Column.Basis {
+		for _, e := range structure.BudgetBookExceptions() {
+			if e.Cut != "funding-sources" || e.Against != spineCut {
 				continue
 			}
-			found = true
-			if int64(e.spineCents) != c.Published {
-				t.Errorf("%s: the caveat says the spine prints %d and the check says %d",
-					c.Bead, c.Published, int64(e.spineCents))
-			}
-			if int64(e.printedCents) != c.Elsewhere {
-				t.Errorf("%s: the caveat says the rest of the book makes it %d and the "+
-					"check says %d", c.Bead, c.Elsewhere, int64(e.printedCents))
-			}
-			if e.bead != c.Bead {
-				t.Errorf("the two declarations of %s %s name different beads: %q and %q",
-					c.Column, c.FundGroup, c.Bead, e.bead)
+			for _, p := range e.Cells {
+				if p.Coords[structure.AxisFundGroup] != c.FundGroup || p.Year != c.Column.FiscalYear ||
+					p.Basis != string(c.Column.Basis) {
+					continue
+				}
+				found = true
+				if p.Against.Cents != c.Published {
+					t.Errorf("%s: the caveat says the spine prints %d and exception %s says %d",
+						c.Bead, c.Published, e.Name, p.Against.Cents)
+				}
+				if p.Cut.Cents != c.Elsewhere {
+					t.Errorf("%s: the caveat says the rest of the book makes it %d and exception "+
+						"%s says %d", c.Bead, c.Elsewhere, e.Name, p.Cut.Cents)
+				}
+				if e.Bead != c.Bead {
+					t.Errorf("the two declarations of %s %s name different beads: %q and %q",
+						c.Column, c.FundGroup, c.Bead, e.Bead)
+				}
 			}
 		}
 		if !found {

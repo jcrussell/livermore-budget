@@ -10,56 +10,34 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
-// This file is the machinery every <kind>-detail-ties-to-spine check shares. The
-// checks themselves stay one per file, because what is worth reading about each
-// of them is the argument for ITS schedule — which restriction, which exceptions,
-// what the asymmetries are — and that argument does not generalise even though
-// the arithmetic does.
+// This file is the machinery revenue-lines-tie-to-their-categories sums the
+// spine side of its arm 1 with: a cell keyed on (column, fund group, category),
+// summed inside a kind restriction, and compared as a union so a dropped row is
+// a one-sided failure and not an empty comparison.
 //
-// It was extracted at the second instance rather than the first. Budget Book
-// pp.167-170 (expenditure-by-department, fisc-5gk.2) landed alone; pp.127-140
-// (revenue-by-fund, fisc-5gk.1) is the second and p76 (transfers-by-fund,
-// fisc-5gk.3.1) is already specified, so the shape is known rather than guessed.
+// IT HAD FIVE CONSUMERS AND HAS ONE. The <kind>-detail-ties-to-spine checks it
+// was extracted for are cuts-tie-along-the-lattice now, which compares facts to
+// facts through internal/structure and carries each schedule's exceptions as
+// structure.BudgetBookExceptions. What is left here is a document-to-facts
+// comparison; re-pointing it at structure.KeyOf retires this file (fisc-6714).
 
-// detailRestriction is the slice of the fact store one detail check compares.
+// detailRestriction is the slice of the fact store one comparison reads: the
+// kinds the schedule prints.
 //
-// IT IS A FILTER AND NOT A KEY, and the distinction is the whole reason this
-// type exists rather than a pair of loose constants. FundGroups pins which
-// facts are looked at; it never decides which cells are compared, because
-// detailKey always carries the fund group. Collapse the two and a check whose
-// schedule spans every group — pp.127-140 does — would compare six groups'
-// facts under one key and tie on a sum that happens to match.
-//
-// Neither field is cosmetic on either side of the pair that exists today.
-// Without Kinds, a revenue schedule's keys meet the spine's expenditure and
-// fund-balance cells and the check fails at a quarter of a billion dollars
-// before reaching anything it is about. Without FundGroups, a General Fund
-// schedule meets the other five groups — about $109M of FY2026 expenditure.
-// Which of the two a schedule needs is a property of the schedule, so it is
-// declared beside the check that reads it.
+// IT IS A FILTER AND NOT A KEY. detailKey carries the fund group regardless, so
+// a schedule spanning every group -- pp.127-140 does -- is compared group by
+// group and never on a sum that happens to match. Without the kind half a
+// revenue schedule's keys meet the spine's expenditure and fund-balance cells
+// and the comparison fails at a quarter of a billion dollars before reaching
+// anything it is about.
 type detailRestriction struct {
 	// Kinds are the fact kinds the schedule prints. Required: a restriction
 	// admitting every kind compares a detail schedule against the whole spine.
 	Kinds []mapping.Kind
-
-	// FundGroups pins the check to the fund groups its schedule covers. Empty
-	// means the schedule spans them all, which is a claim about the pages and
-	// not a default.
-	//
-	// A SET RATHER THAN ONE STRING because a schedule's coverage need not be
-	// one group or all six. p76's transfer legs split three ways: the IN side
-	// spans every group, while the OUT side is compared in two clauses — the
-	// four groups pp.72-75 print a to-CIP figure for, and the two they print
-	// only an aggregate for (fisc-j2l, fisc-aes). Each clause is its own
-	// restriction over the same scope.
-	FundGroups []string
 }
 
-// admits says whether a fact is one this check compares.
+// admits says whether a fact is one this comparison reads.
 func (r detailRestriction) admits(f *fact.Fact) bool {
-	if len(r.FundGroups) > 0 && !slices.Contains(r.FundGroups, f.FundGroup) {
-		return false
-	}
 	return slices.Contains(r.Kinds, f.Kind)
 }
 
@@ -75,11 +53,9 @@ type cellSum struct {
 	present bool
 }
 
-// detailKey is one cell both scopes must agree on.
-//
-// It is deliberately the tuple internal/project's netCells keys on, minus the
-// slice: these checks are the negative of that function's collision, so they
-// assert equality on precisely the tuple a doubling would have happened on.
+// detailKey is one cell both sides must agree on: the spine's own grain,
+// (fund group, category) inside a column, which is the meet every fund-level
+// document is compared at.
 type detailKey struct {
 	year      int
 	basis     mapping.Basis
@@ -133,7 +109,7 @@ func detailSums(facts []fact.Fact, scope string, r detailRestriction) map[detail
 //
 // Both sets are computed rather than named: a hard-coded pair list would stop
 // reconciling a column the day one is mapped, which is the same defect class as
-// pinning the unprojectedScopes entry count.
+// pinning a declaration's entry count.
 func reconciledPairs(detail, spine map[detailKey]cellSum) (reconcile, unmatched map[yearBasis]bool) {
 	reconcile = map[yearBasis]bool{}
 	for k := range spine {

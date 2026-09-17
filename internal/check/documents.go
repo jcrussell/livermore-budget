@@ -8,8 +8,8 @@ import (
 // uncheckedDocuments are the projection shapes no structural check reads yet,
 // each with the reason and the bead that retires it.
 //
-// It is the same declaration this package already makes about facts in
-// unprojectedScopes, for the same reason and with the same danger. A projection
+// It is the same declaration this package already makes about checks in
+// declaredVacuous, for the same reason and with the same danger. A projection
 // that produces no graph is not checked by anything in graph.go, and a document
 // nobody checks is a document that can be wrong on the published site while
 // `fisc verify` prints all-green. Before this map, such a projection could not
@@ -214,13 +214,13 @@ func documentShape(p projection) string {
 		// whole point of the shape: this document publishes no headline.
 		return "linked graph, no headline"
 	case p.DepartmentSpending != nil:
-		// The same six structural checks that read Subject.Linked, plus
-		// spending-window-reconciles, which holds this document's object
-		// categories against the spine's cell by cell.
+		// The same six structural checks that read Subject.Linked. The
+		// arithmetic this document rests on is cuts-tie-along-the-lattice,
+		// which reads the FACTS and needs no graph.
 		return "cross-tab, no headline"
 	case p.DepartmentFunding != nil:
 		// The same six structural checks that read Subject.Linked. The
-		// arithmetic this document rests on is funding-sources-tie-to-spine,
+		// arithmetic this document rests on is cuts-tie-along-the-lattice,
 		// which reads the FACTS and needs no graph -- so there is no check of
 		// this shape alone, and the shape is named apart from the cross-tab's
 		// because they are two readings of the same eleven pages.
@@ -229,7 +229,7 @@ func documentShape(p projection) string {
 		// The same six structural checks that read Subject.Linked, plus
 		// transfer-legs-pair, which is the only check in the tree that reads
 		// Link.TransferID and had no subject at all until this shape existed.
-		// The arithmetic this document rests on is transfers-detail-ties-to-spine,
+		// The arithmetic this document rests on is cuts-tie-along-the-lattice,
 		// which reads the FACTS and is therefore not named here.
 		return "paired legs, no headline"
 	default:

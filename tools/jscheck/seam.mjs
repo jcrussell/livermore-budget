@@ -584,14 +584,23 @@ export async function checks() {
   // would leave the FY2026-27 services-and-supplies mark measured under no
   // declaration at all, which is the state markGap throws on and a check would
   // then be recording as the feature. The literals below are ones
-  // internal/check/departmentwide.go does not contain.
+  // internal/structure/cuts.go does not contain, and the control carries an
+  // entry on ANOTHER cut so a parse that stopped selecting by Cut would read
+  // one gap too many.
   {
-    const lit = (/** @type {string} */ body) =>
-      `var departmentwideExceptions = []departmentwideException{{\n${body}\n}}\n`;
-    const good = lit('\tcategory: "wages-and-benefits", year: 2027,\n\n\tbead: "b-1",\n' +
-      '\treason: "one " +\n\t\t"two",');
-    const noReason = lit('\tcategory: "wages-and-benefits", year: 2027,\n\tbead: "b-1",');
-    const emptyReason = lit('\tcategory: "wages-and-benefits",\n\treason: "",');
+    const entry = (/** @type {string} */ cut, /** @type {string} */ body) =>
+      `\t\t{\n\t\t\tName: "x",\n\t\t\tCut:  ${JSON.stringify(cut)}, Against: "spine", At: LevelCategory,\n${body}\n\t\t},`;
+    const lit = (/** @type {string[]} */ entries) =>
+      `func BudgetBookExceptions() []Exception {\n\treturn []Exception{\n${entries.join("\n")}\n\t}\n}\n`;
+    const cells = (/** @type {string} */ category) =>
+      `\t\t\tCells: []Pin{{Year: 2027, Basis: "adopted", Coords: map[Axis]string{AxisCategory: ${JSON.stringify(category)}},\n` +
+      `\t\t\t\tCut: present(1), Against: present(2)}},`;
+    const other = entry("revenue-detail", cells("transfers/in") + '\n\t\t\tReason: "not a gap",\n\t\t\tBead: "b-0",');
+    const good = lit([other, entry("departmentwide",
+      cells("wages-and-benefits") + '\n\t\t\tReason: "one " +\n\t\t\t\t"two",\n\t\t\tBead: "b-1",')]);
+    const noReason = lit([entry("departmentwide", cells("wages-and-benefits") + '\n\t\t\tBead: "b-1",')]);
+    const emptyReason = lit([entry("departmentwide", cells("wages-and-benefits") + '\n\t\t\tReason: "",')]);
+    const noCategory = lit([entry("departmentwide", '\t\t\tReason: "one",')]);
     const read = (/** @type {string} */ text) => {
       try {
         return { gaps: parseSpendingGaps(text), threw: "" };
@@ -601,15 +610,17 @@ export async function checks() {
     };
     const control = read(good);
     out.push({
-      name: "the gap literal is read into node ids, and a category whose reason it cannot follow throws",
+      name: "the gap literal is read into node ids off the departmentwide cut alone, and a category whose reason it cannot follow throws",
       ok: control.threw === "" &&
+        Object.keys(control.gaps).length === 1 &&
         control.gaps["expenditure/wages-and-benefits"] === "one two" &&
-        read(noReason).threw !== "" && read(emptyReason).threw !== "",
+        read(noReason).threw !== "" && read(emptyReason).threw !== "" && read(noCategory).threw !== "",
       detail: control.threw !== ""
         ? `THE CONTROL LITERAL DID NOT PARSE (${control.threw}), so nothing below is evidence`
-        : `a well-formed entry reads as ${JSON.stringify(control.gaps)}; a category with no ` +
-          `reason throws ${JSON.stringify(read(noReason).threw)} and one with an empty ` +
-          `reason throws ${JSON.stringify(read(emptyReason).threw)}`,
+        : `a well-formed entry beside one on another cut reads as ${JSON.stringify(control.gaps)}; ` +
+          `a category with no reason throws ${JSON.stringify(read(noReason).threw)}, one with an ` +
+          `empty reason throws ${JSON.stringify(read(emptyReason).threw)}, and an entry pinning no ` +
+          `category throws ${JSON.stringify(read(noCategory).threw)}`,
     });
   }
 

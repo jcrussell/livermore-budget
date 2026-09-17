@@ -12,6 +12,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // lineTieTaxonomyYAML puts a line under taxes/property as well as under
@@ -125,6 +126,37 @@ func lineTieSubject(t *testing.T) *Subject {
 	}
 }
 
+// findingLines renders findings one per line, subject then detail, for a
+// failure message a reader can grep.
+func findingLines(res Result) []string {
+	out := make([]string, 0, len(res.Findings))
+	for _, f := range res.Findings {
+		out = append(out, f.Subject+": "+f.Detail)
+	}
+	return out
+}
+
+// generalTransferInException is the declared exception for the General Fund
+// transfer in pp.127-130 do not print, in one budget year, read off the
+// structure rather than restated here.
+func generalTransferInException(t *testing.T, year int) structure.Exception {
+	t.Helper()
+	for _, e := range structure.BudgetBookExceptions() {
+		if e.Cut != revenueDetailCut || e.Against != spineCut {
+			continue
+		}
+		for _, p := range e.Cells {
+			if p.Year == year && !p.Cut.Present &&
+				p.Coords[structure.AxisFundGroup] == "general" &&
+				p.Coords[structure.AxisCategory] == "transfers/in" {
+				return e
+			}
+		}
+	}
+	t.Fatalf("no exception holds the General Fund transfer in apart for FY%d", year)
+	return structure.Exception{}
+}
+
 // lineNode is the first drill-down's node with this id, which every arm-two
 // mutation edits. Addressed by id rather than by index: a fixture that gains a
 // row must not silently re-aim a mutation at a different node.
@@ -177,12 +209,11 @@ func TestRevenueLinesTieOverTheFixture(t *testing.T) {
 			"6 revenue-line nodes, each parented to the category data/taxonomy.yaml " +
 			"declares it under; 1 further cell(s) are declared exceptions and are NOT among " +
 			"the 5; 1 further pair(s) the drill-down publishes have no spine column and are " +
-			"not reconciled: FY2024 actual; (transfer_in, transfers/in, general) is drawn " +
-			"by no link and is held apart: " + revenueDetailExceptions[0].reason + ". It is " +
-			"exempted by the same declaration revenue-detail-ties-to-spine reads, which is " +
-			"where the hand-off to scope \"transfers-by-fund\" is settled (fisc-5gk.3.1); " +
-			"FY2026 adopted $100.00 is published by the spine and reaches this chart " +
-			"through nothing",
+			"not reconciled: FY2024 actual; FY2026 adopted general transfers/in is drawn " +
+			"by no link and is held apart: " + generalTransferInException(t, 2026).Reason +
+			". It is the same declaration cuts-tie-along-the-lattice holds the " +
+			"revenue-detail cut apart from the spine with (fisc-5gk.3.1); $100.00 is " +
+			"published by the spine and reaches this chart through nothing",
 	}
 	got := verdict{res.Status, res.Subjects, res.Summary}
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -360,9 +391,9 @@ func TestRevenueLinesTieIsFailable(t *testing.T) {
 			},
 			wantStatus: StatusFail, wantSubjects: 12,
 			want: []string{
-				"(transfer_in, transfers/in, general): the drill-down draws a flow into this " +
-					"cell, so the exception it is exempted by has stopped describing the " +
-					"document",
+				"pp.127-130-print-no-general-fund-transfer-in-2026: the drill-down draws a flow " +
+					"into FY2026 adopted general transfers/in, so the exception it is exempted " +
+					"by has stopped describing the document",
 			},
 		},
 		{

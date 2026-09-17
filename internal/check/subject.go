@@ -49,6 +49,21 @@ const (
 // published triple was built at all, which no amount of shared spelling can.
 const spineScope = project.PublishedScope
 
+// The scope strings the detail schedules are mapped at, spelled here for
+// spineScope's reason: the hazard is a scope string internal/check and
+// mappings/ spell differently, and a string only ever compared and never
+// written is exactly where a typo survives. structure.BudgetBookCuts declares
+// each as a cut's Scope, and TestScopeConstantsNameDeclaredCuts holds these to
+// those rather than leaving two spellings to agree by luck.
+const (
+	// revenueDetailScope is Budget Book pp.127-140, revenue and transfers in
+	// per fund.
+	revenueDetailScope = "revenue-by-fund"
+	// fundingSourcesScope is Budget Book pp.85-125's lower block, which fund
+	// pays for which department.
+	fundingSourcesScope = "department-funding-sources"
+)
+
 // Vocabulary is the view of the curated registries (internal/registry) the
 // checks need, declared here in the consumer and kept to the methods actually
 // used (byob-interfaces.2), as internal/project does with its Labels.
@@ -173,11 +188,10 @@ type fundFlowsBuilder interface {
 // what the shape means rather than what it holds. Both are nodes and links with
 // no headline, so the STRUCTURAL checks read them identically through
 // [Subject.LinkedDocuments] -- and the checks that are of the drill-down's shape
-// ALONE would then be handed this one: drill-reconciles-across-documents indexes
-// drill-downs by column and would see two documents of FY2026, and
-// fund-flows-counts-reconcile would re-derive facts_cited_twice on a document
-// that has no second grain. Sharing the type would make those two checks report
-// on a document neither was written about.
+// ALONE would then be handed this one: fund-flows-counts-reconcile would
+// re-derive facts_cited_twice on a document that has no second grain. Sharing
+// the type would make that check report on a document it was not written
+// about.
 type departmentSpendingBuilder interface {
 	Name() string
 	Document(facts []fact.Fact, o project.Options) (*project.DepartmentSpendingDocument, error)
@@ -205,9 +219,8 @@ type departmentFundingBuilder interface {
 // whose links come in PAIRS -- two per printed figure, one for each end of a
 // movement -- so every count taken off it is twice what a document of cells
 // would mean by the same number. fund-flows-counts-reconcile re-derives
-// facts_cited_twice and drill-reconciles-across-documents indexes drill-downs by
-// column; handed this shape, both would report on a document neither was
-// written about.
+// facts_cited_twice; handed this shape, it would report on a document it was
+// not written about.
 type transfersByFundBuilder interface {
 	Name() string
 	Document(facts []fact.Fact, o project.Options) (*project.TransfersByFundDocument, error)
@@ -242,19 +255,19 @@ type projection struct {
 	// EXACTLY ONE OF THE FOUR IS NON-NIL on a healthy projection.
 	FundFlows *project.FundFlowsDocument
 	// DepartmentSpending is the built cross-tab, or nil. Read it through
-	// [Subject.LinkedDocuments] for the structural checks, and through
-	// [Subject.DepartmentSpendingDocuments] for the one that is of this shape
-	// alone.
+	// [Subject.LinkedDocuments] for the structural checks; no check is of this
+	// shape alone, because cuts-tie-along-the-lattice reads the FACTS and is
+	// what this scope's arithmetic rests on.
 	DepartmentSpending *project.DepartmentSpendingDocument
 	// DepartmentFunding is the built funding-source graph, or nil. Read it
 	// through [Subject.LinkedDocuments] for the structural checks; no check is
-	// of this shape alone, because funding-sources-tie-to-spine reads the FACTS
+	// of this shape alone, because cuts-tie-along-the-lattice reads the FACTS
 	// and is what this scope's arithmetic rests on.
 	DepartmentFunding *project.DepartmentFundingDocument
 	// TransfersByFund is the built transfer network, or nil. Read it through
 	// [Subject.LinkedDocuments] for the structural checks; no check is of this
-	// shape alone, because transfers-detail-ties-to-spine reads the FACTS and
-	// is what this scope's arithmetic rests on.
+	// shape alone, because cuts-tie-along-the-lattice reads the FACTS and is
+	// what this scope's arithmetic rests on.
 	TransfersByFund *project.TransfersByFundDocument
 }
 
@@ -408,7 +421,7 @@ type Subject struct {
 // A projection with no graph is NOT skipped coverage: it is a document of a
 // different shape, checked by whatever check is about that shape. What would be
 // a gap is a projection no check reads at all, and that is what
-// projectionsBuild and facts-are-projected are for.
+// projectionsBuild and documents-are-checked are for.
 func (s *Subject) graphs() []projection {
 	out := make([]projection, 0, len(s.Projections))
 	for _, p := range s.Projections {
@@ -442,18 +455,6 @@ func (s *Subject) linkedDocuments() []linked {
 		case p.TransfersByFund != nil:
 			out = append(out, linked{projection: p,
 				Nodes: p.TransfersByFund.Nodes, Links: p.TransfersByFund.Links})
-		}
-	}
-	return out
-}
-
-// departmentSpendingDocuments is every projection that built the departmentwide
-// cross-tab, for the check that is of that shape alone.
-func (s *Subject) departmentSpendingDocuments() []projection {
-	out := make([]projection, 0, len(s.Projections))
-	for _, p := range s.Projections {
-		if p.DepartmentSpending != nil {
-			out = append(out, p)
 		}
 	}
 	return out

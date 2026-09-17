@@ -189,6 +189,12 @@ func init() {
 // THREE ARGUMENTS, TEN CELLS, AND NONE IS A TOLERANCE. Every other cell of
 // every comparison ties to the cent.
 //
+// WHAT GENERALISES IS THE ARITHMETIC AND NOT THE ARGUMENT. The comparison is
+// one function over every pair of cuts; what is worth reading about each
+// schedule is the argument for ITS cells -- which rows the pages do not print,
+// which figure they print instead and where -- and that is carried here, one
+// exception at a time, rather than in a check per schedule.
+//
 // pp.127-130 PRINT NO GENERAL FUND TRANSFER IN. p130's `Total General Fund` is
 // a revenue total, not a sources total, so the spine's General Fund TRANSFER IN
 // -- p0066.txt:24, 480,400 and 486,735 -- has no counterpart in the revenue
