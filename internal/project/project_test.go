@@ -236,13 +236,31 @@ func TestOnlyScopeRefusesASetItCannotDescribe(t *testing.T) {
 // pointed a single-grain document at a drill-down's options; a set of one that
 // is the wrong schedule means they pointed it at the wrong page. Reporting
 // either as the other sends the reader to the wrong declaration.
+//
+// THE LATTICE REFUSES FIRST, AND ONLY WHERE IT HAS SOMETHING TO SAY. The spine
+// beside pp.127-140 is a headline over two grains of one money, and the view
+// refuses that pair with both cuts named before the sankey asks how many
+// schedules it was handed. Two schedules that ARE summable together --
+// pp.127-140's revenue beside pp.167-170's expenditure -- pass the lattice and
+// reach the sankey's own refusal.
 func TestASingleGrainDocumentRefusesTwoScopes(t *testing.T) {
 	both := []string{PublishedScope, TrendsScope}
 
 	so := testOptions()
 	so.Scopes = both
 	if _, err := (&sankey{}).Graph(spineFacts(t, testYear), so); err == nil {
-		t.Error("Sankey.Graph over two scopes = nil error, want a refusal")
+		t.Error("Sankey.Graph over the spine and its decomposition = nil error, want a refusal")
+	} else {
+		for _, want := range []string{"not an antichain", `"revenue-detail"`, `"spine"`, "counts that money twice"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("Sankey.Graph = %q, want the lattice to say %q", err, want)
+			}
+		}
+	}
+
+	so.Scopes = []string{TrendsScope, "expenditure-by-department"}
+	if _, err := (&sankey{}).Graph(spineFacts(t, testYear), so); err == nil {
+		t.Error("Sankey.Graph over two summable schedules = nil error, want a refusal")
 	} else if !strings.Contains(err.Error(), "one schedule") {
 		t.Errorf("Sankey.Graph = %q, want it to say the document is of one schedule", err)
 	}

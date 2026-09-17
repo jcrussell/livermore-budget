@@ -214,7 +214,10 @@ sum — so the difference is a citation and not a figure.
 A headline is a property of a **single-grain** document. The moment one file
 holds the same money at two grains, "the total" is ambiguous, and no key
 disambiguates it because the ambiguity is in the accumulation rather than in the
-key.
+key. So the spine's headline is not accumulated as its cells are drawn: it is a
+sum over a named view of the structure, `structure.ViewOf`, which refuses a
+scope set one of whose cuts decomposes another over money both print before
+anything is summed.
 
 Giving this document one is not the cheap way out either. A revenue-side
 drill-down has transfers **in** and no transfers out, so

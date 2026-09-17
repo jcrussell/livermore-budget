@@ -220,23 +220,41 @@ type View struct {
 }
 
 // NewView refuses a set that is not summable: two cuts one of which
-// decomposes the other, a cut named twice, or an identity joining two of its
-// cuts with no reading declared. A reading naming an identity that joins no
-// two cuts of the view is refused too, because it would excuse a traversal
-// that is not happening.
+// decomposes the other over money both print, a cut named twice, or an
+// identity joining two of its cuts with no reading declared. A reading naming
+// an identity that joins no two cuts of the view is refused too, because it
+// would excuse a traversal that is not happening.
+//
+// THE ANTICHAIN IS OVER MONEY BOTH CUTS PRINT, not over levels alone. pp.127-140
+// by fund and pp.167-170 by fund, department and object are one above the
+// other in the lattice, and a document following a dollar from source to
+// spend holds both; they are summable together because one prints revenue and
+// the other expenditure, and no fact is in both. What is refused is a pair one
+// of which decomposes the other where their kinds meet -- the spine beside any
+// detail schedule.
 func NewView(name string, cuts []Cut, identities []Identity, readings map[string]string) (View, error) {
 	names := map[string]Cut{}
-	levels := make([]Level, 0, len(cuts))
 	for _, c := range cuts {
 		if _, dup := names[c.Name]; dup {
 			return View{}, fmt.Errorf("view %q names cut %q twice", name, c.Name)
 		}
 		names[c.Name] = c
-		levels = append(levels, c.Level)
 	}
-	if fine, coarse, ok := IsAntichain(levels); !ok {
-		return View{}, fmt.Errorf("view %q is not an antichain: %q decomposes %q, so a total over "+
-			"both counts that money twice", name, fine, coarse)
+	for i, a := range cuts {
+		for _, b := range cuts[i+1:] {
+			if !kindsMeet(a, b) {
+				continue
+			}
+			fine, coarse := a, b
+			if Refines(b.Level, a.Level) {
+				fine, coarse = b, a
+			}
+			if Refines(fine.Level, coarse.Level) {
+				return View{}, fmt.Errorf("view %q is not an antichain: %q (%s) decomposes %q (%s) and both "+
+					"print %v, so a total over both counts that money twice",
+					name, fine.Name, fine.Level, coarse.Name, coarse.Level, sharedKinds(a, b))
+			}
+		}
 	}
 	joined := map[string]bool{}
 	for _, id := range identities {
@@ -289,4 +307,49 @@ func (v View) Admits(f *fact.Fact, identities []Identity) bool {
 		return true
 	}
 	return false
+}
+
+// CutsOf is every declared cut whose scope is one of those named: one per
+// scope, and two for the scope that prints two grains.
+func CutsOf(scopes []string) []Cut {
+	var out []Cut
+	for _, c := range AllCuts() {
+		if contains(scopes, c.Scope) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// ViewOf is the view a document's scope set names, over the declared cuts
+// and identities, refused the way NewView refuses. A scope no cut selects is
+// refused too: a document over money the structure does not describe is not
+// a view of it.
+func ViewOf(name string, scopes []string, readings map[string]string) (View, error) {
+	cuts := CutsOf(scopes)
+	for _, sc := range scopes {
+		found := false
+		for _, c := range cuts {
+			if c.Scope == sc {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return View{}, fmt.Errorf("view %q selects scope %q, which no declared cut reads", name, sc)
+		}
+	}
+	return NewView(name, cuts, BudgetBookIdentities(), readings)
+}
+
+func kindsMeet(a, b Cut) bool { return len(sharedKinds(a, b)) > 0 }
+
+func sharedKinds(a, b Cut) []mapping.Kind {
+	var out []mapping.Kind
+	for _, k := range a.Kinds {
+		if containsKind(b.Kinds, k) {
+			out = append(out, k)
+		}
+	}
+	return out
 }

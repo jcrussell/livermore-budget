@@ -11,10 +11,10 @@ import (
 // milestone the mapping work reaches and is not. Traced against the code, all
 // three of the checks that report vacuous today are blocked behind the node
 // tier hierarchy (fisc-gxa.2) and the owner decision under it (fisc-l25) --
-// including transfer-legs-pair, which reads LINKS: internal/project's cellKey
-// is (kind, category, fundGroup) and netCells never reads a fact's fund, so a
-// projection of p76's scope nets 22 transfer legs into 9 fund-group cells and
-// the pairing is gone before a transfer_id could attach to anything. No amount
+// including transfer-legs-pair, which reads LINKS: the spine's rows name no
+// fund, so a projection of p76's scope under the spine's contract nets 22
+// transfer legs into 9 fund-group cells and the pairing is gone before a
+// transfer_id could attach to anything. No amount
 // of coverage work reaches --strict. Only a declaration does, and without one
 // ci.yml stays as it is for the whole of the backlog while fisc-1wr.4's own
 // warning -- that a permanently red gate gets commented out -- starts applying

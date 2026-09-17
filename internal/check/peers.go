@@ -132,8 +132,31 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 		}
 	}
 
-	summary := fmt.Sprintf("%d shared cell(s) over %d pair(s) of cuts at one level: %s",
-		subjects, pairs, strings.Join(clauses, "; "))
+	// EVERY DOCUMENT THAT SUMS IS A VIEW, and the view is constructed here
+	// from the scope set the projection declared, so a set that would
+	// traverse both readings of one figure, or hold a cut beside one that
+	// decomposes it, is a finding whether or not the projection's own code
+	// noticed. Series documents publish no total and are not views.
+	views := 0
+	seen := map[string]bool{}
+	for _, p := range s.Projections {
+		if p.Trends != nil {
+			continue
+		}
+		key := p.Name + " " + p.Options.ScopeList()
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		views++
+		if _, err := structure.ViewOf(p.Name, p.Options.Scopes, nil); err != nil {
+			findings = append(findings, finding(p.Name, "%v", err))
+		}
+	}
+
+	summary := fmt.Sprintf("%d shared cell(s) over %d pair(s) of cuts at one level: %s. %d "+
+		"document scope set(s) each construct as a view",
+		subjects, pairs, strings.Join(clauses, "; "), views)
 	if len(refused) > 0 {
 		summary += fmt.Sprintf(". %d pair(s) at one level are not comparisons and were refused by "+
 			"name: %s", len(refused), strings.Join(refused, "; "))

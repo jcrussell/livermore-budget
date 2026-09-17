@@ -2,6 +2,7 @@ package project
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
@@ -13,13 +14,8 @@ import (
 // this package is below it.
 const revenueScope = "revenue-by-fund"
 
-// What p66 prints for General Fund Property Taxes in FY2025-26, and what the
-// chart would publish if pp.127-140 were mapped at the spine's scope. Both are
-// named, because the wrong one is this bead's whole subject.
-const (
-	generalFundPropertyTaxes        = 6_414_376_200
-	generalFundPropertyTaxesDoubled = 12_828_752_400
-)
+// What p66 prints for General Fund Property Taxes in FY2025-26.
+const generalFundPropertyTaxes = 6_414_376_200
 
 // p127PropertyTaxes is the thirteen printed detail lines under Property Taxes on
 // Budget Book p127, FY2025-26, in the order the page prints them. The figures
@@ -127,40 +123,31 @@ func TestRevenueDetailDoesNotEnterTheSpine(t *testing.T) {
 	}
 }
 
-// TestRevenueDetailAtSpineScopeWouldDoubleTheGeneralFund pins the defect, which
-// is this repository's house style for a figure a mistake would produce —
-// transfers_p76_test.go pins the $38,086,737 residual, statedtotaldelta_test.go
-// the +$1.
+// TestRevenueDetailAtSpineScopeIsRefusedByTheKey pins what a mis-scoped
+// revenue rule now meets, which is a refusal rather than a doubled figure.
 //
-// AND IT IS A SHARPER STATEMENT HERE THAN ON THE DEPARTMENT LANE. There, a
-// mis-scoped rule usually hits netCells' refusal of a department-bearing fact
-// and stops loudly; only an author who put the division in the row label slips
-// past. Here there is no refusal at all: netCells has no fund guard, so EVERY
-// mis-scoped revenue rule builds a graph, doubled, silently. The scope string
-// and revenue-detail-ties-to-spine are the whole of the guard.
-func TestRevenueDetailAtSpineScopeWouldDoubleTheGeneralFund(t *testing.T) {
+// IT USED TO BUILD, DOUBLED, SILENTLY: with no fund in the cell key the
+// thirteen detail lines landed in the spine's own General Fund property tax
+// cell and the chart published 128,287,524 where p66 prints 64,143,762, with
+// every graph check green. With the fund in the key each detail line is its
+// own cell, the graph gains a second link from the same source to the same
+// group, and checkDistinctLinks refuses it by name. The scope string is no
+// longer the whole of the guard.
+//
+// WHAT THIS DOES NOT PROVE is that a fund-bearing rule cannot double a
+// figure some other way: a rule at the spine's scope whose rows carried no
+// fund would still land on the spine's cells. That case is cuts-tie-along-
+// the-lattice's, which compares the schedules to each other.
+func TestRevenueDetailAtSpineScopeIsRefusedByTheKey(t *testing.T) {
 	all := append(spineFacts(t, testYear), revenueDetailFacts(t, testScope)...)
 
-	g, err := (&sankey{Labels: goldenLabels}).Graph(all, testOptions())
-	if err != nil {
-		t.Fatalf("Graph: %v; a fund-bearing fact at the spine's scope is ACCEPTED, which "+
-			"is the point of this test", err)
+	_, err := (&sankey{Labels: goldenLabels}).Graph(all, testOptions())
+	if err == nil {
+		t.Fatal("Graph accepted fund-bearing facts at the spine's scope; the fund has left the cell key")
 	}
-	l := linkBetween(t, g, "revenue/taxes/property", "fund-group/general")
-	if l.ValueCents != generalFundPropertyTaxesDoubled {
-		t.Fatalf("General Fund property taxes = %d, want %d; this test states the DEFECT, "+
-			"so a change here means the doubling stopped happening and the scope guard's "+
-			"reason needs re-checking", l.ValueCents, generalFundPropertyTaxesDoubled)
-	}
-	if l.ValueCents != 2*generalFundPropertyTaxes {
-		t.Errorf("the doubled figure is not twice the spine's; the fixture drifted")
-	}
-	// And the doubling is INVISIBLE to the graph checks, which is why the
-	// figure has to be pinned here rather than left to them: the link cites
-	// fourteen facts and equals their sum exactly.
-	if len(l.FactIDs) != 1+len(p127PropertyTaxes) {
-		t.Errorf("link cites %d facts, want %d; the detail was summed into the spine cell "+
-			"and link-values-tie-to-facts would report that as green",
-			len(l.FactIDs), 1+len(p127PropertyTaxes))
+	for _, want := range []string{"two external links", `"revenue/taxes/property"`, `"fund-group/general"`} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("refusal %q does not say %q", err, want)
+		}
 	}
 }

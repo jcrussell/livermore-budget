@@ -9,6 +9,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
@@ -583,11 +584,20 @@ func (s *sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
 }
 
 // cellKey addresses one printed cell of the schedule: a row's classification
-// crossed with a column's fund group.
+// crossed with a column's fund group, and the fund where the row names one.
+//
+// THE FUND IS IN THE KEY AND THAT IS NECESSARY AND NOT SUFFICIENT. Without
+// it a fund-level row and the spine's fund-group cell for the same category
+// land at one address and are summed; with it they are two cells, and a
+// document holding both grains still adds both into every total it
+// accumulates. What makes the second impossible is the view the headline is
+// summed over, refused at construction unless it is an antichain.
 type cellKey struct {
 	kind      mapping.Kind
 	category  string
 	fundGroup string
+	// fund is fact.FundString's rendering: "(absent)" on every spine row.
+	fund string
 }
 
 // cell is the netted value of one printed cell and the facts behind it.
@@ -606,6 +616,17 @@ type cell struct {
 func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	if err := o.validate(); err != nil {
 		return nil, fmt.Errorf("sankey options: %w", err)
+	}
+	// THE HEADLINE IS A TOTAL OVER A NAMED VIEW, and the view is built before
+	// anything is summed. A cut set one of whose cuts decomposes another is
+	// refused here, by the lattice, with the two cuts named -- which is what
+	// keeps "the total" from being a sum over two grains of the same money
+	// that every downstream check, re-summing the same facts, would agree
+	// with. The refusals below are this document's own and come after: how
+	// many schedules, and which.
+	view, err := structure.ViewOf("headline", o.Scopes, nil)
+	if err != nil {
+		return nil, fmt.Errorf("sankey: %w", err)
 	}
 	// The scope selects the SCHEDULE, and refusing a foreign one is what stops
 	// this projection publishing another schedule's rows under the spine's
@@ -647,6 +668,7 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	col := o.Columns[0]
 
 	selected := selectFacts(facts, o)
+	h := headlineOver(view, selected)
 
 	// Net first, link second. A contra row (Budget Book p127 prints ERAF as
 	// "(15,857,875)") carries a negative amount under its parent's category,
@@ -661,7 +683,6 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 
 	nodes := make(map[string]Node)
 	links := make([]Link, 0, len(cells))
-	var h Headline
 
 	for _, k := range sortedCellKeys(cells) {
 		c := cells[k]
@@ -678,32 +699,22 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 				tier: tierRevenueSource, role: roleRevenueSource}
 			dst = group
 			kind = boundaryKind(k.fundGroup)
-			h.AllFundsGrossRevenueCents += value
-			if kind == KindExternal {
-				h.ExternalRevenueCents += value
-			}
 
 		case mapping.KindExpenditure:
 			src = group
 			dst = endpoint{id: prefixExpenditure + k.category, slug: k.category,
 				tier: tierObjectCategory, role: roleObjectCategory}
 			kind = boundaryKind(k.fundGroup)
-			h.AllFundsGrossExpenditureCents += value
-			if kind == KindExternal {
-				h.ExternalExpenditureCents += value
-			}
 
 		case mapping.KindTransferIn:
 			src = endpoint{id: k.category, slug: k.category, tier: tierRevenueSource, role: roleTransferIn}
 			dst = group
 			kind = KindInternalTransfer
-			h.InternalTransferInCents += value
 
 		case mapping.KindTransferOut:
 			src = group
 			dst = endpoint{id: k.category, slug: k.category, tier: tierObjectCategory, role: roleTransferOut}
 			kind = KindInternalTransfer
-			h.InternalTransferOutCents += value
 
 		case mapping.KindFundBalance:
 			switch k.category {
@@ -805,6 +816,43 @@ func (s *sankey) Graph(facts []fact.Fact, o Options) (*Graph, error) {
 	}, nil
 }
 
+// headlineOver sums the four published totals over the facts a view admits.
+//
+// A TOTAL IS A SUM OVER ONE ANTICHAIN, and it is computed from the view rather
+// than accumulated as the cells are drawn, because accumulating per cell has
+// no notion of grain: split one cell into two and both are added. The view was
+// refused before this runs if its cuts were not summable together, so what is
+// summed here is one reading of each figure.
+func headlineOver(v structure.View, facts []fact.Fact) Headline {
+	var h Headline
+	identities := structure.BudgetBookIdentities()
+	for i := range facts {
+		f := &facts[i]
+		if !v.Admits(f, identities) {
+			continue
+		}
+		external := boundaryKind(f.FundGroup) == KindExternal
+		switch f.Kind {
+		case mapping.KindRevenue:
+			h.AllFundsGrossRevenueCents += f.AmountCents
+			if external {
+				h.ExternalRevenueCents += f.AmountCents
+			}
+		case mapping.KindExpenditure:
+			h.AllFundsGrossExpenditureCents += f.AmountCents
+			if external {
+				h.ExternalExpenditureCents += f.AmountCents
+			}
+		case mapping.KindTransferIn:
+			h.InternalTransferInCents += f.AmountCents
+		case mapping.KindTransferOut:
+			h.InternalTransferOutCents += f.AmountCents
+		default:
+		}
+	}
+	return h
+}
+
 // selectFacts keeps the facts this projection is of: the scope, and any one of
 // the columns.
 //
@@ -854,7 +902,7 @@ func netCells(facts []fact.Fact) (map[cellKey]*cell, error) {
 				fmt.Errorf("sankey: fact %s (%s p%d %q) has no fund group", f.ID, f.DocID, f.Page, f.RowLabel),
 				"the spine is a fund-group graph: every flow has to start or end at one")
 		}
-		k := cellKey{kind: f.Kind, category: f.Category, fundGroup: f.FundGroup}
+		k := cellKey{kind: f.Kind, category: f.Category, fundGroup: f.FundGroup, fund: fact.FundString(f.Fund)}
 		c := cells[k]
 		if c == nil {
 			c = &cell{}

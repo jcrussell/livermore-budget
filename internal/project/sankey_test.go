@@ -989,3 +989,22 @@ func TestGroupExpenditureSumsOnlyThatGroupsObjectLinks(t *testing.T) {
 		t.Errorf("GroupExpenditure for a group with no links = %d, want %d", got, want)
 	}
 }
+
+// TestTheHeadlineIsANamedCut is fisc-w11l's acceptance arithmetic on the new
+// path: the four published figures, produced as a sum over the view the
+// document names rather than accumulated as its cells are drawn, and unchanged.
+func TestTheHeadlineIsANamedCut(t *testing.T) {
+	g := buildGraph(t, spineFacts(t, testYear), testOptions())
+	want := Headline{
+		AllFundsGrossRevenueCents:     29_996_900_700,
+		AllFundsGrossExpenditureCents: 25_409_541_200,
+		InternalTransferInCents:       2_152_599_700,
+		InternalTransferOutCents:      5_961_273_400,
+	}
+	got := g.Metadata.Headline
+	got.ExternalRevenueCents, got.ExternalExpenditureCents = 0, 0
+	got.NaiveExpenditureCents, got.TransferResidualCents = 0, 0
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("the four published figures (-want +got):\n%s", diff)
+	}
+}

@@ -722,11 +722,10 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 //
 // ONE DOCUMENT GIVES IT A SUBJECT AND THE REST CANNOT. A leg can only carry a
 // pairing where a document draws each end of a movement as its own link, which
-// is transfers-by-fund alone: the spine nets p76's rows into fund-group cells
-// before a pairing could attach to anything -- cellKey is
-// (kind, category, fund_group) and netCells never reads a fact's fund -- and the
-// drill-down cannot select that scope at all, because it and revenue-by-fund
-// both publish transfer_in over the same money.
+// is transfers-by-fund alone: the spine's rows name no fund, so it nets p76's
+// movements into fund-group cells before a pairing could attach to anything,
+// and the drill-down cannot select that scope at all, because it and
+// revenue-by-fund both publish transfer_in over the same money.
 //
 // AN EMPTY ID IS SKIPPED AND THAT IS WHAT MAKES THE CHECK FAILABLE, which reads
 // backwards until the mutation is stated. Blanking ONE leg does not hide the
@@ -1173,6 +1172,7 @@ type cellKey struct {
 	kind      mapping.Kind
 	category  string
 	fundGroup string
+	fund      string
 }
 
 // netCells sums the facts of each printed cell, the way the projection does:
@@ -1181,7 +1181,7 @@ type cellKey struct {
 func netCells(facts []fact.Fact) map[cellKey]*cell {
 	cells := map[cellKey]*cell{}
 	for _, f := range facts {
-		k := cellKey{kind: f.Kind, category: f.Category, fundGroup: f.FundGroup}
+		k := cellKey{kind: f.Kind, category: f.Category, fundGroup: f.FundGroup, fund: fact.FundString(f.Fund)}
 		c := cells[k]
 		if c == nil {
 			c = &cell{stock: f.Kind == mapping.KindFundBalance &&

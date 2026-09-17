@@ -45,27 +45,30 @@ func fieldsOfStruct(t *testing.T, path, name string) []string {
 	return got
 }
 
-// TestMergeableAddressIsTheProjectionsKeyPlusWhatSelectionFixes pins what
-// mergeableAddress claims to be.
+// TestTheFineAddressIsTheProjectionsKeyPlusWhatSelectionFixes pins what the
+// two addresses claim to be.
 //
-// netCells keys on three fields, but it has one caller -- sankey -- which hands
-// it selectFacts' output and refuses more than one column, so every fact
-// reaching it already agrees on fiscal year and basis. The grain a projection
-// can realize is therefore netCells' key plus those two, and this asserts that
-// relationship rather than a field list nobody would notice going stale.
+// netCells has one caller -- sankey -- which hands it selectFacts' output and
+// refuses more than one column, so every fact reaching it already agrees on
+// fiscal year and basis. The grain a projection can realize is therefore
+// netCells' key plus those two, and since the key carries the fund that is
+// cellAddress, the FINE one. mergeableAddress is that key without the fund:
+// coarser than any projection now nets on, and kept as the stricter arm
+// because two schedules restating money at a fund-less grain are still two
+// schedules restating money.
 //
 // Comparing names read from the source, because project.cellKey is unexported
 // and reflect cannot see it across a package boundary.
-func TestMergeableAddressIsTheProjectionsKeyPlusWhatSelectionFixes(t *testing.T) {
+func TestTheFineAddressIsTheProjectionsKeyPlusWhatSelectionFixes(t *testing.T) {
 	netKey := fieldsOfStruct(t, "../project/sankey.go", "cellKey")
+	fineKey := fieldsOfStruct(t, "scopepairs.go", "cellAddress")
 	got := fieldsOfStruct(t, "scopepairs.go", "mergeableAddress")
 
 	want := append(append([]string{}, netKey...), "fiscalyear", "basis")
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("mergeableAddress is not project.cellKey plus (fiscal_year, basis) "+
-			"(-want +got):\n%s\nARM 2 validates disjointness declarations at this "+
-			"grain. If netCells was re-keyed, or sankey stopped fixing the column, "+
-			"follow it here deliberately.", diff)
+	if diff := cmp.Diff(want, fineKey); diff != "" {
+		t.Errorf("cellAddress is not project.cellKey plus (fiscal_year, basis) "+
+			"(-want +got):\n%s\nIf netCells was re-keyed, or sankey stopped fixing the "+
+			"column, follow it here deliberately.", diff)
 	}
 	if len(netKey) == 0 {
 		t.Fatal("no fields read from project.cellKey, so this test could not fail")

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
 // TestTheCommittedPeersOverlapOnlyByDeclaredIdentity pins, by name, what the
@@ -72,5 +73,42 @@ func TestThePeerCheckGoesRed(t *testing.T) {
 		if !strings.Contains(res.Findings[0].Detail, want) {
 			t.Errorf("the finding does not say %q: %s", want, res.Findings[0].Detail)
 		}
+	}
+}
+
+// TestADocumentSelectingBothReadingsIsAFinding is fisc-n6yq's acceptance (b)
+// reached through the registered check: a projection whose scope set holds
+// both readings of one figure is refused as a view whether or not its own
+// code noticed, and one whose scopes are summable together is not.
+func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	mutated := *s
+	mutated.Projections = append([]projection{{
+		Name: "both-readings",
+		Options: project.Options{
+			Columns: []project.Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+			Scopes:  []string{"revenue-by-fund", "transfers-by-fund"},
+			Version: testVersion,
+		},
+	}, {
+		Name: "spine-beside-its-decomposition",
+		Options: project.Options{
+			Columns: []project.Column{{FiscalYear: 2026, Basis: mapping.BasisAdopted}},
+			Scopes:  []string{project.PublishedScope, "revenue-by-fund"},
+			Version: testVersion,
+		},
+	}}, s.Projections...)
+	res := resultFor(t, runOne(t, &mutated, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+	if res.Status != StatusFail || len(res.Findings) != 2 {
+		t.Fatalf("status %s with %d findings, want two failures:\n  %v", res.Status, len(res.Findings), res.Findings)
+	}
+	if !strings.Contains(res.Findings[0].Detail, "which reading it takes") {
+		t.Errorf("the both-readings finding does not say what is missing: %s", res.Findings[0].Detail)
+	}
+	if !strings.Contains(res.Findings[1].Detail, "not an antichain") {
+		t.Errorf("the nested finding does not name the lattice: %s", res.Findings[1].Detail)
 	}
 }
