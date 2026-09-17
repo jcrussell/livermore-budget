@@ -2,6 +2,7 @@ package export
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,8 +18,14 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
+
+// structurePath is where the structure document lands: at the site root
+// beside the store's own downloads, and NOT under data/, which is the
+// projections' directory and one file per projection by contract.
+const structurePath = "structure.json"
 
 // factsPath is the fact store this export reads. It is cmdutil's rather than
 // this package's: `fisc build` writes that path and `fisc verify` checks it, and
@@ -50,6 +57,15 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
+	reg, err := loadRegistry(repoRoot)
+	if err != nil {
+		return result{}, err
+	}
+	structureDoc, err := buildStructure(reg, facts)
+	if err != nil {
+		return result{}, err
+	}
+	assets.Files[structurePath] = structureDoc
 	return result{
 		Projections: projections,
 		Files:       assets.Files,
@@ -105,9 +121,9 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 	// The label registry is loaded here, in the composition root, and passed
 	// in: internal/project is deliberately decoupled from internal/registry
 	// and reaches it through an interface it declares itself.
-	reg, err := registry.Load(os.DirFS(filepath.Join(repoRoot, "data")))
+	reg, err := loadRegistry(repoRoot)
 	if err != nil {
-		return nil, fmt.Errorf("load the data registries: %w", err)
+		return nil, err
 	}
 
 	// The slices are internal/project's declaration, not this command's: `fisc
@@ -176,6 +192,57 @@ func buildProjectionsFrom(repoRoot string, facts []fact.Fact) (map[string][]byte
 		return nil, fmt.Errorf("no projection named %q was registered", export.PrimaryProjection)
 	}
 	return out, nil
+}
+
+func loadRegistry(repoRoot string) (*registry.Registry, error) {
+	reg, err := registry.Load(os.DirFS(filepath.Join(repoRoot, "data")))
+	if err != nil {
+		return nil, fmt.Errorf("load the data registries: %w", err)
+	}
+	return reg, nil
+}
+
+// buildStructure is the structure document over the store: every summing
+// document's view, each fact those views admit once with its provenance.
+// Compact JSON, as every projection is, so its size is comparable with theirs.
+func buildStructure(reg *registry.Registry, facts []fact.Fact) ([]byte, error) {
+	doc, err := structure.Build(facts, documentViews(reg, facts, build.Get().String()))
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(doc)
+}
+
+// documentViews is every document the pipeline builds that sums, named with
+// the scope set it is of: the views the structure carries.
+//
+// A SERIES PROJECTION PUBLISHES NO TOTAL AND IS NOT A VIEW, and it is told
+// apart the way internal/check tells it apart: by the method that builds a
+// series, not by whether its scopes name a cut. A view whose scopes name no
+// cut is refused by structure.ViewOf, which is the direction a dropped cut
+// should fail in.
+//
+// ONE VIEW PER PROJECTION. A projection declaring two scope sets across its
+// slices would be one name for two views, and structure.Build refuses the
+// name it sees twice rather than this function picking one.
+func documentViews(reg *registry.Registry, facts []fact.Fact, version string) []structure.Scoped {
+	var out []structure.Scoped
+	for _, p := range project.Registry(reg) {
+		if _, series := p.(interface {
+			Document(facts []fact.Fact, o project.Options) (*project.TrendsDocument, error)
+		}); series {
+			continue
+		}
+		seen := map[string]bool{}
+		for _, o := range slicesOf(p, facts, version) {
+			if seen[o.ScopeList()] {
+				continue
+			}
+			seen[o.ScopeList()] = true
+			out = append(out, structure.Scoped{Name: p.Name(), Scopes: o.Scopes})
+		}
+	}
+	return out
 }
 
 // assertPublishedBuilt is the export side of published-projection-built.
