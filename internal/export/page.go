@@ -1383,6 +1383,39 @@ type openGraph struct {
 	} `json:"links"`
 }
 
+// Flank is which side a window step keeps its flank on and the tiers it opens
+// a node OUT into, in the order they are drawn away from the centre: keptLeft
+// when Keep is the left end of Tiers, and ok false when neither end of Tiers is
+// the kept flank. A step that keeps nothing has no flank and reports ok false.
+//
+// keptLeft IS SET BY THE ARM THAT MATCHED AND NOT DERIVED FROM THE CENTRE,
+// which is where the first draft of this was wrong. `centre == len(Keep)` is
+// true of a LEFT flank by construction and true of the revenue-category
+// step's RIGHT one by arithmetic -- Keep {2}, Tiers {1,0,2}, centre 1 -- so
+// the derived version read that window backwards and refused the whole site
+// with "fund-flows draws no ribbon from tier 0 into tier(s) [1]". Which side
+// the flank is on is the thing the two arms exist to decide.
+//
+// FOR A RIGHT FLANK THE OUTWARD TIERS RUN LEFTWARD, so they are returned
+// reversed: the first entry is always the tier adjacent to the centre, which
+// is what a walk from the opened node needs and what Tiers' own order cannot
+// say without knowing the side.
+func Flank(s DrillStep) (keptLeft bool, outward []int, ok bool) {
+	m, n := len(s.Keep), len(s.Tiers)
+	if m == 0 || m >= n {
+		return false, nil, false
+	}
+	switch {
+	case slices.Equal(s.Tiers[:m], reversedTiers(s.Keep)):
+		return true, slices.Clone(s.Tiers[m+1:]), true
+	case slices.Equal(s.Tiers[n-m:], s.Keep):
+		out := slices.Clone(s.Tiers[:n-1-m])
+		slices.Reverse(out)
+		return false, out, true
+	}
+	return false, nil, false
+}
+
 // openableNodes is [stepView.Opens] for one step and one year: every node at
 // the step's From that this document draws a ribbon out of, INTO the column the
 // window opens it into.
@@ -1412,23 +1445,8 @@ func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]strin
 	if len(s.Keep) == 0 {
 		return nil, nil
 	}
-	m, n := len(s.Keep), len(s.Tiers)
-	var outward []int
-	// keptLeft IS SET BY THE ARM THAT MATCHED AND NOT DERIVED FROM THE CENTRE,
-	// which is where the first draft of this was wrong. `centre == len(Keep)` is
-	// true of a LEFT flank by construction and true of the revenue-category
-	// step's RIGHT one by arithmetic -- Keep {2}, Tiers {1,0,2}, centre 1 -- so
-	// the derived version read that window backwards and refused the whole site
-	// with "fund-flows draws no ribbon from tier 0 into tier(s) [1]". Which side
-	// the flank is on is the thing the two arms exist to decide.
-	keptLeft := false
-	switch {
-	case slices.Equal(s.Tiers[:m], reversedTiers(s.Keep)):
-		keptLeft = true
-		outward = s.Tiers[m+1:]
-	case slices.Equal(s.Tiers[n-m:], s.Keep):
-		outward = s.Tiers[:n-1-m]
-	default:
+	keptLeft, outward, ok := Flank(s)
+	if !ok {
 		return nil, fmt.Errorf(
 			"view %q's step %d keeps tier(s) %v and draws tiers %v, whose ends are not that "+
 				"flank, so which half of %q it opens a node into cannot be read",
@@ -2760,4 +2778,16 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 		placed++
 	}
 	return out, placed, nil
+}
+
+// Openable is openableNodes for a caller outside this package: the nodes at
+// step s's From that the document raw decomposes, for the view v it is step i
+// of.
+//
+// ONE RULE, ONE HOME. The rung artifact the composition root commits for
+// tools/jscheck is enumerated over this answer, so what a page offers a
+// reader to open and what the equivalence arm expects the client to have
+// opened cannot drift apart by a second spelling of the direction rule.
+func Openable(v View, i int, s DrillStep, stem string, raw []byte) ([]string, error) {
+	return openableNodes(v, i, s, stem, raw)
 }

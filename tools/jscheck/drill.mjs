@@ -950,9 +950,10 @@ export async function openedWindow(id) {
  *
  * @param {number} budget
  * @param {string[]} path the nodes to open, outermost first
+ * @param {object} [column] the published column to open, COLUMNS[0] unless said
  */
-export async function openedWide(budget, path) {
-  const { app } = await opened();
+export async function openedWide(budget, path, column = COLUMNS[0]) {
+  const { app } = await opened(null, null, column);
   app.setColumnBudget(budget);
   for (const id of path) await mustOpen(app, id);
   return app;

@@ -1,0 +1,5601 @@
+{
+  "schema_version": 1,
+  "skipped": [
+    {
+      "step": "transfers",
+      "reason": "keeps no flank, so it has no window direction to walk a document in"
+    }
+  ],
+  "columns": [
+    {
+      "stem": "sankey",
+      "rungs": [
+        {
+          "path": [
+            "expenditure/capital-outlay"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/debt-services"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/services-and-supplies"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 29,
+              "drawn": 8,
+              "hidden": 21
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/wages-and-benefits"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 26,
+              "drawn": 8,
+              "hidden": 18
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/510"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/512"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/551"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/552"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/560"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/561"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 3,
+              "drawn": 3,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/400"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/401"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/402"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 9,
+              "drawn": 9,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/600"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/610"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/612"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/620"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/622"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/623"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/640"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/642"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/643"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/general"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100"
+          ],
+          "width": 3,
+          "step": "fund",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 24,
+              "candidates": 23,
+              "drawn": 23,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/administrative-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/building-and-safety"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-attorney"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-clerk"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-council"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-manager"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/community-development-admin"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/engineering"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/environmental-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/finance"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/fire-administration"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/general-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/housing-and-human-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/human-resources"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/innovation-and-economic-devel"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/library"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/maintenance"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/patrol"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/planning"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/police-administration"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/public-works-administration"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/special-operations"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/support-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/700"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/710"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/720"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/730"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/740"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 32,
+              "drawn": 8,
+              "hidden": 24
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/200"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/202"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/207"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/210"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/282"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/283"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/310"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/311"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "revenue/charges-for-services"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 19,
+              "drawn": 8,
+              "hidden": 11
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/contributions-outsourced"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/fines-and-forfeitures"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/intergovernmental"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/licenses-and-permits"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/miscellaneous-revenue"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/other"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 15,
+              "drawn": 8,
+              "hidden": 7
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/property"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/sales"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/use-of-money-and-property"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/capital-outlay"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/debt-services"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/services-and-supplies"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 29,
+              "drawn": 8,
+              "hidden": 21
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/wages-and-benefits"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 26,
+              "drawn": 8,
+              "hidden": 18
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/510"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/512"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/551"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/552"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/560"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/561"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 3,
+              "drawn": 3,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/400"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/401"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/402"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 9,
+              "drawn": 9,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/600"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/610"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/612"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/620"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/622"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/623"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/640"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/642"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/643"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/general"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100"
+          ],
+          "width": 4,
+          "step": "fund",
+          "tiers": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 24,
+              "candidates": 23,
+              "drawn": 23,
+              "hidden": 0
+            },
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 44,
+              "drawn": 8,
+              "hidden": 36
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/administrative-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/building-and-safety"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-attorney"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-clerk"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-council"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-manager"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/community-development-admin"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/engineering"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/environmental-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/finance"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/fire-administration"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/general-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/housing-and-human-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/human-resources"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/innovation-and-economic-devel"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/library"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/maintenance"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/patrol"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/planning"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/police-administration"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/public-works-administration"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/special-operations"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/support-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/700"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/710"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/720"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/730"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/740"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 32,
+              "drawn": 8,
+              "hidden": 24
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/200"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/202"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/207"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/210"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/282"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/283"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/310"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/311"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "revenue/charges-for-services"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 19,
+              "drawn": 8,
+              "hidden": 11
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/contributions-outsourced"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/fines-and-forfeitures"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/intergovernmental"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/licenses-and-permits"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/miscellaneous-revenue"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/other"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 15,
+              "drawn": 8,
+              "hidden": 7
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/property"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/sales"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/use-of-money-and-property"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stem": "sankey-2027",
+      "rungs": [
+        {
+          "path": [
+            "expenditure/capital-outlay"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 4,
+              "drawn": 4,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/debt-services"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/services-and-supplies"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 29,
+              "drawn": 8,
+              "hidden": 21
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/wages-and-benefits"
+          ],
+          "width": 3,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 26,
+              "drawn": 8,
+              "hidden": 18
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/510"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/551"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/552"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/560"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/561"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 3,
+              "drawn": 3,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/400"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/401"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/402"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 9,
+              "drawn": 9,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/600"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/610"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/612"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/620"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/622"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/623"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/640"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/642"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/643"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/general"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100"
+          ],
+          "width": 3,
+          "step": "fund",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 24,
+              "candidates": 23,
+              "drawn": 23,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/administrative-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/building-and-safety"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-attorney"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-clerk"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-council"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-manager"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/community-development-admin"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/engineering"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/environmental-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/finance"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/fire-administration"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/general-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/housing-and-human-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/human-resources"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/innovation-and-economic-devel"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/library"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/maintenance"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/patrol"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/planning"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/police-administration"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/public-works-administration"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/special-operations"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/support-services"
+          ],
+          "width": 3,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/700"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/710"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/720"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/730"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/740"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue"
+          ],
+          "width": 3,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 31,
+              "drawn": 8,
+              "hidden": 23
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/200"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/210"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/282"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/283"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/310"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/311"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/320"
+          ],
+          "width": 3,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "revenue/charges-for-services"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 19,
+              "drawn": 8,
+              "hidden": 11
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/contributions-outsourced"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/fines-and-forfeitures"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/intergovernmental"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/licenses-and-permits"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/miscellaneous-revenue"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/other"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 15,
+              "drawn": 8,
+              "hidden": 7
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/property"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/sales"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/use-of-money-and-property"
+          ],
+          "width": 3,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/capital-outlay"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 4,
+              "drawn": 4,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/debt-services"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/services-and-supplies"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 29,
+              "drawn": 8,
+              "hidden": 21
+            }
+          ]
+        },
+        {
+          "path": [
+            "expenditure/wages-and-benefits"
+          ],
+          "width": 4,
+          "step": "object-category",
+          "tiers": [
+            2,
+            5,
+            4
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 8,
+              "candidates": 26,
+              "drawn": 8,
+              "hidden": 18
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/510"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/551"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/552"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/560"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/capital",
+            "fund/561"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 3,
+              "drawn": 3,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/400"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/401"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/debt-service",
+            "fund/402"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 9,
+              "drawn": 9,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/600"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/610"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/612"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/620"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/622"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/623"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/640"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/642"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/enterprise",
+            "fund/643"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/general"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100"
+          ],
+          "width": 4,
+          "step": "fund",
+          "tiers": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 4,
+              "cap": 24,
+              "candidates": 23,
+              "drawn": 23,
+              "hidden": 0
+            },
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 44,
+              "drawn": 8,
+              "hidden": 36
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/administrative-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/building-and-safety"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-attorney"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-clerk"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-council"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/city-manager"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/community-development-admin"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/engineering"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/environmental-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/finance"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/fire-administration"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/general-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 1,
+              "drawn": 1,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/housing-and-human-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/human-resources"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/innovation-and-economic-devel"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/library"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/maintenance"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/patrol"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/planning"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/police-administration"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/public-works-administration"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/special-operations"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/general",
+            "fund/100",
+            "dept/support-services"
+          ],
+          "width": 4,
+          "step": "division",
+          "tiers": [
+            3,
+            4,
+            5
+          ],
+          "caps": [
+            {
+              "tier": 5,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 5,
+              "drawn": 5,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/700"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/710"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/720"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/730"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/internal-service",
+            "fund/740"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue"
+          ],
+          "width": 4,
+          "step": "fund-group",
+          "tiers": [
+            0,
+            2,
+            3
+          ],
+          "caps": [
+            {
+              "tier": 3,
+              "cap": 8,
+              "candidates": 31,
+              "drawn": 8,
+              "hidden": 23
+            }
+          ]
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/200"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/210"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/282"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/283"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/310"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/311"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "fund-group/special-revenue",
+            "fund/320"
+          ],
+          "width": 4,
+          "step": "fund-departments",
+          "tiers": [
+            2,
+            3,
+            4
+          ],
+          "caps": []
+        },
+        {
+          "path": [
+            "revenue/charges-for-services"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 19,
+              "drawn": 8,
+              "hidden": 11
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/contributions-outsourced"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/fines-and-forfeitures"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/intergovernmental"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/licenses-and-permits"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/miscellaneous-revenue"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 11,
+              "drawn": 8,
+              "hidden": 3
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/other"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 15,
+              "drawn": 8,
+              "hidden": 7
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/property"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 14,
+              "drawn": 8,
+              "hidden": 6
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/taxes/sales"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 2,
+              "drawn": 2,
+              "hidden": 0
+            }
+          ]
+        },
+        {
+          "path": [
+            "revenue/use-of-money-and-property"
+          ],
+          "width": 4,
+          "step": "revenue-category",
+          "tiers": [
+            1,
+            0,
+            2
+          ],
+          "caps": [
+            {
+              "tier": 1,
+              "cap": 8,
+              "candidates": 7,
+              "drawn": 7,
+              "hidden": 0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
