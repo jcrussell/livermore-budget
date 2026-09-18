@@ -1,9 +1,5 @@
 {
-  "schema_version": 2,
-  "skipped": [],
-  "reasons": {
-    "kept-flank": "the column is the kept flank of the chart on screen, which the client's windowFor carries over from the rung above rather than reading off the document this step draws; this walk reads only that document, so it does not say which nodes the flank holds"
-  },
+  "schema_version": 3,
   "columns": [
     {
       "stem": "sankey",
@@ -18,7 +14,12 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -53,7 +54,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/debt-service",
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -88,7 +95,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -127,7 +141,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -166,7 +187,16 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -206,7 +236,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -237,7 +270,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -268,7 +304,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -299,7 +338,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -330,7 +372,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -361,7 +406,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -391,7 +439,11 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -425,7 +477,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -456,7 +511,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -487,7 +545,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -517,7 +578,15 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -557,7 +626,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -588,7 +660,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -619,7 +694,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -650,7 +728,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -681,7 +762,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -712,7 +796,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -743,7 +830,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -774,7 +864,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -805,7 +898,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -835,7 +931,23 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 12,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/fines-and-forfeitures",
+                "revenue/intergovernmental",
+                "revenue/licenses-and-permits",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/taxes/sales",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw",
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -867,7 +979,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             },
             {
               "tier": 3,
@@ -922,7 +1037,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -956,7 +1074,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -990,7 +1111,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1024,7 +1148,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1058,7 +1185,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1092,7 +1222,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1126,7 +1259,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1160,7 +1296,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1194,7 +1333,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1228,7 +1370,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1262,7 +1407,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1295,7 +1443,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1328,7 +1479,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1362,7 +1516,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1396,7 +1553,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1430,7 +1590,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1464,7 +1627,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1498,7 +1664,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1532,7 +1701,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1566,7 +1738,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1600,7 +1775,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1634,7 +1812,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1668,7 +1849,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -1700,7 +1884,14 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "revenue/intergovernmental",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -1736,7 +1927,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -1767,7 +1961,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -1798,7 +1995,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -1829,7 +2029,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -1860,7 +2063,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -1890,7 +2096,19 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 8,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -1930,7 +2148,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -1961,7 +2182,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -1992,7 +2216,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -2023,7 +2250,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -2054,7 +2284,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -2085,7 +2318,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -2116,7 +2352,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -2147,7 +2386,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -2202,7 +2444,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -2234,7 +2482,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -2266,7 +2518,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -2303,7 +2558,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -2342,7 +2603,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -2381,7 +2645,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -2420,7 +2690,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -2459,7 +2733,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -2491,7 +2769,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -2528,7 +2809,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -2582,7 +2870,12 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -2617,7 +2910,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/debt-service",
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -2652,7 +2951,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -2691,7 +2997,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -2730,7 +3043,16 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -2770,7 +3092,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -2801,7 +3126,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -2832,7 +3160,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -2863,7 +3194,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -2894,7 +3228,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -2925,7 +3262,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -2955,7 +3295,11 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -2989,7 +3333,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -3020,7 +3367,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -3051,7 +3401,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -3081,7 +3434,15 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -3121,7 +3482,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3152,7 +3516,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3183,7 +3550,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3214,7 +3584,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3245,7 +3618,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3276,7 +3652,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3307,7 +3686,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3338,7 +3720,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3369,7 +3754,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -3399,7 +3787,23 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 12,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/fines-and-forfeitures",
+                "revenue/intergovernmental",
+                "revenue/licenses-and-permits",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/taxes/sales",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw",
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -3431,7 +3835,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             },
             {
               "tier": 3,
@@ -3503,7 +3910,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3537,7 +3947,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3571,7 +3984,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3605,7 +4021,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3639,7 +4058,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3673,7 +4095,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3707,7 +4132,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3741,7 +4169,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3775,7 +4206,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3809,7 +4243,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3843,7 +4280,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3876,7 +4316,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3909,7 +4352,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3943,7 +4389,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -3977,7 +4426,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4011,7 +4463,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4045,7 +4500,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4079,7 +4537,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4113,7 +4574,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4147,7 +4611,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4181,7 +4648,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4215,7 +4685,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4249,7 +4722,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -4281,7 +4757,14 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "revenue/intergovernmental",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -4317,7 +4800,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -4348,7 +4834,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -4379,7 +4868,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -4410,7 +4902,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -4441,7 +4936,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -4471,7 +4969,19 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 8,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -4511,7 +5021,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4542,7 +5055,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4573,7 +5089,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4604,7 +5123,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4635,7 +5157,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4666,7 +5191,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4697,7 +5225,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4728,7 +5259,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -4783,7 +5317,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -4815,7 +5355,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -4847,7 +5391,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -4884,7 +5431,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -4923,7 +5476,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -4962,7 +5518,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -5001,7 +5563,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -5040,7 +5606,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -5072,7 +5642,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -5109,7 +5682,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -5168,7 +5748,12 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -5202,7 +5787,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/debt-service",
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -5237,7 +5828,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -5276,7 +5874,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -5315,7 +5920,16 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -5355,7 +5969,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -5386,7 +6003,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -5417,7 +6037,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -5448,7 +6071,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -5479,7 +6105,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -5509,7 +6138,11 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -5543,7 +6176,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -5574,7 +6210,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -5605,7 +6244,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -5635,7 +6277,15 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -5675,7 +6325,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5706,7 +6359,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5737,7 +6393,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5768,7 +6427,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5799,7 +6461,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5830,7 +6495,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5861,7 +6529,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5892,7 +6563,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5923,7 +6597,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -5953,7 +6630,22 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 11,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/fines-and-forfeitures",
+                "revenue/intergovernmental",
+                "revenue/licenses-and-permits",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/taxes/sales",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -5985,7 +6677,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             },
             {
               "tier": 3,
@@ -6040,7 +6735,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6074,7 +6772,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6108,7 +6809,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6142,7 +6846,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6176,7 +6883,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6210,7 +6920,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6244,7 +6957,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6278,7 +6994,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6312,7 +7031,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6346,7 +7068,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6380,7 +7105,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6413,7 +7141,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6446,7 +7177,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6480,7 +7214,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6514,7 +7251,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6548,7 +7288,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6582,7 +7325,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6616,7 +7362,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6650,7 +7399,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6684,7 +7436,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6718,7 +7473,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6752,7 +7510,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6786,7 +7547,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -6818,7 +7582,14 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "revenue/intergovernmental",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -6854,7 +7625,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -6885,7 +7659,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -6916,7 +7693,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -6947,7 +7727,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -6978,7 +7761,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -7008,7 +7794,19 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 8,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -7048,7 +7846,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -7079,7 +7880,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -7110,7 +7914,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -7141,7 +7948,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -7172,7 +7982,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -7203,7 +8016,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -7234,7 +8050,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -7289,7 +8108,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -7321,7 +8146,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -7353,7 +8182,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -7390,7 +8222,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -7429,7 +8267,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -7468,7 +8309,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -7507,7 +8354,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -7546,7 +8397,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -7578,7 +8433,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -7615,7 +8473,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -7669,7 +8534,12 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -7703,7 +8573,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/debt-service",
+                "fund-group/enterprise",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -7738,7 +8614,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -7777,7 +8660,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 5,
@@ -7816,7 +8706,16 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -7856,7 +8755,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -7887,7 +8789,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -7918,7 +8823,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -7949,7 +8857,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -7980,7 +8891,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/capital"
+              ]
             },
             {
               "tier": 3,
@@ -8010,7 +8924,11 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -8044,7 +8962,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -8075,7 +8996,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -8106,7 +9030,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/debt-service"
+              ]
             },
             {
               "tier": 3,
@@ -8136,7 +9063,15 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/miscellaneous-revenue",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -8176,7 +9111,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8207,7 +9145,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8238,7 +9179,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8269,7 +9213,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8300,7 +9247,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8331,7 +9281,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8362,7 +9315,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8393,7 +9349,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8424,7 +9383,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/enterprise"
+              ]
             },
             {
               "tier": 3,
@@ -8454,7 +9416,22 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 11,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/fines-and-forfeitures",
+                "revenue/intergovernmental",
+                "revenue/licenses-and-permits",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/taxes/sales",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -8486,7 +9463,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             },
             {
               "tier": 3,
@@ -8558,7 +9538,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8592,7 +9575,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8626,7 +9612,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8660,7 +9649,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8694,7 +9686,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8728,7 +9723,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8762,7 +9760,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8796,7 +9797,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8830,7 +9834,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8864,7 +9871,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8898,7 +9908,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8931,7 +9944,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8964,7 +9980,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -8998,7 +10017,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9032,7 +10054,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9066,7 +10091,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9100,7 +10128,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9134,7 +10165,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9168,7 +10202,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9202,7 +10239,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9236,7 +10276,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9270,7 +10313,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9304,7 +10350,10 @@
             {
               "tier": 3,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund/100"
+              ]
             },
             {
               "tier": 4,
@@ -9336,7 +10385,14 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 3,
+              "ids": [
+                "revenue/intergovernmental",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "fund-balance/draw"
+              ]
             },
             {
               "tier": 2,
@@ -9372,7 +10428,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -9403,7 +10462,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -9434,7 +10496,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -9465,7 +10530,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -9496,7 +10564,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/internal-service"
+              ]
             },
             {
               "tier": 3,
@@ -9526,7 +10597,19 @@
             {
               "tier": 0,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 8,
+              "ids": [
+                "revenue/charges-for-services",
+                "revenue/contributions-outsourced",
+                "revenue/intergovernmental",
+                "revenue/miscellaneous-revenue",
+                "revenue/taxes/other",
+                "revenue/taxes/property",
+                "revenue/use-of-money-and-property"
+              ],
+              "carried": [
+                "transfers/in"
+              ]
             },
             {
               "tier": 2,
@@ -9566,7 +10649,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -9597,7 +10683,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -9628,7 +10717,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -9659,7 +10751,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -9690,7 +10785,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -9721,7 +10819,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -9752,7 +10853,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/special-revenue"
+              ]
             },
             {
               "tier": 3,
@@ -9807,7 +10911,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -9839,7 +10949,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -9871,7 +10985,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -9908,7 +11025,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -9947,7 +11070,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -9986,7 +11112,13 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 4,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -10025,7 +11157,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -10064,7 +11200,11 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 2,
+              "ids": [
+                "fund-group/general",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },
@@ -10096,7 +11236,10 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 1,
+              "ids": [
+                "fund-group/general"
+              ]
             }
           ]
         },
@@ -10133,7 +11276,14 @@
             {
               "tier": 2,
               "role": "flank",
-              "unanswered": "kept-flank"
+              "candidates": 5,
+              "ids": [
+                "fund-group/capital",
+                "fund-group/enterprise",
+                "fund-group/general",
+                "fund-group/internal-service",
+                "fund-group/special-revenue"
+              ]
             }
           ]
         },

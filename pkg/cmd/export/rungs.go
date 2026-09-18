@@ -24,25 +24,8 @@ var rungWidths = []int{3, 4}
 // figure in it is computed by export.ReachOf over a document, so a comparison
 // against it is a comparison against what Go says the chart holds.
 type rungsDoc struct {
-	SchemaVersion int `json:"schema_version"`
-	// Skipped is every step the artifact does not enumerate, by key and with
-	// the reason. THE WALK SKIPS NOTHING, so it is written empty: the arm
-	// reading it treats a rung under any other step as one Go must answer,
-	// and a step that ever has to be left out again must be named here, by
-	// this walk, for the arm to let it by. It is not omitted when empty so
-	// that a reader of the file sees the allowance is empty rather than
-	// wondering whether it moved.
-	Skipped []skippedStep `json:"skipped"`
-	// Reasons is the one sentence behind each drawnTier.Unanswered code, so a
-	// column Go declines to answer says why once rather than on every rung,
-	// and an arm reading a code this table does not carry can refuse it.
-	Reasons map[string]string `json:"reasons"`
-	Columns []rungColumn      `json:"columns"`
-}
-
-type skippedStep struct {
-	Step   string `json:"step"`
-	Reason string `json:"reason"`
+	SchemaVersion int          `json:"schema_version"`
+	Columns       []rungColumn `json:"columns"`
 }
 
 // rungColumn is one published year, by the spine document's stem, which is
@@ -68,28 +51,30 @@ type rung struct {
 // centre-first convention would have spelled.
 //
 // Role is centre for the opened node's own column, flank for a column of
-// s.Keep, and outward for one the step opens the node into. A flank carries
-// Unanswered and nothing else: it is the half of the chart on screen that
-// the client's windowFor carries over, which this walk carries from rung to
-// rung but does not yet read a column off, and an empty IDs beside the
-// reason would invite a green against an empty client column. Cap is 0
-// where the step declares none, which is the value validateSteps refuses on
-// a declared cap.
+// s.Keep, and outward for one the step opens the node into. A flank is read
+// off the chart on screen, the half windowFor carries over, and is answered
+// like any other column. Cap is 0 where the step declares none, which is
+// the value validateSteps refuses on a declared cap.
 //
 // Candidates is how many document nodes the window reaches at the tier;
-// IDs, sorted, is which of them the column draws as themselves and Hidden
-// how many the folded tail stands for. THE FOLD ENGAGES ONLY ABOVE CAP+1,
-// because folding one node into a tail of one draws the same number of
-// marks and loses a name. That threshold is the client's, measured at the
-// shipped site: special-revenue's 32 funds draw eight and a tail of 24, and
-// a column of nine under a cap of eight draws all nine.
+// IDs, sorted, is which of them the column draws as the opened node's own
+// parts, Carried which it draws but the client does not count as one -- a
+// node the document marks derived, or one the step's residual declaration
+// names, which is isCarried's rule -- and Hidden how many the folded tail
+// stands for. IDS IS WRITTEN EVEN WHEN EMPTY, because a flank whose only
+// mark is carried answers with nothing, and "answered with nothing" has to
+// be told from "not answered" by a reader of the file. THE FOLD ENGAGES
+// ONLY ABOVE CAP+1, because folding one node into a tail of one draws the
+// same number of marks and loses a name. That threshold is the client's,
+// measured at the shipped site: special-revenue's 32 funds draw eight and a
+// tail of 24, and a column of nine under a cap of eight draws all nine.
 type drawnTier struct {
 	Tier       int      `json:"tier"`
 	Role       string   `json:"role"`
-	Unanswered string   `json:"unanswered,omitempty"`
 	Cap        int      `json:"cap,omitempty"`
 	Candidates int      `json:"candidates,omitempty"`
-	IDs        []string `json:"ids,omitempty"`
+	IDs        []string `json:"ids"`
+	Carried    []string `json:"carried,omitempty"`
 	Hidden     int      `json:"hidden,omitempty"`
 }
 
@@ -98,17 +83,6 @@ const (
 	roleFlank   = "flank"
 	roleOutward = "outward"
 )
-
-// reasonKeptFlank is the one Unanswered code the walk emits today, keyed
-// into rungsDoc.Reasons.
-const reasonKeptFlank = "kept-flank"
-
-var rungReasons = map[string]string{
-	reasonKeptFlank: "the column is the kept flank of the chart on screen, which the client's " +
-		"windowFor carries over from the rung above rather than reading off the document this " +
-		"step draws; this walk reads only that document, so it does not say which nodes the " +
-		"flank holds",
-}
 
 // rungsOf walks the spine's declared steps over the built documents, for
 // every published year and every budget in rungWidths, and answers each rung
@@ -124,18 +98,22 @@ var rungReasons = map[string]string{
 // hierarchy and not along the ribbons: export.ReachOf keeps the ribbons whose
 // near end is inside the opened node by parent chain, folds them to the drawn
 // tiers and prunes what nothing touches. A step that keeps a flank is asked
-// for the half beyond its centre, the way windowFor asks its document; a step
-// that keeps none is asked for every column it draws, on the side it
+// for the half beyond its centre, the way windowFor asks its document, and
+// the chart on screen for the half before it, the way windowFor asks that;
+// a step that keeps none is asked for every column it draws, on the side it
 // declares, the way sideOf does -- so the transfers step, whose opened node
 // touches no ribbon and whose payer ends are its children, is answered like
 // any other rather than skipped.
 //
-// WHAT A RUNG DRAWS IS DOCUMENT NODES. The client adds derived nodes of its
-// own -- a residual, a gap, a folded tail -- and this walk counts none of
-// them, so the day one of them competes with a cap the arm reading this
-// artifact goes red rather than this function guessing which side wins.
+// WHAT A RUNG DRAWS IS DOCUMENT NODES. The client adds marks of its own -- a
+// residual, a gap, a folded tail -- and this walk counts none of them; it
+// carries the tail under the client's own id so that a flank holding one is
+// refused by name rather than answered as nothing. A document node the
+// client draws but does not count as one of the opened node's parts is
+// answered under Carried, so the two endpoints a residual lends the fund
+// group's flank are compared rather than subtracted on both sides.
 func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error) {
-	doc := rungsDoc{SchemaVersion: 2, Skipped: []skippedStep{}, Reasons: rungReasons}
+	doc := rungsDoc{SchemaVersion: 3}
 	for _, year := range spine.YearStems {
 		raw, ok := projections[year]
 		if !ok {
@@ -329,6 +307,17 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 		if err != nil {
 			return rung{}, export.Graph{}, fmt.Errorf("step %q keeps the flank of %q: %w", s.Key, opened, err)
 		}
+		// THE KEPT HALF'S CENTRE IS THE OPENED NODE ALONE TOO, the mirror of
+		// the fresh half's refusal below, and it has to hold the opened node
+		// at all: a flank that sends nothing into the node is a window
+		// windowFor refuses to draw, and the client's filterLinks says so by
+		// throwing rather than drawing an empty column.
+		if others := slices.DeleteFunc(slices.Clone(kept.At[s.From]), func(id string) bool { return id == opened }); len(others) > 0 {
+			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q and the chart on screen draws %v beside it at tier %d, which is a column this walk has no shape for", s.Key, opened, others, s.From)
+		}
+		if !slices.Contains(kept.At[s.From], opened) {
+			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q and the chart on screen sends nothing between tiers %v and it, so there is no flank to keep and the client would refuse the window", s.Key, opened, keptTiers)
+		}
 	}
 	// THE CENTRE IS THE OPENED NODE ALONE, and the reach says whether it is:
 	// a ribbon out of the opened node's subtree into ANOTHER node of the
@@ -359,6 +348,9 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 		if slices.Contains(s.Keep, c.Tier) {
 			return rung{}, export.Graph{}, fmt.Errorf("step %q caps tier %d, which is a flank it keeps off the chart above and not a column of the document it draws", s.Key, c.Tier)
 		}
+		if centre && c.Tier == s.From {
+			return rung{}, export.Graph{}, fmt.Errorf("step %q caps tier %d, which is its centre, a column of the one node the reader opened", s.Key, c.Tier)
+		}
 		if !slices.Contains(active, c.Tier) {
 			continue
 		}
@@ -381,20 +373,52 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 	}
 	size := func(id string) int64 { return max(reach.In[id], reach.Out[id]) }
 	fresh := export.IndexGraph(reach.Drawn)
+	next := export.IndexGraph(kept.Drawn)
+	// WHAT THE CLIENT DRAWS BUT DOES NOT COUNT is read the way isCarried and
+	// the derived mark read it, off the record the chart carries: the flank's
+	// records are the chart on screen's and the fresh half's are the
+	// document's, which is which record windowFor keeps for each.
+	carried := func(n export.GraphNode) bool {
+		_, declared := s.Residual[n.ID]
+		return n.Derived || declared
+	}
+	partition := func(ids []string, node func(string) export.GraphNode) (own, lent []string) {
+		own = []string{}
+		for _, id := range ids {
+			if carried(node(id)) {
+				lent = append(lent, id)
+			} else {
+				own = append(own, id)
+			}
+		}
+		slices.Sort(own)
+		slices.Sort(lent)
+		return own, lent
+	}
+	onScreen := func(id string) export.GraphNode { return next.Nodes[id] }
+	inDocument := func(id string) export.GraphNode { return fresh.Nodes[id] }
 	// ONE PASS IN COLUMN ORDER ANSWERS EVERY DRAWN TIER AND BUILDS THE CHART
 	// THE RUNG LEAVES ON SCREEN from the same ranked slice, so what the
 	// artifact says a column draws and what the next step is offered cannot
-	// be two readings of the fold. The kept half goes in first, whole, so
+	// be two readings of the fold. The kept half went in first, whole, so
 	// that its record of the centre is the one carried, as windowFor's is.
 	draws := make([]drawnTier, 0, len(active))
-	next := export.IndexGraph(kept.Drawn)
 	remap := map[string]string{}
 	for _, t := range active {
 		switch {
 		case centre && t == s.From:
-			draws = append(draws, drawnTier{Tier: t, Role: roleCentre, Candidates: 1, IDs: []string{opened}})
+			own, lent := partition([]string{opened}, onScreen)
+			draws = append(draws, drawnTier{Tier: t, Role: roleCentre, Candidates: 1, IDs: own, Carried: lent})
 		case slices.Contains(s.Keep, t):
-			draws = append(draws, drawnTier{Tier: t, Role: roleFlank, Unanswered: reasonKeptFlank})
+			// A FOLDED TAIL AT A KEPT TIER IS REFUSED: the client counts what
+			// it stands for under the tail's own label, and this artifact
+			// has no field for a hidden count with no cap to explain it.
+			ids := kept.At[t]
+			if i := slices.IndexFunc(ids, export.IsAggregate); i >= 0 {
+				return rung{}, export.Graph{}, fmt.Errorf("step %q keeps tier %d and the chart on screen draws the folded tail %q there, which is a column this walk has no shape for", s.Key, t, ids[i])
+			}
+			own, lent := partition(ids, onScreen)
+			draws = append(draws, drawnTier{Tier: t, Role: roleFlank, Candidates: len(ids), IDs: own, Carried: lent})
 		case slices.Contains(outward, t):
 			ids, reached := candidates[t]
 			if !reached {
@@ -432,9 +456,10 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 			for _, id := range ids {
 				next.Add(fresh.Nodes[id])
 			}
+			own, lent := partition(ids, inDocument)
 			draws = append(draws, drawnTier{
 				Tier: t, Role: roleOutward, Cap: capOn[t],
-				Candidates: len(candidates[t]), IDs: slices.Sorted(slices.Values(ids)),
+				Candidates: len(candidates[t]), IDs: own, Carried: lent,
 				Hidden: len(candidates[t]) - len(ids),
 			})
 		default:
