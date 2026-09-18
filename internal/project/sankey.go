@@ -1405,8 +1405,10 @@ func transferCaveat(h Headline, col Column, links []Link) Caveat {
 		"transfer_id. Budget Book p76's transfer schedule is mapped and published, but at " +
 		"scope transfers-by-fund, and this document is of all-funds-gross -- so none of " +
 		"its facts is in this graph. They cannot simply be added to it: transfers-by-fund " +
-		"and revenue-by-fund both publish transfer_in over the same money, which the " +
-		"projection-scopes-are-disjoint check refuses. The legs ARE paired one document " +
+		"and revenue-by-fund both publish transfer_in over the same money, and the " +
+		"peers-overlap-only-by-declared-identity check holds every cell the two share to " +
+		"a declared identity -- so a document carrying both has to say which schedule it " +
+		"reads that money from rather than summing both. The legs ARE paired one document " +
 		"over: transfers-by-fund draws each end of every figure p76 prints as its own " +
 		"link, the two carrying the same transfer_id, and this chart's Transfers In opens " +
 		"into it. "

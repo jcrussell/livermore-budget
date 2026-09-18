@@ -516,7 +516,7 @@ func departmentFundingCaveats() []Caveat {
 				"department's own printed total and to nothing citywide.",
 			Text: "Budget Book pp.66-67 print two adopted columns and no actual and no " +
 				"revised one, so the citywide check this project runs over these rows " +
-				"(funding-sources-tie-to-spine) can compare only the two adopted years. " +
+				"(cuts-tie-along-the-lattice) can compare only the two adopted years. " +
 				"The other two columns reconcile to each department's own printed Total " +
 				"Department Funding Sources at build time and to no citywide figure at all. " +
 				"Five of the eleven departments miss that printed total by exactly one " +
