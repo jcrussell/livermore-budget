@@ -583,8 +583,8 @@ per-fund figures also sum to it -- and `p0061:39` implies it, printing
 `26,906,515`, which is that figure plus the `612,000` to-CIP transfer. Of the 48
 `(fund group x object category x budget year)` cells between pp.172-183 and
 pp.66-67, **47 agree to the dollar** and this is the 48th -- with the same
-qualifier `internal/check/fundingsources.go` attaches to that figure wherever it
-prints it, and which matters more here than anywhere because this section is the
+qualifier the `p0067-internal-service-is-250000-high-by-fund-group` exception
+attaches to that figure wherever it prints it, and which matters more here than anywhere because this section is the
 published-is-not-derived argument: **that 48-cell grid is our arithmetic and not
 the city's.** No page prints a group-by-object subtotal. What pp.172-183 print
 are the per-fund object rows and one Total per fund group; the 48 cells are our

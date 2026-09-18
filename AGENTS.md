@@ -378,7 +378,7 @@ Breaking one is a defect even when tests pass.
 - **The exception is surprise.** Document another API only where it does not make
   sense on its face, and write what surprised *you* rather than what the API does.
 - **Data and artifact paths are not symbols and stay** — `data/funds.yaml`,
-  `testdata/pages/p0067.txt`, `mappings/*.yaml`, `site/app.js`. Only a symbol's
+  `testdata/pages/budget-p0067.txt`, `mappings/*.yaml`, `site/app.js`. Only a symbol's
   `.go` path goes.
 - **History's home is git.** No `Found by /code-review` credit in source, and no
   errata — *"an earlier version of this comment said X"* adds a second claim,

@@ -676,8 +676,9 @@ func TestTransferCaveatWhenLegsMatch(t *testing.T) {
 // about THIS graph without telling a reader the pairing does not exist.
 //
 // THE PRINTED COLUMN. The residual is not a discrepancy: the city prints it
-// under a heading of its own. The figure asserted here is the one
-// internal/check/transfersdetail.go's toCIP table sums to, and the caveat is
+// under a heading of its own. The figure asserted here is the one the six
+// p76-lists-no-transfer-to-the-cip-* entries of structure.BudgetBookExceptions
+// sum to, and the caveat is
 // built to name the column ONLY when this document's own residual meets the
 // hand-typed page figure -- so this test also covers that gate being open.
 func TestTransferCaveatNamesThePrintedColumn(t *testing.T) {

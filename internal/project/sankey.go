@@ -1357,7 +1357,8 @@ func contestedCaveat(c contestedTotal, col Column, links []Link) (Caveat, bool) 
 //
 // EVERY FIGURE IS READ OFF A PAGE. p0073.txt:58 and p0075.txt:58, under the
 // header at p0073.txt:9. They are hand-typed here in the same way, and for the
-// same reason, as internal/check/transfersdetail.go's toCIP table: pp.72-75 are
+// same reason, as the six p76-lists-no-transfer-to-the-cip-* entries of
+// structure.BudgetBookExceptions: pp.72-75 are
 // not fixtures, so nothing in this tree parses them. What IS machine-checked is
 // that the figure below equals this document's own residual -- see
 // transferCaveat, which declines to name the column when it does not.
