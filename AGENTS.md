@@ -329,8 +329,9 @@ Breaking one is a defect even when tests pass.
   makes those comparisons meaningless.
 - **Absent is not zero.** `-` means the line exists and is zero; an empty cell
   means the line does not apply. Conflating them invents rows. `amount.Parse`
-  returns `ErrAbsent` for the latter; `amount.ParseOrZero` opts out only where a
-  rule has declared blanks mean zero for that table.
+  returns `ErrAbsent` for the latter, and no rule in the tree opts out. A table
+  whose blanks really do mean zero has to say so in its own rule, and adding the
+  opt-out is part of that change rather than something already waiting for it.
 - **Fail closed on ambiguity.** PDF extraction corrupts numbers into plausible
   wrong values rather than errors. Every shape not positively recognised is an
   error. Never guess a value to keep a pipeline green.

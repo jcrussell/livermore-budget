@@ -197,10 +197,10 @@ func TestAbsentIsNotZero(t *testing.T) {
 		t.Errorf("Parse(\"-\") = (%v, %v), want (0, nil)", got, err)
 	}
 
-	// ParseOrZero opts out, but only where a rule says blanks mean zero.
+	// parseOrZero opts out, but only where a rule says blanks mean zero.
 	got, err = parseOrZero("", Dollars)
 	if err != nil || got != 0 {
-		t.Errorf("ParseOrZero(\"\") = (%v, %v), want (0, nil)", got, err)
+		t.Errorf("parseOrZero(\"\") = (%v, %v), want (0, nil)", got, err)
 	}
 }
 
