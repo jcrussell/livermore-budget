@@ -1,6 +1,7 @@
 package structure_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -277,5 +278,57 @@ func TestAViewThatWouldTraverseBothReadingsIsRefused(t *testing.T) {
 	}
 	if in == 0 || out == 0 {
 		t.Errorf("the view counts %d cents of transfers in and %d out; both readings' other kinds should survive", in, out)
+	}
+}
+
+// TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone pins the case
+// on which a level-only antichain test and the one NewView enforces disagree.
+// pp.127-140 by fund and pp.167-170 by fund, department and object are one
+// above the other in the lattice, so a level-only test refuses the pair; they
+// are summable because one prints revenue and the other expenditure, and no
+// fact is in both.
+//
+// THE FIRST TWO ASSERTIONS ARE THE GUARD, not scene-setting. If the levels
+// ever stop being comparable, or the kinds ever start meeting, the admission
+// below would be green because the pair had become uninteresting rather than
+// because NewView tests kinds -- and the two are indistinguishable by exit
+// code.
+func TestTheAntichainIsOverMoneyBothCutsPrintAndNotOverLevelsAlone(t *testing.T) {
+	facts := committedFacts(t)
+	identities := structure.BudgetBookIdentities()
+	rd, gd := allCutNamed(t, "revenue-detail"), allCutNamed(t, "general-fund-departments")
+
+	if !structure.Refines(gd.Level, rd.Level) {
+		t.Fatalf("%s no longer refines %s; this pair no longer witnesses the disagreement", gd.Level, rd.Level)
+	}
+	for _, k := range rd.Kinds {
+		if slices.Contains(gd.Kinds, k) {
+			t.Fatalf("%q and %q now share kind %q; this pair no longer witnesses the disagreement", rd.Name, gd.Name, k)
+		}
+	}
+
+	v, err := structure.NewView("drill", []structure.Cut{rd, gd}, identities, nil)
+	if err != nil {
+		t.Fatalf("NewView over revenue beside expenditure = %v, want admitted: the levels are comparable but the kinds do not meet", err)
+	}
+	// AND IT ADMITS BOTH SIDES. A view that took neither cut's facts would
+	// satisfy the line above while meaning nothing.
+	seen := map[string]int{}
+	for i := range facts {
+		if f := &facts[i]; v.Admits(f, identities) {
+			seen[f.Scope]++
+		}
+	}
+	if seen[rd.Scope] == 0 || seen[gd.Scope] == 0 {
+		t.Errorf("the view admits %d facts from %q and %d from %q; both cuts should contribute",
+			seen[rd.Scope], rd.Scope, seen[gd.Scope], gd.Scope)
+	}
+
+	// THE OTHER HALF, so the level test is not what was deleted: the same cut
+	// beside one whose kinds it meets is still refused.
+	spine := allCutNamed(t, "spine")
+	if _, err := structure.NewView("spine-and-drill", []structure.Cut{spine, gd}, identities, nil); err == nil ||
+		!strings.Contains(err.Error(), "not an antichain") {
+		t.Fatalf("NewView over the spine beside the departments = %v, want refused: their kinds meet", err)
 	}
 }

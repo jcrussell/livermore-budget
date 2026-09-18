@@ -231,14 +231,6 @@ func (r restriction) admits(f *fact.Fact) bool {
 	return containsKind(r.kinds, f.Kind)
 }
 
-// Comparable says whether two cuts can be compared at a level at all, and why
-// not when they cannot. It is the whole of the answer a caller outside this
-// package can use: what a comparison may look at is decided inside Compare.
-func Comparable(a, b Cut, at Level) error {
-	_, err := restrict(a, b, at)
-	return err
-}
-
 // restrict is the slice of the store a pair may be compared over at a level.
 //
 // THREE WAYS A PAIR IS NOT A COMPARISON, each refused by name rather than

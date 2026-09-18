@@ -149,34 +149,6 @@ func Refines(fine, coarse Level) bool {
 	return false
 }
 
-// LevelsComparable says whether two levels sit on one chain of the lattice, in
-// either direction. Levels that do not are incomparable, which is what makes a
-// set of them an antichain.
-func LevelsComparable(a, b Level) bool {
-	return a == b || Refines(a, b) || Refines(b, a)
-}
-
-// IsAntichain says whether no level in the set refines another, which is the
-// condition for their cells to be summable without double counting.
-//
-// A REPEATED LEVEL IS NOT A VIOLATION. Two cuts at one level are peers -- the
-// General Fund's departments and the other funds' departments are both
-// department-by-category -- and summing them is exactly what a cut is for.
-// What is refused is a pair where one decomposes the other.
-func IsAntichain(levels []Level) (Level, Level, bool) {
-	for i, a := range levels {
-		for _, b := range levels[i+1:] {
-			if Refines(a, b) {
-				return a, b, false
-			}
-			if Refines(b, a) {
-				return b, a, false
-			}
-		}
-	}
-	return "", "", true
-}
-
 // validateLattice refuses a table that cannot be read: an edge naming an
 // undeclared level, a cycle, or a parent whose axes are not a subset of its
 // child's. It runs from an init so a malformed table cannot reach a check.
