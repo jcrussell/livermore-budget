@@ -109,7 +109,7 @@ func twoViews(t *testing.T, trendsPages ...int) string {
 		tree[fmt.Sprintf("%s/pages/p%04d.txt", budgetDocID, p)] =
 			&fstest.MapFile{Data: []byte(fmt.Sprintf("page %d\n", p))}
 	}
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey":         goldenSankey(t),
@@ -319,7 +319,7 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 		export.DrillStep{Key: "funds", After: []string{"groups"},
 			From: 3, Tiers: []int{3, 4}, Back: "All funds", Noun: "thing", Tail: "divisions",
 			Description: "Opened again."})
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
@@ -396,7 +396,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
-			if _, err := export.Write(export.Options{
+			if _, err := writeSite(export.Options{
 				Dir:         dir,
 				Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
 				Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
@@ -418,7 +418,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 	// absent-is-not-zero argument one field over: `"widen":[]` would have a
 	// client that reads the length ask for a column the packager never named.
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
@@ -464,7 +464,7 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 		return s
 	}
 	write := func(s []export.DrillStep) error {
-		_, err := export.Write(export.Options{
+		_, err := writeSite(export.Options{
 			Dir: t.TempDir(),
 			Projections: map[string][]byte{
 				"sankey":     goldenSankey(t),
@@ -587,7 +587,7 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := export.Write(export.Options{
+			_, err := writeSite(export.Options{
 				Dir:         t.TempDir(),
 				Projections: tc.projections,
 				Views:       []export.View{caveatsView},
@@ -623,7 +623,7 @@ func TestTheCaveatsPageRefusesWhatWouldRender(t *testing.T) {
 // listed and can never be chipped on a mark.
 func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 	dir := t.TempDir()
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			export.PrimaryProjection: goldenSankey(t),
@@ -689,7 +689,7 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 	}
 	spine := goldenSankey(t)
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey":          spine,
@@ -1261,7 +1261,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := export.Write(export.Options{
+			_, err := writeSite(export.Options{
 				Dir:         t.TempDir(),
 				Projections: map[string][]byte{"sankey": goldenSankey(t)},
 				Views:       c.views,
@@ -1283,7 +1283,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 // was the only page; an asset at trends.html would have replaced a view in
 // silence, and the site would have exported cleanly.
 func TestAnAssetCannotShadowAView(t *testing.T) {
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(127)},
 		Views: []export.View{
@@ -1337,7 +1337,7 @@ func TestTheTrendsViewRendersWhatTheDocumentPublishes(t *testing.T) {
 // render a table with a Fund, a Line and a Category and no figures at all, which
 // looks like a page rather than a defect.
 func TestTheTrendsViewRefusesADocumentWithNoColumns(t *testing.T) {
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc()},
 		Views: []export.View{
@@ -1400,7 +1400,7 @@ func readFile(t *testing.T, dir, name string) string {
 // clientConfig and this goes red while every other test stays green.
 func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
@@ -1487,7 +1487,7 @@ func TestAShortSeriesDoesNotShiftItsNeighboursIntoTheWrongColumn(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey": goldenSankey(t), "revenue-trends": short,
@@ -1564,7 +1564,7 @@ func between(t *testing.T, s, open, close string) string {
 func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 	dir := t.TempDir()
 	pages := []int{127, 128}
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": trendsDoc(pages...)},
 		Views: []export.View{
@@ -1618,7 +1618,7 @@ func TestTheMarkReachesTheRenderedPage(t *testing.T) {
 // over, which is the whole of what each is about.
 func writeTrends(t *testing.T, raw []byte, pages ...int) error {
 	t.Helper()
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir: t.TempDir(),
 		Projections: map[string][]byte{
 			"sankey": goldenSankey(t), "revenue-trends": raw,
@@ -1818,7 +1818,7 @@ func TestASecondYearsCitationsSurviveTheYearItDoesNotOpenOn(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey": goldenSankey(t), "sankey-2027": raw,
@@ -1901,7 +1901,7 @@ func twoYearSankey(t *testing.T, view export.View, edit func(meta map[string]any
 	view.YearStems = []string{"sankey", "sankey-2027"}
 
 	dir := t.TempDir()
-	if _, err = export.Write(export.Options{
+	if _, err = writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "sankey-2027": raw},
 		Views:       []export.View{view},
@@ -1942,7 +1942,7 @@ func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 	second := reyeared(t, goldenSankey(t), 2027, "FY 2026-27")
 
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey": goldenSankey(t), "sankey-2027": second, "fund-flows": fundFlows,
@@ -2202,7 +2202,7 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 		".nojekyll":        {Data: []byte{}},
 		"vendor/d3.min.js": {Data: []byte(`/* d3 */`)},
 	}
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Assets:      assets,
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
@@ -2249,7 +2249,7 @@ func TestATemplateWithNoArmIsRefusedRatherThanRenderedAsASpine(t *testing.T) {
 // built tree.
 func TestAProjectionWithNoViewStillShipsItsCitedPages(t *testing.T) {
 	dir := t.TempDir()
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir: dir,
 		// Two documents, ONE view. The trends document is published and
 		// unviewed, and it is the only one citing p127.
@@ -2317,7 +2317,7 @@ func provenanceSite(t *testing.T, edit func(*export.Options)) (string, error) {
 	if edit != nil {
 		edit(&base)
 	}
-	_, err := export.Write(base)
+	_, err := writeSite(base)
 	return base.Dir, err
 }
 
@@ -2339,7 +2339,7 @@ func TestTheProvenanceViewNeedsNoProjection(t *testing.T) {
 		t.Fatalf("the provenance page was not written: %v", serr)
 	}
 
-	_, err = export.Write(export.Options{
+	_, err = writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{
@@ -2620,7 +2620,7 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 	second := reyeared(t, goldenSankey(t), 2027, "FY 2026-27")
 
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey": goldenSankey(t), "sankey-2027": second, "fund-flows": fundFlows,
@@ -2672,7 +2672,7 @@ func chartAndSpine(t *testing.T) string {
 		t.Fatalf("read fund-flows golden: %v", err)
 	}
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
 		Views: []export.View{
@@ -2956,7 +2956,7 @@ func TestTheFooterSourcesFoldWithoutTakingTheDocumentOnScreenWithThem(t *testing
 // list read as deliberate rather than as an omission.
 func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			export.PrimaryProjection: goldenSankey(t),
@@ -3053,7 +3053,7 @@ func TestAChartDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read fund-flows golden: %v", err)
 		}
-		_, err = export.Write(export.Options{
+		_, err = writeSite(export.Options{
 			Dir:         t.TempDir(),
 			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
 			Views: []export.View{
@@ -3170,7 +3170,7 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 			Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Opened a division."},
 	}
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey":     goldenSankey(t),
@@ -3232,7 +3232,7 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 // spelling of that state for the client to get wrong.
 func TestTheSpineShipsAChainOnlyWhenItDeclaresOne(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
@@ -3278,7 +3278,7 @@ func TestAStepThatSwitchesDocumentMayRepeatTierNumbers(t *testing.T) {
 	// whose document decomposes nothing, on a step that keeps no flank as on
 	// one that does, and that refusal is not the one under test.
 	write := func(secondStepDoc string) error {
-		_, err := export.Write(export.Options{
+		_, err := writeSite(export.Options{
 			Dir: t.TempDir(),
 			Projections: map[string][]byte{
 				"sankey": goldenSankey(t), "fund-flows": builtLike(t, goldenSankey(t), fundFlows),
@@ -3394,7 +3394,7 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 		return v
 	}
 	write := func(v export.View, projections map[string][]byte) error {
-		_, err := export.Write(export.Options{
+		_, err := writeSite(export.Options{
 			Dir: t.TempDir(), Projections: projections, Views: []export.View{v},
 			Docs: budgetDocs(), GeneratedBy: "fisc test",
 		})
@@ -3499,7 +3499,7 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 	const secondYearDoc = "another-doc-2027"
 	spine := goldenSankey(t)
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey":      spine,

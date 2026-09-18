@@ -2010,16 +2010,6 @@ func (p *plan) Write() ([]string, error) {
 	return written, nil
 }
 
-// Write renders the site into o.Dir in one step, for a caller with nothing to
-// destroy. A caller that cleans first wants Prepare, then Plan.Write.
-func Write(o Options) ([]string, error) {
-	plan, err := Prepare(o)
-	if err != nil {
-		return nil, err
-	}
-	return plan.Write()
-}
-
 // copyTree copies every file under root in fsys, preserving relative paths.
 func copyTree(fsys fs.FS, root string, write func(string, []byte) error) error {
 	return fs.WalkDir(fsys, root, func(p string, d fs.DirEntry, err error) error {

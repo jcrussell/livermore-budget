@@ -161,10 +161,6 @@ type Cell struct {
 // dash where a detail schedule prints no row.
 func (c Cell) Ties() bool { return c.Cut.Cents == c.Against.Cents }
 
-// Difference is Against minus Cut: what the reference side carries that the
-// other does not.
-func (c Cell) Difference() int64 { return c.Against.Cents - c.Cut.Cents }
-
 // A Comparison is what one pass produced.
 type Comparison struct {
 	Cut, Against Cut

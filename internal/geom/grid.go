@@ -98,9 +98,6 @@ func (g *Grid) Len() int { return len(g.bands) }
 // band is column i's x-range.
 func (g *Grid) band(i int) Span { return g.bands[i] }
 
-// Gutter is the right edge of the row-label area: the lower bound of column 0.
-func (g *Grid) Gutter() float64 { return g.gutter }
-
 // Index is the column an x-position falls in, or -1 for a position at or left of
 // the gutter, which is the row-label area and belongs to no column.
 //

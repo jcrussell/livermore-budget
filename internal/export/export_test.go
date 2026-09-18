@@ -89,7 +89,7 @@ func writeGoldenOpts(t *testing.T, opts export.Options) (dir string, written []s
 	opts.Projections = map[string][]byte{"sankey": goldenSankey(t)}
 	opts.Docs = budgetDocs()
 	opts.GeneratedBy = "fisc test"
-	written, err := export.Write(opts)
+	written, err := writeSite(opts)
 	if err != nil {
 		t.Fatalf("Write: %v", err)
 	}
@@ -465,7 +465,7 @@ func TestWriteRefusesACitedPageMissingFromTheExtraction(t *testing.T) {
 	tree := pageTextFS()
 	delete(tree, budgetDocID+"/pages/p0067.txt")
 
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Docs:        budgetDocs(),
@@ -576,7 +576,7 @@ func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 	for name, rel := range cases {
 		t.Run(name, func(t *testing.T) {
 			dir := t.TempDir()
-			_, err := export.Write(export.Options{
+			_, err := writeSite(export.Options{
 				Dir:         dir,
 				Projections: map[string][]byte{"sankey": goldenSankey(t)},
 				Docs:        budgetDocs(),
@@ -596,7 +596,7 @@ func TestWriteRefusesAnAssetPathOutsideTheSite(t *testing.T) {
 // order. The page text and an asset are written by different code paths, so
 // this is the collision that can actually happen.
 func TestWriteRefusesTwoAssetsClaimingOnePath(t *testing.T) {
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
 		Docs:        budgetDocs(),
@@ -707,7 +707,7 @@ func TestConfigCannotCloseItsScriptElement(t *testing.T) {
 		t.Fatalf("marshal fixture: %v", err)
 	}
 	dir := t.TempDir()
-	if _, err := export.Write(export.Options{
+	if _, err := writeSite(export.Options{
 		Dir:         dir,
 		Projections: map[string][]byte{"sankey": b},
 	}); err != nil {
@@ -720,7 +720,7 @@ func TestConfigCannotCloseItsScriptElement(t *testing.T) {
 }
 
 func TestWriteRefusesAProjectionSetWithoutTheSankey(t *testing.T) {
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Projections: map[string][]byte{"treemap": []byte(`{}`)},
 	})
@@ -745,7 +745,7 @@ func TestWriteRefusesBadInput(t *testing.T) {
 	}
 	for name, opts := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := export.Write(opts); err == nil {
+			if _, err := writeSite(opts); err == nil {
 				t.Fatal("got nil error, want a refusal")
 			}
 		})
@@ -830,7 +830,7 @@ func TestWriteRefusesASchemaVersionItDoesNotUnderstand(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			_, err := export.Write(export.Options{
+			_, err := writeSite(export.Options{
 				Dir:         t.TempDir(),
 				Projections: map[string][]byte{"sankey": reversionedGolden(t, tc.version, tc.absent)},
 				Docs:        budgetDocs(),
@@ -891,7 +891,7 @@ func TestWriteReportsAMissingAsset(t *testing.T) {
 		".nojekyll":        {Data: []byte{}},
 		"vendor/d3.min.js": {Data: []byte(`/* d3 */`)},
 	}
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir:         t.TempDir(),
 		Assets:      assets,
 		Projections: map[string][]byte{"sankey": goldenSankey(t)},
@@ -1167,4 +1167,18 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 			"measure has been applied to the page's own column rather than to the " +
 			"prose in it")
 	}
+}
+
+// writeSite renders o into o.Dir in one step, which is what most of these
+// tests want and what the binary deliberately does not do: pkg/cmd/export
+// takes Prepare, then cleans the directory, then plan.Write, so a render that
+// fails does not destroy the previous site first. Keeping the one-step form
+// here rather than in the package means that ordering has no shortcut around
+// it in production.
+func writeSite(o export.Options) ([]string, error) {
+	p, err := export.Prepare(o)
+	if err != nil {
+		return nil, err
+	}
+	return p.Write()
 }

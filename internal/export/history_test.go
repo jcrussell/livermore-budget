@@ -96,7 +96,7 @@ func balancesSections() []export.Section {
 func writeHistorySite(t *testing.T, doc []byte, sections []export.Section) (string, error) {
 	t.Helper()
 	dir := t.TempDir()
-	_, err := export.Write(export.Options{
+	_, err := writeSite(export.Options{
 		Dir: dir,
 		Projections: map[string][]byte{
 			"sankey":        goldenSankey(t),

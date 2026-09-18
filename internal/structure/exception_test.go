@@ -146,8 +146,8 @@ func TestTheAgreementAtTheMeetReproducesTheTwoAxisReconciliations(t *testing.T) 
 			if off[0].Key.String() != c.key {
 				t.Errorf("cell is %s, want %s", off[0].Key, c.key)
 			}
-			if off[0].Difference() != 25000000 {
-				t.Errorf("difference is %d cents, want 25000000", off[0].Difference())
+			if d := off[0].Against.Cents - off[0].Cut.Cents; d != 25000000 {
+				t.Errorf("difference is %d cents, want 25000000", d)
 			}
 		})
 	}
