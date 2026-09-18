@@ -6,7 +6,8 @@ that way round and why it is not a second `docs/agents/`.
 
 ## What this project is
 
-`fisc` turns the City of Livermore's published budget PDFs into a verified fact
+**The purpose of this project is to let a reader explore the City of Livermore's
+budget.** `fisc` turns the city's published budget PDFs into a verified fact
 store, and that store into a static site whose headline view is a Sankey of
 where city money comes from and where it goes.
 
@@ -15,6 +16,19 @@ a source PDF, and `fisc verify` fails if any link in that chain breaks.** That i
 the feature. A number that cannot be traced, a check that cannot fail, or an
 inferred value presented as a published one is a defect however good the chart
 looks.
+
+### Go vets, JavaScript renders
+
+**What EXISTS goes in Go, emitted vetted**: which nodes, which links, which
+columns, which folds, which derived marks and their amounts.
+
+**What MOVES goes in JavaScript**: d3-sankey positions, tooltips, focus,
+transitions, the year control.
+
+So the stitching, the auditing and the cross-checking are Go's, and the client
+renders an answer it does not re-derive. A shaping decision spelled in
+`site/app.js` is in the wrong language however well it draws, and a second
+spelling of one Go already makes is the defect this boundary exists to name.
 
 ## Where to start
 
