@@ -70,10 +70,11 @@ type rung struct {
 // Role is centre for the opened node's own column, flank for a column of
 // s.Keep, and outward for one the step opens the node into. A flank carries
 // Unanswered and nothing else: it is the half of the chart on screen that
-// the client's windowFor carries over, which this walk does not model, and
-// an empty IDs beside the reason would invite a green against an empty
-// client column. Cap is 0 where the step declares none, which is the value
-// validateSteps refuses on a declared cap.
+// the client's windowFor carries over, which this walk carries from rung to
+// rung but does not yet read a column off, and an empty IDs beside the
+// reason would invite a green against an empty client column. Cap is 0
+// where the step declares none, which is the value validateSteps refuses on
+// a declared cap.
 //
 // Candidates is how many document nodes the window reaches at the tier;
 // IDs, sorted, is which of them the column draws as themselves and Hidden
@@ -144,11 +145,15 @@ func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error)
 		if err != nil {
 			return rungsDoc{}, fmt.Errorf("rungs: %s: %w", year, err)
 		}
+		screen, err := overviewOf(spine, chart)
+		if err != nil {
+			return rungsDoc{}, fmt.Errorf("rungs: %s: %w", year, err)
+		}
 		stems := stepStemsFor(spine, year)
 		col := rungColumn{Stem: year}
 		for _, width := range rungWidths {
 			w := rungWalker{spine: spine, projections: projections, stems: stems, width: width}
-			if err := w.walk(chart.Nodes, "", nil, &col.Rungs); err != nil {
+			if err := w.walk(screen, "", nil, &col.Rungs); err != nil {
 				return rungsDoc{}, fmt.Errorf("rungs: %s at %d columns: %w", year, width, err)
 			}
 		}
@@ -179,6 +184,34 @@ func stepStemsFor(spine export.View, year string) []string {
 	return stems
 }
 
+// overviewOf is the chart the spine's own page has on screen before anything
+// is opened, read the way shapeFor reads it: the document folded to the
+// view's render tiers, which is what activeTiers answers undrilled. Nothing
+// moves on the committed spine -- its nodes all sit at its render tiers and
+// every one is a ribbon's end -- and the first rungs are read off this chart
+// rather than the raw document so that a spine that folds would be walked
+// as the client draws it.
+//
+// A ROOT IS REFUSED BY NAME rather than modelled: shapeFor filters to it
+// before folding, and no shipped view declares one, so the reading has
+// nothing to be measured against.
+func overviewOf(spine export.View, chart export.Graph) (export.Graph, error) {
+	if spine.Root != "" {
+		return export.Graph{}, fmt.Errorf("the spine declares root %q, which this walk does not filter the overview to", spine.Root)
+	}
+	if len(spine.RenderTiers) == 0 {
+		return export.Graph{}, fmt.Errorf("the spine declares no render tiers, so the chart its first rungs open from cannot be read")
+	}
+	screen, err := export.Fold(chart, spine.RenderTiers)
+	if err != nil {
+		return export.Graph{}, fmt.Errorf("overview: %w", err)
+	}
+	if len(screen.Nodes) == 0 {
+		return export.Graph{}, fmt.Errorf("overview: the document draws nothing at tiers %v", spine.RenderTiers)
+	}
+	return screen, nil
+}
+
 type rungWalker struct {
 	spine       export.View
 	projections map[string][]byte
@@ -194,7 +227,7 @@ type rungWalker struct {
 // with the near end of a ribbon being its source when the flank is on the
 // left; a step that keeps none draws all of its tiers, with the near end
 // being the source when it declares SideSource and the target otherwise.
-func (w rungWalker) walk(chart []export.GraphNode, openedKey string, path []string, out *[]rung) error {
+func (w rungWalker) walk(chart export.Graph, openedKey string, path []string, out *[]rung) error {
 	for i, s := range w.spine.Steps {
 		if !slices.Contains(s.After, openedKey) {
 			continue
@@ -220,11 +253,11 @@ func (w rungWalker) walk(chart []export.GraphNode, openedKey string, path []stri
 		if err != nil {
 			return fmt.Errorf("step %q: %s: %w", s.Key, stem, err)
 		}
-		for _, n := range chart {
+		for _, n := range chart.Nodes {
 			if n.Tier != s.From || (s.Role != "" && n.Role != s.Role) || !slices.Contains(opens, n.ID) {
 				continue
 			}
-			r, next, err := w.answer(g, s, n.ID, nearIsSource, outward)
+			r, next, err := w.answer(g, chart, s, n.ID, nearIsSource, outward)
 			if err != nil {
 				return fmt.Errorf("%s > %s: %w", strings.Join(path, " > "), n.ID, err)
 			}
@@ -240,9 +273,18 @@ func (w rungWalker) walk(chart []export.GraphNode, openedKey string, path []stri
 
 // answer is one rung at this walker's budget: what every column the step
 // draws holds, and the chart the rung leaves on screen for the next step to
-// open from. outward is every tier the step draws beyond its centre, nearest
-// first, or every tier it draws when it keeps no flank and has no centre.
-func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, nearIsSource bool, outward []int) (rung, []export.GraphNode, error) {
+// open from. screen is the chart the node was opened on; outward is every
+// tier the step draws beyond its centre, nearest first, or every tier it
+// draws when it keeps no flank and has no centre.
+//
+// THE CHART LEFT ON SCREEN IS THE WHOLE WINDOW, kept half spliced with fresh
+// half the way windowFor splices them, the kept record winning an id both
+// hold -- and not the fresh half alone. The next step's flank is a column of
+// this chart, and nothing in a declaration forbids that column being this
+// rung's own flank; on the committed spine it is always this rung's centre,
+// which is why a walk carrying only the fresh half would have gone
+// unnoticed.
+func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened string, nearIsSource bool, outward []int) (rung, export.Graph, error) {
 	centre := len(s.Keep) > 0
 	// THE BUDGET DROPS WIDENED COLUMNS FROM THE END OF WIDEN'S ORDER, which is
 	// DrillStep.Widen's contract, and a widened column the document leaves
@@ -252,10 +294,6 @@ func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, ne
 		if k >= w.width-3 {
 			active = slices.DeleteFunc(active, func(x int) bool { return x == t })
 		}
-	}
-	role := make(map[string]string, len(g.Nodes))
-	for _, n := range g.Nodes {
-		role[n.ID] = n.Role
 	}
 	// THE DOCUMENT IS ASKED FOR THE COLUMNS THIS HALF DRAWS, CENTRE INCLUDED,
 	// which is what windowFor hands sideOf; a step with no centre is asked for
@@ -271,10 +309,26 @@ func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, ne
 	}
 	reach, err := export.ReachOf(g, opened, nearIsSource, half)
 	if err != nil {
-		return rung{}, nil, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
+		return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
 	}
 	if len(reach.At) == 0 {
-		return rung{}, nil, fmt.Errorf("step %q opens %q into tiers %v and the document draws nothing there, which export.Openable said it would", s.Key, opened, half)
+		return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q into tiers %v and the document draws nothing there, which export.Openable said it would", s.Key, opened, half)
+	}
+	// THE KEPT HALF IS THE CHART ON SCREEN ASKED FOR THE FLANK AND THE CENTRE,
+	// on the side windowFor asks it: a left flank is what flows INTO the
+	// opened node, the mirror of the fresh half's filter, so the near end is
+	// the one the fresh half does not use.
+	var kept export.Reach
+	if centre {
+		idx := slices.Index(active, s.From)
+		keptTiers := active[idx:]
+		if nearIsSource {
+			keptTiers = active[:idx+1]
+		}
+		kept, err = export.ReachOf(screen, opened, !nearIsSource, keptTiers)
+		if err != nil {
+			return rung{}, export.Graph{}, fmt.Errorf("step %q keeps the flank of %q: %w", s.Key, opened, err)
+		}
 	}
 	// THE CENTRE IS THE OPENED NODE ALONE, and the reach says whether it is:
 	// a ribbon out of the opened node's subtree into ANOTHER node of the
@@ -282,7 +336,7 @@ func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, ne
 	// the node the reader clicked, and this artifact has no shape for that.
 	if centre {
 		if others := slices.DeleteFunc(slices.Clone(reach.At[s.From]), func(id string) bool { return id == opened }); len(others) > 0 {
-			return rung{}, nil, fmt.Errorf("step %q opens %q and the document draws %v beside it at tier %d, which is a column this walk has no shape for", s.Key, opened, others, s.From)
+			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q and the document draws %v beside it at tier %d, which is a column this walk has no shape for", s.Key, opened, others, s.From)
 		}
 	}
 	candidates := map[int][]string{}
@@ -303,13 +357,13 @@ func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, ne
 		// cap here would fold a column this walk answers with a reason instead
 		// of ids, and nothing would hold the client to it.
 		if slices.Contains(s.Keep, c.Tier) {
-			return rung{}, nil, fmt.Errorf("step %q caps tier %d, which is a flank it keeps off the chart above and not a column of the document it draws", s.Key, c.Tier)
+			return rung{}, export.Graph{}, fmt.Errorf("step %q caps tier %d, which is a flank it keeps off the chart above and not a column of the document it draws", s.Key, c.Tier)
 		}
 		if !slices.Contains(active, c.Tier) {
 			continue
 		}
 		if _, reached := candidates[c.Tier]; !reached {
-			return rung{}, nil, fmt.Errorf("step %q caps tier %d, which its window does not open a node into", s.Key, c.Tier)
+			return rung{}, export.Graph{}, fmt.Errorf("step %q caps tier %d, which its window does not open a node into", s.Key, c.Tier)
 		}
 		capOn[c.Tier] = c.Cap
 	}
@@ -322,27 +376,29 @@ func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, ne
 	for k, t := range outward[:len(outward)-1] {
 		deeper := outward[k+1]
 		if c, capped := capOn[t]; capped && len(candidates[t]) > c+1 && slices.Contains(active, deeper) {
-			return rung{}, nil, fmt.Errorf("step %q folds tier %d (%d under a cap of %d) while drawing tier %d beyond it, which this walk reaches from the unfolded column and the client from the folded one", s.Key, t, len(candidates[t]), c, deeper)
+			return rung{}, export.Graph{}, fmt.Errorf("step %q folds tier %d (%d under a cap of %d) while drawing tier %d beyond it, which this walk reaches from the unfolded column and the client from the folded one", s.Key, t, len(candidates[t]), c, deeper)
 		}
 	}
 	size := func(id string) int64 { return max(reach.In[id], reach.Out[id]) }
+	fresh := export.IndexGraph(reach.Drawn)
 	// ONE PASS IN COLUMN ORDER ANSWERS EVERY DRAWN TIER AND BUILDS THE CHART
 	// THE RUNG LEAVES ON SCREEN from the same ranked slice, so what the
 	// artifact says a column draws and what the next step is offered cannot
-	// be two readings of the fold.
+	// be two readings of the fold. The kept half goes in first, whole, so
+	// that its record of the centre is the one carried, as windowFor's is.
 	draws := make([]drawnTier, 0, len(active))
-	var next []export.GraphNode
+	next := export.IndexGraph(kept.Drawn)
+	remap := map[string]string{}
 	for _, t := range active {
 		switch {
 		case centre && t == s.From:
 			draws = append(draws, drawnTier{Tier: t, Role: roleCentre, Candidates: 1, IDs: []string{opened}})
-			next = append(next, export.GraphNode{ID: opened, Tier: t, Role: role[opened]})
 		case slices.Contains(s.Keep, t):
 			draws = append(draws, drawnTier{Tier: t, Role: roleFlank, Unanswered: reasonKeptFlank})
 		case slices.Contains(outward, t):
 			ids, reached := candidates[t]
 			if !reached {
-				return rung{}, nil, fmt.Errorf("step %q draws tier %d, which its window does not reach at %d columns", s.Key, t, w.width)
+				return rung{}, export.Graph{}, fmt.Errorf("step %q draws tier %d, which its window does not reach at %d columns", s.Key, t, w.width)
 			}
 			// THE RANKING IS THE CLIENT'S: by the larger of what flows in and
 			// what flows out, largest first, ties by id. Which nodes survive a
@@ -356,10 +412,25 @@ func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, ne
 					}
 					return ids[i] < ids[j]
 				})
+				// THE TAIL IS CARRIED AS THE NODE capColumn DRAWS, under its
+				// id and parented as sideOf parents it: to the opened node
+				// when every node of the column is inside it, else to
+				// nothing. The ribbons of the nodes it folds are re-pointed
+				// at it below, so the chart the next rung reads has the
+				// tail's ribbons where the client has them.
+				tail := export.AggregateID(t)
+				parent := ""
+				if slices.IndexFunc(ids, func(id string) bool { return !fresh.Within(opened, id) }) < 0 {
+					parent = opened
+				}
+				for _, id := range ids[c:] {
+					remap[id] = tail
+				}
+				next.Add(export.GraphNode{ID: tail, Tier: t, Role: export.RoleAggregate, Parent: parent})
 				ids = ids[:c]
 			}
 			for _, id := range ids {
-				next = append(next, export.GraphNode{ID: id, Tier: t, Role: role[id]})
+				next.Add(fresh.Nodes[id])
 			}
 			draws = append(draws, drawnTier{
 				Tier: t, Role: roleOutward, Cap: capOn[t],
@@ -367,10 +438,28 @@ func (w rungWalker) answer(g export.Graph, s export.DrillStep, opened string, ne
 				Hidden: len(candidates[t]) - len(ids),
 			})
 		default:
-			return rung{}, nil, fmt.Errorf("step %q draws tier %d, which is neither its centre, a flank it keeps, nor a tier it opens into", s.Key, t)
+			return rung{}, export.Graph{}, fmt.Errorf("step %q draws tier %d, which is neither its centre, a flank it keeps, nor a tier it opens into", s.Key, t)
 		}
 	}
-	return rung{Width: w.width, Step: s.Key, Draws: draws}, next, nil
+	if !centre {
+		next.Add(fresh.Nodes[opened])
+	}
+	// THE FRESH HALF'S RIBBONS ARRIVE THROUGH THE CAP, as capColumn re-points
+	// them: a folded node's end becomes the tail's, a ribbon that then joins
+	// the tail to itself is a flow inside one box, and one whose end the
+	// window no longer draws is dropped.
+	for _, l := range reach.Drawn.Links {
+		if to, folded := remap[l.Source]; folded {
+			l.Source = to
+		}
+		if to, folded := remap[l.Target]; folded {
+			l.Target = to
+		}
+		if err := next.Link(l); err != nil {
+			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
+		}
+	}
+	return rung{Width: w.width, Step: s.Key, Draws: draws}, next.Graph(), nil
 }
 
 // encodeRungs is the artifact's one encoding: indented, so a regenerated
