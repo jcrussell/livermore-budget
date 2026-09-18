@@ -15,10 +15,9 @@ import (
 // TestTheStructureShipsOnTheAssetChannelAndIsMeasured is two things. It pins
 // that buildAll puts the structure document where the site will serve it and
 // that the document carries a view for every summing projection and none for
-// a series; and under -v it re-measures what fisc-kbuo asks for -- the bytes
-// a reader would pay for the headline view and for the first drill, raw and
-// gzipped, with and without provenance -- off this build rather than off a
-// figure copied from anywhere.
+// a series; and under -v it re-measures what fisc-kbuo decided to ship -- the
+// whole structure, raw and gzipped, with and without provenance -- off this
+// build rather than off a figure copied from anywhere.
 func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -33,7 +32,7 @@ func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
 		t.Fatalf("buildAll ships no %s; the asset channel carries %d files", structurePath, len(built.Files))
 	}
 	var doc structure.Document
-	if err := json.Unmarshal(raw, &doc); err != nil {
+	if err = json.Unmarshal(raw, &doc); err != nil {
 		t.Fatalf("decode %s: %v", structurePath, err)
 	}
 	if doc.SchemaVersion != structure.DocumentSchemaVersion {
@@ -64,37 +63,22 @@ func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
 		return
 	}
 
-	// THE MEASUREMENT. Whole structure against the two slices a reader would
-	// be sent under candidate (b) of fisc-kbuo, each with its provenance and
-	// without, beside the document the reader pays for today.
+	// THE MEASUREMENT. What candidate (a) of fisc-kbuo ships -- the whole
+	// structure, with its provenance and without -- beside the one document
+	// the reader pays for today. The per-view slices this block also measured
+	// went with Document.Slice when (a) was decided.
 	today := built.Projections[project.FundFlowsProjection]
 	t.Logf("today: data/%s.json raw %d gzip %d (best %d)", project.FundFlowsProjection,
 		len(today), gzipped(t, today, gzip.DefaultCompression), gzipped(t, today, gzip.BestCompression))
-	rows := []struct {
-		label string
-		doc   structure.Document
-	}{{"whole structure", doc}}
-	for _, name := range []string{export.PrimaryProjection, project.FundFlowsProjection} {
-		sl, err := doc.Slice(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rows = append(rows, struct {
-			label string
-			doc   structure.Document
-		}{name + " slice", sl})
+	b, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, r := range rows {
-		b, err := json.Marshal(r.doc)
-		if err != nil {
-			t.Fatal(err)
-		}
-		bare := withoutProvenance(t, b)
-		t.Logf("%-24s %d facts: raw %d gzip %d (best %d); without provenance raw %d gzip %d",
-			r.label, len(r.doc.Facts),
-			len(b), gzipped(t, b, gzip.DefaultCompression), gzipped(t, b, gzip.BestCompression),
-			len(bare), gzipped(t, bare, gzip.DefaultCompression))
-	}
+	bare := withoutProvenance(t, b)
+	t.Logf("whole structure, %d facts: raw %d gzip %d (best %d); without provenance raw %d gzip %d",
+		len(doc.Facts),
+		len(b), gzipped(t, b, gzip.DefaultCompression), gzipped(t, b, gzip.BestCompression),
+		len(bare), gzipped(t, bare, gzip.DefaultCompression))
 }
 
 func keysOf(m map[string]structure.ViewDecl) []string {

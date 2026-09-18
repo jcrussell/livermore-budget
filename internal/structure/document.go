@@ -165,46 +165,6 @@ func Build(facts []fact.Fact, docs []Scoped) (Document, error) {
 	return d, nil
 }
 
-// Slice is the document narrowed to one view: that view alone, the cuts it
-// selects, the identities joining two of them, and the facts it admits,
-// re-indexed from zero. It is what a client fetching one cut at a time would
-// be sent, and it is refused for a view the document does not carry.
-func (d Document) Slice(name string) (Document, error) {
-	var view *ViewDecl
-	for i := range d.Views {
-		if d.Views[i].Name == name {
-			view = &d.Views[i]
-			break
-		}
-	}
-	if view == nil {
-		return Document{}, fmt.Errorf("structure: no view named %q", name)
-	}
-	out := Document{
-		SchemaVersion: d.SchemaVersion,
-		Levels:        d.Levels,
-	}
-	named := map[string]bool{}
-	for _, c := range d.Cuts {
-		if contains(view.Cuts, c.Name) {
-			out.Cuts = append(out.Cuts, c)
-			named[c.Name] = true
-		}
-	}
-	for _, id := range d.Identities {
-		if named[id.A] && named[id.B] {
-			out.Identities = append(out.Identities, id)
-		}
-	}
-	decl := ViewDecl{Name: view.Name, Scopes: view.Scopes, Cuts: view.Cuts, Readings: view.Readings}
-	for _, at := range view.Facts {
-		decl.Facts = append(decl.Facts, len(out.Facts))
-		out.Facts = append(out.Facts, d.Facts[at])
-	}
-	out.Views = []ViewDecl{decl}
-	return out, nil
-}
-
 func levelDecls() []LevelDecl {
 	var out []LevelDecl
 	for _, l := range Levels() {
