@@ -413,9 +413,11 @@ rather than inferring from the code.
   asserts exactly that; keep it passing.
 - Data goes to `Out`, everything else to `ErrOut` (`byob-iostreams.3`).
 - `CGO_ENABLED=0`, pure Go, assets via `go:embed` (`byob-release.8`).
-- Stdlib first (`byob-release.10`). A dependency outside cobra, go-cmp, modernc
-  sqlite and goreleaser needs its own decision bead in the same change — see
-  `fisc-j8f` for the YAML one.
+- Stdlib first (`byob-release.10`). This tree's direct dependencies are cobra,
+  go-cmp and `go.yaml.in/yaml/v3` — the last decided by `fisc-j8f` — and anything
+  else needs its own decision bead in the same change. **byob's blessed set is
+  not this tree's.** It also names modernc sqlite and goreleaser, which this
+  project does not use and which are not pre-approved here.
 
 ## Testing
 
