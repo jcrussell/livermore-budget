@@ -12,14 +12,15 @@
 // returned a size-0 selection, every .attr() accessor was invoked zero times
 // and .on() registered no handler.
 //
-// AND WHY THAT MATTERS NOW RATHER THAN LATER. The moment the client reads Go's
-// answer instead of recomputing it (fisc-phtp.2), rungs.mjs compares that
-// artifact against itself and goes green by construction -- checks that cannot
-// fail, in this branch's strongest guarantee, arriving disguised as a passing
-// suite. This module is what witnesses the client afterwards, because what it
-// reads is the drawing and not the derivation: a client that got its ids
-// straight from Go and drew none of them, or drew them with no handler on them,
-// is red here and green there.
+// AND WHY THAT MATTERS. Where the client READS Go's answer rather than
+// recomputing it (fisc-phtp.2), rungs.mjs compares that artifact against
+// itself and is green by construction -- checks that cannot fail, in this
+// branch's strongest guarantee, arriving disguised as a passing suite. A
+// capped column whose fold engages is already such a place, and rungs.mjs's
+// own header says which of its arms that costs. This module is what witnesses
+// the client there, because what it reads is the drawing and not the
+// derivation: a client that got its ids straight from Go and drew none of
+// them, or drew them with no handler on them, is red here and green there.
 //
 // PLANTING A BARE #chart NODE IS THE TRAP AND ARM (e) IS WHY IT IS NAMED. With
 // setAttribute and addEventListener answering but ownerDocument and
@@ -33,9 +34,13 @@
 // return [] -- blind the reader -- and all five arms go red on their own
 // counters rather than green with nothing compared. Take the "#chart" answer
 // out of harness.mjs's document.querySelector and they go red saying the chart
-// drew nothing. Remove one id from a rung in testdata/rungs.json and (a) goes
-// red naming the id Go answers that no mark carries, which is the mutation that
-// proves this arm is what sees fisc-phtp.2 land.
+// drew nothing. Remove one id from a column of a rung the fold does not engage
+// on -- expenditure/capital-outlay's tier 4 at 3 columns -- and (a) goes red
+// naming the mark Go answers for no longer: "the chart draws 9" against 8
+// accounted for. That is the mutation that proves this arm is what sees
+// fisc-phtp.2 land. Remove one from a column the fold DOES engage on and the
+// rung refuses instead, because capColumn holds the answer against its own
+// `hidden`, so (e) is the arm that names it.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
