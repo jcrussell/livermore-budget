@@ -90,20 +90,56 @@ const TEMPLATE_ATTRIBUTES = {
   "column-more": { disabled: "" },
 };
 
+const XHTML_NS = "http://www.w3.org/1999/xhtml";
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** DOCUMENT_POSITION_PRECEDING and _FOLLOWING; see node().compareDocumentPosition. */
+const DOCUMENT_POSITION_PRECEDING = 2;
+const DOCUMENT_POSITION_FOLLOWING = 4;
+
 /**
- * Descendants of `root` carrying a bare class selector's class.
+ * The ids the template renders inside a foreign namespace.
  *
- * Only `.name` is understood. Anything else returns nothing, which is the
- * honest answer for a stub that does not parse CSS — and it is visible as an
- * empty result rather than as a fabricated element.
+ * ONE ENTRY, AND IT IS THE ONE render() DRAWS INTO. `#chart` is an <svg> in
+ * both chart templates, so d3's creatorInherit takes the createElementNS branch
+ * off it and every mark below inherits the SVG namespace -- which is the path a
+ * browser takes and therefore the one worth modelling. Everything else the
+ * template renders is HTML and takes the default.
+ *
+ * Same hand-maintenance cost and same justification as TEMPLATE_IDS and
+ * TEMPLATE_ATTRIBUTES above.
  */
-function byClass(root, sel) {
-  if (!/^\.[\w-]+$/.test(sel)) return [];
-  const want = sel.slice(1);
+const TEMPLATE_NAMESPACES = {
+  // site/index.html.tmpl and site/chart.html.tmpl: <svg class="sankey" id="chart">
+  "chart": SVG_NS,
+};
+
+/**
+ * One simple selector — `tag`, `.class` or `tag.class` — as a predicate, or
+ * null for a shape this grammar does not answer.
+ *
+ * NULL IS THE ANSWER AND NOT A THROW, for the reason seam.mjs gives against
+ * making the stub throw on an unanswerable selector at all: fail() and
+ * clearRefusal() both call querySelector, so a throw lands inside app.js's own
+ * error path and comes back out as a refusal banner. An unanswered shape has to
+ * read as an empty result.
+ */
+function simpleMatcher(part) {
+  const m = /^([a-z][\w-]*)?(?:\.([\w-]+))?$/.exec(part);
+  if (!m || (!m[1] && !m[2])) return null;
+  const tag = m[1];
+  const cls = m[2];
+  return (/** @type {any} */ n) =>
+    (!tag || n.tagName === tag) &&
+    (!cls || (typeof n.className === "string" && n.className.split(/\s+/).includes(cls)));
+}
+
+/** Every descendant of `root`, in tree order, that the predicate answers for. */
+function descendants(root, match) {
   const found = [];
-  const walk = (n) => {
+  const walk = (/** @type {any} */ n) => {
     for (const c of n.children || []) {
-      if (typeof c.className === "string" && c.className.split(/\s+/).includes(want)) found.push(c);
+      if (match(c)) found.push(c);
       walk(c);
     }
   };
@@ -111,15 +147,64 @@ function byClass(root, sel) {
   return found;
 }
 
+/**
+ * Descendants of `root` the stub's selector grammar matches.
+ *
+ * ONE SHAPE PER CALL SITE IN app.js AND NOT ONE MORE. This is coverage written
+ * down rather than a CSS engine: a selector engine here would be a second
+ * implementation of a thing the browser already has, and what these checks are
+ * about is whether app.js WRITES to what it finds. Each shape names the calls
+ * it exists for, so a shape nothing calls reads as dead grammar and a call
+ * nothing answers reads as an empty result rather than as a fabricated element.
+ *
+ *   `.class`    fail() and clearRefusal() ask their `main` for ".refusal".
+ *               While this answered null the banner could be painted twice and
+ *               could never be taken down.
+ *   `tag`       setIsolated() asks the legend for "button", which is the
+ *               legend's copy of the isolation; and render()'s own data joins
+ *               go through `svg.selectAll("g")`, `gLinks.selectAll("path")` and
+ *               `gNodes.selectAll("g")` before they bind anything.
+ *   `tag.class` paint() asks the chart for "path.link", applyEmphasis() for
+ *               "path.link" and "g.node", and restoreFocus() asks it for the
+ *               "g.node" to put focus on after a drill replaced the chart.
+ *   `A B`       paint() asks the chart for "g.node rect", which is the one
+ *               descendant pair on the page. Each half is one of the shapes
+ *               above.
+ *
+ * Anything else returns nothing, which is the honest answer for a stub that
+ * does not parse CSS.
+ */
+function matching(root, sel) {
+  const parts = String(sel).trim().split(/\s+/);
+  if (parts.length > 2) return [];
+  const matchers = parts.map(simpleMatcher);
+  if (matchers.some((m) => m === null)) return [];
+  const first = descendants(root, matchers[0]);
+  if (matchers.length === 1) return first;
+  const found = [];
+  for (const outer of first) {
+    for (const inner of descendants(outer, matchers[1])) {
+      if (!found.includes(inner)) found.push(inner);
+    }
+  }
+  return found;
+}
+
 function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
   /** Every element the stub hands out, by id, so a check can read one back. */
   const byId = new Map();
 
-  const node = (id) => {
+  const node = (id, ns) => {
     const self = {
       id: id || "",
       tagName: "",
-      className: "",
+      // className IS THE `class` ATTRIBUTE AND NOT A SECOND FIELD BESIDE IT,
+      // because in a browser they are one thing and d3 only ever writes the
+      // attribute. While these were separate, every `.attr("class", ...)`
+      // render() makes landed somewhere no selector looked: the two <g>
+      // containers were created and `g.links` and `g.nodes` matched neither.
+      get className() { return self.attributes.class || ""; },
+      set className(v) { self.attributes.class = String(v); },
       dataset: {},
       children: [],
       textContent: "",
@@ -127,16 +212,62 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
       style: { setProperty() {} },
       classList: { add() {}, remove() {}, toggle() {} },
       attributes: {},
+      // ownerDocument AND namespaceURI ARE WHAT MAKE render() RUN AT ALL, and
+      // they are the trap a naive `#chart` node walks into: d3's creatorInherit
+      // reads both off the element it is appending to, so a stub node that
+      // defines neither throws at `svg.append("g")` -- and app.js catches that
+      // throw and paints a refusal banner. A check written over that state is
+      // green because the gate fired, never because the page drew. chart.mjs
+      // refuses it on every state it drives.
+      get ownerDocument() { return document; },
+      namespaceURI: ns || XHTML_NS,
       setAttribute(name, value) { self.attributes[name] = String(value); },
       getAttribute(name) { return name in self.attributes ? self.attributes[name] : null; },
       removeAttribute(name) { delete self.attributes[name]; },
       addEventListener(type, fn) { (self.listeners[type] ||= []).push(fn); },
+      removeEventListener(type, fn) {
+        const list = self.listeners[type];
+        const i = list ? list.indexOf(fn) : -1;
+        if (i >= 0) list.splice(i, 1);
+      },
       listeners: {},
       appendChild(c) { c.parent = self; self.children.push(c); return c; },
       append(...c) { for (const n of c) n.parent = self; self.children.push(...c); },
       prepend(c) { c.parent = self; self.children.unshift(c); },
       replaceChildren(...c) { for (const n of c) n.parent = self; self.children = c; },
-      insertBefore(c) { c.parent = self; self.children.unshift(c); return c; },
+      // HONOURS ITS SECOND ARGUMENT, AND MOVES RATHER THAN COPIES. d3's data
+      // join appends through EnterNode.appendChild, which is
+      // `parent.insertBefore(node, this._next)`, and selection.order() then
+      // re-inserts a node that is already attached. While this ignored `ref`
+      // and unshifted, that second call attached each node a second time:
+      // measured on the spine overview, 25 marks answered a "g.node" lookup 49
+      // times and 58 ribbons answered "path.link" 115 times.
+      insertBefore(c, ref) {
+        const was = c.parent ? c.parent.children.indexOf(c) : -1;
+        if (was >= 0) c.parent.children.splice(was, 1);
+        c.parent = self;
+        const i = ref ? self.children.indexOf(ref) : -1;
+        if (i >= 0) self.children.splice(i, 0, c);
+        else self.children.push(c);
+        return c;
+      },
+      removeChild(c) {
+        const i = self.children.indexOf(c);
+        if (i >= 0) self.children.splice(i, 1);
+        if (c.parent === self) c.parent = null;
+        return c;
+      },
+      // d3's selection.order() calls this on every pair it is asked to keep in
+      // sequence, and reads only DOCUMENT_POSITION_FOLLOWING out of it. Answered
+      // for siblings, which is the only comparison order() makes.
+      compareDocumentPosition(other) {
+        if (other === self) return 0;
+        if (!other || other.parent !== self.parent || !self.parent) return 0;
+        const kids = self.parent.children;
+        return kids.indexOf(other) > kids.indexOf(self)
+          ? DOCUMENT_POSITION_FOLLOWING : DOCUMENT_POSITION_PRECEDING;
+      },
+      get parentNode() { return self.parent; },
       // remove() actually detaches, and that is not tidiness. clearRefusal()
       // finds the banner with querySelector and calls remove() on it; while
       // this was a no-op, a check asserting "the banner is gone" could not
@@ -156,12 +287,12 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
       querySelector: (sel) => {
         const planted = self.selectable && self.selectable[sel];
         if (planted) return Array.isArray(planted) ? planted[0] : planted;
-        return byClass(self, sel)[0] || null;
+        return matching(self, sel)[0] || null;
       },
       querySelectorAll: (sel) => {
         const planted = self.selectable && self.selectable[sel];
         if (planted) return planted;
-        return byClass(self, sel);
+        return matching(self, sel);
       },
       // selectable is how a check plants what a selector should find. The stub
       // does not parse CSS -- it answers by exact selector string -- because a
@@ -169,14 +300,14 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
       // browser already has, and what these checks are about is whether app.js
       // WRITES to what it finds.
       //
-      // ONE SHAPE IS ANSWERED FOR REAL, and byClass below is it: a bare class
-      // selector against the element's own descendants. app.js uses exactly one
-      // -- `content.querySelector(".refusal")`, in both fail() and
-      // clearRefusal() -- and while it answered null the banner could be
-      // painted twice and could never be taken down, so a check asserting a
-      // banner's ABSENCE passed whether or not app.js was correct. Answering
-      // one selector shape is not a selector engine; it is the difference
-      // between a check and a decoration.
+      // FOUR SHAPES ARE ANSWERED FOR REAL, and matching above is where they are
+      // enumerated against the call sites that need them. Answering a stated
+      // handful of shapes is not a selector engine; it is the difference
+      // between a check and a decoration -- while `.refusal` alone was answered,
+      // a check asserting a banner's ABSENCE passed whether or not app.js was
+      // correct, and while `g.node` was answered by nothing every class,
+      // attribute and handler render() writes was written by the page and read
+      // by nothing.
       selectable: null,
     };
     return self;
@@ -198,7 +329,7 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
     getElementById: (id) => {
       if (!ids.has(id)) return null;
       if (!byId.has(id)) {
-        const el = node(id);
+        const el = node(id, TEMPLATE_NAMESPACES[id]);
         // The template's own attributes, before app.js sees the element. A
         // check that asserts app.js REMOVED one has nothing to observe
         // otherwise -- see TEMPLATE_ATTRIBUTES.
@@ -217,8 +348,19 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
     // way app.js turns into its own error path is worse than one that is
     // obviously incomplete.
     createTextNode: (text) => { const n = node(); n.textContent = String(text); return n; },
-    createElementNS: (_ns, tag) => { const n = node(); n.tagName = tag; return n; },
-    querySelector: (sel) => selectable[sel] ? selectable[sel][0] : null,
+    // THE ELEMENT CARRIES THE NAMESPACE IT WAS CREATED WITH, which is what lets
+    // creatorInherit walk down from the <svg>: every <g>, <rect>, <text> and
+    // <tspan> render() appends inherits the SVG namespace from the element it
+    // is appended to, the way a browser gives them.
+    createElementNS: (ns, tag) => { const n = node("", ns); n.tagName = tag; return n; },
+    // AN `#id` IS ANSWERED OUT OF getElementById, which is the whole of what
+    // makes `D3.select("#chart")` resolve to the element the stub already
+    // models for the template's id -- with no check having to plant one, and
+    // with a page the template did not render still answering null.
+    querySelector: (sel) => {
+      if (/^#[\w-]+$/.test(sel)) return document.getElementById(sel.slice(1));
+      return selectable[sel] ? selectable[sel][0] : null;
+    },
     // The stub used to return [] unconditionally, which made every loop over a
     // selector a no-op and every check of one vacuously green. A check that
     // cannot fail is worse than no check: paintYearWords' footer-path loop
@@ -700,7 +842,7 @@ export function loadApp(opts = {}) {
 export const KNOWN_SELECTORS = {
   ".refusal": {
     how: "parsed",
-    note: "a bare class against the element's own descendants (byClass); used by fail() and clearRefusal()",
+    note: "a bare class against the element's own descendants (matching); used by fail() and clearRefusal()",
   },
   "main": {
     how: "planted",
@@ -718,20 +860,17 @@ export const KNOWN_SELECTORS = {
     how: "planted",
     note: "year.mjs sets selectable.tbody on #flow-table; the stub's flow-table node has no children, so no grammar could find one",
   },
-  // restoreFocus asks the chart for a node to put focus on after a drill has
-  // replaced it. The stub answers with whatever a check planted; nothing here
-  // depends on WHICH node, only that the lookup is a declared one.
   "g.node": {
-    how: "unanswered",
-    note: "restoreFocus asks the chart for a mark to put focus on after a drill has replaced it. Nothing plants one, so the lookup returns null and restoreFocus falls through -- declared rather than answered so the gap is printed, not implied. Answering it would need the stub to model the <g> elements render() appends to the SVG, which no check needs yet",
+    how: "parsed",
+    note: "the tag.class shape against the element's own descendants (matching), over the <g> marks render() really appends now that the stub answers #chart. It is what restoreFocus finds to put focus on after a drill has replaced the chart, and what applyEmphasis reaches to write aria-pressed on; tools/jscheck/chart.mjs reads both off the drawn marks",
   },
   "#legend button .key": {
     how: "planted",
     note: "year.mjs plants the swatches buildLegend created, then calls paint()",
   },
   "button": {
-    how: "unanswered",
-    note: "applyEmphasis's legend loop; reaching it needs a bare-tag shape, which the legend node COULD satisfy because buildLegend gives it children. Declared rather than answered so the gap is printed, not implied",
+    how: "parsed",
+    note: "the bare-tag shape against the element's own descendants (matching); setIsolated asks the legend for the buttons buildLegend created, which are real children of the stub's #legend node and carry the tagName createElement gave them",
   },
 };
 
