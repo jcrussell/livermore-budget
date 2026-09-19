@@ -13,12 +13,17 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/export"
 )
 
-// TestTheRungArtifactIsWhatGoComputes pins testdata/rungs.json to rungsOf
-// over the committed store, byte for byte, the way facts.jsonl is pinned to
-// `fisc build`: rebuild and compare, never in place. On a difference the
-// computed artifact is written under bin/ and the test says how to
-// copy it over, so the regeneration is one visible step with a diff to read
-// rather than an -update flag.
+// TestTheRungArtifactIsWhatGoComputes pins testdata/rungs.json to the bytes
+// buildAll ships at rungsServedPath over the committed store, byte for
+// byte, the way facts.jsonl is pinned to `fisc build`: rebuild and compare,
+// never in place. On a difference the served artifact is written under bin/
+// and the test says how to copy it over, so the regeneration is one visible
+// step with a diff to read rather than an -update flag.
+//
+// THE SERVED BYTES, NOT A SECOND CALL OF rungsOf: a fixture pinned to a
+// computation the export did not make would hold the client to an answer
+// the site never served, and a buildAll that dropped the file would leave
+// that pin green.
 //
 // THE VACUITY GUARDS ARE THE POINT. tools/jscheck/rungs.mjs holds the client
 // to this file, and a file in which no cap ever engages, in which every
@@ -35,23 +40,20 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	var spine *export.View
-	for _, v := range views(built) {
-		if v.Path == export.IndexPath {
-			v := v
-			spine = &v
-		}
-	}
-	if spine == nil {
-		t.Fatal("no view at the index path; there is no spine to walk")
-	}
-	doc, err := rungsOf(built.Projections, *spine)
-	if err != nil {
-		t.Fatalf("rungsOf: %v", err)
-	}
-	got, err := encodeRungs(doc)
+	spine, err := spineView(built)
 	if err != nil {
 		t.Fatal(err)
+	}
+	got, ok := built.Files[rungsServedPath]
+	if !ok {
+		t.Fatalf("buildAll ships no %s, so the store serves no rung answer; the asset channel carries %d files", rungsServedPath, len(built.Files))
+	}
+	var doc rungsDoc
+	if err := json.Unmarshal(got, &doc); err != nil {
+		t.Fatalf("decode %s: %v", rungsServedPath, err)
+	}
+	if doc.SchemaVersion != rungsSchemaVersion {
+		t.Fatalf("%s declares schema_version %d, want %d", rungsServedPath, doc.SchemaVersion, rungsSchemaVersion)
 	}
 	want, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rungsPath)))
 	if readErr != nil || !bytes.Equal(got, want) {
@@ -65,9 +67,9 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		if err := os.WriteFile(rebuilt, got, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		t.Fatalf("%s is not what Go computes over the committed store (%v); the computed "+
+		t.Fatalf("%s is not what buildAll serves at %s over the committed store (%v); the served "+
 			"artifact is at %s -- regenerate with `cp -f %s %s` and read the diff before committing it",
-			rungsPath, readErr, rebuilt, rebuilt, rungsPath)
+			rungsPath, rungsServedPath, readErr, rebuilt, rebuilt, rungsPath)
 	}
 
 	if len(doc.Columns) != len(spine.YearStems) || len(doc.Columns) == 0 {
@@ -369,11 +371,9 @@ func TestRungsRefuseADriftTheStepDoesNotDeclare(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	var spine export.View
-	for _, v := range views(built) {
-		if v.Path == export.IndexPath {
-			spine = v
-		}
+	spine, err := spineView(built)
+	if err != nil {
+		t.Fatal(err)
 	}
 	cases := []struct {
 		name, step string
@@ -431,11 +431,9 @@ func TestRungsRefuseACapTheClientWouldApplyDifferently(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	var spine export.View
-	for _, v := range views(built) {
-		if v.Path == export.IndexPath {
-			spine = v
-		}
+	spine, err := spineView(built)
+	if err != nil {
+		t.Fatal(err)
 	}
 	cases := []struct {
 		name, step string

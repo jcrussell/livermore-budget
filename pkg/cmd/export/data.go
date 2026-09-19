@@ -77,6 +77,24 @@ func buildAll(repoRoot string) (result, error) {
 	for path, b := range parts {
 		assets.Files[path] = b
 	}
+	// THE RUNG ANSWER SHIPS TOO. Go walks every rung of the spine at every
+	// budget to build it, and until it shipped the walk's only reader was
+	// the test that pinned testdata/rungs.json to it; the client drew each
+	// rung from a derivation of its own instead. A projections-only result
+	// is enough to name the spine, which is all spineView needs.
+	spine, err := spineView(result{Projections: projections})
+	if err != nil {
+		return result{}, err
+	}
+	rungs, err := rungsOf(projections, spine)
+	if err != nil {
+		return result{}, err
+	}
+	served, err := encodeRungs(rungs)
+	if err != nil {
+		return result{}, err
+	}
+	assets.Files[rungsServedPath] = served
 	return result{
 		Projections: projections,
 		Files:       assets.Files,

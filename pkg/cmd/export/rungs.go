@@ -12,8 +12,22 @@ import (
 
 // rungsPath is the committed artifact tools/jscheck/rungs.mjs reads: Go's
 // answer for every rung the drill walks, at every column budget, so the
-// client's answer can be held to it. Relative to the repository root.
+// client's answer can be held to it. Relative to the repository root. It is
+// pinned byte for byte to what the site serves at rungsServedPath, so a
+// fixture and a served file cannot be two answers.
 const rungsPath = "testdata/rungs.json"
+
+// rungsServedPath is where the rung answer lands in the site: at the site
+// root beside the per-year structures, and NOT under data/, by the same
+// contract as structurePath. ONE FILE FOR EVERY BUDGET AND EVERY YEAR,
+// because rungWidths are both answered in it and a client holding it
+// answers a change of column budget by lookup rather than by fetch; a file
+// per budget or per drill was fisc-kbuo candidate (b), and it lost.
+const rungsServedPath = "rungs.json"
+
+// rungsSchemaVersion is the version a rungsDoc declares, spelled once. The
+// arm reading the artifact refuses any other.
+const rungsSchemaVersion = 4
 
 // rungWidths are the column budgets the artifact answers for: the narrow
 // window every page opens at, and the one a fourth column is bought on.
@@ -144,7 +158,7 @@ const (
 // under Carried, so the two endpoints a residual lends the fund group's
 // flank are compared rather than subtracted on both sides.
 func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error) {
-	doc := rungsDoc{SchemaVersion: 4}
+	doc := rungsDoc{SchemaVersion: rungsSchemaVersion}
 	for _, year := range spine.YearStems {
 		raw, ok := projections[year]
 		if !ok {
@@ -176,6 +190,19 @@ func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error)
 		doc.Columns = append(doc.Columns, col)
 	}
 	return doc, nil
+}
+
+// spineView is the view at export.IndexPath, the one whose steps the rung
+// answer walks. views only reads built.Projections to name it, so a result
+// carrying the projections alone reaches it; a result whose views name no
+// spine has nothing to walk, and says so.
+func spineView(built result) (export.View, error) {
+	for _, v := range views(built) {
+		if v.Path == export.IndexPath {
+			return v, nil
+		}
+	}
+	return export.View{}, fmt.Errorf("rungs: no view at %q, so there is no spine to walk", export.IndexPath)
 }
 
 // stepStemsFor is the document each step draws for one year: its own for the
