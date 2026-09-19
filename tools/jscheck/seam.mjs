@@ -103,7 +103,12 @@ export async function checks() {
     const lede = app.dom.byId.get("lede-year");
     out.push({
       name: "an injected fetch is in place before main() reaches it",
-      ok: fetch.asked.length === 1 && Boolean(lede && lede.textContent),
+      // TWO FETCHES AND NOT ONE: the stub config names a rung answer, which
+      // main() reads before it draws a year. Pinned as a count rather than
+      // relaxed to "at least one", because the number is what says the seam is
+      // in place for EVERY fetch the load path makes rather than for the one
+      // this check looks at.
+      ok: fetch.asked.length === 2 && Boolean(lede && lede.textContent),
       detail: `main() asked for ${JSON.stringify(fetch.asked)} and drew ` +
         `"${lede ? lede.textContent : ""}" from the injected document`,
     });

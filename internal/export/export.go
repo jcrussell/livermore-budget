@@ -60,6 +60,16 @@ const PrimaryProjection = "sankey"
 // output layout, so it is a constant rather than something a caller may move.
 const IndexPath = "index.html"
 
+// RungsPath is where the rung answer is served: Go's reading of every rung
+// the drill walks, at every column budget, at the site root. The composition
+// root computes and writes it; this package only names it, into
+// window.FISC_CONFIG, so the page fetches the file the site actually wrote.
+//
+// IT IS THE SPINE'S ANSWER AND NOT EVERY PAGE'S. The walk behind it starts
+// from the view at [IndexPath], so a page whose steps are not that view's has
+// no entry in it and must not be told to read one.
+const RungsPath = "rungs.json"
+
 // dataDir is the output subdirectory holding projection JSON. It is part of
 // the published contract — docs/sankey-contract.md promises
 // <output>/data/<projection>.json — so it is a constant, not a flag.

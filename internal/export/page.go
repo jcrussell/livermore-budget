@@ -739,6 +739,31 @@ type clientConfig struct {
 	// Root is the node whose subtree the page draws, omitted when it draws the
 	// whole document.
 	Root string `json:"root,omitempty"`
+	// Rungs is where the page fetches Go's answer for every rung it can open:
+	// which columns each rung draws, in what order, at each column budget, and
+	// which nodes each of those columns holds. [RungsPath], never a second
+	// spelling of it.
+	//
+	// OMITTED MEANS "NOBODY ANSWERS THIS PAGE'S RUNGS", and app.js reads it
+	// that way: a page that opens nothing needs no answer, and one whose steps
+	// the walk behind [RungsPath] never reached must not be handed another
+	// page's. Set only where both hold — see buildSankeyPage.
+	Rungs string `json:"rungs,omitempty"`
+}
+
+// rungsFor is the rung answer's path for one view, or "" where nothing
+// answers that view's rungs.
+//
+// TWO CONDITIONS AND NOT ONE. A view with no steps opens nothing, so there is
+// no rung to answer; a view that is not the one at [IndexPath] has steps the
+// walk behind [RungsPath] never walked, and a page handed that path would
+// fetch a file answering none of its clicks. Either way "" is the honest
+// answer, and it is the value app.js reads as "no rung answer is on offer".
+func rungsFor(v View) string {
+	if v.Path != IndexPath || len(v.Steps) == 0 {
+		return ""
+	}
+	return RungsPath
 }
 
 // tilesFor renders one year's headline figures.
@@ -1613,6 +1638,13 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Docs:          clientDocs,
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
+		// THE ANSWER IS THE SPINE'S, so only the spine is told where it is.
+		// The walk that computes [RungsPath] starts from the view at
+		// IndexPath; handing its path to another view's page would have that
+		// page fetch a file which answers none of its rungs and refuse every
+		// click, which is worse than the derivation it replaced. A view that
+		// opens nothing needs no answer at all.
+		Rungs: rungsFor(v),
 	}
 	blob, err := json.Marshal(cfg)
 	if err != nil {
@@ -1751,6 +1783,9 @@ func buildChartPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
 		Root:          v.Root,
+		// Empty on every view this template renders today, and the guard is
+		// rungsFor's rather than this call site's — see buildSankeyPage.
+		Rungs: rungsFor(v),
 	}
 	blob, err := json.Marshal(cfg)
 	if err != nil {

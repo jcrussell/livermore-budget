@@ -27,6 +27,34 @@ import { fileURLToPath } from "node:url";
 export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
+ * Where the page fetches Go's rung answer, read out of internal/export's own
+ * constant rather than spelled again here.
+ *
+ * READ AND NOT COPIED, FOR spineRenderTiers' REASON. The packager writes this
+ * string into window.FISC_CONFIG and writes the FILE at the same string; a
+ * fixture carrying its own copy would serve the answer at a URL the site does
+ * not use and every check over it would pass against a page no reader gets.
+ */
+export const RUNGS_PATH = (() => {
+  const src = readFileSync(join(repoRoot, "internal", "export", "export.go"), "utf8");
+  const m = /\nconst RungsPath = "([^"]+)"/.exec(src);
+  if (!m) throw new Error("internal/export/export.go declares no RungsPath");
+  return m[1];
+})();
+
+/**
+ * Go's rung answer, from the committed artifact.
+ *
+ * THE SAME BYTES THE SITE SERVES: pkg/cmd/export's
+ * TestTheRungArtifactIsWhatGoComputes pins testdata/rungs.json to what
+ * buildAll ships at [RUNGS_PATH], so serving this file to the page is serving
+ * the file a reader gets.
+ */
+export function rungsAnswer() {
+  return JSON.parse(readFileSync(join(repoRoot, "testdata", "rungs.json"), "utf8"));
+}
+
+/**
  * A DOM stub covering exactly what app.js touches before it gives up.
  *
  * Every method is the smallest thing that keeps the load path from throwing.
@@ -508,7 +536,16 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
     // error path. A check that wants a document passes one to loadApp, which
     // installs it BEFORE app.js runs -- assigning one afterwards is too late,
     // because main() is called at file scope and has already reached its fetch.
-    fetch: () => Promise.reject(new Error("harness: no network")),
+    //
+    // THE RUNG ANSWER IS THE ONE EXCEPTION, and it has to be. main() fetches
+    // it BEFORE the first year, and refuses the page when it cannot be read --
+    // so a default that rejected it would stop every check in this directory
+    // at a banner about rungs.json, and "main() gives up at the document
+    // fetch" would become a sentence no check could reach. It is answered from
+    // the committed artifact, which is the file the site serves.
+    fetch: (path) => (path === RUNGS_PATH
+      ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(rungsAnswer()) })
+      : Promise.reject(new Error("harness: no network"))),
     requestAnimationFrame: (fn) => fn(),
     addEventListener(type, fn) { (windowListeners[type] ||= []).push(fn); },
   };
@@ -730,6 +767,14 @@ export function loadApp(opts = {}) {
       counts: { facts: 1, nodes: 1, links: 1 },
     }],
     docs: {},
+    // THE RUNG ANSWER'S PATH, ON A CONFIG THAT DECLARES NO STEPS, and that is
+    // the app.js condition rather than the packager's. main() fetches this
+    // whenever the key is present and refuses the page when it cannot be read,
+    // so leaving it out here would mean the fetch, its schema gate and its
+    // shape gate ran under no check that does not build a drill config of its
+    // own. Which PAGES get the key is internal/export.rungsFor's rule and the
+    // Go test beside it holds that end.
+    rungs: RUNGS_PATH,
   };
 
   // BOTH SEAMS ARE APPLIED BEFORE app.js RUNS, and that is not a style choice.
@@ -1546,9 +1591,15 @@ export function twoYearConfig() {
  */
 export function plannedFetch(plan) {
   const asked = [];
+  // THE RUNG ANSWER IS PLANNED BY DEFAULT AND OVERRIDABLE. Every check that
+  // drives main() reaches it before the first year, so a plan that did not
+  // answer it would refuse the page and test the banner instead of whatever
+  // the check is about -- while a check whose subject IS that banner still
+  // plans its own entry, which wins.
+  const full = Object.assign({ [RUNGS_PATH]: { doc: rungsAnswer() } }, plan);
   const fetch = (path) => {
     asked.push(path);
-    const entry = plan[path];
+    const entry = full[path];
     if (!entry) return Promise.reject(new Error(`harness: no plan for ${path}`));
     if (entry.hang) return new Promise(() => {});
     // A promise the CHECK settles, which is the only way to place a fetch

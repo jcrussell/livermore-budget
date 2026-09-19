@@ -1422,13 +1422,64 @@ func TestTheSpineTemplatePublishesTheColumnOrderItDeclares(t *testing.T) {
 	}
 }
 
+// TestTheRungAnswerIsNamedToThePageThatCanUseIt pins both halves of rungsFor
+// against rendered pages.
+//
+// THE ABSENT HALF IS THE ONE THAT MATTERS. app.js reads the key as "Go answers
+// this page's rungs"; a page told to read an answer that does not carry its
+// paths refuses every click, so "no key" and "a key" are two different
+// promises and only one of them is checkable by looking at the spine.
+//
+// The mutation is one line: return RungsPath unconditionally from rungsFor and
+// the stepless view below goes red while the spine stays green; drop the
+// Rungs field from buildSankeyPage's clientConfig and the spine goes red
+// while the stepless view stays green.
+func TestTheRungAnswerIsNamedToThePageThatCanUseIt(t *testing.T) {
+	spine := export.View{Path: export.IndexPath, Nav: "Budget flows",
+		Template: export.SankeyTemplate, Projection: "sankey",
+		RenderTiers: []int{0, 2, 5},
+		Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
+			Tiers: []int{0, 2},
+			Back:  "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}}
+	for _, tc := range []struct {
+		name string
+		view export.View
+		want string
+		why  string
+	}{
+		{"a spine that opens nodes", spine, export.RungsPath,
+			"the page opens nodes and the walk behind the answer starts here"},
+		{"a spine that opens none", export.View{Path: export.IndexPath, Nav: "Budget flows",
+			Template: export.SankeyTemplate, Projection: "sankey", RenderTiers: []int{0, 2, 5}}, "",
+			"the page opens nothing, so there is no rung for an answer to be about"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if _, err := writeSite(export.Options{
+				Dir:         dir,
+				Projections: map[string][]byte{"sankey": goldenSankey(t)},
+				Views:       []export.View{tc.view},
+				Docs:        budgetDocs(),
+				GeneratedBy: "fisc test",
+			}); err != nil {
+				t.Fatalf("Write: %v", err)
+			}
+			cfg := clientConfigOf(t, readFile(t, dir, "index.html"))
+			if diff := cmp.Diff(tc.want, cfg.Rungs); diff != "" {
+				t.Errorf("index.html's FISC_CONFIG.rungs (-want +got):\n%s\n%s", diff, tc.why)
+			}
+		})
+	}
+}
+
 // clientConfigOf decodes window.FISC_CONFIG out of a rendered page.
 type clientCfg struct {
 	Projections map[string]string `json:"projections"`
 	Docs        map[string]struct {
 		PageTextBase string `json:"page_text_base"`
 	} `json:"docs"`
-	RenderTiers []int `json:"render_tiers"`
+	RenderTiers []int  `json:"render_tiers"`
+	Rungs       string `json:"rungs"`
 }
 
 func clientConfigOf(t *testing.T, page string) clientCfg {

@@ -29,7 +29,7 @@ import {
   goldenFunding, goldenFunding2027, openableFrom,
   goldenTransfers, goldenTransfers2027,
   stepDescriptions, stepShapes, spineRenderTiers,
-  settle, refusals, twoYearConfig, repoRoot, residualDeclaration,
+  settle, refusals, twoYearConfig, repoRoot, residualDeclaration, RUNGS_PATH,
 } from "./harness.mjs";
 
 /**
@@ -722,6 +722,11 @@ async function opened(plan, tweak, column = COLUMNS[0], extra, shippedWords = fa
   config.projections["department-funding-2027"] = "data/department-funding-2027.json";
   config.render_tiers = PAGE.renderTiers;
   config.steps = PAGE.steps;
+  // THE RUNG ANSWER, BECAUSE THIS CONFIG IS THE ONE THAT OPENS NODES.
+  // internal/export.rungsFor names it to a page with steps and to no other, so
+  // a drill fixture without it would drive the one code path in app.js that
+  // reads Go's answer with nothing to read.
+  config.rungs = RUNGS_PATH;
   config.years = config.years.map((y, i) => Object.assign({}, y, {
     counts: { facts: 120, nodes: 25, links: 58 },
     chart_title: `Sankey diagram of the ${y.label} adopted budget`,
@@ -1514,7 +1519,12 @@ export async function checks() {
     out.push({
       name: `${col.label}: the overview draws the spine whole, from its own year's file, and its counts line describes it`,
       ok: before.counts === PAGE.overview.counts && before.rows === PAGE.overview.links &&
-          before.crumbHidden && fetch.asked.join() === `data/${col.stem}.json`,
+          // THE RUNG ANSWER FIRST AND THE YEAR SECOND, AS A LIST AND NOT A
+          // SET. main() reads Go's answer for the columns before it draws one,
+          // so a page that drew the spine and then asked what it holds would
+          // have shaped a chart against nothing.
+          before.crumbHidden &&
+          fetch.asked.join() === `${RUNGS_PATH},data/${col.stem}.json`,
       detail: `counts "${before.counts}", ${before.rows} table rows, breadcrumb ` +
               (before.crumbHidden ? "hidden" : "SHOWING with nothing opened") +
               `; main() asked for ${JSON.stringify(fetch.asked)}`,
@@ -4633,8 +4643,13 @@ async function walkChain(col) {
   const stepFile = `data/${col.step}.json`;
   out.push({
     name: `${col.label} chain: the year's own step document is fetched on the first drill and not before`,
-    ok: asked0.length === 1 && asked0[0] === `data/${col.stem}.json` &&
-        asked1.length === 2 && asked1[1] === stepFile,
+    // THE RUNG ANSWER IS PART OF THE LOAD AND NOT PART OF THE DRILL, which is
+    // the whole claim this arm makes about it: it is fetched once, before the
+    // year, and a second drill adds nothing. Counted into asked0 rather than
+    // filtered out, so a client that refetched it per rung goes red here.
+    ok: asked0.length === 2 && asked0[0] === RUNGS_PATH &&
+        asked0[1] === `data/${col.stem}.json` &&
+        asked1.length === 3 && asked1[2] === stepFile,
     detail: `main() asked for ${JSON.stringify(asked0)}; the first drill added ` +
       `${JSON.stringify(asked1.slice(asked0.length))}`,
   });

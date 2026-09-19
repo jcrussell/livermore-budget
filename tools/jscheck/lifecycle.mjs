@@ -14,7 +14,10 @@
 // does. Nothing calls main() directly — see harness.mjs on why exporting it
 // would boot a second page.
 
-import { loadApp, settle, twoYearConfig, plannedFetch, refusals, goldenGraph } from "./harness.mjs";
+import {
+  loadApp, settle, twoYearConfig, plannedFetch, refusals, goldenGraph,
+  RUNGS_PATH, rungsAnswer,
+} from "./harness.mjs";
 // THE DRILL-CONFIGURED PAGE IS BUILT IN drill.mjs AND IS NOT REBUILT HERE. The
 // column budget only changes a chart in a window -- the overview is drawn at
 // RENDER_TIERS whatever the budget -- so the arm that says a budget change
@@ -711,6 +714,63 @@ export async function checks() {
         `where one boolean for "did not draw" is what made a superseded opening fetch ` +
         `read as a page that had given up`,
     });
+  }
+
+  // ------------------------------------------------- the rung answer's fetch
+  //
+  // WHICH NODES A COLUMN DRAWS IS GO'S ANSWER, FETCHED. So the page has a file
+  // it cannot draw a rung without, and every way that file can fail to arrive
+  // is a way the page could draw one anyway from whatever it had -- which is a
+  // chart of public money composed from a half-read answer, refusing nothing.
+  //
+  // THE SHAPE ASSERTED IS "BANNER, AND NOTHING DRAWN". Not "banner" alone: a
+  // refusal over a chart that drew is the fisc-bsg split, and here it would be
+  // worse than that, because the chart it sat over would be the one nobody
+  // vetted. The year's own document must not even be ASKED FOR, which is what
+  // says the refusal happened before the draw rather than during it.
+  {
+    const rungConfig = Object.assign({}, config, { rungs: RUNGS_PATH });
+    const answer = rungsAnswer();
+    const truncated = JSON.parse(JSON.stringify(answer));
+    delete truncated.columns[0].rungs[0].draws[0].ids;
+    for (const tc of [
+      {
+        name: "a rung answer the server will not serve",
+        plan: { [RUNGS_PATH]: { ok: false, status: 404 } },
+        says: "HTTP 404",
+      },
+      {
+        name: "a rung answer of another schema",
+        plan: { [RUNGS_PATH]: { doc: Object.assign({}, answer, { schema_version: 99 }) } },
+        says: "schema_version 99",
+      },
+      {
+        name: "a rung answer missing the ids a column holds",
+        plan: { [RUNGS_PATH]: { doc: truncated } },
+        says: "draws[].tier, .ids",
+      },
+    ]) {
+      const fetch = plannedFetch(Object.assign({ "data/sankey.json": { doc } }, tc.plan));
+      const { app, main } = page({ config: rungConfig, fetch });
+      await settle();
+      const banners = refusals(main);
+      const names = banners.length ? banners[0].textContent : "";
+      const drew = app.dom.byId.get("lede-year");
+      const askedYear = fetch.asked.includes("data/sankey.json");
+      out.push({
+        name: `${tc.name} refuses the page in words and draws nothing`,
+        ok: fetch.asked[0] === RUNGS_PATH && banners.length === 1 &&
+          names.includes(RUNGS_PATH) && names.includes(tc.says) &&
+          !askedYear && !(drew && drew.textContent),
+        detail: fetch.asked[0] !== RUNGS_PATH
+          ? `main() asked for ${JSON.stringify(fetch.asked)} first, so the rung answer was ` +
+            `not what failed and this check reached none of the state it is named for`
+          : `${banners.length} banner(s) naming ${RUNGS_PATH} and "${tc.says}" ` +
+            `(${banners.length ? JSON.stringify(names) : "none"}); the year document was ` +
+            `${askedYear ? "FETCHED ANYWAY" : "never asked for"} and the lede reads ` +
+            `"${drew ? drew.textContent : ""}"`,
+      });
+    }
   }
 
   return out;

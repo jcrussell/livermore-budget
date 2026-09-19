@@ -23,7 +23,12 @@ const rungsPath = "testdata/rungs.json"
 // because rungWidths are both answered in it and a client holding it
 // answers a change of column budget by lookup rather than by fetch; a file
 // per budget or per drill was fisc-kbuo candidate (b), and it lost.
-const rungsServedPath = "rungs.json"
+//
+// THE WRITER AND THE PAGE NAME IT FROM ONE CONSTANT. The packager puts the
+// same string into window.FISC_CONFIG for the client to fetch, and a second
+// spelling here would be a served file and a fetched URL free to drift apart
+// by one character.
+const rungsServedPath = export.RungsPath
 
 // rungsSchemaVersion is the version a rungsDoc declares, spelled once. The
 // arm reading the artifact refuses any other.

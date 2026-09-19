@@ -168,6 +168,52 @@
  * @property {number[]} [render_tiers]
  * @property {FiscDrillStep[]} [steps]
  * @property {string} [root]
+ * @property {string} [rungs]  where Go's answer for every rung this page opens
+ *   is served; absent means nobody answers this page's rungs
+ */
+
+/**
+ * Go's answer for every rung the drill walks, at every column budget: what
+ * `fisc export` writes and this page reads rather than deriving.
+ *
+ * @typedef {Object} FiscRungs
+ * @property {number} schema_version
+ * @property {FiscRungColumn[]} columns
+ */
+
+/**
+ * One published year's rungs, by the spine document's stem.
+ * @typedef {Object} FiscRungColumn
+ * @property {string} stem
+ * @property {FiscRung[]} rungs
+ */
+
+/**
+ * One opened path at one column budget.
+ * @typedef {Object} FiscRung
+ * @property {string[]} path  the nodes opened, outermost first
+ * @property {number} width  the column budget this entry answers for
+ * @property {string} step  the key of the step that opened the last node
+ * @property {FiscDrawnTier[]} draws  every column the window draws, in the
+ *   order it draws them
+ */
+
+/**
+ * One column of one rung: which nodes it holds, and how many its folded tail
+ * stands for.
+ *
+ * `ids` is written even when empty, so a column answered with nothing is told
+ * apart from a column not answered at all; `carried`, `cap` and `hidden` are
+ * omitted at zero, so a reader that compared undefined would refuse every
+ * unfolded column.
+ * @typedef {Object} FiscDrawnTier
+ * @property {number} tier
+ * @property {string} role  centre, flank or outward
+ * @property {number} [cap]
+ * @property {number} [candidates]  how many document nodes the window reaches
+ * @property {string[]} ids
+ * @property {string[]} [carried]
+ * @property {number} [hidden]
  */
 
 /**
@@ -1426,6 +1472,43 @@ function docAt(depth) {
  */
 function drawnDoc() {
   return docAt(drilled.length);
+}
+
+/**
+ * Where Go's rung answer is served, or "" on a page nobody answers the rungs
+ * of. export.RungsPath, through the config, so the file the site writes and
+ * the URL the page asks for are one string.
+ */
+const RUNGS_PATH = CONFIG && typeof CONFIG.rungs === "string" ? CONFIG.rungs : "";
+
+/**
+ * The rung-answer schema this client reads.
+ *
+ * SEPARATE FROM SCHEMA_VERSION, because they version different things: that
+ * one is the projection documents' and is stamped by internal/project, this
+ * one is the rung answer's and is stamped by the packager. A single constant
+ * would tie a change in what a chart MEANS to a change in what Go says it
+ * DRAWS, and neither bump implies the other.
+ */
+const RUNGS_SCHEMA = 4;
+
+/**
+ * Go's answer for every rung, by stem, budget and path; null until it lands,
+ * and null forever on a page that is told of no answer.
+ * @type {Map<string, FiscRung> | null}
+ */
+let rungAnswers = null;
+
+/**
+ * One rung's key in `rungAnswers`. The separator is a unit separator rather
+ * than a slash or a space, because a node id carries both and a stem carries
+ * the second.
+ * @param {string} stem
+ * @param {number} width
+ * @param {string[]} path
+ */
+function rungKey(stem, width, path) {
+  return stem + "" + width + "" + path.join("");
 }
 
 /**
@@ -5445,6 +5528,105 @@ async function loadDocument(path, superseded) {
 }
 
 /**
+ * Reports whether a fetched rung answer carries the shape this page reads,
+ * refusing visibly when it does not.
+ *
+ * THE RULE IS drawableSankey's: every key the page DEREFERENCES, and no more.
+ * An answer missing one of them is not a chart drawn slightly wrong, it is a
+ * TypeError inside a click handler, which is the shape that leaves a reader
+ * looking at a chart nothing will admit is broken.
+ *
+ * NOT A SECOND IMPLEMENTATION OF THE WALK THAT WROTE IT. Whether Go's answer
+ * is RIGHT is pkg/cmd/export's TestTheRungArtifactIsWhatGoComputes and
+ * tools/jscheck/chart.mjs; all this asks is whether it can be read at all.
+ *
+ * @param {any} doc
+ * @param {string} what
+ */
+function readableRungs(doc, what) {
+  const missing = [];
+  if (!Array.isArray(doc.columns)) missing.push("columns");
+  else if (doc.columns.some((c) => typeof c.stem !== "string" || !Array.isArray(c.rungs))) {
+    missing.push("columns[].stem, columns[].rungs");
+  } else if (doc.columns.some((c) => c.rungs.some((r) => !Array.isArray(r.path) ||
+    typeof r.width !== "number" || !Array.isArray(r.draws)))) {
+    missing.push("columns[].rungs[].path, .width, .draws");
+  } else if (doc.columns.some((c) => c.rungs.some((r) => r.draws.some((d) =>
+    typeof d.tier !== "number" || !Array.isArray(d.ids))))) {
+    // ONE ELEMENT DEEPER, AND ids IS THE KEY THAT NEEDS IT. Go writes it even
+    // when empty, precisely so a column answered with nothing can be told from
+    // a column left out -- and a reader that accepted the absence would read
+    // the first as the second and draw a column Go says holds nothing.
+    missing.push("columns[].rungs[].draws[].tier, .ids");
+  }
+  if (!missing.length) return true;
+  fail(
+    "This page will not open anything: " + what + " declares schema_version " +
+    RUNGS_SCHEMA + ", which promises " + missing.join(", ") + ", and the file does " +
+    "not carry " + (missing.length === 1 ? "it" : "them") + ". Your browser may be " +
+    "holding a copy from before the last update — reload the page. Otherwise the " +
+    "file is truncated or is not the answer this page expected. Nothing on the " +
+    "page was changed."
+  );
+  return false;
+}
+
+/**
+ * Fetches Go's rung answer and indexes it, or refuses in words.
+ *
+ * ITS OWN FETCH AND NOT loadDocument's, because every guard in that one is
+ * about a SANKEY document -- drawableSankey names nodes, links and locators,
+ * and this file carries none of them. Sharing it would mean a flag deciding
+ * which half of the vetting applies, which is the shape that ships a file
+ * vetted by the wrong half.
+ *
+ * NO SUPERSEDED CALLBACK, because nothing can overtake it: it is fetched once
+ * on the page-load path, before the first year is drawn, and it answers every
+ * year and every budget. A year switch does not refetch it.
+ *
+ * @param {string} path
+ * @returns {Promise<Map<string, FiscRung> | null>}
+ */
+async function loadRungs(path) {
+  let doc;
+  try {
+    const response = await fetch(path);
+    if (!response.ok) {
+      fail("Could not load " + path + ": HTTP " + response.status + ". It is what this " +
+        "page opens a node with, so nothing has been drawn.");
+      return null;
+    }
+    doc = await response.json();
+  } catch (e) {
+    // The two sentences loadDocument tells apart, told apart here for the same
+    // reason: "serve it over HTTP" is useless advice to someone already doing
+    // that, and `e.name` rather than instanceof because an error thrown parsing
+    // a response body need not come from this realm's constructor.
+    fail(e && e.name === "SyntaxError"
+      ? "Could not read " + path + ": the file is not valid JSON, so it is truncated " +
+        "or was not the answer this page expected."
+      : "Could not load " + path + ". If you opened this file directly, the browser " +
+        "blocks the request: serve the directory over HTTP instead, e.g. " +
+        "python3 -m http.server -d dist 8000");
+    return null;
+  }
+  if (!isDocument(doc, path)) return null;
+  if (doc.schema_version !== RUNGS_SCHEMA) {
+    fail("This page will not open anything: " + path + " declares schema_version " +
+      doc.schema_version + ", and this page reads schema_version " + RUNGS_SCHEMA +
+      ". Opening a node against an answer of another shape would draw a chart that " +
+      "is wrong rather than one that fails. Nothing on the page was changed.");
+    return null;
+  }
+  if (!readableRungs(doc, path)) return null;
+  const by = new Map();
+  for (const column of doc.columns) {
+    for (const rung of column.rungs) by.set(rungKey(column.stem, rung.width, rung.path), rung);
+  }
+  return by;
+}
+
+/**
  * What one showYear attempt came to.
  *
  * THREE OUTCOMES AND NOT A BOOLEAN, because "did not draw" was two different
@@ -5810,6 +5992,17 @@ async function main() {
       syncTheme();
       paint();
     });
+  }
+
+  // BEFORE THE FIRST DRAW AND AFTER EVERYTHING IS WIRED. Which nodes a column
+  // holds is Go's answer now, so a page that cannot read it can draw no rung;
+  // fetching it first means a failure is a banner over a page that has drawn
+  // NOTHING, rather than a click that dies at a reader who has been looking at
+  // a chart. The wiring above still happens either way, for fisc-8cg's reason:
+  // an affordance disabled by a failed fetch stays disabled for the visit.
+  if (RUNGS_PATH) {
+    rungAnswers = await loadRungs(RUNGS_PATH);
+    if (!rungAnswers) return;
   }
 
   // Last, and its outcome is deliberately not acted on. showYear has already
