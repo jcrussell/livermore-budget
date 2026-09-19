@@ -25,8 +25,8 @@ func IsAggregate(id string) bool { return strings.HasPrefix(id, aggregatePrefix)
 // Chart is a [Graph] indexed by id: for reading a node's record and walking
 // its hierarchy, and for assembling one chart from halves. The first record
 // of an id wins, which is windowFor's splice, and ribbons between one pair
-// of ends of one kind merge, which is the fold's merge after capColumn has
-// re-pointed a folded node's ribbons at the tail.
+// of ends of one kind merge, which is the merge site/app.js's foldDocument
+// makes of the same pair.
 type Chart struct {
 	Nodes map[string]GraphNode
 	links map[[3]string]int64
@@ -53,9 +53,9 @@ func (c *Chart) Add(n GraphNode) {
 
 // Link merges l into the chart, dropping one that joins a node to itself as
 // a flow inside one box. AN END THE CHART DOES NOT HOLD IS AN ERROR, not a
-// ribbon quietly left out: capColumn drops such a ribbon because it drops
-// the descendants of a folded node first, and the walk that assembles a
-// chart here refuses that fold before it gets this far.
+// ribbon quietly left out: a chart assembled with a ribbon hanging off
+// nothing is one the client would draw with a ribbon hanging off nothing,
+// and the error names which end at the rung that built it.
 func (c *Chart) Link(l GraphLink) error {
 	if l.Source == l.Target {
 		return nil

@@ -45,11 +45,15 @@ func IsGap(id string) bool { return strings.HasPrefix(id, gapPrefix) }
 // how many cents arrive at it and leave it over the drawn chart's ribbons.
 //
 // THE TIER IS THE STEP'S OWN, READ OFF ITS DECLARED TIERS AND NOT OFF THE
-// COLUMNS A BUDGET LEFT DRAWN. carryResidual and markGap both index
-// step.tiers, so a mark can be placed at a column a narrow budget dropped,
-// and this reproduces that rather than correcting it: the artifact is Go's
-// reading of what the client draws, and a placement Go quietly repaired
-// would be one the arm could never see disagree.
+// COLUMNS THE CLIENT ENDS UP DRAWING. carryResidual and markGap both index
+// step.tiers, so a mark can be placed at a column the client dropped for
+// want of room, and this reproduces that rather than correcting it: the
+// artifact is Go's reading of what the client draws, and a placement Go
+// quietly repaired would be one the arm could never see disagree.
+//
+// A mark is the same at every width the client may choose, measured: every
+// path the artifact answered at both three and four columns carried
+// byte-identical marks at both, so these are emitted once per rung.
 //
 // Ends is a residual's alone: the declared endpoints whose flow it carries,
 // sorted. A gap has one ribbon and no endpoint.

@@ -52,17 +52,17 @@ func DecodeGraph(raw []byte) (Graph, error) {
 }
 
 // Reach is what a document draws at each of a set of tiers when one node is
-// opened into them: At holds, per drawn tier, the ids the folded chart
-// touches, sorted; In and Out hold the cents into and out of each node over
-// the kept ribbons before the fold, keyed by the ribbon's own ends, which is
-// the column the client's capColumn ranks -- it runs before foldDocument, so
-// a ribbon that later folds into one box still counts here. A cap looks
-// these up under a drawn-tier id, and that is well-defined only because
-// every drawn node at a capped tier is itself a ribbon's end before the fold:
-// measured over the 38 capped columns whose fold engages in the artifact
-// under testdata/ at 5da4cef, none has a zero here and re-keying by folded
-// ends ranks the same set in all 38. Drawn is the folded chart itself, which
-// is what a rung leaves on screen and the next rung reads its flank off.
+// opened into them: At holds, per drawn tier, the ids the chart touches,
+// sorted, and Drawn is the chart itself, which is what a rung leaves on
+// screen and the next rung reads its flank off.
+//
+// In and Out hold the cents into and out of each node over the kept ribbons
+// before the fold, keyed by the ribbon's own ends. That is the column
+// site/app.js's capColumn ranks, and nothing in this package reads them:
+// ranking a column against a cap is fitting, and fitting is the client's.
+// They are well-defined as a ranking key only because every drawn node at a
+// tier a step caps is itself a ribbon's end before the fold. Whether to keep
+// them here at all is fisc-jf8x.
 type Reach struct {
 	At    map[int][]string
 	In    map[string]int64

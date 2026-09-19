@@ -196,6 +196,15 @@ bd close <id> --reason "..."       # close with what actually happened
 - **An epic closing does not make its dependents workable.** Check before
   planning around one.
 - **Priority drifts.** Look for a bead whose `P1` contradicts its own note.
+- **A bead says what needs DOING, not what happened.** Git holds the history; a
+  bead that reads as a changelog buries the work under it. Keep a measurement
+  only where it is evidence a reader would otherwise re-derive or re-litigate,
+  and drop the commit shas, the account of what landed, and the corrections of
+  earlier notes.
+- **Correct a stale bead in place rather than annotating it.** A note saying the
+  text above is wrong leaves the wrong text as the thing a session reads first.
+  Where a closed bead's decision is reversed, `bd supersede` it with the one
+  that replaces it — a note cannot reach a close reason.
 - Use `bd remember` for cross-session knowledge, not MEMORY.md files. A durable,
   specific finding goes in the relevant bead, in this file, or in the contract
   doc under `docs/` it belongs to.
