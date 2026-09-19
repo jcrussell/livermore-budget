@@ -337,6 +337,12 @@ export const COLUMNS = [
     // one column and not the other. A single figure described both while the
     // only thing below depth 1 was fund/100's divisions.
     openedViews: 76, carryingViews: 51,
+    // AND HOW MANY THE TREE OPENS WHEN EVERY FOLDED COLUMN IS EXPANDED FIRST,
+    // which is a larger space and the one Go answers: a fund a cap folds away
+    // is still reachable, by expanding the column and double clicking it, so
+    // it stands on rungs the unexpanded walk above never reaches.
+    // tools/jscheck/rungs.mjs is what re-measures this.
+    expandedViews: 99,
     // p76 OPENED FROM THE SPINE: the 8 paying ends and the 9 funds they reach,
     // and one ribbon under a pixel. THE HAIRLINE IS THE SCHEDULE AND NOT THE
     // LAYOUT, which is why there is no cap here to fold it away: the page
@@ -511,7 +517,7 @@ export const COLUMNS = [
     transfersStem: "transfers-by-fund-2027", transfers: goldenTransfers2027,
     fundingStem: "department-funding-2027", funding: goldenFunding2027,
     capitalShut: ["fund/511", "fund/512", "fund/513"],
-    openedViews: 74, carryingViews: 49,
+    openedViews: 74, carryingViews: 49, expandedViews: 97,
     // THE SAME SHAPE AND A DIFFERENT TOTAL, pinned in both columns for this
     // file's reason: p76 prints 22 rows in both budget years and nine of them
     // are a dash in both, so the drawn shape is identical -- and the figures
@@ -627,22 +633,18 @@ const TRANSFERS_CAVEATS = [
 ];
 
 /**
- * A fetch plan serving Go's answer with every fold disengaged: the same rungs,
- * the same columns, and no tail on any of them.
+ * The shipped steps with every declared cap raised past the widest column,
+ * which is what draws a chart whole.
  *
- * RAISING THE DECLARED CAP IS NOT ENOUGH. app.js folds a capped column to the
- * ids Go answers rather than to a ranking of its own, so a step whose `caps`
- * say 1000 still draws the eight funds the committed answer names. What draws
- * the column whole is an ANSWER that hides nothing -- a mechanical edit of the
- * committed one, `hidden` deleted and everything else left alone, and not a
- * second ranking written here.
+ * THE DECLARATION IS WHAT THE FOLD OBEYS. DrillStep.Caps says which columns
+ * MAY fold and capColumn decides how much fits under one, so a cap no column
+ * reaches disengages every fold on the page -- no second ranking, and no
+ * edited answer.
  */
-function unfolded() {
-  const doc = rungsAnswer();
-  for (const column of doc.columns) {
-    for (const rung of column.rungs) for (const d of rung.draws) delete d.hidden;
-  }
-  return { [RUNGS_PATH]: { doc } };
+function uncappedSteps() {
+  return PAGE.steps.map((s) => Object.assign({}, s, {
+    caps: s.caps.map((c) => ({ tier: c.tier, cap: 1000 })),
+  }));
 }
 
 /** Caveat refs the way the packager composes them: one anchor per (stem, id). */
@@ -976,6 +978,33 @@ export async function openedWindow(id) {
  * @param {string[]} path the nodes to open, outermost first
  * @param {object} [column] the published column to open, COLUMNS[0] unless said
  */
+/**
+ * Opens every folded tail on the chart on screen, the way the breadcrumb's
+ * gesture does, until none is left.
+ *
+ * NOT A LOOP OVER TODAY'S TIERS. Expanding one column can leave another
+ * foldable column drawn where the first was hiding it, so the condition is
+ * "nothing left to expand" rather than "each tier once"; the bound is what
+ * turns a fold that re-engages into a named failure rather than a hang.
+ *
+ * WHAT IT IS FOR, in the two modules that are not about the gesture itself: a
+ * folded column cannot be asked which nodes it holds, and a node a cap folded
+ * away cannot be clicked. Both are states a reader reaches and Go answers, so
+ * a walk that never expands is a walk over a smaller space than the artifact's
+ * (fisc-22qj).
+ *
+ * @param {any} app
+ * @returns {number} how many columns it opened
+ */
+export function expandAll(app) {
+  for (let done = 0; done < 32; done++) {
+    const tail = app.projection.nodes.find((n) => app.expandable(n));
+    if (!tail) return done;
+    app.expandTier({ tier: tail.tier });
+  }
+  throw new Error("a chart still offers a column to expand after 32 expansions");
+}
+
 export async function openedWide(budget, path, column = COLUMNS[0]) {
   const { app } = await opened(null, null, column);
   app.setColumnBudget(budget);
@@ -1327,20 +1356,14 @@ function crumbs(app) {
  */
 async function expansionChecks() {
   const out = [];
-  // THE CAPS RAISED PAST EVERY COLUMN AND THE ANSWER'S FOLDS DISENGAGED, which
-  // is how `uncapped` is measured now that app.js folds to Go's answer rather
-  // than to a ranking of its own: a raised declaration alone leaves the client
-  // reading the committed answer and folding exactly as before (unfolded).
+  // THE CAPS RAISED PAST EVERY COLUMN, which is how `uncapped` is measured.
   // The expanded chart is compared against THIS chart and not only against its
   // tuple, because "the column is drawn uncapped" and "the chart is the one an
   // uncapped step would have drawn" are different claims and only the second
   // rules out a redraw that moved something else.
-  const uncappedSteps = PAGE.steps.map((s) => Object.assign({}, s, {
-    caps: s.caps.map((c) => ({ tier: c.tier, cap: 1000 })),
-  }));
   for (const col of COLUMNS) {
     const { app } = await opened(null, null, col);
-    const { app: noCap } = await opened(unfolded(), (c) => { c.steps = uncappedSteps; }, col);
+    const { app: noCap } = await opened(null, (c) => { c.steps = uncappedSteps(); }, col);
     await at(app, PAGE.worst);
     const capped = measure(app, app.projection);
     // THE LAID NODE AND NOT THE DOCUMENT'S, because nodeClass asks isContraNode
@@ -1692,10 +1715,7 @@ export async function checks() {
     // engages everywhere would fail at depth 2 for being right, and one that
     // asserted it nowhere would go quiet the day a division gains a ninth
     // category and the column starts folding without anyone deciding to.
-    const uncappedSteps = PAGE.steps.map((s) => Object.assign({}, s, {
-      caps: s.caps.map((c) => ({ tier: c.tier, cap: 1000 })),
-    }));
-    const { app: noCap } = await opened(unfolded(), (c) => { c.steps = uncappedSteps; }, col);
+    const { app: noCap } = await opened(null, (c) => { c.steps = uncappedSteps(); }, col);
     await at(app, PAGE.worst);
     const worst = measure(app, app.projection);
     await at(noCap, PAGE.worst);
@@ -2246,13 +2266,10 @@ export async function checks() {
         link("revenue/x", "fund/3", 9), link("fund/3", "dept/beneath-a-folded-fund", 9),
       ],
     };
-    // GO'S ANSWER FOR THE COLUMN, SPELLED HERE BECAUSE THE DOCUMENT IS. This
-    // probe's document is not one Go ever walked, so its answer is written out
-    // beside it: fund/1 at 900 is the one the cap of 1 keeps, and the other two
-    // are the tail. The ranking itself is Go's and the shipped columns are what
-    // pin it -- what this probe is for is the descendants half.
-    const held = { tier: 3, role: "outward", cap: 1, candidates: 3, ids: ["fund/1"], hidden: 2 };
-    const capped = app.capColumn(doc, 3, held, "", "funds");
+    // A CAP OF 1 OVER THREE, WHICH IS THE SMALLEST COLUMN THE FOLD ENGAGES ON:
+    // three is above cap + 1, fund/1 at 900 is the one the ranking keeps, and
+    // the other two are the tail that takes the descendant with it.
+    const capped = app.capColumn(doc, 3, 1, "", "funds");
     const agg = capped.nodes.find((n) => n.id === app.aggregateID(3));
     const ids = capped.nodes.map((n) => n.id);
     out.push({
@@ -2659,27 +2676,6 @@ export async function checks() {
       says: "the year on screen was not packaged with",
       unfetched: true,
     },
-    // THE SIXTH IS THE ANSWER'S OWN, and it is the one that says a capped
-    // column is not drawn from a ranking of the client's when Go answers
-    // nothing. Reached by deleting the fund column's entry from the served
-    // answer -- the file is otherwise the committed one, so every other rung
-    // of the page goes on being answered and this arm is about one column.
-    // Without the refusal, app.js would have to choose the eight funds itself
-    // again, which is the whole of what this lane moved.
-    {
-      name: "a rung answer that says nothing about the column the cap is for",
-      plan: (() => {
-        const doc = rungsAnswer();
-        for (const c of doc.columns) {
-          for (const r of c.rungs) {
-            if (r.path.join() !== "fund-group/general") continue;
-            r.draws = r.draws.filter((/** @type {any} */ d) => d.tier !== FUND_TIER);
-          }
-        }
-        return { [RUNGS_PATH]: { doc } };
-      })(),
-      says: `${RUNGS_PATH} says nothing about tier ${FUND_TIER} of fund-group/general`,
-    },
   ]) {
     const { app, fetch, main, body } = await opened(refusal.plan, refusal.tweak);
     const before = shown(app, body);
@@ -2745,38 +2741,17 @@ export async function checks() {
       { key: "g", after: [""], from: 2, tiers: [0, 3, 4], caps: [{ tier: 3, cap: 2 }, { tier: 4, cap: 2 }], back: "Back", tail: "funds" },
       { key: "d", after: ["g"], from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 1 }], back: "Up", tail: "categories" },
     ];
-    // GO'S ANSWER FOR THIS DOCUMENT, WRITTEN OUT BECAUSE THE DOCUMENT IS.
-    // app.js folds a capped column to the ids the answer names, so a probe
-    // shipping a document of its own must ship the answer of its own too --
-    // otherwise the click it is about is refused for want of one and the arm
-    // below reports on a chart that never drew.
-    //
-    // THE RANKING BEHIND THESE IDS IS THE ONE Go MAKES, reproduced here for a
-    // document Go has never seen: by the larger of a node's inflow and its
-    // outflow, so fund/a (1000) and fund/b (100) survive the cap of 2 and
-    // fund/c and fund/d are the tail; dept/1 (400) and dept/2 (300) survive
-    // the second; and two rungs down expenditure/p (200) survives a cap of 1.
-    // BOTH BUDGETS ANSWERED IDENTICALLY, because neither step widens, so the
-    // probe draws the same chart whatever viewport the stub reports.
-    const rungs = {
-      schema_version: 4,
-      columns: [{
-        stem: "probe",
-        rungs: [3, 4].flatMap((width) => [
-          { path: ["fund-group/g"], width, step: "g", draws: [
-            { tier: 0, role: "outward", candidates: 1, ids: ["revenue/x"] },
-            { tier: 3, role: "outward", cap: 2, candidates: 4, ids: ["fund/a", "fund/b"], hidden: 2 },
-            { tier: 4, role: "outward", cap: 2, candidates: 4, ids: ["dept/1", "dept/2"], hidden: 2 },
-          ] },
-          { path: ["fund-group/g", "dept/1"], width, step: "d", draws: [
-            { tier: 4, role: "centre", candidates: 1, ids: ["dept/1"] },
-            { tier: 5, role: "outward", cap: 1, candidates: 3, ids: ["expenditure/p"], hidden: 2 },
-          ] },
-        ]),
-      }],
-    };
+    // THE COMMITTED ANSWER, WHICH SAYS NOTHING ABOUT THIS DOCUMENT, and the
+    // probe draws anyway: the page fetches it on load, and which of a capped
+    // column's nodes fit is ranked here (capColumn) rather than looked up. A
+    // probe shipping a document of its own therefore ships no answer of its
+    // own. The ranking this document exercises is by the larger of a node's
+    // inflow and its outflow, so fund/a (1000) and fund/b (100) survive the
+    // cap of 2 and fund/c and fund/d are the tail; dept/1 (400) and dept/2
+    // (300) survive the second; and two rungs down expenditure/p (200)
+    // survives a cap of 1.
     const app = loadApp({
-      fetch: plannedFetch({ "data/probe.json": { doc }, [RUNGS_PATH]: { doc: rungs } }),
+      fetch: plannedFetch({ "data/probe.json": { doc }, [RUNGS_PATH]: { doc: rungsAnswer() } }),
       config: {
         schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
         render_tiers: [0, 2], steps, rungs: RUNGS_PATH,
@@ -4437,27 +4412,13 @@ async function categoryProbes() {
     spine.links = spine.links.concat([
       link("revenue/probe", "fund-group/general", 700), link("revenue/probe", "fund-group/special-revenue", 300),
       link("revenue/empty", "fund-group/general", 1)]);
-    // AND GO'S ANSWER FOR THE PLANTED CATEGORY, appended to the committed one
-    // rather than replacing it, because the probe opens revenue/empty off the
-    // same page and every other rung must go on being answered. The step caps
-    // the line column, so without an entry the click is refused for want of
-    // one; the entry hides nothing, which is the whole point of a category
-    // whose single line cannot be folded.
-    const answer = rungsAnswer();
-    const lineCap = PAGE.steps.find((s) => s.key === "revenue-category").caps[0];
-    answer.columns.find((c) => c.stem === col.stem).rungs.push(...[3, 4].map((width) => ({
-      path: ["revenue/probe"], width, step: "revenue-category",
-      draws: [
-        { tier: lineCap.tier, role: "outward", cap: lineCap.cap, candidates: 1,
-          ids: ["revenue-line/probe/only"] },
-        { tier: 0, role: "centre", candidates: 1, ids: ["revenue/probe"] },
-        { tier: 2, role: "flank", candidates: 2,
-          ids: ["fund-group/general", "fund-group/special-revenue"] },
-      ],
-    })));
+    // NO ANSWER FOR THE PLANTED CATEGORY, and the click opens regardless: the
+    // committed answer says nothing about revenue/probe, and the step's cap
+    // on the line column is spent by capColumn over the document the page
+    // fetched. A category whose single line cannot be folded is a column
+    // drawn whole, which is what this probe is about.
     const { app, main } = await opened({
-      "data/sankey.json": { doc: spine }, "data/fund-flows.json": { doc },
-      [RUNGS_PATH]: { doc: answer } }, null, col);
+      "data/sankey.json": { doc: spine }, "data/fund-flows.json": { doc } }, null, col);
     const one = await openInto(app, "revenue/probe");
     const laid = one === "drew" ? app.layOut(app.projection) : null;
     const only = laid ? laid.nodes.find((n) => n.id === "revenue-line/probe/only") : null;

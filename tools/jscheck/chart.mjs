@@ -2,25 +2,23 @@
 // DOM the client drew it into.
 //
 // WHAT THIS WITNESSES THAT rungs.mjs CANNOT. That file is an EQUIVALENCE arm:
-// it holds the client's shaping -- which nodes a column draws, which it
-// carries, what its tail hides -- against Go's committed answer in
-// testdata/rungs.json. Both sides of that comparison are computations. Neither
-// is a mark on a page. Every class, attribute, child element and event handler
-// render() writes was, until this file, written by the page and read by
-// nothing: the stub answered no "#chart" selector, so d3 laid render()'s whole
-// selection over a null node -- D3.select("#chart").size() was 0, .append("g")
-// returned a size-0 selection, every .attr() accessor was invoked zero times
-// and .on() registered no handler.
+// it holds the client's shaping -- which nodes a column holds, which it
+// carries, how many its fit leaves room for -- against Go's committed answer
+// in testdata/rungs.json. Both sides of that comparison are computations.
+// Neither is a mark on a page. Every class, attribute, child element and event
+// handler render() writes was, until this file, written by the page and read
+// by nothing: the stub answered no "#chart" selector, so d3 laid render()'s
+// whole selection over a null node -- D3.select("#chart").size() was 0,
+// .append("g") returned a size-0 selection, every .attr() accessor was invoked
+// zero times and .on() registered no handler.
 //
-// AND WHY THAT MATTERS. Where the client READS Go's answer rather than
-// recomputing it (fisc-phtp.2), rungs.mjs compares that artifact against
-// itself and is green by construction -- checks that cannot fail, in this
-// branch's strongest guarantee, arriving disguised as a passing suite. A
-// capped column whose fold engages is already such a place, and rungs.mjs's
-// own header says which of its arms that costs. This module is what witnesses
-// the client there, because what it reads is the drawing and not the
-// derivation: a client that got its ids straight from Go and drew none of
-// them, or drew them with no handler on them, is red here and green there.
+// AND WHY THAT MATTERS. A chart agreeing with Go about its own nodes is not a
+// chart: the shaping can be right in every figure rungs.mjs reads and reach no
+// reader at all, and it did -- every mark, every ribbon and every handler
+// below was unobserved until this module drew them. What it reads is the
+// DRAWING and not the derivation, so a client that shaped the column Go
+// answers and then drew none of it, drew it twice, or drew it with no handler
+// on it, is red here and green there.
 //
 // PLANTING A BARE #chart NODE IS THE TRAP AND ARM (e) IS WHY IT IS NAMED. With
 // setAttribute and addEventListener answering but ownerDocument and
@@ -34,22 +32,22 @@
 // return [] -- blind the reader -- and all five arms go red on their own
 // counters rather than green with nothing compared. Take the "#chart" answer
 // out of harness.mjs's document.querySelector and they go red saying the chart
-// drew nothing. Remove one id from a column of a rung the fold does not engage
-// on -- expenditure/capital-outlay's tier 4 at 3 columns -- and (a) goes red
-// naming the mark Go answers for no longer: "the chart draws 9" against 8
-// accounted for. That is the mutation that proves this arm is what sees
-// fisc-phtp.2 land. Remove one from a column the fold DOES engage on and the
-// rung refuses instead, because capColumn holds the answer against its own
-// `hidden`, so (e) is the arm that names it.
+// drew nothing. Remove one id from a column of a driven rung that the fold
+// does NOT engage on -- expenditure/capital-outlay's tier 4 -- and (a) goes
+// red naming the mark Go accounts for no longer: "the chart draws 9" against 8
+// accounted for. Remove one from behind a TAIL and this file is silent, which
+// is the trade the ruling makes and the reason it is written here: a folded
+// column's hidden ids are not on the page to read, and rungs.mjs is what
+// compares them, expanding the column first.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { repoRoot, settle } from "./harness.mjs";
-import { COLUMNS, openedWide } from "./drill.mjs";
+import { COLUMNS, expandAll, openedWide } from "./drill.mjs";
 
 const ARTIFACT = JSON.parse(readFileSync(join(repoRoot, "testdata", "rungs.json"), "utf8"));
-if (ARTIFACT.schema_version !== 4) {
-  throw new Error(`testdata/rungs.json declares schema_version ${ARTIFACT.schema_version}; this module reads 4`);
+if (ARTIFACT.schema_version !== 5) {
+  throw new Error(`testdata/rungs.json declares schema_version ${ARTIFACT.schema_version}; this module reads 5`);
 }
 
 /** @param {string[]} path */
@@ -85,44 +83,62 @@ function ribbonsIn(chart) {
 }
 
 /**
- * The ids Go's answer accounts for at one rung: the opened node's own parts,
- * the marks carried beside them, the folded tail where a column has one, and
- * the marks the client adds of its own.
+ * The ids Go's answer accounts for at one rung, each with the column it stands
+ * in: the opened node's own parts, the marks carried beside them, and the
+ * marks the client adds of its own.
  *
- * THE TAIL'S ID IS THE CLIENT'S SPELLING AND ITS EXISTENCE IS GO'S. Go answers
- * how many a column hides and not what the mark standing for them is called, so
- * `hidden > 0` is read out of the artifact and aggregateID says what that mark's
- * id is. A tail Go says nothing is hidden at is an id nothing here adds, and a
- * mark the client draws for it is then an id (a) names as unanswered.
+ * THE TAIL IS NOT ONE OF THEM, AND THAT IS THE WHOLE OF WHAT A FOLD COSTS THIS
+ * ARM. Go answers what a column HOLDS and the client decides how much fits, so
+ * neither the tail's existence nor its id is in this file: what (a) can still
+ * say is that an id Go accounts for is either a mark on the chart or behind
+ * the tail of ITS OWN column, and that nothing else is drawn at all.
+ *
+ * A MARK OF THE CLIENT'S OWN IS GIVEN NO COLUMN, deliberately, so that it can
+ * never be excused as folded away. Measured over the whole walk in rungs.mjs:
+ * the residual and the gap are on the chart at every rung whether its columns
+ * are fitted or expanded.
  *
  * @param {any} rung one entry of testdata/rungs.json's columns[].rungs
- * @param {(tier: number) => string} aggregateID
+ * @returns {Map<string, number>} every accounted id, by the tier it stands at,
+ *   with -1 for a mark that stands outside the fold
  */
-function answeredIDs(rung, aggregateID) {
-  const ids = new Set();
+function answeredIDs(rung) {
+  /** @type {Map<string, number>} */
+  const ids = new Map();
   for (const d of rung.draws) {
-    for (const id of d.ids) ids.add(id);
-    for (const id of d.carried || []) ids.add(id);
-    if ((d.hidden || 0) > 0) ids.add(aggregateID(d.tier));
+    for (const id of d.ids) ids.set(id, d.tier);
+    for (const id of d.carried || []) ids.set(id, d.tier);
   }
-  for (const m of rung.marks || []) ids.add(m.id);
+  for (const m of rung.marks || []) ids.set(m.id, -1);
   return ids;
 }
 
+/** How many nodes the widest column of one rung holds, unfolded. */
+const widest = (rung) => Math.max(...rung.draws.map((/** @type {any} */ d) =>
+  d.ids.length + (d.carried || []).length));
+
 /**
- * The rungs this arm drives in one column at one budget, chosen by what each
- * one exercises rather than by name.
+ * The rungs this arm drives in one column, chosen by what each one exercises
+ * rather than by name.
  *
  * CHOSEN AND NOT ENUMERATED, because driving all of them is rungs.mjs's job and
  * costs a render per rung; what this arm needs is every SHAPE a drawing can
  * take. The overview is the state no rung answers for; the first depth-1 rung
- * is the plain one; the first rung with a fold engaged is the only state where
- * a tail is a mark; the first with a residual and the first with a gap are the
- * two marks the client adds of its own; the deepest is the one whose window is
- * three rungs from the overview. Selected off the artifact in its own order, so
- * the set is a function of Go's answer and not of a list here.
+ * is the plain one; the rung holding the widest column is where a fold is
+ * engaged if it is engaged anywhere; the first with a residual and the first
+ * with a gap are the two marks the client adds of its own; the deepest is the
+ * one whose window is three rungs from the overview. Selected off the artifact
+ * in its own order, so the set is a function of Go's answer and not of a list
+ * here.
  *
- * @param {any[]} rungs the column's rungs at one width
+ * THE FOLDED STATE IS CHOSEN BY SIZE AND NOT BY A FOLD, which is what the
+ * ruling costs this selection: the artifact says what a column holds and no
+ * longer which columns fit, so it cannot be asked where a tail is. The widest
+ * column is where one is if there is one, and `seen.tails` is what says a tail
+ * was actually drawn there -- a run in which the fold stops engaging takes that
+ * counter to zero and (a) red, rather than quietly driving five plain charts.
+ *
+ * @param {any[]} rungs the column's rungs
  */
 function statesIn(rungs) {
   /** @type {string[][]} */
@@ -130,7 +146,10 @@ function statesIn(rungs) {
   const deepest = Math.max(...rungs.map((r) => r.path.length));
   const wanted = [
     rungs.find((r) => r.path.length === 1),
-    rungs.find((r) => r.draws.some((/** @type {any} */ d) => (d.hidden || 0) > 0)),
+    // Ties broken by the path, so the state driven is the same on two runs
+    // over the same artifact.
+    rungs.reduce((a, b) => (widest(b) > widest(a) ||
+      (widest(b) === widest(a) && keyOf(b.path) < keyOf(a.path)) ? b : a)),
     rungs.find((r) => (r.marks || []).some((/** @type {any} */ m) => m.role === "residual")),
     rungs.find((r) => (r.marks || []).some((/** @type {any} */ m) => m.role === "gap")),
     rungs.find((r) => r.path.length === deepest),
@@ -141,10 +160,19 @@ function statesIn(rungs) {
   return chosen;
 }
 
-/** Puts the app on the chart one path names, from the overview. */
+/**
+ * Puts the app on the chart one path names, from the overview.
+ *
+ * EXPANDED ON THE WAY IN AND NOT AT THE END. A node an outer chart's cap
+ * folded away cannot be clicked until that column is expanded, so a path Go
+ * answers is not always reachable without the gesture; the last open is not
+ * followed by one, so the state measured is the chart as a reader is first
+ * shown it, fold and all.
+ */
 async function goTo(app, path) {
   app.drillUp(0);
   for (const id of path) {
+    expandAll(app);
     const outcome = await app.drillDown(id);
     await settle();
     if (outcome !== "drew") throw new Error(`drillDown(${id}) ${outcome}`);
@@ -182,11 +210,11 @@ export async function checks() {
     const wrong = { reach: [], ribbons: [], written: [], gestures: [], banner: [] };
     const seen = {
       states: 0, answered: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
-      tails: 0, ownMarks: 0,
+      tails: 0, ownMarks: 0, offscreen: 0,
     };
 
     for (const width of [3, 4]) {
-      const rungs = column.rungs.filter((r) => r.width === width);
+      const rungs = column.rungs;
       const answers = new Map(rungs.map((r) => [keyOf(r.path), r]));
       const app = await openedWide(width, [], col);
       const chart = app.dom.document.getElementById("chart");
@@ -266,15 +294,31 @@ export async function checks() {
         const answer = answers.get(keyOf(path));
         if (answer) {
           seen.answered++;
-          seen.tails += answer.draws.filter((/** @type {any} */ d) => (d.hidden || 0) > 0).length;
           seen.ownMarks += (answer.marks || []).length;
-          const want = answeredIDs(answer, app.aggregateID);
-          const unanswered = drawn.filter((id) => !want.has(id));
-          const undrawn = [...want].filter((id) => !drawn.includes(id));
+          // THE TAILS ARE READ OFF THE CHART, because whether a column folded
+          // is the client's answer now. Their columns are what excuses an
+          // accounted id from being drawn, and nothing else does.
+          const tails = marks.filter((/** @type {any} */ m) => app.isAggregate(m.__data__.id));
+          const folded = new Set(tails.map((/** @type {any} */ m) => m.__data__.tier));
+          seen.tails += tails.length;
+          // AND THE COLUMNS THIS BUDGET DOES NOT BUY. Go answers every tier
+          // the step declares; a narrow window draws fewer, so an id at a
+          // column that is not on screen at all is neither drawn nor folded.
+          // Excused here and held elsewhere: rungs.mjs is what refuses a
+          // dropped column the step does not declare a widening.
+          const columns = new Set(app.activeTiers());
+          const want = answeredIDs(answer);
+          const tailIDs = [...folded].map((/** @type {number} */ t) => app.aggregateID(t));
+          const unanswered = drawn.filter((id) => !want.has(id) && !tailIDs.includes(id));
+          const offscreen = [...want.keys()].filter((id) => want.get(id) !== -1 && !columns.has(want.get(id)));
+          const undrawn = [...want.keys()].filter((id) => !drawn.includes(id) &&
+            !folded.has(want.get(id)) && !offscreen.includes(id));
+          seen.offscreen += offscreen.length;
           if (unanswered.length || undrawn.length) {
-            wrong.reach.push(`${where}: Go accounts for ${want.size} id(s) and the chart draws ` +
-              `${drawn.length}` +
-              (undrawn.length ? `; Go answers and no mark carries: ${undrawn.join(", ")}` : "") +
+            wrong.reach.push(`${where}: Go accounts for ${want.size} id(s), the chart draws ` +
+              `${drawn.length} of which ${tails.length} stand(s) for a folded column, and ` +
+              `${offscreen.length} stand(s) at a column this budget drops` +
+              (undrawn.length ? `; Go answers, no mark carries and no tail stands for: ${undrawn.join(", ")}` : "") +
               (unanswered.length ? `; drawn and Go accounts for none: ${unanswered.join(", ")}` : ""));
           }
         } else if (path.length) {
@@ -406,9 +450,10 @@ export async function checks() {
       detail: wrong.reach.length
         ? `${wrong.reach.length} disagreement(s), ${firstOf(wrong.reach)}`
         : `${seen.marks} mark(s) over ${seen.states} state(s), ${seen.answered} of them a rung ` +
-          `testdata/rungs.json answers -- accounting for ${seen.tails} folded tail(s) and ` +
-          `${seen.ownMarks} mark(s) the client adds of its own, each of which is an id no ` +
-          `document names`,
+          `testdata/rungs.json answers -- every id it accounts for drawn, behind one of ` +
+          `${seen.tails} folded tail(s), or at one of ${seen.offscreen} places in a column this ` +
+          `budget drops -- and ${seen.ownMarks} mark(s) the client adds of its own, each of ` +
+          `which is an id no document names`,
     });
     out.push({
       name: `${col.label}: every link the chart lays out reaches a ribbon with a path, a width and a name`,

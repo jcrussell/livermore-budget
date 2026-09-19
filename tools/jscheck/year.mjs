@@ -603,14 +603,13 @@ export async function checks() {
 async function chainedYears(plan, paths) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
-  // THE SHIPPED STEP'S COLUMNS AND THE SHIPPED STEP'S CAP, because the rung
-  // answer below is the shipped one. app.js folds a capped column to the ids
-  // Go answers for the rung on screen, so a fixture declaring a tier set of
-  // its own would be drawing the shipped answer for a column it invented --
-  // which is a fixture that can only agree with itself. The tier-4 cap that
-  // used to sit here is gone with the tier: it is inert on this corpus (23
-  // divisions under a cap of 24) and drill.mjs is where a step with two caps
-  // is modelled.
+  // THE SHIPPED STEP'S COLUMNS AND THE SHIPPED STEP'S CAP, because nothing in
+  // this file is about the shaping. Every arm below is about what a YEAR
+  // SWITCH does to a rung that is already open, and a step of this fixture's
+  // own invention would make each of those claims a claim about a chart no
+  // reader is served. The tier-4 cap that used to sit here is gone with the
+  // tier: it is inert on this corpus (23 divisions under a cap of 24) and
+  // drill.mjs is where a step with two caps is modelled.
   config.steps = [{
     key: "group", after: [""], from: 2, projection: "fund-flows", tiers: [0, 2, 3],
     caps: [{ tier: 3, cap: 8 }], back: "All fund groups", tail: "funds",
