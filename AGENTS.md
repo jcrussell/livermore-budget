@@ -20,7 +20,10 @@ looks.
 ### Go vets, JavaScript renders
 
 **What EXISTS goes in Go, emitted vetted**: which nodes, which links, which
-columns, which folds, which derived marks and their amounts.
+columns, which columns MAY fold, which derived marks and their amounts. Which
+of a column's members a fold then hides is the client's, because folding is
+fitting to a viewport Go cannot see; `DrillStep.Caps` is where the permission
+is declared and `DrillStep.Widen` which columns a fourth buys.
 
 **What MOVES goes in JavaScript**: d3-sankey positions, tooltips, focus,
 transitions, the year control.

@@ -740,9 +740,8 @@ type clientConfig struct {
 	// whole document.
 	Root string `json:"root,omitempty"`
 	// Rungs is where the page fetches Go's answer for every rung it can open:
-	// which columns each rung draws, in what order, at each column budget, and
-	// which nodes each of those columns holds. [RungsPath], never a second
-	// spelling of it.
+	// which columns each rung draws, in what order, and which nodes each of
+	// those columns holds. [RungsPath], never a second spelling of it.
 	//
 	// OMITTED MEANS "NOBODY ANSWERS THIS PAGE'S RUNGS", and app.js reads it
 	// that way: a page that opens nothing needs no answer, and one whose steps

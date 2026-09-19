@@ -61,7 +61,7 @@ const PrimaryProjection = "sankey"
 const IndexPath = "index.html"
 
 // RungsPath is where the rung answer is served: Go's reading of every rung
-// the drill walks, at every column budget, at the site root. The composition
+// the drill walks, at the site root. The composition
 // root computes and writes it; this package only names it, into
 // window.FISC_CONFIG, so the page fetches the file the site actually wrote.
 //

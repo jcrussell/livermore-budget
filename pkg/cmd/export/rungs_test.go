@@ -26,11 +26,11 @@ import (
 // that pin green.
 //
 // THE VACUITY GUARDS ARE THE POINT. tools/jscheck/rungs.mjs holds the client
-// to this file, and a file in which no cap ever engages, in which every
-// column's ids are empty, or which answers for one budget or one year, is one
-// the arm could report PASS against without the comparison it exists for
-// ever running. Each guard below names the shape it refuses and where the
-// committed corpus supplies the opposite.
+// to this file, and a file in which every column's ids are empty, in which no
+// column holds more than a cap the client would fold, or which answers for
+// one year, is one the arm could report PASS against without the comparison
+// it exists for ever running. Each guard below names the shape it refuses and
+// where the committed corpus supplies the opposite.
 func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -75,10 +75,8 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	if len(doc.Columns) != len(spine.YearStems) || len(doc.Columns) == 0 {
 		t.Fatalf("the artifact answers for %d column(s) and the spine lists %d year(s)", len(doc.Columns), len(spine.YearStems))
 	}
-	widths := map[int]bool{}
-	var engaged, unfoldedOverCap, uncappedIDs, plural, unflanked, flankPlural, flankCarried, emptyFlank int
+	var overCap, uncappedIDs, plural, unflanked, flankPlural, flankCarried, emptyFlank, parented int
 	distinct := map[string]bool{}
-	widened := false
 	// THE MARKS ARE ANSWERED ON DIFFERENT STEPS AND NEVER MEET, which is a
 	// pinned zero: no step declares both a residual and a gap, so no rung
 	// carries two marks, and the order the two are applied in is a claim
@@ -88,37 +86,50 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			t.Errorf("step %q declares both a residual and a gap, which no rung in this artifact has been measured carrying together", s.Key)
 		}
 	}
-	gapAt := map[int]bool{}
 	gapYears := map[string]bool{}
-	residualAt := map[int]bool{}
 	residualYears := map[string]bool{}
-	var offBudget int
 	for _, col := range doc.Columns {
 		if len(col.Rungs) == 0 {
 			t.Fatalf("column %q has no rung, so there is nothing to hold the client to", col.Stem)
 		}
-		drawsAt := map[string]map[int]int{}
+		// WHAT EACH RUNG HOLDS, READ ONCE AND KEYED BY PATH, which is the
+		// artifact's shape now that no column budget multiplies it: a path
+		// answered twice is two answers to one question, and the second pass
+		// needs the first pass's whole file to ask about a rung's parent.
+		holds := map[string][]string{}
 		for _, r := range col.Rungs {
-			widths[r.Width] = true
 			key := strings.Join(r.Path, " > ")
-			if drawsAt[key] == nil {
-				drawsAt[key] = map[int]int{}
+			if _, twice := holds[key]; twice {
+				t.Fatalf("column %q answers the path %q twice, and a rung is one opened path", col.Stem, key)
 			}
-			drawsAt[key][r.Width] = len(r.Draws)
+			ids := []string{}
+			for _, d := range r.Draws {
+				ids = append(ids, d.IDs...)
+				ids = append(ids, d.Carried...)
+			}
+			holds[key] = ids
+		}
+		for _, r := range col.Rungs {
+			key := strings.Join(r.Path, " > ")
 			s, ok := stepByKey(spine.Steps, r.Step)
 			if !ok {
-				t.Fatalf("%s %s at %d: step %q is not declared on the spine", col.Stem, key, r.Width, r.Step)
+				t.Fatalf("%s %s: step %q is not declared on the spine", col.Stem, key, r.Step)
 			}
 			at := func(format string, args ...any) {
 				t.Helper()
-				t.Errorf("%s %s at %d columns: %s", col.Stem, key, r.Width, fmt.Sprintf(format, args...))
+				t.Errorf("%s %s: %s", col.Stem, key, fmt.Sprintf(format, args...))
 			}
 			tiers := make([]int, len(r.Draws))
 			for i, d := range r.Draws {
 				tiers[i] = d.Tier
 			}
-			if !isSubsequence(tiers, s.Tiers) || len(slices.Compact(slices.Sorted(slices.Values(tiers)))) != len(tiers) {
-				at("draws tiers %v, which is not an ordered subsequence of the step's %v", tiers, s.Tiers)
+			// EVERY COLUMN THE STEP DECLARES IS ANSWERED, IN ITS ORDER. A
+			// column the document draws nothing in is answered empty rather
+			// than dropped, so a walk that dropped one -- as it dropped a
+			// widened column at a narrow budget -- is one id set short of the
+			// step it claims to answer.
+			if !slices.Equal(tiers, s.Tiers) {
+				at("draws tiers %v and the step declares %v", tiers, s.Tiers)
 			}
 			var centres, flanks int
 			for _, d := range r.Draws {
@@ -126,17 +137,11 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				switch d.Role {
 				case roleCentre:
 					centres++
-					if !slices.Equal(slices.Concat(d.IDs, d.Carried), []string{r.Path[len(r.Path)-1]}) || d.Candidates != 1 {
-						at("the centre draws %v and carries %v of %d, not the opened node alone", d.IDs, d.Carried, d.Candidates)
+					if !slices.Equal(slices.Concat(d.IDs, d.Carried), []string{r.Path[len(r.Path)-1]}) {
+						at("the centre draws %v and carries %v, not the opened node alone", d.IDs, d.Carried)
 					}
 				case roleFlank:
 					flanks++
-					// THE FLANK IS ANSWERED, NOT DECLINED, and never under a cap:
-					// this walk refuses a cap on a kept tier, so a flank with a
-					// hidden count is one it could not have written.
-					if d.Cap != 0 || d.Hidden != 0 {
-						at("flank tier %d carries a cap of %d and hides %d", d.Tier, d.Cap, d.Hidden)
-					}
 					if len(d.IDs) > 1 {
 						flankPlural++
 					}
@@ -155,12 +160,6 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				// the two shapes differently.
 				if d.IDs == nil {
 					at("tier %d's ids are omitted rather than empty", d.Tier)
-				}
-				if drawn != d.Candidates-d.Hidden {
-					at("tier %d draws %d ids and carries %d of %d candidates with %d hidden", d.Tier, len(d.IDs), len(d.Carried), d.Candidates, d.Hidden)
-				}
-				if d.Hidden != 0 && (d.Cap <= 0 || d.Hidden != d.Candidates-d.Cap || drawn != d.Cap) {
-					at("tier %d hides %d of %d under a cap of %d, drawing %d", d.Tier, d.Hidden, d.Candidates, d.Cap, drawn)
 				}
 				if !slices.IsSorted(d.IDs) || len(slices.Compact(slices.Clone(d.IDs))) != len(d.IDs) {
 					at("tier %d's ids are not sorted and unique: %v", d.Tier, d.IDs)
@@ -182,12 +181,13 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				if len(d.IDs) > 1 {
 					plural++
 				}
-				switch {
-				case d.Cap > 0 && d.Hidden > 0:
-					engaged++
-				case d.Cap > 0 && d.Hidden == 0 && d.Candidates > d.Cap:
-					unfoldedOverCap++
-				case d.Cap == 0 && len(d.IDs) > 0:
+				// WHAT THE CLIENT IS LEFT TO FOLD, counted against the step's own
+				// declaration rather than against a field of this file: a column
+				// holding more than the cap DrillStep.Caps declares for its tier
+				// is one the client folds and this artifact does not.
+				if c, capped := capOf(s, d.Tier); capped && drawn > c {
+					overCap++
+				} else if !capped && len(d.IDs) > 0 {
 					uncappedIDs++
 				}
 			}
@@ -203,7 +203,6 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			for _, m := range r.Marks {
 				switch m.Role {
 				case export.RoleResidual:
-					residualAt[r.Width] = true
 					residualYears[col.Stem] = true
 					if m.ID != export.ResidualID(opened) {
 						at("residual mark %q is not %q", m.ID, export.ResidualID(opened))
@@ -220,7 +219,6 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 						}
 					}
 				case export.RoleGap:
-					gapAt[r.Width] = true
 					gapYears[col.Stem] = true
 					if m.ID != export.GapID(opened) {
 						at("gap mark %q is not %q", m.ID, export.GapID(opened))
@@ -236,9 +234,6 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				}
 				if !slices.Contains(s.Tiers, m.Tier) {
 					at("mark %q stands at tier %d, which the step does not declare", m.ID, m.Tier)
-				}
-				if !slices.Contains(tiers, m.Tier) {
-					offBudget++
 				}
 				for _, d := range r.Draws {
 					if slices.Contains(d.IDs, m.ID) || slices.Contains(d.Carried, m.ID) {
@@ -258,47 +253,46 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			if flanks != len(s.Keep) {
 				at("draws %d flank column(s) and the step keeps %d", flanks, len(s.Keep))
 			}
-		}
-		for _, byWidth := range drawsAt {
-			if a, ok := byWidth[3]; ok {
-				if b, ok := byWidth[4]; ok && a != b {
-					widened = true
+			// THE RUNG ABOVE HOLDS THE NODE THIS ONE OPENED, and that is what
+			// says the walk descends the whole chart rather than the part a
+			// fold left: a column answered folded would be one whose hidden
+			// members are opened by rungs no answer above them names.
+			if len(r.Path) > 1 {
+				above := strings.Join(r.Path[:len(r.Path)-1], " > ")
+				switch held, answered := holds[above]; {
+				case !answered:
+					at("opens under the path %q, which this column answers no rung for", above)
+				case !slices.Contains(held, opened):
+					at("opens %q, and the rung at %q neither counts nor carries it in any column", opened, above)
+				default:
+					parented++
 				}
 			}
 		}
 	}
-	for _, w := range rungWidths {
-		if !widths[w] {
-			t.Errorf("no rung is answered at %d columns", w)
-		}
-	}
 	// EACH OF THESE IS A SHAPE THE ARM COULD PASS WITHOUT COMPARING ANYTHING.
-	// The corpus supplies them today at, respectively, special-revenue's
-	// funds under fund-group; enterprise's 9 funds under the same cap of 8;
-	// fund-departments' tier 4, which no step caps; fund's tier 5, which
-	// only the fourth column buys; and transfers/in under the transfers step,
-	// which keeps no flank.
+	// The corpus supplies them today at, respectively, special-revenue's 32
+	// funds under fund-group's cap of 8; fund-departments' tier 4, which no
+	// step caps; every fund opened out of a fund group; and transfers/in
+	// under the transfers step, which keeps no flank.
 	//
-	// THE LAST TWO GUARDS ARE ONE REGRESSION SEEN FROM BOTH SIDES. The walk
-	// once skipped every step that keeps no flank and wrote the skip into the
+	// THE UNFLANKED GUARD IS A REGRESSION SEEN FROM BOTH SIDES. The walk once
+	// skipped every step that keeps no flank and wrote the skip into the
 	// artifact, and the arm let every rung under a skipped step by. A walk
 	// that quietly did so again would leave every other guard here green and
 	// the transfers rung unanswered, so the artifact must answer under such a
-	// step and must declare nothing skipped.
-	if engaged == 0 {
-		t.Error("no cap engages on any rung at any width, so a cap perturbed in this artifact could not be seen")
-	}
-	if unfoldedOverCap == 0 {
-		t.Error("no column sits between its cap and cap+1, so the fold's threshold is not witnessed")
+	// step.
+	if overCap == 0 {
+		t.Error("no column holds more than the cap its step declares for that tier, so the client has no fold left to exercise and this artifact could not show one")
 	}
 	if uncappedIDs == 0 {
 		t.Error("no uncapped column carries ids, so the comparison reaches nothing a cap does not")
 	}
+	if parented == 0 {
+		t.Error("no rung opens a node another rung answers, so nothing here witnesses the walk descending past one chart")
+	}
 	if plural == 0 || len(distinct) < 2 {
 		t.Errorf("%d column(s) draw more than one id and %d distinct ids are drawn in all, so an id perturbed in this artifact could not be seen", plural, len(distinct))
-	}
-	if !widened {
-		t.Error("no path is answered at both widths with a different number of columns, so a walk that ignored Widen would be invisible")
 	}
 	if unflanked == 0 {
 		t.Error("no rung is answered under a step that keeps no flank, so the transfers step is unanswered and the arm has nothing to hold the client to there")
@@ -317,36 +311,70 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	if emptyFlank == 0 {
 		t.Error("no flank draws nothing of its own, so an omitted ids would be indistinguishable from an empty one")
 	}
-	// THE GAP IS ANSWERED, AT BOTH BUDGETS, ON THE YEAR THAT DRAWS ONE: p0067's
+	// THE GAP IS ANSWERED ON THE YEAR THAT DRAWS ONE: p0067's
 	// services-and-supplies against pp.85-125's rows in FY2026-27, which ties
 	// to the cent in FY2025-26. An artifact with no gap mark is one the arm
 	// could hold the client's markGap to without ever comparing a figure.
-	for _, w := range rungWidths {
-		if !gapAt[w] {
-			t.Errorf("no rung at %d columns answers a gap mark, so a gap perturbed in this artifact could not be seen there", w)
-		}
-	}
 	if len(gapYears) == 0 {
 		t.Error("no column answers a gap mark, so the arm has no gap to hold the client to")
 	}
-	// THE RESIDUAL IS ANSWERED AT BOTH BUDGETS IN EVERY YEAR: the fund groups
+	// THE RESIDUAL IS ANSWERED IN EVERY YEAR: the fund groups
 	// whose draw or transfers in pp.127-140 print for no fund, which both
 	// published columns have.
-	for _, w := range rungWidths {
-		if !residualAt[w] {
-			t.Errorf("no rung at %d columns answers a residual mark, so a residual perturbed in this artifact could not be seen there", w)
-		}
-	}
 	if len(residualYears) != len(doc.Columns) {
 		t.Errorf("%d of %d columns answer a residual mark, and every published column carries a group the fund schedule does not fully decompose", len(residualYears), len(doc.Columns))
 	}
-	// A MARK AT A TIER THE BUDGET DROPPED IS A PINNED ZERO: both marks index
-	// the step's declared tiers, which is why Marks hangs off the rung, and
-	// the committed steps that declare one widen nothing, so on this corpus
-	// every mark stands at a drawn column. A non-zero here is the client's
-	// placement to compare and a bead to file, not a figure to repair.
-	if offBudget != 0 {
-		t.Errorf("%d mark(s) stand at a tier their rung does not draw at that budget", offBudget)
+}
+
+// TestRungsAnswerAColumnTheDocumentDrawsNothingIn is the shape no committed
+// document supplies, on a spine of one hand-written document: a column the
+// step declares that the document folds no node to. It is answered with an
+// empty id list rather than dropped, because a dropped column reads as one
+// the step never declared (drawnTier), and the walk no longer drops a widened
+// column at all.
+//
+// MEASURED AGAINST THE CORPUS, which is why it is hand-written: every outward
+// column every shipped step declares holds at least one node once the answer
+// stops being cut to a budget, so the committed artifact witnesses this
+// nowhere.
+func TestRungsAnswerAColumnTheDocumentDrawsNothingIn(t *testing.T) {
+	// g's parts reach tier 2 and nothing reaches the widened tier 3.
+	doc := export.Graph{
+		Nodes: []export.GraphNode{{ID: "r", Tier: 0}, {ID: "g", Tier: 1}, {ID: "f", Tier: 2, Parent: "g"}},
+		Links: []export.GraphLink{{Source: "r", Target: "g", ValueCents: 10}, {Source: "g", Target: "f", ValueCents: 10}},
+	}
+	raw, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spine := export.View{
+		Path: export.IndexPath, YearStems: []string{"d"}, RenderTiers: []int{0, 1, 2},
+		Steps: []export.DrillStep{{Key: "open", After: []string{""}, From: 1, Keep: []int{0}, Tiers: []int{0, 1, 2, 3}, Widen: []int{3}}},
+	}
+	got, err := rungsOf(map[string][]byte{"d": raw}, spine)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tiers []int
+	var wide *drawnTier
+	for _, col := range got.Columns {
+		for _, r := range col.Rungs {
+			if !slices.Equal(r.Path, []string{"g"}) {
+				continue
+			}
+			for i, d := range r.Draws {
+				tiers = append(tiers, d.Tier)
+				if d.Tier == 3 {
+					wide = &r.Draws[i]
+				}
+			}
+		}
+	}
+	if !slices.Equal(tiers, []int{0, 1, 2, 3}) {
+		t.Fatalf("the rung at g draws tiers %v, and the step declares [0 1 2 3]", tiers)
+	}
+	if wide.IDs == nil || len(wide.IDs) != 0 || len(wide.Carried) != 0 || wide.Role != roleOutward {
+		t.Errorf("tier 3 is answered %+v, and the document draws nothing there", *wide)
 	}
 }
 
@@ -402,27 +430,28 @@ func TestRungsRefuseADriftTheStepDoesNotDeclare(t *testing.T) {
 	}
 }
 
-// isSubsequence is whether sub's elements appear in of, in order.
-func isSubsequence(sub, of []int) bool {
-	i := 0
-	for _, x := range of {
-		if i < len(sub) && sub[i] == x {
-			i++
-		}
+// capOf is the cap the step declares for one tier, and whether it declares
+// one at all: the permission to fold that column, which the client spends and
+// this artifact does not.
+func capOf(s export.DrillStep, tier int) (int, bool) {
+	if i := slices.IndexFunc(s.Caps, func(c export.TierCap) bool { return c.Tier == tier }); i >= 0 {
+		return s.Caps[i].Cap, true
 	}
-	return i == len(sub)
+	return 0, false
 }
 
-// TestRungsRefuseACapTheClientWouldApplyDifferently is the refusals in
-// rungWalker.answer a declaration can provoke, each inert on the committed
-// declarations and each shown firing on a one-field change to them: a cap on
-// a kept flank, which sideOf would apply to a column this walk reads off the
-// chart above; a cap on the centre, a column of one node; a fold on an
-// outward tier with a tier drawn beyond it, which capColumn's orphaned()
-// would rank from the folded column and this walk from the whole one; and a
-// flank that sends nothing into the opened node, which filterLinks throws on
-// rather than drawing empty.
-func TestRungsRefuseACapTheClientWouldApplyDifferently(t *testing.T) {
+// TestRungsRefuseAWindowTheClientWouldNotDraw is the refusal in
+// rungWalker.answer a declaration of the shipped spine can provoke, inert on
+// the committed declarations and shown firing on a one-field change to them:
+// a flank that sends nothing into the opened node, which filterLinks throws
+// on rather than drawing empty.
+//
+// THE THREE CAP REFUSALS THIS TEST ALSO HELD ARE GONE WITH THEIR SUBJECT. A
+// cap on a kept flank, a cap on the centre and a fold above a drawn deeper
+// tier were each a shape in which Go's fold and the client's would disagree,
+// and the walk no longer folds: DrillStep.Caps is a permission it ships and
+// does not spend (drawnTier).
+func TestRungsRefuseAWindowTheClientWouldNotDraw(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -440,11 +469,6 @@ func TestRungsRefuseACapTheClientWouldApplyDifferently(t *testing.T) {
 		perturb    func(*export.DrillStep)
 		want       string
 	}{
-		{"a cap on the kept flank", "fund-departments", func(s *export.DrillStep) { s.Caps = []export.TierCap{{Tier: 2, Cap: 8}} }, "caps tier 2, which is a flank it keeps"},
-		{"a cap on the centre", "fund-departments", func(s *export.DrillStep) { s.Caps = []export.TierCap{{Tier: 3, Cap: 8}} }, "caps tier 3, which is its centre"},
-		{"a fold with a deeper tier drawn", "fund", func(s *export.DrillStep) {
-			s.Caps = []export.TierCap{{Tier: 4, Cap: 20}, {Tier: 5, Cap: 8}}
-		}, "folds tier 4 (23 under a cap of 20) while drawing tier 5"},
 		// Tier 0 of the fund-group rung is revenue, which flows into the fund
 		// group and not into any fund, so a flank kept there sends nothing
 		// into the opened fund.
@@ -469,17 +493,19 @@ func TestRungsRefuseACapTheClientWouldApplyDifferently(t *testing.T) {
 	}
 }
 
-// TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor is the two refusals no
-// committed document can provoke, each on a spine of one hand-written
-// document: a folded tail at a kept tier, which the client would draw with a
-// hidden count under its label and this artifact has no cap to explain; and
-// a second node beside the opened one in the kept half's centre column,
-// which the client would draw beside the node the reader clicked -- the
-// mirror of the fresh half's refusal.
+// TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor is the refusal no
+// committed document can provoke, on a spine of one hand-written document: a
+// second node beside the opened one in the kept half's centre column, which
+// the client would draw beside the node the reader clicked -- the mirror of
+// the fresh half's refusal.
 //
-// The walk is run rather than answer called, because both shapes arise from
-// what an earlier rung left on screen: the tail from a cap engaging on the
-// rung above, the neighbour from the overview's own fold.
+// The walk is run rather than answer called, because the shape arises from
+// what an earlier rung left on screen: here the overview's own fold.
+//
+// IT HELD A SECOND CASE, A FOLDED TAIL AT A KEPT TIER, and that case is gone
+// with its subject: it reached the refusal by capping a column on the rung
+// above so the chart left on screen carried a tail, and no chart this walk
+// builds carries one now (drawnTier).
 func TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor(t *testing.T) {
 	encode := func(g export.Graph) []byte {
 		raw, err := json.Marshal(g)
@@ -494,24 +520,6 @@ func TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor(t *testing.T) {
 		steps []export.DrillStep
 		want  string
 	}{
-		{
-			name: "a folded tail at a kept tier",
-			// Three payers into x, capped to one on the first rung, so the
-			// chart it leaves holds x, one payer and a tail of two; the
-			// second rung opens x again with the payer tier kept.
-			doc: export.Graph{
-				Nodes: []export.GraphNode{{ID: "x", Tier: 0}, {ID: "y1", Tier: 1}, {ID: "y2", Tier: 1}, {ID: "y3", Tier: 1}, {ID: "z", Tier: 2}},
-				Links: []export.GraphLink{
-					{Source: "y1", Target: "x", ValueCents: 30}, {Source: "y2", Target: "x", ValueCents: 20},
-					{Source: "y3", Target: "x", ValueCents: 10}, {Source: "x", Target: "z", ValueCents: 5},
-				},
-			},
-			steps: []export.DrillStep{
-				{Key: "payers", After: []string{""}, From: 0, Tiers: []int{0, 1}, Caps: []export.TierCap{{Tier: 1, Cap: 1}}},
-				{Key: "again", After: []string{"payers"}, From: 0, Keep: []int{1}, Tiers: []int{1, 0, 2}},
-			},
-			want: `keeps tier 1 and the chart on screen draws the folded tail "aggregate/tail/1" there`,
-		},
 		{
 			name: "a neighbour beside the kept centre",
 			// g2 sends a ribbon into f, which is g1's child, so the kept
