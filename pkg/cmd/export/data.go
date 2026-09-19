@@ -22,10 +22,19 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// structurePath is where the structure document lands: at the site root
-// beside the store's own downloads, and NOT under data/, which is the
+// structurePath is where the structure for one fiscal year lands: at the site
+// root beside the store's own downloads, and NOT under data/, which is the
 // projections' directory and one file per projection by contract.
-const structurePath = "structure.json"
+//
+// ONE FILE PER YEAR, AND NO MONOLITH. A year is the one dimension the reader
+// already switches on, so a part is the whole of what one column of the site
+// reads, and a client that fetches the year on screen fetches nothing it will
+// not draw. structure.PartitionByYear says why that is not per-interaction
+// slicing, and TestTheStructureShipsOnTheAssetChannelAndIsMeasured re-measures
+// each part against the whole under -v.
+func structurePath(year int) string {
+	return fmt.Sprintf("structure-%d.json", year)
+}
 
 // factsPath is the fact store this export reads. It is cmdutil's rather than
 // this package's: `fisc build` writes that path and `fisc verify` checks it, and
@@ -61,11 +70,13 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	structureDoc, err := buildStructure(reg, facts)
+	parts, err := buildStructure(reg, facts)
 	if err != nil {
 		return result{}, err
 	}
-	assets.Files[structurePath] = structureDoc
+	for path, b := range parts {
+		assets.Files[path] = b
+	}
 	return result{
 		Projections: projections,
 		Files:       assets.Files,
@@ -202,15 +213,35 @@ func loadRegistry(repoRoot string) (*registry.Registry, error) {
 	return reg, nil
 }
 
-// buildStructure is the structure document over the store: every summing
-// document's view, each fact those views admit once with its provenance.
+// buildStructure is the structure over the store as the site ships it: one
+// document per fiscal year, keyed by structurePath, each the whole's
+// scaffolding with that year's facts and the views that admit any of them.
 // Compact JSON, as every projection is, so its size is comparable with theirs.
-func buildStructure(reg *registry.Registry, facts []fact.Fact) ([]byte, error) {
-	doc, err := structure.Build(facts, documentViews(reg, facts, build.Get().String()))
+func buildStructure(reg *registry.Registry, facts []fact.Fact) (map[string][]byte, error) {
+	doc, err := structureOf(reg, facts)
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(doc)
+	parts, err := structure.PartitionByYear(doc)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string][]byte, len(parts))
+	for _, p := range parts {
+		b, err := json.Marshal(p)
+		if err != nil {
+			return nil, err
+		}
+		out[structurePath(p.FiscalYear)] = b
+	}
+	return out, nil
+}
+
+// structureOf is the unpartitioned structure over the store: every summing
+// document's view, each fact those views admit once with its provenance. It
+// is what buildStructure partitions and what a test holds the parts to.
+func structureOf(reg *registry.Registry, facts []fact.Fact) (structure.Document, error) {
+	return structure.Build(facts, documentViews(reg, facts, build.Get().String()))
 }
 
 // documentViews is every document the pipeline builds that sums, named with

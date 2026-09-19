@@ -10,7 +10,7 @@ import (
 
 // DocumentSchemaVersion is the version a [Document] declares. A client reads
 // it before anything else and refuses one it does not know.
-const DocumentSchemaVersion = 1
+const DocumentSchemaVersion = 2
 
 // A Document is the structure on the wire: the lattice, every declared cut and
 // identity, the views the site's documents are, and every fact any view admits
@@ -25,14 +25,20 @@ const DocumentSchemaVersion = 1
 //
 // A VIEW ADMITTING NO FACT IS REFUSED, never shipped with an empty list, so
 // an absent view and an empty one cannot mean one thing. That is the
-// discipline stepView.Opens keeps, inherited by the same derivation.
+// discipline stepView.Opens keeps, inherited by the same derivation, and
+// [PartitionByYear] keeps it per part: a view with no fact in a year is
+// omitted from that year's part rather than shipped empty.
 type Document struct {
-	SchemaVersion int            `json:"schema_version"`
-	Levels        []LevelDecl    `json:"levels"`
-	Cuts          []CutDecl      `json:"cuts"`
-	Identities    []IdentityDecl `json:"identities"`
-	Views         []ViewDecl     `json:"views"`
-	Facts         []Record       `json:"facts"`
+	SchemaVersion int `json:"schema_version"`
+	// FiscalYear is the one year every fact of this document is of. A
+	// shipped structure always carries it, because what ships is one part
+	// per year; zero means the unpartitioned document, which nothing ships.
+	FiscalYear int            `json:"fiscal_year,omitempty"`
+	Levels     []LevelDecl    `json:"levels"`
+	Cuts       []CutDecl      `json:"cuts"`
+	Identities []IdentityDecl `json:"identities"`
+	Views      []ViewDecl     `json:"views"`
+	Facts      []Record       `json:"facts"`
 }
 
 // A LevelDecl is one point of the lattice: its axes, and the levels it
