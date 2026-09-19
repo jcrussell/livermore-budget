@@ -1512,6 +1512,32 @@ function rungKey(stem, width, path) {
 }
 
 /**
+ * Go's answer for the rung on screen: which columns it draws, in what order,
+ * and which nodes each of those columns holds.
+ *
+ * THE KEY IS THE YEAR, THE BUDGET AND THE PATH, all three. A fund group opened
+ * in FY2025-26 is not the column it is in FY2026-27, and a window at four
+ * columns is not the one at three -- one file answers every combination, so a
+ * change of budget is a lookup here and not a fetch.
+ *
+ * NOT EVERY RUNG A READER CAN REACH IS ANSWERED, and that is why this returns
+ * rather than throws. The walk behind the answer opens what the CAPPED chart
+ * offers; a reader who expands a folded column and opens one of the marks it
+ * was hiding is on a path that walk never took. So the caller decides: a
+ * decision this answer covers is read off it, and one it does not is still the
+ * client's (capColumn).
+ *
+ * NOT CALLED ON THE OVERVIEW, which no rung answers: that chart is
+ * RENDER_TIERS' and the callers ask for the stack's depth first.
+ *
+ * @returns {FiscRung | undefined}
+ */
+function rungFor() {
+  if (!rungAnswers || !shownYear) return undefined;
+  return rungAnswers.get(rungKey(shownYear.stem, columnBudget, drilled.map((r) => r.id)));
+}
+
+/**
  * The tier set the document on screen was shaped by.
  *
  * ONE READER FOR EVERY DECLARATION. Everything downstream of the shaping -- the
@@ -2731,13 +2757,27 @@ function sideOf(doc, rung, tiers, filter) {
     // what is inside the opened node and still folded to the tiers this chart
     // draws, and the only stage it misses is the one the reader asked it to.
     if (!cap || (rung.expanded && rung.expanded.has(tier))) continue;
+    // WHICH NODES THE CAP KEEPS IS GO'S ANSWER, LOOKED UP HERE AND REFUSED
+    // WHEN IT IS NOT THERE. A cap is the one thing on this page that removes a
+    // figure the city printed from the chart, the table and the tooltip, so a
+    // column whose fold nothing vetted is not a column to draw from a ranking
+    // of our own -- it is a banner. The message names the file so a reader
+    // whose copy is stale is told which one.
+    const answer = rungFor();
+    const held = answer && answer.draws.find((d) => d.tier === tier);
+    if (!held) {
+      throw new Error("cannot draw " + shaped.projection + ": " +
+        (RUNGS_PATH || "the rung answer") + " says nothing about tier " + tier + " of " +
+        drilled.map((r) => r.id).join(" → ") + " at " + columnBudget + " columns, and " +
+        "this page folds a column to the answer Go computed rather than ranking it here");
+    }
     const column = shaped.nodes.filter((n) => n.tier === tier);
     const parent = column.every((n) => inside.has(n.id)) ? rung.id : "";
     parentOf.set(tier, parent);
     // THE NOUN IS THE CAP'S WHERE IT NAMES ONE, and the step's otherwise: the
     // fund-group step caps its funds under its own noun and its divisions under
     // the cap's, and one word cannot count both tails.
-    shaped = capColumn(shaped, tier, cap.cap, parent, cap.tail || step.tail);
+    shaped = capColumn(shaped, tier, held, parent, cap.tail || step.tail);
   }
   const drawn = foldDocument(shaped, tiers);
 
@@ -3559,7 +3599,8 @@ function markGap(drawn, rung) {
 }
 
 /**
- * Folds all but the largest `cap` nodes of one tier into a single node.
+ * Folds the nodes of one tier that Go's answer does not draw into a single
+ * node.
  *
  * WHY A CAP IS NEEDED AT ALL, and it is the half of fisc-ppkq that bead got
  * wrong. It says "rescaling is what makes special-revenue's 32 funds legible".
@@ -3582,60 +3623,63 @@ function markGap(drawn, rung) {
  * its figure was read from. What it is not is a node of the document's own
  * hierarchy, so it carries no parent and inherits no hue.
  *
+ * WHICH NODES ARE KEPT IS READ AND NOT RANKED. Ranking a column by the larger
+ * of each node's inflow and outflow, ties by id, keeping the first `cap`, is
+ * Go's rule; spelled here as well it would be one rule in two languages, and
+ * a subtlety like ranking a contra row by MAGNITUDE -- ERAF is the second
+ * largest line p127 prints and the smallest signed -- would have to be got
+ * right twice. So the ids arrive as a set. What stays here is everything about
+ * the RIBBONS: re-pointing them at the tail, dropping a folded node's
+ * descendants and the links that named them, and the merge foldDocument then
+ * does. fisc-hz2u is decided -- ribbons join the wire format too -- and this
+ * stage predates Go emitting them, so that half is still the client's.
+ *
+ * IT FAILS CLOSED ON A COLUMN GO DOES NOT ANSWER. A cap is the one place this
+ * page removes a figure the city printed from the chart, so "which eight" is
+ * the last decision to guess at: without an answer there is no capped chart to
+ * draw, and the caller banners rather than ranking the column itself.
+ *
  * @param {FiscProjection} doc
  * @param {number} tier
- * @param {number} cap
+ * @param {FiscDrawnTier} held  Go's answer for this column
  * @param {string} opened  the node the aggregate is parented to: the opened
  *   node when the whole column is inside it, "" when it spans fund groups
  * @param {string} noun  the plural noun for the tier's rows
- * @returns {FiscProjection}
+ * @returns {FiscProjection} doc itself when Go's answer folds nothing here
  */
-function capColumn(doc, tier, cap, opened, noun) {
+function capColumn(doc, tier, held, opened, noun) {
   const atTier = doc.nodes.filter((n) => n.tier === tier);
-  // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE. This engaged at cap + 1, so
-  // a column of 9 against a cap of 8 folded a single fund into a node labelled
-  // "1 smaller funds" -- one figure the city printed, erased from the chart,
-  // the table and the tooltip, relabelled ungrammatically, and listed under
-  // "What we inferred" as though the grouping of one thing were an inference.
-  // fund-group/enterprise has exactly 9, so this was shipping.
-  //
-  // The threshold is cap + 1 rather than cap, which means a column of exactly
-  // cap + 1 is drawn WHOLE: one more mark than the cap asks for is a better
-  // answer than one fewer plus a box saying "1 smaller".
-  if (atTier.length <= cap + 1) return doc;
-
-  // RANKED BY THE LARGER OF INFLOW AND OUTFLOW, which is d3-sankey's own node
-  // value and the height the reader sees. Inflow alone ranked every column
-  // this page capped until a category opened into its lines: a line is the
-  // SOURCE of everything it carries and takes in nothing, so under inflow
-  // every line tied at zero and the tail was whichever eight sorted last by
-  // id. On the columns capped before -- funds and divisions -- the two agree,
-  // because a fund's outflow never exceeds its inflow and a division's equals
-  // it, and tools/jscheck/drill.mjs pins every opened view at the figures it
-  // had under inflow.
-  //
-  // BY MAGNITUDE, because a contra row is a printed line as large as its
-  // figure. Ranked signed, ERAF at -$15,175,000 is the smallest line in
-  // Property Taxes and the tail folds a reduction in with the additions it is
-  // labelled "smaller" than; ranked by magnitude it is the second largest,
-  // which is what p127 prints.
-  /** @type {Map<string, number>} */
-  const inflow = new Map();
-  /** @type {Map<string, number>} */
-  const outflow = new Map();
-  for (const l of doc.links) {
-    inflow.set(l.target, (inflow.get(l.target) || 0) + Math.abs(l.value_cents));
-    outflow.set(l.source, (outflow.get(l.source) || 0) + Math.abs(l.value_cents));
+  const kept = new Set(held.ids.concat(held.carried || []));
+  const folded = atTier.filter((n) => !kept.has(n.id));
+  // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE, and the threshold that
+  // says so is Go's: it folds only above cap + 1, so a column of 9 against a
+  // cap of 8 is answered as nine ids and no tail. Read off `hidden` rather
+  // than off `folded` below, so that the two have to agree -- the arm at the
+  // bottom of this guard is what makes a perturbed figure a refusal instead of
+  // a chart drawn to one answer and labelled with another.
+  // NO ARM HERE FOR AN ID GO DOES NOT NAME, deliberately, and the reason is
+  // this function's own scope. A tier the step declares no cap for never
+  // reaches this code at all and is drawn whole; refusing an unnamed id only
+  // where a cap happens to be declared would guard two columns of one chart by
+  // different rules. That claim -- every mark drawn is one Go accounts for --
+  // is one claim about the whole chart, and tools/jscheck/chart.mjs makes it.
+  const hidden = held.hidden || 0;
+  if (!hidden) return doc;
+  if (folded.length !== hidden) {
+    throw new Error("cannot draw " + doc.projection + ": Go's answer folds " + hidden +
+      " node(s) away at tier " + tier + " and leaves " + kept.size + " drawn, and this " +
+      "column holds " + atTier.length + " of which " + folded.length + " are unnamed");
   }
-  const size = (/** @type {string} */ id) => Math.max(inflow.get(id) || 0, outflow.get(id) || 0);
-  // Ties broken by id, so the set kept is the same on every build of the same
-  // document. A cap that reordered under an unstable sort would move which
-  // funds a reader sees between two identical exports.
-  const ranked = atTier.slice().sort((a, b) =>
-    size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
-  const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
-  const folded = ranked.slice(cap);
-
+  // THE CAP ITSELF, AND NOT ONLY WHAT GO SAYS IT DID. A folded column is drawn
+  // at exactly its cap, which is capColumn's own rule read back against the
+  // answer that now drives it: without this a cap perturbed alone -- ids and
+  // hidden left as Go computed them -- would change the tail's source note and
+  // nothing else, and the figure a reader is shown would be one no walk
+  // produced.
+  if (kept.size !== held.cap) {
+    throw new Error("cannot draw " + doc.projection + ": Go's answer draws " + kept.size +
+      " node(s) at tier " + tier + " under a cap it declares as " + held.cap);
+  }
   // THE NOUN IS THE VIEW'S. It read `tier === 3 ? "funds" : "categories"`,
   // which is the same tier-number-to-word mapping paintBreadcrumb refuses two
   // functions below, written by the same hand in the same commit.
@@ -3686,7 +3730,7 @@ function capColumn(doc, tier, cap, opened, noun) {
       "mark because they cannot be drawn separately. Every figure inside it is printed; " +
       "the box around them is ours.",
     source_note: "The " + folded.length + " smallest of " + atTier.length +
-      " by value, at this page's cap of " + cap + ".",
+      " by value, at this page's cap of " + held.cap + ".",
   };
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);

@@ -15,7 +15,7 @@ import { join } from "node:path";
 
 import {
   loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, goldenGraph2027, goldenFundFlows,
-  goldenFundFlows2027, repoRoot,
+  goldenFundFlows2027, repoRoot, RUNGS_PATH,
 } from "./harness.mjs";
 
 /**
@@ -603,11 +603,20 @@ export async function checks() {
 async function chainedYears(plan, paths) {
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
+  // THE SHIPPED STEP'S COLUMNS AND THE SHIPPED STEP'S CAP, because the rung
+  // answer below is the shipped one. app.js folds a capped column to the ids
+  // Go answers for the rung on screen, so a fixture declaring a tier set of
+  // its own would be drawing the shipped answer for a column it invented --
+  // which is a fixture that can only agree with itself. The tier-4 cap that
+  // used to sit here is gone with the tier: it is inert on this corpus (23
+  // divisions under a cap of 24) and drill.mjs is where a step with two caps
+  // is modelled.
   config.steps = [{
-    key: "group", after: [""], from: 2, projection: "fund-flows", tiers: [0, 3, 4],
-    caps: [{ tier: 3, cap: 8 }, { tier: 4, cap: 24 }], back: "All fund groups", tail: "funds",
+    key: "group", after: [""], from: 2, projection: "fund-flows", tiers: [0, 2, 3],
+    caps: [{ tier: 3, cap: 8 }], back: "All fund groups", tail: "funds",
     description: "Opened.",
   }];
+  config.rungs = RUNGS_PATH;
   const stepPaths = Object.assign(
     { sankey: "data/fund-flows.json", "sankey-2027": "data/fund-flows.json" }, paths || {});
   config.years = config.years.map((y) => Object.assign({}, y, {
