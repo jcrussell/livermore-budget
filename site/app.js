@@ -3567,11 +3567,6 @@ function markGap(drawn, rung) {
  * At cap 8 the same graph comes to 2 sub-pixel ribbons, and the capital group
  * from 4 to 1. For comparison the drill-down page these replace ships 7.
  *
- * (That read "capital goes from 4 to 0" for one commit. The 0 was measured at
- * cap 6 during the search for a cap and quoted against cap 8, which is the
- * defect AGENTS.md's "Before you quote a number" exists to name, committed in a
- * comment about measurement.)
- *
  * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
  * sum, fact ids and locators union, so the aggregate ribbon cites every page
  * its figure was read from. What it is not is a node of the document's own
