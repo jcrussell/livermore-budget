@@ -36,13 +36,38 @@ type rungColumn struct {
 }
 
 // A rung is one opened path at one column budget: the step that opened its
-// last node and, for every column the window draws, in the order it draws
-// them, what that column holds.
+// last node; for every column the window draws, in the order it draws them,
+// what that column holds; and the marks the client adds to the window that
+// no document prints, sorted by id.
 type rung struct {
 	Path  []string    `json:"path"`
 	Width int         `json:"width"`
 	Step  string      `json:"step"`
 	Draws []drawnTier `json:"draws"`
+	Marks []drawnMark `json:"marks,omitempty"`
+}
+
+// drawnMark is one node the client draws on a rung that no page prints: the
+// gap markGap states between what the chart above sends into the opened
+// node and what the drawn document breaks it into, and the residual
+// carryResidual stands beside the opened node's parts. Go computes which
+// mark exists, the tier it stands at and the cents that arrive at it and
+// leave it, and NOT its prose: the rationale and the source note are built
+// from labels and locators the walk does not decode, and
+// tools/jscheck/drill.mjs holds those.
+//
+// ON THE RUNG AND NOT ON A COLUMN, because both marks index the step's
+// declared tiers and not the columns the budget left drawn, so a mark can
+// stand at a tier this rung's draws do not list. Ends is a residual's
+// declared endpoints, sorted; a gap has exactly one of InCents and OutCents,
+// which is the side the short one stands on.
+type drawnMark struct {
+	ID       string   `json:"id"`
+	Role     string   `json:"role"`
+	Tier     int      `json:"tier"`
+	InCents  int64    `json:"in_cents,omitempty"`
+	OutCents int64    `json:"out_cents,omitempty"`
+	Ends     []string `json:"ends,omitempty"`
 }
 
 // drawnTier is one column of one rung. ONE LIST IN COLUMN ORDER, rather than
@@ -61,7 +86,8 @@ type rung struct {
 // parts, Carried which it draws but the client does not count as one -- a
 // node the document marks derived, or one the step's residual declaration
 // names, which is isCarried's rule -- and Hidden how many the folded tail
-// stands for. IDS IS WRITTEN EVEN WHEN EMPTY, because a flank whose only
+// stands for. A mark the client adds of its own is in neither list: it is
+// the rung's Marks. IDS IS WRITTEN EVEN WHEN EMPTY, because a flank whose only
 // mark is carried answers with nothing, and "answered with nothing" has to
 // be told from "not answered" by a reader of the file. THE FOLD ENGAGES
 // ONLY ABOVE CAP+1, because folding one node into a tail of one draws the
@@ -105,15 +131,18 @@ const (
 // touches no ribbon and whose payer ends are its children, is answered like
 // any other rather than skipped.
 //
-// WHAT A RUNG DRAWS IS DOCUMENT NODES. The client adds marks of its own -- a
-// residual, a gap, a folded tail -- and this walk counts none of them; it
-// carries the tail under the client's own id so that a flank holding one is
-// refused by name rather than answered as nothing. A document node the
-// client draws but does not count as one of the opened node's parts is
-// answered under Carried, so the two endpoints a residual lends the fund
-// group's flank are compared rather than subtracted on both sides.
+// WHAT A COLUMN DRAWS IS DOCUMENT NODES, AND THE MARKS ARE ANSWERED APART.
+// The client adds marks of its own to a window: a folded tail, which this
+// walk carries under the client's own id so that a flank holding one is
+// refused by name rather than answered as nothing; and a gap, which it
+// computes as export.GapOf does and answers under the rung's Marks with its
+// tier and its cents. The residual is not yet computed here and the arm
+// excludes it from every set it compares. A document node the client draws
+// but does not count as one of the opened node's parts is answered under
+// Carried, so the two endpoints a residual lends the fund group's flank are
+// compared rather than subtracted on both sides.
 func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error) {
-	doc := rungsDoc{SchemaVersion: 3}
+	doc := rungsDoc{SchemaVersion: 4}
 	for _, year := range spine.YearStems {
 		raw, ok := projections[year]
 		if !ok {
@@ -417,6 +446,13 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 			if i := slices.IndexFunc(ids, export.IsAggregate); i >= 0 {
 				return rung{}, export.Graph{}, fmt.Errorf("step %q keeps tier %d and the chart on screen draws the folded tail %q there, which is a column this walk has no shape for", s.Key, t, ids[i])
 			}
+			// A MARK OF THE RUNG ABOVE AT A KEPT TIER IS REFUSED THE SAME WAY:
+			// the client draws it and counts it under neither set, and this
+			// rung's Marks are its own, so a mark that survived onto the
+			// flank would be one the two sides read differently in silence.
+			if i := slices.IndexFunc(ids, func(id string) bool { return export.IsResidual(id) || export.IsGap(id) }); i >= 0 {
+				return rung{}, export.Graph{}, fmt.Errorf("step %q keeps tier %d and the chart on screen draws the mark %q there, which is a column this walk has no shape for", s.Key, t, ids[i])
+			}
 			own, lent := partition(ids, onScreen)
 			draws = append(draws, drawnTier{Tier: t, Role: roleFlank, Candidates: len(ids), IDs: own, Carried: lent})
 		case slices.Contains(outward, t):
@@ -484,7 +520,38 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
 		}
 	}
-	return rung{Width: w.width, Step: s.Key, Draws: draws}, next.Graph(), nil
+	// THE MARKS GO ON LAST, over the whole spliced window, which is the chart
+	// the client's markGap is handed: what the opened node takes in against
+	// what it sends out, once everything that is going to stand beside it
+	// does. The mark's own tier is the step's declared one, not the budget's
+	// (drawnMark), and it is added to the chart the next rung reads so that
+	// a flank it survived onto is refused above rather than counted.
+	var marks []drawnMark
+	if c, ok, err := export.GapOf(next.Graph(), opened, s.Tiers, s.Gaps); err != nil {
+		return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
+	} else if ok {
+		if err := carry(next, c); err != nil {
+			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
+		}
+		marks = append(marks, drawnMark(c.Mark))
+	}
+	slices.SortFunc(marks, func(a, b drawnMark) int { return strings.Compare(a.ID, b.ID) })
+	return rung{Width: w.width, Step: s.Key, Draws: draws, Marks: marks}, next.Graph(), nil
+}
+
+// carry adds a mark's nodes and ribbons to the chart the rung leaves on
+// screen. A ribbon whose end the chart does not hold is the error Link
+// makes of it, which is what refuses a mark placed beside nothing.
+func carry(next *export.Chart, c export.Carry) error {
+	for _, n := range c.Nodes {
+		next.Add(n)
+	}
+	for _, l := range c.Links {
+		if err := next.Link(l); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // encodeRungs is the artifact's one encoding: indented, so a regenerated

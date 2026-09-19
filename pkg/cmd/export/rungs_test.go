@@ -77,6 +77,17 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	var engaged, unfoldedOverCap, uncappedIDs, plural, unflanked, flankPlural, flankCarried, emptyFlank int
 	distinct := map[string]bool{}
 	widened := false
+	// THE MARKS ARE ANSWERED ON DIFFERENT STEPS AND NEVER MEET, which is a
+	// pinned zero: no step declares both a residual and a gap, so no rung
+	// carries two marks, and the order the two are applied in is a claim
+	// nothing on the committed spine can contradict.
+	for _, s := range spine.Steps {
+		if len(s.Residual) > 0 && len(s.Gaps) > 0 {
+			t.Errorf("step %q declares both a residual and a gap, which no rung in this artifact has been measured carrying together", s.Key)
+		}
+	}
+	gapAt := map[int]bool{}
+	gapYears := map[string]bool{}
 	for _, col := range doc.Columns {
 		if len(col.Rungs) == 0 {
 			t.Fatalf("column %q has no rung, so there is nothing to hold the client to", col.Stem)
@@ -175,6 +186,40 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 					uncappedIDs++
 				}
 			}
+			// A MARK IS THE OPENED NODE'S OWN, UNDER THE CLIENT'S ID, AND IS
+			// COUNTED ON NO COLUMN: its role names which of the two it is,
+			// its id is that role's prefix on the last node of the path,
+			// and a gap has exactly one side, the short one.
+			if len(r.Marks) > 1 {
+				at("carries %d marks, and the spine declares the two marks on different steps", len(r.Marks))
+			}
+			opened := r.Path[len(r.Path)-1]
+			for _, m := range r.Marks {
+				switch m.Role {
+				case export.RoleGap:
+					gapAt[r.Width] = true
+					gapYears[col.Stem] = true
+					if m.ID != export.GapID(opened) {
+						at("gap mark %q is not %q", m.ID, export.GapID(opened))
+					}
+					if (m.InCents == 0) == (m.OutCents == 0) {
+						at("gap mark %q has in %d and out %d, and a gap has exactly one side", m.ID, m.InCents, m.OutCents)
+					}
+					if len(m.Ends) != 0 {
+						at("gap mark %q names endpoints %v, and a gap carries none", m.ID, m.Ends)
+					}
+				default:
+					at("mark %q has role %q", m.ID, m.Role)
+				}
+				if !slices.Contains(s.Tiers, m.Tier) {
+					at("mark %q stands at tier %d, which the step does not declare", m.ID, m.Tier)
+				}
+				for _, d := range r.Draws {
+					if slices.Contains(d.IDs, m.ID) || slices.Contains(d.Carried, m.ID) {
+						at("tier %d lists the mark %q as a document node", d.Tier, m.ID)
+					}
+				}
+			}
 			if len(s.Keep) > 0 && centres != 1 {
 				at("draws %d centre column(s)", centres)
 			}
@@ -245,6 +290,72 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	}
 	if emptyFlank == 0 {
 		t.Error("no flank draws nothing of its own, so an omitted ids would be indistinguishable from an empty one")
+	}
+	// THE GAP IS ANSWERED, AT BOTH BUDGETS, ON THE YEAR THAT DRAWS ONE: p0067's
+	// services-and-supplies against pp.85-125's rows in FY2026-27, which ties
+	// to the cent in FY2025-26. An artifact with no gap mark is one the arm
+	// could hold the client's markGap to without ever comparing a figure.
+	for _, w := range rungWidths {
+		if !gapAt[w] {
+			t.Errorf("no rung at %d columns answers a gap mark, so a gap perturbed in this artifact could not be seen there", w)
+		}
+	}
+	if len(gapYears) == 0 {
+		t.Error("no column answers a gap mark, so the arm has no gap to hold the client to")
+	}
+}
+
+// TestRungsRefuseADriftTheStepDoesNotDeclare is the refusal a declaration
+// can provoke, inert on the committed declarations and shown firing on a
+// one-field change: the object-category step declaring a gap on another
+// node and none on services-and-supplies, while p0067 and pp.85-125 still
+// print FY2026-27's cell 250,000 dollars apart. The client meets the same
+// drift as a throw in a browser; this is where it fails the build.
+//
+// DROPPING THE WHOLE MAP IS NOT THE MUTATION, measured: a step that declares
+// no gap at all makes no claim that its nodes balance, so rungsOf builds
+// with the difference unstated, which is markGap's own first rule. The
+// claim with teeth is a declaration that names some node, which is a claim
+// about every other node the step opens.
+func TestRungsRefuseADriftTheStepDoesNotDeclare(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	var spine export.View
+	for _, v := range views(built) {
+		if v.Path == export.IndexPath {
+			spine = v
+		}
+	}
+	cases := []struct {
+		name, step string
+		perturb    func(*export.DrillStep)
+		want       string
+	}{
+		{"a gap declared on another node alone", "object-category", func(s *export.DrillStep) {
+			s.Gaps = map[string]string{"expenditure/debt-services": "a reason for a node that ties"}
+		},
+			`opens "expenditure/services-and-supplies": the chart above sends 13050208700 into "expenditure/services-and-supplies" and this one draws 13025208700 of it, a difference of 25000000 cents that no declaration on this step accounts for`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			v := spine
+			v.Steps = slices.Clone(spine.Steps)
+			i := slices.IndexFunc(v.Steps, func(s export.DrillStep) bool { return s.Key == tc.step })
+			if i < 0 {
+				t.Fatalf("no step %q on the spine", tc.step)
+			}
+			tc.perturb(&v.Steps[i])
+			_, err := rungsOf(built.Projections, v)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("rungsOf with %s: err = %v, want one containing %q", tc.name, err, tc.want)
+			}
+		})
 	}
 }
 

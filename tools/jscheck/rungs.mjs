@@ -21,16 +21,24 @@
 // than subtracted because on the fund-group rungs it is the flank's two spine
 // feeders that the residual re-points, and on four of those rungs it is the
 // flank's only mark -- an id set subtracted on both sides would compare empty
-// against empty there and see nothing. The marks the client adds of its own
-// (a residual, a gap, a folded tail) are not Go's to count and are excluded
-// from both sets; a folded tail competing with a cap is the day this goes red
-// by design.
+// against empty there and see nothing. A folded tail is not Go's to count
+// and is excluded from both sets; one competing with a cap is the day this
+// goes red by design.
+//
+// AND THE MARKS THE CLIENT ADDS OF ITS OWN, AS A THIRD COLLECTION: the gap
+// markGap states, by id, tier and the cents that arrive at it and leave it,
+// against the rung's `marks` in the artifact, complete both ways -- a mark
+// Go answers that the client does not draw and one the client draws that Go
+// does not answer are the same disagreement. The residual is not yet Go's
+// to answer and is still excluded from every set here.
 //
 // MUTATION: rename one id, or perturb one candidates or cap figure by 1, in
 // testdata/rungs.json. The Go test goes red because the artifact is no longer
 // what Go computes, and this arm goes red naming the rung, the tier and the
 // budget where the client drew a different column. Delete an id from a
 // flank's carried list and it is red the same way, naming the carried mark.
+// Perturb a mark's in_cents by 1, or delete the mark, and it is red naming
+// the rung, the budget and the mark.
 //
 // COMPLETENESS BOTH WAYS, AT TWO GRAINS. A rung the walk visits that the
 // artifact does not answer is red, and a rung the artifact answers that the
@@ -46,18 +54,47 @@ import { repoRoot, settle } from "./harness.mjs";
 import { COLUMNS, openedWide } from "./drill.mjs";
 
 const ARTIFACT = JSON.parse(readFileSync(join(repoRoot, "testdata", "rungs.json"), "utf8"));
-if (ARTIFACT.schema_version !== 3) {
-  throw new Error(`testdata/rungs.json declares schema_version ${ARTIFACT.schema_version}; this module reads 3`);
+if (ARTIFACT.schema_version !== 4) {
+  throw new Error(`testdata/rungs.json declares schema_version ${ARTIFACT.schema_version}; this module reads 4`);
 }
 
 /** @param {string[]} path */
 const keyOf = (path) => path.join(" > ");
 
 /**
+ * The client's own marks on the chart on screen, spelled the way the
+ * artifact spells them: id, role, tier, and the cents that arrive at each
+ * and leave it, summed over the chart's ribbons. Every node of the chart is
+ * read and not only those at an active tier, because both marks index the
+ * step's declared tiers and a mark at a column the budget dropped is a
+ * placement to compare, not one to overlook.
+ * @param {any} app
+ * @param {(id: string) => boolean} isMark
+ */
+function marksOn(app, isMark) {
+  /** @type {{id: string, role: string, tier: number, in_cents: number, out_cents: number}[]} */
+  const marks = [];
+  for (const n of app.projection.nodes) {
+    if (!isMark(n.id)) continue;
+    let inCents = 0;
+    let outCents = 0;
+    for (const l of app.projection.links) {
+      if (l.target === n.id) inCents += l.value_cents;
+      if (l.source === n.id) outCents += l.value_cents;
+    }
+    marks.push({ id: n.id, role: n.role, tier: n.tier, in_cents: inCents, out_cents: outCents });
+  }
+  return marks.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+}
+
+/** @param {{id: string, role: string, tier: number, in_cents?: number, out_cents?: number}} m */
+const spellMark = (m) => `${m.id} (${m.role}) at tier ${m.tier}, in ${m.in_cents || 0} out ${m.out_cents || 0}`;
+
+/**
  * What the client drew for the rung on screen: its tiers, and for every tier
  * which document nodes it draws as the opened node's own parts, which it
  * draws but does not count as one, and how many its folded tail says it
- * stands for.
+ * stands for; and the marks the client added of its own.
  * @param {any} app
  */
 function drawn(app) {
@@ -84,7 +121,7 @@ function drawn(app) {
     }
     byTier[t] = { ids, carried, hidden };
   }
-  return { tiers: app.activeTiers().slice(), byTier };
+  return { tiers: app.activeTiers().slice(), byTier, marks: marksOn(app, (id) => app.isGap(id)) };
 }
 
 /**
@@ -148,6 +185,8 @@ export async function checks() {
       let idsCompared = 0;
       let flankCompared = 0;
       let carriedCompared = 0;
+      let marksCompared = 0;
+      let gapsCompared = 0;
       for (const [key, { step, got }] of seen) {
         const want = expected.get(key);
         if (!want) {
@@ -166,6 +205,22 @@ export async function checks() {
         if (wantTiers.join(",") !== got.tiers.join(",")) {
           wrong.push(`${where} draws tiers ${got.tiers.join(",")}, Go says ${wantTiers.join(",")}`);
         }
+        // THE MARKS ARE ONE LIST ON BOTH SIDES, BY ID, TIER AND CENTS, so a
+        // mark Go answers that the client does not draw, one the client draws
+        // that Go does not answer, and one placed or sized differently are all
+        // the same disagreement. Omitted is zero here as it is for hidden.
+        const wantMarks = (want.marks || []).slice().sort((/** @type {any} */ a, /** @type {any} */ b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+        const wantSpelled = wantMarks.map(spellMark);
+        const gotSpelled = got.marks.map(spellMark);
+        if (wantSpelled.join("\u001f") !== gotSpelled.join("\u001f")) {
+          const missing = wantSpelled.filter((m) => !gotSpelled.includes(m));
+          const extra = gotSpelled.filter((m) => !wantSpelled.includes(m));
+          wrong.push(`${where}: app.js draws ${got.marks.length} mark(s) of its own and Go answers ${wantMarks.length}` +
+            (missing.length ? `; Go answers and app.js does not draw: ${missing.join("; ")}` : "") +
+            (extra.length ? `; app.js draws and Go does not answer: ${extra.join("; ")}` : ""));
+        }
+        marksCompared += wantMarks.length;
+        gapsCompared += wantMarks.filter((/** @type {any} */ m) => m.role === "gap").length;
         for (const d of want.draws) {
           const mine = got.byTier[d.tier];
           if (!mine) continue; // reported above as a tier disagreement
@@ -231,19 +286,32 @@ export async function checks() {
       const unvisited = [...expected.keys()];
       const rungs = column.rungs.filter((r) => r.width === width).length;
 
-      // THE GATES COUNT CAPPED COLUMNS, ID SETS, FLANKS AND CARRIED MARKS
-      // SEPARATELY. Counting every drawn column as "compared" would turn "a
-      // cap was checked" into "a column exists"; idsCompared is the gate the
-      // uncapped columns add, flankCompared the one the kept flank adds, and
-      // carriedCompared the one a residual's endpoint on a flank adds -- each
-      // a comparison that could vanish with the others still green.
+      // THE GATES COUNT CAPPED COLUMNS, ID SETS, FLANKS, CARRIED MARKS AND
+      // THE CLIENT'S OWN MARKS SEPARATELY. Counting every drawn column as
+      // "compared" would turn "a cap was checked" into "a column exists";
+      // idsCompared is the gate the uncapped columns add, flankCompared the
+      // one the kept flank adds, carriedCompared the one a residual's
+      // endpoint on a flank adds, and marksCompared the one the client's own
+      // marks add -- each a comparison that could vanish with the others
+      // still green.
+      //
+      // THE GAP HAS ITS OWN COUNTER, HELD TO THE COLUMN'S PIN, because it is
+      // drawn on one year only: FY2026-27's services-and-supplies is the one
+      // cell the two schedules print apart, and folding the gap into
+      // marksCompared would let that one path vanish while a residual kept
+      // the counter green. drill.mjs pins which column draws one as
+      // gapCents, and a column pinned to draw none must compare none.
+      const drawsAGap = Boolean(col.object.gapCents);
       out.push({
         name: `${col.label} at ${width} columns: every column the client draws is the one Go computed`,
-        ok: wrong.length === 0 && compared > 0 && engaged > 0 && idsCompared > 0 && flankCompared > 0 && carriedCompared > 0,
+        ok: wrong.length === 0 && compared > 0 && engaged > 0 && idsCompared > 0 && flankCompared > 0 &&
+          carriedCompared > 0 && marksCompared > 0 === drawsAGap && gapsCompared > 0 === drawsAGap,
         detail: wrong.length === 0
           ? `${idsCompared} column(s) over ${rungs} rung(s) draw the ids testdata/rungs.json says, ` +
             `${compared} of them under a cap and ${engaged} with the fold engaged; ${flankCompared} kept flank(s) ` +
-            `among them, ${carriedCompared} column(s) carrying a mark the client does not count`
+            `among them, ${carriedCompared} column(s) carrying a mark the client does not count; ` +
+            `${marksCompared} mark(s) of the client's own compared, ${gapsCompared} of them a gap ` +
+            `(the column ${drawsAGap ? "draws one" : "draws none"})`
           : `${wrong.length} disagreement(s):\n      ${wrong.join("\n      ")}`,
       });
       out.push({
