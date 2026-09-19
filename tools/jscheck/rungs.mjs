@@ -25,12 +25,13 @@
 // and is excluded from both sets; one competing with a cap is the day this
 // goes red by design.
 //
-// AND THE MARKS THE CLIENT ADDS OF ITS OWN, AS A THIRD COLLECTION: the gap
-// markGap states, by id, tier and the cents that arrive at it and leave it,
-// against the rung's `marks` in the artifact, complete both ways -- a mark
-// Go answers that the client does not draw and one the client draws that Go
-// does not answer are the same disagreement. The residual is not yet Go's
-// to answer and is still excluded from every set here.
+// AND THE MARKS THE CLIENT ADDS OF ITS OWN, AS A THIRD COLLECTION: the
+// residual carryResidual stands beside the opened node's parts and the gap
+// markGap states, each by id, tier and the cents that arrive at it and leave
+// it, against the rung's `marks` in the artifact, complete both ways -- a
+// mark Go answers that the client does not draw and one the client draws
+// that Go does not answer are the same disagreement. The marks' prose is
+// not compared here; drill.mjs pins it.
 //
 // MUTATION: rename one id, or perturb one candidates or cap figure by 1, in
 // testdata/rungs.json. The Go test goes red because the artifact is no longer
@@ -121,7 +122,7 @@ function drawn(app) {
     }
     byTier[t] = { ids, carried, hidden };
   }
-  return { tiers: app.activeTiers().slice(), byTier, marks: marksOn(app, (id) => app.isGap(id)) };
+  return { tiers: app.activeTiers().slice(), byTier, marks: marksOn(app, (id) => app.isResidual(id) || app.isGap(id)) };
 }
 
 /**
@@ -186,6 +187,7 @@ export async function checks() {
       let flankCompared = 0;
       let carriedCompared = 0;
       let marksCompared = 0;
+      let residualsCompared = 0;
       let gapsCompared = 0;
       for (const [key, { step, got }] of seen) {
         const want = expected.get(key);
@@ -220,6 +222,7 @@ export async function checks() {
             (extra.length ? `; app.js draws and Go does not answer: ${extra.join("; ")}` : ""));
         }
         marksCompared += wantMarks.length;
+        residualsCompared += wantMarks.filter((/** @type {any} */ m) => m.role === "residual").length;
         gapsCompared += wantMarks.filter((/** @type {any} */ m) => m.role === "gap").length;
         for (const d of want.draws) {
           const mine = got.byTier[d.tier];
@@ -295,23 +298,24 @@ export async function checks() {
       // marks add -- each a comparison that could vanish with the others
       // still green.
       //
-      // THE GAP HAS ITS OWN COUNTER, HELD TO THE COLUMN'S PIN, because it is
-      // drawn on one year only: FY2026-27's services-and-supplies is the one
-      // cell the two schedules print apart, and folding the gap into
-      // marksCompared would let that one path vanish while a residual kept
-      // the counter green. drill.mjs pins which column draws one as
-      // gapCents, and a column pinned to draw none must compare none.
+      // EACH MARK HAS ITS OWN COUNTER. The residual is drawn in every column
+      // at every budget and must always be compared; the gap is drawn on one
+      // year only -- FY2026-27's services-and-supplies is the one cell the two
+      // schedules print apart -- so folding it into marksCompared would let
+      // that one path vanish while a residual kept the counter green.
+      // drill.mjs pins which column draws a gap as gapCents, and a column
+      // pinned to draw none must compare none.
       const drawsAGap = Boolean(col.object.gapCents);
       out.push({
         name: `${col.label} at ${width} columns: every column the client draws is the one Go computed`,
         ok: wrong.length === 0 && compared > 0 && engaged > 0 && idsCompared > 0 && flankCompared > 0 &&
-          carriedCompared > 0 && marksCompared > 0 === drawsAGap && gapsCompared > 0 === drawsAGap,
+          carriedCompared > 0 && marksCompared > 0 && residualsCompared > 0 && gapsCompared > 0 === drawsAGap,
         detail: wrong.length === 0
           ? `${idsCompared} column(s) over ${rungs} rung(s) draw the ids testdata/rungs.json says, ` +
             `${compared} of them under a cap and ${engaged} with the fold engaged; ${flankCompared} kept flank(s) ` +
             `among them, ${carriedCompared} column(s) carrying a mark the client does not count; ` +
-            `${marksCompared} mark(s) of the client's own compared, ${gapsCompared} of them a gap ` +
-            `(the column ${drawsAGap ? "draws one" : "draws none"})`
+            `${marksCompared} mark(s) of the client's own compared, ${residualsCompared} of them a residual and ` +
+            `${gapsCompared} a gap (the column ${drawsAGap ? "draws one" : "draws none"})`
           : `${wrong.length} disagreement(s):\n      ${wrong.join("\n      ")}`,
       });
       out.push({

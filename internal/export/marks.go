@@ -2,6 +2,7 @@ package export
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 )
@@ -135,6 +136,151 @@ func GapOf(drawn Graph, opened string, tiers []int, gaps map[string]string) (Car
 	}
 	node := GraphNode{ID: m.ID, Tier: m.Tier, Role: RoleGap, Parent: "", Derived: true}
 	return Carry{Mark: m, Nodes: []GraphNode{node}, Links: []GraphLink{link}}, true, nil
+}
+
+// ResidualOf is carryResidual's rule: the flows the chart above prints for
+// the opened node that the document this rung draws does not decompose,
+// re-pointed onto one mark beside the node's parts. drawn is the rung's
+// window as spliced, from the document of the chart it was opened from,
+// unfolded, and doc the document this step draws, unfolded. ok is false
+// where the step declares no residual or nothing is carried.
+//
+// WHOLE OR NOTHING PER DECLARED ENDPOINT, in sorted id order: an endpoint's
+// flow into the opened node is carried only where doc carries nothing from
+// that endpoint into any node inside the opened one, and its flow out only
+// where the drawn chart decomposes the node at all -- some ribbon leaves a
+// node inside it other than itself -- and doc carries nothing from inside
+// to that endpoint. Where an endpoint is on both sides the outflow's
+// placement wins, which is the client's last write to its map.
+//
+// THE RIBBONS ARE THE CHART ABOVE'S, TAKEN FROM WHERE THEY ARE DRAWN. An
+// endpoint's ribbons come off the drawn chart where it draws any, and off
+// from where it draws none, which is every endpoint the window's tiers do
+// not hold; both are never taken, because a window keeps a flank of the
+// chart above and its ribbons are already on screen pointing at the opened
+// node -- taking the file's as well drew transfers/in at 960,800 against
+// the 480,400 p0067 prints. A ribbon taken off drawn is spliced out by
+// index; one taken off from replaces nothing.
+//
+// THE MARK STANDS AT THE SHALLOWEST DECLARED TIER OF ANY NODE INSIDE THE
+// OPENED ONE, read off doc, and a node with no part at a declared tier is
+// an error rather than a mark beside nothing. Its in and out differ by
+// construction: the difference is what the drawn document does not break
+// down, and the client sizes the mark at the larger.
+func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map[string]string) (Carry, bool, error) {
+	if len(residual) == 0 {
+		return Carry{}, false, nil
+	}
+	if len(tiers) == 0 {
+		return Carry{}, false, fmt.Errorf("the step draws no tiers, so the residual of %q has no column to stand in", opened)
+	}
+	chains, err := ancestry(doc, indexNodes(doc))
+	if err != nil {
+		return Carry{}, false, err
+	}
+	inside := map[string]bool{}
+	for id, chain := range chains {
+		if slices.ContainsFunc(chain, func(a GraphNode) bool { return a.ID == opened }) {
+			inside[id] = true
+		}
+	}
+	if !inside[opened] {
+		return Carry{}, false, fmt.Errorf("the document does not carry node %q, so nothing can be residual beside its parts", opened)
+	}
+	decomposed := slices.ContainsFunc(drawn.Links, func(l GraphLink) bool { return inside[l.Source] && l.Source != opened })
+	carriesFrom := func(e string) bool {
+		return slices.ContainsFunc(doc.Links, func(l GraphLink) bool { return l.Source == e && inside[l.Target] })
+	}
+	carriesTo := func(e string) bool {
+		return slices.ContainsFunc(doc.Links, func(l GraphLink) bool { return l.Target == e && inside[l.Source] })
+	}
+	above := func(want func(GraphLink) bool) (hits []GraphLink, at []int) {
+		for i, l := range drawn.Links {
+			if want(l) {
+				hits, at = append(hits, l), append(at, i)
+			}
+		}
+		if len(hits) > 0 {
+			return hits, at
+		}
+		for _, l := range from.Links {
+			if want(l) {
+				hits = append(hits, l)
+			}
+		}
+		return hits, nil
+	}
+	id := ResidualID(opened)
+	var c Carry
+	var ends []string
+	arrives := map[string]bool{}
+	note := func(e string, in bool) {
+		if _, seen := arrives[e]; !seen {
+			ends = append(ends, e)
+		}
+		arrives[e] = in
+	}
+	for _, e := range slices.Sorted(maps.Keys(residual)) {
+		if !carriesFrom(e) {
+			hits, at := above(func(l GraphLink) bool { return l.Source == e && l.Target == opened })
+			for _, l := range hits {
+				l.Target = id
+				c.Links = append(c.Links, l)
+				note(e, true)
+			}
+			c.Splice = append(c.Splice, at...)
+		}
+		if decomposed && !carriesTo(e) {
+			hits, at := above(func(l GraphLink) bool { return l.Source == opened && l.Target == e })
+			for _, l := range hits {
+				l.Source = id
+				c.Links = append(c.Links, l)
+				note(e, false)
+			}
+			c.Splice = append(c.Splice, at...)
+		}
+	}
+	if len(c.Links) == 0 {
+		return Carry{}, false, nil
+	}
+	slices.Sort(c.Splice)
+	c.Splice = slices.Compact(c.Splice)
+	// THE ENDPOINTS COME WITH THEIR RIBBONS, at the first declared tier when
+	// the flow arrives and the last when it leaves, parentless, with the
+	// record the chart above holds for them otherwise; one the window
+	// already draws keeps its place.
+	have := indexNodes(drawn)
+	fromByID := indexNodes(from)
+	for _, e := range ends {
+		n, ok := fromByID[e]
+		if _, drawnAlready := have[e]; !ok || drawnAlready {
+			continue
+		}
+		n.Tier, n.Parent = tiers[len(tiers)-1], ""
+		if arrives[e] {
+			n.Tier = tiers[0]
+		}
+		c.Nodes = append(c.Nodes, n)
+	}
+	tier, placed := 0, false
+	for _, n := range doc.Nodes {
+		if n.ID != opened && inside[n.ID] && slices.Contains(tiers, n.Tier) && (!placed || n.Tier < tier) {
+			tier, placed = n.Tier, true
+		}
+	}
+	if !placed {
+		return Carry{}, false, fmt.Errorf("%q has no part at a tier this step draws to stand the residual beside", opened)
+	}
+	c.Mark = Mark{ID: id, Role: RoleResidual, Tier: tier, Ends: slices.Sorted(slices.Values(ends))}
+	for _, l := range c.Links {
+		if l.Target == id {
+			c.Mark.InCents += l.ValueCents
+		} else {
+			c.Mark.OutCents += l.ValueCents
+		}
+	}
+	c.Nodes = append(c.Nodes, GraphNode{ID: id, Tier: tier, Role: RoleResidual, Parent: opened, Derived: true})
+	return c, true, nil
 }
 
 func abs(v int64) int64 {

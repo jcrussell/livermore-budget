@@ -134,13 +134,15 @@ const (
 // WHAT A COLUMN DRAWS IS DOCUMENT NODES, AND THE MARKS ARE ANSWERED APART.
 // The client adds marks of its own to a window: a folded tail, which this
 // walk carries under the client's own id so that a flank holding one is
-// refused by name rather than answered as nothing; and a gap, which it
-// computes as export.GapOf does and answers under the rung's Marks with its
-// tier and its cents. The residual is not yet computed here and the arm
-// excludes it from every set it compares. A document node the client draws
-// but does not count as one of the opened node's parts is answered under
-// Carried, so the two endpoints a residual lends the fund group's flank are
-// compared rather than subtracted on both sides.
+// refused by name rather than answered as nothing; a residual, which it
+// computes as export.ResidualOf does over the window and the document one
+// depth up; and a gap, which it computes as export.GapOf does over the
+// window once the residual has been spliced in. Both are answered under
+// the rung's Marks with their tier and their cents, and the arm compares
+// them by id against what the client draws. A document node the client
+// draws but does not count as one of the opened node's parts is answered
+// under Carried, so the two endpoints a residual lends the fund group's
+// flank are compared rather than subtracted on both sides.
 func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error) {
 	doc := rungsDoc{SchemaVersion: 4}
 	for _, year := range spine.YearStems {
@@ -160,7 +162,7 @@ func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error)
 		col := rungColumn{Stem: year}
 		for _, width := range rungWidths {
 			w := rungWalker{spine: spine, projections: projections, stems: stems, width: width}
-			if err := w.walk(screen, "", nil, &col.Rungs); err != nil {
+			if err := w.walk(screen, chart, "", nil, &col.Rungs); err != nil {
 				return rungsDoc{}, fmt.Errorf("rungs: %s at %d columns: %w", year, width, err)
 			}
 		}
@@ -227,14 +229,17 @@ type rungWalker struct {
 }
 
 // walk answers every node the chart on screen offers, and the charts those
-// open in turn.
+// open in turn. from is the document the chart on screen was shaped from,
+// unfolded -- the year's own at the top and the rung's own below that,
+// which is docAt one depth up -- and is what a residual's ribbons come off
+// where the window does not draw them.
 //
 // THE SIDE AND THE OUTWARD TIERS ARE READ OFF THE STEP THE WAY shapeFor READS
 // THEM: a step that keeps a flank opens the node into the half beyond it,
 // with the near end of a ribbon being its source when the flank is on the
 // left; a step that keeps none draws all of its tiers, with the near end
 // being the source when it declares SideSource and the target otherwise.
-func (w rungWalker) walk(chart export.Graph, openedKey string, path []string, out *[]rung) error {
+func (w rungWalker) walk(chart, from export.Graph, openedKey string, path []string, out *[]rung) error {
 	for i, s := range w.spine.Steps {
 		if !slices.Contains(s.After, openedKey) {
 			continue
@@ -264,13 +269,13 @@ func (w rungWalker) walk(chart export.Graph, openedKey string, path []string, ou
 			if n.Tier != s.From || (s.Role != "" && n.Role != s.Role) || !slices.Contains(opens, n.ID) {
 				continue
 			}
-			r, next, err := w.answer(g, chart, s, n.ID, nearIsSource, outward)
+			r, next, err := w.answer(g, chart, from, s, n.ID, nearIsSource, outward)
 			if err != nil {
 				return fmt.Errorf("%s > %s: %w", strings.Join(path, " > "), n.ID, err)
 			}
 			r.Path = append(slices.Clone(path), n.ID)
 			*out = append(*out, r)
-			if err := w.walk(next, s.Key, r.Path, out); err != nil {
+			if err := w.walk(next, g, s.Key, r.Path, out); err != nil {
 				return err
 			}
 		}
@@ -280,9 +285,10 @@ func (w rungWalker) walk(chart export.Graph, openedKey string, path []string, ou
 
 // answer is one rung at this walker's budget: what every column the step
 // draws holds, and the chart the rung leaves on screen for the next step to
-// open from. screen is the chart the node was opened on; outward is every
-// tier the step draws beyond its centre, nearest first, or every tier it
-// draws when it keeps no flank and has no centre.
+// open from. screen is the chart the node was opened on and from the
+// document it was shaped from; outward is every tier the step draws beyond
+// its centre, nearest first, or every tier it draws when it keeps no flank
+// and has no centre.
 //
 // THE CHART LEFT ON SCREEN IS THE WHOLE WINDOW, kept half spliced with fresh
 // half the way windowFor splices them, the kept record winning an id both
@@ -291,7 +297,7 @@ func (w rungWalker) walk(chart export.Graph, openedKey string, path []string, ou
 // rung's own flank; on the committed spine it is always this rung's centre,
 // which is why a walk carrying only the fresh half would have gone
 // unnoticed.
-func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened string, nearIsSource bool, outward []int) (rung, export.Graph, error) {
+func (w rungWalker) answer(g, screen, from export.Graph, s export.DrillStep, opened string, nearIsSource bool, outward []int) (rung, export.Graph, error) {
 	centre := len(s.Keep) > 0
 	// THE BUDGET DROPS WIDENED COLUMNS FROM THE END OF WIDEN'S ORDER, which is
 	// DrillStep.Widen's contract, and a widened column the document leaves
@@ -520,17 +526,37 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
 		}
 	}
-	// THE MARKS GO ON LAST, over the whole spliced window, which is the chart
-	// the client's markGap is handed: what the opened node takes in against
-	// what it sends out, once everything that is going to stand beside it
-	// does. The mark's own tier is the step's declared one, not the budget's
-	// (drawnMark), and it is added to the chart the next rung reads so that
-	// a flank it survived onto is refused above rather than counted.
+	// THE MARKS GO ON LAST, over the whole spliced window, in the order
+	// shapeFor applies them: the residual first, off the window and the
+	// document one depth up, and the gap after it, over the chart the
+	// residual left -- what the opened node takes in against what it sends
+	// out, once everything that is going to stand beside it does. A mark's
+	// tier is the step's declared one, not the budget's (drawnMark), and
+	// each is added to the chart the next rung reads so that a flank it
+	// survived onto is refused above rather than counted.
 	var marks []drawnMark
-	if c, ok, err := export.GapOf(next.Graph(), opened, s.Tiers, s.Gaps); err != nil {
+	drawn := next.Graph()
+	// A RESIDUAL IS CARRIED ONLY ACROSS A DOCUMENT SWITCH, which is
+	// carryResidual's own gate; validateSteps refuses the declaration on a
+	// same-document step of a shipped view, and this is what a spine that
+	// never met validateSteps gets.
+	residual := s.Residual
+	if s.Projection == "" {
+		residual = nil
+	}
+	if c, ok, err := export.ResidualOf(drawn, from, g, opened, s.Tiers, residual); err != nil {
 		return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
 	} else if ok {
-		if err := carry(next, c); err != nil {
+		if next, err = carry(drawn, c); err != nil {
+			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
+		}
+		marks = append(marks, drawnMark(c.Mark))
+		drawn = next.Graph()
+	}
+	if c, ok, err := export.GapOf(drawn, opened, s.Tiers, s.Gaps); err != nil {
+		return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
+	} else if ok {
+		if next, err = carry(drawn, c); err != nil {
 			return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
 		}
 		marks = append(marks, drawnMark(c.Mark))
@@ -539,19 +565,27 @@ func (w rungWalker) answer(g, screen export.Graph, s export.DrillStep, opened st
 	return rung{Width: w.width, Step: s.Key, Draws: draws, Marks: marks}, next.Graph(), nil
 }
 
-// carry adds a mark's nodes and ribbons to the chart the rung leaves on
-// screen. A ribbon whose end the chart does not hold is the error Link
-// makes of it, which is what refuses a mark placed beside nothing.
-func carry(next *export.Chart, c export.Carry) error {
+// carry is drawn with one mark applied: the ribbons the mark re-points
+// spliced out by index, its nodes added, and its ribbons merged in. A
+// ribbon whose end the chart does not hold is the error Link makes of it,
+// which is what refuses a mark placed beside nothing.
+func carry(drawn export.Graph, c export.Carry) (*export.Chart, error) {
+	kept := export.Graph{Nodes: drawn.Nodes}
+	for i, l := range drawn.Links {
+		if !slices.Contains(c.Splice, i) {
+			kept.Links = append(kept.Links, l)
+		}
+	}
+	next := export.IndexGraph(kept)
 	for _, n := range c.Nodes {
 		next.Add(n)
 	}
 	for _, l := range c.Links {
 		if err := next.Link(l); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return next, nil
 }
 
 // encodeRungs is the artifact's one encoding: indented, so a regenerated

@@ -88,6 +88,9 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	}
 	gapAt := map[int]bool{}
 	gapYears := map[string]bool{}
+	residualAt := map[int]bool{}
+	residualYears := map[string]bool{}
+	var offBudget int
 	for _, col := range doc.Columns {
 		if len(col.Rungs) == 0 {
 			t.Fatalf("column %q has no rung, so there is nothing to hold the client to", col.Stem)
@@ -188,14 +191,32 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 			}
 			// A MARK IS THE OPENED NODE'S OWN, UNDER THE CLIENT'S ID, AND IS
 			// COUNTED ON NO COLUMN: its role names which of the two it is,
-			// its id is that role's prefix on the last node of the path,
-			// and a gap has exactly one side, the short one.
+			// its id is that role's prefix on the last node of the path, a
+			// gap has exactly one side, the short one, and a residual names
+			// the declared endpoints it carries, sorted, and carries cents.
 			if len(r.Marks) > 1 {
 				at("carries %d marks, and the spine declares the two marks on different steps", len(r.Marks))
 			}
 			opened := r.Path[len(r.Path)-1]
 			for _, m := range r.Marks {
 				switch m.Role {
+				case export.RoleResidual:
+					residualAt[r.Width] = true
+					residualYears[col.Stem] = true
+					if m.ID != export.ResidualID(opened) {
+						at("residual mark %q is not %q", m.ID, export.ResidualID(opened))
+					}
+					if m.InCents+m.OutCents == 0 {
+						at("residual mark %q carries nothing", m.ID)
+					}
+					if len(m.Ends) == 0 || !slices.IsSorted(m.Ends) || len(slices.Compact(slices.Clone(m.Ends))) != len(m.Ends) {
+						at("residual mark %q's endpoints are not a sorted, unique, non-empty list: %v", m.ID, m.Ends)
+					}
+					for _, e := range m.Ends {
+						if _, declared := s.Residual[e]; !declared {
+							at("residual mark %q carries %q, which the step does not declare an endpoint", m.ID, e)
+						}
+					}
 				case export.RoleGap:
 					gapAt[r.Width] = true
 					gapYears[col.Stem] = true
@@ -213,6 +234,9 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				}
 				if !slices.Contains(s.Tiers, m.Tier) {
 					at("mark %q stands at tier %d, which the step does not declare", m.ID, m.Tier)
+				}
+				if !slices.Contains(tiers, m.Tier) {
+					offBudget++
 				}
 				for _, d := range r.Draws {
 					if slices.Contains(d.IDs, m.ID) || slices.Contains(d.Carried, m.ID) {
@@ -302,6 +326,25 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	}
 	if len(gapYears) == 0 {
 		t.Error("no column answers a gap mark, so the arm has no gap to hold the client to")
+	}
+	// THE RESIDUAL IS ANSWERED AT BOTH BUDGETS IN EVERY YEAR: the fund groups
+	// whose draw or transfers in pp.127-140 print for no fund, which both
+	// published columns have.
+	for _, w := range rungWidths {
+		if !residualAt[w] {
+			t.Errorf("no rung at %d columns answers a residual mark, so a residual perturbed in this artifact could not be seen there", w)
+		}
+	}
+	if len(residualYears) != len(doc.Columns) {
+		t.Errorf("%d of %d columns answer a residual mark, and every published column carries a group the fund schedule does not fully decompose", len(residualYears), len(doc.Columns))
+	}
+	// A MARK AT A TIER THE BUDGET DROPPED IS A PINNED ZERO: both marks index
+	// the step's declared tiers, which is why Marks hangs off the rung, and
+	// the committed steps that declare one widen nothing, so on this corpus
+	// every mark stands at a drawn column. A non-zero here is the client's
+	// placement to compare and a bead to file, not a figure to repair.
+	if offBudget != 0 {
+		t.Errorf("%d mark(s) stand at a tier their rung does not draw at that budget", offBudget)
 	}
 }
 

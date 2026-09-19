@@ -223,6 +223,17 @@
               ],
               "hidden": 3
             }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/capital",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 250021300,
+              "ends": [
+                "fund-balance/draw"
+              ]
+            }
           ]
         },
         {
@@ -964,6 +975,18 @@
               "candidates": 1,
               "ids": [
                 "fund/100"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/general",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 151455400,
+              "ends": [
+                "fund-balance/draw",
+                "transfers/in"
               ]
             }
           ]
@@ -1912,6 +1935,17 @@
                 "fund/720",
                 "fund/730",
                 "fund/740"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/internal-service",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 614753300,
+              "ends": [
+                "fund-balance/draw"
               ]
             }
           ]
@@ -3079,6 +3113,17 @@
               ],
               "hidden": 3
             }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/capital",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 250021300,
+              "ends": [
+                "fund-balance/draw"
+              ]
+            }
           ]
         },
         {
@@ -3820,6 +3865,18 @@
               "candidates": 1,
               "ids": [
                 "fund/100"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/general",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 151455400,
+              "ends": [
+                "fund-balance/draw",
+                "transfers/in"
               ]
             }
           ]
@@ -4785,6 +4842,17 @@
                 "fund/720",
                 "fund/730",
                 "fund/740"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/internal-service",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 614753300,
+              "ends": [
+                "fund-balance/draw"
               ]
             }
           ]
@@ -5964,6 +6032,17 @@
               ],
               "hidden": 3
             }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/capital",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 1012941600,
+              "ends": [
+                "fund-balance/draw"
+              ]
+            }
           ]
         },
         {
@@ -6670,6 +6749,17 @@
               "candidates": 1,
               "ids": [
                 "fund/100"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/general",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 48673500,
+              "ends": [
+                "transfers/in"
               ]
             }
           ]
@@ -7618,6 +7708,17 @@
                 "fund/720",
                 "fund/730",
                 "fund/740"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/internal-service",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 716064500,
+              "ends": [
+                "fund-balance/draw"
               ]
             }
           ]
@@ -8758,6 +8859,17 @@
               ],
               "hidden": 3
             }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/capital",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 1012941600,
+              "ends": [
+                "fund-balance/draw"
+              ]
+            }
           ]
         },
         {
@@ -9464,6 +9576,17 @@
               "candidates": 1,
               "ids": [
                 "fund/100"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/general",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 48673500,
+              "ends": [
+                "transfers/in"
               ]
             }
           ]
@@ -10429,6 +10552,17 @@
                 "fund/720",
                 "fund/730",
                 "fund/740"
+              ]
+            }
+          ],
+          "marks": [
+            {
+              "id": "residual/fund-group/internal-service",
+              "role": "residual",
+              "tier": 3,
+              "in_cents": 716064500,
+              "ends": [
+                "fund-balance/draw"
               ]
             }
           ]
