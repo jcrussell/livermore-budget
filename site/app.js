@@ -737,8 +737,25 @@ function linkColor(link) {
  * @returns {string}
  */
 function nodeColor(node) {
-  const name = /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[node.id];
-  return name ? cssVar(name) : cssVar("--muted");
+  return cssVar(fundColorVar(node.id));
+}
+
+/**
+ * The custom property holding a fund group's hue, or the one every other mark
+ * takes.
+ *
+ * THE FALLBACK IS SPELLED ONCE BECAUSE TWO READERS NEED IT. A group the palette
+ * has no hue for is drawn --muted by nodeColor and its legend swatch has to be
+ * the same colour, or the legend names a mark by a colour the chart does not
+ * draw it in. data/funds.yaml declares SEVEN fund types and FUND_ORDER holds
+ * six, so this is reachable rather than defensive: `permanent` is published on
+ * the FY2023-24 column of fund-flows and of department-funding.
+ *
+ * @param {string} id
+ * @returns {string}
+ */
+function fundColorVar(id) {
+  return /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[id] || "--muted";
 }
 
 /**
@@ -5076,19 +5093,36 @@ function buildLegend() {
   const legend = el("legend");
   legend.replaceChildren();
   if (drilled.length) return;
-  const byID = new Map(projection.nodes.map((n) => [n.id, n]));
-  for (const id of FUND_ORDER) {
-    const node = byID.get(id);
-    if (!node) continue;
+  // THE DOCUMENT'S GROUPS, ORDERED BY THE PALETTE -- not the palette's groups
+  // filtered by the document, which is what this did and is why a seventh one
+  // could not be seen. FUND_ORDER holds six and data/funds.yaml declares seven,
+  // so a column carrying `permanent` drew a mark the legend denied existed: no
+  // swatch to isolate it by, and no way to tell it from a mark the chart had
+  // decided not to name. Worse, the arm over this compared the legend with
+  // FUND_ORDER for equality, and a loop over FUND_ORDER can only ever produce a
+  // SUBSET of it -- so the comparison could report a group that went missing and
+  // never one that arrived.
+  //
+  // A GROUP THE PALETTE DOES NOT KNOW SORTS LAST AND TAKES --muted, which is
+  // what nodeColor already draws it. Ordering the known ones first is what keeps
+  // the legend reading in the palette's order, which is a measured result
+  // (style.css's own comment: 720 orderings against a CVD validator).
+  const place = (/** @type {FiscNode} */ n) => {
+    const i = FUND_ORDER.indexOf(n.id);
+    return i >= 0 ? i : FUND_ORDER.length;
+  };
+  const groups = projection.nodes.filter(isFundGroup).slice()
+    .sort((a, b) => place(a) - place(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const node of groups) {
     const button = document.createElement("button");
     button.type = "button";
-    button.dataset.node = id;
+    button.dataset.node = node.id;
     button.setAttribute("aria-pressed", "false");
     const key = h("span", "key");
-    key.dataset.var = /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[id];
+    key.dataset.var = fundColorVar(node.id);
     button.append(key);
     button.append(document.createTextNode(node.label));
-    button.addEventListener("click", () => setIsolated(isolated === id ? "" : id));
+    button.addEventListener("click", () => setIsolated(isolated === node.id ? "" : node.id));
     legend.append(button);
   }
 }

@@ -265,20 +265,48 @@ function attempt(fn) {
  * drill.mjs pins, so the spine's overview is where the palette's order meets
  * the DOM and the only place buildLegend's output can be read.
  */
-async function spineLegend() {
+async function spineLegend(doc) {
   // ON THE FIRST YEAR, SAID RATHER THAN INHERITED. The page's own default is
   // the NEWEST year, and this arm plans one document and reads the legend the
   // draw built -- opening on a year whose document is unplanned refuses the
   // fetch and leaves the legend empty, which would read as a palette defect.
   const app = loadApp({ config: spineConfig(), checkedStem: "sankey",
-    fetch: plannedFetch({ "data/sankey.json": { doc: goldenGraph() } }) });
+    fetch: plannedFetch({ "data/sankey.json": { doc: doc || goldenGraph() } }) });
   await settle();
   const legend = app.dom.byId.get("legend");
-  return legend ? legend.children.map((b) => b.dataset.node) : [];
+  if (!legend) return { ids: [], vars: [] };
+  return {
+    ids: legend.children.map((b) => b.dataset.node),
+    vars: legend.children.map((b) => (b.children[0] || {}).dataset?.var),
+  };
+}
+
+/**
+ * The spine with a fund group the palette has no hue for, which is a shape the
+ * corpus already publishes.
+ *
+ * data/funds.yaml declares SEVEN fund types and FUND_ORDER holds six;
+ * fund-flows-2024-actual.json and department-funding-2024-actual.json both
+ * carry fund-group/permanent today. Neither is opened by any view, so the only
+ * way to ask what the page does with one is to build it -- and until this
+ * existed the answer was "drops it from the legend", with the arm below green
+ * because it compared the legend against the palette rather than against the
+ * document.
+ */
+function spineWithASeventhGroup() {
+  const doc = goldenGraph();
+  const model = doc.nodes.find((n) => n.id === "fund-group/debt-service");
+  doc.nodes.push(Object.assign({}, model, {
+    id: "fund-group/permanent", label: "Permanent Funds",
+  }));
+  const link = doc.links.find((l) => l.target === model.id);
+  doc.links.push(Object.assign({}, link, { target: "fund-group/permanent" }));
+  return doc;
 }
 
 export async function checks() {
-  const legend = await spineLegend();
+  const legend = (await spineLegend()).ids;
+  const seventh = await spineLegend(spineWithASeventhGroup());
   const whole = loadApp();
   // THE SPINE AS index.html DECLARES IT, which `whole` is not: that one carries
   // no tier set, which is the "drawn whole" state the unfolded fund-flows
@@ -589,6 +617,21 @@ export async function checks() {
       detail: legend.length
         ? legend.map((id) => id.replace("fund-group/", "")).join(", ")
         : "the legend is empty",
+    },
+    {
+      // THE ARM ABOVE CANNOT SEE THIS AND NEVER COULD. buildLegend once looped
+      // over FUND_ORDER, so the legend was always a SUBSET of it and an equality
+      // check could report a group that went missing and never one that arrived.
+      // A document carrying a seventh is what tells the two apart.
+      name: "a fund group the palette has no hue for is still in the legend, last, and muted",
+      ok: seventh.ids.length === whole.FUND_ORDER.length + 1 &&
+          seventh.ids[seventh.ids.length - 1] === "fund-group/permanent" &&
+          JSON.stringify(seventh.ids.slice(0, -1)) === JSON.stringify(whole.FUND_ORDER) &&
+          seventh.vars[seventh.vars.length - 1] === "--muted",
+      detail: `${seventh.ids.length} swatch(es): ` +
+        seventh.ids.map((id, i) => id.replace("fund-group/", "") + " " + seventh.vars[i]).join(", ") +
+        ` -- the six the palette knows in its own order, then the one it does not, ` +
+        `drawn the colour nodeColor already gives it`,
     },
   );
   out.push(...(await capIsWhatMakesTheColumnDrawable()));

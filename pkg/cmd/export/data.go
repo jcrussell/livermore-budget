@@ -536,8 +536,8 @@ const fundFlowsNoSpineColumn = "a published column of the General Fund drill-dow
 	"DOES list its caveats -- it indexes every published document rather than drawing " +
 	"one -- which is not the same as rendering it and does not retire this entry. " +
 	"Reaching it means a spine-less way into fund-flows, and FY2023-24 also carries a " +
-	"seventh fund group, permanent, which FUND_ORDER has no hue for and buildLegend no " +
-	"entry for (fisc-zojk)"
+	"seventh fund group, permanent, which the client's palette has no hue for: it is " +
+	"drawn and listed in the legend, muted, rather than dropped (fisc-zojk)"
 
 // assertPublishedReachable is the half of the published-document contract that
 // assertPublishedBuilt does not make: a document a reader can open.
