@@ -403,10 +403,10 @@ type pageData struct {
 	// HTML and lists them all as a selector; app.js swaps between them without
 	// refetching the page.
 	Years []yearView
-	// Opens is the stem of the year the page opens on, which the template marks
-	// `checked`. Years is ordered oldest first for the reader; this is which of
-	// them is already selected, and the two are deliberately not the same
-	// declaration.
+	// Opens is the stem of the year the page opens on -- the last of Years,
+	// computed here so the template can mark that radio `checked` without
+	// arithmetic on an index. It is a rendering input and not a declaration:
+	// nothing chooses it, the order does.
 	Opens string
 	Facts int
 	Nodes int
@@ -631,12 +631,7 @@ type clientConfig struct {
 	Metadata json.RawMessage `json:"metadata"`
 	// Years is every published year with the words that belong to it, built by
 	// the packager so the client never composes a figure or a caveat itself.
-	Years []yearView `json:"years"`
-	// Opens is the stem the page opened on, so checkedYear can fall back to it
-	// rather than to years[0] when no radio is checked. It is the same value the
-	// template marked `checked`; the client reads the radio first, because a
-	// restored selection is the reader's and outranks the default.
-	Opens string               `json:"opens,omitempty"`
+	Years []yearView           `json:"years"`
 	Docs  map[string]clientDoc `json:"docs"`
 	// RenderTiers is the node tiers the page draws, left to right; omitted
 	// when the page draws its document whole.
@@ -1507,25 +1502,19 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Steps: steps,
 		})
 	}
-	// THE OPENING YEAR IS AN INDEX INTO years, NOT v.Projection'S DOCUMENT. The
-	// two were the same thing while YearStems had to start with Projection;
-	// View.Opens separates the order a reader meets the years in from the one
-	// already selected when they arrive. Everything per-year the page renders
-	// statically comes from this entry, so a reader with no JavaScript, and the
-	// first paint before app.js runs, both agree with the checked radio.
+	// THE PAGE OPENS ON THE NEWEST YEAR, WHICH IS THE LAST OF THEM.
+	// [View.YearStems] is oldest first, so this is arithmetic on that order
+	// rather than a second declaration of it. It is NOT v.Projection's document,
+	// which is what it was while YearStems had to start with Projection --
+	// everything per-year the page renders statically comes from this entry, so
+	// a reader with no JavaScript, and the first paint before app.js runs, both
+	// agree with the checked radio.
 	//
 	// SCOPE AND THE BUILDER DO NOT MOVE WITH IT, and that is not an oversight:
 	// the loop above REFUSES a year whose scope or generated_by differs from the
 	// opening projection's, so those two are already known equal across every
 	// year and reading them off meta is reading the same value.
-	opening := 0
-	if v.Opens != "" {
-		opening = slices.IndexFunc(years, func(y yearView) bool { return y.Stem == v.Opens })
-		if opening < 0 {
-			return pageData{}, fmt.Errorf("view %q opens on %q, which is not among the years it built", v.Path, v.Opens)
-		}
-	}
-	open := years[opening]
+	open := years[len(years)-1]
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
@@ -1540,7 +1529,6 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Projections:   files,
 		Metadata:      doc.Metadata,
 		Years:         years,
-		Opens:         open.Stem,
 		Docs:          clientDocs,
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,

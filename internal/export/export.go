@@ -170,29 +170,21 @@ type View struct {
 	Title string
 	Lede  string
 	// YearStems are the documents that are the same projection for different
-	// fiscal years, in the order a reader should meet them, opening year first.
+	// fiscal years, OLDEST FIRST, which is the order a reader meets them in.
 	// Empty means this view has one document and renders no year control.
+	//
+	// THE PAGE OPENS ON THE LAST OF THEM, because the newest budget is the one
+	// in force and the one a reader arriving cold is asking about. That is
+	// arithmetic on this order rather than a second field: a view that wanted
+	// to open on some other year would be a view whose control did not read as
+	// a time axis, and no such view exists. Reordering this list changes which
+	// year the page opens on, which is the one thing to know before doing it.
 	//
 	// IT IS PER VIEW, not per site. Years are a property of the SPINE, which
 	// publishes one document per fiscal year; the revenue trends publish one
 	// document spanning four columns and have no year to switch between. A
 	// single site-wide list could not say that.
 	YearStems []string
-
-	// Opens is the year stem the page opens on, and empty means YearStems[0].
-	//
-	// SEPARATE FROM THE ORDER BECAUSE THEY ANSWER DIFFERENT QUESTIONS. YearStems
-	// is the order a reader meets the years in, oldest first, which is how a
-	// time control reads; Opens is which one is already selected when they
-	// arrive, which is the newest, because that is the budget in force. Tying
-	// the two together forces one to follow the other, and a control that reads
-	// newest-to-oldest is a different decision from a page that opens on the
-	// newest.
-	//
-	// IT IS NOT DERIVED AS "THE LAST ONE". The caller knows which year it
-	// considers current; this package lays out what it is handed, as it does
-	// for YearStems itself.
-	Opens string
 
 	// Sections are the printed blocks a history table groups its rows under,
 	// in printed order. The caller's words, like Title and Lede: a heading is
@@ -1057,10 +1049,6 @@ func (v View) validate(built map[string][]byte) error {
 	if len(v.YearStems) > 0 && !slices.Contains(v.YearStems, v.Projection) {
 		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v",
 			v.Path, v.Projection, v.YearStems)
-	}
-	if v.Opens != "" && !slices.Contains(v.YearStems, v.Opens) {
-		return fmt.Errorf("view %q opens on %q, which is not among its year stems %v",
-			v.Path, v.Opens, v.YearStems)
 	}
 	return v.validateSteps(built)
 }

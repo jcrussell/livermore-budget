@@ -40,7 +40,14 @@ import { openedChain } from "./drill.mjs";
  * continuation, not synchronously during load.
  */
 function page(opts) {
-  const app = loadApp(opts);
+  // THE READER IS ON THE FIRST YEAR UNLESS AN ARM SAYS OTHERWISE, and that is
+  // pinned here rather than inherited. The page's own default is the NEWEST
+  // year -- index.html.tmpl marks the last radio, because that is the budget in
+  // force -- and every arm in this file plans its fetch for one document and
+  // asserts on what that draw did. Leaving the year to the default would make
+  // each of them a check about which year opens, which is year.mjs's subject
+  // and not this file's.
+  const app = loadApp({ checkedStem: (opts.config?.years || [])[0]?.stem, ...opts });
   const main = app.dom.document.node();
   app.dom.document.plant("main", main);
   // AND A <tbody>, WITHOUT WHICH buildTable RETURNS AT ITS FIRST LINE. Every

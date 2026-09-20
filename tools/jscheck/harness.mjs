@@ -788,10 +788,10 @@ export function loadApp(opts = {}) {
   // THE YEAR RADIOS THE TEMPLATE RENDERS, planted before app.js runs.
   //
   // index.html.tmpl emits one <input type="radio" value="{{$y.Stem}}"> per
-  // published year inside the fieldset, `checked` on the one whose stem equals
-  // the config's `opens` -- the NEWEST, while the list itself runs oldest
-  // first. Mirroring that is what lets a check tell the reader's restored
-  // selection apart from the packager's default. The stub knew
+  // published year inside the fieldset, `checked` on the LAST -- the newest,
+  // while the list itself runs oldest first. Mirroring that is what lets a check
+  // tell the reader's restored selection apart from the page's own default. The
+  // stub knew
   // the fieldset existed and nothing about its contents, so "the page opens on
   // the year the control is showing" could not be asked at all -- and the
   // browser's own form-state restoration, which is what makes that question
@@ -810,13 +810,11 @@ export function loadApp(opts = {}) {
       input.setAttribute("type", "radio");
       input.id = "year-" + y.stem;
       input.value = y.stem;
-      // THE TEMPLATE'S OWN RULE: checked is the opening year, not the first
-      // listed. A fixture that declares no `opens` falls back to years[0], the
-      // way pageData.Opens does when a view declares none.
-      const opens = sandbox.FISC_CONFIG.opens;
+      // THE TEMPLATE'S OWN RULE: checked is the newest year, which is the last
+      // of a list the packager orders oldest first.
       input.checked = o.checkedStem
         ? y.stem === o.checkedStem
-        : (opens ? y.stem === opens : y === years[0]);
+        : y === years[years.length - 1];
       group.appendChild(input);
       const label = stub.document.createElement("label");
       label.setAttribute("for", input.id);

@@ -447,16 +447,6 @@ func generatedBy() string { return "fisc " + build.Get().String() }
 // world by this: `fisc verify` fails published-projection-built for it, which is
 // the check that exists to notice a year the site publishes and nothing looked
 // at.
-// opensOn is the year stem a view opens on: the newest, which is the last of an
-// ascending list. Empty in, empty out -- a view with no year control declares no
-// opening year, and View.Opens' empty value already means YearStems[0].
-func opensOn(stems []string) string {
-	if len(stems) == 0 {
-		return ""
-	}
-	return stems[len(stems)-1]
-}
-
 func yearStems(name string, projections map[string][]byte) []string {
 	docs := project.PublishedDocuments()
 	out := make([]string, 0, len(docs))
@@ -707,13 +697,6 @@ func views(built result) []export.View {
 		Template:   export.SankeyTemplate,
 		Projection: export.PrimaryProjection,
 		YearStems:  yearStems(export.PrimaryProjection, projections),
-		// THE PAGE OPENS ON THE NEWEST PUBLISHED YEAR, which is the budget in
-		// force and the one a reader arriving cold is asking about.
-		// project.PublishedFiscalYears is ascending and yearStems walks it, so
-		// the newest is the last -- but the DECLARATION is what the view
-		// carries, not that derivation, because View.Opens' own comment says
-		// the order and the opening year are two questions.
-		Opens: opensOn(yearStems(export.PrimaryProjection, projections)),
 		// THE SPINE'S COLUMNS, DECLARED RATHER THAN INFERRED. Both published
 		// spine documents carry exactly these three tiers, so the fold this
 		// buys is a no-op on the corpus; what it buys is ADJACENCY. A step

@@ -1171,24 +1171,31 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		t.Errorf("the spine view lists %d year stems, want both adopted years", len(spine.YearStems))
 	}
 
-	// THE SPINE OPENS ON THE NEWEST YEAR AND LISTS THEM OLDEST FIRST, which are
-	// two decisions and are asserted as two. Nothing else in the tree holds this
-	// one: internal/export's own test proves a view that DECLARES an Opens
-	// renders it, which stays green when this composition root declares the
-	// oldest -- measured by mutating opensOn to return stems[0], which reverted
-	// the page to opening on FY 2025-26 with every package's tests passing.
-	if len(spine.YearStems) > 1 {
-		newest := spine.YearStems[len(spine.YearStems)-1]
-		if spine.Opens != newest {
-			t.Errorf("the spine opens on %q, want the newest year %q; "+
-				"project.PublishedFiscalYears is ascending, so opening on anything else "+
-				"greets a reader with a budget that is not the one in force",
-				spine.Opens, newest)
+	// THE YEAR STEMS ARE ASCENDING, AND THAT IS LOAD-BEARING RATHER THAN TIDY.
+	// The page opens on the LAST of them -- buildSankeyPage takes years[len-1],
+	// because the newest budget is the one in force -- so this order is the
+	// whole of what decides which year a reader is greeted with. Reordering the
+	// list silently changes that, and this is what says so.
+	//
+	// It is asserted here rather than in internal/export because that package
+	// lays out what it is handed: a view listing its years newest-first would be
+	// rendered faithfully and open on the oldest. The order is this composition
+	// root's, so the check belongs with it.
+	years := map[string]int{}
+	for _, d := range project.PublishedDocuments() {
+		for _, c := range d.Columns {
+			years[d.Stem] = c.FiscalYear
 		}
-		if spine.Opens == spine.YearStems[0] {
-			t.Errorf("the spine opens on its FIRST year stem %q; the list is the order a "+
-				"reader meets the years in and is ascending, so the opening year is the "+
-				"last of it", spine.Opens)
+	}
+	for i, stem := range spine.YearStems {
+		if _, ok := years[stem]; !ok {
+			t.Errorf("the spine lists year stem %q, which names no published document", stem)
+			continue
+		}
+		if i > 0 && years[stem] <= years[spine.YearStems[i-1]] {
+			t.Errorf("the spine lists %q (FY%d) after %q (FY%d); the years must ascend, "+
+				"because the page opens on the last of them",
+				stem, years[stem], spine.YearStems[i-1], years[spine.YearStems[i-1]])
 		}
 	}
 

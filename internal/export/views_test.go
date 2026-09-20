@@ -2706,12 +2706,16 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 		if err := json.Unmarshal(configBlob(t, src), &config); err != nil {
 			t.Fatalf("%s: decode FISC_CONFIG: %v", page, err)
 		}
-		if len(config.Years) == 0 || config.Years[0].ChartTitle == "" {
+		// THE OPENING YEAR IS THE LAST OF THEM, because buildSankeyPage renders
+		// years[len-1] -- the newest budget, which is the one in force. Compared
+		// against Years[0] this passed for the wrong reason while the page opened
+		// on the year it listed first.
+		if len(config.Years) == 0 || config.Years[len(config.Years)-1].ChartTitle == "" {
 			t.Fatalf("%s: the config carries no opening chart_title to compare against", page)
 		}
 		const open = `<title id="chart-title">`
 		got := strings.TrimPrefix(between(t, readerVisible(t, src), open, "</title>"), open)
-		if want := template.HTMLEscapeString(config.Years[0].ChartTitle); got != want {
+		if want := template.HTMLEscapeString(config.Years[len(config.Years)-1].ChartTitle); got != want {
 			t.Errorf("%s renders chart title %q, but the client repaints %q on a year switch",
 				page, got, want)
 		}
@@ -3657,10 +3661,10 @@ func recited(t *testing.T, raw []byte, docID string) []byte {
 
 // THE ORDER AND THE OPENING YEAR ARE TWO DECLARATIONS, and this holds them
 // apart. The years are listed oldest first, because that is how a control over
-// time reads; the page opens on the one View.Opens names, because the newest
-// budget is what a reader arriving cold is asking about. They were one
-// declaration until Opens existed -- validate required YearStems[0] to equal
-// Projection -- and that is what made the page open on the oldest year.
+// time reads; the page opens on the LAST of them, because the newest budget is
+// what a reader arriving cold is asking about. They were one declaration while
+// validate required YearStems[0] to equal Projection, and that is what made the
+// page open on the oldest year.
 //
 // IT READS THE RENDERED PAGE rather than the View, because the defect to guard
 // against is a page whose tiles disagree with its own checked radio: the state
@@ -3688,7 +3692,6 @@ func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T
 			Path: export.IndexPath, Template: export.SankeyTemplate,
 			Projection: "sankey",
 			YearStems:  []string{"sankey", "sankey-2027"},
-			Opens:      "sankey-2027",
 		}},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",

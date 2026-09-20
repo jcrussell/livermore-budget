@@ -228,8 +228,13 @@ export async function checks() {
     const shown = refusals(main).length;
 
     // Now let a good year through, which is what clearRefusal is for.
+    // ON THE REJECTING YEAR, SAID RATHER THAN INHERITED: this arm is about a
+    // banner going UP and then coming DOWN, so the page has to open on the
+    // document that refuses. The page's own default is the newest year, which
+    // is the one that succeeds here.
     const app2 = loadApp({
       config: twoYearConfig(),
+      checkedStem: "sankey",
       fetch: plannedFetch({
         "data/sankey.json": { reject: new TypeError("x") },
         "data/sankey-2027.json": { doc },

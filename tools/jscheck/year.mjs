@@ -187,13 +187,14 @@ function clickYear(app, stem) {
  * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
  */
 /**
- * The page opens on the year the PACKAGER declared, not on the first one listed.
+ * The page opens on the NEWEST year, not on the first one listed.
  *
- * THE ORDER AND THE OPENING YEAR ARE TWO DECLARATIONS. CONFIG.years runs oldest
- * first, because that is how a control over time reads; CONFIG.opens names the
- * newest, because that is the budget in force. checkedYear used to fall back to
- * years[0], which under that order is the year furthest from the one a reader
- * arriving cold is asking about.
+ * CONFIG.years runs oldest first, because that is how a control over time reads,
+ * so the year a reader arriving cold is asking about is the LAST of it.
+ * checkedYear used to fall back to years[0], which under that order is the year
+ * furthest from the budget in force. Nothing on the wire names the opening year:
+ * the order already does, and the packager marks the same one `checked` by
+ * computing it the same way.
  *
  * THE REACHABLE FALLBACK IS A STALE RESTORE, which is why that is what this
  * drives rather than an unchecked group. The template always marks one radio,
@@ -204,7 +205,7 @@ function clickYear(app, stem) {
  * is what this arm is about.
  * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
  */
-async function opensOnTheDeclaredYear() {
+async function opensOnTheNewestYear() {
   const doc = goldenGraph();
   const plan = {
     "data/sankey.json": { doc },
@@ -212,14 +213,12 @@ async function opensOnTheDeclaredYear() {
   };
   const config = twoYearConfig();
   const second = config.years[1];
-  config.opens = second.stem;
 
-  const declared = loadApp({ config, fetch: plannedFetch(plan) });
+  const opened = loadApp({ config, fetch: plannedFetch(plan) });
   await settle();
-  const drewDeclared = declared.dom.byId.get("lede-year").textContent;
+  const drewOpened = opened.dom.byId.get("lede-year").textContent;
 
   const staleConfig = twoYearConfig();
-  staleConfig.opens = second.stem;
   const stale = loadApp({
     config: staleConfig,
     checkedStem: "sankey-2019",
@@ -241,24 +240,23 @@ async function opensOnTheDeclaredYear() {
   const wantFirst = `${first.label} ${first.basis}`;
 
   return [{
-    name: "the page opens on the year the config declares, not the first one listed",
-    ok: drewDeclared === want && config.years[0].stem !== second.stem,
-    detail: `years are listed ${JSON.stringify(config.years.map((y) => y.label))} ` +
-      `and opens is ${JSON.stringify(config.opens)}; the page drew "${drewDeclared}", ` +
-      `want "${want}" -- and the declared year is not years[0], so falling back to ` +
-      `that would draw "${wantFirst}"`,
+    name: "the page opens on the newest year, not the first one listed",
+    ok: drewOpened === want && config.years[0].stem !== second.stem,
+    detail: `years are listed ${JSON.stringify(config.years.map((y) => y.label))}; ` +
+      `the page drew "${drewOpened}", want "${want}" -- the last of them, where ` +
+      `falling back to years[0] would draw "${wantFirst}"`,
   }, {
-    name: "a restore naming a year this config no longer publishes falls back to the declared one",
+    name: "a restore naming a year this config no longer publishes falls back to the newest",
     ok: drewStale === want,
     detail: `the control came back checked on "sankey-2019", which this config does ` +
       `not publish; the page drew "${drewStale}", want "${want}" -- the year the ` +
-      `packager built the page to open on, rather than the oldest it lists`,
+      `page opens on, rather than the oldest it lists`,
   }, {
-    name: "and a reader's own selection still outranks the declared year",
+    name: "and a reader's own selection still outranks the newest",
     ok: drewReader === wantFirst,
-    detail: `checked on ${first.stem} with no opens declared, the page drew ` +
-      `"${drewReader}", want "${wantFirst}" -- a default that overrode a restore ` +
-      `would look like the page ignoring a click`,
+    detail: `checked on ${first.stem}, the page drew "${drewReader}", want ` +
+      `"${wantFirst}" -- a default that overrode a restore would look like the ` +
+      `page ignoring a click`,
   }];
 }
 
@@ -644,7 +642,7 @@ export async function checks() {
           `palette; while this selector answered [] the loop ran zero times and said nothing`,
       };
     })(),
-    ...(await opensOnTheDeclaredYear()),
+    ...(await opensOnTheNewestYear()),
     ...(await restoredSelection()),
     ...(await themeFollowsTheOS()),
     ...(await yearSwitchClosesTheDrill()),
@@ -664,6 +662,9 @@ export async function checks() {
  * paths a stale cache would simply miss.
  */
 async function chainedYears(plan, paths) {
+  // EVERY ARM BUILT ON THIS SWITCHES FROM THE FIRST YEAR TO THE SECOND, so the
+  // first is where it starts -- pinned, because the page's own default is the
+  // newest and a switch to the year already showing asks for nothing.
   const config = twoYearConfig();
   config.projections["fund-flows"] = "data/fund-flows.json";
   // THE SHIPPED STEP'S COLUMNS AND THE SHIPPED STEP'S CAP, because nothing in
@@ -704,7 +705,7 @@ async function chainedYears(plan, paths) {
     "data/fund-flows.json": { doc: goldenFundFlows() },
     [RUNGS_PATH]: { doc: answer },
   }, plan || {}));
-  const app = loadApp({ config, fetch });
+  const app = loadApp({ config, checkedStem: config.years[0].stem, fetch });
   app.dom.document.getElementById("flow-table").selectable = { tbody: app.dom.document.node() };
   app.dom.document.plant("main", app.dom.document.node());
   await settle();

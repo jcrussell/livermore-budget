@@ -266,7 +266,11 @@ function attempt(fn) {
  * the DOM and the only place buildLegend's output can be read.
  */
 async function spineLegend() {
-  const app = loadApp({ config: spineConfig(),
+  // ON THE FIRST YEAR, SAID RATHER THAN INHERITED. The page's own default is
+  // the NEWEST year, and this arm plans one document and reads the legend the
+  // draw built -- opening on a year whose document is unplanned refuses the
+  // fetch and leaves the legend empty, which would read as a palette defect.
+  const app = loadApp({ config: spineConfig(), checkedStem: "sankey",
     fetch: plannedFetch({ "data/sankey.json": { doc: goldenGraph() } }) });
   await settle();
   const legend = app.dom.byId.get("legend");
