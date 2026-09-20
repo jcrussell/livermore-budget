@@ -15,5 +15,9 @@ docs/m0-spike/spike/
 # Agent worktrees (created by subagents; never part of the tree)
 .claude/worktrees/
 
+# Python bytecode. tools/extract.py runs as a script and leaves none, but a
+# test that IMPORTS it does -- which is how this arrived.
+tools/__pycache__/
+
 # One-shot session handoff (burn after reading)
 next
