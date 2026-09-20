@@ -241,17 +241,22 @@ func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	}
 }
 
-// chartView is a well-formed ChartTemplate view with one thing broken.
+// chartView is a well-formed chart view with one thing broken.
 //
 // A CONSTRUCTOR RATHER THAN TEN LITERALS, because the point of each case is the
 // ONE field it breaks: written out in full, a case that stopped breaking
 // anything -- a field renamed, a default filled in -- would still name a
 // message and still pass, and nothing would say which arm had gone quiet.
+//
+// IT IS A SECOND SankeyTemplate VIEW, at a path the site does not open on.
+// There was a second chart template and this stood one up; the rules the cases
+// below break are the ones that bind any view that draws a chart, so the
+// vehicle moved to the template that still exists rather than the cases being
+// dropped with it.
 func chartView(breaks func(*export.View)) export.View {
 	v := export.View{
-		Path: "extra.html", Template: export.ChartTemplate, Projection: "sankey",
-		RenderTiers: []int{0, 2}, ChartSubject: "by something",
-		ChartDescription: "A description.",
+		Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
+		RenderTiers: []int{0, 2},
 		Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
 			Tiers: []int{0, 3}, Back: "All groups", Noun: "thing",
 			Tail: "funds", Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: "Opened."}},
@@ -305,7 +310,7 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 	}
 	dir := t.TempDir()
 	// THE WINDOW'S OWN CLAUSES ARE UNTOUCHED HERE. Only the document changes:
-	// a ChartTemplate page needs a drilldown document's metadata, which the
+	// a rendered chart page needs a drilldown document's metadata, which the
 	// spine golden does not carry, and the refusal table never renders one.
 	v := windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })
 	v.Steps = append(v.Steps,
@@ -321,7 +326,7 @@ func TestAStepMayKeepOneFlankOfTheChartItOpensFrom(t *testing.T) {
 			Description: "Opened again."})
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey"}, v},
 		Docs:        budgetDocs(),
@@ -398,7 +403,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 			dir := t.TempDir()
 			if _, err := writeSite(export.Options{
 				Dir:         dir,
-				Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+				Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 				Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 					Template: export.SankeyTemplate, Projection: "sankey"}, tc.view},
 				Docs:        budgetDocs(),
@@ -420,7 +425,7 @@ func TestAWindowsFlankMayBeTwoColumnsDeep(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 		Views: []export.View{{Path: export.IndexPath, Nav: "Budget flows",
 			Template: export.SankeyTemplate, Projection: "sankey"},
 			windowView(func(v *export.View) { v.Nav, v.Projection = "Extra", "fund-flows" })},
@@ -885,7 +890,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// interaction contracts apart were themselves unguarded. A refusal
 		// nobody has tried to trip is a refusal that may already not fire.
 		//
-		// `chart` below is a well-formed ChartTemplate view; each case breaks
+		// `chart` below is a well-formed chart view; each case breaks
 		// exactly one thing about it, so the message named is the one that arm
 		// produces rather than whichever fires first.
 		// ON THE TRENDS TEMPLATE, because the spine now publishes steps: the
@@ -898,33 +903,12 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 					Tiers: []int{0, 3}, Back: "b", Noun: "thing", Tail: "t",
 					Description: "d."}}}},
 			"the chart would isolate on a click while this view believes it opens"},
-		{"a root on a template that publishes none", []export.View{ok,
-			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
-				Root: "fund/100"}},
-			"the chart would draw the whole document"},
-		{"a chart subject on a template that composes its own", []export.View{ok,
-			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
-				ChartSubject: "by something"}},
-			"the phrase would be dropped in silence"},
-		{"a chart description on a template with no desc", []export.View{ok,
-			{Path: "extra.html", Template: export.SankeyTemplate, Projection: "sankey",
-				ChartDescription: "a sentence"}},
-			"the sentence would be dropped in silence"},
-		{"a chart that names no subject", []export.View{ok,
-			chartView(func(v *export.View) { v.ChartSubject = "" })},
-			"a chart of nothing in particular"},
-		{"a chart that gives itself no description", []export.View{ok,
-			chartView(func(v *export.View) { v.ChartDescription = "" })},
-			"is told nothing about what the marks mean"},
-		// THE FIXTURES ALL END IN A PERIOD, WHICH IS WHAT HID THIS. app.js keeps
-		// the pointer to the closed flow table through a drill by taking the
-		// description's last sentence, so a caller's description that does not
-		// close runs into the template's pointer and the drilled reader loses
-		// it. Every test and jscheck fixture supplied a terminated sentence, so
-		// the whole suite was green over a description shape a caller can send.
-		{"a chart description that does not close its sentence", []export.View{ok,
-			chartView(func(v *export.View) { v.ChartDescription = "A description" })},
-			"loses the only route they have to a table that ships closed"},
+		// THE FIXTURES ALL END IN A PERIOD, WHICH IS WHAT HID THE STEP CASE
+		// BELOW. app.js keeps the pointer to the closed flow table through a
+		// drill by taking the description's last sentence, so a description
+		// that does not close runs into the template's pointer and the drilled
+		// reader loses it. Every test and jscheck fixture supplied a terminated
+		// sentence, so the whole suite was green over a shape a caller can send.
 		{"a drill with no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Tiers = nil })},
 			"drawn by the same tier set it was closed under"},
@@ -2001,14 +1985,6 @@ func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"}},
-			{Path: "drilldown.html", Nav: "Fund and division",
-				Template: export.ChartTemplate, Projection: "fund-flows",
-				YearStems: []string{"fund-flows"}, RenderTiers: []int{0, 2, 4},
-				// Every ChartTemplate view names what its diagram is OF: the
-				// template renders two pages now, and a literal composed in the
-				// packager announced both as a chart of neither.
-				ChartSubject:     "by fund and division",
-				ChartDescription: "A description."},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -2019,11 +1995,45 @@ func TestBothChartTemplatesAcceptYearStems(t *testing.T) {
 	// AND THE YEARS REACHED THE PAGE, not merely past the guard. A validate arm
 	// that accepts a field the builder then ignores is the defect this whole
 	// commit is about, one layer down.
-	for _, page := range []string{export.IndexPath, "drilldown.html"} {
-		if got := len(yearsIn(t, readFile(t, dir, page))); got == 0 {
-			t.Errorf("%s renders %d years, want its stems", page, got)
-		}
+	if got := len(yearsIn(t, readFile(t, dir, export.IndexPath))); got == 0 {
+		t.Errorf("%s renders %d years, want its stems", export.IndexPath, got)
 	}
+}
+
+// headlined stamps a headline onto a drill-down document, so a view test can
+// RENDER one as a page.
+//
+// WHY A FIXTURE NEEDS THIS AT ALL, because it reads as papering over a refusal
+// and is not. fund-flows carries the same money at more than one grain, so "the
+// total" is ambiguous and it publishes no headline deliberately -- and
+// decodeSankey refuses a headline-less document, correctly. A second chart
+// template used to render one; it is gone, so the only way to render this
+// document's TIER STRUCTURE -- which is what every window case here is about,
+// and which the spine golden's {0,2,5} cannot supply -- is to hand the renderer
+// a headline it does not read. The figure is a literal because nothing asserts
+// it: these cases are about View.validate and the window, and the page's stat
+// tiles are another test's subject.
+func headlined(t *testing.T, raw []byte) []byte {
+	t.Helper()
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta, ok := doc["metadata"].(map[string]any)
+	if !ok {
+		t.Fatal("the document carries no metadata block to stamp a headline into")
+	}
+	meta["headline"] = map[string]any{
+		"all_funds_gross_revenue_cents": 1, "all_funds_gross_expenditure_cents": 1,
+		"external_revenue_cents": 1, "external_expenditure_cents": 1,
+		"internal_transfer_in_cents": 1, "internal_transfer_out_cents": 1,
+		"naive_expenditure_cents": 1, "transfer_residual_cents": 1,
+	}
+	out, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	return out
 }
 
 // reyeared restamps a projection's fiscal year, so one golden document can serve
@@ -2679,11 +2689,6 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"}},
-			{Path: "drilldown.html", Nav: "Fund and division",
-				Template: export.ChartTemplate, Projection: "fund-flows",
-				RenderTiers:      []int{0, 2, 4},
-				ChartSubject:     "by fund and division",
-				ChartDescription: "A description."},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -2691,7 +2696,7 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 		t.Fatalf("Write: %v", err)
 	}
 
-	for _, page := range []string{export.IndexPath, "drilldown.html"} {
+	for _, page := range []string{export.IndexPath} {
 		src := readFile(t, dir, page)
 		var config struct {
 			Years []struct {
@@ -2713,9 +2718,9 @@ func TestTheChartsAccessibleNameIsTheYearViewsOwnString(t *testing.T) {
 	}
 }
 
-// chartAndSpine writes the two templates that draw a chart: the spine's
-// index.html and one ChartTemplate page. Both carry an apparatus, and the two
-// tests below are about what a reader can and cannot reach on either.
+// chartAndSpine writes the template that draws a chart: the spine's
+// index.html. It carries an apparatus, and the tests below are about what a
+// reader can and cannot reach on it.
 func chartAndSpine(t *testing.T) string {
 	t.Helper()
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
@@ -2725,14 +2730,10 @@ func chartAndSpine(t *testing.T) string {
 	dir := t.TempDir()
 	if _, err := writeSite(export.Options{
 		Dir:         dir,
-		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 		Views: []export.View{
 			{Path: export.IndexPath, Nav: "Budget flows", Template: export.SankeyTemplate,
 				Projection: "sankey"},
-			{Path: "spending.html", Nav: "Spending", Template: export.ChartTemplate,
-				Projection: "fund-flows", RenderTiers: []int{0, 2, 4},
-				ChartSubject:     "by fund and division",
-				ChartDescription: chartDescription},
 		},
 		Docs:        budgetDocs(),
 		GeneratedBy: "fisc test",
@@ -2741,10 +2742,6 @@ func chartAndSpine(t *testing.T) string {
 	}
 	return dir
 }
-
-// chartDescription is what chartAndSpine hands the packager, named so a test
-// can tell the caller's half of a <desc> from the template's own.
-const chartDescription = "A description."
 
 // TestTheApparatusShipsClosedOnEveryChartPage. A <details> and a <details open>
 // render identically to whoever wrote them -- the difference only shows on a
@@ -2763,7 +2760,7 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	// green.
 	open := regexp.MustCompile(`<details[^>]*\sopen(?:[\s>]|="")`)
 
-	for _, page := range []string{export.IndexPath, "spending.html"} {
+	for _, page := range []string{export.IndexPath} {
 		html := readFile(t, dir, page)
 		if n := strings.Count(html, "<details"); n < 3 {
 			t.Errorf("%s renders %d <details>, want the apparatus folded", page, n)
@@ -2802,7 +2799,7 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 // which is the year fieldset's argument and the same remedy.
 func TestTheColumnControlShipsInertOnEveryChartPage(t *testing.T) {
 	dir := chartAndSpine(t)
-	for _, page := range []string{export.IndexPath, "spending.html"} {
+	for _, page := range []string{export.IndexPath} {
 		html := readFile(t, dir, page)
 		for _, want := range []string{
 			`<button type="button" id="column-fewer" aria-label="Fewer columns" disabled>`,
@@ -2837,7 +2834,7 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 
 	checked := 0
 	var withTable []string
-	for _, page := range []string{export.IndexPath, "spending.html"} {
+	for _, page := range []string{export.IndexPath} {
 		html := readFile(t, dir, page)
 		tag := closedTable.FindString(html)
 		if tag == "" {
@@ -2852,20 +2849,20 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 			t.Errorf("%s folds its flow table but renders no chart <desc>", page)
 			continue
 		}
-		// THE TEMPLATE'S OWN WORDS, NOT THE CALLER'S. chart.html.tmpl renders
-		// {{.ChartDescription}} and then its own sentence, so a <desc> read
-		// whole lets a caller-supplied description carrying "opens" satisfy the
-		// escape hatch for a template suffix that reverted to "listed below".
-		// Stripping the description this fixture supplied leaves the suffix the
-		// assertion is actually about.
-		// Whitespace collapsed first: the templates wrap this sentence to fit
-		// their own margins, so "opens from" straddles a newline in one of them
-		// and a literal match reports a defect that is only a line break.
-		whole := strings.Join(strings.Fields(m[1]), " ")
-		suffix := strings.TrimSpace(strings.TrimPrefix(whole, chartDescription))
+		// THE TEMPLATE'S OWN WORDS. index.html.tmpl writes the whole <desc>
+		// itself -- a second template once rendered {{.ChartDescription}} ahead
+		// of its own sentence, and a caller-supplied description carrying
+		// "opens" could satisfy the escape hatch for a suffix that had reverted
+		// to "listed below", so the caller's half was stripped before the
+		// assertion. There is no caller's half now.
+		//
+		// Whitespace collapsed first: the template wraps this sentence to fit
+		// its own margins, so "opens from" straddles a newline and a literal
+		// match would report a defect that is only a line break.
+		suffix := strings.TrimSpace(strings.Join(strings.Fields(m[1]), " "))
 		if suffix == "" {
-			t.Errorf("%s's <desc> is nothing but the caller's description, so the "+
-				"template says nothing about where the table is", page)
+			t.Errorf("%s renders an empty <desc>, so it says nothing about where "+
+				"the table is", page)
 			continue
 		}
 		checked++
@@ -2895,7 +2892,7 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 		// second copy of a sentence these templates own. Move the pointer into
 		// the middle of a <desc> and a drilled reader silently loses the only
 		// route they have to a table that ships closed.
-		sentences := sentenceSplit.Split(whole, -1)
+		sentences := sentenceSplit.Split(suffix, -1)
 		if last := strings.TrimSpace(sentences[len(sentences)-1]); !strings.Contains(last, "opens from") {
 			t.Errorf("%s's table pointer is not the last sentence of its <desc>, which is "+
 				"where app.js looks for it; the last sentence is %q", page, last)
@@ -2904,12 +2901,12 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 	// ANTI-VACUITY, AND IT MUST NOT CONTRADICT THE ESCAPE HATCH ABOVE. The loop
 	// deliberately skips a page whose #table-view ships open, because there
 	// "below" is true -- so counting folded pages would turn that allowance
-	// into a failure. What is asserted instead is that both pages render a
+	// into a failure. What is asserted instead is that the page renders a
 	// #table-view AT ALL, which is what makes the skip meaningful: a template
 	// that stopped rendering one would otherwise leave the loop green over
 	// nothing.
-	if len(withTable) != 2 {
-		t.Errorf("%d of 2 pages render a #table-view: %v; the assertion above is about "+
+	if len(withTable) != 1 {
+		t.Errorf("%d of 1 page renders a #table-view: %v; the assertion above is about "+
 			"the pages that have one", len(withTable), withTable)
 	}
 	if checked == 0 {
@@ -3080,15 +3077,20 @@ func TestTheCaveatsPageFoldsItsFileListAndNotItsReason(t *testing.T) {
 // that has stopped agreeing asserts the wrong thing while reading correctly.
 var sentenceSplit = regexp.MustCompile(`[.!?]\s+`)
 
-// TestAChartDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn. validate refuses
-// an unterminated description because app.js separates it from the template's
-// pointer by sentence; the set it accepts therefore has to be the set
+// TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn. validate refuses
+// an unterminated description because app.js separates it from the sentences
+// it appends by sentence; the set it accepts therefore has to be the set
 // lastSentence splits on, and no wider.
 //
 // THE ACCEPTING HALF IS THE HALF THAT WAS MISSING. Only "." was ever exercised,
 // so narrowing validate to a period alone -- which would refuse a description a
 // reader-facing caller may legitimately write -- was measured green.
-func TestAChartDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
+//
+// ON A STEP AND NOT ON A VIEW. The rule was written for View.ChartDescription,
+// which a second chart template published and which went with it; endsASentence
+// still guards DrillStep.Description, for the same reason and against the same
+// splitter, so the case moved to the declaration that still carries it.
+func TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string
 		accept bool
@@ -3106,13 +3108,15 @@ func TestAChartDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 		}
 		_, err = writeSite(export.Options{
 			Dir:         t.TempDir(),
-			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": fundFlows},
+			Projections: map[string][]byte{"sankey": goldenSankey(t), "fund-flows": headlined(t, fundFlows)},
 			Views: []export.View{
 				{Path: export.IndexPath, Nav: "Budget flows",
 					Template: export.SankeyTemplate, Projection: "sankey"},
-				{Path: "spending.html", Nav: "Spending", Template: export.ChartTemplate,
+				{Path: "spending.html", Nav: "Spending", Template: export.SankeyTemplate,
 					Projection: "fund-flows", RenderTiers: []int{0, 2, 4},
-					ChartSubject: "by fund and division", ChartDescription: tc.desc},
+					Steps: []export.DrillStep{{Key: "groups", After: []string{""}, From: 2,
+						Tiers: []int{0, 3}, Back: "All groups", Noun: "thing", Tail: "funds",
+						Caps: []export.TierCap{{Tier: 3, Cap: 8}}, Description: tc.desc}}},
 			},
 			Docs:        budgetDocs(),
 			GeneratedBy: "fisc test",
@@ -3177,10 +3181,10 @@ func TestEveryFooterDisclosureKeepsItsHeadingInTheOutline(t *testing.T) {
 				"out of the outline while the panel is closed", name)
 		}
 	}
-	// Anti-vacuity: six templates ship and every one of them folds a footer
+	// Anti-vacuity: five templates ship and every one of them folds a footer
 	// list. A loop that found none would report nothing at all.
-	if found != 6 {
-		t.Errorf("found %d templates folding a footer list, want 6", found)
+	if found != 5 {
+		t.Errorf("found %d templates folding a footer list, want 5", found)
 	}
 }
 

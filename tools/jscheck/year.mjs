@@ -354,19 +354,6 @@ export async function checks() {
           got.title === year.title,
       detail: `lede "${got.lede}", counts "${got.counts}", title "${got.title}"`,
     },
-    {
-      // BOTH TEMPLATES RENDER THIS ELEMENT AND THE CLIENT REPAINTS IT ON BOTH
-      // PAGES. This arm and the index.html.tmpl comparison above witness only
-      // the state BEFORE a document arrives: painted() loads none, so
-      // paintCounts takes its undrawn branch -- the sentence a reader sees
-      // while the fetch is in flight, and the one a reader with JavaScript off
-      // keeps. The drawn page's sentence is a different one by design, and the
-      // check after this one is the arm that holds it.
-      name: "before a document arrives, chart.html.tmpl's counts sentence is the one the client paints",
-      ok: got.counts === templateCounts("chart.html.tmpl", year.counts),
-      detail: `the client paints "${got.counts}" and chart.html.tmpl renders ` +
-        `"${templateCounts("chart.html.tmpl", year.counts)}"`,
-    },
     await (async () => {
       // THE DRAWN SENTENCE, WHICH IS THE ONE EVERY SHIPPED PAGE SHOWS after
       // its first draw and the state no counts check here reached: with
@@ -412,10 +399,9 @@ export async function checks() {
       const want = headOf("index.html.tmpl") +
         cited.size + " of the document's " + total + " fact" + (total === 1 ? "" : "s");
       return {
-        name: "after a draw, the repainted counts sentence still opens with the templates' own head",
-        ok: drawn === want && headOf("chart.html.tmpl") === headOf("index.html.tmpl"),
-        detail: `the drawn page's counts-line reads "${drawn}", want "${want}"; ` +
-          `chart.html.tmpl's head is "${headOf("chart.html.tmpl")}"`,
+        name: "after a draw, the repainted counts sentence still opens with the template's own head",
+        ok: drawn === want,
+        detail: `the drawn page's counts-line reads "${drawn}", want "${want}"`,
       };
     })(),
     {

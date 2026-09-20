@@ -78,7 +78,7 @@ const TEMPLATE_IDS = new Set([
   "chart-title", "counts-line", "derived-list", "derived-view", "detail", "figures",
   "figures-view", "flow-table", "hero", "lede-year", "legend", "page-basis",
   "sources-view", "table-view", "theme-toggle", "tooltip", "year-toggle",
-  // site/index.html.tmpl and site/chart.html.tmpl: the column control's two
+  // site/index.html.tmpl: the column control's two
   // steppers and the count between them, which is also its live region.
   "column-fewer", "column-count", "column-more",
 ]);
@@ -104,7 +104,7 @@ const TEMPLATE_IDS = new Set([
 const TEMPLATE_ATTRIBUTES = {
   // site/index.html.tmpl: <fieldset id="year-toggle" ... disabled>
   "year-toggle": { disabled: "" },
-  // site/chart.html.tmpl and site/index.html.tmpl: <nav id="breadcrumb" ...
+  // site/index.html.tmpl: <nav id="breadcrumb" ...
   // hidden>. Shipped hidden for the year toggle's reason -- there is no drill
   // to come back from until the reader opens one, and with JavaScript off
   // there never is.
@@ -138,7 +138,7 @@ const DOCUMENT_POSITION_FOLLOWING = 4;
  * TEMPLATE_ATTRIBUTES above.
  */
 const TEMPLATE_NAMESPACES = {
-  // site/index.html.tmpl and site/chart.html.tmpl: <svg class="sankey" id="chart">
+  // site/index.html.tmpl: <svg class="sankey" id="chart">
   "chart": SVG_NS,
 };
 
@@ -590,7 +590,7 @@ const NAMES = [
   // control and Escape call -- and shapeFor; the rest are here so a check can
   // measure one stage without the repaint. STEPS is the tree as app.js read it
   // off the config, and stepFor is its one reader.
-  "shapeFor", "filterToNode", "heldBy", "heldFor", "answeredRung", "capColumn", "drillable", "drillDown", "drillUp",
+  "shapeFor", "filterLinks", "heldBy", "heldFor", "answeredRung", "capColumn", "drillable", "drillDown", "drillUp",
   // THE COLUMN BUDGET AND THE SET IT TRIMS. activeTiers is what every column
   // reader on the page goes through, and a check that spelled a step's tiers
   // itself would measure the widened window under the narrow budget the page
@@ -603,7 +603,7 @@ const NAMES = [
   // rather than spelling either; COLUMN_QUERIES is the responsive rule, whose
   // thresholds layout.mjs re-derives from that same cap's cushion.
   "WIDE_COLUMNS", "COLUMN_QUERIES", "NARROW_COLUMNS",
-  "STEPS", "stepFor", "ROOT", "aggregateID", "isAggregate", "residualID", "isResidual",
+  "STEPS", "stepFor", "aggregateID", "isAggregate", "residualID", "isResidual",
   "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
   // THE GAP, which is the other mark a rung can stand beside an opened node:
   // markGap is reached directly for the refusals, which a click cannot produce

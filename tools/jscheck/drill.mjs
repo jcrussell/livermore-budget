@@ -2,7 +2,7 @@
 //
 // WHY THIS FILE EXISTS. The drill shipped with `go build`, `go test ./...`,
 // `make js` and `fisc verify` all green and NOT ONE CHECK touching it: not the
-// entry point a click calls, not filterToNode, not capColumn, not drillable,
+// entry point a click calls, not filterLinks, not capColumn, not drillable,
 // not paintBreadcrumb, and neither of the two tier sets the site actually
 // declares. Grepping for the
 // names is what turned that up, which is the cheapest way and the one that
@@ -1846,7 +1846,7 @@ export async function checks() {
 
   // EVERY MARK KNOWS ITS FUND GROUP, which is what colours it. Built from the
   // DRAWN nodes alone this returned "" for every node on every opened view --
-  // filterToNode keeps only what the drawn tiers need, so a fund's fund-group
+  // filterLinks keeps only what the drawn tiers need, so a fund's fund-group
   // ancestor is absent and the walk stops at the first parent it cannot
   // resolve -- and across the document switch it returned "" again when layOut
   // merged the YEAR's hierarchy over the drawn nodes rather than the rung's.
@@ -2828,7 +2828,7 @@ export async function checks() {
 
   // THE LEGEND IS EMPTY ON AN OPENED VIEW BY RULE, and the rule needs a shape
   // that would draw a swatch without it. On every shipped step and on the
-  // chain, filterToNode drops the fund-group node the moment it is opened, so
+  // chain, filterLinks drops the fund-group node the moment it is opened, so
   // the legend is empty whether or not buildLegend decides anything -- which
   // makes the decision unfalsifiable on the corpus. A step opening a fund into
   // {2,4} keeps the fund's GROUP as the drawn ancestor of a folded fund, so
@@ -4524,7 +4524,10 @@ async function categoryProbes() {
     const banners = refusals(main).map((b) => b.textContent);
     let direct = "";
     try {
-      app.filterToNode(doc, "revenue/empty", [1, 0]);
+      // THE ANSWER NAMES THE CATEGORY AND THE DOCUMENT DRAWS NOTHING UNDER IT,
+      // which is the state this refusal is for: a held map of the one node the
+      // page would draw, over a category with no lines.
+      app.filterLinks(doc, "revenue/empty", [1, 0], app.heldBy(new Map([["revenue/empty", 0]])));
     } catch (e) {
       direct = String((e && e.message) || e);
     }
@@ -4536,7 +4539,7 @@ async function categoryProbes() {
       // before it is drawn -- the probe category is the source of no rollup, so
       // it is not in `opens` -- so the click is not offered and no banner is
       // painted. Both halves are asserted rather than one swapped for the
-      // other: 0 banners because nothing was offered, AND filterToNode still
+      // other: 0 banners because nothing was offered, AND filterLinks still
       // refusing by name when it is called directly, because that guard is what
       // stands behind every route this set does not cover.
       name: "a category of one line opens with no share on the line, and one with none is not offered at all, the filter behind it still refusing by name",
@@ -4551,7 +4554,7 @@ async function categoryProbes() {
         `its ${groups.length} fund groups' ${JSON.stringify(oneShares)}; no lines: ${none} with ${banners.length} ` +
         `banner(s)${banners.length ? ` reading "${banners[0]}"` : ""}, and stepFor answers ` +
         `${JSON.stringify(app.stepFor(spine.nodes.find((n) => n.id === "revenue/empty")))}; ` +
-        `filterToNode directly: ${JSON.stringify(direct)}`,
+        `filterLinks directly: ${JSON.stringify(direct)}`,
     });
   }
 

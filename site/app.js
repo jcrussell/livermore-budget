@@ -508,19 +508,6 @@ function stepDecomposes(step, id) {
   return entry.opens.includes(id);
 }
 
-/**
- * The node whose subtree this page draws, or "" for the whole document.
- *
- * A REFUSAL AVOIDED RATHER THAN A PREFERENCE EXPRESSED. foldDocument refuses a
- * node it cannot place, so a chart whose columns cannot place every node of
- * its document draws nothing at all rather than half of something, and a page
- * that draws one subtree says which one here. Measured over
- * testdata/fund-flows.golden.json: 11 of its 238 nodes sit at tier 0, so
- * folding it whole at the fund step's {2,3,4,5} answers "cannot draw
- * fund-flows: node revenue/charges-for-services is tier 0 and no ancestor of
- * it is a tier this page draws (2, 3, 4, 5)".
- */
-const ROOT = CONFIG && typeof CONFIG.root === "string" ? CONFIG.root : "";
 
 /** Human wording for link.kind. The JSON's vocabulary is not English. */
 const KIND_LABEL = {
@@ -1241,9 +1228,9 @@ function regroupLocators(keys) {
  *
  * THE NON-THROWING HALF OF foldDocument'S FIRST LOOP. The fold refuses a node it
  * cannot place, because there the tier set is meant to describe the whole
- * document and a node outside it is a fault. filterToNode asks the same
- * question for the opposite purpose: which links are IN this drill's scope at
- * all, where an unplaceable end is an ordinary answer rather than an error.
+ * document and a node outside it is a fault. filterLinks asks the same question
+ * for the opposite purpose: which links are IN this rung's scope at all, where
+ * an unplaceable end is an ordinary answer rather than an error.
  *
  * @param {Map<string,FiscNode>} byID
  * @param {FiscNode} n
@@ -1261,52 +1248,17 @@ function foldTarget(byID, n, drawn) {
 }
 
 /**
- * The document restricted to one node's own money: the money flowing INTO the
- * subtree of `id`, at the columns `tiers` names.
- *
- * WHY A FILTER AND NOT AN EXPANSION. fisc-ppkq measured that expanding one node
- * in place does not draw on the vendored d3-sankey: it takes the column count
- * from topology and clamps the align into it, so an expanded group's funds land
- * in the same column as the divisions while the unexpanded ribbons span two --
- * which tools/jscheck/layout.mjs's bands() refuses. Filtering keeps every tier
- * set uniform, which is the only shape this build lays out.
- *
- * THE ONE CALLER LEFT IS THE DECLARED ROOT OF AN OVERVIEW, and that is why this
- * still derives a membership when every rung reads one. A rung is a node the
- * reader opened and Go answers what its columns hold; an overview is not a rung
- * and Go answers none -- rungsOf refuses to walk a spine that declares a Root
- * at all, so there is nothing here for a page to read instead.
- *
- * THE RULE IS "TARGET IN THE SUBTREE, BOTH ENDS PLACEABLE". Keying on the
- * target says which end is the fine one; the placeability test says what this
- * page's tier set has room for. Neither is a silent loss: a link dropped here
- * is one the declared tier set has no column for, which is a statement the view
- * made when it declared them -- and scoped() is what keeps that sentence true,
- * by refusing the one case it was false of.
- *
- * @param {FiscProjection} doc
- * @param {string} id
- * @param {number[]} tiers
- * @returns {FiscProjection}
- */
-function filterToNode(doc, id, tiers) {
-  const inside = withinNode(doc, id);
-  return filterLinks(doc, id, tiers, (_src, dst) => inside.has(dst.id));
-}
-
-/**
  * The filter every rung uses: the ribbons of `doc` between the nodes Go says
  * this window's columns hold.
  *
- * WHAT REPLACED A SIBLING OF filterToNode. The two filters differed in which
- * END of a link had to be inside the opened node, because a window's kept half
- * and its fresh half want opposite things and the step's `side` declaration
- * said which -- a membership derived here from the documents. Go answers that
+ * ONE FILTER AND NO SIDE TO READ. A pair of them once differed in which END of
+ * a link had to be inside the opened node -- a window's kept half and its fresh
+ * half want opposite things, and the step's `side` declaration said which --
+ * which was a membership derived here from the documents. Go answers that
  * membership now, once per rung, on whichever side the step declares
- * (AGENTS.md, "Go vets, JavaScript renders"), so there is one filter and no
- * side to read: a ribbon is drawn when BOTH of its ends fold to nodes the
- * answer names, and which of them is the near one stopped being this page's
- * question.
+ * (AGENTS.md, "Go vets, JavaScript renders"): a ribbon is drawn when BOTH of
+ * its ends fold to nodes the answer names, and which of them is the near one
+ * stopped being this page's question.
  *
  * AND FORWARD IN THE ANSWER'S OWN COLUMN ORDER, which is the half of the rule
  * that the two side-keyed filters used to carry. Membership alone is not
@@ -2727,16 +2679,13 @@ function trailOfRungs() {
 function shapeFor(doc) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung) {
-    // THE ROOT IS A FILTER TOO, and the same one: a page that draws one node's
-    // subtree is a page permanently opened into it. Composing them would be
-    // wrong -- the node a reader opens is already inside the root -- so a drill
-    // filters to what was clicked and an overview to what was declared.
-    return markContra(foldDocument(ROOT ? filterToNode(doc, ROOT, RENDER_TIERS) : doc), doc);
+    // THE OVERVIEW IS THE DOCUMENT FOLDED AND FILTERED TO NOTHING. A view could
+    // once declare a root and draw one node's subtree, which made an overview a
+    // page permanently opened into that node; the declaration went with the
+    // template that was its only reader, so every chart this page draws
+    // undrilled is its whole document at the view's render tiers.
+    return markContra(foldDocument(doc), doc);
   }
-  // ROOT DOES NOT REACH HERE. It is the spine's vocabulary -- the node whose
-  // subtree THIS PAGE's overview draws -- and a rung filters to the node the
-  // reader opened, which is inside the root on a page that has one and is a
-  // node of another document entirely on a step that switched.
   const step = rung.step;
   // WHICH NODES EACH COLUMN HOLDS IS READ AND NOT DERIVED, which is this
   // function's whole shape below the overview: Go walked the documents on the
@@ -4208,7 +4157,7 @@ function layOut(doc) {
   // BUILT FROM THE FETCHED DOCUMENT AS WELL AS THE DRAWN ONE, because a colour
   // is a property of where a node sits in the real hierarchy and not of what
   // this page happens to draw. Built from the drawn nodes alone, every opened
-  // view rendered in --muted: filterToNode keeps only what the drawn tiers
+  // view rendered in --muted: filterLinks keeps only what the drawn tiers
   // need, so a fund's fund-group ancestor is absent and fundGroupOf's walk
   // stops at the first parent it cannot resolve. Measured before the fix:
   // fundGroupOf returned "" for every node on all six opened fund groups.

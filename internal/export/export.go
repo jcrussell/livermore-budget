@@ -214,43 +214,6 @@ type View struct {
 	// division of labour as every other figure on the page.
 	RenderTiers []int
 
-	// ChartSubject is what this view's chart is OF, in a phrase that completes
-	// "Sankey diagram of the FY 2025-26 adopted budget ...". It is the chart's
-	// accessible name, which is what a screen reader announces and a different
-	// string from Title, which is the document's.
-	//
-	// THE CALLER'S WORDS, LIKE Title AND Lede, and it became one when this
-	// template stopped rendering a single page. It was the literal "by fund and
-	// division", composed here, which was true of the one page that used it --
-	// and the moment Revenue and Spending shared the template both announced
-	// themselves as a chart of neither. Revenue draws revenue categories into
-	// fund groups; Spending draws one fund into its divisions. A packager
-	// cannot know that, and guessing it silently is worse than asking.
-	ChartSubject string
-
-	// ChartDescription is the chart's long description -- <desc>, which a screen
-	// reader reads after the name. The caller's words for the same reason
-	// ChartSubject is: the <desc> shipped in this template described the
-	// three-column page it was written for and nothing ever rewrote it, so both
-	// pages that replaced it described a chart neither draws.
-	ChartDescription string
-
-	// Root restricts this view's chart to one node's own money, or "" for a
-	// view that draws its whole document. Shipped as FISC_CONFIG.root.
-	//
-	// IT IS WHAT MAKES A ONE-SIDED PAGE POSSIBLE AT ALL, and it is a refusal
-	// rather than a preference. Spending draws tiers {3,4} of fund-flows -- the
-	// General Fund into its divisions -- and that document also carries eleven
-	// tier-0 revenue nodes with no ancestor at tier 3 or 4. foldDocument
-	// refuses a node it cannot place, so without a root the page does not draw
-	// a partial chart, it draws none: "node revenue/charges-for-services is
-	// tier 0 and no ancestor of it is a tier this page draws (3, 4)".
-	//
-	// It also makes the page's central claim a declaration the code keeps
-	// rather than a sentence in its lede. Spending says only the General Fund
-	// has a spending side; Root is where it says so to the client.
-	Root string
-
 	// Steps is how this view's chart opens a node, one hop per step, or empty
 	// for a view whose chart does not open at all. Shipped to the client as
 	// FISC_CONFIG.steps.
@@ -652,15 +615,14 @@ type DrillStep struct {
 	Noun string `json:"noun"`
 	// Description is the chart's long description once a node has opened on
 	// this step: what the columns are and what the marks mean, in the caller's
-	// words, like [View.ChartDescription] is for a chart's opening state. The
-	// client writes it into the SVG's <desc> at that depth and appends how to
-	// get back and where the flow table is.
+	// words. The client writes it into the SVG's <desc> at that depth and
+	// appends how to get back and where the flow table is.
 	//
 	// REQUIRED AND TERMINATED. An opened chart with no description of its own
 	// announces the opening state's -- "revenue categories flow into six fund
 	// groups" over a chart of one group's funds -- and only to the readers who
-	// cannot see the marks disagree. Terminated for ChartDescription's reason:
-	// the client appends its own sentences after it.
+	// cannot see the marks disagree. Terminated because the client appends its
+	// own sentences after it, and an unterminated one runs into them.
 	Description string `json:"description"`
 	// Residual is the set of endpoints of the chart this step opens FROM whose
 	// flow into or out of the opened node the document this step DRAWS does
@@ -1017,34 +979,6 @@ func (v View) validate(built map[string][]byte) error {
 			"view %q declares a drill chain and renders template %q, which publishes none; "+
 				"the chart would isolate on a click while this view believes it opens",
 			v.Path, v.Template)
-	case v.ChartSubject != "" && !templateRendersChartDeclarations(v.Template):
-		return fmt.Errorf(
-			"view %q names a chart subject and renders template %q, which composes its "+
-				"own; the phrase would be dropped in silence", v.Path, v.Template)
-	case v.Template == ChartTemplate && v.ChartSubject == "":
-		return fmt.Errorf(
-			"view %q renders a chart and names no subject, so its diagram would announce "+
-				"itself to a screen reader as a chart of nothing in particular", v.Path)
-	case v.Template == ChartTemplate && v.ChartDescription == "":
-		return fmt.Errorf(
-			"view %q renders a chart and gives it no description, so a screen reader "+
-				"reaches its <desc> and is told nothing about what the marks mean", v.Path)
-	case v.ChartDescription != "" && !templateRendersChartDeclarations(v.Template):
-		return fmt.Errorf(
-			"view %q describes a chart and renders template %q, which has no <desc> of "+
-				"its own to fill; the sentence would be dropped in silence", v.Path, v.Template)
-	case v.ChartDescription != "" && !endsASentence(v.ChartDescription):
-		return fmt.Errorf(
-			"view %q gives its chart a description ending %q rather than in a sentence "+
-				"terminator; the template appends the pointer to the flow table after it, "+
-				"and app.js re-appends that pointer on a drill by taking the description's "+
-				"LAST SENTENCE -- so an unterminated one runs into it and a drilled reader "+
-				"loses the only route they have to a table that ships closed",
-			v.Path, lastRune(v.ChartDescription))
-	case v.Root != "" && !templateRendersChartDeclarations(v.Template):
-		return fmt.Errorf(
-			"view %q declares root %q and renders template %q, which publishes none; the "+
-				"chart would draw the whole document", v.Path, v.Root, v.Template)
 	// TWO ARMS, NOT ONE ARM BEHIND A `len(v.RenderTiers) > 0 &&` GUARD, and
 	// not one plain arm either. RenderTiers empty means the document is drawn
 	// WHOLE, every tier on screen, so a root step's From is drawn by
@@ -1635,7 +1569,7 @@ func (v View) validateSteps(built map[string][]byte) error {
 // is louder than a page quietly not showing it.
 func templateRendersLede(name string) bool {
 	switch name {
-	case TrendsTemplate, HistoryTemplate, ChartTemplate, ProvenanceTemplate, CaveatsTemplate:
+	case TrendsTemplate, HistoryTemplate, ProvenanceTemplate, CaveatsTemplate:
 		return true
 	default:
 		return false
@@ -1651,19 +1585,19 @@ func templateRendersLede(name string) bool {
 // a four-stem list and rendered one year, with every check green, because the
 // only thing that reads YearStems is a template arm that page does not have.
 //
-// TWO TEMPLATES, NOT ONE. The drill-down grew a year control after the bead
-// that named this defect was filed, so a guard spelled
-// `v.Template == SankeyTemplate` would have been born stale -- which is the
-// exact failure templateRendersLede exists to document.
+// A SWITCH OVER ONE NAME AND NOT `name == SankeyTemplate`, which is the shape
+// rather than a leftover: this list had two entries when two templates drew a
+// chart, and an equality would have to be found and widened by whoever adds
+// the third. templateRendersLede's fourteen lines are the argument.
 func templateRendersAYearControl(name string) bool {
 	// ITS OWN SWITCH, NOT templateDrawsAChart'S. The two agree on every template
-	// that exists, and delegating made them one predicate wearing two names --
-	// which is what the fourteen lines above argue against: a template could
-	// gain a chart without a year control, or a control without a chart, and
-	// the failure each of them guards is different. A lede dropped in silence
-	// loses a sentence; year stems dropped in silence lose whole documents.
+	// that exists, and delegating made them one predicate wearing two names:
+	// a template could gain a chart without a year control, or a control
+	// without a chart, and the failure each of them guards is different. A lede
+	// dropped in silence loses a sentence; year stems dropped in silence lose
+	// whole documents.
 	switch name {
-	case SankeyTemplate, ChartTemplate:
+	case SankeyTemplate:
 		return true
 	default:
 		return false
@@ -1680,7 +1614,7 @@ func templateRendersAYearControl(name string) bool {
 // the wrong test for it.
 func templateDrawsAChart(name string) bool {
 	switch name {
-	case SankeyTemplate, ChartTemplate:
+	case SankeyTemplate:
 		return true
 	default:
 		return false
@@ -1702,7 +1636,7 @@ func templateDrawsAChart(name string) bool {
 // template needs an arm in buildSite's exhaustive switch regardless.
 func templateRendersADocument(name string) bool {
 	switch name {
-	case SankeyTemplate, TrendsTemplate, HistoryTemplate, ChartTemplate:
+	case SankeyTemplate, TrendsTemplate, HistoryTemplate:
 		return true
 	default:
 		return false
@@ -1752,13 +1686,12 @@ func templateRendersSections(name string) bool {
 // reported and not applied: the chart draws every tier and looks like a chart
 // rather than like a defect.
 //
-// BOTH CHART-BEARING TEMPLATES PUBLISH IT, and the spine is the reason. A view
+// THE CHART-BEARING TEMPLATE PUBLISHES IT, and the spine is the reason. A view
 // that opens a node has to declare the order of its own columns, because that
-// order is what says which tier is adjacent to which -- see [View.RenderTiers]
-// -- and the spine draws a chart from the same script as the drill-down.
-// Templates that render no Sankey at all still answer no.
+// order is what says which tier is adjacent to which -- see [View.RenderTiers].
+// Templates that render no Sankey at all answer no.
 func templateRendersTiers(name string) bool {
-	return name == ChartTemplate || name == SankeyTemplate
+	return name == SankeyTemplate
 }
 
 // templateRendersSteps answers whether a template publishes [View.Steps] to the
@@ -1770,27 +1703,13 @@ func templateRendersTiers(name string) bool {
 // would then isolate on a click while its view believed it opened -- which
 // looks like a chart rather than like a defect.
 //
-// BOTH CHART TEMPLATES, because both builders put Steps in the config blob and
-// both templates ship the #breadcrumb and #chart-hint a chain comes back out of
-// a node by. It is the arm that keeps the two interaction contracts apart: a
-// view that sets Steps is declaring that activating a node OPENS it, and a
-// template with no breadcrumb and no way back would make that a trapdoor.
+// THE CHART TEMPLATE, because its builder puts Steps in the config blob and it
+// ships the #breadcrumb and #chart-hint a chain comes back out of a node by.
+// It is the arm that keeps the two interaction contracts apart: a view that
+// sets Steps is declaring that activating a node OPENS it, and a template with
+// no breadcrumb and no way back would make that a trapdoor.
 func templateRendersSteps(name string) bool {
-	return name == ChartTemplate || name == SankeyTemplate
-}
-
-// templateRendersChartDeclarations answers whether a template publishes
-// [View.ChartSubject], [View.ChartDescription] and [View.Root].
-//
-// THREE FIELDS, ONE PREDICATE, AND NOT THE ONE Steps USES. Only buildChartPage
-// renders a subject into the chart's accessible name, fills its <desc> from the
-// caller and puts a root in the config blob; buildSankeyPage composes its own
-// name, ships its own <desc> and draws its document whole. Sharing Steps'
-// predicate would widen these three with it, and a Root on the spine would
-// then pass validate and be dropped -- the silence this family exists to
-// refuse.
-func templateRendersChartDeclarations(name string) bool {
-	return name == ChartTemplate
+	return name == SankeyTemplate
 }
 
 // repeatedTier returns a tier the list names twice, or -1.
@@ -1821,8 +1740,9 @@ func reversedTiers(tiers []int) []int {
 }
 
 // endsASentence reports whether s closes with a terminator, which is what keeps
-// a caller's chart description separable from the template's own sentence after
-// it. The validate arm that calls this says what depends on the separation.
+// a step's chart description separable from the sentences the client appends
+// after it. The validate arm that calls this says what depends on the
+// separation.
 func endsASentence(s string) bool {
 	if s == "" {
 		return false

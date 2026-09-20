@@ -240,13 +240,11 @@ func stepStemsFor(spine export.View, year string) []string {
 // rather than the raw document so that a spine that folds would be walked
 // as the client draws it.
 //
-// A ROOT IS REFUSED BY NAME rather than modelled: shapeFor filters to it
-// before folding, and no shipped view declares one, so the reading has
-// nothing to be measured against.
+// THERE IS NO ROOT TO FILTER TO ANY MORE. A view once restricted its chart to
+// one node's subtree, which this walk refused rather than modelled; the field
+// went with the template that was its only reader, so the overview is the
+// whole document folded and nothing here has to say so.
 func overviewOf(spine export.View, chart export.Graph) (export.Graph, error) {
-	if spine.Root != "" {
-		return export.Graph{}, fmt.Errorf("the spine declares root %q, which this walk does not filter the overview to", spine.Root)
-	}
 	if len(spine.RenderTiers) == 0 {
 		return export.Graph{}, fmt.Errorf("the spine declares no render tiers, so the chart its first rungs open from cannot be read")
 	}
