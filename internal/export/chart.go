@@ -5,25 +5,10 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strconv"
-	"strings"
 )
 
-// aggregatePrefix is the id prefix site/app.js draws a folded tail under, so
-// a chart carried between rungs names the tail as the client names it.
-const aggregatePrefix = "aggregate/tail/"
-
-// RoleAggregate is the role capColumn gives a folded tail.
-const RoleAggregate = "aggregate"
-
-// AggregateID is the id capColumn draws the folded tail of one tier under.
-func AggregateID(tier int) string { return aggregatePrefix + strconv.Itoa(tier) }
-
-// IsAggregate is whether id names a folded tail rather than a document node.
-func IsAggregate(id string) bool { return strings.HasPrefix(id, aggregatePrefix) }
-
-// Chart is a [Graph] indexed by id: for reading a node's record and walking
-// its hierarchy, and for assembling one chart from halves. The first record
+// Chart is a [Graph] indexed by id: for reading a node's record, and for
+// assembling one chart from halves. The first record
 // of an id wins, which is windowFor's splice, and ribbons between one pair
 // of ends of one kind merge, which is the merge site/app.js's foldDocument
 // makes of the same pair.
@@ -67,22 +52,6 @@ func (c *Chart) Link(l GraphLink) error {
 	}
 	c.links[[3]string{l.Source, l.Target, l.Kind}] += l.ValueCents
 	return nil
-}
-
-// Within is whether id is root or a descendant of it by the chart's own
-// parent chain, which is withinNode over the chart on screen.
-func (c *Chart) Within(root, id string) bool {
-	at, ok := c.Nodes[id]
-	for hops := 0; ok && hops < maxHops; hops++ {
-		if at.ID == root {
-			return true
-		}
-		if at.Parent == "" {
-			return false
-		}
-		at, ok = c.Nodes[at.Parent]
-	}
-	return false
 }
 
 // Graph is the chart as a [Graph], nodes sorted by id and ribbons by source,

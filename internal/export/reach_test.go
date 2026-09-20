@@ -71,9 +71,8 @@ func TestFoldRefusesARibbonEndNoDrawnTierPlaces(t *testing.T) {
 }
 
 // TestReachOfCarriesTheFoldedChart is that Drawn is Fold over exactly the
-// ribbons the filter keeps, and that In and Out are keyed by the ribbon's
-// own ends before it: b's outflow is counted under b, not under the a it
-// folds to.
+// ribbons the filter keeps -- no more, because a ribbon whose near end is
+// outside the opened node's subtree is one the fold would otherwise draw.
 func TestReachOfCarriesTheFoldedChart(t *testing.T) {
 	g := foldFixture()
 	// A ribbon whose near end is outside b's subtree, which the filter drops
@@ -86,9 +85,7 @@ func TestReachOfCarriesTheFoldedChart(t *testing.T) {
 	// Opened into b on the source side: b -> c is the one ribbon whose source
 	// is inside b, and it folds to a -> c.
 	want := Reach{
-		At:  map[int][]string{0: {"a"}, 2: {"c"}},
-		In:  map[string]int64{"c": 10},
-		Out: map[string]int64{"b": 10},
+		At: map[int][]string{0: {"a"}, 2: {"c"}},
 		Drawn: Graph{
 			Nodes: []GraphNode{{ID: "a", Tier: 0}, {ID: "c", Tier: 2, Parent: "a", Role: "leaf"}},
 			Links: []GraphLink{{Source: "a", Target: "c", ValueCents: 10}},

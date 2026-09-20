@@ -123,10 +123,10 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 // must not find the other.
 func TestMarkIDsAreTwoPrefixes(t *testing.T) {
 	r, g := ResidualID("fund-group/general"), GapID("expenditure/services-and-supplies")
-	if !IsResidual(r) || IsGap(r) || IsAggregate(r) {
+	if !IsResidual(r) || IsGap(r) {
 		t.Errorf("%q is a residual and nothing else", r)
 	}
-	if !IsGap(g) || IsResidual(g) || IsAggregate(g) {
+	if !IsGap(g) || IsResidual(g) {
 		t.Errorf("%q is a gap and nothing else", g)
 	}
 	if IsResidual("fund-group/general") || IsGap("fund-group/general") {

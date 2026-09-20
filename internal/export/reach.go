@@ -56,17 +56,14 @@ func DecodeGraph(raw []byte) (Graph, error) {
 // sorted, and Drawn is the chart itself, which is what a rung leaves on
 // screen and the next rung reads its flank off.
 //
-// In and Out hold the cents into and out of each node over the kept ribbons
-// before the fold, keyed by the ribbon's own ends. That is the column
-// site/app.js's capColumn ranks, and nothing in this package reads them:
-// ranking a column against a cap is fitting, and fitting is the client's.
-// They are well-defined as a ranking key only because every drawn node at a
-// tier a step caps is itself a ribbon's end before the fold. Whether to keep
-// them here at all is fisc-jf8x.
+// NO PRE-FOLD TOTAL RIDES ALONG, and a caller that wants one computes it
+// itself. The cents into and out of each node before the fold are the key
+// site/app.js's capColumn ranks a column by, and ranking a column against a
+// cap is fitting, which is the client's (fisc-lwh5). A second spelling of it
+// here would be a figure Go computes for a reader it does not have, free to
+// drift from the one that draws.
 type Reach struct {
 	At    map[int][]string
-	In    map[string]int64
-	Out   map[string]int64
 	Drawn Graph
 }
 
@@ -128,7 +125,7 @@ func ReachOf(g Graph, opened string, nearIsSource bool, tiers []int) (Reach, err
 			}
 		}
 	}
-	r := Reach{At: map[int][]string{}, In: map[string]int64{}, Out: map[string]int64{}}
+	r := Reach{At: map[int][]string{}}
 	var kept []GraphLink
 	for _, l := range g.Links {
 		near := l.Target
@@ -138,12 +135,6 @@ func ReachOf(g Graph, opened string, nearIsSource bool, tiers []int) (Reach, err
 		if !inside[near] || !placeable[l.Source] || !placeable[l.Target] {
 			continue
 		}
-		v := l.ValueCents
-		if v < 0 {
-			v = -v
-		}
-		r.In[l.Target] += v
-		r.Out[l.Source] += v
 		kept = append(kept, l)
 	}
 	folded, err := Fold(Graph{Nodes: g.Nodes, Links: kept}, tiers)

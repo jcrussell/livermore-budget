@@ -95,8 +95,9 @@ type Carry struct {
 // the fold left them, reductions negative, which is what the client reads
 // before markContra makes them positive; after that pass a centre taking a
 // category's gross against the spine's net reads as a shortfall of twice
-// the reductions. Reach.In and Reach.Out are the wrong input here for the
-// same reason: they are absolute-valued and pre-fold.
+// the reductions. An absolute-valued pre-fold total would be the wrong input
+// here for both of those reasons, which is why this reads the chart the rung
+// actually drew.
 //
 // THE SHORT SIDE DECIDES WHERE THE MARK GOES: too little leaving stands at
 // the last of tiers, too little arriving at the first, and the one ribbon
