@@ -29,16 +29,16 @@
 //
 // MUTATION: delete one `.attr("aria-keyshortcuts", "Enter Space")` line from
 // render() and (c) goes red naming the mark and the attribute. Make marksIn()
-// return [] -- blind the reader -- and all five arms go red on their own
+// return [] -- blind the reader -- and all six arms go red on their own
 // counters rather than green with nothing compared. Take the "#chart" answer
 // out of harness.mjs's document.querySelector and they go red saying the chart
 // drew nothing. Remove one id from a column of a driven rung that the fold
 // does NOT engage on -- expenditure/capital-outlay's tier 4 -- and (a) goes
 // red naming the mark Go accounts for no longer: "the chart draws 9" against 8
-// accounted for. Remove one from behind a TAIL and this file is silent, which
-// is the trade the ruling makes and the reason it is written here: a folded
-// column's hidden ids are not on the page to read, and rungs.mjs is what
-// compares them, expanding the column first.
+// accounted for. Remove one from behind a TAIL -- which (a) cannot see, because
+// a folded column's hidden ids are not on the page for it to read -- and (f)
+// goes red naming it: that arm presses Enter on the tail the way a reader does
+// and reads the column the page then draws out.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -80,6 +80,26 @@ function marksIn(chart) {
 /** The ribbons the client drew, read off the same SVG. */
 function ribbonsIn(chart) {
   return chart.querySelectorAll("path.link");
+}
+
+/**
+ * The number a folded tail promises the reader, read off the words drawn in it.
+ *
+ * OFF THE TSPANS AND NOT OFF THE COUNT capColumn COMPOSED THE LABEL FROM. "21
+ * smaller departments" is a claim to a reader about how many marks expanding
+ * that mark draws, and the claim is only made where the words reached the page.
+ * @param {any} mark a drawn g.node standing for a folded column
+ * @returns {number} -1 when nothing drawn in it reads as a count
+ */
+function tailPromise(mark) {
+  const text = mark.children.find((/** @type {any} */ c) =>
+    c.tagName === "text" && c.className === "halo");
+  const words = text ? text.children.map((/** @type {any} */ c) => c.textContent) : [];
+  for (const w of words) {
+    const found = /^(\d+) smaller /.exec(w);
+    if (found) return Number(found[1]);
+  }
+  return -1;
 }
 
 /**
@@ -207,10 +227,10 @@ export async function checks() {
     if (!column) throw new Error(`testdata/rungs.json answers for no column with stem ${col.stem}`);
 
     /** @type {Record<string, string[]>} */
-    const wrong = { reach: [], ribbons: [], written: [], gestures: [], banner: [] };
+    const wrong = { reach: [], ribbons: [], written: [], gestures: [], banner: [], tails: [] };
     const seen = {
       states: 0, answered: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
-      tails: 0, ownMarks: 0, offscreen: 0,
+      tails: 0, ownMarks: 0, offscreen: 0, expansions: 0, revealed: 0,
     };
 
     for (const width of [3, 4]) {
@@ -434,6 +454,70 @@ export async function checks() {
             }
           }
         }
+
+        // ------------------------------- (f) what a folded tail stands for
+        //
+        // THE GESTURE, AND THEN THE DOM AGAIN. (a) can say that an id Go
+        // accounts for is either a mark or behind the tail of its own column
+        // and cannot tell those two apart, so an id that leaves the answer
+        // from behind a tail is invisible to it. A reader's own way of asking
+        // what a tail stands for is Enter on the tail, and what comes back is
+        // marks to read rather than a list to be trusted -- reading the
+        // tail's own `folds` would be reading what the client meant to stand
+        // for instead of what it drew, which is the distinction this whole
+        // module exists to make.
+        //
+        // THE LABEL IS PART OF THE ANSWER, and it is the part addressed to the
+        // reader: "21 smaller departments" is a promise about a number that
+        // only the expansion can keep.
+        if (answer) {
+          // (d) leaves the chart on the rung it opened, so the state this arm
+          // measures is established again rather than assumed.
+          await goTo(app, path);
+          const want = answeredIDs(answer);
+          for (let done = 0; done < 32; done++) {
+            const before = marksIn(chart);
+            const tail = before.find((/** @type {any} */ m) => app.expandable(m.__data__));
+            // A TAIL THE PAGE REFUSES TO EXPAND IS LEFT FOLDED rather than
+            // forced through expandTier: an aggregate inside a kept flank was
+            // folded by the chart above and this rung's gesture does not reach
+            // it, so expanding it here would measure a state no reader has.
+            if (!tail) break;
+            const tier = tail.__data__.tier;
+            const drawn = before.map((/** @type {any} */ m) => m.__data__.id);
+            const hidden = [...want.keys()].filter((id) =>
+              want.get(id) === tier && !drawn.includes(id));
+            const promised = tailPromise(tail);
+            seen.expansions++;
+            const note = (/** @type {string} */ what) =>
+              wrong.tails.push(`${where}: the tail at column ${tier} ${what}`);
+            try {
+              dispatch(tail, "keydown", { key: "Enter", timeStamp: 20000 + done });
+              await settle();
+            } catch (e) {
+              note(`did not expand -- ${e && e.message ? e.message : String(e)}`);
+              break;
+            }
+            const out = marksIn(chart)
+              .filter((/** @type {any} */ m) => m.__data__.tier === tier && !app.isAggregate(m.__data__.id))
+              .map((/** @type {any} */ m) => m.__data__.id);
+            const revealed = out.filter((id) => !drawn.includes(id));
+            seen.revealed += revealed.length;
+            const stillHidden = hidden.filter((id) => !out.includes(id));
+            const strangers = out.filter((id) => !want.has(id));
+            if (stillHidden.length) {
+              note(`stood for ${hidden.length} id(s) Go accounts for and drew no mark for ` +
+                `${stillHidden.length} of them: ${stillHidden.join(", ")}`);
+            }
+            if (strangers.length) {
+              note(`drew ${strangers.join(", ")}, which Go accounts for nowhere at this rung`);
+            }
+            if (promised !== revealed.length) {
+              note(`says "${promised}" in its own words and drew ${revealed.length} mark(s) ` +
+                `the chart did not already carry`);
+            }
+          }
+        }
       }
       try { app.drillUp(0); } catch { /* a repaint that throws is reported by the state that hit it */ }
     }
@@ -492,6 +576,16 @@ export async function checks() {
         : `${seen.states} state(s): no .refusal anywhere, #chart holds a g.links and a g.nodes, ` +
           `and ${seen.marks} mark(s) are in them -- which is what tells a drawing apart from a ` +
           `throw app.js caught and banners`,
+    });
+    out.push({
+      name: `${col.label}: a folded tail expands into the ids Go accounts for and no others`,
+      ok: wrong.tails.length === 0 && drove && seen.expansions > 0 && seen.revealed > 0,
+      detail: wrong.tails.length
+        ? `${wrong.tails.length} tail(s) standing for something else, ${firstOf(wrong.tails)}`
+        : `${seen.expansions} tail(s) expanded by Enter on the mark itself, drawing ` +
+          `${seen.revealed} mark(s) that were behind one: every id Go accounts for at that ` +
+          `column reached a mark, no mark it accounts for nowhere was drawn beside them, and ` +
+          `each tail drew as many as the words in it promised`,
     });
   }
   return out;
