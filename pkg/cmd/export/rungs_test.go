@@ -31,6 +31,13 @@ import (
 // one year, is one the arm could report PASS against without the comparison
 // it exists for ever running. Each guard below names the shape it refuses and
 // where the committed corpus supplies the opposite.
+//
+// AND WHAT THEY DO NOT REFUSE, because these guards become the whole of what
+// holds this artifact the day the client reads it instead of recomputing it:
+// a column's membership is guarded only where its members are themselves
+// opened by a further rung, and a mark's cents is not guarded at all. The
+// mutations, and which guard took each one, are in
+// docs/rung-walk-witness-evidence.md.
 func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
