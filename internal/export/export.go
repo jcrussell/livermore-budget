@@ -173,12 +173,9 @@ type View struct {
 	// fiscal years, OLDEST FIRST, which is the order a reader meets them in.
 	// Empty means this view has one document and renders no year control.
 	//
-	// THE PAGE OPENS ON THE LAST OF THEM, because the newest budget is the one
-	// in force and the one a reader arriving cold is asking about. That is
-	// arithmetic on this order rather than a second field: a view that wanted
-	// to open on some other year would be a view whose control did not read as
-	// a time axis, and no such view exists. Reordering this list changes which
-	// year the page opens on, which is the one thing to know before doing it.
+	// THE PAGE OPENS ON THE LAST OF THEM. Reordering this list changes which
+	// year a reader is greeted with, which is the one thing to know before
+	// doing it.
 	//
 	// IT IS PER VIEW, not per site. Years are a property of the SPINE, which
 	// publishes one document per fiscal year; the revenue trends publish one

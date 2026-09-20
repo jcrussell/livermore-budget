@@ -232,7 +232,7 @@
               },
               "allOf": [
                 {
-                  "description": "A published link cites at least one fact and names where it was read. A derived one cites nothing, and saying which is which is the point.",
+                  "description": "A published link cites at least one fact and names where it was read; a derived one cites nothing.",
                   "if": {
                     "anyOf": [
                       {

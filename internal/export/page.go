@@ -1502,18 +1502,13 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Steps: steps,
 		})
 	}
-	// THE PAGE OPENS ON THE NEWEST YEAR, WHICH IS THE LAST OF THEM.
-	// [View.YearStems] is oldest first, so this is arithmetic on that order
-	// rather than a second declaration of it. It is NOT v.Projection's document,
-	// which is what it was while YearStems had to start with Projection --
-	// everything per-year the page renders statically comes from this entry, so
-	// a reader with no JavaScript, and the first paint before app.js runs, both
-	// agree with the checked radio.
+	// THE PAGE OPENS ON THE NEWEST YEAR, WHICH IS THE LAST OF THEM, since
+	// [View.YearStems] is oldest first. Everything per-year the page renders
+	// statically comes from this entry, so a reader with no JavaScript agrees
+	// with the checked radio.
 	//
-	// SCOPE AND THE BUILDER DO NOT MOVE WITH IT, and that is not an oversight:
-	// the loop above REFUSES a year whose scope or generated_by differs from the
-	// opening projection's, so those two are already known equal across every
-	// year and reading them off meta is reading the same value.
+	// Scope and the builder stay off meta: the loop above refuses a year whose
+	// own differ, so they are already equal across every year.
 	open := years[len(years)-1]
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 

@@ -40,13 +40,10 @@ import { openedChain } from "./drill.mjs";
  * continuation, not synchronously during load.
  */
 function page(opts) {
-  // THE READER IS ON THE FIRST YEAR UNLESS AN ARM SAYS OTHERWISE, and that is
-  // pinned here rather than inherited. The page's own default is the NEWEST
-  // year -- index.html.tmpl marks the last radio, because that is the budget in
-  // force -- and every arm in this file plans its fetch for one document and
-  // asserts on what that draw did. Leaving the year to the default would make
-  // each of them a check about which year opens, which is year.mjs's subject
-  // and not this file's.
+  // The reader is on the FIRST year unless an arm says otherwise. The page's
+  // own default is the newest, and every arm here plans one document's fetch;
+  // leaving the year to the default makes each a check about which year opens,
+  // which is year.mjs's subject.
   const app = loadApp({ checkedStem: (opts.config?.years || [])[0]?.stem, ...opts });
   const main = app.dom.document.node();
   app.dom.document.plant("main", main);
@@ -562,18 +559,11 @@ export async function checks() {
     const more = app.dom.byId.get("column-more");
     const fewer = app.dom.byId.get("column-fewer");
     const disabled = (/** @type {any} */ b) => b.getAttribute("disabled") !== null;
-    // BOTH STEPPERS ARE DEAD HERE, AND THAT IS THE POINT OF THIS FIXTURE rather
-    // than a gap in it: this config declares no steps, so the page is the spine
-    // at RENDER_TIERS and has exactly one width. syncColumns disables a stepper
-    // that would redraw nothing, so neither is offered.
-    //
-    // WHICH MEANS THIS PAIR NO LONGER WITNESSES THAT wireColumns RAN, and the
-    // arm below drives stepColumns through the listener rather than through a
-    // gesture a reader could make on this chart. That is deliberate: what is
-    // being checked here is whether a reader's choice outranks the window, which
-    // is the budget's own plumbing. drill.mjs's "a chart with a second width
-    // offers it, takes it, and reports what it drew" is where the CONTROL is
-    // driven as a reader drives it.
+    // Both steppers are dead: this config declares no steps, so the page has
+    // one width. So this pair no longer witnesses that wireColumns ran, and the
+    // arm below drives stepColumns' plumbing rather than a gesture a reader
+    // could make here. drill.mjs's "a chart with a second width offers it" is
+    // where the control is driven as a reader drives it.
     const atCeiling = [disabled(more), disabled(fewer)].join("/");
 
     fewer.listeners.click[0]();

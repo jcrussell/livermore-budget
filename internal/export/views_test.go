@@ -3659,16 +3659,9 @@ func recited(t *testing.T, raw []byte, docID string) []byte {
 	return out
 }
 
-// THE ORDER AND THE OPENING YEAR ARE TWO DECLARATIONS, and this holds them
-// apart. The years are listed oldest first, because that is how a control over
-// time reads; the page opens on the LAST of them, because the newest budget is
-// what a reader arriving cold is asking about. They were one declaration while
-// validate required YearStems[0] to equal Projection, and that is what made the
-// page open on the oldest year.
-//
-// IT READS THE RENDERED PAGE rather than the View, because the defect to guard
-// against is a page whose tiles disagree with its own checked radio: the state
-// index.html.tmpl's comment calls worse than having no control at all.
+// The years list oldest first and the page opens on the last. It reads the
+// RENDERED page, because the defect is tiles disagreeing with the checked
+// radio.
 func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T) {
 	var second map[string]any
 	if err := json.Unmarshal(goldenSankey(t), &second); err != nil {

@@ -1592,15 +1592,13 @@ async function expansionChecks() {
  * The column control describes the chart on screen, and offers only a step it
  * can take.
  *
- * TWO DEFECTS IN ONE GESTURE, both reported from a browser. syncColumns wrote
- * the BUDGET into #column-count, which is what the chart MAY be, while a reader
- * reads it as what the chart IS; and the steppers were bounded by the budget's
- * own range, so on every view without a `widen` the plus moved that number and
- * redrew nothing. Of the steps this site declares exactly one has a widen, so
- * "the count went up and the chart did not" was the ordinary case.
+ * Two defects, both reported from a browser: #column-count carried the BUDGET
+ * where a reader reads what is drawn, and the steppers were bounded by the
+ * budget's range, so on the six steps without a `widen` the plus moved a number
+ * and redrew nothing.
  *
- * DRIVEN THROUGH THE BUTTON'S OWN LISTENER, not through setColumnBudget, because
- * a check that set the budget itself would assert nothing about the control.
+ * Driven through the button's own listener: a check setting the budget itself
+ * would assert nothing about the control.
  * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
  */
 async function theColumnControlDescribesTheChart() {

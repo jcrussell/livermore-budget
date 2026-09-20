@@ -741,15 +741,10 @@ function nodeColor(node) {
 }
 
 /**
- * The custom property holding a fund group's hue, or the one every other mark
- * takes.
+ * The custom property holding a fund group's hue, or --muted.
  *
- * THE FALLBACK IS SPELLED ONCE BECAUSE TWO READERS NEED IT. A group the palette
- * has no hue for is drawn --muted by nodeColor and its legend swatch has to be
- * the same colour, or the legend names a mark by a colour the chart does not
- * draw it in. data/funds.yaml declares SEVEN fund types and FUND_ORDER holds
- * six, so this is reachable rather than defensive: `permanent` is published on
- * the FY2023-24 column of fund-flows and of department-funding.
+ * Spelled once because nodeColor and the legend swatch must agree, or the
+ * legend names a mark by a colour the chart does not draw it in.
  *
  * @param {string} id
  * @returns {string}
@@ -990,14 +985,10 @@ const NARROW_COLUMNS = 3;
  * the other goes red rather than shipping a reader who asks for a column and
  * gets less chart.
  *
- * IT IS THE ROOM AND NOT THE DEMAND, which is the whole of what it claims. How
- * many columns a chart actually WANTS is its step's tier count, and nothing is
- * written down about that here: syncColumns asks drawnColumns what this chart
- * would be at one more column and one fewer, and disables the stepper that
- * would change nothing. So a step that declares fewer tiers makes the control
- * go quiet on its own, and one that declares more is held here by the room --
- * neither needs a constant restating it. Adding the fifth column is still both
- * halves, the stylesheet's and a step's; fisc-ipif.
+ * IT IS THE ROOM AND NOT THE DEMAND. What a chart WANTS is its step's tier
+ * count, which syncColumns asks drawnColumns for rather than restating here.
+ * Adding a fifth column is still both halves, the stylesheet's and a step's;
+ * fisc-ipif.
  */
 const WIDE_COLUMNS = 4;
 
@@ -5093,20 +5084,10 @@ function buildLegend() {
   const legend = el("legend");
   legend.replaceChildren();
   if (drilled.length) return;
-  // THE DOCUMENT'S GROUPS, ORDERED BY THE PALETTE -- not the palette's groups
-  // filtered by the document, which is what this did and is why a seventh one
-  // could not be seen. FUND_ORDER holds six and data/funds.yaml declares seven,
-  // so a column carrying `permanent` drew a mark the legend denied existed: no
-  // swatch to isolate it by, and no way to tell it from a mark the chart had
-  // decided not to name. Worse, the arm over this compared the legend with
-  // FUND_ORDER for equality, and a loop over FUND_ORDER can only ever produce a
-  // SUBSET of it -- so the comparison could report a group that went missing and
-  // never one that arrived.
-  //
-  // A GROUP THE PALETTE DOES NOT KNOW SORTS LAST AND TAKES --muted, which is
-  // what nodeColor already draws it. Ordering the known ones first is what keeps
-  // the legend reading in the palette's order, which is a measured result
-  // (style.css's own comment: 720 orderings against a CVD validator).
+  // THE DOCUMENT'S GROUPS, ORDERED BY THE PALETTE, not the palette's filtered
+  // by the document: FUND_ORDER holds six and data/funds.yaml declares seven, so
+  // a loop over FUND_ORDER drops a mark the chart draws. One the palette does
+  // not know sorts last and takes --muted, which is what nodeColor gives it.
   const place = (/** @type {FiscNode} */ n) => {
     const i = FUND_ORDER.indexOf(n.id);
     return i >= 0 ? i : FUND_ORDER.length;
@@ -5326,14 +5307,9 @@ function syncColumns() {
     if (atBound) button.setAttribute("disabled", "");
     else button.removeAttribute("disabled");
   };
-  // WOULD IT MOVE THIS CHART, rather than would it move the budget. The two
-  // differ on most of the site: only a step that declares a `widen` has a
-  // second width at all, so on the overview and on every step without one the
-  // budget can be raised and nothing is drawn differently. A control that
-  // reports a number it did not change is the "control that lies" the
-  // template's own comment says is worse than one that is absent -- so a
-  // stepper with nothing to do is disabled, which is the same way the floor is
-  // made discoverable.
+  // WOULD IT MOVE THIS CHART, not would it move the budget. Only a step
+  // declaring a `widen` has a second width, so elsewhere the budget rises and
+  // nothing is drawn differently; a stepper with nothing to do is disabled.
   const moves = (/** @type {number} */ delta) => {
     const want = Math.min(WIDE_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
     return want !== columnBudget && drawnColumns(want) !== drawnColumns();
@@ -6060,15 +6036,11 @@ function paintYearWords(year) {
  * tools/jscheck can drive it -- and the stub's declared-selector check keeps
  * app.js honest about which selectors it uses, so adding one here would have to
  * be declared there too.
- * THE FALLBACK IS THE LAST YEAR AND NOT THE FIRST. CONFIG.years is ordered
- * oldest first, because that is how a control over time reads, so its first
- * entry is the year furthest from the one a reader arriving cold is asking
- * about and its last is the budget in force. The packager marks that same year
- * `checked`, computing it the same way from the same order -- no key on the wire
- * says which, because the order already does.
+ * THE FALLBACK IS THE LAST YEAR AND NOT THE FIRST: CONFIG.years is oldest
+ * first, so the budget in force is its last entry. No key on the wire says
+ * which; the order does, and the packager marks the same one `checked`.
  *
- * IT READS THE RADIO FIRST REGARDLESS, because a restored selection is the
- * READER'S and outranks any default.
+ * It reads the radio first regardless: a restored selection is the reader's.
  *
  * @param {FiscYear[]} years
  * @returns {FiscYear} always one of `years`; the newest when nothing is checked

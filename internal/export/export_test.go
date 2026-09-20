@@ -1183,19 +1183,12 @@ func writeSite(o export.Options) ([]string, error) {
 	return p.Write()
 }
 
-// A FOCUS INDICATOR IS DECLARED, NOT RENDERED, AND THIS WITNESSES THE FIRST.
-// Nothing in this tree parses or lays out CSS (fisc-6at), so the arms below say
-// what style.css declares and never what a browser painted. Whether the ring now
-// encloses the mark rather than the gutter is confirmed in a browser and nowhere
-// else.
+// What style.css DECLARES; nothing here renders CSS (fisc-6at).
 //
-// SOURCE ORDER IS THE WHOLE OF THE RULE HERE, which is why it is worth a test
-// rather than a comment. `svg.sankey .node:focus-visible rect` and
-// `svg.sankey .node.derived rect` have equal specificity, so the later one wins:
-// move the focus block above the derived block and a focused derived mark keeps
-// the dashed 1.5px stroke and the indicator silently disappears, with every
-// other test in this package green. The dasharray reset is the same defect one
-// property in.
+// Mutation: move the focus block above `.node.derived rect` -- equal
+// specificity, so the later wins -- and a focused derived mark keeps the dashed
+// stroke with every other test green. Dropping the dasharray reset is the same
+// defect one property in.
 func TestTheChartsFocusRingIsDeclaredOnTheMarkAndAfterTheDerivedRule(t *testing.T) {
 	b, err := fs.ReadFile(site.FS(), "style.css")
 	if err != nil {

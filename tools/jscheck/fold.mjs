@@ -282,16 +282,12 @@ async function spineLegend(doc) {
 }
 
 /**
- * The spine with a fund group the palette has no hue for, which is a shape the
- * corpus already publishes.
+ * The spine with a fund group the palette has no hue for.
  *
- * data/funds.yaml declares SEVEN fund types and FUND_ORDER holds six;
- * fund-flows-2024-actual.json and department-funding-2024-actual.json both
- * carry fund-group/permanent today. Neither is opened by any view, so the only
- * way to ask what the page does with one is to build it -- and until this
- * existed the answer was "drops it from the legend", with the arm below green
- * because it compared the legend against the palette rather than against the
- * document.
+ * data/funds.yaml declares seven fund types and FUND_ORDER holds six;
+ * fund-flows-2024-actual.json and department-funding-2024-actual.json carry
+ * fund-group/permanent, and no view opens either, so this is the only way to
+ * ask what the page does with one.
  */
 function spineWithASeventhGroup() {
   const doc = goldenGraph();
@@ -619,10 +615,9 @@ export async function checks() {
         : "the legend is empty",
     },
     {
-      // THE ARM ABOVE CANNOT SEE THIS AND NEVER COULD. buildLegend once looped
-      // over FUND_ORDER, so the legend was always a SUBSET of it and an equality
-      // check could report a group that went missing and never one that arrived.
-      // A document carrying a seventh is what tells the two apart.
+      // The arm above cannot see this: a loop over FUND_ORDER makes the legend
+      // a subset of it, so an equality check reports a group that went missing
+      // and never one that arrived.
       name: "a fund group the palette has no hue for is still in the legend, last, and muted",
       ok: seventh.ids.length === whole.FUND_ORDER.length + 1 &&
           seventh.ids[seventh.ids.length - 1] === "fund-group/permanent" &&

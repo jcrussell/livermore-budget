@@ -189,20 +189,12 @@ function clickYear(app, stem) {
 /**
  * The page opens on the NEWEST year, not on the first one listed.
  *
- * CONFIG.years runs oldest first, because that is how a control over time reads,
- * so the year a reader arriving cold is asking about is the LAST of it.
- * checkedYear used to fall back to years[0], which under that order is the year
- * furthest from the budget in force. Nothing on the wire names the opening year:
- * the order already does, and the packager marks the same one `checked` by
- * computing it the same way.
+ * CONFIG.years runs oldest first, so the budget in force is its LAST entry.
+ * Nothing on the wire names the opening year; the order does.
  *
- * THE REACHABLE FALLBACK IS A STALE RESTORE, which is why that is what this
- * drives rather than an unchecked group. The template always marks one radio,
- * so "nothing checked" is not a state the shipped page has; "checked on a stem
- * this config no longer publishes" is -- the page was rebuilt with different
- * years since the reader last visited, and their browser restored the old one.
- * checkedYear's loop then finds no year and falls through, and where it falls
- * is what this arm is about.
+ * THE REACHABLE FALLBACK IS A STALE RESTORE, which is what this drives. The
+ * template always marks one radio, so "nothing checked" is not a shipped state;
+ * "checked on a stem this config no longer publishes" is.
  * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
  */
 async function opensOnTheNewestYear() {
