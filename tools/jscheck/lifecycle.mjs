@@ -562,9 +562,18 @@ export async function checks() {
     const more = app.dom.byId.get("column-more");
     const fewer = app.dom.byId.get("column-fewer");
     const disabled = (/** @type {any} */ b) => b.getAttribute("disabled") !== null;
-    // AT THE CEILING THE PLUS IS DEAD AND THE MINUS IS NOT, which is the pair
-    // that says wireColumns enabled the control at all: the template ships BOTH
-    // disabled, so "the minus is live" is false before app.js runs.
+    // BOTH STEPPERS ARE DEAD HERE, AND THAT IS THE POINT OF THIS FIXTURE rather
+    // than a gap in it: this config declares no steps, so the page is the spine
+    // at RENDER_TIERS and has exactly one width. syncColumns disables a stepper
+    // that would redraw nothing, so neither is offered.
+    //
+    // WHICH MEANS THIS PAIR NO LONGER WITNESSES THAT wireColumns RAN, and the
+    // arm below drives stepColumns through the listener rather than through a
+    // gesture a reader could make on this chart. That is deliberate: what is
+    // being checked here is whether a reader's choice outranks the window, which
+    // is the budget's own plumbing. drill.mjs's "a chart with a second width
+    // offers it, takes it, and reports what it drew" is where the CONTROL is
+    // driven as a reader drives it.
     const atCeiling = [disabled(more), disabled(fewer)].join("/");
 
     fewer.listeners.click[0]();
@@ -587,8 +596,8 @@ export async function checks() {
 
     out.push({
       name: "a viewport that can carry four columns gets four, and a reader's step down holds against it",
-      ok: opened === 4 && atCeiling === "true/false" &&
-          chosen === 3 && saved === "3" && atFloor === "false/true" &&
+      ok: opened === 4 && atCeiling === "true/true" &&
+          chosen === 3 && saved === "3" && atFloor === "true/true" &&
           narrowed === 3 && held === 3 &&
           released === null && cleared === false,
       detail: `a 2000px window opens at ${opened} columns with (more/fewer) disabled ${atCeiling}; ` +

@@ -973,10 +973,14 @@ const NARROW_COLUMNS = 3;
  * the other goes red rather than shipping a reader who asks for a column and
  * gets less chart.
  *
- * NOTHING ASKS FOR A FIFTH EITHER: the widest step this site declares is the
- * fund step's four tiers, so a budget of 5 would change no chart on the page
- * even with room for one. Both halves of what reopening that needs are in
- * fisc-ipif.
+ * IT IS THE ROOM AND NOT THE DEMAND, which is the whole of what it claims. How
+ * many columns a chart actually WANTS is its step's tier count, and nothing is
+ * written down about that here: syncColumns asks drawnColumns what this chart
+ * would be at one more column and one fewer, and disables the stepper that
+ * would change nothing. So a step that declares fewer tiers makes the control
+ * go quiet on its own, and one that declares more is held here by the room --
+ * neither needs a constant restating it. Adding the fifth column is still both
+ * halves, the stylesheet's and a step's; fisc-ipif.
  */
 const WIDE_COLUMNS = 4;
 
@@ -1612,8 +1616,9 @@ function heldFor(answer, tiers) {
  *
  * @returns {number[]}
  */
-function activeTiers() {
+function activeTiers(budget) {
   if (!drilled.length) return RENDER_TIERS;
+  const at = budget === undefined ? columnBudget : budget;
   const rung = drilled[drilled.length - 1];
   const tiers = rung.step.tiers;
   const widen = rung.step.widen || [];
@@ -1622,7 +1627,7 @@ function activeTiers() {
   // already dropped as empty is an entry of this same order, and subtracting a
   // fixed shortfall would "drop" it a second time and leave the window a column
   // over budget.
-  for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > columnBudget; k--) {
+  for (let k = widen.length - 1; k >= 0 && tiers.length - drop.size > at; k--) {
     drop.add(widen[k]);
   }
   return drop.size ? tiers.filter((t) => !drop.has(t)) : tiers;
@@ -1636,10 +1641,11 @@ function activeTiers() {
  * the layout the width is an input to -- and NARROW_COLUMNS is the width every
  * such chart was drawn at before a step could ask for a fourth column.
  *
+ * @param {number} [budget] the width to ask about; the current one by default
  * @returns {number}
  */
-function drawnColumns() {
-  return activeTiers().length || NARROW_COLUMNS;
+function drawnColumns(budget) {
+  return activeTiers(budget).length || NARROW_COLUMNS;
 }
 
 /**
@@ -2019,6 +2025,11 @@ function redrawStack(next) {
   paintBreadcrumb();
   paintChartName();
   paintCounts();
+  // WITH THE REST OF THE CHROME, because the count and the steppers describe
+  // the chart on screen and a drill changes it. They were repainted only when
+  // the BUDGET moved, so opening a rung that draws a different number of
+  // columns left both describing the chart the reader had just left.
+  syncColumns();
   buildLegend();
   paintChartHint();
   buildDerivedList();
@@ -5274,15 +5285,27 @@ function savedColumns() {
  */
 function syncColumns() {
   const count = maybeEl("column-count");
-  if (count) count.textContent = columnBudget + " columns";
+  if (count) count.textContent = drawnColumns() + " columns";
   const bound = (/** @type {string} */ id, /** @type {boolean} */ atBound) => {
     const button = maybeEl(id);
     if (!button) return;
     if (atBound) button.setAttribute("disabled", "");
     else button.removeAttribute("disabled");
   };
-  bound("column-fewer", columnBudget <= NARROW_COLUMNS);
-  bound("column-more", columnBudget >= WIDE_COLUMNS);
+  // WOULD IT MOVE THIS CHART, rather than would it move the budget. The two
+  // differ on most of the site: only a step that declares a `widen` has a
+  // second width at all, so on the overview and on every step without one the
+  // budget can be raised and nothing is drawn differently. A control that
+  // reports a number it did not change is the "control that lies" the
+  // template's own comment says is worse than one that is absent -- so a
+  // stepper with nothing to do is disabled, which is the same way the floor is
+  // made discoverable.
+  const moves = (/** @type {number} */ delta) => {
+    const want = Math.min(WIDE_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
+    return want !== columnBudget && drawnColumns(want) !== drawnColumns();
+  };
+  bound("column-fewer", !moves(-1));
+  bound("column-more", !moves(1));
 }
 
 /**

@@ -1588,8 +1588,77 @@ async function expansionChecks() {
   return out;
 }
 
+/**
+ * The column control describes the chart on screen, and offers only a step it
+ * can take.
+ *
+ * TWO DEFECTS IN ONE GESTURE, both reported from a browser. syncColumns wrote
+ * the BUDGET into #column-count, which is what the chart MAY be, while a reader
+ * reads it as what the chart IS; and the steppers were bounded by the budget's
+ * own range, so on every view without a `widen` the plus moved that number and
+ * redrew nothing. Of the steps this site declares exactly one has a widen, so
+ * "the count went up and the chart did not" was the ordinary case.
+ *
+ * DRIVEN THROUGH THE BUTTON'S OWN LISTENER, not through setColumnBudget, because
+ * a check that set the budget itself would assert nothing about the control.
+ * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
+ */
+async function theColumnControlDescribesTheChart() {
+  const read = (/** @type {any} */ app) => {
+    const d = app.dom.document;
+    const off = (/** @type {string} */ id) => {
+      const b = d.getElementById(id);
+      return !b || (b.attributes && b.attributes.disabled !== undefined);
+    };
+    return {
+      label: d.getElementById("column-count").textContent,
+      drawn: app.drawnColumns(),
+      marks: app.projection ? app.projection.nodes.length : 0,
+      more: off("column-more"),
+      fewer: off("column-fewer"),
+    };
+  };
+
+  // A step with no widen, and the overview, which is drawn at RENDER_TIERS
+  // whatever the budget.
+  const quiet = [];
+  for (const path of [[], ["fund-group/general"]]) {
+    const { app } = await openedChain(path, { viewport: 2000 });
+    const r = read(app);
+    quiet.push({ where: path.length ? path[path.length - 1] : "(the overview)", ...r });
+  }
+
+  // The one step that declares a widen.
+  const { app } = await openedChain(["fund-group/general", "fund/100"], { viewport: 1440 });
+  const was = read(app);
+  app.dom.byId.get("column-more").listeners.click[0]();
+  await settle();
+  const now = read(app);
+
+  const quietOk = quiet.every((q) => q.more && q.fewer && q.label === q.drawn + " columns");
+  return [{
+    name: "a chart with one width offers no step, and says the width it has",
+    ok: quietOk,
+    detail: quiet.map((q) =>
+      `${q.where}: "${q.label}" over ${q.drawn} drawn column(s), ` +
+      `+ ${q.more ? "disabled" : "LIVE"} and - ${q.fewer ? "disabled" : "LIVE"}`).join("; ") +
+      " -- a stepper that moves a number and redraws nothing is the control the " +
+      "template's own comment calls worse than none",
+  }, {
+    name: "a chart with a second width offers it, takes it, and reports what it drew",
+    ok: !was.more && was.label === was.drawn + " columns" &&
+        now.drawn === was.drawn + 1 && now.marks > was.marks &&
+        now.label === now.drawn + " columns" && now.more,
+    detail: `fund/100 opened at "${was.label}" with + ${was.more ? "disabled" : "live"}; ` +
+      `one press drew ${was.drawn} -> ${now.drawn} column(s) and ${was.marks} -> ${now.marks} ` +
+      `mark(s), and the count now reads "${now.label}" with + ${now.more ? "disabled" : "still live"} ` +
+      `-- the label is the chart's own width, not the budget behind it`,
+  }];
+}
+
 export async function checks() {
   const out = [];
+  out.push(...(await theColumnControlDescribesTheChart()));
 
   for (const col of COLUMNS) {
     const { app, body, fetch } = await opened(null, null, col);
