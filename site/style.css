@@ -737,6 +737,42 @@ svg.sankey .node.derived rect {
   stroke-dasharray: 4 3;
 }
 
+/* THE FOCUS RING GOES ON THE MARK, NOT ON THE GROUP'S BOUNDING BOX. render()
+   makes the <g> focusable, and that <g> holds the rect AND its label, which
+   labelPlacement anchors up to LABEL_GUTTER away; an SVG outline follows the
+   union of those, so the global :focus-visible rule paints a wide box floating
+   out into the gutter -- nothing like the mark that was clicked, and drawn
+   outside the SVG too because svg.sankey is `overflow: visible`. It arrives on
+   a pointer click as readily as on Tab, because restoreFocus moves focus
+   programmatically after every drill.
+
+   IT MUST FOLLOW .node.derived rect. The two selectors have equal specificity,
+   so source order is the whole of what decides -- and the dasharray that rule
+   sets has to be reset here, or a focused derived mark draws its indicator
+   dashed and reads as a different kind of mark. */
+svg.sankey .node:focus-visible {
+  outline: none;
+}
+
+svg.sankey .node:focus-visible rect {
+  stroke: var(--ink-1);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+
+/* A RIBBON KEEPS THE BOX AND LOSES THE OFFSET, which is a weaker fix on
+   purpose. A <path> carries one stroke and that stroke IS the data -- paint()
+   writes linkColor, .link.contra overrides it, and the dash patterns are a
+   published distinction (.derived 5 4, .partition 1 4) -- so a focus indicator
+   cannot reuse stroke or dash without colliding with something the chart is
+   saying. A ribbon's bounding box is at least roughly the ribbon, unlike a
+   node's, so dropping the 2px offset is enough to stop it reading as a border
+   around empty space. If it still reads wrong it wants a drawn focus echo
+   rather than a second guess here. */
+svg.sankey .link:focus-visible {
+  outline-offset: 0;
+}
+
 svg.sankey .node.contra rect {
   fill: var(--critical);
 }

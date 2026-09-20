@@ -1182,3 +1182,63 @@ func writeSite(o export.Options) ([]string, error) {
 	}
 	return p.Write()
 }
+
+// A FOCUS INDICATOR IS DECLARED, NOT RENDERED, AND THIS WITNESSES THE FIRST.
+// Nothing in this tree parses or lays out CSS (fisc-6at), so the arms below say
+// what style.css declares and never what a browser painted. Whether the ring now
+// encloses the mark rather than the gutter is confirmed in a browser and nowhere
+// else.
+//
+// SOURCE ORDER IS THE WHOLE OF THE RULE HERE, which is why it is worth a test
+// rather than a comment. `svg.sankey .node:focus-visible rect` and
+// `svg.sankey .node.derived rect` have equal specificity, so the later one wins:
+// move the focus block above the derived block and a focused derived mark keeps
+// the dashed 1.5px stroke and the indicator silently disappears, with every
+// other test in this package green. The dasharray reset is the same defect one
+// property in.
+func TestTheChartsFocusRingIsDeclaredOnTheMarkAndAfterTheDerivedRule(t *testing.T) {
+	b, err := fs.ReadFile(site.FS(), "style.css")
+	if err != nil {
+		t.Fatalf("read embedded style.css: %v", err)
+	}
+	css := string(b)
+
+	// The global ring is what put a box round the whole <g>. It has to stay for
+	// every other focusable thing on the page, so the chart turns it off rather
+	// than the file dropping it.
+	if !strings.Contains(css, "svg.sankey .node:focus-visible {\n  outline: none;\n}") {
+		t.Error("style.css does not turn the global outline off on a chart node; the ring " +
+			"follows the <g>'s union box, which holds the label out in the gutter")
+	}
+
+	const derived = "svg.sankey .node.derived rect {"
+	const focused = "svg.sankey .node:focus-visible rect {"
+	iDerived, iFocused := strings.Index(css, derived), strings.Index(css, focused)
+	if iDerived < 0 || iFocused < 0 {
+		t.Fatalf("style.css is missing one of the two rules this ordering is about: "+
+			"derived at %d, focused at %d", iDerived, iFocused)
+	}
+	if iFocused < iDerived {
+		t.Error("svg.sankey .node:focus-visible rect is declared BEFORE " +
+			"svg.sankey .node.derived rect; they have equal specificity, so the derived " +
+			"rule wins and a focused derived mark draws no indicator")
+	}
+
+	// Without this the indicator inherits the derived rule's dashes and reads as
+	// a different kind of mark rather than as focus.
+	focusBlock := css[iFocused:]
+	if end := strings.Index(focusBlock, "}"); end >= 0 {
+		focusBlock = focusBlock[:end]
+	}
+	if !strings.Contains(focusBlock, "stroke-dasharray: none") {
+		t.Error("the focused-mark rule does not reset stroke-dasharray, so a focused " +
+			"derived mark draws its focus indicator dashed")
+	}
+
+	// A ribbon cannot take the node's fix -- its stroke and its dashes are both
+	// published distinctions -- so it keeps the box and loses the offset.
+	if !strings.Contains(css, "svg.sankey .link:focus-visible {\n  outline-offset: 0;\n}") {
+		t.Error("style.css does not drop the focus offset on a ribbon, so the ring " +
+			"stands 2px off a shape it already traces")
+	}
+}
