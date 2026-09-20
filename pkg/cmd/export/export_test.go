@@ -1171,6 +1171,27 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		t.Errorf("the spine view lists %d year stems, want both adopted years", len(spine.YearStems))
 	}
 
+	// THE SPINE OPENS ON THE NEWEST YEAR AND LISTS THEM OLDEST FIRST, which are
+	// two decisions and are asserted as two. Nothing else in the tree holds this
+	// one: internal/export's own test proves a view that DECLARES an Opens
+	// renders it, which stays green when this composition root declares the
+	// oldest -- measured by mutating opensOn to return stems[0], which reverted
+	// the page to opening on FY 2025-26 with every package's tests passing.
+	if len(spine.YearStems) > 1 {
+		newest := spine.YearStems[len(spine.YearStems)-1]
+		if spine.Opens != newest {
+			t.Errorf("the spine opens on %q, want the newest year %q; "+
+				"project.PublishedFiscalYears is ascending, so opening on anything else "+
+				"greets a reader with a budget that is not the one in force",
+				spine.Opens, newest)
+		}
+		if spine.Opens == spine.YearStems[0] {
+			t.Errorf("the spine opens on its FIRST year stem %q; the list is the order a "+
+				"reader meets the years in and is ascending, so the opening year is the "+
+				"last of it", spine.Opens)
+		}
+	}
+
 	// ASSERTED BY PATH RATHER THAN BY INDEX from here down. The nav order is a
 	// design decision that has already moved once in this lane -- the trends
 	// page was second and is now fourth -- and a test that fails when it moves

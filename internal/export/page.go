@@ -398,10 +398,16 @@ type pageData struct {
 	ChartTitle string
 	Hero       figure
 	Figures    []figure
-	// Years is every published year, opening year first. The template renders
-	// Years[0]'s tiles and caveats into the HTML and lists the rest as a
-	// selector; app.js swaps between them without refetching the page.
+	// Years is every published year, in the order a reader meets them, oldest
+	// first. The template renders the OPENS year's tiles and caveats into the
+	// HTML and lists them all as a selector; app.js swaps between them without
+	// refetching the page.
 	Years []yearView
+	// Opens is the stem of the year the page opens on, which the template marks
+	// `checked`. Years is ordered oldest first for the reader; this is which of
+	// them is already selected, and the two are deliberately not the same
+	// declaration.
+	Opens string
 	Facts int
 	Nodes int
 	Links int
@@ -625,7 +631,12 @@ type clientConfig struct {
 	Metadata json.RawMessage `json:"metadata"`
 	// Years is every published year with the words that belong to it, built by
 	// the packager so the client never composes a figure or a caveat itself.
-	Years []yearView           `json:"years"`
+	Years []yearView `json:"years"`
+	// Opens is the stem the page opened on, so checkedYear can fall back to it
+	// rather than to years[0] when no radio is checked. It is the same value the
+	// template marked `checked`; the client reads the radio first, because a
+	// restored selection is the reader's and outranks the default.
+	Opens string               `json:"opens,omitempty"`
 	Docs  map[string]clientDoc `json:"docs"`
 	// RenderTiers is the node tiers the page draws, left to right; omitted
 	// when the page draws its document whole.
@@ -1496,7 +1507,25 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Steps: steps,
 		})
 	}
-	hero, figures := tilesFor(meta)
+	// THE OPENING YEAR IS AN INDEX INTO years, NOT v.Projection'S DOCUMENT. The
+	// two were the same thing while YearStems had to start with Projection;
+	// View.Opens separates the order a reader meets the years in from the one
+	// already selected when they arrive. Everything per-year the page renders
+	// statically comes from this entry, so a reader with no JavaScript, and the
+	// first paint before app.js runs, both agree with the checked radio.
+	//
+	// SCOPE AND THE BUILDER DO NOT MOVE WITH IT, and that is not an oversight:
+	// the loop above REFUSES a year whose scope or generated_by differs from the
+	// opening projection's, so those two are already known equal across every
+	// year and reading them off meta is reading the same value.
+	opening := 0
+	if v.Opens != "" {
+		opening = slices.IndexFunc(years, func(y yearView) bool { return y.Stem == v.Opens })
+		if opening < 0 {
+			return pageData{}, fmt.Errorf("view %q opens on %q, which is not among the years it built", v.Path, v.Opens)
+		}
+	}
+	open := years[opening]
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)
@@ -1511,6 +1540,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Projections:   files,
 		Metadata:      doc.Metadata,
 		Years:         years,
+		Opens:         open.Stem,
 		Docs:          clientDocs,
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
@@ -1527,34 +1557,31 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		return pageData{}, fmt.Errorf("encode page config: %w", err)
 	}
 
-	title := sankeyTitle(v.Title, meta.FiscalYearLabel)
 	return pageData{
 		chrome: chrome{
-			Title:        title,
+			Title:        open.Title,
 			Lede:         v.Lede,
 			Nav:          nav,
 			Sources:      sources,
 			ProjectionBy: meta.GeneratedBy,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  refs,
-			DataPath:     files[v.Projection],
+			DataPath:     open.Path,
 			Scope:        meta.Scope,
-			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
+			Caveats:      open.Caveats,
 			CaveatsPath:  caveatsPath,
 		},
-		FiscalYearLabel: meta.FiscalYearLabel,
-		Basis:           meta.Basis,
-		// years[0] is the opening year: validate refuses a YearStems whose
-		// first entry is not v.Projection, and the default stem list is
-		// [v.Projection] alone.
-		ChartTitle: years[0].ChartTitle,
-		Hero:       hero,
-		Figures:    figures,
-		Years:      years,
-		Facts:      meta.Counts.Facts,
-		Nodes:      meta.Counts.Nodes,
-		Links:      meta.Counts.Links,
-		Drill:      len(v.Steps) > 0,
+		FiscalYearLabel: open.Label,
+		Basis:           open.Basis,
+		ChartTitle:      open.ChartTitle,
+		Hero:            open.Hero,
+		Figures:         open.Figures,
+		Years:           years,
+		Opens:           open.Stem,
+		Facts:           open.Counts.Facts,
+		Nodes:           open.Counts.Nodes,
+		Links:           open.Counts.Links,
+		Drill:           len(v.Steps) > 0,
 		// #nosec G203 -- blob is encoding/json's output, which escapes <, >
 		// and & to their \u form, so it cannot terminate the script element
 		// or inject markup. The alternative, letting html/template escape a

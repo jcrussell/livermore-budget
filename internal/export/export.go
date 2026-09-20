@@ -179,6 +179,21 @@ type View struct {
 	// single site-wide list could not say that.
 	YearStems []string
 
+	// Opens is the year stem the page opens on, and empty means YearStems[0].
+	//
+	// SEPARATE FROM THE ORDER BECAUSE THEY ANSWER DIFFERENT QUESTIONS. YearStems
+	// is the order a reader meets the years in, oldest first, which is how a
+	// time control reads; Opens is which one is already selected when they
+	// arrive, which is the newest, because that is the budget in force. Tying
+	// the two together forces one to follow the other, and a control that reads
+	// newest-to-oldest is a different decision from a page that opens on the
+	// newest.
+	//
+	// IT IS NOT DERIVED AS "THE LAST ONE". The caller knows which year it
+	// considers current; this package lays out what it is handed, as it does
+	// for YearStems itself.
+	Opens string
+
 	// Sections are the printed blocks a history table groups its rows under,
 	// in printed order. The caller's words, like Title and Lede: a heading is
 	// prose about the document, which this package may render and never
@@ -1027,15 +1042,25 @@ func (v View) validate(built map[string][]byte) error {
 			return fmt.Errorf("view %q lists year stem %q, which names no projection that was built",
 				v.Path, stem)
 		}
-		if i == 0 && stem != v.Projection {
-			return fmt.Errorf("view %q opens on %q but its first year stem is %q",
-				v.Path, v.Projection, stem)
-		}
 		for _, other := range v.YearStems[:i] {
 			if other == stem {
 				return fmt.Errorf("view %q lists year stem %q twice", v.Path, stem)
 			}
 		}
+	}
+	// THE PROJECTION IS ONE OF THE YEARS, AND NEED NOT BE THE FIRST. It was
+	// required to be YearStems[0] while the order and the opening year were one
+	// declaration; they are two now, so what survives is membership. A
+	// Projection outside its own year list would leave the page's non-per-year
+	// metadata -- scope, and the builder the footer credits -- read off a
+	// document the reader can never select.
+	if len(v.YearStems) > 0 && !slices.Contains(v.YearStems, v.Projection) {
+		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v",
+			v.Path, v.Projection, v.YearStems)
+	}
+	if v.Opens != "" && !slices.Contains(v.YearStems, v.Opens) {
+		return fmt.Errorf("view %q opens on %q, which is not among its year stems %v",
+			v.Path, v.Opens, v.YearStems)
 	}
 	return v.validateSteps(built)
 }

@@ -175,17 +175,93 @@ function clickYear(app, stem) {
  * The page opens on the year the CONTROL is showing, after a soft reload.
  *
  * THE BROWSER RESTORES THE RADIO AND THE SERVER-RENDERED PAGE KNOWS NOTHING
- * ABOUT IT. index.html.tmpl hard-codes `checked` on the first year and the
- * inputs carry no autocomplete="off", so F5 or a Back navigation brings the
- * reader's own selection back. main() used to call showYear(years[0])
- * unconditionally, which left the toggle reading FY 2026-27 over FY 2025-26's
- * lede, tiles, chart, title and citation -- and no change event fires on a
- * restore, so it never self-corrected. The template's own comment calls that
+ * ABOUT IT. index.html.tmpl marks the OPENING year `checked` and the inputs
+ * carry no autocomplete="off", so F5 or a Back navigation brings the reader's
+ * own selection back over that default. main() used to call showYear(years[0])
+ * unconditionally, which left the toggle reading one year over another's lede,
+ * tiles, chart, title and citation -- and no change event fires on a restore,
+ * so it never self-corrected. The template's own comment calls that
  * state worse than having no control at all.
  *
  * checkedStem is the harness modelling exactly that restore.
  * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
  */
+/**
+ * The page opens on the year the PACKAGER declared, not on the first one listed.
+ *
+ * THE ORDER AND THE OPENING YEAR ARE TWO DECLARATIONS. CONFIG.years runs oldest
+ * first, because that is how a control over time reads; CONFIG.opens names the
+ * newest, because that is the budget in force. checkedYear used to fall back to
+ * years[0], which under that order is the year furthest from the one a reader
+ * arriving cold is asking about.
+ *
+ * THE REACHABLE FALLBACK IS A STALE RESTORE, which is why that is what this
+ * drives rather than an unchecked group. The template always marks one radio,
+ * so "nothing checked" is not a state the shipped page has; "checked on a stem
+ * this config no longer publishes" is -- the page was rebuilt with different
+ * years since the reader last visited, and their browser restored the old one.
+ * checkedYear's loop then finds no year and falls through, and where it falls
+ * is what this arm is about.
+ * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
+ */
+async function opensOnTheDeclaredYear() {
+  const doc = goldenGraph();
+  const plan = {
+    "data/sankey.json": { doc },
+    "data/sankey-2027.json": { doc },
+  };
+  const config = twoYearConfig();
+  const second = config.years[1];
+  config.opens = second.stem;
+
+  const declared = loadApp({ config, fetch: plannedFetch(plan) });
+  await settle();
+  const drewDeclared = declared.dom.byId.get("lede-year").textContent;
+
+  const staleConfig = twoYearConfig();
+  staleConfig.opens = second.stem;
+  const stale = loadApp({
+    config: staleConfig,
+    checkedStem: "sankey-2019",
+    fetch: plannedFetch(plan),
+  });
+  await settle();
+  const drewStale = stale.dom.byId.get("lede-year").textContent;
+
+  const first = config.years[0];
+  const reader = loadApp({
+    config: twoYearConfig(),
+    checkedStem: first.stem,
+    fetch: plannedFetch(plan),
+  });
+  await settle();
+  const drewReader = reader.dom.byId.get("lede-year").textContent;
+
+  const want = `${second.label} ${second.basis}`;
+  const wantFirst = `${first.label} ${first.basis}`;
+
+  return [{
+    name: "the page opens on the year the config declares, not the first one listed",
+    ok: drewDeclared === want && config.years[0].stem !== second.stem,
+    detail: `years are listed ${JSON.stringify(config.years.map((y) => y.label))} ` +
+      `and opens is ${JSON.stringify(config.opens)}; the page drew "${drewDeclared}", ` +
+      `want "${want}" -- and the declared year is not years[0], so falling back to ` +
+      `that would draw "${wantFirst}"`,
+  }, {
+    name: "a restore naming a year this config no longer publishes falls back to the declared one",
+    ok: drewStale === want,
+    detail: `the control came back checked on "sankey-2019", which this config does ` +
+      `not publish; the page drew "${drewStale}", want "${want}" -- the year the ` +
+      `packager built the page to open on, rather than the oldest it lists`,
+  }, {
+    name: "and a reader's own selection still outranks the declared year",
+    ok: drewReader === wantFirst,
+    detail: `checked on ${first.stem} with no opens declared, the page drew ` +
+      `"${drewReader}", want "${wantFirst}" -- a default that overrode a restore ` +
+      `would look like the page ignoring a click`,
+  }];
+}
+
 async function restoredSelection() {
   const config = twoYearConfig();
   const doc = goldenGraph();
@@ -568,6 +644,7 @@ export async function checks() {
           `palette; while this selector answered [] the loop ran zero times and said nothing`,
       };
     })(),
+    ...(await opensOnTheDeclaredYear()),
     ...(await restoredSelection()),
     ...(await themeFollowsTheOS()),
     ...(await yearSwitchClosesTheDrill()),

@@ -75,9 +75,14 @@
              documents, and keying on the year gave both radios the same id, so
              every <label for=...> pointed at whichever parsed first and clicking
              one year's label selected the other. */}}
-      {{- range $i, $y := .Years}}
+      {{- /* CHECKED IS THE OPENING YEAR, NOT THE FIRST ONE LISTED. The list is
+             oldest first, because that is how a control over time reads; the
+             one already selected is the newest, because that is the budget in
+             force. Both are the packager's, and the tiles rendered above come
+             from the same year this marks. */}}
+      {{- range $y := .Years}}
       <input type="radio" name="fisc-year" id="year-{{$y.Stem}}" value="{{$y.Stem}}"
-             {{if eq $i 0}}checked{{end}}>
+             {{if eq $y.Stem $.Opens}}checked{{end}}>
       <label for="year-{{$y.Stem}}">{{$y.Label}}</label>
       {{- end}}
     </fieldset>

@@ -3654,3 +3654,81 @@ func recited(t *testing.T, raw []byte, docID string) []byte {
 	}
 	return out
 }
+
+// THE ORDER AND THE OPENING YEAR ARE TWO DECLARATIONS, and this holds them
+// apart. The years are listed oldest first, because that is how a control over
+// time reads; the page opens on the one View.Opens names, because the newest
+// budget is what a reader arriving cold is asking about. They were one
+// declaration until Opens existed -- validate required YearStems[0] to equal
+// Projection -- and that is what made the page open on the oldest year.
+//
+// IT READS THE RENDERED PAGE rather than the View, because the defect to guard
+// against is a page whose tiles disagree with its own checked radio: the state
+// index.html.tmpl's comment calls worse than having no control at all.
+func TestThePageOpensOnTheYearItDeclaresWhileListingThemOldestFirst(t *testing.T) {
+	var second map[string]any
+	if err := json.Unmarshal(goldenSankey(t), &second); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	meta := second["metadata"].(map[string]any)
+	meta["fiscal_year"] = 2027
+	meta["fiscal_year_label"] = "FY 2026-27"
+	raw, marshalErr := json.Marshal(second)
+	if marshalErr != nil {
+		t.Fatalf("encode: %v", marshalErr)
+	}
+
+	dir := t.TempDir()
+	if _, err := writeSite(export.Options{
+		Dir: dir,
+		Projections: map[string][]byte{
+			"sankey": goldenSankey(t), "sankey-2027": raw,
+		},
+		Views: []export.View{{
+			Path: export.IndexPath, Template: export.SankeyTemplate,
+			Projection: "sankey",
+			YearStems:  []string{"sankey", "sankey-2027"},
+			Opens:      "sankey-2027",
+		}},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+		PageText:    pageTextFS(),
+	}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	markup, err := os.ReadFile(filepath.Join(dir, export.IndexPath))
+	if err != nil {
+		t.Fatalf("read index: %v", err)
+	}
+	page := string(markup)
+
+	// The list keeps its ascending order: the control is a time axis.
+	iFirst := strings.Index(page, `id="year-sankey"`)
+	iSecond := strings.Index(page, `id="year-sankey-2027"`)
+	if iFirst < 0 || iSecond < 0 {
+		t.Fatalf("index.html is missing a year radio: sankey at %d, sankey-2027 at %d", iFirst, iSecond)
+	}
+	if iSecond < iFirst {
+		t.Error("the year radios render newest first; the list is the order a reader " +
+			"meets them in and must stay ascending, which is what Opens exists to allow")
+	}
+
+	// And the newest is the one already selected, with the page's own words
+	// agreeing with it.
+	if !strings.Contains(page, `value="sankey-2027"`+"\n             checked") {
+		t.Error("index.html does not mark sankey-2027 checked, so the page opens on " +
+			"the year it lists first rather than the year it declares")
+	}
+	if strings.Contains(page, `value="sankey"`+"\n             checked") {
+		t.Error("index.html marks sankey checked as well; two checked radios in one " +
+			"group is a page that cannot say which year it is showing")
+	}
+	if !strings.Contains(page, ">FY 2026-27 adopted<") {
+		t.Error("index.html's lede does not name FY 2026-27, so its tiles and its " +
+			"checked radio describe different years")
+	}
+	if !strings.Contains(page, "<title>City of Livermore budget flows — FY 2026-27</title>") {
+		t.Error("the document title is not the opening year's")
+	}
+}

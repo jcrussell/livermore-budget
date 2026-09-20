@@ -6003,8 +6003,16 @@ function paintYearWords(year) {
  * tools/jscheck can drive it -- and the stub's declared-selector check keeps
  * app.js honest about which selectors it uses, so adding one here would have to
  * be declared there too.
+ * THE FALLBACK IS CONFIG.opens AND NOT years[0]. The list is ordered oldest
+ * first, because that is how a control over time reads, so its first entry is
+ * the year furthest from the one a reader arriving cold is asking about. The
+ * packager marks the opening year `checked` and names it here, and the two agree
+ * by construction -- this reads the radio first anyway, because a restored
+ * selection is the READER'S and outranks any default.
+ *
  * @param {FiscYear[]} years
- * @returns {FiscYear} always one of `years`; years[0] when nothing is checked
+ * @returns {FiscYear} always one of `years`; the opening year when nothing is
+ *   checked, and years[0] when the config names none
  */
 function checkedYear(years) {
   const group = maybeEl("year-toggle");
@@ -6014,11 +6022,14 @@ function checkedYear(years) {
       const year = years.find((y) => y.stem === input.value);
       // A checked radio naming a stem this config does not publish is a stale
       // restore -- the page was rebuilt with different years since. Fall
-      // through to years[0] rather than draw nothing.
+      // through to the opening year rather than draw nothing.
       if (year) return year;
     }
   }
-  return years[0];
+  const opens = CONFIG && typeof CONFIG.opens === "string"
+    ? years.find((y) => y.stem === CONFIG.opens)
+    : undefined;
+  return opens || years[0];
 }
 
 /**
