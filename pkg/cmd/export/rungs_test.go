@@ -32,11 +32,20 @@ import (
 // it exists for ever running. Each guard below names the shape it refuses and
 // where the committed corpus supplies the opposite.
 //
-// AND WHAT THEY DO NOT REFUSE, because these guards become the whole of what
-// holds this artifact the day the client reads it instead of recomputing it:
-// a column's membership is guarded only where its members are themselves
-// opened by a further rung, and a mark's cents is not guarded at all. The
-// mutations, and which guard took each one, are in
+// WHAT HOLDS A COLUMN'S MEMBERSHIP, since these guards become the whole of
+// what holds this artifact the day the client reads it instead of
+// recomputing it. Three of them read the documents and the step declarations
+// and never the walk: every id a column draws is a node a document holds at
+// that tier, every id it carries is one the document marks derived or the
+// step declares an endpoint, and every id it draws that a later step opens
+// is answered by a rung of its own. The third leans on export.Openable,
+// which the walk also asks, so it is completeness read from the parent
+// rather than a second reading of the documents.
+//
+// AND WHAT THEY DO NOT REFUSE: a mark's cents is not guarded, nor which of
+// its step's declared tiers it stands at, nor how many of the declared
+// endpoints it names, and an id dropped from a column no later step opens
+// leaves no trace. The mutations, and which guard took each one, are in
 // docs/rung-walk-witness-evidence.md.
 func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
@@ -83,6 +92,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		t.Fatalf("the artifact answers for %d column(s) and the spine lists %d year(s)", len(doc.Columns), len(spine.YearStems))
 	}
 	var overCap, uncappedIDs, plural, unflanked, flankPlural, flankCarried, emptyFlank, parented int
+	var documented, documentedKept, countedPlain, carriedDerived, carriedDeclared, answeredBelow int
 	distinct := map[string]bool{}
 	// THE MARKS ARE ANSWERED ON DIFFERENT STEPS AND NEVER MEET, which is a
 	// pinned zero: no step declares both a residual and a gap, so no rung
@@ -99,11 +109,49 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		if len(col.Rungs) == 0 {
 			t.Fatalf("column %q has no rung, so there is nothing to hold the client to", col.Stem)
 		}
+		// THE DOCUMENTS THIS COLUMN IS READ AGAINST, and there are two kinds:
+		// each step's own for this year, which is where its outward columns
+		// come from, and the year's own, which the overview the first rungs
+		// open from was folded from. The guards below ask these documents
+		// what they hold; they do not ask the walk again.
+		stems := stepStemsFor(spine, col.Stem)
+		records := map[string]map[string]export.GraphNode{}
+		for _, stem := range append(slices.Clone(stems), col.Stem) {
+			if _, read := records[stem]; read {
+				continue
+			}
+			raw, wasBuilt := built.Projections[stem]
+			if !wasBuilt {
+				t.Fatalf("column %q reads %q, which was not built", col.Stem, stem)
+			}
+			g, err := export.DecodeGraph(raw)
+			if err != nil {
+				t.Fatalf("column %q: %s: %v", col.Stem, stem, err)
+			}
+			byID := map[string]export.GraphNode{}
+			for _, n := range g.Nodes {
+				byID[n.ID] = n
+			}
+			records[stem] = byID
+		}
+		// WHAT EACH STEP OFFERS A READER TO OPEN, read once per column off
+		// export.Openable -- the same answer the walk asks for, which is why
+		// the completeness guard below is completeness from the parent and
+		// not an independent reading of the documents.
+		opens := make([][]string, len(spine.Steps))
+		for i, st := range spine.Steps {
+			o, err := export.Openable(spine, i, st, stems[i], built.Projections[stems[i]])
+			if err != nil {
+				t.Fatalf("column %q: step %q: %v", col.Stem, st.Key, err)
+			}
+			opens[i] = o
+		}
 		// WHAT EACH RUNG HOLDS, READ ONCE AND KEYED BY PATH, which is the
 		// artifact's shape now that no column budget multiplies it: a path
 		// answered twice is two answers to one question, and the second pass
 		// needs the first pass's whole file to ask about a rung's parent.
 		holds := map[string][]string{}
+		answers := map[string]string{}
 		for _, r := range col.Rungs {
 			key := strings.Join(r.Path, " > ")
 			if _, twice := holds[key]; twice {
@@ -115,16 +163,40 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 				ids = append(ids, d.Carried...)
 			}
 			holds[key] = ids
+			answers[key] = r.Step
 		}
 		for _, r := range col.Rungs {
 			key := strings.Join(r.Path, " > ")
-			s, ok := stepByKey(spine.Steps, r.Step)
-			if !ok {
+			si := slices.IndexFunc(spine.Steps, func(x export.DrillStep) bool { return x.Key == r.Step })
+			if si < 0 {
 				t.Fatalf("%s %s: step %q is not declared on the spine", col.Stem, key, r.Step)
 			}
+			s := spine.Steps[si]
 			at := func(format string, args ...any) {
 				t.Helper()
 				t.Errorf("%s %s: %s", col.Stem, key, fmt.Sprintf(format, args...))
+			}
+			// WHICH DOCUMENT AN ID CAME OFF IS NOT ONE DOCUMENT PER RUNG. An
+			// outward column is this step's own document read at the tier the
+			// column names. The centre and the flank are the chart on screen,
+			// whose records this step's document need not hold at all: every
+			// fund group a kept flank draws on an object-category rung is one
+			// department-spending never mentions, so holding the kept half to
+			// this step's own document fails on the committed corpus. It is
+			// held to the documents this column reads instead, which is the
+			// weaker claim of the two and is said here rather than implied.
+			// The count is in docs/rung-walk-witness-evidence.md.
+			recordOf := func(d drawnTier, id string) (export.GraphNode, bool) {
+				if d.Role == roleOutward {
+					n, held := records[stems[si]][id]
+					return n, held && n.Tier == d.Tier
+				}
+				for _, byID := range records {
+					if n, held := byID[id]; held && n.Tier == d.Tier {
+						return n, true
+					}
+				}
+				return export.GraphNode{}, false
 			}
 			tiers := make([]int, len(r.Draws))
 			for i, d := range r.Draws {
@@ -184,6 +256,46 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 						at("tier %d both counts and carries %q", d.Tier, id)
 					}
 					distinct[id] = true
+				}
+				// EVERY ID A COLUMN DRAWS IS A NODE A DOCUMENT HOLDS AT THAT
+				// TIER, which is the arm that refuses an id moved to a column
+				// the document does not print it in. A tier is a property of
+				// the documents and the walk computes none of it, so this is
+				// a claim the walk cannot satisfy by agreeing with itself.
+				for _, id := range slices.Concat(d.IDs, d.Carried) {
+					n, held := recordOf(d, id)
+					switch {
+					case held && d.Role == roleOutward:
+						documented++
+					case held:
+						documentedKept++
+					case d.Role == roleOutward:
+						at("tier %d draws %q, and %q holds no node of that id at tier %d", d.Tier, id, stems[si], d.Tier)
+						continue
+					default:
+						at("tier %d draws %q, and no document this column reads holds a node of that id at tier %d", d.Tier, id, d.Tier)
+						continue
+					}
+					// WHAT A COLUMN CARRIES IS WHAT MAKES A NODE CARRIED, and
+					// it is the document and the declaration that say which:
+					// a node the document marks derived, or an endpoint the
+					// step declares. Counting one of those, or carrying a row
+					// the document prints, are the two halves of the same
+					// defect -- a reader is shown the same nodes either way
+					// and the opened node's parts come to a different figure.
+					_, declared := s.Residual[id]
+					switch carried := slices.Contains(d.Carried, id); {
+					case carried && n.Derived:
+						carriedDerived++
+					case carried && declared:
+						carriedDeclared++
+					case carried:
+						at("tier %d carries %q, which no document this column reads marks derived and the step declares no endpoint for", d.Tier, id)
+					case n.Derived:
+						at("tier %d counts %q as a part of the opened node, and the document marks it derived", d.Tier, id)
+					default:
+						countedPlain++
+					}
 				}
 				if len(d.IDs) > 1 {
 					plural++
@@ -275,6 +387,55 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 					parented++
 				}
 			}
+			// AND THE MIRROR, WHICH IS THE HALF THE PARENTAGE GUARD LEAVES
+			// OPEN: a walk that stopped walking satisfies it, because every
+			// rung it did write down still names its parent. So each id this
+			// rung draws at a tier a later step opens, with the role that
+			// step declares and where that step's document decomposes it,
+			// has to be answered by a rung one path longer. Suppressing a
+			// whole step's rungs took this artifact from 99 and 97 to 45 and
+			// 45 with every other gate green (fisc-u8di).
+			//
+			// IT ASKS export.Openable, WHICH THE WALK ALSO ASKS. That makes
+			// it completeness read from the parent rather than a second
+			// reading of the documents: it cannot witness the openable set
+			// itself being wrong, only the walk answering fewer rungs than
+			// that set offers.
+			for j, s2 := range spine.Steps {
+				if !slices.Contains(s2.After, r.Step) {
+					continue
+				}
+				for _, d := range r.Draws {
+					if d.Tier != s2.From {
+						continue
+					}
+					// A LATER STEP OPENING A KEPT COLUMN IS REFUSED RATHER
+					// THAN READ: the role it would be matched on lives on the
+					// chart on screen, and recordOf reads a kept id off
+					// whichever document holds it. No shipped step does this
+					// -- every child step opens its parent's outward column
+					// -- so the shape is a pinned zero and not a case.
+					if d.Role != roleOutward {
+						at("tier %d is a %s column and step %q opens tier %d after %q, which this guard reads no node record for", d.Tier, d.Role, s2.Key, s2.From, r.Step)
+						continue
+					}
+					for _, id := range slices.Concat(d.IDs, d.Carried) {
+						n, held := recordOf(d, id)
+						if !held || !slices.Contains(opens[j], id) {
+							continue
+						}
+						if s2.Role != "" && n.Role != s2.Role {
+							continue
+						}
+						below := key + " > " + id
+						if answers[below] != s2.Key {
+							at("draws %q at tier %d, which step %q opens, and this column answers no rung of that step below it", id, d.Tier, s2.Key)
+							continue
+						}
+						answeredBelow++
+					}
+				}
+			}
 		}
 	}
 	// EACH OF THESE IS A SHAPE THE ARM COULD PASS WITHOUT COMPARING ANYTHING.
@@ -317,6 +478,24 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	}
 	if emptyFlank == 0 {
 		t.Error("no flank draws nothing of its own, so an omitted ids would be indistinguishable from an empty one")
+	}
+	// THE MEMBERSHIP GUARDS' OWN FIVE SHAPES, each supplied by the corpus and
+	// each a way this artifact could hold nothing: a column whose ids were all
+	// unknown to every document, a kept half drawn from no document, a carried
+	// id that is neither derived nor declared, a counted id that is neither,
+	// and a rung that opens nothing further. Where a count is zero the arm
+	// above it compared nothing and reported PASS.
+	if documented == 0 || documentedKept == 0 {
+		t.Errorf("%d outward id(s) and %d kept id(s) were found in a document at the tier their column names, so the membership arm read nothing", documented, documentedKept)
+	}
+	if carriedDerived == 0 || carriedDeclared == 0 {
+		t.Errorf("%d carried id(s) are derived and %d are declared endpoints, and the corpus draws both, so one half of what makes a node carried is unexercised", carriedDerived, carriedDeclared)
+	}
+	if countedPlain == 0 {
+		t.Error("no column counts a printed row of its own, so a row moved out of a column's ids could not be seen")
+	}
+	if answeredBelow == 0 {
+		t.Error("no id a rung draws is opened by a rung below it, so a walk that stopped walking would satisfy every guard here")
 	}
 	// THE GAP IS ANSWERED ON THE YEAR THAT DRAWS ONE: p0067's
 	// services-and-supplies against pp.85-125's rows in FY2026-27, which ties
