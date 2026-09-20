@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json",
+  "title": "fisc fact id",
+  "description": "Content-addressed over (doc_id, rule_id, row_path, row_label, column_path, fiscal_year, basis). IT IS NOT A LOCATOR: the hash covers rule_id, so a rule split moves every id on a page, while (doc_id, page) cannot move. A citation is a locator; this is an identity.",
+  "type": "string",
+  "pattern": "^fisc-f-[0-9a-f]{12}$"
+}

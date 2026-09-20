@@ -210,11 +210,10 @@
                   "type": "string"
                 },
                 "fact_ids": {
-                  "description": "The facts this figure is. Empty ONLY on a derived link, which cites nothing because no page prints it.",
+                  "description": "The facts this figure IS. Empty only on a derived link, which cites nothing because no page prints it.",
                   "type": "array",
                   "items": {
-                    "type": "string",
-                    "pattern": "^fisc-f-[0-9a-f]{12}$"
+                    "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json"
                   }
                 },
                 "locators": {
