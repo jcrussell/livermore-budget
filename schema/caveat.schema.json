@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/caveat.schema.json",
+  "title": "fisc caveat",
+  "description": "What a document cannot say about itself, disclosed rather than omitted. Rendered on caveats.html and linked from every mark it applies to, so `id` is a published URL fragment.",
+  "type": "object",
+  "required": ["id", "summary", "text"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "description": "Part of a published anchor, so it is a slug rather than prose.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "text": { "type": "string", "minLength": 1 },
+    "applies_to": {
+      "description": "Node ids this caveat marks. Absent where it is about the document as a whole.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

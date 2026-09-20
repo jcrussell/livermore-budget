@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/column.schema.json",
+  "title": "fisc published column",
+  "description": "Everything the chart needs for one published column of the city's budget. KEYED BY COLUMN AND NOT BY YEAR: a column is (fiscal_year, basis), and one basis per year is a property of today's corpus rather than a guarantee -- the day it prints FY2026 revised beside FY2026 adopted, a per-year name collides.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "column",
+    "nodes",
+    "tiers",
+    "schedules"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_by": {
+      "type": "string",
+      "minLength": 1
+    },
+    "column": {
+      "type": "object",
+      "required": [
+        "fiscal_year",
+        "basis",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "fiscal_year": {
+          "type": "integer",
+          "minimum": 1900
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "adopted",
+            "revised",
+            "actual",
+            "audited",
+            "projected"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "nodes": {
+      "description": "ONE TABLE SHARED BY EVERY SCHEDULE, CARRYING ONLY WHAT THEY AGREE ON. Measured over every published column: id, label, tier, role and derived never disagree between two schedules naming the same mark, and parent, constraint_tier, rationale and source_note do -- parent 156 times. A node's IDENTITY is shared; its place in a hierarchy and its annotations belong to the schedule that draws it, and live there.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "tier"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tier": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "role": {
+            "type": "string"
+          },
+          "derived": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "tiers": {
+      "description": "The reader's left-to-right, and which nodes stand in each. A tier the column draws no node at is absent rather than empty.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "tier",
+          "nodes"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "tier": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "nodes": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "description": "An index into the nodes table.",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "schedules": {
+      "description": "ONE ENTRY PER PRINTED SCHEDULE, AND THEY ARE NOT MERGED. Each is a different published schedule with its own provenance; folding their links into one graph would silently reconcile the cells this project keeps visibly unreconciled.",
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "scopes",
+          "nodes",
+          "links"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "headline": {
+            "type": "object"
+          },
+          "counts": {
+            "type": "object",
+            "required": [
+              "facts",
+              "nodes",
+              "links"
+            ],
+            "properties": {
+              "facts": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "facts_cited": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "nodes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "links": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "caveats": {
+            "type": "array",
+            "items": {
+              "$ref": "https://jcrussell.github.io/livermore-budget/schema/caveat.schema.json"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json"
+            }
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "from",
+                "to",
+                "value_cents",
+                "kind",
+                "fact_ids",
+                "locators"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "from": {
+                  "description": "An index into the nodes table.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "to": {
+                  "description": "An index into the nodes table.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "value_cents": {
+                  "description": "Integer cents, as the document printed it. A contra row arrives already negative.",
+                  "type": "integer"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "external",
+                    "internal_transfer",
+                    "internal_service",
+                    "fund_balance"
+                  ]
+                },
+                "transfer_id": {
+                  "type": "string"
+                },
+                "fact_ids": {
+                  "description": "The facts this figure is. Empty ONLY on a derived link, which cites nothing because no page prints it.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^fisc-f-[0-9a-f]{12}$"
+                  }
+                },
+                "locators": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json"
+                  }
+                },
+                "derived": {
+                  "type": "boolean"
+                },
+                "partition": {
+                  "description": "The ribbon divides one printed table along a second axis rather than following money the schedule prints as moving that way.",
+                  "type": "boolean"
+                }
+              },
+              "allOf": [
+                {
+                  "description": "A published link cites at least one fact and names where it was read. A derived one cites nothing, and saying which is which is the point.",
+                  "if": {
+                    "anyOf": [
+                      {
+                        "properties": {
+                          "derived": {
+                            "const": false
+                          }
+                        }
+                      },
+                      {
+                        "not": {
+                          "required": [
+                            "derived"
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "fact_ids": {
+                        "minItems": 1
+                      },
+                      "locators": {
+                        "minItems": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "nodes": {
+            "description": "The nodes this schedule draws, and its own view of them. A schedule states a parent where its hierarchy has one; the same mark may hang elsewhere, or nowhere, in another schedule of the same column.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "node"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "node": {
+                  "description": "An index into the column's node table.",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "parent": {
+                  "type": "string"
+                },
+                "constraint_tier": {
+                  "type": "string"
+                },
+                "rationale": {
+                  "type": "string"
+                },
+                "source_note": {
+                  "type": "string"
+                }
+              },
+              "allOf": [
+                {
+                  "description": "A derived node says why it exists and what it was read from. fisc verify refuses one without both; so does this, where the schedule that draws it states them.",
+                  "if": {
+                    "required": [
+                      "rationale"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "rationale": {
+                        "minLength": 1
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "scopes": {
+            "description": "The fact-store scopes this schedule draws. AN ARRAY BECAUSE ONE OF THEM GENUINELY SPANS TWO: fund-flows joins revenue-by-fund and expenditure-by-department into one graph. The per-projection documents spell this two ways -- `scope` on four of them and `scopes` on the fifth -- and the column normalises it to the shape that can express both.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

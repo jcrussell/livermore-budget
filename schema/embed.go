@@ -30,6 +30,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net/url"
+	"path"
 
 	"github.com/google/jsonschema-go/jsonschema"
 )
@@ -57,11 +59,35 @@ func Load(name string) (*jsonschema.Resolved, error) {
 	if err = json.Unmarshal(raw, &doc); err != nil {
 		return nil, fmt.Errorf("parsing schema %s: %w", name, err)
 	}
-	resolved, err := doc.Resolve(nil)
+	resolved, err := doc.Resolve(&jsonschema.ResolveOptions{Loader: load})
 	if err != nil {
 		return nil, fmt.Errorf("resolving schema %s: %w", name, err)
 	}
 	return resolved, nil
+}
+
+// load resolves a $ref to another schema in this package.
+//
+// THE REFS ARE ABSOLUTE URIs AND THE FILES ARE LOCAL, which is the whole of
+// what this bridges. Each schema's $id is the URL it will be published at, so a
+// $ref reads as a public identifier and resolves offline against the embedded
+// copy -- a build must not depend on the network, and a reader who fetches the
+// $id must get the same document.
+//
+// It refuses a URI outside this package rather than reaching for it: an
+// unresolvable ref is a mistake in this repository, and returning an error
+// names which one.
+func load(uri *url.URL) (*jsonschema.Schema, error) {
+	name := path.Base(uri.Path)
+	raw, err := fs.ReadFile(files, name)
+	if err != nil {
+		return nil, fmt.Errorf("no schema in this package answers %s: %w", uri, err)
+	}
+	var doc jsonschema.Schema
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("parsing referenced schema %s: %w", name, err)
+	}
+	return &doc, nil
 }
 
 // Names are the schemas this package carries, so a caller names one rather than
@@ -74,4 +100,9 @@ const (
 	// Manifest is data/extracted/<doc_id>/manifest.json, which tools/extract.py
 	// writes and internal/corpus reads.
 	Manifest = "manifest.schema.json"
+
+	// Column is everything the chart needs for one published column of the
+	// budget: one node table, the tier order, and one entry per printed
+	// schedule.
+	Column = "column.schema.json"
 )

@@ -90,6 +90,21 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
+	// ONE DOCUMENT PER PUBLISHED COLUMN, beside the per-projection files rather
+	// than instead of them yet: the client still fetches those, and cutting it
+	// over is its own change. What this buys now is that the shape exists, is
+	// schema-valid, and is checked against the facts.
+	columns, err := columnsOf(projections)
+	if err != nil {
+		return result{}, err
+	}
+	for name, col := range columns {
+		encoded, encErr := encodeColumn(col)
+		if encErr != nil {
+			return result{}, encErr
+		}
+		assets.Files[name] = encoded
+	}
 	served, err := encodeRungs(rungs)
 	if err != nil {
 		return result{}, err
