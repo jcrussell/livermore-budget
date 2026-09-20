@@ -11,15 +11,8 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// THE COMMITTED AUDIT TRAIL IS HELD TO THE SCHEMA, RECORD BY RECORD.
-// facts/facts.jsonl is what every other check in this tree is measured against
-// and what CI compares byte for byte, so it is the artifact whose shape is worth
-// stating in something a machine reads.
-//
-// IT READS THE FILE RATHER THAN A FIXTURE, deliberately. A schema held against a
-// fixture says the fixture conforms; held against the committed store it says
-// the project's own data does, and it goes red the day a mapping emits a shape
-// the contract does not allow.
+// The committed audit trail, record by record. It reads the file rather than a
+// fixture: a schema held against a fixture says only that the fixture conforms.
 func TestEveryCommittedFactMatchesTheSchema(t *testing.T) {
 	resolved, err := schema.Load(schema.Fact)
 	if err != nil {
@@ -60,20 +53,15 @@ func TestEveryCommittedFactMatchesTheSchema(t *testing.T) {
 	if failed > 3 {
 		t.Errorf("%s: %d records in total do not match %s", path, failed, schema.Fact)
 	}
-	// GREEN BECAUSE IT LOOKED, NOT BECAUSE THE FILE WAS EMPTY. A store this
-	// could not read would otherwise pass with nothing compared, which is the
-	// shape AGENTS.md's "Prove it can fail" names.
+	// Green because it looked, not because the file was empty.
 	if checked == 0 {
 		t.Fatalf("%s carries no records, so this test asserts nothing", path)
 	}
 	t.Logf("%d fact records checked against %s", checked, schema.Fact)
 }
 
-// THE ENUMS ARE THE DECLARED SET, NOT TODAY'S DATA, and this is what says so.
-// Writing the schema from the corpus would have omitted basis "projected" and
-// units "thousands": both are declared in internal/mapping and internal/amount
-// and neither appears in any committed fact. A schema that excluded them would
-// refuse a correct record the first time the corpus grew one.
+// The enums are the declared set, not today's data: basis "projected" and units
+// "thousands" are declared and appear in no committed fact.
 func TestTheSchemaAllowsDeclaredValuesTheCorpusHasNotReachedYet(t *testing.T) {
 	resolved, err := schema.Load(schema.Fact)
 	if err != nil {

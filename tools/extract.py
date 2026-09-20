@@ -148,18 +148,10 @@ def geometry_json(payload: dict) -> bytes:
 def check_against_schema(obj: dict, schema_name: str) -> None:
     """Hold an object this script just wrote to the committed schema.
 
-    NOT A JSON SCHEMA IMPLEMENTATION, AND MUST NOT BECOME ONE. PyPI is
-    unreachable from the extraction environment and this file is standard
-    library only, so what runs here is the subset that catches the mistakes a
-    writer actually makes: a missing required key, a wrong JSON type, a value
-    outside a declared enum or const. Go validates the same file fully through
-    internal/corpus; this is the writing side refusing to emit what the reading
-    side would reject, which is the difference between failing at `make extract`
-    and failing at `fisc verify` three commands later.
+    A subset and not an implementation: required keys, JSON types, enum and
+    const. PyPI is unreachable here, and Go validates the same file fully.
 
-    THE SCHEMA IS THE SHARED ARTIFACT AND THIS READS IT RATHER THAN RESTATING
-    IT. A required-key list copied into this file would be the second spelling
-    the schema exists to remove.
+    Why, measured: docs/schema-contracts.md.
     """
     path = REPO / "schema" / schema_name
     try:

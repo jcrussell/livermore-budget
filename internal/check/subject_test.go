@@ -549,19 +549,12 @@ func TestAMovedOffsetFails(t *testing.T) {
 	}
 }
 
-// A NEGATIVE OFFSET NO LONGER REACHES THE CHECK, AND THIS IS WHERE THAT IS SAID.
+// A negative offset is caught by the schema before fact-offset-points-at-token
+// sees it, so it is asserted here rather than as a case of the test below.
 //
-// It was a case of TestAnOffsetPastTheEndOfThePageFails until schema/fact.schema.json
-// landed with `"offset": {"minimum": 0}` and [Load] began holding the store to
-// its shape before decoding it. So the file path is now guarded earlier and by
-// something that names the field, which is better than a bounds check reporting
-// it as "runs past the end of" a page.
-//
-// THE CHECK KEEPS ITS DEFENSIVE ARITHMETIC ANYWAY, and this does not license
-// removing it: the comparison is a remaining-length subtraction rather than
-// offset+len(token) > len(text) because the naive form WRAPS NEGATIVE at
-// MaxInt64 and panics one line later. That hazard is about a large offset, which
-// the schema does not bound and which the two surviving cases above still drive.
+// That check keeps its remaining-length subtraction: the naive
+// offset+len(token) > len(text) wraps negative at MaxInt64 and panics a line
+// later, which is a hazard about a LARGE offset and still driven below.
 func TestANegativeOffsetIsRefusedBeforeTheChecksRun(t *testing.T) {
 	root := repoWithoutPDFs(t)
 	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {

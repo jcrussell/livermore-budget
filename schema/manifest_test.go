@@ -9,12 +9,8 @@ import (
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// EVERY COMMITTED MANIFEST IS HELD TO THE SCHEMA. This is the one artifact in
-// the tree written by one language and read by another: tools/extract.py writes
-// it, internal/corpus reads it, and neither shares a type with the other. Until
-// this existed the agreement was prose plus Go struct tags, and a Python change
-// that broke it surfaced as a decode error at best and a field silently
-// decoding to its zero value at worst.
+// Every committed manifest. tools/extract.py writes these and internal/corpus
+// reads them, sharing no type.
 func TestEveryCommittedManifestMatchesTheSchema(t *testing.T) {
 	resolved, err := schema.Load(schema.Manifest)
 	if err != nil {
@@ -46,11 +42,8 @@ func TestEveryCommittedManifestMatchesTheSchema(t *testing.T) {
 	t.Logf("%d manifest(s) checked against %s", len(docs), schema.Manifest)
 }
 
-// THE TOP LEVEL STAYS OPEN, AND THAT IS A DECISION RATHER THAN AN OMISSION.
-// internal/corpus's manifest type documents it: "Unknown fields are tolerated
-// rather than rejected: extract.py may add reporting keys, and SchemaVersion is
-// the guard that matters." A schema that closed the object would refuse a
-// manifest the Go reader accepts, which is a contract disagreeing with itself.
+// The top level stays open, because internal/corpus tolerates unknown fields.
+// A schema closing it would refuse a manifest the Go reader accepts.
 func TestTheManifestSchemaToleratesAReportingKeyGoIgnores(t *testing.T) {
 	resolved, err := schema.Load(schema.Manifest)
 	if err != nil {
@@ -71,13 +64,9 @@ func TestTheManifestSchemaToleratesAReportingKeyGoIgnores(t *testing.T) {
 	}
 }
 
-// THE TWO LANGUAGES REFUSE THE SAME MANIFESTS, which is the whole claim of a
-// shared schema and the one thing neither side can assert alone.
-//
-// The mutations below are the ones tools/extract.py's check_against_schema is
-// driven with in the same commit; it reads this same file with the standard
-// library and reports the same four. A schema only one side honoured would be a
-// contract in name -- so if either list changes, both move.
+// The two languages refuse the same manifests. tools/extract.py's
+// check_against_schema is driven with the same first four cases; if either list
+// changes, both move.
 func TestGoRefusesTheManifestsPythonRefuses(t *testing.T) {
 	resolved, err := schema.Load(schema.Manifest)
 	if err != nil {

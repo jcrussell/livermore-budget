@@ -590,22 +590,11 @@ func loadFacts(fsys fs.FS) ([]fact.Fact, error) {
 	}
 	defer f.Close() //nolint:errcheck // read-only file; nothing to flush
 
-	// THE SHAPE IS CHECKED BEFORE ANY OF THE CHECKS RUN, and before the records
-	// are decoded into structs at all.
+	// Shape before semantics, and over the RAW file: a struct has already lost
+	// the difference between a key that was absent and one present and empty,
+	// which is what "absent is not zero" rests on.
 	//
-	// A MALFORMED RECORD IS NOT A CHECK FAILURE, IT IS A STORE THE CHECKS CANNOT
-	// SPEAK ABOUT. Decoding first turns a missing `token` into Token: "" and a
-	// missing `page` into Page: 0, and the first thing a reader then sees is
-	// fact-token-reparses complaining that a figure does not re-parse -- a
-	// semantic claim about a record whose shape was never the thing at fault.
-	// Every domain error downstream is an interpretation, and interpreting a
-	// structure that is not the agreed one produces a worse sentence than saying
-	// so.
-	//
-	// It reads the file twice rather than validating the decoded structs: a
-	// struct has already lost the distinction between a key that was absent and
-	// one that was present and empty, which is the difference this store's whole
-	// "absent is not zero" invariant rests on.
+	// Why, measured: docs/schema-contracts.md.
 	raw, err := fs.ReadFile(fsys, factsFile)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", factsFile, err)

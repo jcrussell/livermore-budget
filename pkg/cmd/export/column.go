@@ -12,20 +12,10 @@ import (
 // columnSchemaVersion is the version a columnDoc declares, spelled once.
 const columnSchemaVersion = 1
 
-// columnDoc is everything the chart needs for one published column.
+// columnDoc is everything the chart needs for one published column: one node
+// table and one link set per printed schedule, keyed by (fiscal year, basis).
 //
-// ONE NODE TABLE AND N LINK SETS, WHICH IS THE WHOLE SHAPE. The schedules this
-// column publishes name the same marks -- fund-group/capital appears in three
-// of them -- and every shared node was measured byte-identical with no tier
-// disagreement, so the node repetition was removable. Their LINKS are not: each
-// schedule is a different page of the city's budget with its own provenance,
-// and folding them into one graph would silently reconcile cells this project
-// goes to trouble to keep visibly unreconciled.
-//
-// KEYED BY COLUMN, NOT BY YEAR. A column is (fiscal year, basis). One basis per
-// year is a property of today's corpus rather than a guarantee, and the packager
-// already refuses a step document on both -- so naming the file by year would
-// collide the day the city prints FY2026 revised beside FY2026 adopted.
+// The schedules are not merged; why, measured: docs/schema-contracts.md.
 type columnDoc struct {
 	SchemaVersion int                    `json:"schema_version"`
 	GeneratedBy   string                 `json:"generated_by,omitempty"`
@@ -41,14 +31,8 @@ type columnKey struct {
 	Label      string `json:"label"`
 }
 
-// columnNode carries only what the schedules AGREE on.
-//
-// MEASURED RATHER THAN CHOSEN. Over every published column, two schedules naming
-// the same mark never disagree about id, label, tier, role or derived -- and do
-// disagree about parent (156 times), constraint_tier, rationale and source_note.
-// A node's identity is shared; where it hangs and what is said about it belong
-// to the schedule that draws it. The first attempt put parent here and the
-// build refused itself on fy2024-actual, which is how this was found.
+// columnNode carries only the fields every schedule agrees on. Where a node
+// hangs is columnSchedNode's, because two schedules disagree about it.
 type columnNode struct {
 	ID      string `json:"id"`
 	Label   string `json:"label"`
@@ -66,31 +50,27 @@ type columnSchedNode struct {
 	SourceNote     string `json:"source_note,omitempty"`
 }
 
-// columnTier is the reader's left-to-right and which nodes stand in each.
-// A tier this column draws no node at is absent rather than present and empty.
+// columnTier is the reader's left-to-right. A tier with no node is absent.
 type columnTier struct {
 	Tier  int   `json:"tier"`
 	Nodes []int `json:"nodes"`
 }
 
 type columnSched struct {
-	// Scopes is an array because one document genuinely spans two: fund-flows
-	// joins revenue-by-fund and expenditure-by-department. The per-projection
-	// files spell this two ways and this normalises it.
+	// An array because fund-flows spans two: revenue-by-fund and
+	// expenditure-by-department. The per-projection files spell this two ways.
 	Scopes   []string        `json:"scopes"`
 	Headline json.RawMessage `json:"headline,omitempty"`
 	Counts   json.RawMessage `json:"counts,omitempty"`
 	Caveats  json.RawMessage `json:"caveats,omitempty"`
 	Sources  json.RawMessage `json:"sources,omitempty"`
-	// Nodes is this schedule's own view of the marks it draws: which nodes of
-	// the shared table, and where each hangs in THIS schedule's hierarchy.
+	// This schedule's own view of the marks it draws.
 	Nodes []columnSchedNode `json:"nodes"`
 	Links []columnLink      `json:"links"`
 }
 
-// columnLink references its ends by INDEX into the column's node table. That is
-// what de-duplicates the node objects, and it is why the table is emitted in a
-// stable order rather than a map.
+// columnLink references its ends by index into the node table, which is why
+// that table is emitted in a stable order rather than a map.
 type columnLink struct {
 	From       int             `json:"from"`
 	To         int             `json:"to"`
@@ -103,8 +83,7 @@ type columnLink struct {
 	Partition  bool            `json:"partition,omitempty"`
 }
 
-// decoded is one published document as it sits in Options.Projections, decoded
-// far enough to be folded into a column.
+// decoded is a published document, read far enough to fold into a column.
 type decoded struct {
 	Nodes []struct {
 		ID             string `json:"id"`
@@ -144,10 +123,8 @@ type decoded struct {
 
 // columnsOf folds every published document into one document per column.
 //
-// A DOCUMENT WITH NO COLUMN IS NOT AN ERROR AND IS NOT INCLUDED. revenue-trends,
-// fund-balances and changes-in-fund-balances carry a series rather than a graph
-// and state no fiscal year or basis at all; a column list cannot express them
-// and this does not try.
+// A document stating no fiscal year or basis is skipped, not refused:
+// revenue-trends and the two balance documents carry a series and no column.
 func columnsOf(projections map[string][]byte) (map[string]columnDoc, error) {
 	byColumn := map[string]*columnDoc{}
 	index := map[string]map[string]int{}
@@ -182,10 +159,6 @@ func columnsOf(projections map[string][]byte) (map[string]columnDoc, error) {
 		}
 		at := index[key]
 
-		// THE NODE TABLE IS SHARED AND THE FIRST WRITER WINS, which is safe
-		// only because the shared nodes were measured identical. A second
-		// document disagreeing about a node it shares is a real defect, so it
-		// is refused here rather than silently taking one of the two.
 		drawn := make([]columnSchedNode, 0, len(d.Nodes))
 		for _, n := range d.Nodes {
 			i, had := at[n.ID]
@@ -197,11 +170,8 @@ func columnsOf(projections map[string][]byte) (map[string]columnDoc, error) {
 				at[n.ID] = i
 				col.Nodes = append(col.Nodes, node)
 			} else if col.Nodes[i] != node {
-				// THE SHARED HALF IS REFUSED ON DISAGREEMENT rather than
-				// resolved. These five fields were measured identical across
-				// every schedule of every column; one that stopped being so
-				// would mean two schedules mean different things by one id,
-				// which no rule here could pick between.
+				// Two schedules meaning different things by one id is not
+				// something a rule here could pick between.
 				return nil, fmt.Errorf(
 					"column %s: %q disagrees between schedules about the same node: %+v and %+v",
 					key, n.ID, col.Nodes[i], node)
@@ -280,12 +250,8 @@ func columnPath(year int, basis string) string {
 	return fmt.Sprintf("fy%d-%s.json", year, basis)
 }
 
-// encodeColumn renders one column and REFUSES to return bytes that do not match
-// the published schema.
-//
-// FAIL-CLOSED AT THE BOUNDARY, which is this project's standing rule for
-// ambiguity. The alternative is writing a file and discovering at `fisc verify`
-// that it was malformed, by which point it has been served.
+// encodeColumn renders one column and refuses bytes that do not match the
+// published schema.
 func encodeColumn(doc columnDoc) ([]byte, error) {
 	b, err := json.MarshalIndent(doc, "", " ")
 	if err != nil {
