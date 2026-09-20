@@ -12,7 +12,8 @@ go 1.25.0
 toolchain go1.26.6
 
 require (
-	github.com/google/go-cmp v0.6.0
+	github.com/google/go-cmp v0.7.0
+	github.com/google/jsonschema-go v0.4.3
 	github.com/spf13/cobra v1.8.1
 	go.yaml.in/yaml/v3 v3.0.5
 )

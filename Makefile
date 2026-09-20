@@ -158,7 +158,7 @@ narration: ## Refuse review credits and errata in Go sources, beads and memories
 beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 	@go run ./tools/beadrefs .beads/issues.jsonl \
 		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
-		.github docs cmd internal pkg tools site mappings data testdata
+		.github docs cmd internal pkg tools site schema mappings data testdata
 
 # doccheck refuses a citation that names no section of AGENTS.md.
 #
@@ -190,7 +190,7 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 doccheck: ## Refuse dead citations, malformed citations, and dead docs/ paths
 	@go run ./tools/doccheck AGENTS.md \
 		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
-		.github docs cmd internal pkg tools site mappings data testdata
+		.github docs cmd internal pkg tools site schema mappings data testdata
 
 # lint-if-available is what the commit hook runs, and it is NOT `lint`.
 #

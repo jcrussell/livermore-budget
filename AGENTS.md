@@ -420,8 +420,16 @@ Breaking one is a defect even when tests pass.
 - **Do not insert code between a doc comment and its declaration.**
 - **Drop narration in the file you were already editing, never in a sweep** — and
   *drop* it rather than rewriting the comment around it.
-- A frozen output **contract** is neither a rule nor evidence. It lives in
-  `docs/` until its package exists, then in that package's doc comment.
+- A frozen output **contract** is neither a rule nor evidence. **Its SHAPE lives
+  in `schema/`**, as a JSON Schema something can check the bytes against; `docs/`
+  keeps the ARGUMENT for it, which is what a schema cannot say. A contract with
+  no package yet keeps its prose in `docs/`; one with a package puts the claim in
+  that package's doc comment.
+- **Prefer the machine-checkable form wherever there is one.** A shape stated in
+  prose, again in a struct tag, and a third time in a hand-written key check is
+  three spellings none of which can be held against the data. `schema/fact.schema.json`
+  is what the alternative looks like: it refused a float `amount_cents`, an empty
+  `token` and a string `fund` on the day it landed.
 
 Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md);
 the split itself is argued in

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/fact.schema.json",
+  "title": "fisc fact record",
+  "description": "One figure the city printed, at a page and an offset of a source PDF. One record per line of facts/facts.jsonl and of the published dist/facts/<doc_id>/pages/pNNNN.jsonl shards. Nothing computed goes in here; see AGENTS.md, \"A forecast is not a fact\".",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id", "doc_id", "page", "offset", "token", "rule_id",
+    "kind", "basis", "scope", "fiscal_year",
+    "row_path", "row_label", "category", "department",
+    "column_path", "fund_group", "fund",
+    "sign", "units", "amount_cents", "derived"
+  ],
+  "properties": {
+    "id": {
+      "description": "Content-addressed over (doc_id, rule_id, row_path, row_label, column_path, fiscal_year, basis).",
+      "type": "string",
+      "pattern": "^fisc-f-[0-9a-f]{12}$"
+    },
+    "doc_id": { "type": "string", "minLength": 1 },
+    "page": {
+      "description": "1-based page of the source PDF, which is also the shard this record ships in.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "offset": {
+      "description": "Byte offset into the extracted page text at which token begins. fact-offset-points-at-token holds it.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "token": {
+      "description": "The characters the page prints. Never empty: an empty token is a figure no page carries.",
+      "type": "string",
+      "minLength": 1
+    },
+    "rule_id": { "type": "string", "minLength": 1 },
+    "kind": { "type": "string", "enum": ["revenue", "expenditure", "transfer_in", "transfer_out", "fund_balance"] },
+    "basis": { "type": "string", "enum": ["adopted", "revised", "actual", "audited", "projected"] },
+    "scope": { "type": "string", "minLength": 1 },
+    "fiscal_year": { "type": "integer", "minimum": 1900 },
+    "row_path": { "type": "string" },
+    "row_label": { "type": "string" },
+    "category": { "type": "string" },
+    "department": { "type": "string" },
+    "column_path": { "type": "string" },
+    "fund_group": { "type": "string" },
+    "fund": {
+      "description": "The fund number the column names, and null where it names none. NULL IS NOT 0: a schedule with no fund axis and a row whose fund does not resolve are both real absences.",
+      "type": ["integer", "null"]
+    },
+    "sign": {
+      "description": "How this row relates to its category. NOT an instruction to negate: amount_cents is always the figure as printed.",
+      "type": "string",
+      "enum": ["positive", "contra", "netted"]
+    },
+    "units": {
+      "description": "The unit the PAGE printed in. amount_cents is always cents regardless.",
+      "type": "string",
+      "enum": ["dollars", "thousands", "millions"]
+    },
+    "amount_cents": {
+      "description": "Integer cents. No float reaches this field; see AGENTS.md, \"Provenance invariants\".",
+      "type": "integer"
+    },
+    "derived": {
+      "description": "A re-reading or re-classification of a figure the city printed, never a computed value.",
+      "type": "boolean"
+    }
+  }
+}
