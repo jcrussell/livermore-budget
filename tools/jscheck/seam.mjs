@@ -689,7 +689,8 @@ export async function checks() {
   // coarse-to-fine across its window's centre -- so the first fixture written
   // for this passed with the direction removed. `d -> shut` below is the shape
   // that separates them: a ribbon pointing INTO the opened tier from beyond it,
-  // which a direction-blind reading calls a chart and filterFromNode does not.
+  // which a direction-blind reading calls a chart and the window's own column
+  // order does not.
   // Both flanks are driven, because the left reads a link's SOURCE and the right
   // its TARGET, and the Go half got that wrong by deriving which flank it had
   // from arithmetic true of both (export.openableNodes).
@@ -709,8 +710,8 @@ export async function checks() {
     };
     const left = openableFrom(doc, { from: 3, tiers: [2, 3, 4], keep: [2] });
     // THE MIRROR IS ITS OWN DOCUMENT AND NOT THE SAME ONE READ BACKWARDS. A
-    // right flank opens a node on the ribbon pointing AT it -- filterToNode,
-    // where the left one uses filterFromNode -- so the shape that exercises it
+    // right flank opens a node on the ribbon pointing AT it, where the left one
+    // opens on the ribbon pointing away -- so the shape that exercises it
     // is a document whose finer column is the SOURCE, which is the revenue
     // category window's shape: its lines roll up into the category it opens.
     const mirror = {

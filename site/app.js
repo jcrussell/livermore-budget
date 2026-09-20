@@ -1233,7 +1233,8 @@ function foldTarget(byID, n, drawn) {
 }
 
 /**
- * The document restricted to one node's own money.
+ * The document restricted to one node's own money: the money flowing INTO the
+ * subtree of `id`, at the columns `tiers` names.
  *
  * WHY A FILTER AND NOT AN EXPANSION. fisc-ppkq measured that expanding one node
  * in place does not draw on the vendored d3-sankey: it takes the column count
@@ -1242,25 +1243,18 @@ function foldTarget(byID, n, drawn) {
  * which tools/jscheck/layout.mjs's bands() refuses. Filtering keeps every tier
  * set uniform, which is the only shape this build lays out.
  *
- * THE RULE IS "TARGET IN THE SUBTREE, BOTH ENDS PLACEABLE", and both halves are
- * needed because the windows that call it want opposite things from it:
+ * THE ONE CALLER LEFT IS THE DECLARED ROOT OF AN OVERVIEW, and that is why this
+ * still derives a membership when every rung reads one. A rung is a node the
+ * reader opened and Go answers what its columns hold; an overview is not a rung
+ * and Go answers none -- rungsOf refuses to walk a spine that declares a Root
+ * at all, so there is nothing here for a page to read instead.
  *
- *   - A fund group's window keeps the spine's own revenue categories beside the
- *     group at tiers {0,2}. That context column sits OUTSIDE the subtree and
- *     must be kept; requiring both ends inside would delete it and draw a group
- *     fed by nothing.
- *   - A division's window keeps the fund that pays for it at {3,4}, off a chart
- *     that also carries the fund group above it. The group-to-fund link points
- *     at a node the subtree does not hold and is excluded by the rule above;
- *     what the placeability test is for is the end no column can hold at all,
- *     which is why a tier set naming two adjacent columns can be handed a
- *     document carrying six.
- *
- * Keying on the target says which end is the fine one; the placeability test
- * says what this drill's tier set has room for. Neither is a silent loss: a
- * link dropped here is one the declared tier set has no column for, which is a
- * statement the view made when it declared them -- and scoped() is what keeps
- * that sentence true, by refusing the one case it was false of.
+ * THE RULE IS "TARGET IN THE SUBTREE, BOTH ENDS PLACEABLE". Keying on the
+ * target says which end is the fine one; the placeability test says what this
+ * page's tier set has room for. Neither is a silent loss: a link dropped here
+ * is one the declared tier set has no column for, which is a statement the view
+ * made when it declared them -- and scoped() is what keeps that sentence true,
+ * by refusing the one case it was false of.
  *
  * @param {FiscProjection} doc
  * @param {string} id
@@ -1268,44 +1262,60 @@ function foldTarget(byID, n, drawn) {
  * @returns {FiscProjection}
  */
 function filterToNode(doc, id, tiers) {
-  return filterLinks(doc, id, tiers, (l, inside) => inside.has(l.target));
+  const inside = withinNode(doc, id);
+  return filterLinks(doc, id, tiers, (_src, dst) => inside.has(dst.id));
 }
 
 /**
- * The document restricted to the money leaving one node's own lines.
+ * The filter every rung uses: the ribbons of `doc` between the nodes Go says
+ * this window's columns hold.
  *
- * A SIBLING OF filterToNode AND NOT A PARAMETER ON IT, because the two
- * disagree about what "inside" means. That one keeps a link whose TARGET is in
- * the subtree, so the column feeding the opened node stays as context; this
- * one keeps a link whose SOURCE is, so the column the opened node feeds stays.
- * A revenue category is a tier-0 node with nothing pointing at it, and asked
- * through filterToNode it answers an empty graph with no error -- the id is
- * known, so the guard that fires on an unknown one does not -- and d3-sankey
- * dies on the empty graph with "RangeError: Invalid array length". One
- * function answering both questions by flag is how a caller gets the wrong
- * one.
+ * WHAT REPLACED A SIBLING OF filterToNode. The two filters differed in which
+ * END of a link had to be inside the opened node, because a window's kept half
+ * and its fresh half want opposite things and the step's `side` declaration
+ * said which -- a membership derived here from the documents. Go answers that
+ * membership now, once per rung, on whichever side the step declares
+ * (AGENTS.md, "Go vets, JavaScript renders"), so there is one filter and no
+ * side to read: a ribbon is drawn when BOTH of its ends fold to nodes the
+ * answer names, and which of them is the near one stopped being this page's
+ * question.
  *
- * THE RULE IS "SOURCE IN THE SUBTREE, BOTH ENDS PLACEABLE". Asked of the spine
- * for a revenue category at tiers {0,2}, it keeps the category and the fund
- * groups the spine draws its money reaching -- which is the kept half of that
- * category's window, and the half that puts the node the reader clicked back on
- * the screen. Asked of pp.127-140 for the same category it would keep every
- * fund a line lands in and draw the category nowhere, since there the category
- * is the source of nothing: the schedule prints money at the line, and the
- * category is the line's parent.
+ * AND FORWARD IN THE ANSWER'S OWN COLUMN ORDER, which is the half of the rule
+ * that the two side-keyed filters used to carry. Membership alone is not
+ * enough, measured: the chart a fund's window leaves on screen parents a
+ * department's expenditure rows under the FUND, so the ribbon from the opened
+ * department to one of its rows folds to department -> fund -- both ends
+ * answered, the flank's column on the right of the centre's, and a cycle
+ * d3-sankey refuses with "circular link". A window's money runs from its first
+ * column to its last, whichever end the kept flank is at (windowFor), so the
+ * column a ribbon leaves must come before the one it arrives in.
  *
- * @param {FiscProjection} doc
- * @param {string} id
- * @param {number[]} tiers
- * @returns {FiscProjection}
+ * AN END THAT FOLDS TO NOTHING IS PASSED THROUGH rather than dropped here, and
+ * that is deliberate: scoped() is what tells a tier this page draws no column
+ * for from a parent chain that is broken, and it can only do so on a link this
+ * predicate did not drop first. Dropping them here restores fisc-ng17's
+ * silent wrong figure.
+ *
+ * @param {Map<string, number>} held  every id the answer names at the columns
+ *   this chart draws -- its parts and the marks carried beside them alike --
+ *   against the position of the column it names them at
+ * @returns {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: Set<number>) => boolean}
  */
-function filterFromNode(doc, id, tiers) {
-  return filterLinks(doc, id, tiers, (l, inside) => inside.has(l.source));
+function heldBy(held) {
+  return (src, dst, byID, drawn) => {
+    const from = foldTarget(byID, src, drawn);
+    const to = foldTarget(byID, dst, drawn);
+    if (from === "" || to === "") return true;
+    const at = held.get(from);
+    const lands = held.get(to);
+    if (at === undefined || lands === undefined) return false;
+    return at < lands;
+  };
 }
 
 /**
- * The filter both drills share: the links `keeps` admits whose ends this tier
- * set can place, and the nodes those links need.
+ * The filter every chart is shaped by: the links `holds` admits whose ends this
+ * tier set can place, and the nodes those links need.
  *
  * AN EMPTY RESULT IS REFUSED BY NAME, in the sentence the guard on an unknown
  * id already uses. Every other route to an empty graph ends in d3-sankey's
@@ -1316,10 +1326,10 @@ function filterFromNode(doc, id, tiers) {
  * @param {FiscProjection} doc
  * @param {string} id
  * @param {number[]} tiers
- * @param {(l: FiscLink, inside: Set<string>) => boolean} keeps
+ * @param {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: Set<number>) => boolean} holds
  * @returns {FiscProjection}
  */
-function filterLinks(doc, id, tiers, keeps) {
+function filterLinks(doc, id, tiers, holds) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   // A NAME THIS DOCUMENT DOES NOT CARRY IS A FAULT IN THE VIEW, and it must say
   // so. Unchecked, an unknown id gives an empty subtree, no links, and
@@ -1332,14 +1342,16 @@ function filterLinks(doc, id, tiers, keeps) {
       ", which the document does not carry");
   }
   const drawn = new Set(tiers);
-  const inside = withinNode(doc, id);
   const placeable = scoped(doc, tiers);
 
+  // THE ADMISSION COMES BEFORE THE PLACEABILITY TEST, which is the order and
+  // not a style: scoped() throws on a broken parent chain, and a link this
+  // chart was never going to draw is not a place to raise one.
   const links = doc.links.filter((l) => {
-    if (!keeps(l, inside)) return false;
     const src = byID.get(l.source);
     const dst = byID.get(l.target);
     if (!src || !dst) return false;
+    if (!holds(src, dst, byID, drawn)) return false;
     return placeable(src) && placeable(dst);
   });
   if (!links.length) {
@@ -1507,6 +1519,74 @@ let rungAnswers = null;
  */
 function rungKey(stem, path) {
   return stem + "\u001f" + path.join("\u001f");
+}
+
+/**
+ * Go's answer for the rung on screen, or a refusal in the sentence every other
+ * shaping fault uses.
+ *
+ * FAIL CLOSED, BECAUSE THIS IS AN INPUT AND NO LONGER A GATE. main() once
+ * fetched this file, vetted it and dereferenced nothing in it, so a page could
+ * refuse to draw over an answer it never read and draw happily over a wrong
+ * one (fisc-2sow). Every column this page draws below the overview is read out
+ * of it now, so a path it does not answer is a chart this page cannot shape --
+ * and says so, rather than drawing one filtered to nothing.
+ *
+ * THE STEM IS THE SPINE'S AND NOT THE STEP'S. A column of the answer is one
+ * published year, named by the document the year's own overview is drawn from,
+ * which is docAt(0); the documents the steps below it draw are the rung's
+ * business and not the key's.
+ *
+ * @returns {FiscRung}
+ */
+function answeredRung() {
+  const stem = (docAt(0) || {}).projection || "";
+  const path = drilled.map((r) => r.id);
+  const answer = rungAnswers ? rungAnswers.get(rungKey(stem, path)) : null;
+  if (!answer) {
+    throw new Error("cannot draw " + stem + ": this page opened " + path.join(" > ") +
+      ", and the rung answer it was given names no such path, so there is nothing " +
+      "to say which nodes each column holds");
+  }
+  return answer;
+}
+
+/**
+ * Every id the answer names at one set of columns: the opened node's own parts
+ * and the marks carried beside them alike, because both are drawn.
+ *
+ * ASKED PER HALF AND NOT PER RUNG. A window is two charts shaped from two
+ * documents and spliced on the centre (windowFor), and each half is filtered
+ * to the columns it draws -- so a kept flank's ids must not admit a ribbon
+ * into the fresh half's column, which is a ribbon neither document draws.
+ *
+ * COLUMNS THE BUDGET DROPPED ARE NOT ASKED FOR. The answer holds every column
+ * the step declares, unfolded and unnarrowed; `tiers` is what this viewport is
+ * laying out (activeTiers), so a widened column a narrow reader does without
+ * contributes no ids and its ribbons are dropped as they were before.
+ *
+ * THE COLUMN'S POSITION COMES WITH IT, and `draws` is where it comes from: Go
+ * answers a rung's columns in the order the step draws them -- which is not
+ * ascending tier order, since a revenue category's are {1,0,2} -- so the
+ * position of an id in this map is the column its mark stands in. heldBy needs
+ * it to tell a ribbon of this window from one running backwards through it.
+ *
+ * @param {FiscRung} answer
+ * @param {number[]} tiers
+ * @returns {Map<string, number>}
+ */
+function heldFor(answer, tiers) {
+  const want = new Set(tiers);
+  /** @type {Map<string, number>} */
+  const held = new Map();
+  let column = 0;
+  for (const d of answer.draws) {
+    if (!want.has(d.tier)) continue;
+    for (const id of d.ids) held.set(id, column);
+    for (const id of d.carried || []) held.set(id, column);
+    column++;
+  }
+  return held;
 }
 
 /**
@@ -2612,14 +2692,18 @@ function shapeFor(doc) {
   // reader opened, which is inside the root on a page that has one and is a
   // node of another document entirely on a step that switched.
   const step = rung.step;
+  // WHICH NODES EACH COLUMN HOLDS IS READ AND NOT DERIVED, which is this
+  // function's whole shape below the overview: Go walked the documents on the
+  // side the step declares and answered every rung once (AGENTS.md, "Go vets,
+  // JavaScript renders"), and what is left here is the fitting -- the cap, the
+  // fold, the splice and the marks.
+  const answer = answeredRung();
   // A WINDOW OR A SIDE, AND THE STEP SAYS WHICH. A step that keeps a flank
   // draws two half-charts spliced on the node the reader clicked; one that
-  // keeps none draws a single filtered chart, and its SIDE picks the filter:
-  // the opened node is the end its links point at, or the end they come from,
-  // and the two filters disagree about what "inside" means (filterFromNode).
+  // keeps none draws a single filtered chart at the columns it declares.
   const drawn = (step.keep && step.keep.length)
-    ? windowFor(rung.chart, doc, rung)
-    : sideOf(doc, rung, activeTiers(), step.side === "source" ? filterFromNode : filterToNode);
+    ? windowFor(rung.chart, doc, rung, answer)
+    : sideOf(doc, rung, activeTiers(), heldFor(answer, activeTiers()));
   // LAST, AFTER THE CAP AND THE FOLD, because neither may touch it: the cap
   // ranks the group's own parts and the residual is not one of them, and the
   // fold merges by folded ends and these ends are the chart above's.
@@ -2698,12 +2782,13 @@ function dropEmptyColumns(drawn) {
  * @param {FiscProjection} doc
  * @param {Rung} rung
  * @param {number[]} tiers the columns this chart draws, in order
- * @param {(doc: FiscProjection, id: string, tiers: number[]) => FiscProjection} filter
+ * @param {Map<string, number>} held every id Go's answer names at those
+ *   columns, against the position of the column it names them at
  * @returns {FiscProjection}
  */
-function sideOf(doc, rung, tiers, filter) {
+function sideOf(doc, rung, tiers, held) {
   const step = rung.step;
-  let shaped = filter(doc, rung.id, tiers);
+  let shaped = filterLinks(doc, rung.id, tiers, heldBy(held));
   const inside = withinNode(doc, rung.id);
   // EVERY CAP THE STEP DECLARES FOR THESE COLUMNS, IN THE DECLARED ORDER.
   // Folding a coarse node removes its descendants (capColumn's orphaned()),
@@ -2773,15 +2858,17 @@ function sideOf(doc, rung, tiers, filter) {
  * first, or its last keep.length in order -- so a declaration that passes the
  * packager and a chart drawn here cannot disagree about which side is which.
  *
- * TWO QUESTIONS, SO TWO CALLS, AND NEITHER FILTER CHANGES. filterToNode keeps a
- * link whose TARGET is inside the clicked node; filterFromNode keeps one whose
- * SOURCE is. A window needs both -- its decomposition on one side and the
- * context hop on the other -- and answering both from one call would mean a
- * third filter whose "inside" meant neither thing. So the kept flank and the
- * new one are separate charts, spliced on the centre.
+ * TWO DOCUMENTS, SO TWO CALLS. The kept flank is a filter of the chart on
+ * screen and the fresh half a filter of the step's document, and folding them
+ * together would hand foldDocument two parent chains at once -- the invariant
+ * carryResidual preserves by copying links rather than merging documents. So
+ * they are separate charts, spliced on the centre.
  *
- *   kept flank on the LEFT   kept: filterToNode(on screen), new: filterFromNode(step)
- *   kept flank on the RIGHT  kept: filterFromNode(on screen), new: filterToNode(step)
+ * NEITHER CALL PICKS A SIDE ANY MORE. Each half used to be keyed on which END
+ * of a link had to be inside the clicked node, which was a membership derived
+ * from the documents; each is now asked for the ids Go answers at its own
+ * columns (heldFor), and the direction falls out of the column order they are
+ * answered in (heldBy).
  *
  * EACH HALF IS ASKED FOR THE COLUMNS IT DRAWS, CENTRE INCLUDED, so the two
  * overlap in exactly one column and the splice has something to splice on.
@@ -2810,9 +2897,12 @@ function sideOf(doc, rung, tiers, filter) {
  * @param {FiscProjection | null} onScreen the drawn chart the rung was opened from
  * @param {FiscProjection} stepDoc the document the step draws
  * @param {Rung} rung
+ * @param {FiscRung} [answer] Go's answer for this rung; read after the shape of
+ *   the declaration has been refused, so a declaration that is not a window is
+ *   refused as one rather than as a rung nothing answers
  * @returns {FiscProjection}
  */
-function windowFor(onScreen, stepDoc, rung) {
+function windowFor(onScreen, stepDoc, rung, answer) {
   const step = rung.step;
   // THE COLUMNS ON SCREEN AND NOT THE COLUMNS DECLARED. A step may offer more
   // than the budget draws, and a half shaped at a column the chart does not lay
@@ -2838,15 +2928,21 @@ function windowFor(onScreen, stepDoc, rung) {
       "outermost first, the opened tier next to it, at least one column of what it " +
       "opens into, and a chart on screen to take the flank from");
   }
+  if (!answer) {
+    throw new Error("cannot draw " + stepDoc.projection + ": this step keeps tier(s) " +
+      keep.join(", ") + " and no rung answer was given for the node it opened, so " +
+      "there is nothing to say which nodes either half of the window holds");
+  }
   // THE CENTRE IS IN BOTH HALVES, and each half gets the columns on its own
   // side of it: the flank plus the centre off the chart above, the centre plus
-  // everything the step opens it into off the step's document.
-  const kept = keptLeft
-    ? sideOf(onScreen, rung, tiers.slice(0, centre + 1), filterToNode)
-    : sideOf(onScreen, rung, tiers.slice(centre), filterFromNode);
-  const fresh = keptLeft
-    ? sideOf(stepDoc, rung, tiers.slice(centre), filterFromNode)
-    : sideOf(stepDoc, rung, tiers.slice(0, centre + 1), filterToNode);
+  // everything the step opens it into off the step's document. Each half is
+  // filtered to the ids Go answers AT ITS OWN COLUMNS, which is what keeps the
+  // splice a splice: the centre is the only column both halves hold, so a
+  // ribbon of one cannot land in a column of the other.
+  const keptTiers = keptLeft ? tiers.slice(0, centre + 1) : tiers.slice(centre);
+  const freshTiers = keptLeft ? tiers.slice(centre) : tiers.slice(0, centre + 1);
+  const kept = sideOf(onScreen, rung, keptTiers, heldFor(answer, keptTiers));
+  const fresh = sideOf(stepDoc, rung, freshTiers, heldFor(answer, freshTiers));
 
   // carried_from IS SET WHERE IT IS ABSENT AND NEVER CLEARED. A flank node
   // that was already carried onto the chart above -- a residual's endpoint --
@@ -5538,8 +5634,10 @@ async function loadDocument(path, superseded) {
  * looking at a chart nothing will admit is broken.
  *
  * NOT A SECOND IMPLEMENTATION OF THE WALK THAT WROTE IT. Whether Go's answer
- * is RIGHT is pkg/cmd/export's TestTheRungArtifactIsWhatGoComputes and
- * tools/jscheck/chart.mjs; all this asks is whether it can be read at all.
+ * is RIGHT is pkg/cmd/export's business -- TestTheRungArtifactIsWhatGoComputes
+ * and TestTheRungArtifactIsWhatTheReachPrimitivesAnswer -- and this page has no
+ * second reading of the documents left to disagree with it. All this asks is
+ * whether the file can be read at all.
  *
  * @param {any} doc
  * @param {string} what
@@ -5995,13 +6093,13 @@ async function main() {
     });
   }
 
-  // BEFORE THE FIRST DRAW AND AFTER EVERYTHING IS WIRED. The answer is fetched
-  // and vetted here, and no function in this file dereferences a rung of it:
-  // the fold is the client's fitting step, so filterLinks and capColumn derive
-  // the membership each column is drawn with. It is a gate rather than an
-  // input, and fisc-2sow is where what it gates on is decided. Fetching
-  // first means a failure is a banner over a page that has drawn NOTHING,
-  // rather than a click that dies at a reader who has been looking at a chart.
+  // BEFORE THE FIRST DRAW AND AFTER EVERYTHING IS WIRED. Which nodes each
+  // column of an opened chart holds is Go's answer and not this page's
+  // (heldFor), so a page that cannot read this file can draw no rung -- the
+  // early return below gates on something every drill dereferences rather than
+  // on a file nothing reads. Fetching first means a failure is a banner over a
+  // page that has drawn NOTHING, rather than a click that dies at a reader who
+  // has been looking at a chart.
   // The wiring above still happens either way, for fisc-8cg's reason: an
   // affordance disabled by a failed fetch stays disabled for the visit.
   if (RUNGS_PATH) {

@@ -590,7 +590,7 @@ const NAMES = [
   // control and Escape call -- and shapeFor; the rest are here so a check can
   // measure one stage without the repaint. STEPS is the tree as app.js read it
   // off the config, and stepFor is its one reader.
-  "shapeFor", "filterToNode", "filterFromNode", "capColumn", "drillable", "drillDown", "drillUp",
+  "shapeFor", "filterToNode", "heldBy", "heldFor", "answeredRung", "capColumn", "drillable", "drillDown", "drillUp",
   // THE COLUMN BUDGET AND THE SET IT TRIMS. activeTiers is what every column
   // reader on the page goes through, and a check that spelled a step's tiers
   // itself would measure the widened window under the narrow budget the page
@@ -1439,9 +1439,9 @@ export function parseStepShapes(src) {
       key: key[1],
       after: entries,
       // ABSENT IS THE DECLARED DEFAULT HERE, unlike Key and After. "" is what
-      // the Go zero value means on each of these -- today's filterToNode side,
-      // every node at the tier -- so a literal omitting them is read rather
-      // than refused.
+      // the Go zero value means on each of these -- the opened node is the end
+      // its ribbons point AT, and every node at the tier opens -- so a literal
+      // omitting them is read rather than refused.
       side: side ? (side[1] === undefined ? "source" : side[1]) : "",
       role: role ? role[1] : "",
       from: Number(from[1]),

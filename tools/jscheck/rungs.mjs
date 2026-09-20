@@ -1,4 +1,4 @@
-// rungs.mjs — what the client works out for itself, held to Go's answer.
+// rungs.mjs — what the client still works out for itself, held to Go's answer.
 //
 // GO'S ANSWER IS A COMMITTED ARTIFACT WITH ITS OWN GO TEST, testdata/rungs.json,
 // and this file reads that and nothing else of Go's. It is NOT re-derived from
@@ -10,11 +10,25 @@
 // what Go computes.
 //
 // EVERY ARM HERE IS TWO PARTIES, which is a claim about the seam and not about
-// this file's diligence. Go's answer says what a column HOLDS, unfolded;
-// app.js filters the same document for itself and then fits what it got to a
-// viewport Go cannot see. So a membership compared below is one set computed
-// in Go against one computed in JavaScript, and a filter that lost a row,
-// gained one, or split it differently is red here and in no other module.
+// this file's diligence. Go's answer says what a column HOLDS, unfolded, and
+// app.js fits what it was given to a viewport Go cannot see. So what is
+// compared below is a decision the client still makes -- which step opened a
+// rung, which columns it lays out and in what order, whether a column folds,
+// how many its tail stands for, and every cent on a mark of its own -- against
+// a figure or a declaration from Go's side.
+//
+// THE MEMBERSHIP ARM IS GONE WITH ITS SUBJECT, and that is the boundary
+// arriving rather than a guarantee lost. It compared the ids app.js's own
+// filter reached against Go's `ids`, and app.js has no filter of its own to
+// compare: heldFor reads `draws[].ids` and the page draws the ribbons between
+// the nodes it names. Left in place the arm would have compared the artifact
+// against itself and reported PASS on every run -- the "green because the gate
+// fired" shape AGENTS.md, "Prove it can fail" says to hunt for. The same goes
+// for the split between a column's parts and the marks carried beside them:
+// both lists come off the answer now. Whether Go's answer is RIGHT is
+// pkg/cmd/export's TestTheRungArtifactIsWhatGoComputes and
+// TestTheRungArtifactIsWhatTheReachPrimitivesAnswer, in Go, where it belongs
+// (AGENTS.md, "Go vets, JavaScript renders").
 //
 // THE COLUMN IS READ EXPANDED, AND THAT IS WHAT MAKES A CAPPED ONE COMPARABLE.
 // A fold puts the ids it drops behind a single tail mark, so a folded chart
@@ -43,14 +57,6 @@
 // WHICH STEP OPENED THE RUNG. stepFor answers from CONFIG.steps and the node's
 // own tier and role.
 //
-// WHICH IDS A COLUMN HOLDS, and it is the arm the fold used to hide. The
-// expanded column against Go's `ids`, as sets, on every column of every rung.
-//
-// HOW THE COLUMN IS SPLIT. Go's answer names a column's parts and the marks
-// carried beside them separately; which side of that line a node falls on is
-// the client's rule, `derived || isCarried`. So a client that stopped carrying
-// a residual's endpoint, or started carrying a printed row, is red.
-//
 // THE CAP AND THE FOLD. cap + 1 is capColumn's threshold and the cap is the
 // step's declaration; both are measured against the size of the column Go
 // answers, so neither side of that comparison is the other's.
@@ -66,15 +72,17 @@
 // drill.mjs pins it. Every cent on this chart is the client's arithmetic, so
 // this arm is a cross-language comparison like the rest.
 //
-// MUTATION: remove one id from a column's `ids` in testdata/rungs.json. The Go
-// test goes red because the artifact is no longer what Go computes, and the
-// membership arm goes red naming the rung, the tier and the id the client's
-// filter reached that Go no longer answers. Move an id from `ids` into
-// `carried` and the split arm is red naming it. Perturb a mark's in_cents by
-// 1, or delete the mark, and the marks arm is red naming the rung and the
-// mark. Blind walkAt -- return an empty map -- and every counter goes to zero
-// and every arm is red on its own counter rather than green with nothing
+// MUTATION: perturb a mark's in_cents by 1, or delete the mark, and the marks
+// arm is red naming the rung and the mark. Narrow a step's declared cap in
+// data.go and the fold arm is red on the column that folds on the wrong side
+// of cap + 1. Blind walkAt -- return an empty map -- and every counter goes to
+// zero and every arm is red on its own counter rather than green with nothing
 // compared.
+//
+// AND THE MUTATION THIS FILE NO LONGER CATCHES, which is where a removed id is
+// now seen instead: taking one out of a column's `ids` in testdata/rungs.json
+// takes the mark off the chart, and the pinned mark counts in chart.mjs and
+// drill.mjs go red rather than anything here.
 //
 // COMPLETENESS BOTH WAYS, OVER THE EXPAND-THEN-OPEN SPACE. The space is named
 // because a count over the wrong one reads as coverage it is not (fisc-22qj):
@@ -263,9 +271,7 @@ export async function checks() {
       // EVERY COUNTER IS A COMPARISON THAT CAN FAIL, and there is no longer
       // one for a comparison that cannot: nothing below reads a set off the
       // artifact and then compares the artifact against it.
-      let idsCompared = 0;
-      let carriedCompared = 0;
-      let flankCompared = 0;
+      let flankDrawn = 0;
       let tiersCompared = 0;
       let budgetDropped = 0;
       let capHeld = 0;
@@ -327,30 +333,12 @@ export async function checks() {
           if (!Array.isArray(d.ids)) {
             throw new Error(`${where}, tier ${d.tier}: Go's entry carries no ids list`);
           }
-          if (d.role === "flank") flankCompared++;
+          if (d.role === "flank" && mine.ids.length + mine.carried.length) flankDrawn++;
           // OMITTED IS EMPTY: Go writes an empty carried list as no field at
           // all, and a reader that compared undefined would fail every column
           // with no mark beside its parts.
           const ids = d.ids.slice().sort();
           const carried = (d.carried || []).slice().sort();
-          idsCompared++;
-          if (ids.join(SEP) !== mine.ids.join(SEP)) {
-            const missing = ids.filter((id) => !mine.ids.includes(id));
-            const extra = mine.ids.filter((id) => !ids.includes(id));
-            wrong.push(`${where}, tier ${d.tier} (${d.role}): app.js's filter reaches ` +
-              `${mine.ids.length} node(s) and Go answers ${ids.length}` +
-              (missing.length ? `; Go answers and app.js does not reach: ${missing.join(", ")}` : "") +
-              (extra.length ? `; app.js reaches and Go does not answer: ${extra.join(", ")}` : ""));
-          }
-          if (carried.length) carriedCompared++;
-          if (carried.join(SEP) !== mine.carried.join(SEP)) {
-            const missing = carried.filter((id) => !mine.carried.includes(id));
-            const extra = mine.carried.filter((id) => !carried.includes(id));
-            wrong.push(`${where}, tier ${d.tier} (${d.role}): app.js carries ${mine.carried.length} mark(s) it does ` +
-              `not count and Go lists ${carried.length}` +
-              (missing.length ? `; Go lists and app.js does not carry: ${missing.join(", ")}` : "") +
-              (extra.length ? `; app.js carries and Go does not list: ${extra.join(", ")}` : ""));
-          }
           // THE FIT, AGAINST THE SIZE GO REPORTS. `holds` is Go's count for
           // the column, `cap` the step's declaration and cap + 1 capColumn's
           // threshold, so the only figure in this arm from the client's side
@@ -377,13 +365,13 @@ export async function checks() {
           foldsEngaged++;
           // AND THE TAIL STANDS FOR EXACTLY THE REST, which is what says a
           // reader is not shown a column with a figure missing from both the
-          // marks and the count on the tail.
-          const outside = fit.ids.filter((id) => !mine.ids.includes(id))
-            .concat(fit.carried.filter((id) => !mine.carried.includes(id)));
-          if (shown !== cap || shown + fit.hidden !== holds || outside.length) {
+          // marks and the count on the tail. The count on the tail is the
+          // client's own arithmetic -- capColumn composes those words from what
+          // it folded -- and `holds` is Go's figure for the column, so this is
+          // a comparison and not a restatement.
+          if (shown !== cap || shown + fit.hidden !== holds) {
             wrong.push(`${where}, tier ${d.tier}: app.js draws ${shown} and hides ${fit.hidden} of a ` +
-              `column Go answers as ${holds}, under a cap of ${cap}` +
-              (outside.length ? `; drawn and not in the expanded column: ${outside.join(", ")}` : ""));
+              `column Go answers as ${holds}, under a cap of ${cap}`);
           }
         }
       }
@@ -393,20 +381,18 @@ export async function checks() {
       // gates nothing: it is zero at the wide budget by construction, and a
       // gate on it would fail every run at four columns for being right.
       out.push({
-        name: `${col.label} at ${width} columns: what the client works out for itself is what Go computed`,
-        ok: wrong.length === 0 && idsCompared > 0 && carriedCompared > 0 && flankCompared > 0 &&
+        name: `${col.label} at ${width} columns: what the client still works out for itself is what Go computed`,
+        ok: wrong.length === 0 && flankDrawn > 0 &&
           tiersCompared > 0 && capHeld > 0 && foldsEngaged > 0 && marksCompared > 0 &&
           residualsCompared > 0 && expansions > 0 && gapsCompared > 0 === drawsAGapIn(col),
         detail: wrong.length === 0
-          ? `over ${column.rungs.length} rung(s): ${idsCompared} column(s) whose members app.js ` +
-            `filtered for itself are the ones testdata/rungs.json answers, read with every fold ` +
-            `expanded (${expansions} expansion(s) over the walk); ${flankCompared} kept flank(s) ` +
-            `among them and ${carriedCompared} column(s) splitting off a mark the client does not ` +
-            `count; ${tiersCompared} column(s) drawn in Go's order, ${budgetDropped} dropped as a ` +
-            `widening this budget cannot afford; ${capHeld} column(s) held to a declared cap, ` +
-            `${foldsEngaged} of them folded to it with a tail standing for exactly the rest; ` +
-            `${marksCompared} mark comparison(s) of the client's own, ${residualsCompared} of them ` +
-            `a residual and ${gapsCompared} a gap (the column ` +
+          ? `over ${column.rungs.length} rung(s), read with every fold expanded ` +
+            `(${expansions} expansion(s) over the walk): ${tiersCompared} column(s) drawn in Go's ` +
+            `order, ${budgetDropped} dropped as a widening this budget cannot afford, ` +
+            `${flankDrawn} of them a kept flank the page drew something in; ${capHeld} column(s) ` +
+            `held to a declared cap, ${foldsEngaged} of them folded to it with a tail standing for ` +
+            `exactly the rest; ${marksCompared} mark comparison(s) of the client's own, ` +
+            `${residualsCompared} of them a residual and ${gapsCompared} a gap (the column ` +
             `${drawsAGapIn(col) ? "draws one" : "draws none"})`
           : `${wrong.length} disagreement(s):\n      ${wrong.join("\n      ")}`,
       });

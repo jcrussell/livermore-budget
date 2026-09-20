@@ -33,6 +33,30 @@ import {
 } from "./harness.mjs";
 
 /**
+ * A rung answer for a document this file made up: what Go would write down for
+ * it, written out here.
+ *
+ * A PROBE SHIPS ITS OWN ANSWER NOW, and before this lane it shipped none. Which
+ * nodes each of a window's columns holds is read out of Go's answer (heldFor)
+ * rather than derived from the document, so a fixture document no committed
+ * walk has ever seen is one the page refuses to open -- rightly, and uselessly
+ * for a check about caps, legends or column budgets.
+ *
+ * SO THE MEMBERSHIP BELOW IS A FIXTURE AND NOT A SECOND DERIVATION. It is
+ * spelled out, in the column order the step declares, against a document of a
+ * dozen nodes printed a few lines above it: a reader checks the two against
+ * each other by eye, which is the whole reason these probes are hand-written
+ * documents rather than slices of the corpus.
+ *
+ * @param {string} stem the year document's own stem, which is how a column of
+ *   the answer is named and how app.js keys its lookup
+ * @param {{path: string[], step: string, draws: {tier: number, role: string, ids: string[]}[]}[]} rungs
+ */
+function probeAnswer(stem, rungs) {
+  return { schema_version: 5, columns: [{ stem, rungs }] };
+}
+
+/**
  * The one chart page the site ships, verbatim from pkg/cmd/export/data.go's
  * views(): the spine, drawn whole, whose fund groups open into fund-flows and
  * whose divisions open into their object categories.
@@ -2741,17 +2765,28 @@ export async function checks() {
       { key: "g", after: [""], from: 2, tiers: [0, 3, 4], caps: [{ tier: 3, cap: 2 }, { tier: 4, cap: 2 }], back: "Back", tail: "funds" },
       { key: "d", after: ["g"], from: 4, tiers: [4, 5], caps: [{ tier: 5, cap: 1 }], back: "Up", tail: "categories" },
     ];
-    // THE COMMITTED ANSWER, WHICH SAYS NOTHING ABOUT THIS DOCUMENT, and the
-    // probe draws anyway: the page fetches it on load, and which of a capped
-    // column's nodes fit is ranked here (capColumn) rather than looked up. A
-    // probe shipping a document of its own therefore ships no answer of its
-    // own. The ranking this document exercises is by the larger of a node's
-    // inflow and its outflow, so fund/a (1000) and fund/b (100) survive the
-    // cap of 2 and fund/c and fund/d are the tail; dept/1 (400) and dept/2
-    // (300) survive the second; and two rungs down expenditure/p (200)
-    // survives a cap of 1.
+    // THE PROBE'S OWN ANSWER, because the committed one says nothing about this
+    // document and every column below is read out of one (probeAnswer). WHAT
+    // IS STILL THE PAGE'S is the fit: which of a capped column's nodes survive
+    // is ranked here by the larger of a node's inflow and its outflow, so
+    // fund/a (1000) and fund/b (100) survive the cap of 2 and fund/c and
+    // fund/d are the tail; dept/1 (400) and dept/2 (300) survive the second;
+    // and two rungs down expenditure/p (200) survives a cap of 1. The answer
+    // holds all four and all three, unfolded, which is what makes the fold
+    // observable at all.
+    const answer = probeAnswer("probe", [
+      { path: ["fund-group/g"], step: "g", draws: [
+        { tier: 0, role: "outward", ids: ["revenue/x"] },
+        { tier: 3, role: "outward", ids: ["fund/a", "fund/b", "fund/c", "fund/d"] },
+        { tier: 4, role: "outward", ids: ["dept/1", "dept/2", "dept/3", "dept/4"] },
+      ] },
+      { path: ["fund-group/g", "dept/1"], step: "d", draws: [
+        { tier: 4, role: "outward", ids: ["dept/1"] },
+        { tier: 5, role: "outward", ids: ["expenditure/p", "expenditure/q", "expenditure/r"] },
+      ] },
+    ]);
     const app = loadApp({
-      fetch: plannedFetch({ "data/probe.json": { doc }, [RUNGS_PATH]: { doc: rungsAnswer() } }),
+      fetch: plannedFetch({ "data/probe.json": { doc }, [RUNGS_PATH]: { doc: answer } }),
       config: {
         schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
         render_tiers: [0, 2], steps, rungs: RUNGS_PATH,
@@ -2831,10 +2866,20 @@ export async function checks() {
         link("fund/100", "dept/1", 60), link("fund/100", "dept/2", 40),
       ],
     };
+    // THE GROUP'S OWN COLUMN IS ONE OF THE TWO, which is what this probe is
+    // for: the step draws the tier the opened node sits at, so fund-group/general
+    // is on the chart at depth 1 and FUND_ORDER knows it.
+    const answer = probeAnswer("probe", [
+      { path: ["fund-group/general"], step: "fund", draws: [
+        { tier: 2, role: "outward", ids: ["fund-group/general"] },
+        { tier: 4, role: "outward", ids: ["dept/1", "dept/2"] },
+      ] },
+    ]);
     const app = loadApp({
-      fetch: plannedFetch({ "data/probe.json": { doc } }),
+      fetch: plannedFetch({ "data/probe.json": { doc }, [RUNGS_PATH]: { doc: answer } }),
       config: {
         schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
+        rungs: RUNGS_PATH,
         // THE STEP OPENS FROM A TIER THE OVERVIEW DRAWS. drillDown looks the
         // activated node up in the CHART ON SCREEN, so a step opening from a
         // tier the overview folds away is a step no reader could reach -- which
@@ -2894,13 +2939,18 @@ export async function checks() {
  * the site draws that is NOT a window and the one that opens a SOURCE.
  *
  * WHAT ONLY THIS RUNG CAN WITNESS. Every other step keeps a flank and opens the
- * end its links point at, so two of app.js's paths had no traffic at all: the
- * `step.side === "source"` arm of shapeFor, which picks filterFromNode, and the
- * whole no-flank branch beside windowFor. Measured with the side ignored --
- * filterToNode asked for transfers/in -- the chart comes back EMPTY with no
- * error, because the id is known so the unknown-id guard does not fire, and
- * d3-sankey then dies inside itself on "Invalid array length". That is the
- * failure this rung is one declaration away from at all times.
+ * end its links point at, so the no-flank branch of shapeFor -- the one beside
+ * windowFor, a single filtered chart at the columns the step declares -- has no
+ * other traffic at all.
+ *
+ * THE SIDE ITSELF IS NO LONGER THIS PAGE'S TO GET WRONG. Which nodes each column
+ * holds is read out of Go's answer, which walked the documents on the side the
+ * step declares; the page draws the ribbons between the nodes it names, forward
+ * through the columns the answer lists them in. When the side WAS derived here,
+ * ignoring it drew this rung as an EMPTY chart with no error -- the id is known,
+ * so the unknown-id guard does not fire -- and d3-sankey died inside itself on
+ * "Invalid array length"; Go owns that reading now, and pkg/cmd/export's own
+ * mutations are where flipping it goes red.
  *
  * THE TIE IS THE ARM THAT MATTERS, and it is arithmetic across two documents
  * rather than a shape. The ribbons this rung draws are p76's receiving legs,
@@ -4312,15 +4362,32 @@ async function foreignFlankProbe() {
   // whose own file does not carry the node that was clicked.
   const funds = doc("funds", [node("grp", 2, "", "Group"), node("fund", 3, "grp", "A fund")],
     [link("grp", "fund", 100)]);
+  // THE KEPT FLANK IS IN THE ANSWER AND NOT IN THE STEP'S DOCUMENT, which is
+  // this probe's whole subject said in the answer's own vocabulary: `grp` is a
+  // flank column of the first rung, read off the chart on screen, and `lines`
+  // carries no node of that id at all.
+  const answer = probeAnswer("spine", [
+    { path: ["cat"], step: "win", draws: [
+      { tier: 1, role: "outward", ids: ["line"] },
+      { tier: 0, role: "centre", ids: ["cat"] },
+      { tier: 2, role: "flank", ids: ["grp"] },
+    ] },
+    { path: ["cat", "grp"], step: "grp", draws: [
+      { tier: 2, role: "outward", ids: ["grp"] },
+      { tier: 3, role: "outward", ids: ["fund"] },
+    ] },
+  ]);
   const app = loadApp({
     fetch: plannedFetch({
       "data/spine.json": { doc: spine },
       "data/lines.json": { doc: lines },
       "data/funds.json": { doc: funds },
+      [RUNGS_PATH]: { doc: answer },
     }),
     config: {
       schema_version: 1, primary: "spine",
       projections: { spine: "data/spine.json", lines: "data/lines.json", funds: "data/funds.json" },
+      rungs: RUNGS_PATH,
       render_tiers: [0, 2],
       steps: [
         { key: "win", after: [""], from: 0, projection: "lines", keep: [2], tiers: [1, 0, 2],
@@ -4412,13 +4479,25 @@ async function categoryProbes() {
     spine.links = spine.links.concat([
       link("revenue/probe", "fund-group/general", 700), link("revenue/probe", "fund-group/special-revenue", 300),
       link("revenue/empty", "fund-group/general", 1)]);
-    // NO ANSWER FOR THE PLANTED CATEGORY, and the click opens regardless: the
-    // committed answer says nothing about revenue/probe, and the step's cap
-    // on the line column is spent by capColumn over the document the page
-    // fetched. A category whose single line cannot be folded is a column
-    // drawn whole, which is what this probe is about.
+    // THE PLANTED CATEGORY IS ANSWERED, beside the rungs the committed file
+    // already holds for this column: app.js reads which nodes each column
+    // holds rather than deriving one, so a category planted into the goldens
+    // and into no answer is a mark the page refuses to open. The answer says
+    // what the two documents above draw -- one line, the category itself, and
+    // the two groups the spine sends its money to -- and says nothing about
+    // the fold, which is this probe's subject: the step caps the line column,
+    // one line cannot be folded, and the column is drawn whole.
+    const answered = rungsAnswer();
+    answered.columns.find((c) => c.stem === col.stem).rungs.push({
+      path: ["revenue/probe"], step: "revenue-category", draws: [
+        { tier: 1, role: "outward", ids: ["revenue-line/probe/only"] },
+        { tier: 0, role: "centre", ids: ["revenue/probe"] },
+        { tier: 2, role: "flank", ids: ["fund-group/general", "fund-group/special-revenue"] },
+      ],
+    });
     const { app, main } = await opened({
-      "data/sankey.json": { doc: spine }, "data/fund-flows.json": { doc } }, null, col);
+      "data/sankey.json": { doc: spine }, "data/fund-flows.json": { doc },
+      [RUNGS_PATH]: { doc: answered } }, null, col);
     const one = await openInto(app, "revenue/probe");
     const laid = one === "drew" ? app.layOut(app.projection) : null;
     const only = laid ? laid.nodes.find((n) => n.id === "revenue-line/probe/only") : null;
@@ -4946,9 +5025,13 @@ function templateDesc(file, description) {
  * @param {string[]} path the nodes to open, outermost first
  * @param {(c: any) => void} [tweak] the config edit, if this is a shape the
  *   site does not ship
+ * @param {any} [answer] the rung answer to serve instead of the committed one,
+ *   which a config edit that adds a column has to come with: which nodes a
+ *   column holds is read out of the answer now, so a step widened here and not
+ *   there is a step whose fourth column is answered by nobody
  */
-async function windowAt(col, budget, path, tweak) {
-  const { app, main } = await opened(null, tweak, col);
+async function windowAt(col, budget, path, tweak, answer) {
+  const { app, main } = await opened(answer ? { [RUNGS_PATH]: { doc: answer } } : null, tweak, col);
   app.setColumnBudget(budget);
   for (const id of path) await mustOpen(app, id);
   const laid = app.layOut(app.projection);
@@ -5013,6 +5096,32 @@ async function widenedColumns() {
       ? Object.assign({}, s, { tiers: s.tiers.concat([4]), widen: [4] })
       : s));
   };
+  // AND THE SAME WIDENING IN GO'S ANSWER, which is what keeps the pair below a
+  // measurement of the DOCUMENTS rather than of the edit: a column the answer
+  // does not carry holds nothing whatever the document draws, so widening the
+  // declaration alone would drop the fourth column on every group and the
+  // filled arm would be red for the reason the empty one is green.
+  //
+  // THE IDS ARE THE COMMITTED ANSWER'S OWN. fund-flows draws 23 nodes at tier
+  // 4 and every one of them is a department of fund/100, so the General Fund
+  // group's fourth column is the one the rung below it already lists and the
+  // other five groups' is empty -- which is the shape dropEmptyColumns exists
+  // for, now stated by Go rather than discovered by the client.
+  const widenFundGroupAnswer = () => {
+    const answer = rungsAnswer();
+    for (const column of answer.columns) {
+      const fund = column.rungs.find((r) => r.path.join("\u001f") === "fund-group/general\u001ffund/100");
+      if (!fund) throw new Error(`${column.stem} answers no rung for fund-group/general > fund/100`);
+      const depts = fund.draws.find((d) => d.tier === 4);
+      if (!depts) throw new Error(`${column.stem}'s fund/100 rung draws no tier 4`);
+      for (const rung of column.rungs) {
+        if (rung.step !== "fund-group") continue;
+        rung.draws.push({ tier: 4, role: "outward",
+          ids: rung.path[0] === "fund-group/general" ? depts.ids.slice() : [] });
+      }
+    }
+    return answer;
+  };
   for (const col of COLUMNS) {
     const path = ["fund-group/general", "fund/100"];
     const narrow = await windowAt(col, 3, path);
@@ -5046,11 +5155,11 @@ async function widenedColumns() {
   // banner or stretch the chart, and the second says the drop is a measurement
   // of the document and not a widening that never worked.
   const col = COLUMNS[0];
-  const empty = await windowAt(col, 4, [PAGE.worst], widenFundGroup);
+  const empty = await windowAt(col, 4, [PAGE.worst], widenFundGroup, widenFundGroupAnswer());
   // THE SHIPPED STEP ON THE SAME GROUP, so the arm can say the dropped chart IS
   // the narrow one rather than only that it has three columns.
   const asShipped = await windowAt(col, 3, [PAGE.worst]);
-  const filled = await windowAt(col, 4, ["fund-group/general"], widenFundGroup);
+  const filled = await windowAt(col, 4, ["fund-group/general"], widenFundGroup, widenFundGroupAnswer());
   out.push({
     name: "a widened column the document leaves empty is dropped, and the chart is re-laid at the columns it has",
     ok: empty.columns === 3 && empty.tiers === "0,2,3" && empty.banners === 0 &&
