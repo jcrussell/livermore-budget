@@ -34,9 +34,9 @@ import (
 // it exists for ever running. Each guard below names the shape it refuses and
 // where the committed corpus supplies the opposite.
 //
-// WHAT HOLDS A COLUMN'S MEMBERSHIP, since these guards become the whole of
-// what holds this artifact the day the client reads it instead of
-// recomputing it. Three of them read the documents and the step declarations
+// WHAT HOLDS A COLUMN'S MEMBERSHIP, now that the client reads this artifact
+// rather than recomputing one to compare against it. Three of these guards
+// read the documents and the step declarations
 // and never the walk: every id a column draws is a node a document holds at
 // that tier, every id it carries is one the document marks derived or the
 // step declares an endpoint, and every id it draws that a later step opens

@@ -2832,10 +2832,10 @@ func buildCells(points []trendPoint, columns []columnRef, meta []trendColumnMeta
 // step s's From that the document raw decomposes, for the view v it is step i
 // of.
 //
-// ONE RULE, ONE HOME. The rung artifact the composition root commits for
-// tools/jscheck is enumerated over this answer, so what a page offers a
-// reader to open and what the equivalence arm expects the client to have
-// opened cannot drift apart by a second spelling of the direction rule.
+// ONE RULE, ONE HOME. The rung answer the composition root serves is
+// enumerated over this answer, so what a page offers a reader to open and
+// what it is given to draw when they do cannot drift apart by a second
+// spelling of the direction rule.
 func Openable(v View, i int, s DrillStep, stem string, raw []byte) ([]string, error) {
 	return openableNodes(v, i, s, stem, raw)
 }

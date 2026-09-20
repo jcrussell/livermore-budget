@@ -10,11 +10,11 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/export"
 )
 
-// rungsPath is the committed artifact tools/jscheck/rungs.mjs reads: Go's
-// answer for every rung the drill walks, so the client's answer can be held
-// to it. Relative to the repository root. It is pinned byte for byte to what
+// rungsPath is the committed copy of Go's answer for every rung the drill
+// walks. Relative to the repository root. It is pinned byte for byte to what
 // the site serves at rungsServedPath, so a fixture and a served file cannot
-// be two answers.
+// be two answers -- and since site/app.js READS that answer rather than
+// deriving one, a change here is a change to what the site draws.
 const rungsPath = "testdata/rungs.json"
 
 // rungsServedPath is where the rung answer lands in the site: at the site
