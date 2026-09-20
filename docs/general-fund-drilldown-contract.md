@@ -546,3 +546,116 @@ flow table, the inferred list and the flow count are all statements about what
 the reader is looking at; pointing them at the file would put a 175-row table
 beside a 52-ribbon chart. The footer still links the unfolded file, and the
 merged links still name every fact behind every ribbon.
+
+## Go's half: the rung answer
+
+**Every rung this chain can reach, answered once, in one file for every
+published year.** Go walks the declared steps over the built documents and
+writes what each column of each rung HOLDS; `tools/jscheck/rungs.mjs` holds the
+client's own walk to that answer, and the page fetches it under the name the
+config carries. The committed `testdata/rungs.json` is pinned to the bytes the
+export serves, so a fixture and a served file cannot be two answers.
+
+The shape, with each value naming its type rather than standing for a figure —
+except `schema_version`, which is the version this section describes:
+
+```json
+{
+  "schema_version": 5,
+  "columns": [
+    {
+      "stem": "string",
+      "rungs": [
+        {
+          "path": ["string"],
+          "step": "string",
+          "draws": [
+            {"tier": "int", "role": "string", "ids": ["string"], "carried": ["string"]}
+          ],
+          "marks": [
+            {
+              "id": "string",
+              "role": "string",
+              "tier": "int",
+              "in_cents": "int64",
+              "out_cents": "int64",
+              "ends": ["string"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+**That block is read by a test and not only by a reader.** `pkg/cmd/export`
+parses it out of this file and refuses a key set that is not the emitted
+structs' JSON tags, and a `schema_version` that is not the one the packager
+stamps. A field added to the artifact without a line here, or a schema bumped
+without this section moving, is red.
+
+- `columns[]` is a **published year**, by the spine document's stem, and not a
+  chart column. The chart's columns are a rung's `draws`; the two words meet in
+  one file and this is the only place they can be confused.
+- A **rung** is one opened path: `path` is the node ids that were opened to
+  reach it, outermost first, and `step` is the key of the step that opened the
+  last of them.
+- `draws` is that step's columns **in the order it draws them**, one entry per
+  tier it declares. `role` is `centre` for the opened node's own column, `flank`
+  for a column kept off the chart the node was clicked on, and `outward` for one
+  the step opens the node into. `ids` is every node the document draws at that
+  tier as the opened node's own parts, sorted; `carried` is every node drawn
+  there that is not counted as one of them — a node the document marks derived,
+  or one the step's residual declaration names. `ids` is written **even when
+  empty**, so a column answered with nothing can be told from a column that was
+  not answered at all.
+- `marks` is what the client adds to the window that no page prints: the
+  residual that stands beside the opened node's parts, and the gap between what
+  the chart above sends into the opened node and what the drawn document breaks
+  it into. Each carries its `id`, `role`, the step's declared `tier`, and the
+  cents that arrive at it and leave it; `ends` is a residual's declared
+  endpoints, and a gap carries exactly one of `in_cents` and `out_cents`, which
+  is the side the short one stands on. **Their prose is not here.** A mark's
+  rationale and source note are built from labels and locators this walk does
+  not decode, and `tools/jscheck/drill.mjs` is what holds those.
+
+### What it deliberately does not carry
+
+Each absence is a decision (`fisc-lwh5`) rather than an omission, and together
+they are the half that "So the client folds" above would otherwise have nothing
+to be contradicted against.
+
+- **No cap, and no hidden count.** A `caps` entry is a permission Go ships in
+  `FISC_CONFIG.steps` and never spends: `ids` is the whole candidate set at its
+  tier, unfolded, and how much of it a reader's viewport has room for is decided
+  by `capColumn` in `site/app.js`. An answer pre-folded to a cap would be Go
+  fitting a screen it cannot see (AGENTS.md, "Go vets, JavaScript renders"),
+  and it would also hide from this walk every rung under every id it dropped.
+- **No candidates count.** How many nodes a column holds is the length of its own
+  `ids`. A second spelling of it is a number the two sides can disagree about in
+  silence.
+- **No column-budget dimension.** A rung is answered **once, not once per
+  width**. Which of a step's declared columns a narrow reader is shown is what
+  `widen` says, and the client spends it; what the document draws in a column
+  does not change when a narrower client drops another one. The marks are
+  answered once for a stronger reason than that: a fold merges ribbons but
+  preserves what arrives at and leaves the opened node, so a mark reads the same
+  cents off a folded chart and an unfolded one. Measured at `86f0fae`, the last
+  artifact that still answered each path at two column budgets — every path
+  carried byte-identical marks at both.
+- **No ribbons.** The client folds, so the client sums, and what licenses that is
+  that every summand is a published figure: each unfolded ribbon's `value_cents`
+  is in the projection document the page has already fetched, with its own
+  `fact_ids`, which `link-values-tie-to-facts` already witnesses. The membership
+  is Go's, given outright rather than inferred, so the client can only add
+  numbers a check has seen. **That licence stops at the marks** — a residual's
+  cents is a difference and a gap's is a shortfall, neither a sum over published
+  summands — which is why those two are carried above and the ribbons are not.
+- **No folded tail.** It has no id here and is not a fact about the documents at
+  all: it exists only where a reader's screen made the client fold.
+
+So, in one line: **Go declares what may fold and the client decides how much
+fits.** The `caps` column of the table under "One page draws it" and each step's
+`widen` are declarations; `capColumn` and `foldDocument` in `site/app.js` are
+what spend them.
