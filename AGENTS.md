@@ -138,7 +138,7 @@ Go only — neither the PDFs nor Python are needed to build, test or verify.
 make build        # bin/fisc
 make test         # always -race
 make pre-commit   # fmt, vet, narration, beadrefs, doccheck, test, lint, js
-make narration    # refuse history in Go comments and in the injected memories
+make narration    # refuse history in Go comments, in the beads and in the memories
 make beadrefs     # refuse a fisc-* id that names no bead
 make doccheck     # refuse a citation naming no section of this file
 make site         # static site into dist/ (gitignored)
@@ -156,6 +156,10 @@ make extract      # re-extract from PDFs; needs poppler-utils and git lfs pull
 - `narration`'s memory arm fails like any other arm **when `bd` can answer**, and
   warns and continues when it cannot. It can never be a CI gate, because memories
   live in the Dolt DB and in no git artifact.
+- Its **beads arm is a full gate**, because `.beads/issues.jsonl` is committed:
+  no `bd`, no Dolt and no network, the same standing `beadrefs` has. So the
+  target is two real gates and one advisory arm, and a green run means different
+  things for each.
 - `pre-commit` warns and continues when `golangci-lint` or node is absent.
   `make lint` and `make js` on their own still fail, because those are CI's
   required checks.

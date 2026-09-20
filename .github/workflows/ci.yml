@@ -166,10 +166,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # The Go arm reads committed source and is a real gate here. The memory
-      # arm warns and continues, because bd is not installed on this runner and
-      # the memories live in a Dolt database that no checkout carries -- so this
-      # job proves the source half only, which is the half CI can prove.
+      # Two of the three arms are real gates here: the Go arm reads committed
+      # source, and the beads arm reads .beads/issues.jsonl, which is committed
+      # too. The memory arm warns and continues, because bd is not installed on
+      # this runner and the memories live in a Dolt database that no checkout
+      # carries -- so this job proves everything git holds, and nothing else.
       - run: make narration
 
   beadrefs:

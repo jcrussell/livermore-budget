@@ -53,7 +53,8 @@ var idPattern = regexp.MustCompile(`fisc-[a-z0-9]+(?:\.[0-9]+)*`)
 // rather than against the walk, because a run over a narrower path set is a
 // narrower run and not a stale declaration.
 var exempt = map[string]string{
-	"tools/beadrefs/main_test.go": "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
+	"tools/beadrefs/main_test.go":  "its fixtures are ids that must NOT resolve, so a test for this command cannot be written out of real ones",
+	"tools/beadcheck/main_test.go": "its fixtures are synthetic bead records, and building them out of real ids would tie a prose check to whichever beads happen to exist",
 }
 
 // exemptIDs names tokens that are shaped like a bead id and are not one, with

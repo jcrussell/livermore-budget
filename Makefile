@@ -78,7 +78,19 @@ tidy: ## Tidy go.mod/go.sum
 # entry gone from the hand-maintained list below takes this red rather than
 # silently narrowing the scan.
 #
-# THE SECOND ARM READS THE MEMORIES, which bd prime injects into every session.
+# THE SECOND ARM READS THE COMMITTED BEAD EXPORT, and unlike the third it is a
+# full gate: .beads/issues.jsonl is a tracked file, so it needs no bd, no Dolt
+# server and no network, exactly as beadrefs does not. It runs before the memory
+# arm so that the two real gates report together and the advisory one is last.
+#
+# ITS PHRASE LIST IS NOT THE GO ARM'S and must not be made so. `Found by
+# /code-review` is refused in source and ASKED FOR in a commit message, and in a
+# bead it is provenance of a finding rather than a claim about the past: 109 of
+# the 680 issues carry it. The list also cannot take a bare past-tense verb,
+# because a bead naming its own requirement -- "the guard this bead asked for is
+# now paid for" -- is a true sentence six beads make. See tools/beadcheck.
+#
+# THE THIRD ARM READS THE MEMORIES, which bd prime injects into every session.
 # Same rule, worse placed: a memory's erratum arrives in context whether or not
 # anyone opens the file it is about. It is a second arm on this target rather
 # than a target of its own so that pre-commit gains no new step. The two print
@@ -107,8 +119,9 @@ tidy: ## Tidy go.mod/go.sum
 # target for it. Between them the target is a real gate over the tree and an
 # advisory check over the database.
 .PHONY: narration
-narration: ## Refuse review credits and comment errata in Go sources and memories
+narration: ## Refuse review credits and errata in Go sources, beads and memories
 	@go run ./tools/narration ./cmd ./internal ./pkg ./site ./tools
+	@go run ./tools/beadcheck .beads/issues.jsonl
 	@command -v bd >/dev/null 2>&1 || { \
 		echo "warning: bd not on PATH, skipping the memory errata check" >&2; \
 		exit 0; \
