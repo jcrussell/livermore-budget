@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+
 	"github.com/jcrussell/livermore-budget/internal/export"
 )
 
@@ -42,11 +44,13 @@ import (
 // which the walk also asks, so it is completeness read from the parent
 // rather than a second reading of the documents.
 //
-// AND WHAT THEY DO NOT REFUSE: a mark's cents is not guarded, nor which of
-// its step's declared tiers it stands at, nor how many of the declared
-// endpoints it names, and an id dropped from a column no later step opens
-// leaves no trace. The mutations, and which guard took each one, are in
-// docs/rung-walk-witness-evidence.md.
+// AND WHAT THEY DO NOT REFUSE, which is why the replay below exists: a
+// mark's cents is not guarded here, nor which of its step's declared tiers it
+// stands at, nor how many of the declared endpoints it names, and an id
+// dropped from a column no later step opens leaves no trace in this test.
+// Those four are
+// TestTheRungArtifactIsWhatTheReachPrimitivesAnswer's. The mutations, and
+// which guard took each one, are in docs/rung-walk-witness-evidence.md.
 func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -510,6 +514,333 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 	if len(residualYears) != len(doc.Columns) {
 		t.Errorf("%d of %d columns answer a residual mark, and every published column carries a group the fund schedule does not fully decompose", len(residualYears), len(doc.Columns))
 	}
+}
+
+// TestTheRungArtifactIsWhatTheReachPrimitivesAnswer holds every id and every
+// figure the artifact writes down to export.ReachOf, export.ResidualOf and
+// export.GapOf CALLED HERE, and never to a second run of rungsOf. A rung's
+// path and the step that answered it are taken as the artifact states them;
+// what that step's columns hold and what marks stand beside them are
+// recomputed from the documents, so a perturbation of what the emitter wrote
+// down has only one side moving.
+//
+// WHY THIS IS NOT THE RE-DERIVATION internal/check/check.go REFUSES. Two
+// spellings of one computation in one process witness nothing, and this is
+// not that. The primitives are held by their own fixture tests over
+// hand-written graphs in internal/export, which is the layer below; what is
+// spelled a second time here is the ASSEMBLY -- which column is asked of
+// which document on which side, which record answers for each id, and which
+// figures are written down. A bug in ReachOf is that layer's to catch, and a
+// bug in what rungsOf wrote down is this one's.
+//
+// THE FOUR MUTATIONS IT EXISTS FOR, none of which any other gate sees once
+// testdata/rungs.json is regenerated from the mutated walk: an id dropped
+// from a column no later step opens, a mark moved to another tier the step
+// declares, every derived mark's cents perturbed by one, and an endpoint
+// dropped from a residual's ends. The matrix is in
+// docs/rung-walk-witness-evidence.md.
+//
+// THE WINDOW IS REBUILT HERE TOO, and it has to be: a mark is arithmetic
+// over the chart a rung leaves on screen, so a replay that asked the
+// artifact for that chart would be asking the mutated side for the answer.
+// Each rung's chart is this test's own, built from its parent's, and the
+// overview the first rungs open from is export.Fold of the year's document.
+//
+// WHAT IT DOES NOT WITNESS, since the replay takes them as given: which
+// rungs exist at all -- the paths and the steps are the artifact's, and
+// their completeness is TestTheRungArtifactIsWhatGoComputes' parentage
+// guards -- and the primitives themselves being wrong.
+func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	spine, err := spineView(built)
+	if err != nil {
+		t.Fatal(err)
+	}
+	served, ok := built.Files[rungsServedPath]
+	if !ok {
+		t.Fatalf("buildAll ships no %s, so there is no rung answer to hold to the documents", rungsServedPath)
+	}
+	var doc rungsDoc
+	if err := json.Unmarshal(served, &doc); err != nil {
+		t.Fatalf("decode %s: %v", rungsServedPath, err)
+	}
+	var replayed, outwardIDs, flankIDs, residuals, gaps, markCents, endsPlural int
+	for _, col := range doc.Columns {
+		stems := stepStemsFor(spine, col.Stem)
+		read := func(stem string) export.Graph {
+			t.Helper()
+			g, err := export.DecodeGraph(built.Projections[stem])
+			if err != nil {
+				t.Fatalf("column %q: %s: %v", col.Stem, stem, err)
+			}
+			return g
+		}
+		documents := map[string]export.Graph{}
+		of := func(stem string) export.Graph {
+			if g, seen := documents[stem]; seen {
+				return g
+			}
+			documents[stem] = read(stem)
+			return documents[stem]
+		}
+		year := of(col.Stem)
+		// THE OVERVIEW IS export.Fold OF THE YEAR'S DOCUMENT, which is what
+		// shapeFor draws before anything is opened. The primitive is called
+		// here rather than overviewOf for the reason the walk is not re-run:
+		// overviewOf is the emitter's assembly.
+		overview, err := export.Fold(year, spine.RenderTiers)
+		if err != nil {
+			t.Fatalf("column %q: overview: %v", col.Stem, err)
+		}
+		// WHAT EACH RUNG LEAVES ON SCREEN AND WHAT IT WAS SHAPED FROM, this
+		// test's own, keyed by path so a child reads its parent's: the chart
+		// is the window this replay built and from is the document that
+		// rung's step drew, which is what a residual's ribbons come off where
+		// the window does not draw them.
+		screens, froms := map[string]export.Graph{}, map[string]export.Graph{}
+		// SHALLOWEST FIRST, so a parent's window exists before its children
+		// ask for it. The artifact's own order already is, by path string,
+		// and sorting rather than relying on that keeps the replay's
+		// prerequisite stated where it is needed.
+		order := slices.Clone(col.Rungs)
+		slices.SortStableFunc(order, func(a, b rung) int { return len(a.Path) - len(b.Path) })
+		for _, r := range order {
+			key := strings.Join(r.Path, " > ")
+			si := slices.IndexFunc(spine.Steps, func(x export.DrillStep) bool { return x.Key == r.Step })
+			if si < 0 {
+				t.Errorf("%s %s: step %q is not declared on the spine", col.Stem, key, r.Step)
+				continue
+			}
+			s := spine.Steps[si]
+			screen, from := overview, year
+			if len(r.Path) > 1 {
+				above := strings.Join(r.Path[:len(r.Path)-1], " > ")
+				var answered bool
+				if screen, answered = screens[above]; !answered {
+					t.Errorf("%s %s: opens under the path %q, which this column answers no rung for, so there is no chart to replay it against", col.Stem, key, above)
+					continue
+				}
+				from = froms[above]
+			}
+			opened, drawing := r.Path[len(r.Path)-1], of(stems[si])
+			draws, marks, next, err := replayRung(s, drawing, screen, from, opened)
+			if err != nil {
+				t.Errorf("%s %s: %v", col.Stem, key, err)
+				continue
+			}
+			screens[key], froms[key] = next, drawing
+			replayed++
+			if diff := cmp.Diff(draws, r.Draws); diff != "" {
+				t.Errorf("%s %s: the columns export.ReachOf answers over the documents are not the ones the artifact writes down (-recomputed +artifact):\n%s", col.Stem, key, diff)
+			}
+			if diff := cmp.Diff(marks, r.Marks); diff != "" {
+				t.Errorf("%s %s: the marks export.ResidualOf and export.GapOf answer are not the ones the artifact writes down (-recomputed +artifact):\n%s", col.Stem, key, diff)
+			}
+			for _, d := range draws {
+				switch d.Role {
+				case roleOutward:
+					outwardIDs += len(d.IDs) + len(d.Carried)
+				case roleFlank:
+					flankIDs += len(d.IDs) + len(d.Carried)
+				}
+			}
+			for _, m := range marks {
+				switch m.Role {
+				case export.RoleResidual:
+					residuals++
+					if len(m.Ends) > 1 {
+						endsPlural++
+					}
+				case export.RoleGap:
+					gaps++
+				}
+				if m.InCents+m.OutCents != 0 {
+					markCents++
+				}
+			}
+		}
+	}
+	// EACH OF THESE IS A SHAPE IN WHICH THE COMPARISONS ABOVE COMPARE
+	// NOTHING, and the corpus supplies the opposite of every one: a replay
+	// that answered no rung, columns holding no id on either side of the
+	// window, and the two marks, whose cents and whose endpoint list are
+	// three of the four mutations this test exists for. A count of zero
+	// against any of them is a PASS reported over an empty comparison.
+	if replayed == 0 {
+		t.Error("no rung was replayed, so nothing here was held to the documents")
+	}
+	if outwardIDs == 0 || flankIDs == 0 {
+		t.Errorf("%d outward id(s) and %d kept id(s) were recomputed, so one side of the window is compared against nothing and an id dropped from it could not be seen", outwardIDs, flankIDs)
+	}
+	if residuals == 0 || gaps == 0 {
+		t.Errorf("%d residual mark(s) and %d gap mark(s) were recomputed, and the corpus draws both, so a mark moved to another declared tier could not be seen", residuals, gaps)
+	}
+	if markCents == 0 {
+		t.Error("no recomputed mark carries a figure, so a perturbed cent could not be seen")
+	}
+	if endsPlural == 0 {
+		t.Error("no recomputed residual names more than one endpoint, so an endpoint dropped from a mark's ends could not be seen")
+	}
+}
+
+// replayRung is one rung recomputed from the primitives: what every column
+// the step declares holds, the marks that stand beside them, and the chart
+// the rung leaves on screen for its children to open from. It asks
+// rungWalker.answer's question a second time in this test's own words, over
+// the same export.ReachOf, export.ResidualOf and export.GapOf.
+//
+// THE REFUSALS answer MAKES ARE NOT REPEATED -- a neighbour beside the
+// opened node in a centre column, a flank that sends nothing in, a mark
+// surviving onto a kept tier. A corpus that provoked one of those would have
+// failed the walk before an artifact existed to replay, and those shapes
+// have refusal tests of their own; what is repeated here is only what gets
+// written down.
+func replayRung(s export.DrillStep, drawing, screen, from export.Graph, opened string) ([]drawnTier, []drawnMark, export.Graph, error) {
+	nearIsSource, outward, centre := s.Side == export.SideSource, slices.Clone(s.Tiers), len(s.Keep) > 0
+	var keptTiers []int
+	if centre {
+		var flank bool
+		if nearIsSource, outward, flank = export.Flank(s); !flank {
+			return nil, nil, export.Graph{}, fmt.Errorf("step %q keeps %v of tiers %v, which is not a flank", s.Key, s.Keep, s.Tiers)
+		}
+		idx := slices.Index(s.Tiers, s.From)
+		if keptTiers = s.Tiers[idx:]; nearIsSource {
+			keptTiers = s.Tiers[:idx+1]
+		}
+	}
+	// THE DOCUMENT IS ASKED FOR THE CENTRE AND EVERYTHING BEYOND IT, and the
+	// chart on screen for the flank and the centre on the other side, which
+	// is the pair of questions windowFor asks.
+	half := slices.Clone(outward)
+	if centre {
+		half = append([]int{s.From}, half...)
+	}
+	fresh, err := export.ReachOf(drawing, opened, nearIsSource, half)
+	if err != nil {
+		return nil, nil, export.Graph{}, fmt.Errorf("the document does not answer %q into tiers %v: %w", opened, half, err)
+	}
+	var kept export.Reach
+	if centre {
+		if kept, err = export.ReachOf(screen, opened, !nearIsSource, keptTiers); err != nil {
+			return nil, nil, export.Graph{}, fmt.Errorf("the chart on screen does not answer the flank of %q: %w", opened, err)
+		}
+	}
+	record := func(g export.Graph) map[string]export.GraphNode {
+		byID := map[string]export.GraphNode{}
+		for _, n := range g.Nodes {
+			byID[n.ID] = n
+		}
+		return byID
+	}
+	freshNodes, keptNodes := record(fresh.Drawn), record(kept.Drawn)
+	// THE KEPT HALF GOES IN WHOLE AND FIRST, so its record of the opened node
+	// is the one the window carries, and the fresh half's ribbons arrive at
+	// the ends the fold left them at.
+	window := export.IndexGraph(kept.Drawn)
+	for _, t := range outward {
+		for _, id := range fresh.At[t] {
+			window.Add(freshNodes[id])
+		}
+	}
+	if !centre {
+		window.Add(freshNodes[opened])
+	}
+	for _, l := range fresh.Drawn.Links {
+		if err := window.Link(l); err != nil {
+			return nil, nil, export.Graph{}, fmt.Errorf("the window of %q: %w", opened, err)
+		}
+	}
+	// WHAT THE CLIENT DRAWS BUT DOES NOT COUNT is the document's word and the
+	// step's: a node the document marks derived, or an endpoint the step
+	// declares a residual for. Sorting the ids first leaves both lists
+	// sorted, which is the order the artifact writes them in.
+	split := func(ids []string, byID map[string]export.GraphNode) (own, lent []string) {
+		own = []string{}
+		for _, id := range slices.Sorted(slices.Values(ids)) {
+			_, declared := s.Residual[id]
+			if byID[id].Derived || declared {
+				lent = append(lent, id)
+				continue
+			}
+			own = append(own, id)
+		}
+		return own, lent
+	}
+	draws := make([]drawnTier, 0, len(s.Tiers))
+	for _, t := range s.Tiers {
+		role, ids, byID := roleOutward, fresh.At[t], freshNodes
+		switch {
+		case centre && t == s.From:
+			role, ids, byID = roleCentre, []string{opened}, keptNodes
+		case slices.Contains(s.Keep, t):
+			role, ids, byID = roleFlank, kept.At[t], keptNodes
+		case !slices.Contains(outward, t):
+			return nil, nil, export.Graph{}, fmt.Errorf("step %q draws tier %d, which is neither its centre, a flank it keeps, nor a tier it opens into", s.Key, t)
+		}
+		own, lent := split(ids, byID)
+		draws = append(draws, drawnTier{Tier: t, Role: role, IDs: own, Carried: lent})
+	}
+	// THE MARKS GO ON LAST AND IN ORDER, the residual over the whole spliced
+	// window and the gap over the chart the residual left, which is the order
+	// shapeFor applies them in. A residual is carried only across a document
+	// switch, which is carryResidual's own gate.
+	residual := s.Residual
+	if s.Projection == "" {
+		residual = nil
+	}
+	var marks []drawnMark
+	drawn := window.Graph()
+	if c, ok, err := export.ResidualOf(drawn, from, drawing, opened, s.Tiers, residual); err != nil {
+		return nil, nil, export.Graph{}, fmt.Errorf("the residual of %q: %w", opened, err)
+	} else if ok {
+		if window, err = spliceMark(drawn, c); err != nil {
+			return nil, nil, export.Graph{}, fmt.Errorf("the residual of %q: %w", opened, err)
+		}
+		marks, drawn = append(marks, drawnMark(c.Mark)), window.Graph()
+	}
+	if c, ok, err := export.GapOf(drawn, opened, s.Tiers, s.Gaps); err != nil {
+		return nil, nil, export.Graph{}, fmt.Errorf("the gap of %q: %w", opened, err)
+	} else if ok {
+		if window, err = spliceMark(drawn, c); err != nil {
+			return nil, nil, export.Graph{}, fmt.Errorf("the gap of %q: %w", opened, err)
+		}
+		marks = append(marks, drawnMark(c.Mark))
+	}
+	slices.SortFunc(marks, func(a, b drawnMark) int { return strings.Compare(a.ID, b.ID) })
+	return draws, marks, window.Graph(), nil
+}
+
+// spliceMark is drawn with one mark applied: the ribbons it re-points taken
+// out by index, its nodes added and its ribbons merged in.
+//
+// THIS TEST'S OWN, NOT rungs.go's carry, for the reason the whole replay is
+// written twice: a seam shared with the emitter is one a mutation moves both
+// sides of. The two drifting apart is a red test rather than a quiet
+// agreement.
+func spliceMark(drawn export.Graph, c export.Carry) (*export.Chart, error) {
+	kept := export.Graph{Nodes: drawn.Nodes}
+	for i, l := range drawn.Links {
+		if !slices.Contains(c.Splice, i) {
+			kept.Links = append(kept.Links, l)
+		}
+	}
+	chart := export.IndexGraph(kept)
+	for _, n := range c.Nodes {
+		chart.Add(n)
+	}
+	for _, l := range c.Links {
+		if err := chart.Link(l); err != nil {
+			return nil, err
+		}
+	}
+	return chart, nil
 }
 
 // TestRungsAnswerAColumnTheDocumentDrawsNothingIn is the shape no committed
