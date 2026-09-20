@@ -70,4 +70,8 @@ const (
 	// Fact is one figure the city printed: a line of facts/facts.jsonl and of
 	// every published page shard.
 	Fact = "fact.schema.json"
+
+	// Manifest is data/extracted/<doc_id>/manifest.json, which tools/extract.py
+	// writes and internal/corpus reads.
+	Manifest = "manifest.schema.json"
 )

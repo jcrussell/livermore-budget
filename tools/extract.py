@@ -145,6 +145,68 @@ def geometry_json(payload: dict) -> bytes:
     return ("{\n" + ",\n".join(parts) + "\n}\n").encode()
 
 
+def check_against_schema(obj: dict, schema_name: str) -> None:
+    """Hold an object this script just wrote to the committed schema.
+
+    NOT A JSON SCHEMA IMPLEMENTATION, AND MUST NOT BECOME ONE. PyPI is
+    unreachable from the extraction environment and this file is standard
+    library only, so what runs here is the subset that catches the mistakes a
+    writer actually makes: a missing required key, a wrong JSON type, a value
+    outside a declared enum or const. Go validates the same file fully through
+    internal/corpus; this is the writing side refusing to emit what the reading
+    side would reject, which is the difference between failing at `make extract`
+    and failing at `fisc verify` three commands later.
+
+    THE SCHEMA IS THE SHARED ARTIFACT AND THIS READS IT RATHER THAN RESTATING
+    IT. A required-key list copied into this file would be the second spelling
+    the schema exists to remove.
+    """
+    path = REPO / "schema" / schema_name
+    try:
+        schema = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise SystemExit(f"cannot read {path}: {exc}") from exc
+
+    types = {
+        "object": dict, "array": list, "string": str,
+        "integer": int, "number": (int, float), "boolean": bool,
+    }
+
+    def fails(value, spec, where):
+        out = []
+        if "const" in spec and value != spec["const"]:
+            out.append(f"{where}: {value!r}, want {spec['const']!r}")
+        if "enum" in spec and value not in spec["enum"]:
+            out.append(f"{where}: {value!r} is not one of {spec['enum']}")
+        want = spec.get("type")
+        if isinstance(want, str) and want in types:
+            # bool is a subclass of int in Python and is not an integer here.
+            if want in ("integer", "number") and isinstance(value, bool):
+                out.append(f"{where}: {value!r} is a boolean, want {want}")
+            elif not isinstance(value, types[want]):
+                out.append(f"{where}: {type(value).__name__}, want {want}")
+        for key in spec.get("required", []):
+            if not isinstance(value, dict) or key not in value:
+                out.append(f"{where}: missing required key {key!r}")
+        if isinstance(value, dict):
+            for key, sub in spec.get("properties", {}).items():
+                if key in value:
+                    out.extend(fails(value[key], sub, f"{where}.{key}"))
+        if isinstance(value, list) and isinstance(spec.get("items"), dict):
+            for i, item in enumerate(value):
+                out.extend(fails(item, spec["items"], f"{where}[{i}]"))
+        return out
+
+    problems = fails(obj, schema, schema_name.removesuffix(".schema.json"))
+    if problems:
+        raise SystemExit(
+            "the manifest this run produced does not match "
+            + str(path.relative_to(REPO))
+            + ":\n  "
+            + "\n  ".join(problems[:10])
+        )
+
+
 def write_atomic(path: pathlib.Path, data: bytes) -> None:
     """Write via a temp file in the SAME directory, then rename.
 
@@ -415,6 +477,7 @@ def extract_doc(doc_id: str, pdf: pathlib.Path, out_root: pathlib.Path, version:
         "errors": errors,
         "artifacts": dict(sorted(artifacts.items())),
     }
+    check_against_schema(manifest, "manifest.schema.json")
     write_atomic(out / "manifest.json", canonical_json(manifest))
     return manifest
 

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/manifest.schema.json",
+  "title": "fisc extraction manifest",
+  "description": "data/extracted/<doc_id>/manifest.json. THE ONE CONTRACT IN THIS TREE BETWEEN TWO LANGUAGES: tools/extract.py writes it and internal/corpus reads it. Neither imports the other and neither shares a type, so this file is where they agree.",
+  "type": "object",
+  "required": [
+    "schema_version", "doc_id", "source_file", "source_sha256", "source_bytes",
+    "poppler_version", "extractor_version", "page_count", "blank_page_count",
+    "warnings", "errors", "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "description": "Pinned on both sides. A reader on the wrong version parses this file happily and then reports every page as \"no such page\", which is a documented NORMAL result -- so the version is what has to fail, loudly.",
+      "const": 2
+    },
+    "doc_id": { "type": "string", "minLength": 1 },
+    "source_file": { "type": "string", "pattern": "^data/pdf/.+\\.pdf$" },
+    "source_sha256": {
+      "description": "Computed by extract.py, which deliberately does NOT read data/sources.yaml: fisc verify cross-checks it against the registry, and two parties recording it independently is what makes that a real check.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "source_bytes": { "type": "integer", "minimum": 1 },
+    "poppler_version": { "type": "string", "minLength": 1 },
+    "extractor_version": { "type": "integer", "minimum": 1 },
+    "page_count": { "type": "integer", "minimum": 1 },
+    "blank_page_count": { "type": "integer", "minimum": 0 },
+    "warnings": {
+      "description": "Every distinct line poppler wrote to stderr. NOT failures: poppler has no structured error channel and exits 0 for a damaged xref and an unread metadata key alike. An empty errors array is not a promise that every page came out whole.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stage", "message", "count"],
+        "properties": {
+          "stage": { "type": "string", "enum": ["layout", "bbox", "pdfinfo"] },
+          "message": { "type": "string", "minLength": 1 },
+          "count": { "type": "integer", "minimum": 1 },
+          "pages": {
+            "description": "Absent for a document-level complaint.",
+            "type": "array",
+            "items": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "errors": {
+      "description": "One artifact the extractor could not produce. The page it names has NO artifact: extract.py writes nothing rather than something plausible and wrong.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stage", "page", "message"],
+        "properties": {
+          "stage": { "type": "string", "enum": ["layout", "bbox", "pdfinfo"] },
+          "page": {
+            "description": "0 for a document-level failure.",
+            "type": "integer",
+            "minimum": 0
+          },
+          "message": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "artifacts": {
+      "description": "Two substrates per page, both needed: pages/pNNNN.txt is pdftotext -layout, carrying the printed column grid in runs of spaces, and geometry/pNNNN.json is -bbox word boxes. THE KEY GRAMMAR IS PART OF THE CONTRACT -- a reader resolves a page by computing this path.",
+      "type": "object",
+      "propertyNames": { "pattern": "^(pages/p[0-9]{4}\\.txt|geometry/p[0-9]{4}\\.json)$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["bytes", "sha256"],
+        "properties": {
+          "bytes": { "type": "integer", "minimum": 0 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        }
+      }
+    }
+  }
+}
