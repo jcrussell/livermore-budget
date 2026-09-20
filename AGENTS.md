@@ -196,11 +196,11 @@ bd close <id> --reason "..."       # close with what actually happened
 - **An epic closing does not make its dependents workable.** Check before
   planning around one.
 - **Priority drifts.** Look for a bead whose `P1` contradicts its own note.
-- **A bead says what needs DOING, not what happened.** Git holds the history; a
-  bead that reads as a changelog buries the work under it. Keep a measurement
-  only where it is evidence a reader would otherwise re-derive or re-litigate,
-  and drop the commit shas, the account of what landed, and the corrections of
-  earlier notes.
+- **A bead says what needs DOING, not what happened** — *History's home is git*
+  applied to the tracker. A bead that reads as a changelog buries the work under
+  it. Drop the commit shas, the account of what landed, and the corrections of
+  earlier notes; keep a measurement only where it is evidence a reader would
+  otherwise re-derive or re-litigate.
 - **Correct a stale bead in place rather than annotating it.** A note saying the
   text above is wrong leaves the wrong text as the thing a session reads first.
   Where a closed bead's decision is reversed, `bd supersede` it with the one
@@ -392,12 +392,27 @@ Breaking one is a defect even when tests pass.
 - **Data and artifact paths are not symbols and stay** — `data/funds.yaml`,
   `testdata/pages/budget-p0067.txt`, `mappings/*.yaml`, `site/app.js`. Only a symbol's
   `.go` path goes.
-- **History's home is git.** No `Found by /code-review` credit in source, and no
-  errata — *"an earlier version of this comment said X"* adds a second claim,
-  about the past, that nothing can check. Where an erratum carries a rule, keep
-  the rule and drop the history.
-- The same applies to the injected memories, which `bd prime` delivers whether or
-  not anyone opens the file they are about.
+- **History's home is git.** ALL PROSE THIS PROJECT KEEPS STATES WHAT IS TRUE
+  NOW — a doc comment, a `docs/` page, this file, a bead's description or notes,
+  an injected memory, a README, a mapping's comment. A sentence about what a
+  passage, a declaration or a bead USED TO SAY is a second claim, about the past,
+  that nothing can check and nothing keeps in step, sitting exactly where a
+  reader looks for the present. So no errata — *"an earlier version of this
+  comment said X"* — and no `Found by /code-review` credit in source. Where an
+  erratum carries a rule, keep the rule and drop the history.
+- **So correct prose in place rather than annotating it.** A passage saying the
+  text above is wrong leaves the wrong text as the thing a reader meets first,
+  which is the whole of what annotating it was meant to fix.
+- **What survives the rule is a measurement**, and only where it is evidence a
+  reader would otherwise re-derive or re-litigate. That is a claim about the
+  present which is expensive to recover, not a record of what happened.
+- **The commit message is the exception, because it IS the history.** It states
+  what changed, what the mutation was and what went red. It is still a claim
+  about the tree rather than a diary: no account of what an earlier commit, bead
+  or comment said.
+- The rule reaches the injected memories for a reason worth keeping in view:
+  `bd prime` delivers them whether or not anyone opens the file they are about,
+  so a memory's erratum arrives in every session unasked.
 - **Do not insert code between a doc comment and its declaration.**
 - **Drop narration in the file you were already editing, never in a sweep** — and
   *drop* it rather than rewriting the comment around it.
