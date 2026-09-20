@@ -39,6 +39,15 @@
 // a folded column's hidden ids are not on the page for it to read -- and (f)
 // goes red naming it: that arm presses Enter on the tail the way a reader does
 // and reads the column the page then draws out.
+//
+// AND (f) COUNTS A TAIL IT WAS SHOWN AND COULD NOT EXPAND rather than walking
+// past it. expandable() offers the gesture only where THIS rung's step caps
+// the tail's own tier, so an aggregate that arrived inside a kept flank was
+// folded by the chart above, is drawn to the reader, and is refused -- and
+// every id behind it leaves this arm's reach with nothing said. No such tail is
+// drawn on the committed corpus, so the red path is forced from the checker
+// side: wrapping the harness's expandable so it answers false at one tier takes
+// (f) red naming the rung, the tail and the ids left behind it. fisc-2wsw.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -230,7 +239,7 @@ export async function checks() {
     const wrong = { reach: [], ribbons: [], written: [], gestures: [], banner: [], tails: [] };
     const seen = {
       states: 0, answered: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
-      tails: 0, ownMarks: 0, offscreen: 0, expansions: 0, revealed: 0,
+      tails: 0, ownMarks: 0, offscreen: 0, expansions: 0, revealed: 0, refused: 0,
     };
 
     for (const width of [3, 4]) {
@@ -475,14 +484,30 @@ export async function checks() {
           // measures is established again rather than assumed.
           await goTo(app, path);
           const want = answeredIDs(answer);
-          for (let done = 0; done < 32; done++) {
+          // MET BY NAME, EXPANDED BY PREDICATE, and the gap between the two is
+          // what this arm has to account for. isAggregate finds every tail the
+          // chart DREW; expandable answers for the ones the page will draw out,
+          // and it offers the gesture only where this rung's step caps that
+          // column -- so a tail folded into a kept flank by the chart above is
+          // shown to the reader and refused.
+          /** @type {any[]} */
+          let refused = [];
+          // THE CAP IS A BOUND ON THE LOOP AND NOT AN ANSWER, so a state that
+          // reaches it is reported rather than left: `refused` is only filled
+          // by the break, and a run that stopped counting mid-column would say
+          // "no tail was left folded" about a chart it never finished reading.
+          // An expansion removes the tail it draws out, so 32 is far past what
+          // any state here needs.
+          const LIMIT = 32;
+          let done = 0;
+          for (; done < LIMIT; done++) {
             const before = marksIn(chart);
-            const tail = before.find((/** @type {any} */ m) => app.expandable(m.__data__));
-            // A TAIL THE PAGE REFUSES TO EXPAND IS LEFT FOLDED rather than
-            // forced through expandTier: an aggregate inside a kept flank was
-            // folded by the chart above and this rung's gesture does not reach
-            // it, so expanding it here would measure a state no reader has.
-            if (!tail) break;
+            const shown = before.filter((/** @type {any} */ m) => app.isAggregate(m.__data__.id));
+            const tail = shown.find((/** @type {any} */ m) => app.expandable(m.__data__));
+            // A TAIL THE PAGE REFUSES IS NOT FORCED THROUGH expandTier, which
+            // would measure a state no reader can reach. It leaves the loop to
+            // be counted below instead.
+            if (!tail) { refused = shown; break; }
             const tier = tail.__data__.tier;
             const drawn = before.map((/** @type {any} */ m) => m.__data__.id);
             const hidden = [...want.keys()].filter((id) =>
@@ -517,6 +542,28 @@ export async function checks() {
                 `the chart did not already carry`);
             }
           }
+          if (done === LIMIT) {
+            wrong.tails.push(`${where}: the chart still offered a tail to expand after ` +
+              `${LIMIT} expansions, so what it was left holding was never read`);
+          }
+          // SHOWN AND COULD NOT IS NOT THE SAME AS NOT SHOWN, and the two must
+          // not leave by the same door. The arm's ok still needs an expansion
+          // and a revealed mark, so a run that met no tail at all is red on
+          // those counters; this is the other half -- a tail the reader can see
+          // whose members no gesture on this chart draws out, and which this
+          // arm therefore cannot hold to Go's answer at all.
+          const drawnNow = marksIn(chart).map((/** @type {any} */ m) => m.__data__.id);
+          for (const m of refused) {
+            seen.refused++;
+            const tier = m.__data__.tier;
+            const behind = [...want.keys()].filter((id) =>
+              want.get(id) === tier && !drawnNow.includes(id));
+            wrong.tails.push(`${where}: the tail at column ${tier} (${m.__data__.id}, ` +
+              `${JSON.stringify(m.__data__.label)}) is drawn and the page offers no gesture ` +
+              `that draws it out, so what it stands for is unaskable here -- ` +
+              `${behind.length} id(s) Go accounts for at that column reach no mark: ` +
+              `${behind.join(", ") || "(none)"}`);
+          }
         }
       }
       try { app.drillUp(0); } catch { /* a repaint that throws is reported by the state that hit it */ }
@@ -527,6 +574,10 @@ export async function checks() {
     // Go that fisc-phtp.2 would otherwise silence; `attributes`, `ribbons` and
     // `gestures` are the three that could each go to nothing while the other
     // two stayed green.
+    //
+    // `refused` IS THE ONE COUNTER THAT IS NOT AN ok CLAUSE, because it counts
+    // holes rather than comparisons: zero is its passing value, and what stops
+    // that zero from meaning "no tail was met" is `expansions`, which is one.
     const drove = seen.states > 0 && seen.marks > 0;
     out.push({
       name: `${col.label}: every node the chart lays out reaches a mark, and every mark is one Go accounts for`,
@@ -578,14 +629,16 @@ export async function checks() {
           `throw app.js caught and banners`,
     });
     out.push({
-      name: `${col.label}: a folded tail expands into the ids Go accounts for and no others`,
+      name: `${col.label}: a folded tail expands into the ids Go accounts for and no others, ` +
+        `and no tail is drawn that the page will not draw out`,
       ok: wrong.tails.length === 0 && drove && seen.expansions > 0 && seen.revealed > 0,
       detail: wrong.tails.length
-        ? `${wrong.tails.length} tail(s) standing for something else, ${firstOf(wrong.tails)}`
+        ? `${wrong.tails.length} tail(s) standing for something else or left folded, ${firstOf(wrong.tails)}`
         : `${seen.expansions} tail(s) expanded by Enter on the mark itself, drawing ` +
           `${seen.revealed} mark(s) that were behind one: every id Go accounts for at that ` +
           `column reached a mark, no mark it accounts for nowhere was drawn beside them, and ` +
-          `each tail drew as many as the words in it promised`,
+          `each tail drew as many as the words in it promised -- and ${seen.refused} tail(s) ` +
+          `were drawn that the page offered no way to draw out`,
     });
   }
   return out;
