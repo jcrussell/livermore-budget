@@ -3738,14 +3738,17 @@ function markGap(drawn, rung, mark) {
  *
  * WHY A CAP IS NEEDED AT ALL, and it is the half of fisc-ppkq that bead got
  * wrong. It says "rescaling is what makes special-revenue's 32 funds legible".
- * Measured against dist/data/fund-flows.json at 7ded1c6, laying the drilled
- * graph out with the shipped d3 at this file's own constants: rescaled to its
- * own total, that group still puts 22 of its 49 ribbons under one pixel,
- * because the concentration is WITHIN the group -- fund/200 alone is 34.9% of
- * it and the bottom two are 0.034%. Rescaling cannot fix a distribution.
+ * Measured on the window this page draws, FY2025-26's fund group at {0,2,3},
+ * laid out with the shipped d3 at this file's own constants: drawn out whole,
+ * special-revenue puts 9 of its 42 ribbons under one pixel and its smallest at
+ * 0.124px, because the concentration is WITHIN the group -- its largest fund
+ * is 34.9% of the column and its smallest 0.034%. Rescaling cannot fix a
+ * distribution.
  *
- * At cap 8 the same graph comes to 2 sub-pixel ribbons, and the capital group
- * from 4 to 1.
+ * At the step's cap of 8 the same window draws 19 ribbons with none under a
+ * pixel and its smallest at 3.971px; the capital group goes from 2 sub-pixel
+ * of 16 to none of 14. tools/jscheck/fold.mjs re-measures all six of those
+ * figures and fails if this sentence drifts from them.
  *
  * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
  * sum, fact ids and locators union, so the aggregate ribbon cites every page

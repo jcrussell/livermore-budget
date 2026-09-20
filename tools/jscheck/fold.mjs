@@ -18,6 +18,78 @@
 import {
   loadApp, goldenGraph, goldenFundFlows, goldenFundFlows2027, plannedFetch, settle, spineConfig,
 } from "./harness.mjs";
+// DRILLED IS drill.mjs's COLUMN SHAPE, not this file's: openedWide drives the
+// page through a real drill and needs the fixture that stands one up.
+import { COLUMNS as DRILLED, expandAll, openedWide } from "./drill.mjs";
+
+/**
+ * capColumn's own argument, re-measured on the window the page draws now.
+ *
+ * WHY IT IS HERE RATHER THAN IN THE COMMENT ALONE. site/app.js's capColumn
+ * opens "WHY A CAP IS NEEDED AT ALL" with six figures, and a figure in a
+ * comment that nothing re-measures is a claim a reader cannot check -- which
+ * is what AGENTS.md, "The node boundary" refuses. Those figures were taken
+ * against a {0,3,4} chart the merge retired and survived the change that made
+ * them describe nothing, because no arm read them.
+ *
+ * THE COLUMN IS THE ONE THE SENTENCE NAMES, FY2025-26, and no other: the two
+ * published columns draw different funds at different shares, so an arm that
+ * accepted either would let the sentence be true of the year it does not name.
+ *
+ * BOTH STATES THROUGH THE PAGE'S OWN SEAMS: capped is what the reader is first
+ * shown at the shipped budget, and whole is that same window after the
+ * expansion a double click performs, so neither side is a layout this file
+ * assembled for itself.
+ */
+async function capIsWhatMakesTheColumnDrawable() {
+  const col = DRILLED[0];
+  const measure = async (/** @type {string} */ group) => {
+    const app = await openedWide(3, [group], col);
+    const read = () => {
+      const w = app.layOut(app.projection).links.map((/** @type {any} */ l) => l.width);
+      return { ribbons: w.length, sub: w.filter((/** @type {number} */ x) => x < 1).length,
+        min: Math.min(...w).toFixed(3) };
+    };
+    const capped = read();
+    expandAll(app);
+    await settle();
+    const whole = read();
+    // The share of the opened column each fund carries, which is the
+    // "concentration is WITHIN the group" half of the claim.
+    const at3 = app.projection.nodes.filter((/** @type {any} */ n) => n.tier === 3);
+    const weight = (/** @type {string} */ id) => app.projection.links
+      .filter((/** @type {any} */ l) => l.source === id || l.target === id)
+      .reduce((/** @type {number} */ a, /** @type {any} */ l) => a + Math.abs(l.value_cents), 0);
+    const shares = at3.map((/** @type {any} */ n) => weight(n.id))
+      .sort((/** @type {number} */ a, /** @type {number} */ b) => b - a);
+    const sum = shares.reduce((/** @type {number} */ a, /** @type {number} */ b) => a + b, 0);
+    return { capped, whole, source: app.source,
+      top: (100 * shares[0] / sum).toFixed(1),
+      bottom: (100 * shares[shares.length - 1] / sum).toFixed(3) };
+  };
+  const sr = await measure("fund-group/special-revenue");
+  const cap = await measure("fund-group/capital");
+  // EACH PHRASE CARRIES ENOUGH OF ITS OWN SENTENCE TO BE UNIQUE, layout.mjs's
+  // rule: a bare includes("19") is satisfied by any of the places 19 appears.
+  const phrases = [
+    `${sr.whole.sub} of its ${sr.whole.ribbons} ribbons under one pixel`,
+    `its smallest at\n * ${sr.whole.min}px`,
+    `is ${sr.top}% of the column and its smallest ${sr.bottom}%`,
+    `draws ${sr.capped.ribbons} ribbons with none under a\n * pixel and its smallest at ${sr.capped.min}px`,
+    `from ${cap.whole.sub} sub-pixel\n * of ${cap.whole.ribbons} to none of ${cap.capped.ribbons}`,
+  ];
+  const missing = phrases.filter((q) => !sr.source.includes(q));
+  return [{
+    name: "capColumn quotes the figures the window it caps actually produces",
+    ok: missing.length === 0 && sr.capped.sub === 0 && cap.capped.sub === 0 && sr.whole.sub > 0,
+    detail: missing.length
+      ? `${missing.length} figure(s) app.js no longer produces: ${JSON.stringify(missing)}`
+      : `special-revenue ${sr.capped.ribbons} ribbons / ${sr.capped.sub} sub-pixel / ${sr.capped.min}px capped, ` +
+        `${sr.whole.ribbons} / ${sr.whole.sub} / ${sr.whole.min}px whole, largest fund ${sr.top}% and ` +
+        `smallest ${sr.bottom}% of the column; capital ${cap.capped.ribbons} / ${cap.capped.sub} capped, ` +
+        `${cap.whole.ribbons} / ${cap.whole.sub} whole -- every one of them quoted in capColumn's own sentence`,
+  }];
+}
 
 /**
  * The two fund-flows columns the page reaches and what the fold measures on
@@ -515,6 +587,7 @@ export async function checks() {
         : "the legend is empty",
     },
   );
+  out.push(...(await capIsWhatMakesTheColumnDrawable()));
   return out;
 }
 
