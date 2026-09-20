@@ -483,12 +483,14 @@ function stepDecomposes(step, id) {
 /**
  * The node whose subtree this page draws, or "" for the whole document.
  *
- * A REFUSAL AVOIDED RATHER THAN A PREFERENCE EXPRESSED. Spending draws tiers
- * {3,4} of a document that also carries eleven tier-0 revenue nodes, and
- * foldDocument refuses a node it cannot place -- so without this the page draws
- * nothing at all rather than drawing half of something. Measured before it
- * existed: "cannot draw fund-flows: node revenue/charges-for-services is tier 0
- * and no ancestor of it is a tier this page draws (3, 4)".
+ * A REFUSAL AVOIDED RATHER THAN A PREFERENCE EXPRESSED. foldDocument refuses a
+ * node it cannot place, so a chart whose columns cannot place every node of
+ * its document draws nothing at all rather than half of something, and a page
+ * that draws one subtree says which one here. Measured over
+ * testdata/fund-flows.golden.json: 11 of its 238 nodes sit at tier 0, so
+ * folding it whole at the fund step's {2,3,4,5} answers "cannot draw
+ * fund-flows: node revenue/charges-for-services is tier 0 and no ancestor of
+ * it is a tier this page draws (2, 3, 4, 5)".
  */
 const ROOT = CONFIG && typeof CONFIG.root === "string" ? CONFIG.root : "";
 
@@ -1385,11 +1387,12 @@ function filterLinks(doc, id, tiers, keeps) {
  * does not carry is broken outright. A node with no drawn ancestor while OTHER
  * nodes of its tier have one is broken too: the view found a column for that
  * tier, and this node's chain is what failed to reach it. A tier no node of
- * which can be placed is the view's own declaration -- the fund column under a
- * division opened at {4,5}, the revenue column under Spending's old {3,4} --
- * and its links are dropped as before. What this cannot see is a whole tier
- * losing its parents at once, which node-hierarchy-well-formed refuses Go-side;
- * the drill-down's line tier is the arm fisc-ko1j.10 added for exactly that.
+ * which can be placed is the view's own declaration -- fund-flows' 11 tier-0
+ * nodes under a division's {3,4,5}, where the 103 links touching one of them
+ * go quietly -- and its links are dropped as before. What this cannot see is a
+ * whole tier losing its parents at once, which node-hierarchy-well-formed
+ * refuses Go-side; the drill-down's line tier is the arm fisc-ko1j.10 added
+ * for exactly that.
  *
  * @param {FiscProjection} doc
  * @param {number[]} tiers
@@ -1566,10 +1569,10 @@ function drawnColumns() {
  *
  * THE FLOW COUNT IS A CLAIM ABOUT THE CHART, so it counts the marks that were
  * drawn rather than the rows the file holds. On a page drawn whole the two are
- * the same number and this is the packager's figure verbatim. On a page that
- * folds they are not: fund-flows.json holds 175 links over 145 nodes and the
- * Revenue chart draws 29 over 17, and printing the file's figures there would
- * have the page miscount what the reader can see.
+ * the same number and this is the packager's figure verbatim. On a chart that
+ * folds or opens a node they are not: fund-flows.json holds 412 links over 238
+ * nodes and the General Fund's window draws 13 over 15, and printing the
+ * file's figures there would have the page miscount what the reader can see.
  *
  * THE FACT TOTAL IS THE DRAWN DOCUMENT'S, and the word "drawn" is what two
  * documents add to the rule. "The document's" was one number while a page had
@@ -1582,11 +1585,11 @@ function drawnColumns() {
  * document is the one drawn, and the drawn document's own metadata.counts
  * below that. Folding cites nothing away is NOT why the total holds; it is true
  * only at tiers {0,2,4}, where the fund-to-division link that survives carries
- * the same facts as the object rows folding into it, and no shipped page folds
- * that way. Measured: Revenue at {0,2} folds the whole spending side into
- * self-loops and drops them, so 190 of the document's 239 cited facts are
- * behind what it draws; Spending at {3,4} carries the other 49. They partition
- * it exactly, which is what two pages splitting one document should do.
+ * the same facts as the object rows folding into it, and no step declares that
+ * set. Measured over testdata/fund-flows.golden.json: folded at {0,2,4} the
+ * drawn ribbons cite all 233 of the facts the file's own ribbons cite, and
+ * folded at the fund-group step's {0,2,3} they cite 184 -- the other 49 sit
+ * behind what that chart draws.
  *
  * The number is still the document's ON A PAGE SHOWING THE WHOLE DOCUMENT,
  * because THE GAP IS THE POINT -- the claim project.Counts.Facts is built on:
@@ -3565,7 +3568,7 @@ function markGap(drawn, rung) {
  * it and the bottom two are 0.034%. Rescaling cannot fix a distribution.
  *
  * At cap 8 the same graph comes to 2 sub-pixel ribbons, and the capital group
- * from 4 to 1. For comparison the drill-down page these replace ships 7.
+ * from 4 to 1.
  *
  * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
  * sum, fact ids and locators union, so the aggregate ribbon cites every page
@@ -3983,12 +3986,12 @@ function restackLinks(graph) {
  *
  * THE TIER SET IS THE CALLER'S, not the page's, and that distinction exists
  * because a page can open a node. A drilled document is folded to its step's
- * tiers -- {0,3} on Revenue against the page's {0,2} -- so aligning on the
- * page's set gives every tier-3 fund indexOf === -1, which d3 clamps to column
- * 0. Measured: that leaves the layer array with a hole and d3-sankey dies
- * inside its own ordering pass with "Cannot read properties of undefined
- * (reading 'sort')" -- a blank chart under a banner, on the first click of a
- * feature whose whole point is the click.
+ * tiers -- {0,2,3} on a fund group's window against the page's {0,2,5} -- so
+ * aligning on the page's set gives every tier-3 fund indexOf === -1, which d3
+ * clamps to column 0. Measured: that leaves the layer array with a hole and
+ * d3-sankey dies inside its own ordering pass with "Cannot read properties of
+ * undefined (reading 'sort')" -- a blank chart under a banner, on the first
+ * click of a feature whose whole point is the click.
  *
  * @param {number[]} tiers
  * @returns {(d: LaidNode) => number}
@@ -5992,12 +5995,15 @@ async function main() {
     });
   }
 
-  // BEFORE THE FIRST DRAW AND AFTER EVERYTHING IS WIRED. Which nodes a column
-  // holds is Go's answer now, so a page that cannot read it can draw no rung;
-  // fetching it first means a failure is a banner over a page that has drawn
-  // NOTHING, rather than a click that dies at a reader who has been looking at
-  // a chart. The wiring above still happens either way, for fisc-8cg's reason:
-  // an affordance disabled by a failed fetch stays disabled for the visit.
+  // BEFORE THE FIRST DRAW AND AFTER EVERYTHING IS WIRED. The answer is fetched
+  // and vetted here, and no function in this file dereferences a rung of it:
+  // the fold is the client's fitting step, so filterLinks and capColumn derive
+  // the membership each column is drawn with. It is a gate rather than an
+  // input, and fisc-2sow is where what it gates on is decided. Fetching
+  // first means a failure is a banner over a page that has drawn NOTHING,
+  // rather than a click that dies at a reader who has been looking at a chart.
+  // The wiring above still happens either way, for fisc-8cg's reason: an
+  // affordance disabled by a failed fetch stays disabled for the visit.
   if (RUNGS_PATH) {
     rungAnswers = await loadRungs(RUNGS_PATH);
     if (!rungAnswers) return;
