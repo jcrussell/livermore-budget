@@ -230,8 +230,17 @@ const EMPTY_DROP = { nodes: 18, links: 19 };
  * The same widened fund-group step on the one group whose document fills the
  * fourth column: [the spine's revenue categories | the General Fund group | its
  * funds | the divisions pp.167-170 decompose fund/100 into].
+ *
+ * NO RESIDUAL STANDS IN IT, which is why these are three fewer nodes and two
+ * fewer ribbons than the same window drew while the client derived its own
+ * marks. The answer this probe serves widens the columns and carries no mark
+ * (widenFundGroupAnswer), because what a residual carries depends on the tier
+ * set and only export.ResidualOf can say how. The three bands now account for
+ * every ribbon -- 12 + 1 + 23 = 36 -- where before two of the 38 spanned two
+ * columns at once, from an endpoint at tier 0 to a mark at tier 3, which is
+ * the shape layout.mjs's bands() throws on wherever it is asked.
  */
-const FILLED_WIDE = { nodes: 40, links: 38, bands: "10/1/25" };
+const FILLED_WIDE = { nodes: 37, links: 36, bands: "12/1/23" };
 
 /**
  * Every fact id a committed document publishes, read off its own links.
@@ -2415,19 +2424,30 @@ export async function checks() {
     }
     const asSeen = JSON.stringify(seen, Object.keys(seen).sort());
     const asWant = JSON.stringify(want, Object.keys(want).sort());
-    // AND WITH THE DECLARATION REMOVED FROM THE STEP, NOTHING IS RE-POINTED.
-    // The client spells no endpoint of its own, so the shipped set is the only
-    // source of the mark -- and what the declaration decides at {0,2,3} is
-    // WHERE two ribbons land, not whether their ends are drawn: the endpoints
-    // are marks of the chart above and the window keeps that flank either way.
-    // Undeclared, they run into the group, which then takes in more than it
+    // AND WITH THE MARK TAKEN OUT OF GO'S ANSWER, NOTHING IS RE-POINTED. The
+    // page spells no endpoint and no figure of its own, so the answer is the
+    // only source of the mark -- and what it decides at {0,2,3} is WHERE two
+    // ribbons land, not whether their ends are drawn: the endpoints are marks
+    // of the chart above and the window keeps that flank either way.
+    // Unanswered, they run into the group, which then takes in more than it
     // sends on by exactly the residual, with nothing on the page saying so;
-    // declared, they run past it onto a node of their own beside the funds and
+    // answered, they run past it onto a node of their own beside the funds and
     // the group's two sides agree. The link COUNT is identical in both, which
     // is why this measures the shortfall instead.
-    const { app: undeclared } = await opened(null, (c) => {
-      c.steps = PAGE.steps.map((st) => { const t = Object.assign({}, st); delete t.residual; return t; });
-    }, col);
+    //
+    // THE MUTATION MOVED WITH THE DERIVATION. It used to delete `residual`
+    // from the step, which was the client's only source for the mark; the
+    // step still declares the set -- the reasons on the mark's rationale are
+    // read from it -- and which endpoints are residual for THIS group is now
+    // export.ResidualOf's answer, so taking the mark out of the answer is the
+    // same perturbation one language over.
+    const unanswered = rungsAnswer();
+    for (const column of unanswered.columns) {
+      for (const rung of column.rungs) {
+        if (rung.marks) rung.marks = rung.marks.filter((m) => m.role !== "residual");
+      }
+    }
+    const { app: undeclared } = await opened({ [RUNGS_PATH]: { doc: unanswered } }, null, col);
     await at(undeclared, general);
     const sumAt = (/** @type {any} */ a, /** @type {"source"|"target"} */ end) =>
       a.projection.links.filter((/** @type {any} */ l) => l[end] === general)
@@ -2586,47 +2606,16 @@ export async function checks() {
         : "no residual node on the General Fund",
     });
 
-    // WHOLE OR NOTHING, ON THE GENERAL FUND, WHICH THE CORPUS CANNOT SHOW: the
-    // three groups whose transfers in are decomposed witness the "carries
-    // any, copies nothing" branch, and general witnesses the other. This
-    // builds the step document that decomposes general's transfer in whole
-    // -- one link, transfers/in -> fund/100, at the spine's own figure -- and
-    // expects the residual to drop exactly that link and keep the rest.
-    const transferIn = spineLink.get("transfers/in|" + general);
-    const decomposedIn = JSON.parse(JSON.stringify(stepDoc));
-    decomposedIn.links.push(Object.assign({}, transferIn, { target: "fund/100" }));
-    const { app: split } = await opened({ [`data/${col.step}.json`]: { doc: decomposedIn } }, null, col);
-    await at(split, general);
-    const sr = (() => {
-      const id = split.residualID(general);
-      const links = split.projection.links.filter((l) => l.source === id || l.target === id);
-      return { node: split.projection.nodes.find((n) => n.id === id), links,
-        in: links.filter((l) => l.target === id).reduce((sum, l) => sum + l.value_cents, 0),
-        out: links.filter((l) => l.source === id).reduce((sum, l) => sum + l.value_cents, 0) };
-    })();
-    const stillCarried = sr.links.some((l) => l.source === "transfers/in");
-    // AND WHERE IT WAS THE LAST ONE, THE MARK GOES. FY2026-27's general has no
-    // fund-balance draw -- its change in working capital is a contribution --
-    // so the transfer in is its whole residual, and decomposing that whole
-    // leaves nothing for a node to stand for. "A group with nothing to carry
-    // draws nothing" is carryResidual's own rule and this is the only place
-    // the General Fund reaches it; the other column keeps its draw and its
-    // node, so the two branches are both witnessed.
-    const wantLinks = want[general].carried - 1;
-    const wantIn = want[general].in - transferIn.value_cents;
-    out.push({
-      name: `${col.label}: an endpoint the fund-level document decomposes whole is not carried, even on the General Fund`,
-      ok: wantLinks === 0
-        ? !sr.node && sr.links.length === 0 && wantIn === 0
-        : Boolean(sr.node) && !stillCarried && sr.in === wantIn &&
-          sr.out === want[general].out && sr.links.length === wantLinks,
-      detail: `with transfers/in -> fund/100 at ${transferIn.value_cents} in the step document, the ` +
-        (sr.node
-          ? `residual ${stillCarried ? "STILL carries transfers/in" : "drops transfers/in"} and reads ` +
-            `in ${sr.in} (want ${wantIn}) out ${sr.out} over ${sr.links.length} flow(s), want ${wantLinks}`
-          : `residual node is gone, which is ${wantLinks === 0 ? "right: it had nothing else to carry" :
-            `WRONG: ${wantLinks} flow(s) should still be on it`}`),
-    });
+    // WHOLE OR NOTHING IS NOT THIS PAGE'S RULE ANY MORE, and the arm that
+    // drove it here is gone with it. It built a step document decomposing
+    // general's transfer in whole -- one link, transfers/in -> fund/100, at
+    // the spine's own figure -- and asserted the client dropped exactly that
+    // link from the residual. Which endpoints are residual for a group is
+    // export.ResidualOf's answer now, and internal/export's
+    // TestResidualOfIsCarryResiduals is where that document is handed to it.
+    // Driving the same mutation here would perturb a document the page was
+    // not answered against and measure the refusal that follows, which is a
+    // different claim and one the gap arms already make.
   }
 
   // ---------------------------------------------------------------- the chain
@@ -3565,6 +3554,14 @@ async function walkCategory(col) {
  * which is the declaration a step would carry the day one of these cells
  * drifted, and then asks markGap the question it would ask.
  *
+ * AND THE QUESTION IT ASKS IS NOW AGAINST GO'S FIGURE. The subtraction is
+ * still the client's -- it is the arithmetic of the chart that reached the
+ * screen -- but what it is held to is the mark the rung answer states, which
+ * is none here. So the refusal names the answer rather than the declaration:
+ * whether a shortfall has a declared reason is export.GapOf's question, at
+ * build time, and pkg/cmd/export's TestRungsRefuseADriftTheStepDoesNotDeclare
+ * is where that one fires.
+ *
  * THE SIDES IT COMPARES ARE SIGNED, AND THAT IS THE WHOLE OF WHY THIS PASSES.
  * A reduction is drawn forward at its magnitude, so a Property Taxes centre
  * measured after markContra takes $103,430,092 and sends $69,459,414 -- the
@@ -3605,7 +3602,7 @@ async function gapAtTheCentre() {
     out.push({
       name: `${col.label} category: the window's centre balances under markGap's own arithmetic, and a cent of drift is refused by name`,
       ok: drew === "drew" && marks.length === 0 && refused === "failed" &&
-        said.includes("that no declaration on this step accounts for"),
+        said.includes("100 cents where the rung answer states 0"),
       detail: `with an empty gap map declared the click came to "${drew}" and the centre drew ` +
         `${marks.length} gap mark(s); with the spine's cell for it moved by $1.00 it came to ` +
         `"${refused}"` + (said ? `, saying "${said}"` : " and said nothing"),
@@ -4160,13 +4157,25 @@ async function objectCategoryChecks() {
   });
   const link = (/** @type {string} */ a, /** @type {string} */ b, /** @type {number} */ v) =>
     ({ source: a, target: b, value_cents: v, kind: "external", fact_ids: [], locators: [] });
-  const refusedBy = (/** @type {any} */ drawnDoc, /** @type {any} */ gaps) => {
+  // THE MARK IS AN ARGUMENT NOW, AND THAT IS THE CHANGE THESE ARMS RECORD.
+  // Which node has a gap, which column it stands in and what it is worth are
+  // export.GapOf's answer, written onto the rung; what markGap still does is
+  // subtract the chart that reached the screen and refuse one that does not
+  // come to the figure it was answered. So each case below states the answer
+  // it drives the page with, and the first is a chart whose shortfall NO mark
+  // accounts for.
+  const refusedBy = (/** @type {any} */ drawnDoc, /** @type {any} */ gaps, /** @type {any} */ mark) => {
     try {
-      return { threw: "", got: app.markGap(drawnDoc, { id: centre, step: Object.assign({}, step, { gaps }) }) };
+      return { threw: "",
+        got: app.markGap(drawnDoc, { id: centre, step: Object.assign({}, step, { gaps }) }, mark) };
     } catch (e) {
       return { threw: String((e && e.message) || e), got: null };
     }
   };
+  // The gap Go answers for a $40 shortfall: at the last column the step draws,
+  // because the money is short LEAVING the centre.
+  const answered = { id: "gap/" + centre, role: "gap", tier: step.tiers[step.tiers.length - 1],
+    in_cents: 4000 };
   const balanced = chart([link("fund-group/general", centre, 10000),
     link(centre, "dept/patrol", 10000)]);
   const short = chart([link("fund-group/general", centre, 10000),
@@ -4180,14 +4189,14 @@ async function objectCategoryChecks() {
   const withoutCentre = { projection: "department-spending",
     nodes: balanced.nodes.filter((n) => n.id !== centre),
     links: [link("fund-group/general", "dept/patrol", 10000)] };
-  const absent = refusedBy(withoutCentre, declared);
-  const withReason = refusedBy(short, declared);
+  const absent = refusedBy(withoutCentre, declared, answered);
+  const withReason = refusedBy(short, declared, answered);
   const ties = refusedBy(balanced, declared);
   const none = refusedBy(short, undefined);
   out.push({
-    name: "a shortfall the step declares no reason for is refused by name; a declared one is drawn, and a step declaring no gap at all is left alone",
-    ok: /no declaration on this step accounts for/.test(undeclared.threw) &&
-      /\$40/.test(undeclared.threw) &&
+    name: "a shortfall no mark of the answer accounts for is refused by name; an answered one is drawn at the answer's figure, and a step declaring no gap at all is left alone",
+    ok: /4000 cents where the rung answer states 0/.test(undeclared.threw) &&
+      /\$100 into/.test(undeclared.threw) && /draws \$60/.test(undeclared.threw) &&
       /nothing to be stated against/.test(absent.threw) &&
       withReason.threw === "" && withReason.got.nodes.length === 4 &&
       withReason.got.links.length === 3 &&
@@ -5118,6 +5127,14 @@ async function widenedColumns() {
         if (rung.step !== "fund-group") continue;
         rung.draws.push({ tier: 4, role: "outward",
           ids: rung.path[0] === "fund-group/general" ? depts.ids.slice() : [] });
+        // AND NO MARKS, because a fourth column changes what a residual
+        // carries and only Go can say how: at {0,2,3} the group's parts
+        // publish no outflow and the mark carries an inflow alone, and at
+        // {0,2,3,4} they publish one, so export.ResidualOf would carry the
+        // outflow side too. This fixture widens the columns; it is not a
+        // second ResidualOf, and a half-answered mark would draw a centre
+        // whose two sides disagree. These arms are about the column.
+        delete rung.marks;
       }
     }
     return answer;

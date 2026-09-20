@@ -61,28 +61,29 @@
 // step's declaration; both are measured against the size of the column Go
 // answers, so neither side of that comparison is the other's.
 //
-// AND THE MARKS THE CLIENT ADDS OF ITS OWN: the residual carryResidual stands
-// beside the opened node's parts and the gap markGap states, each by id, tier
-// and the cents that arrive at it and leave it, against the rung's `marks`,
-// complete both ways -- a mark Go answers that the client does not draw and
-// one the client draws that Go does not answer are the same disagreement. Read
-// on the fitted chart AND on the expanded one, which is where the client's
-// half of "a mark is fold-invariant" is witnessed: Go answers a rung's marks
-// once for every way it can be fitted. The marks' prose is not compared here;
-// drill.mjs pins it. Every cent on this chart is the client's arithmetic, so
-// this arm is a cross-language comparison like the rest.
+// AND THE MARKS ARM IS GONE THE SAME WAY THE MEMBERSHIP ONE IS. It compared
+// each mark the client added of its own -- by id, role, tier and the cents
+// summed over the chart's ribbons -- against the rung's `marks`, and every one
+// of those four now comes off that same list: carryResidual and markGap read
+// which mark exists, where it stands and what it is worth rather than working
+// them out. What holds them is on both sides of this file instead. The page
+// refuses a chart whose carried ribbons do not come to the figure it was
+// answered, which is what keeps a mark's height accounted for; drill.mjs pins
+// the residual's two figures per column by hand off the goldens, and its
+// prose, its endpoints and its layer with them.
 //
-// MUTATION: perturb a mark's in_cents by 1, or delete the mark, and the marks
-// arm is red naming the rung and the mark. Narrow a step's declared cap in
-// data.go and the fold arm is red on the column that folds on the wrong side
-// of cap + 1. Blind walkAt -- return an empty map -- and every counter goes to
-// zero and every arm is red on its own counter rather than green with nothing
-// compared.
+// MUTATION: narrow a step's declared cap in data.go and the fold arm is red on
+// the column that folds on the wrong side of cap + 1; drop a tier from a
+// step's `tiers` and the column arm is red on the order. Blind walkAt --
+// return an empty map -- and every counter goes to zero and every arm is red
+// on its own counter rather than green with nothing compared.
 //
-// AND THE MUTATION THIS FILE NO LONGER CATCHES, which is where a removed id is
-// now seen instead: taking one out of a column's `ids` in testdata/rungs.json
-// takes the mark off the chart, and the pinned mark counts in chart.mjs and
-// drill.mjs go red rather than anything here.
+// AND THE TWO MUTATIONS THIS FILE NO LONGER CATCHES, with where each is seen
+// instead. Taking an id out of a column's `ids` in testdata/rungs.json takes
+// the mark off the chart, and the pinned mark counts in chart.mjs and drill.mjs
+// go red. Perturbing a mark's in_cents leaves the page unable to carry the
+// ribbons that come to it, which it refuses by name -- so every state arm in
+// chart.mjs reddens on a chart that did not draw.
 //
 // COMPLETENESS BOTH WAYS, OVER THE EXPAND-THEN-OPEN SPACE. The space is named
 // because a count over the wrong one reads as coverage it is not (fisc-22qj):
@@ -112,10 +113,6 @@ const STEPS = new Map(stepShapes().map((s) => [s.key, s]));
 /** @param {string[]} path */
 const keyOf = (path) => path.join(" > ");
 
-// A unit separator rather than a comma or a space, because a node id carries
-// both and a list joined on one of those compares equal to a different list.
-const SEP = "\u001f";
-
 /** The cap a step declares for one tier, or 0 where it declares none. */
 function capFor(step, tier) {
   const shape = STEPS.get(step);
@@ -128,46 +125,9 @@ function capFor(step, tier) {
 const widenOf = (step) => (STEPS.get(step) || {}).widen || [];
 
 /**
- * The gap is drawn on one year only -- FY2026-27's services-and-supplies is
- * the one cell the two schedules print apart -- so a column pinned to draw
- * none must compare none, and one pinned to draw a gap must compare one.
- * drill.mjs pins which column that is, as gapCents.
- */
-const drawsAGapIn = (col) => Boolean(col.object.gapCents);
-
-/**
- * The client's own marks on the chart on screen, spelled the way the
- * artifact spells them: id, role, tier, and the cents that arrive at each
- * and leave it, summed over the chart's ribbons. Every node of the chart is
- * read and not only those at an active tier, because both marks index the
- * step's declared tiers and a mark at a column the budget dropped is a
- * placement to compare, not one to overlook.
- * @param {any} app
- */
-function marksOn(app) {
-  /** @type {{id: string, role: string, tier: number, in_cents: number, out_cents: number}[]} */
-  const marks = [];
-  for (const n of app.projection.nodes) {
-    if (!app.isResidual(n.id) && !app.isGap(n.id)) continue;
-    let inCents = 0;
-    let outCents = 0;
-    for (const l of app.projection.links) {
-      if (l.target === n.id) inCents += l.value_cents;
-      if (l.source === n.id) outCents += l.value_cents;
-    }
-    marks.push({ id: n.id, role: n.role, tier: n.tier, in_cents: inCents, out_cents: outCents });
-  }
-  return marks.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-}
-
-/** @param {{id: string, role: string, tier: number, in_cents?: number, out_cents?: number}} m */
-const spellMark = (m) => `${m.id} (${m.role}) at tier ${m.tier}, in ${m.in_cents || 0} out ${m.out_cents || 0}`;
-
-/**
  * What the client drew for the rung on screen: its tiers, and for every tier
  * which document nodes it draws as the opened node's own parts, which it draws
- * but does not count as one, and how many its folded tail says it stands for;
- * and the marks the client added of its own.
+ * but does not count as one, and how many its folded tail says it stands for.
  * @param {any} app
  */
 function drawn(app) {
@@ -194,7 +154,7 @@ function drawn(app) {
     }
     byTier[t] = { ids, carried, hidden };
   }
-  return { tiers: app.activeTiers().slice(), byTier, marks: marksOn(app) };
+  return { tiers: app.activeTiers().slice(), byTier };
 }
 
 /**
@@ -276,9 +236,6 @@ export async function checks() {
       let budgetDropped = 0;
       let capHeld = 0;
       let foldsEngaged = 0;
-      let marksCompared = 0;
-      let residualsCompared = 0;
-      let gapsCompared = 0;
       for (const [key, { step, fitted, whole }] of seen) {
         const want = expected.get(key);
         if (!want) {
@@ -305,25 +262,6 @@ export async function checks() {
           wrong.push(`${where} draws tiers ${fitted.tiers.join(",")}, Go answers ${wantTiers.join(",")}` +
             (stray.length ? `, and ${stray.join(",")} is not a column step ${want.step} declares a widening` : ""));
         }
-        // THE MARKS ARE ONE LIST ON BOTH SIDES, BY ID, TIER AND CENTS, so a
-        // mark Go answers that the client does not draw, one the client draws
-        // that Go does not answer, and one placed or sized differently are all
-        // the same disagreement. Read on the fitted chart and on the expanded
-        // one, because Go answers a rung's marks ONCE however it is fitted.
-        const wantMarks = (want.marks || []).slice().sort((/** @type {any} */ a, /** @type {any} */ b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-        const wantSpelled = wantMarks.map(spellMark);
-        for (const [how, got] of [["fitted", fitted.marks], ["expanded", whole.marks]]) {
-          const gotSpelled = got.map(spellMark);
-          if (wantSpelled.join(SEP) === gotSpelled.join(SEP)) continue;
-          const missing = wantSpelled.filter((m) => !gotSpelled.includes(m));
-          const extra = gotSpelled.filter((m) => !wantSpelled.includes(m));
-          wrong.push(`${where}, ${how}: app.js draws ${got.length} mark(s) of its own and Go answers ${wantMarks.length}` +
-            (missing.length ? `; Go answers and app.js does not draw: ${missing.join("; ")}` : "") +
-            (extra.length ? `; app.js draws and Go does not answer: ${extra.join("; ")}` : ""));
-        }
-        marksCompared += wantMarks.length * 2;
-        residualsCompared += wantMarks.filter((/** @type {any} */ m) => m.role === "residual").length;
-        gapsCompared += wantMarks.filter((/** @type {any} */ m) => m.role === "gap").length;
         for (const d of want.draws) {
           const mine = whole.byTier[d.tier];
           if (!mine) continue; // a column this budget dropped, reported above
@@ -383,17 +321,14 @@ export async function checks() {
       out.push({
         name: `${col.label} at ${width} columns: what the client still works out for itself is what Go computed`,
         ok: wrong.length === 0 && flankDrawn > 0 &&
-          tiersCompared > 0 && capHeld > 0 && foldsEngaged > 0 && marksCompared > 0 &&
-          residualsCompared > 0 && expansions > 0 && gapsCompared > 0 === drawsAGapIn(col),
+          tiersCompared > 0 && capHeld > 0 && foldsEngaged > 0 && expansions > 0,
         detail: wrong.length === 0
           ? `over ${column.rungs.length} rung(s), read with every fold expanded ` +
             `(${expansions} expansion(s) over the walk): ${tiersCompared} column(s) drawn in Go's ` +
             `order, ${budgetDropped} dropped as a widening this budget cannot afford, ` +
             `${flankDrawn} of them a kept flank the page drew something in; ${capHeld} column(s) ` +
             `held to a declared cap, ${foldsEngaged} of them folded to it with a tail standing for ` +
-            `exactly the rest; ${marksCompared} mark comparison(s) of the client's own, ` +
-            `${residualsCompared} of them a residual and ${gapsCompared} a gap (the column ` +
-            `${drawsAGapIn(col) ? "draws one" : "draws none"})`
+            `exactly the rest`
           : `${wrong.length} disagreement(s):\n      ${wrong.join("\n      ")}`,
       });
       out.push({

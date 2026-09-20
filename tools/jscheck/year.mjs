@@ -15,7 +15,7 @@ import { join } from "node:path";
 
 import {
   loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, goldenGraph2027, goldenFundFlows,
-  goldenFundFlows2027, repoRoot, RUNGS_PATH,
+  goldenFundFlows2027, repoRoot, RUNGS_PATH, rungsAnswer,
 } from "./harness.mjs";
 
 /**
@@ -616,6 +616,19 @@ async function chainedYears(plan, paths) {
     description: "Opened.",
   }];
   config.rungs = RUNGS_PATH;
+  // THIS FIXTURE'S OWN ANSWER, because app.js reads which nodes each column
+  // holds out of one and refuses a path answered under another step's key.
+  // Both years are served the SAME two documents here -- the difference this
+  // file is about is the year control and the per-year step path, not the
+  // shaping -- so both columns are answered from the committed FY2025-26
+  // rungs of the step this one stands in for, under this fixture's key. The
+  // marks go with it: the step declares neither a residual nor a gap, and an
+  // answer carrying one would draw a mark no declaration here accounts for.
+  const rungs = rungsAnswer().columns.find((c) => c.stem === "sankey").rungs
+    .filter((r) => r.step === "fund-group")
+    .map((r) => ({ path: r.path, step: "group", draws: r.draws }));
+  const answer = { schema_version: 5, columns: [
+    { stem: "sankey", rungs }, { stem: "sankey-2027", rungs }] };
   const stepPaths = Object.assign(
     { sankey: "data/fund-flows.json", "sankey-2027": "data/fund-flows.json" }, paths || {});
   config.years = config.years.map((y) => Object.assign({}, y, {
@@ -626,6 +639,7 @@ async function chainedYears(plan, paths) {
     "data/sankey.json": { doc },
     "data/sankey-2027.json": { doc },
     "data/fund-flows.json": { doc: goldenFundFlows() },
+    [RUNGS_PATH]: { doc: answer },
   }, plan || {}));
   const app = loadApp({ config, fetch });
   app.dom.document.getElementById("flow-table").selectable = { tbody: app.dom.document.node() };

@@ -195,6 +195,34 @@
  * @property {string} step  the key of the step that opened the last node
  * @property {FiscDrawnTier[]} draws  every column the window draws, in the
  *   order it draws them
+ * @property {FiscDrawnMark[]} [marks]  the marks the client adds to the window
+ *   that no document prints, sorted by id; omitted where the rung has none
+ */
+
+/**
+ * One column of one rung: every node it holds, unfolded. How many of them a
+ * viewport leaves room for is this page's own (capColumn).
+ *
+ * `ids` is written even when empty, so a column answered with nothing is told
+ * apart from a column not answered at all; `carried` is omitted when empty,
+ * so a reader that compared undefined would refuse every column with no mark
+ * beside its parts.
+ * One mark the client draws on a rung that no page prints: the residual
+ * carryResidual stands beside the opened node's parts and the gap markGap
+ * states. Which mark exists, the column it stands in and the cents that arrive
+ * at it and leave it are Go's; the words are this page's, because they are
+ * built from labels and citations the walk does not decode.
+ *
+ * `ends` is a residual's alone -- the endpoints of the chart above whose
+ * flows it carries, sorted -- and a gap has exactly one of `in_cents` and
+ * `out_cents`, which is the side the short one stands on.
+ * @typedef {Object} FiscDrawnMark
+ * @property {string} id
+ * @property {string} role  residual or gap
+ * @property {number} tier
+ * @property {number} [in_cents]
+ * @property {number} [out_cents]
+ * @property {string[]} [ends]
  */
 
 /**
@@ -1532,21 +1560,39 @@ function rungKey(stem, path) {
  * of it now, so a path it does not answer is a chart this page cannot shape --
  * and says so, rather than drawing one filtered to nothing.
  *
- * THE STEM IS THE SPINE'S AND NOT THE STEP'S. A column of the answer is one
- * published year, named by the document the year's own overview is drawn from,
- * which is docAt(0); the documents the steps below it draw are the rung's
- * business and not the key's.
+ * THE STEM IS THE YEAR'S AND NOT THE DOCUMENT'S NAME. A column of the answer
+ * is one published year, keyed by CONFIG.years[].stem -- which is what the
+ * packager names a column of the artifact and what the year control switches
+ * on. A fetched document's own `projection` field is the PROJECTION's name and
+ * is the same string in every year: both spine files declare "sankey", so a
+ * key taken from there answers every year out of the first year's column. Its
+ * memberships mostly coincide and its figures do not, which is how that was
+ * found -- the residual beside FY2026-27's General Fund came to $486,735
+ * against an answer stating FY2025-26's $1,514,554.
  *
+ * AND THE STEP IS CHECKED, NOT ONLY THE PATH. A rung is keyed by the year and
+ * the nodes opened, and a config declaring a different step for that path is a
+ * config the answer was not computed against: its columns, its caps, its
+ * residual set and its gaps are all another declaration's. Unchecked, a page
+ * whose step declares no residual at all still drew the one the answer carries
+ * for the step it was computed from.
+ *
+ * @param {string} step the key of the step that opened the last rung
  * @returns {FiscRung}
  */
-function answeredRung() {
-  const stem = (docAt(0) || {}).projection || "";
+function answeredRung(step) {
+  const stem = shownYear ? shownYear.stem : "";
   const path = drilled.map((r) => r.id);
   const answer = rungAnswers ? rungAnswers.get(rungKey(stem, path)) : null;
   if (!answer) {
     throw new Error("cannot draw " + stem + ": this page opened " + path.join(" > ") +
       ", and the rung answer it was given names no such path, so there is nothing " +
       "to say which nodes each column holds");
+  }
+  if (answer.step !== step) {
+    throw new Error("cannot draw " + stem + ": this page opened " + path.join(" > ") +
+      " under step " + step + ", and the rung answer for that path was computed under step " +
+      answer.step + "; the declaration this page was handed is not the one it was answered from");
   }
   return answer;
 }
@@ -2697,7 +2743,7 @@ function shapeFor(doc) {
   // side the step declares and answered every rung once (AGENTS.md, "Go vets,
   // JavaScript renders"), and what is left here is the fitting -- the cap, the
   // fold, the splice and the marks.
-  const answer = answeredRung();
+  const answer = answeredRung(step.key);
   // A WINDOW OR A SIDE, AND THE STEP SAYS WHICH. A step that keeps a flank
   // draws two half-charts spliced on the node the reader clicked; one that
   // keeps none draws a single filtered chart at the columns it declares.
@@ -2717,7 +2763,14 @@ function shapeFor(doc) {
   // about the whole drawn chart: what the opened node takes in against what it
   // sends out, once everything that is going to stand beside it does. Only
   // markContra follows, and it reclassifies ribbons rather than moving a cent.
-  return markContra(markGap(carryResidual(drawn, docAt(drilled.length - 1), rung), rung), doc);
+  // THE MARKS ARE READ OFF THE ANSWER AND APPLIED IN shapeFor'S OWN ORDER,
+  // which is the order Go answered them in: the residual over the whole
+  // spliced window and the gap over the chart the residual left.
+  const marks = answer.marks || [];
+  const residual = marks.find((m) => m.role === "residual");
+  const gap = marks.find((m) => m.role === "gap");
+  return markContra(
+    markGap(carryResidual(drawn, docAt(drilled.length - 1), rung, residual), rung, gap), doc);
 }
 
 /**
@@ -3337,25 +3390,27 @@ function isCarried(id) {
  * through it. Conservative, never wrong, and free of a branch for the
  * one-fund case that nothing published would justify.
  *
- * THE NODE SET IS THE CHECK'S DECLARATION, READ OFF THE STEP. step.residual is
- * check.ResidualNodes() as the packager shipped it, ids to reasons; this file
- * spells no endpoint, and it carries each reason into the node's rationale so
- * the reader is told why a flow has no fund in the words the check declares
- * it in. Which of those endpoints are residual for THIS group is the
- * documents' own answer, under the same whole-or-nothing rule the check
- * applies: a declared endpoint's link into the group is carried only where
- * the step document carries NOTHING from that endpoint into the group's
- * parts, because where it carries any it carries all of it -- transfers in
- * reach eight funds of three groups to the cent, and copying those links too
- * would draw 21,045,597 twice (FY2025-26, dollars). A split is a finding the
- * check reports; this file does not look for one.
+ * WHICH ENDPOINTS, WHICH COLUMN AND WHAT FIGURE ARE GO'S ANSWER, and this
+ * file reads them off the rung's mark rather than working them out. A
+ * residual's cents is a DIFFERENCE between two documents, which is not a sum
+ * over published summands and so is not covered by the licence that lets this
+ * page add up a folded ribbon (fisc-lwh5): export.ResidualOf computes it, and
+ * the walk writes the mark's ends, its tier and its two figures into the rung
+ * answer. What is left here is the drawing -- which ribbons of the chart above
+ * are re-pointed onto the mark, where its endpoints stand, and the words.
  *
- * THE OUTFLOW SIDE ONLY WHERE THE STEP DOCUMENT DECOMPOSES THE GROUP -- where
- * it carries a flow out of one of the group's parts. Every other group's money
- * ends at its funds, which publish no outflow; absent is not zero, and drawing
- * capital's transfers out as residual against an outflow of nothing would
- * state an identity no document holds. On the committed corpus that is
- * general alone, in both columns.
+ * AND THE RIBBONS ARE HELD TO THE FIGURE. The ribbons this re-points are the
+ * published ones the page already holds; the mark's size is Go's. So they are
+ * summed and compared, and a disagreement is refused by name rather than
+ * drawn: a mark sized from the answer over ribbons that come to something else
+ * is a node taller or shorter than the flows under it, with nothing saying so.
+ * That comparison is not a second derivation -- Go's figure is a difference
+ * across two documents and this is the arithmetic of what reached the screen.
+ *
+ * THE REASONS ARE STILL THE STEP'S. step.residual is check.ResidualNodes() as
+ * the packager shipped it, ids to reasons, and each reason is carried into the
+ * node's rationale so the reader is told why a flow has no fund in the words
+ * the check declares it in.
  *
  * THE IMBALANCE IS THE POINT. The node's inflow and outflow differ by
  * construction -- general's in FY2025-26 is 1,514,554 in and 14,737,222 out --
@@ -3376,42 +3431,35 @@ function isCarried(id) {
  * would read as capital being decomposed and silently drop the
  * only-the-General-Fund caveat.
  *
- * A GROUP WITH NOTHING TO CARRY DRAWS NOTHING. Three groups' transfers in are
- * decomposed whole and they draw no fund-balance row, so no node is added and
- * no endpoint is copied; a residual node with no links would be the
- * aggregate-of-nothing one tier up.
+ * A GROUP WITH NOTHING TO CARRY DRAWS NOTHING, and says so by being answered
+ * no mark: three groups' transfers in are decomposed whole and they draw no
+ * fund-balance row, so the walk writes no residual for them and nothing is
+ * added here. A residual node with no links would be the aggregate-of-nothing
+ * one tier up.
  *
  * @param {FiscProjection} drawn  the rung's document, shaped and folded
  * @param {FiscProjection | null} from  the document of the chart the rung was
  *   opened from
  * @param {Rung} rung
+ * @param {FiscDrawnMark} [mark] the residual Go answers for this rung, or
+ *   nothing where it answers none
  * @returns {FiscProjection}
  */
-function carryResidual(drawn, from, rung) {
+function carryResidual(drawn, from, rung, mark) {
   const step = rung.step;
-  const residual = step.projection && from && step.residual && typeof step.residual === "object"
-    ? step.residual : null;
-  if (!residual) return drawn;
+  const residual = step.residual && typeof step.residual === "object" ? step.residual : null;
+  if (!mark || !from) return drawn;
   const opened = rung.id;
-  const inside = withinNode(rung.doc, opened);
-  // WHAT THIS CHART DRAWS OF THE OPENED NODE'S PARTS, and not what the step
-  // document could draw. The tier set decides it: {0,2,3} draws a group's funds
-  // and no division, so its funds publish no outflow HERE however finely
-  // pp.167-170 decompose them, and carrying an outflow against an outflow of
-  // nothing would state an identity this chart does not hold. That is the rule
-  // this file already applies to the five groups no schedule decomposes,
-  // reached through the columns rather than through the file.
-  //
-  // The group node itself carries no flow in any published document -- it
-  // exists to hold the hierarchy -- and is excluded by name rather than by
-  // assumption.
-  const decomposed = drawn.links.some((l) => inside.has(l.source) && l.source !== opened);
-  const carriesFrom = (/** @type {string} */ e) =>
-    rung.doc.links.some((l) => l.source === e && inside.has(l.target));
-  const carriesTo = (/** @type {string} */ e) =>
-    rung.doc.links.some((l) => l.target === e && inside.has(l.source));
-
-  const id = residualID(opened);
+  // THE ID IS THE ONE THIS PAGE COMPOSES, or the mark is refused. Everything
+  // downstream of the draw keys on the prefix -- isResidual, isCarried, the
+  // class, the inferred list -- so an answered id that is not this node's
+  // residual would be drawn as a document node under whatever name it carried.
+  if (mark.id !== residualID(opened)) {
+    throw new Error("cannot draw " + rung.doc.projection + ": the rung answer stands a residual " +
+      "under the id " + mark.id + " beside " + opened + ", and this page draws that node's " +
+      "residual as " + residualID(opened));
+  }
+  const id = mark.id;
   /** @type {FiscLink[]} */
   const links = [];
   /**
@@ -3437,24 +3485,46 @@ function carryResidual(drawn, from, rung) {
   };
   /** @type {Map<string, boolean>} endpoint id to whether its flow arrives */
   const ends = new Map();
-  // Endpoints in id order, so the rationale reads the same on every build.
-  for (const e of Object.keys(residual).sort()) {
-    if (!carriesFrom(e)) {
-      for (const l of above((l) => l.source === e && l.target === opened)) {
-        links.push(Object.assign({}, l, { target: id }));
-        ends.set(e, true);
-        spliced.add(l);
-      }
+  // THE ENDPOINTS ARE GO'S, IN GO'S ORDER, which is sorted -- so the rationale
+  // reads the same on every build without this file sorting anything. Both
+  // directions are looked for: which side of the opened node an endpoint's
+  // flow is on is what the drawn chart says, and the sums below are what holds
+  // the pair to the mark Go answered.
+  for (const e of mark.ends || []) {
+    for (const l of above((l) => l.source === e && l.target === opened)) {
+      links.push(Object.assign({}, l, { target: id }));
+      ends.set(e, true);
+      spliced.add(l);
     }
-    if (decomposed && !carriesTo(e)) {
-      for (const l of above((l) => l.source === opened && l.target === e)) {
-        links.push(Object.assign({}, l, { source: id }));
-        ends.set(e, false);
-        spliced.add(l);
-      }
+    for (const l of above((l) => l.source === opened && l.target === e)) {
+      links.push(Object.assign({}, l, { source: id }));
+      ends.set(e, false);
+      spliced.add(l);
     }
   }
-  if (!links.length) return drawn;
+  // THE RIBBONS COME TO THE FIGURE GO ANSWERED, or this page draws nothing.
+  // Each of them is a published flow with its own citations; the mark's size
+  // is Go's difference across two documents. A mark drawn at one and fed by
+  // the other is a node whose height nothing under it accounts for.
+  let carriedIn = 0;
+  let carriedOut = 0;
+  for (const l of links) {
+    if (l.target === id) carriedIn += l.value_cents;
+    else carriedOut += l.value_cents;
+  }
+  if (!links.length || carriedIn !== (mark.in_cents || 0) || carriedOut !== (mark.out_cents || 0)) {
+    // IN CENTS AND NOT IN DOLLARS, which is the one message on this page that
+    // needs it: fmt rounds, so a disagreement of a cent reads as two identical
+    // figures and the sentence contradicts itself. Found by running the
+    // mutation -- a residual's in_cents perturbed by one -- rather than by
+    // reading it. Every figure here is an integer cent (AGENTS.md, "Provenance
+    // invariants"), and a comparison of two of them is reported as compared.
+    throw new Error("cannot draw " + rung.doc.projection + ": the residual beside " + opened +
+      " is answered at " + (mark.in_cents || 0) + " cents in and " + (mark.out_cents || 0) +
+      " out, and the " + links.length + " flow(s) this page can carry onto it come to " +
+      carriedIn + " and " + carriedOut + "; the chart on screen and the answer it was " +
+      "drawn against are of different documents");
+  }
 
   // THE ENDPOINTS COME WITH THEIR LINKS, placed at the first drawn tier when
   // the flow arrives and the last when it leaves. Their own tiers are the
@@ -3488,21 +3558,15 @@ function carryResidual(drawn, from, rung) {
     }));
   }
 
-  // THE RESIDUAL STANDS AT THE TIER THE GROUP'S PARTS ARE DRAWN AT: the
-  // shallowest drawn tier of any node inside the group, read off the step
-  // document rather than named, because "the fund tier" is that document's
-  // vocabulary and not this file's.
-  let tier = Infinity;
-  for (const n of rung.doc.nodes) {
-    if (n.id !== opened && inside.has(n.id) && tiers.includes(n.tier) && n.tier < tier) tier = n.tier;
-  }
-  if (!Number.isFinite(tier)) {
-    throw new Error("cannot draw " + rung.doc.projection + ": " + opened +
-      " has no part at a tier this step draws to stand the residual beside");
-  }
+  // THE COLUMN IT STANDS IN IS GO'S TOO. export.ResidualOf places it at the
+  // shallowest declared tier of any node inside the opened one, read off the
+  // step's own document -- a reading of a file this page has not got, since
+  // the chart it holds is folded and filtered.
+  const tier = mark.tier;
 
   const labels = new Map(from.nodes.map((n) => [n.id, n.label]));
-  const reasons = Array.from(ends.keys()).map((e) => (labels.get(e) || e) + ": " + residual[e] + ".");
+  const reasons = Array.from(ends.keys())
+    .map((e) => (labels.get(e) || e) + ": " + ((residual && residual[e]) || "no reason declared") + ".");
   /** @type {Map<string, Set<number>>} */
   const cited = new Map();
   for (const l of links) {
@@ -3561,11 +3625,19 @@ function carryResidual(drawn, from, rung) {
  * figures that differ -- so the only mark that can state it is a derived one,
  * whose value is the difference and whose words are the packager's declaration.
  *
- * A STEP THAT DECLARES ANY GAP CLAIMS EVERY NODE IT OPENS BALANCES, and this
- * is where that claim has teeth: a shortfall on a node the declaration does not
- * name throws rather than drawing, which is the client-side twin of `fisc
- * verify`'s spending-window-reconciles. A step declaring none is left alone --
- * an opened fund group is deliberately unbalanced and says so on its residual,
+ * WHICH NODE HAS ONE, WHERE IT STANDS AND WHAT IT IS WORTH ARE GO'S ANSWER.
+ * export.GapOf makes the declaration's claim have teeth at build time -- a
+ * shortfall on a node the step names no reason for fails the export, which is
+ * pkg/cmd/export's TestRungsRefuseADriftTheStepDoesNotDeclare -- and the walk
+ * writes the mark's tier and its one figure onto the rung.
+ *
+ * WHAT IS LEFT HERE IS THE SAME SUBTRACTION AS A CHECK, and it is not a second
+ * derivation of the answer: it is the arithmetic of the chart that reached the
+ * screen, held to the figure Go computed from the documents it was answered
+ * from. A page served a document that has drifted from the one it was answered
+ * against refuses by name rather than drawing a centre whose height nothing
+ * under it accounts for. A step declaring no gap at all is left alone -- an
+ * opened fund group is deliberately unbalanced and says so on its residual,
  * and a rule that demanded balance everywhere would refuse it.
  *
  * THE AMOUNT IS NOT DECLARED AND CANNOT BE. A gap is per fiscal column and a
@@ -3590,10 +3662,12 @@ function carryResidual(drawn, from, rung) {
  *
  * @param {FiscProjection} drawn  the rung's chart, shaped, folded and spliced
  * @param {Rung} rung
+ * @param {FiscDrawnMark} [mark] the gap Go answers for this rung, or nothing
+ *   where it answers none
  * @returns {FiscProjection} drawn itself where the step declares no gap at all,
  *   or the node it opened balances
  */
-function markGap(drawn, rung) {
+function markGap(drawn, rung, mark) {
   const gaps = rung.step.gaps;
   if (!gaps || typeof gaps !== "object") return drawn;
   const opened = rung.id;
@@ -3609,24 +3683,31 @@ function markGap(drawn, rung) {
     if (l.source === opened) outOf += l.value_cents;
   }
   const gap = into - outOf;
-  if (gap === 0) return drawn;
-  const declared = Object.prototype.hasOwnProperty.call(gaps, opened) ? gaps[opened] : "";
-  if (!declared) {
+  // THE SIGN IS THE SIDE THE MARK STANDS ON, which is how one answered figure
+  // says both which way the shortfall runs and how big it is: too little
+  // leaving arrives AT the mark, too little arriving leaves it.
+  const stated = mark ? (mark.in_cents || 0) - (mark.out_cents || 0) : 0;
+  if (gap !== stated) {
     throw new Error("cannot draw " + (drawn.projection || "this chart") + ": the chart above " +
       "sends " + fmt(into) + " into " + centre.label + " and this one draws " + fmt(outOf) +
-      " of it, a difference of " + fmt(Math.abs(gap)) + " that no declaration on this step " +
-      "accounts for; the two documents have drifted apart");
+      " of it, a difference of " + Math.abs(gap) + " cents where the rung answer states " +
+      Math.abs(stated) + "; the documents this page was served and the ones it was " +
+      "answered from have drifted apart");
   }
-  // THE SHORT SIDE DECIDES WHERE THE MARK GOES, which is the same question in
-  // both directions and needs no knowledge of which half of a window came from
-  // which file: too little leaving stands at the last drawn column, too little
-  // arriving at the first.
-  const tiers = rung.step.tiers;
-  const id = gapID(opened);
+  if (!mark) return drawn;
+  // THE ID IS THIS PAGE'S OWN COMPOSITION, for the reason carryResidual refuses
+  // another: the prefix is what every reader of this mark keys on.
+  if (mark.id !== gapID(opened)) {
+    throw new Error("cannot draw " + (drawn.projection || "this chart") + ": the rung answer " +
+      "states a gap under the id " + mark.id + " on " + opened + ", and this page draws that " +
+      "node's gap as " + gapID(opened));
+  }
+  const declared = Object.prototype.hasOwnProperty.call(gaps, opened) ? gaps[opened] : "";
+  const id = mark.id;
   const node = {
     id: id,
     label: "Difference between the two schedules",
-    tier: gap > 0 ? tiers[tiers.length - 1] : tiers[0],
+    tier: mark.tier,
     // PARENTLESS, WHICH DRAWS IT --muted, and that is the claim: it belongs to
     // neither document's hierarchy.
     parent: "",
@@ -3641,9 +3722,9 @@ function markGap(drawn, rung) {
       "taken from the two charts on screen. `fisc verify` holds that difference to the figure " +
       "the reason above declares.",
   };
-  const link = gap > 0
-    ? { source: opened, target: id, value_cents: gap }
-    : { source: id, target: opened, value_cents: -gap };
+  const link = mark.in_cents
+    ? { source: opened, target: id, value_cents: mark.in_cents }
+    : { source: id, target: opened, value_cents: mark.out_cents || 0 };
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat([node]),
     links: drawn.links.concat([Object.assign({
