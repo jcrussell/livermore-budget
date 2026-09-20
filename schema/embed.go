@@ -26,9 +26,12 @@
 package schema
 
 import (
+	"bufio"
+	"bytes"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"path"
@@ -88,6 +91,61 @@ func load(uri *url.URL) (*jsonschema.Schema, error) {
 		return nil, fmt.Errorf("parsing referenced schema %s: %w", name, err)
 	}
 	return &doc, nil
+}
+
+// Validate holds one decoded JSON value to the named schema.
+//
+// IT COMPILES THE SCHEMA ON EVERY CALL, which is fine for a caller validating
+// once and wrong for one validating a stream. A caller in a loop should Load
+// once and reuse the Resolved; this exists so a one-shot caller does not have to
+// spell the two steps.
+func Validate(name string, v any) error {
+	resolved, err := Load(name)
+	if err != nil {
+		return err
+	}
+	return resolved.Validate(v)
+}
+
+// ValidateJSONL holds every line of a JSONL stream to the named schema, and
+// reports the FIRST line that does not match rather than all of them.
+//
+// THE FIRST ONE IS THE USEFUL ONE. A shape that is wrong is usually wrong the
+// same way on every record, so a caller printing all 2,382 buries the answer;
+// the line number is what a reader needs to go and look.
+//
+// IT REFUSES AN EMPTY STREAM. A store this read as clean because it held
+// nothing would be green with nothing compared, which is the shape AGENTS.md's
+// "Prove it can fail" names.
+func ValidateJSONL(r io.Reader, name string) error {
+	resolved, err := Load(name)
+	if err != nil {
+		return err
+	}
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	seen := 0
+	for line := 1; sc.Scan(); line++ {
+		text := bytes.TrimSpace(sc.Bytes())
+		if len(text) == 0 {
+			continue
+		}
+		var v any
+		if err := json.Unmarshal(text, &v); err != nil {
+			return fmt.Errorf("line %d is not JSON: %w", line, err)
+		}
+		seen++
+		if err := resolved.Validate(v); err != nil {
+			return fmt.Errorf("line %d does not match %s: %w", line, name, err)
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return err
+	}
+	if seen == 0 {
+		return fmt.Errorf("nothing to check against %s: the stream carries no records", name)
+	}
+	return nil
 }
 
 // Names are the schemas this package carries, so a caller names one rather than

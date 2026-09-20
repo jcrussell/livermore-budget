@@ -549,6 +549,36 @@ func TestAMovedOffsetFails(t *testing.T) {
 	}
 }
 
+// A NEGATIVE OFFSET NO LONGER REACHES THE CHECK, AND THIS IS WHERE THAT IS SAID.
+//
+// It was a case of TestAnOffsetPastTheEndOfThePageFails until schema/fact.schema.json
+// landed with `"offset": {"minimum": 0}` and [Load] began holding the store to
+// its shape before decoding it. So the file path is now guarded earlier and by
+// something that names the field, which is better than a bounds check reporting
+// it as "runs past the end of" a page.
+//
+// THE CHECK KEEPS ITS DEFENSIVE ARITHMETIC ANYWAY, and this does not license
+// removing it: the comparison is a remaining-length subtraction rather than
+// offset+len(token) > len(text) because the naive form WRAPS NEGATIVE at
+// MaxInt64 and panics one line later. That hazard is about a large offset, which
+// the schema does not bound and which the two surviving cases above still drive.
+func TestANegativeOffsetIsRefusedBeforeTheChecksRun(t *testing.T) {
+	root := repoWithoutPDFs(t)
+	mutateFacts(t, root, func(facts []fact.Fact) []fact.Fact {
+		facts[0].Offset = -1
+		return facts
+	})
+	_, err := Load(LoadOptions{Root: root, Version: "test"})
+	if err == nil {
+		t.Fatal("Load accepted a fact with a negative offset")
+	}
+	for _, want := range []string{"fact.schema.json", "offset"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("Load error %q does not name %q", err, want)
+		}
+	}
+}
+
 // TestAnOffsetPastTheEndOfThePageFails guards the bounds check. The failure this
 // check exists for includes an offset that is simply too large, and reporting it
 // must not mean panicking on the slice.
@@ -565,7 +595,6 @@ func TestAnOffsetPastTheEndOfThePageFails(t *testing.T) {
 	}{
 		{"past the end", 1 << 30},
 		{"maxint64, where the naive bound overflows", math.MaxInt64},
-		{"negative", -1},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			root := repoWithoutPDFs(t)

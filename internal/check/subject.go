@@ -20,6 +20,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // What verify reads, all of it committed, and none of it a user's choice: verify
@@ -588,7 +589,34 @@ func loadFacts(fsys fs.FS) ([]fact.Fact, error) {
 			"run `fisc build` to generate %s", factsFile)
 	}
 	defer f.Close() //nolint:errcheck // read-only file; nothing to flush
-	facts, err := fact.Read(f)
+
+	// THE SHAPE IS CHECKED BEFORE ANY OF THE CHECKS RUN, and before the records
+	// are decoded into structs at all.
+	//
+	// A MALFORMED RECORD IS NOT A CHECK FAILURE, IT IS A STORE THE CHECKS CANNOT
+	// SPEAK ABOUT. Decoding first turns a missing `token` into Token: "" and a
+	// missing `page` into Page: 0, and the first thing a reader then sees is
+	// fact-token-reparses complaining that a figure does not re-parse -- a
+	// semantic claim about a record whose shape was never the thing at fault.
+	// Every domain error downstream is an interpretation, and interpreting a
+	// structure that is not the agreed one produces a worse sentence than saying
+	// so.
+	//
+	// It reads the file twice rather than validating the decoded structs: a
+	// struct has already lost the distinction between a key that was absent and
+	// one that was present and empty, which is the difference this store's whole
+	// "absent is not zero" invariant rests on.
+	raw, err := fs.ReadFile(fsys, factsFile)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", factsFile, err)
+	}
+	if err = schema.ValidateJSONL(bytes.NewReader(raw), schema.Fact); err != nil {
+		return nil, cmdutil.WithHint(fmt.Errorf("%s: %w", factsFile, err),
+			"the fact store does not match schema/fact.schema.json, so no check over it "+
+				"would mean anything; run `fisc build` to regenerate it")
+	}
+
+	facts, err := fact.Read(bytes.NewReader(raw))
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", factsFile, err)
 	}
