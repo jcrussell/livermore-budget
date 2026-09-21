@@ -921,7 +921,13 @@ export function loadApp(opts = {}) {
     // the stack, from the projection or from any DOM the stub can see.
     ` get isolated() { return isolated; },` +
     ` get columnOverride() { return columnOverride; } };\n`;
-  runInContext(src + exported, ctx, { filename: "app.js" });
+  // STRICT MODE IS AN OPTION AND NOT THE DEFAULT, because the file is served
+  // as a bare classic script and a check of what a READER gets has to run it
+  // the way a reader's browser does. seam.mjs turns it on to ask the one
+  // question sloppy mode cannot answer: whether every global the file assigns
+  // is one it declares.
+  const prelude = o.strict ? '"use strict";\n' : "";
+  runInContext(prelude + src + exported, ctx, { filename: "app.js" });
 
   const app = sandbox.__harness;
   for (const n of NAMES) {

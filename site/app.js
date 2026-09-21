@@ -1088,15 +1088,21 @@ function setColumnBudget(n) {
  */
 let fetched = null;
 /**
- * Step documents already fetched this year, by path, so returning to a rung and
- * opening it again does not fetch its file twice.
+ * The column document the year on screen was fetched from: one file per
+ * (fiscal year, basis), carrying every schedule that column prints.
  *
- * FETCHED LAZILY ON THE FIRST DRILL, not eagerly with the year: a reader who
- * never opens a node never pays for the file. DROPPED BY showYear, because a
- * step's document belongs to the year it was opened in and the path a step
- * resolves to is a claim about the year on screen.
- * @type {Map<string, FiscProjection>}
+ * A DRILL SELECTS OUT OF THIS AND FETCHES NOTHING. stepDocument reads the
+ * schedule a step names straight out of it, so the year a rung's figures are
+ * of is carried by the file rather than resolved by this script.
+ *
+ * DECLARED, because it was not: `column = loaded` in showYear was the only
+ * mention, which creates a property of the global object in sloppy mode and
+ * throws in strict mode or in a module. The file is served as a classic
+ * script today, so it worked -- and would stop working the moment anything
+ * wrapped it.
+ * @type {any}
  */
+let column = null;
 /**
  * The drill's own gesture token, bumped by every push and pop of the stack.
  *

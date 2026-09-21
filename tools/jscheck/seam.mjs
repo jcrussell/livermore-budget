@@ -26,6 +26,55 @@ export async function checks() {
   const out = [];
   const doc = goldenGraph();
 
+  // EVERY GLOBAL app.js ASSIGNS IS ONE IT DECLARES, asked by DRIVING the file
+  // under strict mode rather than by parsing it.
+  //
+  // `column = loaded` in showYear was the only mention of `column` anywhere in
+  // the file: no let, no const, no var. In sloppy mode that creates a property
+  // of the global object and works, which is why it shipped and why every
+  // check here passed over it. In strict mode -- or inside a module, or a
+  // bundler's wrapper, or any future in which this file stops being served as
+  // a bare classic script -- it is a ReferenceError at the first year switch.
+  //
+  // IT MUST REACH THE ASSIGNMENT, WHICH IS THE WHOLE DIFFICULTY. An
+  // undeclared assignment is legal to PARSE under strict mode and throws only
+  // when it runs, so loading the file and asserting it did not throw is a
+  // check that cannot fail -- measured: with `let column = null` deleted, a
+  // load-only version of this arm stayed green. So it plans a document, lets
+  // the page draw, and switches the year, which is the gesture that runs the
+  // line.
+  //
+  // THE ASSERTION IS THAT THE PAGE DREW, not merely that nothing threw: a
+  // ReferenceError inside showYear is caught by the change handler's .catch
+  // and becomes a banner, so "no exception escaped" is true either way.
+  {
+    const app = loadApp({
+      strict: true,
+      config: twoYearConfig(),
+      fetch: plannedFetch({ "data/sankey.json": { doc }, "data/sankey-2027.json": { doc } }),
+    });
+    const main = app.dom.document.node();
+    app.dom.document.plant("main", main);
+    await settle();
+    const group = app.dom.byId.get("year-toggle");
+    const handlers = (group && group.listeners.change) || [];
+    for (const fn of handlers) fn({ target: { value: "sankey-2027" } });
+    await settle();
+    const banners = refusals(main);
+    const lede = app.dom.byId.get("lede-year");
+    out.push({
+      name: "site/app.js declares every global it assigns, driven under strict mode",
+      ok: handlers.length > 0 && banners.length === 0 &&
+        Boolean(lede) && lede.textContent === "FY 2026-27 adopted",
+      detail: handlers.length === 0
+        ? "the year control carried no change handler, so the switch never ran and " +
+          "this arm reached none of the code it is named for"
+        : `a year switch under "use strict" drew "${lede ? lede.textContent : "(no lede)"}" ` +
+          `with ${banners.length} banner(s); an undeclared assignment is a ReferenceError ` +
+          `here and a silent global in the browser`,
+    });
+  }
+
   // THE TYPEDEFS ARE HELD TO THE STRUCTS THAT WRITE THEM.
   //
   // A JSDoc typedef is the client's only statement of what an artifact
