@@ -147,7 +147,6 @@ function appDrawing(tiers, fetch, extra) {
     config: Object.assign({
       schema_version: 1,
       primary: "fund-flows",
-      projections: { "fund-flows": "data/fund-flows.json" },
       render_tiers: tiers,
       years: [{
         year: 2026, label: "FY 2025-26", stem: "fund-flows",

@@ -197,12 +197,10 @@ func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 // This crosses the client's own config against every document it can fetch, which
 // is the set of paths the browser will actually construct.
 //
-// THE FETCHABLE SET IS THE YEARS' COLUMNS. It was CONFIG.projections, which no
-// longer exists because app.js dereferenced it nowhere; the documents the
-// browser really opens are the column its year landed on, and every schedule
-// inside it is one a drill can select. So the walk is one layer deeper and
-// covers strictly more: a source cited by a schedule the client could reach
-// only by opening a node was never in the old set.
+// THE FETCHABLE SET IS THE YEARS' COLUMNS. What a browser opens is the column
+// its year landed on, and every schedule inside it is one a drill can select --
+// so this walks a layer deeper than the config's own list of paths could, and
+// reaches a source cited only by a schedule behind a click.
 func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	cfg := clientConfigOf(t, readFile(t, dir, "index.html"))

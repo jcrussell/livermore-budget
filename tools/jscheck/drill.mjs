@@ -79,7 +79,7 @@ function probeAnswer(stem, rungs) {
  * `tail` are the packager's, but the stems and the per-year join are resolved
  * at build time and stepDocsFor below stands in for them.
  *
- * THE PER-YEAR JOIN IS NOT HERE. The Go side declares YearProjections and the
+ * THE PER-YEAR JOIN IS NOT HERE. The Go side resolves it at export and the
  * packager resolves them into each year's `steps` entries; the client reads
  * those and joins nothing. stepDocsFor below is what the packager ships for
  * one year, and the year check in year.mjs is where the join is measured.
@@ -770,14 +770,6 @@ const DOCS = {
  */
 async function opened(plan, tweak, column = COLUMNS[0], extra, shippedWords = false) {
   const config = twoYearConfig();
-  config.projections["fund-flows"] = "data/fund-flows.json";
-  config.projections["fund-flows-2027"] = "data/fund-flows-2027.json";
-  config.projections["department-spending"] = "data/department-spending.json";
-  config.projections["department-spending-2027"] = "data/department-spending-2027.json";
-  config.projections["transfers-by-fund"] = "data/transfers-by-fund.json";
-  config.projections["transfers-by-fund-2027"] = "data/transfers-by-fund-2027.json";
-  config.projections["department-funding"] = "data/department-funding.json";
-  config.projections["department-funding-2027"] = "data/department-funding-2027.json";
   config.render_tiers = PAGE.renderTiers;
   config.steps = PAGE.steps;
   // THE RUNG ANSWER, BECAUSE THIS CONFIG IS THE ONE THAT OPENS NODES.
@@ -2840,7 +2832,7 @@ export async function checks() {
     const app = loadApp({
       fetch: plannedFetch({ "data/probe.json": { doc }, [RUNGS_PATH]: { doc: answer } }),
       config: {
-        schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
+        schema_version: 1, primary: "probe",
         render_tiers: [0, 2], steps, rungs: RUNGS_PATH,
         years: [{
           year: 2026, label: "FY", stem: "probe", path: "fy2026-adopted.json", basis: "adopted",
@@ -2930,7 +2922,7 @@ export async function checks() {
     const app = loadApp({
       fetch: plannedFetch({ "data/probe.json": { doc }, [RUNGS_PATH]: { doc: answer } }),
       config: {
-        schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
+        schema_version: 1, primary: "probe",
         rungs: RUNGS_PATH,
         // THE STEP OPENS FROM A TIER THE OVERVIEW DRAWS. drillDown looks the
         // activated node up in the CHART ON SCREEN, so a step opening from a
@@ -4310,7 +4302,7 @@ function crossTabProbe(steps) {
   return loadApp({
     fetch: plannedFetch({ "data/probe.json": { doc } }),
     config: {
-      schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
+      schema_version: 1, primary: "probe",
       render_tiers: [2, 5, 4],
       steps,
       years: [{
@@ -4457,7 +4449,6 @@ async function foreignFlankProbe() {
     }),
     config: {
       schema_version: 1, primary: "spine",
-      projections: { spine: "data/spine.json", lines: "data/lines.json", funds: "data/funds.json" },
       rungs: RUNGS_PATH,
       render_tiers: [0, 2],
       steps: [

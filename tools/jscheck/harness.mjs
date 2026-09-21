@@ -1632,7 +1632,6 @@ export function twoYearConfig() {
     schema_version: 1,
     exported_by: HARNESS_STAMP,
     primary: "sankey",
-    projections: { sankey: "data/sankey.json", "sankey-2027": "data/sankey-2027.json" },
     years: [year(2026, "FY 2025-26", "sankey"), year(2027, "FY 2026-27", "sankey-2027")],
     // POPULATED, AND IT IS LOAD-BEARING. citations() opens with
     // `const doc = CONFIG.docs[source.doc_id]; if (!doc) continue;`, so an

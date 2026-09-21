@@ -306,13 +306,12 @@ type yearView struct {
 	// with the caveat refs that document's marks link to. Omitted on a view
 	// that opens nothing.
 	//
-	// PER YEAR AND NOT PER PAGE, because the step document is per year. The
-	// client used to read one file per stem out of FISC_CONFIG.projections
-	// and draw FY2025-26's funds under FY2026-27's chart; and it looked a
-	// caveat on a depth-1 mark up in the YEAR's refs, which are the spine's,
-	// so every caveat on a switched document lost its link (fisc-ko1j.13).
-	// Both are the same fact: which file a rung draws is a property of the
-	// year on screen, and this is where the year's properties live.
+	// PER YEAR AND NOT PER PAGE, because what a step draws is per year. A
+	// caveat on a depth-1 mark resolves against the document THAT year's rung
+	// draws; looked up in the year's own refs, which are the spine's, every
+	// caveat on a switched document loses its link (fisc-ko1j.13). What a rung
+	// discloses is a property of the year on screen, and this is where the
+	// year's properties live.
 	Steps []stepView `json:"steps,omitempty"`
 	// ChartTitle is the <title> inside the SVG -- the chart's accessible name,
 	// and a different string from Title, which is the document's.
@@ -625,10 +624,9 @@ type clientDoc struct {
 // clientConfig is window.FISC_CONFIG: the metadata the page needs before it
 // has fetched anything, plus where to fetch the bulk from.
 type clientConfig struct {
-	SchemaVersion int               `json:"schema_version"`
-	ExportedBy    string            `json:"exported_by"`
-	Primary       string            `json:"primary"`
-	Projections   map[string]string `json:"projections"`
+	SchemaVersion int    `json:"schema_version"`
+	ExportedBy    string `json:"exported_by"`
+	Primary       string `json:"primary"`
 	// Metadata is the primary projection's metadata block, verbatim.
 	Metadata json.RawMessage `json:"metadata"`
 	// Years is every published year with the words that belong to it, built by

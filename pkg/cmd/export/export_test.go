@@ -1159,14 +1159,14 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 //
 // WHAT WENT WRONG, and it is why the name of this test matters. Its predecessor
 // was called TestViewsNamesEveryDocumentTheSitePublishes and its body asserted
-// `len(got) != 2` over seven projections -- a claim about a count, under a name
-// promising a claim about coverage. Meanwhile published-projection-built and
-// assertPublishedBuilt both assert every published document was BUILT, and
-// neither asks whether a page renders it. So `fisc export` wrote the four
-// fund-flows documents, listed them all in window.FISC_CONFIG.projections, gave
-// none of them a page, and `fisc verify` reported 38 passed / 0 failed.
+// A COUNT IS NOT COVERAGE, which is the whole reason this test is named for the
+// claim rather than for the number. published-projection-built and
+// assertPublishedBuilt each assert every published document was BUILT, and
+// neither asks whether a page renders it -- so a document can ship as bytes
+// nobody can open with `fisc verify` green over it, and an assertion on how
+// many views exist would stay green too.
 //
-// The count assertions that test did make are kept below, under their own name.
+// The count assertions are kept below, under their own name.
 func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	built := builtStemsForTest(t)
 	if err := assertPublishedReachable(views(result{Projections: built}), built); err != nil {

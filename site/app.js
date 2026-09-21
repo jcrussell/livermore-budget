@@ -162,7 +162,6 @@
  * @property {number} schema_version
  * @property {string} exported_by
  * @property {string} primary
- * @property {Record<string, string>} projections
  * @property {FiscYear[]} years
  * @property {FiscMetadata} metadata
  * @property {Record<string, FiscDoc>} docs
@@ -5486,12 +5485,11 @@ function scheduleOf(column, key) {
   if (!sched) return null;
   const table = Array.isArray(column.nodes) ? column.nodes : [];
 
-  // A SCHEDULE THAT IS PRESENT AND MALFORMED IS NOT SPECIAL-CASED. It was
-  // carried through unrepaired so drawableSankey could name the key it lacked;
-  // with that gate gone, the map below throws and the last-resort catch says
-  // the chart failed to draw. Both land before showYear writes a word, so the
-  // page stays wholly the year it was on either way -- what is lost is the
-  // sentence, for a file this export cannot have written.
+  // A SCHEDULE THAT IS PRESENT AND MALFORMED IS NOT SPECIAL-CASED. The map
+  // below throws and the last-resort catch says the chart failed to draw,
+  // which lands before showYear writes a word, so the page stays wholly the
+  // year it was on. What a reader does not get is a sentence naming the key,
+  // for a file this export cannot have written.
 
   const nodes = sched.nodes.map((n) => {
     const base = table[n.node] || {};

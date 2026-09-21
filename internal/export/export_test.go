@@ -663,10 +663,10 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	if got.Primary != "sankey" {
 		t.Errorf("got primary %q, want %q", got.Primary, "sankey")
 	}
-	// NO PROJECTIONS MAP IS ASSERTED, because there is none: app.js
-	// dereferenced CONFIG.projections nowhere, and a stem -> path map on the
-	// wire was a third name for a document the year already names by its
-	// column and the step by its schedule.
+	// NO PROJECTIONS MAP IS ASSERTED, because the config carries none. A year
+	// names its document by its column and a step names its schedule, so a
+	// stem -> path map on the wire would be a third name for the same file
+	// and a second thing to keep in step.
 	if got.SchemaVersion != 1 {
 		t.Errorf("got schema_version %d, want 1", got.SchemaVersion)
 	}

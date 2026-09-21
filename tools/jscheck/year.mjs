@@ -659,7 +659,6 @@ async function chainedYears(plan, paths) {
   // first is where it starts -- pinned, because the page's own default is the
   // newest and a switch to the year already showing asks for nothing.
   const config = twoYearConfig();
-  config.projections["fund-flows"] = "data/fund-flows.json";
   // THE SHIPPED STEP'S COLUMNS AND THE SHIPPED STEP'S CAP, because nothing in
   // this file is about the shaping. Every arm below is about what a YEAR
   // SWITCH does to a rung that is already open, and a step of this fixture's

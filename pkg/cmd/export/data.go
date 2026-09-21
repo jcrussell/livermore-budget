@@ -467,14 +467,12 @@ func yearStems(name string, projections map[string][]byte) []string {
 // with the reason and the bead that will give it one.
 //
 // AN ENTRY IS A DECLARATION, NOT A NOTE, and it exists because the gap it
-// records shipped silently. `fisc export` wrote four fund-flows documents into
-// data/, published every one of them in window.FISC_CONFIG.projections, and
-// gave none of them a page. published-projection-built and assertPublishedBuilt
-// both passed: they assert a published document was BUILT and neither asks
-// whether a reader can reach it. `fisc verify` was green at 38 checks with four
-// documents shipping as bytes nobody could open, and the test that should have
-// caught it -- TestViewsNamesEveryDocumentTheSitePublishes -- asserted a view
-// count of two over seven projections.
+// records is one every other gate is blind to. published-projection-built and
+// assertPublishedBuilt each assert a published document was BUILT, and neither
+// asks whether a reader can reach it -- so four fund-flows documents can ship
+// as bytes nobody can open with `fisc verify` green over all of them. Declaring
+// the gap is what makes a document reachable by NOBODY a stated decision rather
+// than an omission.
 //
 // AN ENTRY THAT HAS STOPPED BEING TRUE MUST GO RED, NOT QUIET, which is the
 // same standard internal/check's staleDeclarations applies to
