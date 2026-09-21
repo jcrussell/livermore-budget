@@ -103,6 +103,8 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 		".fisc-export",
 		"app.js",
 		"data/sankey.json",
+		// One document per published column, which is what the page fetches.
+		"fy2026-adopted.json",
 		"index.html",
 		"style.css",
 		"vendor/d3-sankey.LICENSE",

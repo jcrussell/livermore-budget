@@ -354,6 +354,8 @@ function countsLineFor(drawn, mine, total, aboveTotal) {
 export const COLUMNS = [
   {
     stem: "sankey", label: "FY 2025-26", step: "fund-flows", golden: goldenFundFlows,
+    // The one file a reader fetches for this column.
+    path: "fy2026-adopted.json",
     spine: goldenGraph,
     spendingStem: "department-spending", spending: goldenSpending,
     transfersStem: "transfers-by-fund", transfers: goldenTransfers,
@@ -544,7 +546,9 @@ export const COLUMNS = [
     },
   },
   {
-    stem: "sankey-2027", label: "FY 2026-27", step: "fund-flows-2027", golden: goldenFundFlows2027,
+    stem: "sankey-2027", label: "FY 2026-27", step: "fund-flows-2027",
+    path: "fy2027-adopted.json",
+    golden: goldenFundFlows2027,
     spine: goldenGraph2027,
     spendingStem: "department-spending-2027", spending: goldenSpending2027,
     transfersStem: "transfers-by-fund-2027", transfers: goldenTransfers2027,
@@ -801,10 +805,12 @@ async function opened(plan, tweak, column = COLUMNS[0], extra, shippedWords = fa
     // cannot run against words chosen so it never happens.
     if (shippedWords) return spine;
     spine.nodes.find((n) => n.id === "fund-group/general").label = "General Fund group";
-    // THE SAME FOR THE CATEGORY, for the same reason: both documents print
-    // "Property Taxes" for revenue/taxes/property, and the rung, the title and
-    // the hint must name it in the spine's words. markContra names the
-    // category in the STEP DOCUMENT's words, so the contra sentence stays
+    // THE SAME FOR THE CATEGORY: both documents print "Property Taxes" for
+    // revenue/taxes/property, and the rung, the title and the hint must name it
+    // in the spine's words. A column carries ONE label per id, so markContra
+    // now reads this same relabel rather than the step document's copy -- the
+    // two can no longer disagree, and columnsOf refuses a column where they do.
+    // What the relabel still buys is telling a spine label from a fabricated
     // "Property Taxes" and the two are told apart.
     spine.nodes.find((n) => n.id === "revenue/taxes/property").label = "Property Taxes category";
     // AND THE SAME FOR THE FOUR OBJECT CATEGORIES, which the cross-tab prints
@@ -1669,7 +1675,7 @@ export async function checks() {
           // so a page that drew the spine and then asked what it holds would
           // have shaped a chart against nothing.
           before.crumbHidden &&
-          fetch.asked.join() === `${RUNGS_PATH},data/${col.stem}.json`,
+          fetch.asked.join() === `${RUNGS_PATH},${col.path}`,
       detail: `counts "${before.counts}", ${before.rows} table rows, breadcrumb ` +
               (before.crumbHidden ? "hidden" : "SHOWING with nothing opened") +
               `; main() asked for ${JSON.stringify(fetch.asked)}`,
@@ -1722,16 +1728,16 @@ export async function checks() {
     const worstDeep = deep.length ? deep.reduce((a, b) => (b.smallest < a.smallest ? b : a)) : null;
     // THE STEP FILE IS THE COLUMN'S OWN, asserted on the wire: a walk that
     // drew every view from the other year's file would pin that year twice.
-    const stepAsked = fetch.asked.filter((p) => p.startsWith("data/fund-flows"));
+    const stepAsked = fetch.asked.filter((p) => p.startsWith("data/"));
     out.push({
       name: `${col.label}: every node the tree offers to open draws when opened, at every depth`,
       ok: walk.refused === "" && walk.visited === col.openedViews && drawn.length === walk.visited &&
           Boolean(worstDeep) && worstDeep.where.endsWith(" > " + PAGE.inert) &&
           worstDeep.smallest.toFixed(2) === col.worstDeep && short.length === 0 &&
-          stepAsked.join() === `data/${col.step}.json`,
+          stepAsked.length === 0,
       detail: walk.refused
         ? `after ${walk.visited} view(s), refused: ${walk.refused}`
-        : `${walk.visited} views opened (want ${col.openedViews}) from ${JSON.stringify(stepAsked)}; ` +
+        : `${walk.visited} views opened (want ${col.openedViews}) with ${stepAsked.length} step fetch(es); ` +
           `smallest ribbon over all of them ${Math.min(...drawn.map((d) => d.smallest)).toFixed(3)}px; ` +
           `the narrowest depth-3 ribbon is ` +
           `${worstDeep ? `${worstDeep.where} at ${worstDeep.smallest.toFixed(2)}px` : "nowhere"} ` +
@@ -2741,37 +2747,28 @@ export async function checks() {
   // refuses in words rather than falling back to the one file the stem maps
   // to -- which is the file the reader would have been shown under the wrong
   // year.
-  for (const refusal of [
-    { name: "a 404", plan: { "data/fund-flows.json": { ok: false, status: 404 } }, says: "HTTP 404" },
-    { name: "a body that is not JSON", plan: { "data/fund-flows.json": { badBody: true } }, says: "not valid JSON" },
-    {
-      name: "a document at the wrong schema_version",
-      plan: { "data/fund-flows.json": { doc: Object.assign({}, goldenFundFlows(), { schema_version: 2 }) } },
-      says: "declares schema_version 2",
-    },
-    { name: "a null body", plan: { "data/fund-flows.json": { doc: null } }, says: "not a document at all" },
-    {
-      name: "a year packaged with no step document",
-      tweak: (c) => { delete c.years[0].steps; },
-      says: "the year on screen was not packaged with",
-      unfetched: true,
-    },
-  ]) {
-    const { app, fetch, main, body } = await opened(refusal.plan, refusal.tweak);
+  // A COLUMN THE STEP NAMES NO SCHEDULE IN. The drill no longer fetches, so
+  // the four fetch refusals that used to sit here -- a 404, a body that is not
+  // JSON, a wrong schema_version and a null body -- are the COLUMN fetch's now,
+  // and lifecycle.mjs drives them there. What is left is the one failure a
+  // selection can still have.
+  {
+    // A null entry omits that schedule from the assembled column, which is the
+    // only way to ask for one opened() does not plan.
+    const { app, fetch, main, body } = await opened({ "data/fund-flows.json": null });
     const before = shown(app, body);
     const outcome = await openInto(app, "fund-group/general");
     const after = shown(app, body);
     const banners = refusals(main).map((b) => b.textContent);
-    const asked = fetch.asked.includes("data/fund-flows.json");
     out.push({
-      name: `the drill refuses ${refusal.name}, in words that name the fault`,
+      name: "the drill refuses a column carrying no schedule the step names, in words that name it",
       ok: outcome === "failed" && app.drilled.length === 0 &&
-          banners.length === 1 && banners[0].includes(refusal.says) &&
+          banners.length === 1 && banners[0].includes("carries no schedule called fund-flows") &&
           after.counts === before.counts && after.crumbHidden &&
-          asked === !refusal.unfetched,
-      detail: `drillDown came to "${outcome}" with ${app.drilled.length} rung(s) on the stack; ` +
+          fetch.asked.filter((x) => x.startsWith("data/")).length === 0,
+      detail: `drillDown came to "${outcome}" with ${app.drilled.length} rung(s); ` +
         `${banners.length} banner(s)${banners.length ? `, reading "${banners[0].slice(0, 90)}..."` : ""}; ` +
-        `the step file was ${asked ? "" : "not "}asked for; the counts line still reads "${after.counts}"`,
+        `nothing under data/ was asked for, because a drill selects rather than fetches`,
     });
   }
 
@@ -2847,7 +2844,7 @@ export async function checks() {
         schema_version: 1, primary: "probe", projections: { probe: "data/probe.json" },
         render_tiers: [0, 2], steps, rungs: RUNGS_PATH,
         years: [{
-          year: 2026, label: "FY", stem: "probe", path: "data/probe.json", basis: "adopted",
+          year: 2026, label: "FY", stem: "probe", path: "fy2026-adopted.json", basis: "adopted",
           hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
           counts: { facts: 8, nodes: 10, links: 8 }, chart_title: "t",
         }],
@@ -2945,7 +2942,7 @@ export async function checks() {
         render_tiers: [0, 2],
         steps: [{ key: "fund", after: [""], from: 2, tiers: [2, 4], back: "Back", tail: "divisions" }],
         years: [{
-          year: 2026, label: "FY", stem: "probe", path: "data/probe.json", basis: "adopted",
+          year: 2026, label: "FY", stem: "probe", path: "fy2026-adopted.json", basis: "adopted",
           hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
           counts: { facts: 3, nodes: 5, links: 3 }, chart_title: "t",
         }],
@@ -3199,8 +3196,7 @@ async function walkTransfers(col) {
   out.push({
     name: `${col.label} transfers: Transfers In opens into p76 and draws its receiving legs, which tie to the spine's own mark`,
     ok: at1.depth === 1 && !at1.drawnIsYears && app.projection.projection === "transfers-by-fund" &&
-        asked1.length === asked0.length + 1 &&
-        asked1[asked1.length - 1] === `data/${col.transfersStem}.json` &&
+        asked1.length === asked0.length &&
         m1.nodes === want.nodes && m1.links === want.links && m1.hairlines === want.hairlines &&
         rows1 === want.links && drawnSum === receivingSum && receivingSum === spineOut &&
         spineOut === want.cents && strays.length === 0 && !anyOpens1 &&
@@ -3210,8 +3206,8 @@ async function walkTransfers(col) {
       `${JSON.stringify(placed)} left to right (want ${JSON.stringify(step.tiers)}); ` +
       `${sources.size} paying end(s) into ${targets.size} fund(s); the drawn ribbons come to ` +
       `${drawnSum}, the document's receiving legs to ${receivingSum} and the spine's own ` +
-      `${node} outflow to ${spineOut} (want ${want.cents}); fetched ` +
-      `${JSON.stringify(asked1.slice(asked0.length))}; ${rows1} table rows; ` +
+      `${node} outflow to ${spineOut} (want ${want.cents}); ` +
+      `${asked1.length - asked0.length} fetch(es) added by the drill; ${rows1} table rows; ` +
       (strays.length ? `marks that are neither a paying end nor a fund: ${JSON.stringify(strays)}` :
         "every mark is a paying end or a fund") +
       `; nothing on it opens further (${anyOpens1 ? "SOMETHING DOES" : "confirmed"})`,
@@ -3333,7 +3329,7 @@ async function walkCategory(col) {
   const contra = app.projection.links.filter((l) => l.contra);
   const contraOK = contra.length === 2 &&
     contra.every((l) => l.target === property && l.value_cents > 0 &&
-      l.contra === "printed as a reduction of Property Taxes") &&
+      l.contra === "printed as a reduction of Property Taxes category") &&
     contra.map((l) => l.source).sort().join() ===
       "revenue-line/taxes/property/eraf,revenue-line/taxes/property/rpttf-reduction";
   // THE SIGNED SUM OVER THE DRAWN ROLLUPS IS THE SPINE'S CELL. The spine
@@ -3432,7 +3428,7 @@ async function walkCategory(col) {
         JSON.stringify(placed) === JSON.stringify(step.tiers) &&
         JSON.stringify(middle) === JSON.stringify([property]) &&
         flank.length === want.views[property][3] &&
-        asked1.length === asked0.length + 1 && asked1[asked1.length - 1] === `data/${col.step}.json` &&
+        asked1.length === asked0.length &&
         m1.nodes === want.nodes && m1.links === want.links && m1.hairlines === want.hairlines &&
         rows1 === want.links && at1.counts === want.counts &&
         at1.title === `Sankey diagram of the ${col.label} adopted budget, opened into Property Taxes category` &&
@@ -3450,8 +3446,8 @@ async function walkCategory(col) {
       `kept fund group(s); counts "${at1.counts}" (want "${want.counts}"); ` +
       `title "${at1.title}"; breadcrumb ${JSON.stringify(at1.crumbControls)} + "${at1.crumbHere}"; hint ` +
       `"${at1.hint}"; legend ${at1.legend}; desc ${at1.desc.startsWith("Opened into Property Taxes category. " +
-        step.description) ? "carries" : "LACKS"} the step's description; fetched ` +
-      `${JSON.stringify(asked1.slice(asked0.length))}; Escape once (pinned) leaves depth ${unpinned.depth}, twice ` +
+        step.description) ? "carries" : "LACKS"} the step's description; ` +
+      `${asked1.length - asked0.length} fetch(es) added by the drill; Escape once (pinned) leaves depth ${unpinned.depth}, twice ` +
       `depth ${back0.depth} with legend ${back0.legend}`,
   });
   out.push({
@@ -3463,10 +3459,10 @@ async function walkCategory(col) {
         centreTip.includes("◇ our reading") && quotesFigures(app, col, centreGross, centreReduced, centreNet) &&
         Boolean(keptGeneral) && !keptTip.includes("printed as reductions") &&
         erafPrinted > 0 && erafTip.includes("−" + fmtDollars(erafPrinted)) &&
-        erafTip.includes("reduction") && erafTip.includes("printed as a reduction of Property Taxes") &&
-        erafPanel.includes("printed as a reduction of Property Taxes") &&
+        erafTip.includes("reduction") && erafTip.includes("printed as a reduction of Property Taxes category") &&
+        erafPanel.includes("printed as a reduction of Property Taxes category") &&
         erafCells.length > 0 && erafCells[2] === "−" + fmtDollars(erafPrinted) &&
-        erafCells[4] === "printed as a reduction of Property Taxes" &&
+        erafCells[4] === "printed as a reduction of Property Taxes category" &&
         app.linkClass(eraf) === "link contra" && Boolean(erafLine) && erafLine.value === erafPrinted,
     detail: `${contra.length} contra ribbon(s): ${contra.map((l) => l.source.split("/").pop() + " " +
         l.value_cents + " into " + l.target + " (" + l.contra + ")").join(", ")}; signed sum into the centre ` +
@@ -3478,7 +3474,7 @@ async function walkCategory(col) {
       `General Fund's ${keptTip.includes("printed as reductions") ? "WRONGLY carries" : "carries no"} ` +
       `reductions note; ERAF's tooltip ` +
       `${erafTip.includes("−") ? "carries the sign" : "LACKS the sign"} and ` +
-      `${erafTip.includes("printed as a reduction of Property Taxes") ? "the sentence" : "NOT the sentence"}; ` +
+      `${erafTip.includes("printed as a reduction of Property Taxes category") ? "the sentence" : "NOT the sentence"}; ` +
       `its table row reads ${JSON.stringify(erafCells.slice(0, 5))}; class "${eraf ? app.linkClass(eraf) : ""}"`,
   });
 
@@ -4319,7 +4315,7 @@ function crossTabProbe(steps) {
       render_tiers: [2, 5, 4],
       steps,
       years: [{
-        year: 2026, label: "FY", stem: "probe", path: "data/probe.json", basis: "adopted",
+        year: 2026, label: "FY", stem: "probe", path: "fy2026-adopted.json", basis: "adopted",
         hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
         counts: { facts: 1, nodes: 3, links: 2 }, chart_title: "t",
       }],
@@ -4472,7 +4468,7 @@ async function foreignFlankProbe() {
           back: "Back", tail: "funds" },
       ],
       years: [{
-        year: 2026, label: "FY", stem: "spine", path: "data/spine.json", basis: "adopted",
+        year: 2026, label: "FY", stem: "spine", path: "fy2026-adopted.json", basis: "adopted",
         hero: { label: "l", value: "v", note: "n", kind: "hero" }, figures: [], caveats: [],
         counts: { facts: 1, nodes: 2, links: 1 }, chart_title: "t",
         steps: [{ stem: "lines", path: "data/lines.json", caveats: [] },
@@ -4744,6 +4740,9 @@ async function walkChain(col) {
   const rows1 = body.children.length;
   const focus1 = app.dom.focused ? app.dom.focused.textContent : "";
   const asked1 = fetch.asked.slice();
+  // READ AT DEPTH 1, for the reason below: by the time `ok` runs the walk has
+  // returned to the overview and the drawn document is the spine again.
+  const drawn1 = app.drawnDoc().projection;
   const m1 = open1 === "drew" ? measure(app, app.projection) : null;
   // ASKED AT DEPTH 1, not later: drillable reads the stack, and by the time
   // `ok` is evaluated the walk is back on the overview.
@@ -4863,18 +4862,17 @@ async function walkChain(col) {
     .filter((n) => n.id.startsWith("fund/") && !app.drillable(n)).map((n) => n.id).sort();
   app.drillUp(0);
 
-  const stepFile = `data/${col.step}.json`;
   out.push({
-    name: `${col.label} chain: the year's own step document is fetched on the first drill and not before`,
-    // THE RUNG ANSWER IS PART OF THE LOAD AND NOT PART OF THE DRILL, which is
-    // the whole claim this arm makes about it: it is fetched once, before the
-    // year, and a second drill adds nothing. Counted into asked0 rather than
-    // filtered out, so a client that refetched it per rung goes red here.
-    ok: asked0.length === 2 && asked0[0] === RUNGS_PATH &&
-        asked0[1] === `data/${col.stem}.json` &&
-        asked1.length === 3 && asked1[2] === stepFile,
+    name: `${col.label} chain: the drill adds no fetch, and draws the schedule the step names`,
+    // THE WHOLE PAGE IS TWO FETCHES: the rung answer and the column. A drill
+    // selects a schedule out of the column it already has, so a client that
+    // went back to the network per rung goes red here on the count alone.
+    ok: asked0.length === 2 && asked0[0] === RUNGS_PATH && asked0[1] === col.path &&
+        asked1.length === 2 &&
+        drawn1 === col.step.replace(/-\d{4}$/, ""),
     detail: `main() asked for ${JSON.stringify(asked0)}; the first drill added ` +
-      `${JSON.stringify(asked1.slice(asked0.length))}`,
+      `${JSON.stringify(asked1.slice(asked0.length))} and drew the ` +
+      `"${drawn1}" schedule`,
   });
   out.push({
     name: `${col.label} chain: the overview's hint names all three columns that open`,

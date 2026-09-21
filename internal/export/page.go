@@ -332,7 +332,6 @@ type yearView struct {
 // so the client reads one entry per step whatever the step declared.
 type stepView struct {
 	Stem    string      `json:"stem"`
-	Path    string      `json:"path"`
 	Caveats []caveatRef `json:"caveats"`
 	// Opens is every node id this year's document actually decomposes under
 	// the step -- at the step's From where it keeps a flank and at any tier
@@ -1265,7 +1264,6 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 		cited = append(cited, doc.Metadata.Sources...)
 		out = append(out, stepView{
 			Stem:    stem,
-			Path:    path.Join(dataDir, stem+".json"),
 			Caveats: caveatRefs(doc.Metadata.Caveats, stem, caveatsPath),
 			Opens:   opens,
 		})
@@ -1489,7 +1487,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Year:       m.FiscalYear,
 			Label:      m.FiscalYearLabel,
 			Stem:       stem,
-			Path:       path.Join(dataDir, stem+".json"),
+			Path:       ColumnPath(m.FiscalYear, m.Basis),
 			Basis:      m.Basis,
 			Title:      sankeyTitle(v.Title, m.FiscalYearLabel),
 			ChartTitle: "Sankey diagram of the " + m.FiscalYearLabel + " " + m.Basis + " budget",
@@ -1510,6 +1508,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	// Scope and the builder stay off meta: the loop above refuses a year whose
 	// own differ, so they are already equal across every year.
 	open := years[len(years)-1]
+
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
 	refs := projectionRefs(o.Projections)

@@ -609,7 +609,7 @@ const NAMES = [
   // markGap is reached directly for the refusals, which a click cannot produce
   // while the committed corpus ties, and isGap is what tells it from a residual.
   "markGap", "gapID", "isGap",
-  "loadDocument", "labelOfRung", "openableColumns", "joinOr", "linkClass", "markContra",
+  "loadColumn", "selectSchedule", "scheduleOf", "labelOfRung", "openableColumns", "joinOr", "linkClass", "markContra",
   // THE TRAIL, NOT ONLY ONE RUNG'S WORDS. labelOfRung answers for a rung alone
   // and cannot see a sibling it reads the same as, so the qualifying rule is
   // its own function and is reached here rather than re-spelled.
@@ -759,7 +759,7 @@ export function loadApp(opts = {}) {
     primary: "sankey",
     projections: { sankey: "data/sankey.json" },
     years: [{
-      year: 2026, label: "FY 2025-26", stem: "sankey", path: "data/sankey.json",
+      year: 2026, label: "FY 2025-26", stem: "sankey", path: "fy2026-adopted.json",
       basis: "adopted",
       hero: { label: "l", value: "v", note: "n", kind: "hero" },
       figures: [{ label: "l", value: "v", note: "n", kind: "" }],
@@ -1546,7 +1546,7 @@ export async function settle(turns = 50) {
  */
 export function twoYearConfig() {
   const year = (y, label, stem) => ({
-    year: y, label, stem, path: `data/${stem}.json`, basis: "adopted",
+    year: y, label, stem, path: `fy${y}-adopted.json`, basis: "adopted",
     // Spelled the way buildSankeyPage's sankeyTitle composes it, because that
     // is what this fixture is a model OF. app.js reads year.title straight into
     // document.title; a config missing the key sets the title to "undefined",
@@ -1596,6 +1596,90 @@ export function twoYearConfig() {
  * It records the paths asked for, in order, so a check can assert which years
  * were actually requested rather than inferring it from what got painted.
  */
+/**
+ * A column document assembled from per-schedule documents.
+ *
+ * ONE NODE TABLE AND ONE ENTRY PER SCHEDULE, as pkg/cmd/export/column.go emits.
+ * The arms plan the documents they are about -- a sankey, a fund-flows -- and
+ * this is what the packager would have folded them into.
+ *
+ * @param {Record<string, any>} schedules keyed by the name a step's `projection` holds
+ * @param {{fiscal_year?: number, basis?: string, label?: string}} [col]
+ */
+export function columnOf(schedules, col) {
+  const table = [];
+  const at = new Map();
+  const put = (n) => {
+    if (!at.has(n.id)) {
+      at.set(n.id, table.length);
+      table.push({
+        id: n.id, label: n.label, tier: n.tier,
+        role: n.role || "", derived: Boolean(n.derived),
+      });
+    }
+    return at.get(n.id);
+  };
+  const out = {
+    schema_version: 1,
+    generated_by: "harness",
+    column: Object.assign({ fiscal_year: 2026, basis: "adopted", label: "FY 2025-26" }, col),
+    nodes: table,
+    tiers: [],
+    schedules: {},
+  };
+  for (const key of Object.keys(schedules)) {
+    const doc = schedules[key];
+    if (!doc) continue;
+    if (!Array.isArray(doc.nodes)) {
+      // Present and malformed, which several arms plan on purpose.
+      out.schedules[key] = Object.assign({}, doc.metadata || {}, doc);
+      continue;
+    }
+    // NOTHING IS DEFAULTED ON THE WAY THROUGH. Several arms plan a document
+    // with a key REMOVED and assert the page refuses it; a fixture that filled
+    // the key back in would repair the defect it is about and pass for the
+    // wrong reason.
+    const nodes = doc.nodes.map((n) => {
+      const { id, label, tier, role, derived, ...rest } = n;
+      return Object.assign({ node: put(n) }, rest);
+    });
+    const links = (doc.links || []).map((l) => {
+      const { source, target, ...rest } = l;
+      return Object.assign({ from: at.get(source), to: at.get(target) }, rest);
+    });
+    const m = doc.metadata || {};
+    const { scope, ...meta } = m;
+    out.schedules[key] = Object.assign({}, meta, {
+      scopes: m.scopes || (scope ? [scope] : ["harness"]),
+      nodes, links,
+    });
+  }
+  const byTier = new Map();
+  table.forEach((n, i) => {
+    if (!byTier.has(n.tier)) byTier.set(n.tier, []);
+    byTier.get(n.tier).push(i);
+  });
+  out.tiers = [...byTier.keys()].sort((a, b) => a - b).map((t) => ({ tier: t, nodes: byTier.get(t) }));
+  return out;
+}
+
+/**
+ * The column and the schedule a `data/<stem>.json` plan entry stands for.
+ *
+ * A stem carries the year that the column file's NAME now carries, which is the
+ * join pkg/cmd/export used to make. A bare stem is the first published year, as
+ * project.PublishedStem has it.
+ *
+ * @param {string} path
+ * @returns {{year: number, name: string}}
+ */
+function stemParts(path) {
+  const stem = path.replace(/^data\//, "").replace(/\.json$/, "");
+  const m = /^(.*)-(\d{4})(-actual|-revised)?$/.exec(stem);
+  if (!m) return { year: 2026, name: stem };
+  return { year: Number(m[2]), name: m[1] };
+}
+
 export function plannedFetch(plan) {
   const asked = [];
   // THE RUNG ANSWER IS PLANNED BY DEFAULT AND OVERRIDABLE. Every check that
@@ -1604,9 +1688,46 @@ export function plannedFetch(plan) {
   // the check is about -- while a check whose subject IS that banner still
   // plans its own entry, which wins.
   const full = Object.assign({ [RUNGS_PATH]: { doc: rungsAnswer() } }, plan);
+
+  // THE COLUMN IS ASSEMBLED FROM THE PLAN, not written out in it. The client
+  // fetches one file per column now; the arms still plan the schedules they are
+  // about, and an entry written for the column path itself wins over this.
+  const scheduleEntries = Object.keys(full).filter((k) => k.startsWith("data/"));
+  const column = (/** @type {string} */ path) => {
+    const col0 = /^fy(\d{4})-([a-z]+)\.json$/.exec(path);
+    const want = col0 ? Number(col0[1]) : 2026;
+    const schedules = {};
+    let only = null;
+    for (const key of scheduleEntries) {
+      const entry = full[key];
+      const part = stemParts(key);
+      if (part.year !== want) continue;
+      if (entry === null) continue; // an arm omitting this schedule on purpose
+      if (!entry || !entry.doc) {
+        // A HANG, A SETTLE, A REJECT OR A STATUS GOVERNS THE WHOLE FETCH. The
+        // client makes one request per column now, so an arm that planned a
+        // document to hang has planned the column to hang; there is no longer a
+        // per-schedule request for it to govern instead.
+        only = entry;
+        continue;
+      }
+      schedules[part.name] = entry.doc;
+    }
+    if (only) return only;
+    const col = /^fy(\d{4})-([a-z]+)\.json$/.exec(path);
+    return {
+      doc: columnOf(schedules, col
+        ? { fiscal_year: Number(col[1]), basis: col[2] }
+        : undefined),
+    };
+  };
+
   const fetch = (path) => {
     asked.push(path);
-    const entry = full[path];
+    let entry = full[path];
+    if (!entry && /^fy\d{4}-[a-z]+\.json$/.test(path) && scheduleEntries.length) {
+      entry = column(path);
+    }
     if (!entry) return Promise.reject(new Error(`harness: no plan for ${path}`));
     if (entry.hang) return new Promise(() => {});
     // A promise the CHECK settles, which is the only way to place a fetch

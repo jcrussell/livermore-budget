@@ -14,6 +14,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
+  columnOf,
   loadApp, settle, twoYearConfig, plannedFetch, goldenGraph, goldenGraph2027, goldenFundFlows,
   goldenFundFlows2027, repoRoot, RUNGS_PATH, rungsAnswer,
 } from "./harness.mjs";
@@ -52,7 +53,7 @@ function fixtureYear(overrides) {
     year: 2027,
     label: "FY 2026-27",
     stem: "sankey-2027",
-    path: "data/sankey-2027.json",
+    path: "fy2027-adopted.json",
     basis: "adopted",
     title: "City of Livermore budget flows \u2014 FY 2026-27",
     // A STRING NO CLIENT COMPOSITION REPRODUCES, for the reason the title is
@@ -545,8 +546,8 @@ export async function checks() {
         wrapper.selectable = { a: anchor };
         app2.dom.document.plant("[data-year-path]", wrapper);
         app2.paintYearWords(fixtureYear());
-        return anchor.getAttribute("href") === "data/sankey-2027.json" &&
-               anchor.textContent === "data/sankey-2027.json";
+        return anchor.getAttribute("href") === "fy2027-adopted.json" &&
+               anchor.textContent === "fy2027-adopted.json";
       })(),
       detail: "the href and the text both name the year's own document",
     },
@@ -695,6 +696,10 @@ async function chainedYears(plan, paths) {
     "data/sankey.json": { doc },
     "data/sankey-2027.json": { doc },
     "data/fund-flows.json": { doc: goldenFundFlows() },
+    // BOTH COLUMNS CARRY THE STEP'S SCHEDULE. A column holds its own year's
+    // schedules, so a fixture planning only the first year's leaves the second
+    // with a spine and nothing to open into.
+    "data/fund-flows-2027.json": { doc: goldenFundFlows() },
     [RUNGS_PATH]: { doc: answer },
   }, plan || {}));
   const app = loadApp({ config, checkedStem: config.years[0].stem, fetch });
@@ -744,9 +749,9 @@ async function yearSwitchClosesTheDrill() {
     out.push({
       name: "the year on screen opens into its own step document, not the one the stem maps to",
       ok: first === "drew" && second === "drew" &&
-          asked("data/fund-flows.json") === 1 && asked("data/fund-flows-2027.json") === 1 &&
+          asked("data/fund-flows.json") === 0 && asked("data/fund-flows-2027.json") === 0 &&
           label === "General Fund, the other year",
-      detail: `FY 2025-26 opened from data/fund-flows.json (${asked("data/fund-flows.json")} fetch); ` +
+      detail: `FY 2025-26 opened its own fund-flows schedule with ${asked("data/fund-flows.json")} fetch; ` +
         `after the switch FY 2026-27 opened from data/fund-flows-2027.json ` +
         `(${asked("data/fund-flows-2027.json")} fetch) and drew fund/100 labelled "${label}" -- ` +
         `a client joining on CONFIG.projections would fetch the first file twice and draw ` +
@@ -770,34 +775,45 @@ async function yearSwitchClosesTheDrill() {
     await settle();
     const askedAfter = fetch.asked.filter((p) => p === "data/fund-flows.json").length;
     out.push({
-      name: "a year switch closes every rung and drops the step document",
+      name: "a year switch closes every rung, and the next drill draws the new year's schedule",
+      // THE CACHE THIS ARM WATCHED IS GONE WITH THE FETCH. It counted step
+      // fetches to prove a stale document could not survive a year; a drill
+      // selects out of the column on screen now, so the column IS the cache and
+      // the switch replaces it whole. What is left to assert is that the next
+      // drill draws, at depth 1, under the new year.
       ok: drew === "drew" && depthBefore === 1 && depthAfter === 0 &&
           crumbHidden && lede === "FY 2026-27 adopted" &&
-          askedBefore === 1 && again === "drew" && askedAfter === 2,
+          askedBefore === 0 && again === "drew" && askedAfter === 0,
       detail: `opened to depth ${depthBefore}, switched year and read "${lede}" at depth ` +
         `${depthAfter} with the breadcrumb ${crumbHidden ? "hidden" : "SHOWING"}; ` +
-        `the step document was fetched ${askedBefore} time(s) before the switch and ${askedAfter} ` +
-        `after the next drill -- a cache that survived the year would read ${askedBefore}`,
+        `${askedBefore} step fetch(es) before the switch and ${askedAfter} after the next drill, ` +
+        `because a drill selects out of the column the year landed`,
     });
   }
   {
     let release = null;
     const { app } = await chainedYears({
-      "data/fund-flows.json": { settle: (pair) => { release = pair; } },
+      "data/sankey-2027.json": { settle: (pair) => { release = pair; } },
     });
+    // The drill starts first and yields at its one await; the switch then bumps
+    // the token it captured. No step fetch is held open because there is none.
     const inFlight = app.drillDown("fund-group/general");
-    await settle();
     clickYear(app, "sankey-2027");
     await settle();
-    const lede = app.dom.byId.get("lede-year").textContent;
-    if (!release) throw new Error("the step fetch was never asked for");
-    release.resolve(goldenFundFlows());
+    if (!release) throw new Error("the year fetch was never asked for");
+    release.resolve(columnOf({
+      sankey: goldenGraph2027(), "fund-flows": goldenFundFlows2027(),
+    }, { fiscal_year: 2027, basis: "adopted", label: "FY 2026-27" }));
     const outcome = await inFlight;
     await settle();
+    // Read after the column lands: the year's words are painted from it, and
+    // the switch is the thing being held open now.
+    const lede = app.dom.byId.get("lede-year").textContent;
     out.push({
       name: "a drill overtaken by a year switch stands down rather than landing on the new year",
       ok: lede === "FY 2026-27 adopted" && outcome === "superseded" && app.drilled.length === 0,
-      detail: `the year switched to "${lede}" while the step fetch was open; when it resolved the ` +
+      detail: `the year switched to "${lede}" while the drill was between its start and its ` +
+        `selection; when the column resolved the ` +
         `drill came to "${outcome}" and left ${app.drilled.length} rung(s) -- a drill that ` +
         `landed would read "drew" and 1`,
     });
@@ -816,34 +832,37 @@ async function yearSwitchClosesTheDrill() {
   // larger than the spine, so a click during a year switch usually resolves in
   // exactly this order.
   {
-    let spine = null;
-    let step = null;
+    let column = null;
     const { app } = await chainedYears({
-      "data/sankey-2027.json": { settle: (pair) => { spine = pair; } },
-      "data/fund-flows.json": { settle: (pair) => { step = pair; } },
+      "data/sankey-2027.json": { settle: (pair) => { column = pair; } },
     });
     clickYear(app, "sankey-2027");
     await settle();
-    if (!spine) throw new Error("the year fetch was never asked for");
-    // The reader clicks a group on the chart still in front of them, so BOTH
-    // are open at once. The spine lands first -- it is the smaller file, which
-    // is why this is the ordering a reader meets.
+    if (!column) throw new Error("the year fetch was never asked for");
+    // ONE FETCH IS IN FLIGHT NOW, NOT TWO. A drill selects a schedule out of
+    // the column it already has, so the race this arm models is no longer
+    // "which file lands first" -- it is a drill begun on the old chart while
+    // the new year's column is still open, and stepDocument's own superseded
+    // check is what stands it down.
     const inFlight = app.drillDown("fund-group/general");
     await settle();
-    if (!step) throw new Error("the step fetch was never asked for");
-    spine.resolve(goldenGraph2027());
-    await settle();
-    step.resolve(goldenFundFlows());
+    column.resolve(columnOf({
+      sankey: goldenGraph2027(), "fund-flows": goldenFundFlows2027(),
+    }, { fiscal_year: 2027, basis: "adopted", label: "FY 2026-27" }));
     const outcome = await inFlight;
     await settle();
     const lede = app.dom.byId.get("lede-year").textContent;
     out.push({
-      name: "a drill begun while a year switch is already in flight stands down rather than drawing two years at once",
-      ok: lede === "FY 2026-27 adopted" && outcome === "superseded" && app.drilled.length === 0,
-      detail: `the drill was begun on the old chart while the new year's spine was open; it came ` +
-        `to "${outcome}" leaving ${app.drilled.length} rung(s), with the page reading "${lede}" -- ` +
-        `a drill that landed would read "drew" and 1, and the chart would carry the new year's ` +
-        `title over the old year's figures`,
+      name: "a drill begun after a year switch draws on the column it was begun on, and the switch replaces it whole",
+      // IT DRAWS AND IS THEN REPLACED, which is the honest outcome once a drill
+      // stops fetching: begun AFTER the switch it captures the new token, so
+      // nothing stands it down, and what protects the reader is that the
+      // landing year resets the stack rather than repainting half of it.
+      ok: lede === "FY 2026-27 adopted" && outcome === "drew" && app.drilled.length === 0,
+      detail: `the drill was begun on the old chart while the new year's column was open; it came ` +
+        `to "${outcome}" and the landing year left ${app.drilled.length} rung(s), with the page ` +
+        `reading "${lede}" -- a page carrying the new year's title over the old year's figures ` +
+        `would read 1`,
     });
   }
   return out;

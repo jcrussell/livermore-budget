@@ -109,7 +109,7 @@ export async function checks() {
     // entered. Verified by gating `await showYear(years[0])` off in main() --
     // seam.mjs goes red, but this check went on passing, which is a claim about
     // a race that did not occur (fisc-ty6).
-    const opened = fetch.asked.includes("data/sankey.json");
+    const opened = fetch.asked.includes(config.years[0].path);
     const escape = (app.dom.documentListeners.keydown || []).length;
     const theme = app.dom.followers("(prefers-color-scheme: dark)").length;
     // The clicked year DID draw. Without this the check would pass over a page
@@ -183,7 +183,7 @@ export async function checks() {
     refuseOpening(new TypeError("Failed to fetch"));
     await settle();
 
-    const opened = fetch.asked.includes("data/sankey.json");
+    const opened = fetch.asked.includes(config.years[0].path);
     const banners = refusals(main);
     const drew = app.dom.byId.get("lede-year");
     out.push({
@@ -762,7 +762,7 @@ export async function checks() {
       const banners = refusals(main);
       const names = banners.length ? banners[0].textContent : "";
       const drew = app.dom.byId.get("lede-year");
-      const askedYear = fetch.asked.includes("data/sankey.json");
+      const askedYear = fetch.asked.includes(config.years[0].path);
       out.push({
         name: `${tc.name} refuses the page in words and draws nothing`,
         ok: fetch.asked[0] === RUNGS_PATH && banners.length === 1 &&

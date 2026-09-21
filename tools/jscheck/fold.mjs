@@ -151,7 +151,7 @@ function appDrawing(tiers, fetch, extra) {
       render_tiers: tiers,
       years: [{
         year: 2026, label: "FY 2025-26", stem: "fund-flows",
-        path: "data/fund-flows.json", basis: "adopted",
+        path: "fy2026-adopted.json", basis: "adopted",
         hero: { label: "l", value: "v", note: "n", kind: "hero" },
         figures: [], caveats: [],
         counts: { facts: 280, nodes: 238, links: 251 },

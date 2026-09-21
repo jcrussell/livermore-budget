@@ -3,37 +3,38 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 
-	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// columnSchemaVersion is the version a columnDoc declares, spelled once.
+// columnSchemaVersion is the version a ColumnDoc declares, spelled once.
 const columnSchemaVersion = 1
 
-// columnDoc is everything the chart needs for one published column: one node
+// ColumnDoc is everything the chart needs for one published column: one node
 // table and one link set per printed schedule, keyed by (fiscal year, basis).
 //
 // The schedules are not merged; why, measured: docs/schema-contracts.md.
-type columnDoc struct {
+type ColumnDoc struct {
 	SchemaVersion int                    `json:"schema_version"`
 	GeneratedBy   string                 `json:"generated_by,omitempty"`
-	Column        columnKey              `json:"column"`
-	Nodes         []columnNode           `json:"nodes"`
-	Tiers         []columnTier           `json:"tiers"`
-	Schedules     map[string]columnSched `json:"schedules"`
+	Column        ColumnKey              `json:"column"`
+	Nodes         []ColumnNode           `json:"nodes"`
+	Tiers         []ColumnTier           `json:"tiers"`
+	Schedules     map[string]ColumnSched `json:"schedules"`
 }
 
-type columnKey struct {
+// ColumnKey names the published column: a fiscal year and a basis.
+type ColumnKey struct {
 	FiscalYear int    `json:"fiscal_year"`
 	Basis      string `json:"basis"`
 	Label      string `json:"label"`
 }
 
-// columnNode carries only the fields every schedule agrees on. Where a node
-// hangs is columnSchedNode's, because two schedules disagree about it.
-type columnNode struct {
+// ColumnNode carries only the fields every schedule agrees on. Where a node
+// hangs is ColumnSchedNode's, because two schedules disagree about it.
+type ColumnNode struct {
 	ID      string `json:"id"`
 	Label   string `json:"label"`
 	Tier    int    `json:"tier"`
@@ -41,8 +42,8 @@ type columnNode struct {
 	Derived bool   `json:"derived,omitempty"`
 }
 
-// columnSchedNode is one schedule's view of a node the column carries.
-type columnSchedNode struct {
+// ColumnSchedNode is one schedule's view of a node the column carries.
+type ColumnSchedNode struct {
 	Node           int    `json:"node"`
 	Parent         string `json:"parent,omitempty"`
 	ConstraintTier string `json:"constraint_tier,omitempty"`
@@ -50,13 +51,14 @@ type columnSchedNode struct {
 	SourceNote     string `json:"source_note,omitempty"`
 }
 
-// columnTier is the reader's left-to-right. A tier with no node is absent.
-type columnTier struct {
+// ColumnTier is the reader's left-to-right. A tier with no node is absent.
+type ColumnTier struct {
 	Tier  int   `json:"tier"`
 	Nodes []int `json:"nodes"`
 }
 
-type columnSched struct {
+// ColumnSched is one printed schedule of a column.
+type ColumnSched struct {
 	// An array because fund-flows spans two: revenue-by-fund and
 	// expenditure-by-department. The per-projection files spell this two ways.
 	Scopes   []string        `json:"scopes"`
@@ -65,13 +67,13 @@ type columnSched struct {
 	Caveats  json.RawMessage `json:"caveats,omitempty"`
 	Sources  json.RawMessage `json:"sources,omitempty"`
 	// This schedule's own view of the marks it draws.
-	Nodes []columnSchedNode `json:"nodes"`
-	Links []columnLink      `json:"links"`
+	Nodes []ColumnSchedNode `json:"nodes"`
+	Links []ColumnLink      `json:"links"`
 }
 
-// columnLink references its ends by index into the node table, which is why
+// ColumnLink references its ends by index into the node table, which is why
 // that table is emitted in a stable order rather than a map.
-type columnLink struct {
+type ColumnLink struct {
 	From       int             `json:"from"`
 	To         int             `json:"to"`
 	ValueCents int64           `json:"value_cents"`
@@ -121,48 +123,52 @@ type decoded struct {
 	} `json:"metadata"`
 }
 
-// columnsOf folds every published document into one document per column.
+// ColumnsOf folds every published document into one document per column.
 //
 // A document stating no fiscal year or basis is skipped, not refused:
 // revenue-trends and the two balance documents carry a series and no column.
-func columnsOf(projections map[string][]byte) (map[string]columnDoc, error) {
-	byColumn := map[string]*columnDoc{}
+func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, error) {
+	byColumn := map[string]*ColumnDoc{}
 	index := map[string]map[string]int{}
 
-	for _, doc := range project.PublishedDocuments() {
-		raw, ok := projections[doc.Stem]
-		if !ok {
-			continue
-		}
+	stems := make([]string, 0, len(projections))
+	for stem := range projections {
+		stems = append(stems, stem)
+	}
+	sort.Strings(stems)
+
+	for _, stem := range stems {
+		raw := projections[stem]
+		schedule := scheduleKey(stem)
 		var d decoded
 		if err := json.Unmarshal(raw, &d); err != nil {
-			return nil, fmt.Errorf("decode %s: %w", doc.Stem, err)
+			return nil, fmt.Errorf("decode %s: %w", stem, err)
 		}
 		if d.Metadata.FiscalYear == 0 || d.Metadata.Basis == "" || len(d.Nodes) == 0 {
 			continue
 		}
-		key := columnPath(d.Metadata.FiscalYear, d.Metadata.Basis)
+		key := ColumnPath(d.Metadata.FiscalYear, d.Metadata.Basis)
 		col, seen := byColumn[key]
 		if !seen {
-			col = &columnDoc{
+			col = &ColumnDoc{
 				SchemaVersion: columnSchemaVersion,
 				GeneratedBy:   d.Metadata.GeneratedBy,
-				Column: columnKey{
+				Column: ColumnKey{
 					FiscalYear: d.Metadata.FiscalYear,
 					Basis:      d.Metadata.Basis,
 					Label:      d.Metadata.FiscalYearLabel,
 				},
-				Schedules: map[string]columnSched{},
+				Schedules: map[string]ColumnSched{},
 			}
 			byColumn[key] = col
 			index[key] = map[string]int{}
 		}
 		at := index[key]
 
-		drawn := make([]columnSchedNode, 0, len(d.Nodes))
+		drawn := make([]ColumnSchedNode, 0, len(d.Nodes))
 		for _, n := range d.Nodes {
 			i, had := at[n.ID]
-			node := columnNode{
+			node := ColumnNode{
 				ID: n.ID, Label: n.Label, Tier: n.Tier, Role: n.Role, Derived: n.Derived,
 			}
 			if !had {
@@ -176,27 +182,27 @@ func columnsOf(projections map[string][]byte) (map[string]columnDoc, error) {
 					"column %s: %q disagrees between schedules about the same node: %+v and %+v",
 					key, n.ID, col.Nodes[i], node)
 			}
-			drawn = append(drawn, columnSchedNode{
+			drawn = append(drawn, ColumnSchedNode{
 				Node: i, Parent: n.Parent, ConstraintTier: n.ConstraintTier,
 				Rationale: n.Rationale, SourceNote: n.SourceNote,
 			})
 		}
 
-		links := make([]columnLink, 0, len(d.Links))
+		links := make([]ColumnLink, 0, len(d.Links))
 		for _, l := range d.Links {
 			from, okFrom := at[l.Source]
 			to, okTo := at[l.Target]
 			if !okFrom || !okTo {
 				return nil, fmt.Errorf("column %s, schedule %s: link %s -> %s names a node the document does not carry",
-					key, doc.Projection, l.Source, l.Target)
+					key, schedule, l.Source, l.Target)
 			}
-			links = append(links, columnLink{
+			links = append(links, ColumnLink{
 				From: from, To: to, ValueCents: l.ValueCents, Kind: l.Kind,
 				TransferID: l.TransferID, FactIDs: l.FactIDs, Locators: l.Locators,
 				Derived: l.Derived, Partition: l.Partition,
 			})
 		}
-		col.Schedules[doc.Projection] = columnSched{
+		col.Schedules[schedule] = ColumnSched{
 			Nodes:    drawn,
 			Scopes:   scopesOf(d),
 			Headline: d.Metadata.Headline,
@@ -207,12 +213,24 @@ func columnsOf(projections map[string][]byte) (map[string]columnDoc, error) {
 		}
 	}
 
-	out := make(map[string]columnDoc, len(byColumn))
+	out := make(map[string]ColumnDoc, len(byColumn))
 	for key, col := range byColumn {
 		col.Tiers = tiersOf(col.Nodes)
 		out[key] = *col
 	}
 	return out, nil
+}
+
+// yearSuffix is what project.PublishedStem appends to a projection name.
+var yearSuffix = regexp.MustCompile(`-(\d{4})(-actual|-revised)?$`)
+
+// scheduleKey is the schedule a stem's document becomes in its column.
+//
+// It inverts project.PublishedStem, which appends the year to a projection name
+// when a projection publishes more than one column. TestScheduleKeyInvertsThe
+// StemRule holds the two together.
+func scheduleKey(stem string) string {
+	return yearSuffix.ReplaceAllString(stem, "")
 }
 
 // scopesOf normalises the two spellings the published documents use.
@@ -228,7 +246,7 @@ func scopesOf(d decoded) []string {
 
 // tiersOf is the reader's left-to-right: every tier the column draws a node at,
 // ascending, each with its nodes in table order.
-func tiersOf(nodes []columnNode) []columnTier {
+func tiersOf(nodes []ColumnNode) []ColumnTier {
 	at := map[int][]int{}
 	for i, n := range nodes {
 		at[n.Tier] = append(at[n.Tier], i)
@@ -238,21 +256,16 @@ func tiersOf(nodes []columnNode) []columnTier {
 		tiers = append(tiers, t)
 	}
 	sort.Ints(tiers)
-	out := make([]columnTier, 0, len(tiers))
+	out := make([]ColumnTier, 0, len(tiers))
 	for _, t := range tiers {
-		out = append(out, columnTier{Tier: t, Nodes: at[t]})
+		out = append(out, ColumnTier{Tier: t, Nodes: at[t]})
 	}
 	return out
 }
 
-// columnPath is the file one column ships at.
-func columnPath(year int, basis string) string {
-	return fmt.Sprintf("fy%d-%s.json", year, basis)
-}
-
 // encodeColumn renders one column and refuses bytes that do not match the
 // published schema.
-func encodeColumn(doc columnDoc) ([]byte, error) {
+func encodeColumn(doc ColumnDoc) ([]byte, error) {
 	b, err := json.MarshalIndent(doc, "", " ")
 	if err != nil {
 		return nil, fmt.Errorf("encode column: %w", err)

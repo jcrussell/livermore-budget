@@ -1097,7 +1097,6 @@ let fetched = null;
  * resolves to is a claim about the year on screen.
  * @type {Map<string, FiscProjection>}
  */
-let stepDocs = new Map();
 /**
  * The drill's own gesture token, bumped by every push and pop of the stack.
  *
@@ -1930,7 +1929,7 @@ function stepDocFor(step) {
   const steps = shownYear && Array.isArray(shownYear.steps) ? shownYear.steps : [];
   const at = CONFIG && Array.isArray(CONFIG.steps) ? CONFIG.steps.indexOf(step) : -1;
   const entry = at >= 0 ? steps[at] : undefined;
-  return entry && typeof entry.path === "string" && entry.path ? entry : null;
+  return entry || null;
 }
 
 /**
@@ -1942,7 +1941,7 @@ function stepDocFor(step) {
  * drawableSankey each fail closed for a reason that is about the file rather
  * than about which gesture asked for it, and a click that skipped one would
  * draw at depth 1 a document the year control would refuse at depth 0.
- * loadDocument is the one place they are sequenced.
+ * loadColumn is the one place they are sequenced.
  * @param {FiscDrillStep} step
  * @param {FiscProjection} from  the document of the chart the step opens from
  * @param {() => boolean} superseded
@@ -1950,20 +1949,8 @@ function stepDocFor(step) {
  */
 async function stepDocument(step, from, superseded) {
   if (!step.projection) return from;
-  const entry = stepDocFor(step);
-  if (!entry) {
-    if (!superseded()) {
-      fail("That could not be opened: this page's step names a document, " +
-        step.projection + ", that the year on screen was not packaged with.");
-    }
-    return null;
-  }
-  const path = entry.path;
-  const cached = stepDocs.get(path);
-  if (cached) return cached;
-  const doc = await loadDocument(path, superseded);
-  if (doc) stepDocs.set(path, doc);
-  return doc;
+  if (superseded()) return null;
+  return selectSchedule(column, step.projection);
 }
 
 /**
@@ -2051,7 +2038,7 @@ function redrawStack(next) {
  * Opens one node of the chart on screen, one rung deeper.
  *
  * ASYNC BECAUSE THE FIRST RUNG OF A DOCUMENT-SWITCHING CHAIN FETCHES, and that
- * gives every guard in loadDocument a caller that is a click. The await sits
+ * gives every guard in loadColumn a caller that is a click. The await sits
  * between the fetch and the repaint and nothing is mutated before it; after it
  * the gesture asks whether it has been overtaken -- by a later drill, a pop, or
  * a year switch -- and stands down rather than push a rung onto a stack that is
@@ -5488,6 +5475,84 @@ function understands(got, what) {
 }
 
 /**
+ * The schema version of a column document this client reads.
+ */
+const COLUMN_SCHEMA = 1;
+
+/**
+ * One schedule of a column document, in the shape the rest of this file reads.
+ *
+ * The column carries ONE node table and references it by index, which is what
+ * de-duplicates the 122 marks its schedules share. Nothing downstream of here
+ * knows that: a schedule arrives as {nodes, links, metadata} with ids on both
+ * ends of every link, exactly as a per-projection document did.
+ *
+ * ABSENT IS FILLED IN, NOT LEFT UNDEFINED. The column omits an empty string and
+ * a false boolean; every reader here expects the key to be present, which the
+ * sankey contract has always required.
+ *
+ * @param {any} column
+ * @param {string} key the schedule to read -- a step's `projection`
+ * @returns {FiscProjection | null} null when the column carries no such schedule
+ */
+function scheduleOf(column, key) {
+  const sched = column && column.schedules ? column.schedules[key] : null;
+  if (!sched) return null;
+  const table = Array.isArray(column.nodes) ? column.nodes : [];
+
+  // A SCHEDULE THAT IS PRESENT AND MALFORMED GOES ON TO drawableSankey, which
+  // names the key it lacks. Refusing it here would say "no such schedule" of a
+  // schedule that is there.
+  if (!Array.isArray(sched.nodes) || !Array.isArray(sched.links)) {
+    return /** @type {any} */ ({
+      schema_version: SCHEMA_VERSION, projection: key,
+      nodes: sched.nodes, links: sched.links, metadata: sched.metadata || sched,
+    });
+  }
+
+  const nodes = sched.nodes.map((n) => {
+    const base = table[n.node] || {};
+    return {
+      id: base.id, label: base.label, tier: base.tier,
+      role: base.role || "", derived: Boolean(base.derived),
+      parent: n.parent || "", constraint_tier: n.constraint_tier || "",
+      rationale: n.rationale || "", source_note: n.source_note || "",
+    };
+  });
+  const links = sched.links.map((l) => {
+    const from = table[l.from] || {};
+    const to = table[l.to] || {};
+    return {
+      source: from.id, target: to.id,
+      value_cents: l.value_cents, kind: l.kind,
+      transfer_id: l.transfer_id || "",
+      // NOT DEFAULTED: drawableSankey refuses a link that carries neither, and
+      // filling them in here would repair a malformed column before the guard
+      // that exists to name it ever saw one.
+      fact_ids: l.fact_ids, locators: l.locators,
+      derived: Boolean(l.derived), partition: Boolean(l.partition),
+    };
+  });
+  const col = column.column || {};
+  return /** @type {any} */ ({
+    schema_version: SCHEMA_VERSION,
+    projection: key,
+    nodes, links,
+    metadata: {
+      generated_by: column.generated_by || "",
+      fiscal_year: col.fiscal_year, fiscal_year_label: col.label,
+      basis: col.basis,
+      scope: (sched.scopes || []).join(", "),
+      currency: "USD", units: "cents",
+      sources: sched.sources,
+      headline: sched.headline || {},
+      counts: sched.counts || {},
+      caveats: sched.caveats || [],
+    },
+  });
+}
+
+/**
  * Reports whether a fetched body is a document at all.
  * @param {any} doc
  * @param {string} what
@@ -5648,7 +5713,7 @@ function drawableSankey(doc, what) {
  * @param {() => boolean} superseded
  * @returns {Promise<FiscProjection | null>}
  */
-async function loadDocument(path, superseded) {
+async function loadColumn(path, superseded) {
   let doc;
   try {
     const response = await fetch(path);
@@ -5685,8 +5750,40 @@ async function loadDocument(path, superseded) {
   // projection it was handed, so agreeing with the config is not evidence the
   // file on the wire agrees too.
   if (!isDocument(doc, path)) return null;
-  if (!understands(doc.schema_version, path)) return null;
-  if (!drawableSankey(doc, path)) return null;
+  if (doc.schema_version !== COLUMN_SCHEMA) {
+    fail("This page will not draw " + path + ": it declares schema_version " +
+      doc.schema_version + ", and this page reads column schema_version " +
+      COLUMN_SCHEMA + ". Drawing it anyway would produce a chart that is wrong " +
+      "rather than one that fails.");
+    return null;
+  }
+  if (!Array.isArray(doc.nodes) || !doc.schedules || typeof doc.schedules !== "object") {
+    fail("This page will not draw " + path + ": a column carries a node table and " +
+      "a schedule for each printed page of the budget, and this one does not.");
+    return null;
+  }
+  return doc;
+}
+
+/**
+ * One schedule of the column on screen, vetted as it is first selected.
+ *
+ * PER SCHEDULE AND NOT PER FILE. A column arrives in one fetch, so a single
+ * check over it would vet the spine and let a malformed department-funding
+ * block through to the click that first needs it.
+ *
+ * @param {any} col
+ * @param {string} key
+ * @returns {FiscProjection | null}
+ */
+function selectSchedule(col, key) {
+  const doc = scheduleOf(col, key);
+  if (!doc) {
+    fail("That could not be opened: the year on screen carries no schedule " +
+      "called " + key + ".");
+    return null;
+  }
+  if (!drawableSankey(doc, key)) return null;
   return doc;
 }
 
@@ -5739,7 +5836,7 @@ function readableRungs(doc, what) {
 /**
  * Fetches Go's rung answer and indexes it, or refuses in words.
  *
- * ITS OWN FETCH AND NOT loadDocument's, because every guard in that one is
+ * ITS OWN FETCH AND NOT loadColumn's, because every guard in that one is
  * about a SANKEY document -- drawableSankey names nodes, links and locators,
  * and this file carries none of them. Sharing it would mean a flag deciding
  * which half of the vetting applies, which is the shape that ships a file
@@ -5763,7 +5860,7 @@ async function loadRungs(path) {
     }
     doc = await response.json();
   } catch (e) {
-    // The two sentences loadDocument tells apart, told apart here for the same
+    // The two sentences loadColumn tells apart, told apart here for the same
     // reason: "serve it over HTTP" is useless advice to someone already doing
     // that, and `e.name` rather than instanceof because an error thrown parsing
     // a response body need not come from this realm's constructor.
@@ -5822,11 +5919,18 @@ async function showYear(year) {
   // A switch token, because two switches can be in flight at once: a reader who
   // clicks twice gets two fetches, and without this the SLOWER one wins and the
   // page draws a year the control does not show. Compared after every await,
-  // inside loadDocument and once more here.
+  // inside loadColumn and once more here.
   const token = ++switching;
-  const doc = await loadDocument(year.path, () => token !== switching);
-  if (token !== switching) return SUPERSEDED;
+  const superseded = () => token !== switching;
+  const loaded = await loadColumn(year.path, superseded);
+  if (superseded()) return SUPERSEDED;
+  if (!loaded) return FAILED;
+
+  // THE SPINE IS ONE SCHEDULE OF THE COLUMN, named by CONFIG.primary. Every
+  // other schedule is selected by the step that opens into it, never fetched.
+  const doc = selectSchedule(loaded, CONFIG.primary);
   if (!doc) return FAILED;
+  column = loaded;
 
   // LAY OUT BEFORE MUTATING ANYTHING. Every throw left in the draw is in here
   // -- a link naming a node the document does not carry is the realistic one --
@@ -5851,7 +5955,6 @@ async function showYear(year) {
   // for the year it was opened in, and the next drill fetches it again for
   // this one rather than draw the year the reader left one rung down.
   drilled = [];
-  stepDocs = new Map();
   const drawn = shapeFor(doc);
   const laid = layOut(drawn);
 

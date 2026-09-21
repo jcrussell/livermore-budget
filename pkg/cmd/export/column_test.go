@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/project"
 )
 
@@ -71,7 +72,7 @@ func TestEveryColumnLinkEqualsTheFactsItCites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	columns, err := columnsOf(built.Projections)
+	columns, err := export.ColumnsOf(built.Projections)
 	if err != nil {
 		t.Fatalf("columnsOf: %v", err)
 	}
@@ -143,7 +144,7 @@ func TestEveryColumnIndexResolves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	columns, err := columnsOf(built.Projections)
+	columns, err := export.ColumnsOf(built.Projections)
 	if err != nil {
 		t.Fatalf("columnsOf: %v", err)
 	}

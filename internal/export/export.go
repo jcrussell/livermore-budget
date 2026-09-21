@@ -721,6 +721,14 @@ type Download struct {
 	Bytes int
 }
 
+// ColumnPath is the file one published column ships at, at the site root.
+//
+// Named by COLUMN and not by year: one basis per year is a property of today's
+// corpus, and the packager already refuses a document on both.
+func ColumnPath(year int, basis string) string {
+	return fmt.Sprintf("fy%d-%s.json", year, basis)
+}
+
 // ErrNoPrimary reports a projection set with no PrimaryProjection in it.
 var ErrNoPrimary = errors.New("no " + PrimaryProjection + " projection to build the page from")
 
@@ -1885,6 +1893,21 @@ func Prepare(o Options) (*plan, error) {
 	}
 	for _, name := range sortedKeys(o.Projections) {
 		if err := add(path.Join(dataDir, name+".json"), o.Projections[name]); err != nil {
+			return nil, err
+		}
+	}
+	// ONE DOCUMENT PER PUBLISHED COLUMN, written by the same call that writes
+	// the page naming them.
+	columns, cerr := ColumnsOf(o.Projections)
+	if cerr != nil {
+		return nil, cerr
+	}
+	for _, name := range sortedKeys(columns) {
+		encoded, eerr := encodeColumn(columns[name])
+		if eerr != nil {
+			return nil, eerr
+		}
+		if err := add(name, encoded); err != nil {
 			return nil, err
 		}
 	}

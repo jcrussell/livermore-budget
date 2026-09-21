@@ -2090,7 +2090,7 @@ func yearsIn(t *testing.T, page string) []struct {
 // closes that.
 func TestEachYearCarriesItsOwnBasisAndTitle(t *testing.T) {
 	page, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
-		meta["basis"] = "proposed"
+		meta["basis"] = "revised"
 	})
 	if err != nil {
 		t.Fatalf("Write: %v", err)
@@ -2105,8 +2105,8 @@ func TestEachYearCarriesItsOwnBasisAndTitle(t *testing.T) {
 	if len(years) != 2 {
 		t.Fatalf("CONFIG.years has %d entries, want 2", len(years))
 	}
-	if years[0].Basis != "adopted" || years[1].Basis != "proposed" {
-		t.Errorf("bases are %q and %q, want adopted and proposed", years[0].Basis, years[1].Basis)
+	if years[0].Basis != "adopted" || years[1].Basis != "revised" {
+		t.Errorf("bases are %q and %q, want adopted and revised", years[0].Basis, years[1].Basis)
 	}
 	if years[0].Title == years[1].Title {
 		t.Errorf("both years carry the title %q; the client writes this straight into "+
@@ -3614,8 +3614,12 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 			t.Fatalf("year %s carries %d step entries, want one per declared step", y.Stem, len(y.Steps))
 		}
 		for k, s := range y.Steps {
-			if s.Stem != want || s.Path != "data/"+want+".json" {
-				t.Errorf("year %s step %d draws %s at %s, want %s", y.Stem, k, s.Stem, s.Path, want)
+			// STEM AND NOT A PATH. A step no longer names a file: its schedule
+			// lives in the year's own column, and the client selects it. What
+			// still has to be per-year is WHICH document the entry was built
+			// from, which is what this says.
+			if s.Stem != want {
+				t.Errorf("year %s step %d draws %s, want %s", y.Stem, k, s.Stem, want)
 			}
 			href := ""
 			for _, c := range s.Caveats {
