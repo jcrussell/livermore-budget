@@ -2,7 +2,6 @@ package export
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,26 +17,8 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
 	"github.com/jcrussell/livermore-budget/internal/registry"
-	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
-
-// structurePath names the structure document for one fiscal year.
-//
-// THE SITE DOES NOT SHIP IT -- see result.Structure -- so this is the name the
-// part is keyed by rather than a path a reader fetches. It is kept in the
-// shape of one because the day something reads the lattice it will want it
-// served, and the partition is the reason that would be cheap.
-//
-// ONE FILE PER YEAR, AND NO MONOLITH. A year is the one dimension the reader
-// already switches on, so a part is the whole of what one column of the site
-// reads, and a client that fetches the year on screen fetches nothing it will
-// not draw. structure.PartitionByYear says why that is not per-interaction
-// slicing, and TestTheStructureIsPartitionedByYearAndIsMeasured re-measures
-// each part against the whole under -v.
-func structurePath(year int) string {
-	return fmt.Sprintf("structure-%d.json", year)
-}
 
 // factsPath is the fact store this export reads. It is cmdutil's rather than
 // this package's: `fisc build` writes that path and `fisc verify` checks it, and
@@ -69,15 +50,6 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	reg, err := loadRegistry(repoRoot)
-	if err != nil {
-		return result{}, err
-	}
-	parts, err := buildStructure(reg, facts)
-	if err != nil {
-		return result{}, err
-	}
-
 	// THE RUNG ANSWER SHIPS TOO. Go walks every rung of the spine to build
 	// it, and until it shipped the walk's only reader was
 	// the test that pinned testdata/rungs.json to it; the client drew each
@@ -98,7 +70,6 @@ func buildAll(repoRoot string) (result, error) {
 	assets.Files[rungsServedPath] = served
 	return result{
 		Projections: projections,
-		Structure:   parts,
 		Files:       assets.Files,
 		PageIndex:   assets.pageIndex(),
 		Downloads:   assets.downloads(),
@@ -231,69 +202,6 @@ func loadRegistry(repoRoot string) (*registry.Registry, error) {
 		return nil, fmt.Errorf("load the data registries: %w", err)
 	}
 	return reg, nil
-}
-
-// buildStructure is the structure over the store as the site ships it: one
-// document per fiscal year, keyed by structurePath, each the whole's
-// scaffolding with that year's facts and the views that admit any of them.
-// Compact JSON, as every projection is, so its size is comparable with theirs.
-func buildStructure(reg *registry.Registry, facts []fact.Fact) (map[string][]byte, error) {
-	doc, err := structureOf(reg, facts)
-	if err != nil {
-		return nil, err
-	}
-	parts, err := structure.PartitionByYear(doc)
-	if err != nil {
-		return nil, err
-	}
-	out := make(map[string][]byte, len(parts))
-	for _, p := range parts {
-		b, err := json.Marshal(p)
-		if err != nil {
-			return nil, err
-		}
-		out[structurePath(p.FiscalYear)] = b
-	}
-	return out, nil
-}
-
-// structureOf is the unpartitioned structure over the store: every summing
-// document's view, each fact those views admit once with its provenance. It
-// is what buildStructure partitions and what a test holds the parts to.
-func structureOf(reg *registry.Registry, facts []fact.Fact) (structure.Document, error) {
-	return structure.Build(facts, documentViews(reg, facts, build.Get().String()))
-}
-
-// documentViews is every document the pipeline builds that sums, named with
-// the scope set it is of: the views the structure carries.
-//
-// A SERIES PROJECTION PUBLISHES NO TOTAL AND IS NOT A VIEW, and it is told
-// apart the way internal/check tells it apart: by the method that builds a
-// series, not by whether its scopes name a cut. A view whose scopes name no
-// cut is refused by structure.ViewOf, which is the direction a dropped cut
-// should fail in.
-//
-// ONE VIEW PER PROJECTION. A projection declaring two scope sets across its
-// slices would be one name for two views, and structure.Build refuses the
-// name it sees twice rather than this function picking one.
-func documentViews(reg *registry.Registry, facts []fact.Fact, version string) []structure.Scoped {
-	var out []structure.Scoped
-	for _, p := range project.Registry(reg) {
-		if _, series := p.(interface {
-			Document(facts []fact.Fact, o project.Options) (*project.TrendsDocument, error)
-		}); series {
-			continue
-		}
-		seen := map[string]bool{}
-		for _, o := range slicesOf(p, facts, version) {
-			if seen[o.ScopeList()] {
-				continue
-			}
-			seen[o.ScopeList()] = true
-			out = append(out, structure.Scoped{Name: p.Name(), Scopes: o.Scopes})
-		}
-	}
-	return out
 }
 
 // assertPublishedBuilt is the export side of published-projection-built.

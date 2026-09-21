@@ -18,11 +18,11 @@ import (
 // deriving one, a change here is a change to what the site draws.
 const rungsPath = "testdata/rungs.json"
 
-// rungsServedPath is where the rung answer lands in the site: at the site
-// root beside the per-year structures, and NOT under data/, by the same
-// contract as structurePath. ONE FILE FOR EVERY YEAR AND EVERY RUNG, because
-// a client holding it answers a drill by lookup rather than by fetch; a file
-// per drill was fisc-kbuo candidate (b), and it lost.
+// rungsServedPath is where the rung answer lands in the site: at the site root
+// and NOT under data/, which holds the documents a projection wrote. ONE FILE
+// FOR EVERY YEAR AND EVERY RUNG, because a client holding it answers a drill by
+// lookup rather than by fetch; a file per drill was fisc-kbuo candidate (b),
+// and it lost.
 //
 // THE WRITER AND THE PAGE NAME IT FROM ONE CONSTANT. The packager puts the
 // same string into window.FISC_CONFIG for the client to fetch, and a second
