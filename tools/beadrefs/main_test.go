@@ -55,7 +55,7 @@ func TestUnrecognisableFlagsAnIDTheScannerWouldSilentlyDrop(t *testing.T) {
 		"fisc-abc":        true,
 		"fisc-abc.1":      true,
 		"fisc-1wr.5.1":    true,
-		"byob-layout.1":   true, // out of the scanner's subject on purpose
+		"byob-layout.1":   true, // a row of this graph like any other, and seen whole
 		"fisc-drill-down": true, // the shape citedIn drops
 		"fisc-Abc":        true, // idPattern never matches an uppercase token
 		"fisc-abc.x":      true, // citedIn returns only the fisc-abc prefix: not whole, not seen
@@ -68,8 +68,8 @@ func TestUnrecognisableFlagsAnIDTheScannerWouldSilentlyDrop(t *testing.T) {
 
 func TestUnrecognisableIsSilentOnAnExportOfTodaysShapes(t *testing.T) {
 	// Every id shape the export carries today, measured there: fisc-<token> with
-	// optional dotted children, and byob ids the scanner excludes on purpose. A
-	// false positive here would take every commit red for nothing.
+	// optional dotted children, and byob ids whose slugs carry hyphens. A false
+	// positive here would take every commit red for nothing.
 	known := map[string]bool{
 		"fisc-kc3j":     true,
 		"fisc-yj4w.7":   true,
@@ -390,8 +390,16 @@ func TestCitedInTellsABeadIDFromTheOtherThingsNamedfisc(t *testing.T) {
 		// The period ending a sentence is not part of the id, but a dotted
 		// child's is; the pattern has already taken the second when it applies.
 		{"see fisc-abc.", []string{"fisc-abc"}},
-		// byob ids are reference material and are not this command's subject.
-		{"byob-layout.1 is a decision", nil},
+		// A byob id is a row of this graph like any other, so a citation of one
+		// resolves. THE WHOLE HYPHENATED SLUG IS THE ID: a two-word slug is one
+		// id and not two, and a trailing hyphen is not part of it.
+		{"byob-layout.1 is a decision", []string{"byob-layout.1"}},
+		{"byob-command-shape.1 is one id", []string{"byob-command-shape.1"}},
+		{"byob-layout -- and then", []string{"byob-layout"}},
+		{"byob-release.8 and byob-release.10", []string{"byob-release.8", "byob-release.10"}},
+		// Not a citation: something longer runs into it on one side.
+		{"a-byob-layout.1 thing", nil},
+		{"byob-layout.1x", nil},
 
 		// A fact id and a series id: the SECOND hyphen is what says so.
 		{`"fact_id": "fisc-f-0ba7b00dfaf7"`, nil},

@@ -149,6 +149,38 @@ var loosePattern = regexp.MustCompile("AGENTS\\.md(?:[^\".\\n]|\\.[^\" \t\n]|\\n
 // included; missingDocs decides what a prefixed one resolves against.
 var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A-Za-z0-9._/-]+\.md)`)
 
+// srcPathPattern finds a SOURCE path cited as a claim about this tree, by the
+// same guard rule as docPathPattern: a slash or a word character in front means
+// the path is the tail of something longer, and a claim about another
+// repository's tree is not this gate's to check.
+//
+// FOUR DIRECTORIES AND TWO EXTENSIONS, AND THE NARROWNESS IS THE POINT. A rule
+// saying "every path resolves" is unwritable here, and the false-positive
+// classes are what make this one writable:
+//
+//   - data/, dist/ and facts/ are BUILD OUTPUT and served artifacts, whose
+//     repo-relative spelling is not their path: the tree cites
+//     dist/data/sankey.json as data/sankey.json and means it.
+//   - a bare testdata/... path is PACKAGE-RELATIVE by Go convention, so it
+//     resolves against the citing package's directory and not against the root.
+//   - site/*.html is a rendered page and exists only after `make site`.
+//
+// Measured over the tree when this arm landed: 29 repo-shaped paths in tracked
+// comments and docs did not resolve, and under this rule exactly one of them
+// was a real dead pointer -- a harness comment naming the column emitter under
+// the command package, where it lives in internal/export. Every other miss fell
+// into a class above.
+//
+// THAT EXAMPLE IS DESCRIBED AND NOT SPELLED, for the reason this command's
+// package comment gives about citations: the path it wants is exactly the shape
+// this pattern matches, so writing it would make the command report itself.
+//
+// AND THE FIX IS USUALLY TO DROP THE PATH, NOT TO CORRECT IT, which is why this
+// gate's population shrinks rather than grows: AGENTS.md's "Where writing goes"
+// says a comment names a symbol and does not say where the symbol lives.
+var srcPathPattern = regexp.MustCompile(
+	`(^|[^A-Za-z0-9_./-])((?:internal|pkg|cmd|tools)/[A-Za-z0-9._/-]+\.(?:go|mjs))`)
+
 // headingPattern and boldPattern are the two shapes an anchor takes in AGENTS.md.
 // Bold is an anchor and not only a decoration because the tree cites one:
 // "History's home is git" is a bolded lead phrase inside a section, not a
@@ -168,6 +200,7 @@ var (
 // one the failure message prints, and that one is worth checking.
 var exempt = map[string]string{
 	"tools/doccheck/main_test.go": "its fixtures are citations and paths that must not resolve",
+	"tools/beadrefs/main_test.go": "its fixtures name source paths that must NOT resolve, so a test for that command cannot be written out of real ones",
 }
 
 // checkExemptions refuses a declaration that has outlived the file it exempts,
@@ -215,7 +248,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
 		return 2
 	}
-	cites, malformed, docRefs, err := scanUnder(root, args[1:], anchors)
+	cites, malformed, docRefs, srcRefs, err := scanUnder(root, args[1:], anchors)
 	if err != nil {
 		fmt.Fprintf(stderr, "doccheck: %v\n", err)
 		return 2
@@ -302,6 +335,25 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "  exactly as a section name is. Re-point it at the file that carries")
 		fmt.Fprintln(stderr, "  the text now, or drop it. If you renamed a docs/ file, grep for")
 		fmt.Fprintln(stderr, "  its other citations in the same commit.")
+	}
+	if deadSrc := missingDocs(root, srcRefs); len(deadSrc) > 0 {
+		fail = true
+		sortCites(deadSrc)
+		var prev cite
+		for _, c := range deadSrc {
+			if c == prev {
+				continue
+			}
+			prev = c
+			fmt.Fprintf(stderr, "%s:%d: cites %s, which is not in the tree\n", c.file, c.line, c.title)
+		}
+		fmt.Fprintln(stderr, "")
+		fmt.Fprintln(stderr, "doccheck: the source paths above resolve to no file.")
+		fmt.Fprintln(stderr, "  THE FIX IS USUALLY TO DROP THE PATH, NOT TO CORRECT IT. A comment")
+		fmt.Fprintln(stderr, "  names a symbol; it does not say where the symbol lives, because a")
+		fmt.Fprintln(stderr, "  path is a second source nothing keeps in step -- which is how these")
+		fmt.Fprintln(stderr, "  die. Name the function or the type and let the reader grep.")
+		fmt.Fprintln(stderr, "  See AGENTS.md, \"Where writing goes\".")
 	}
 	if fail {
 		return 1
@@ -408,7 +460,7 @@ func fold(s string) string {
 // lookup, so the same arguments exempt the same file from anywhere -- the
 // working directory is no part of the interface here any more than it is in
 // treeRoot.
-func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs []cite, err error) {
+func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs, srcRefs []cite, err error) {
 	for _, p := range paths {
 		// #nosec G703 -- the path list is this command's argument; it checks the
 		// paths it is asked to.
@@ -440,13 +492,18 @@ func scanUnder(root string, paths []string, anchors map[string]bool) (cites, mal
 				return err
 			}
 			docRefs = append(docRefs, refs...)
+			src, err := srcRefsIn(path)
+			if err != nil {
+				return err
+			}
+			srcRefs = append(srcRefs, src...)
 			return nil
 		})
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 	}
-	return cites, malformed, docRefs, nil
+	return cites, malformed, docRefs, srcRefs, nil
 }
 
 // citesIn reads the whole file rather than scanning it line by line, because a
@@ -516,16 +573,22 @@ func malformedIn(path string, anchors map[string]bool) ([]cite, error) {
 	return out, nil
 }
 
-// docRefsIn collects every docs/ path the file cites. Group 2 of the pattern is
+// docRefsIn collects every docs/ path the file cites.
+func docRefsIn(path string) ([]cite, error) { return pathRefsIn(path, docPathPattern) }
+
+// srcRefsIn collects every source path the file cites.
+func srcRefsIn(path string) ([]cite, error) { return pathRefsIn(path, srcPathPattern) }
+
+// pathRefsIn collects every path one pattern finds. Group 2 of each pattern is
 // the path; group 1 is the guard character and is no part of the claim.
-func docRefsIn(path string) ([]cite, error) {
+func pathRefsIn(path string, pattern *regexp.Regexp) ([]cite, error) {
 	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
 	if err != nil {
 		return nil, err
 	}
 	text := string(b)
 	var out []cite
-	for _, loc := range docPathPattern.FindAllStringSubmatchIndex(text, -1) {
+	for _, loc := range pattern.FindAllStringSubmatchIndex(text, -1) {
 		out = append(out, cite{
 			title: text[loc[4]:loc[5]],
 			file:  norm(path),

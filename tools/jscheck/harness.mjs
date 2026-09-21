@@ -1721,7 +1721,7 @@ export function twoYearConfig() {
 /**
  * A column document assembled from per-schedule documents.
  *
- * ONE NODE TABLE AND ONE ENTRY PER SCHEDULE, as pkg/cmd/export/column.go emits.
+ * ONE NODE TABLE AND ONE ENTRY PER SCHEDULE, as encodeColumn emits.
  * The arms plan the documents they are about -- a sankey, a fund-flows -- and
  * this is what the packager would have folded them into.
  *

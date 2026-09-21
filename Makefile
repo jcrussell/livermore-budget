@@ -154,6 +154,11 @@ narration: ## Refuse review credits and errata in Go sources, beads and memories
 # The path list is hand-maintained and beadrefs fails on a path it cannot read,
 # so an entry deleted from the tree takes this red rather than silently
 # narrowing the scan.
+#
+# BOTH PREFIXES ARE CHECKED. A byob id names reference material and AGENTS.md
+# says never to claim or close one -- but that is a rule about what an agent may
+# DO to a bead, not about whether a citation of one should resolve. They are
+# rows of the same export, and AGENTS.md's Go section cites eleven of them.
 .PHONY: beadrefs
 beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 	@go run ./tools/beadrefs .beads/issues.jsonl \
@@ -186,8 +191,21 @@ beadrefs: ## Refuse bead ids that name no bead, in prose and in comments
 # guessing what the prose meant, and a docs/ path that resolves to no file --
 # both are pointers at nothing wearing different clothes. The boundary each of
 # those arms declares for itself is in the tool's package comment.
+#
+# AND A SOURCE PATH THAT RESOLVES TO NO FILE, which is the arm the other three
+# left a hole under: nothing refused a citation of a FILE that did not exist,
+# and that is the gap four of one session's five prose defects fell through.
+# The rule is deliberately narrower than "every path resolves" -- internal/,
+# pkg/, cmd/ and tools/ only, .go and .mjs only -- because data/ and dist/ are
+# build output cited by a spelling that is not their path, and a bare testdata/
+# path is package-relative by Go convention. srcPathPattern's comment carries
+# the measurement and the false-positive classes.
+#
+# THE USUAL FIX IS TO DROP THE PATH, not to correct it, so this gate's
+# population shrinks rather than grows: a comment names a symbol and does not
+# say where the symbol lives.
 .PHONY: doccheck
-doccheck: ## Refuse dead citations, malformed citations, and dead docs/ paths
+doccheck: ## Refuse dead citations, malformed citations, and dead docs/ and source paths
 	@go run ./tools/doccheck AGENTS.md \
 		AGENTS.md CLAUDE.md README.md Makefile requirements.txt \
 		.github docs cmd internal pkg tools site schema mappings data testdata

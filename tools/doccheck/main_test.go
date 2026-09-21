@@ -563,7 +563,10 @@ func TestACommentAboveAnIndentedLiteralElementIsNotMalformed(t *testing.T) {
 // paths leaves the lookup unexercised -- green because nothing was examined.
 func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	root := t.TempDir()
-	for _, d := range []string{"docs", filepath.Join("tools", "doccheck")} {
+	// EVERY EXEMPTED FILE HAS TO EXIST UNDER THIS ROOT, because checkExemptions
+	// refuses a declaration that has outlived its file -- so a temp tree that
+	// omits one fails on the exemption rather than on the thing under test.
+	for _, d := range []string{"docs", filepath.Join("tools", "doccheck"), filepath.Join("tools", "beadrefs")} {
 		if err := os.MkdirAll(filepath.Join(root, d), 0o750); err != nil {
 			t.Fatalf("mkdir %s: %v", d, err)
 		}
@@ -572,6 +575,7 @@ func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 	write(t, filepath.Join(root, "docs", "real.md"), "# real\n")
 	write(t, filepath.Join(root, "tools", "doccheck", "main_test.go"),
 		"package main\n\n// AGENTS.md calls that guard \"the designed answer\". See docs/gone.md.\n")
+	write(t, filepath.Join(root, "tools", "beadrefs", "main_test.go"), "package main\n")
 	src := filepath.Join(root, "x.go")
 	write(t, src, "package x\n\n// see AGENTS.md, \"The extraction boundary\". See docs/real.md.\n")
 
