@@ -172,6 +172,15 @@ const (
 // subtracted on both sides.
 func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error) {
 	doc := rungsDoc{SchemaVersion: rungsSchemaVersion}
+	// THE SAME RESOLUTION THE PAGE MAKES, and the same call. This walked its
+	// own copy of it, and the two disagreed where a step's year carried no
+	// entry: one resolved "" and the other fell back to the declared
+	// projection, so the shipped answer and the page could name different
+	// documents for one rung.
+	_, ix, err := export.ColumnsOf(projections)
+	if err != nil {
+		return rungsDoc{}, fmt.Errorf("rungs: %w", err)
+	}
 	for _, year := range spine.YearStems {
 		raw, ok := projections[year]
 		if !ok {
@@ -185,7 +194,10 @@ func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error)
 		if err != nil {
 			return rungsDoc{}, fmt.Errorf("rungs: %s: %w", year, err)
 		}
-		stems := stepStemsFor(spine, year)
+		stems, err := export.StepStems(spine.Steps, year, ix)
+		if err != nil {
+			return rungsDoc{}, fmt.Errorf("rungs: %s: %w", year, err)
+		}
 		col := rungColumn{Stem: year}
 		w := rungWalker{spine: spine, projections: projections, stems: stems}
 		if err := w.walk(screen, chart, "", nil, &col.Rungs); err != nil {
@@ -215,21 +227,6 @@ func spineView(built result) (export.View, error) {
 		}
 	}
 	return export.View{}, fmt.Errorf("rungs: no view at %q, so there is no spine to walk", export.IndexPath)
-}
-
-// stepStemsFor is the document each step draws for one year: its own for the
-// year, or the step before it's where it names none -- the same resolution
-// the packager makes when it ships one entry per step.
-func stepStemsFor(spine export.View, year string) []string {
-	stems := make([]string, len(spine.Steps))
-	prev := year
-	for i, s := range spine.Steps {
-		if s.Projection != "" {
-			prev = s.YearProjections[year]
-		}
-		stems[i] = prev
-	}
-	return stems
 }
 
 // overviewOf is the chart the spine's own page has on screen before anything

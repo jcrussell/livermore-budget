@@ -1247,24 +1247,22 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	// no page ships: change a cap, a tier set or a description here and every
 	// gate stays green while the checks go on pinning the old one.
 	//
-	// THE PER-YEAR JOIN IS PINNED TO ITS COLUMNS, not to its declared order:
-	// fund-flows' bare stem is THIRD among that projection's published
-	// documents, and it is the spine's opening year's step document because
-	// both are FY2026 adopted. TestStepStemsJoinsOnColumnNotOnDeclaredOrder
-	// measures the order; this pins what the join came to.
+	// A STEP NAMES A SCHEDULE, not a file and not a per-year map. Which
+	// document each year draws is export.ColumnIndex's answer, derived from
+	// the documents; what is pinned here is the declaration.
+	// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder measures the join itself.
 	want := []export.DrillStep{
 		{
-			Key:             "fund-group",
-			After:           []string{""},
-			From:            2,
-			Projection:      project.FundFlowsProjection,
-			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-			Keep:            []int{0},
-			Tiers:           []int{0, 2, 3},
-			Caps:            []export.TierCap{{Tier: 3, Cap: 8}},
-			Noun:            "fund group",
-			Back:            "All fund groups",
-			Tail:            "funds",
+			Key:        "fund-group",
+			After:      []string{""},
+			From:       2,
+			Projection: project.FundFlowsProjection,
+			Keep:       []int{0},
+			Tiers:      []int{0, 2, 3},
+			Caps:       []export.TierCap{{Tier: 3, Cap: 8}},
+			Noun:       "fund group",
+			Back:       "All fund groups",
+			Tail:       "funds",
 			// READ OFF THE CHECK, NOT SPELLED, because the check is the
 			// declaration: a literal here would be the second copy the
 			// declaration exists to prevent, kept green by nothing.
@@ -1318,18 +1316,17 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"cells of Budget Book pp.167-170, rescaled to its total.",
 		},
 		{
-			Key:             "revenue-category",
-			After:           []string{""},
-			From:            0,
-			Role:            "revenue_source",
-			Projection:      project.FundFlowsProjection,
-			YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-			Keep:            []int{2},
-			Tiers:           []int{1, 0, 2},
-			Caps:            []export.TierCap{{Tier: 1, Cap: 8}},
-			Noun:            "revenue category",
-			Back:            "All revenue categories",
-			Tail:            "lines",
+			Key:        "revenue-category",
+			After:      []string{""},
+			From:       0,
+			Role:       "revenue_source",
+			Projection: project.FundFlowsProjection,
+			Keep:       []int{2},
+			Tiers:      []int{1, 0, 2},
+			Caps:       []export.TierCap{{Tier: 1, Cap: 8}},
+			Noun:       "revenue category",
+			Back:       "All revenue categories",
+			Tail:       "lines",
 			Description: "The lines Budget Book pp.127-140 print under this revenue " +
 				"category are on the left; the fund groups its money reaches are on the " +
 				"right, as the citywide chart draws them. The category itself is the mark " +
@@ -1339,18 +1336,17 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"of every ribbon into it before those reductions.",
 		},
 		{
-			Key:             "object-category",
-			After:           []string{""},
-			From:            5,
-			Role:            "object_category",
-			Projection:      project.DepartmentSpendingProjection,
-			YearProjections: map[string]string{"sankey": "department-spending", "sankey-2027": "department-spending-2027"},
-			Keep:            []int{2},
-			Tiers:           []int{2, 5, 4},
-			Caps:            []export.TierCap{{Tier: 4, Cap: 8}},
-			Noun:            "object category",
-			Back:            "All object categories",
-			Tail:            "divisions",
+			Key:        "object-category",
+			After:      []string{""},
+			From:       5,
+			Role:       "object_category",
+			Projection: project.DepartmentSpendingProjection,
+			Keep:       []int{2},
+			Tiers:      []int{2, 5, 4},
+			Caps:       []export.TierCap{{Tier: 4, Cap: 8}},
+			Noun:       "object category",
+			Back:       "All object categories",
+			Tail:       "divisions",
 			// READ OFF THE CHECK FOR check.ResidualNodes' REASON, one field
 			// over: spending-window-reconciles proves the identity this set
 			// closes, and a literal here would be a second spelling nothing
@@ -1371,17 +1367,16 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			// is the end its links come FROM, and a window's centre is the
 			// target of one half and the source of the other -- validateSteps
 			// refuses Keep and Side declared together for exactly that reason.
-			Key:             "transfers",
-			After:           []string{""},
-			From:            0,
-			Side:            export.SideSource,
-			Role:            "transfer_in",
-			Projection:      project.TransfersByFundProjection,
-			YearProjections: map[string]string{"sankey": "transfers-by-fund", "sankey-2027": "transfers-by-fund-2027"},
-			Tiers:           []int{2, 3},
-			Noun:            "money coming in",
-			Back:            "All money coming in",
-			Tail:            "funds",
+			Key:        "transfers",
+			After:      []string{""},
+			From:       0,
+			Side:       export.SideSource,
+			Role:       "transfer_in",
+			Projection: project.TransfersByFundProjection,
+			Tiers:      []int{2, 3},
+			Noun:       "money coming in",
+			Back:       "All money coming in",
+			Tail:       "funds",
 			Description: "Budget Book p76, Summary of Transfers: the funds that pay each " +
 				"transfer the city makes to itself are on the left, and the funds that " +
 				"receive them are on the right. One ribbon is one figure the page prints, " +
@@ -1404,17 +1399,16 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			// draws 5 departments (fund/240 in FY2023-24 actual, 3 in both
 			// adopted columns) against fund/100's 11, and fund/100 opens
 			// elsewhere.
-			Key:             "fund-departments",
-			After:           []string{"fund-group"},
-			From:            3,
-			Role:            "fund",
-			Projection:      project.DepartmentFundingProjection,
-			YearProjections: map[string]string{"sankey": "department-funding", "sankey-2027": "department-funding-2027"},
-			Keep:            []int{2},
-			Tiers:           []int{2, 3, 4},
-			Noun:            "fund",
-			Back:            "All funds",
-			Tail:            "departments",
+			Key:        "fund-departments",
+			After:      []string{"fund-group"},
+			From:       3,
+			Role:       "fund",
+			Projection: project.DepartmentFundingProjection,
+			Keep:       []int{2},
+			Tiers:      []int{2, 3, 4},
+			Noun:       "fund",
+			Back:       "All funds",
+			Tail:       "departments",
 			Description: "The fund group this fund belongs to is on the left and the " +
 				"city departments it pays for are on the right — that fund's rows " +
 				"of Budget Book pp.85-125, rescaled to its total. The two sides of the " +
@@ -1444,7 +1438,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 	}
 }
 
-// TestStepStemsJoinsOnColumnNotOnDeclaredOrder is fisc-zojk's first obstacle
+// TestOpensIntoJoinsOnColumnNotOnDeclaredOrder is fisc-zojk's first obstacle
 // dissolving, measured rather than asserted.
 //
 // THE ORDER IS READ OFF PublishedDocuments HERE, so the premise cannot go
@@ -1454,7 +1448,12 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 // join is on Column instead, and the stem's position in the list is not an
 // input to it -- the mutation that proves it is the one this test's third
 // arm names: a join on declared order pairs sankey with fund-flows-2024-actual.
-func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
+//
+// IT ANSWERS A BOOLEAN NOW and the per-year resolution is export.ColumnIndex's,
+// so the second arm asks what opensInto decides -- whether the STEP is
+// declared at all -- and the rest of the file asks the index what each year
+// draws.
+func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	built := builtStemsForTest(t)
 
 	position := -1
@@ -1473,37 +1472,46 @@ func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 			"premise that yearStems would put it third has moved", position, declared)
 	}
 
-	got := stepStems(export.PrimaryProjection, project.FundFlowsProjection, built)
-	want := map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("stepStems (-want +got):\n%s", diff)
+	if !opensInto(export.PrimaryProjection, project.FundFlowsProjection, built) {
+		t.Error("opensInto says the spine's opening year has no fund-flows document to open into")
 	}
-	if got["sankey"] != declared[position] {
-		t.Errorf("the opening year joins to %q, want the bare stem at position %d",
-			got["sankey"], position)
+	// THE OPENING YEAR JOINS TO THE BARE STEM AND NOT TO THE FIRST DECLARED,
+	// which is the whole claim. Asked of the index, because that is what the
+	// page and the rung walk both resolve through.
+	_, ix, err := export.ColumnsOf(built)
+	if err != nil {
+		t.Fatalf("ColumnsOf: %v", err)
+	}
+	col, folded := ix.Column(export.PrimaryProjection)
+	if !folded {
+		t.Fatalf("the spine's opening document folded into no column")
+	}
+	stem, ok := ix.Stem(col, project.FundFlowsProjection)
+	if !ok || stem != declared[position] {
+		t.Errorf("the opening year opens into %q (found %v), want the bare stem at position %d",
+			stem, ok, position)
 	}
 
-	// A YEAR WHOSE STEP DOCUMENT WAS NOT BUILT GETS NO ENTRY, and the view is
-	// then refused by NAME rather than dropped: assertPublishedBuilt refuses
-	// this state in the real pipeline, and under a custom Builder the refusal
-	// is what stops a site shipping one year's drill and not the other's in
-	// silence.
+	// A YEAR WHOSE STEP DOCUMENT WAS NOT BUILT IS IN NO COLUMN, and the view
+	// is then refused by NAME rather than dropped: assertPublishedBuilt
+	// refuses this state in the real pipeline, and under a custom Builder the
+	// refusal is what stops a site shipping one year's drill and not the
+	// other's in silence.
 	short := map[string][]byte{}
 	for k, v := range built {
 		if k != "fund-flows-2027" {
 			short[k] = v
 		}
 	}
-	if diff := cmp.Diff(map[string]string{"sankey": "fund-flows"},
-		stepStems(export.PrimaryProjection, project.FundFlowsProjection, short)); diff != "" {
-		t.Errorf("stepStems without fund-flows-2027 (-want +got):\n%s", diff)
+	if !opensInto(export.PrimaryProjection, project.FundFlowsProjection, short) {
+		t.Error("dropping the SECOND year's document must not undeclare the step")
 	}
 	opts, _, _, _ := testOptions(t)
 	opts.Build = func(string) (result, error) { return result{Projections: short}, nil }
 	if err := exportRun(opts); err == nil {
 		t.Error("exportRun accepted a spine whose second year has no step document")
-	} else if !strings.Contains(err.Error(), `names no document for year stem "sankey-2027"`) {
-		t.Errorf("got %v, want the refusal naming the year", err)
+	} else if !strings.Contains(err.Error(), `carries no such schedule`) {
+		t.Errorf("got %v, want the refusal naming the year's column", err)
 	}
 
 	// AND NO DRILL INTO A DOCUMENT THAT WAS NOT BUILT, for the reason a view
@@ -1512,7 +1520,7 @@ func TestStepStemsJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	//
 	// PER PROJECTION AND NOT PER SPINE, which is why the first case below is
 	// not zero. The three fund-flows steps and the object-category step are
-	// joined by separate calls to stepStems, so a corpus that lost pp.127-140
+	// guarded by separate calls to opensInto, so a corpus that lost pp.127-140
 	// keeps the drill that opens pp.85-125 -- and one guard over both documents
 	// could not say that.
 	without := func(prefixes ...string) map[string][]byte {

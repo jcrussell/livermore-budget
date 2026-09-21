@@ -707,9 +707,8 @@ func TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument(t *testing.T) {
 				Projection: "sankey", YearStems: []string{"sankey", "sankey-2027"},
 				RenderTiers: []int{0, 2, 5},
 				Steps: []export.DrillStep{{Key: "group", After: []string{""}, From: 2,
-					Projection:      "fund-flows",
-					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}},
+					Projection: "fund-flows",
+					Tiers:      []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."}}},
 			{Path: "caveats.html", Nav: "Caveats", Template: export.CaveatsTemplate,
 				Title: "Caveats", Lede: "A lede."},
 		},
@@ -3268,9 +3267,6 @@ func TestAStepsDocumentIsCitedByThePageThatOpensIt(t *testing.T) {
 	// declaration first, so a tag dropped back to `json:"-"` is a diff here and
 	// not a comparison of one zero value against another.
 	wantOnWire := slices.Clone(steps)
-	for i := range wantOnWire {
-		wantOnWire[i].YearProjections = nil
-	}
 	second := steps[1]
 	if second.Key == "" || second.Side == "" || second.Role == "" || second.Caps[1].Tail == "" ||
 		len(steps[2].After) == 0 || steps[2].After[0] == "" {
@@ -3393,12 +3389,27 @@ func builtLike(t *testing.T, like, raw []byte) []byte {
 	return out
 }
 
-// TestAStepsPerYearJoinIsExactOrRefused covers every arm of validateSteps that
-// reads YearProjections, each broken on its own from one well-formed two-year
-// chain -- so the message named is the arm's rather than whichever fires first.
+// TestAStepsColumnJoinIsExactOrRefused covers every arm that refuses a step
+// whose schedule its year's column cannot answer, each broken on its own from
+// one well-formed two-year chain -- so the message named is the arm's rather
+// than whichever fires first.
 //
 // THE CONTROL PASSES FIRST. A refusal table over a fixture that is refused for
 // some other reason proves nothing about any arm in it.
+//
+// SIX ROWS ARE GONE AND ARE NOT REPLACED, because the state each broke cannot
+// be spelled any more: a year with no entry, an entry for an unlisted year, an
+// opening-year entry disagreeing with the projection, a same-document step
+// carrying a map, a map on a view listing no years, and an entry naming an
+// unbuilt document. All six broke a DECLARED per-year map. A step now names a
+// schedule and the year names a column, and the pair selects the document.
+//
+// THE ROW THAT MATTERS SURVIVED AND GOT SHARPER. "A year pointed at the other
+// column's step document" (fisc-p1ae) was the case every key arm accepted; it
+// is now unreachable, because the index is built from each document's own
+// fiscal_year and basis. What replaces it is the row below: a column that does
+// not carry the schedule at all.
+
 // columnless strips fiscal_year and basis from a document's metadata, which is
 // what a document that never declared them looks like -- neither decodeSankey
 // nor stepDocument requires either field, so this is a shape the packager can
@@ -3422,7 +3433,7 @@ func columnless(t *testing.T, raw []byte) []byte {
 	return out
 }
 
-func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
+func TestAStepsColumnJoinIsExactOrRefused(t *testing.T) {
 	fundFlows, err := os.ReadFile("../../testdata/fund-flows.golden.json")
 	if err != nil {
 		t.Fatalf("read fund-flows golden: %v", err)
@@ -3443,8 +3454,7 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 			RenderTiers: []int{0, 2, 5},
 			Steps: []export.DrillStep{
 				{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-					YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-					Tiers:           []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
+					Tiers: []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
 				{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
 					Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
 			},
@@ -3468,54 +3478,39 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 		built  map[string][]byte
 		want   string
 	}{
-		{"a year with no step document", func(v *export.View) {
-			delete(v.Steps[0].YearProjections, "sankey-2027")
-		}, projections(), `names no document for year stem "sankey-2027"`},
-		{"an entry for a year the view does not list", func(v *export.View) {
-			v.Steps[0].YearProjections["sankey-2099"] = "fund-flows"
-		}, projections(), `maps year stem "sankey-2099", which the view does not list`},
-		{"an opening-year entry disagreeing with the projection", func(v *export.View) {
-			v.Steps[0].YearProjections["sankey"] = "fund-flows-2027"
-		}, projections(), "one step cannot draw two documents for one year"},
-		{"a same-document step carrying a map", func(v *export.View) {
-			v.Steps[1].YearProjections = map[string]string{"sankey": "fund-flows"}
-		}, projections(), "the map would be ignored"},
-		{"a map on a view that lists no years", func(v *export.View) {
-			v.YearStems = nil
-		}, projections(), "no year on screen for the map to be read against"},
-		{"a year's step document that was not built", func(v *export.View) {
-			v.Steps[0].YearProjections["sankey-2027"] = "nope"
-		}, projections(), `renders projection "nope" for year stem "sankey-2027", which was not built`},
-		// THE WRONG YEAR'S DOCUMENT, WHICH EVERY ARM ABOVE ACCEPTS.
-		//
-		// The entry is present, names a built document, and leaves the opening
-		// year alone, so the key-set arms and the two-documents-for-one-year arm
-		// are all satisfied -- the join was exact about its KEYS and said nothing
-		// about the column behind each value. A reader on FY2026-27 opened a fund
-		// group and was shown FY2025-26's funds. fisc-p1ae.
-		//
-		// The mirror case, the opening year pointed at the other column, is the
-		// "disagreeing with the projection" row above; it is refused by a
-		// different arm and for a different reason, which is why both rows exist.
-		{"a year pointed at the other column's step document", func(v *export.View) {
-			v.Steps[0].YearProjections["sankey-2027"] = "fund-flows"
-		}, projections(), "where the year on screen is FY2027 adopted"},
-		// TWO ABSENCES ARE NOT A MATCH, and the arm above compares with ==, so
-		// a year and a step document that both omit the column agree at 0 and
-		// "". Neither decoder requires the fields, so both sides get a row.
+		// THE SCHEDULE A YEAR CANNOT ANSWER, which is what the whole deleted
+		// table adds up to and the one thing it could not say: those arms
+		// checked that the packager had WRITTEN an entry, and this checks that
+		// the document it resolves to folded into the column a reader fetches.
+		{"a step naming a schedule no column carries", func(v *export.View) {
+			v.Steps[0].Projection = "nope"
+		}, projections(), `opens into schedule "nope"`},
+		// One year of two, which the opening year alone would not catch: the
+		// 2027 document is the only one dropped, so a chain green on FY2026
+		// would still open FY2026-27 into nothing.
+		{"a schedule missing from the second year's column only", func(*export.View) {},
+			func() map[string][]byte {
+				p := projections()
+				delete(p, "fund-flows-2027")
+				return p
+			}(), `carries no such schedule`},
+		// A DOCUMENT IN NO COLUMN IS IN NO INDEX, so it cannot be selected at
+		// all -- which is the same refusal as the row above rather than a
+		// message of its own. Two absences are not a match, and this is the
+		// shape that used to be compared at 0 and "".
 		{"a step document that does not say which column it is of", func(*export.View) {},
 			func() map[string][]byte {
 				p := projections()
 				p["fund-flows-2027"] = builtLike(t, goldenSankey(t),
 					columnless(t, reyeared(t, fundFlows, 2027, "FY 2026-27")))
 				return p
-			}(), "a document that does not say which column it is of"},
+			}(), `carries no such schedule`},
 		{"a year that does not state its own column", func(*export.View) {},
 			func() map[string][]byte {
 				p := projections()
 				p["sankey-2027"] = columnless(t, reyeared(t, spine, 2027, "FY 2026-27"))
 				return p
-			}(), "can only be checked against a column the year itself states"},
+			}(), "folded into no column"},
 		// THE BUILDER CHECK, one rung down from the year loop's: a step
 		// document built by another projection would have the footer credit
 		// one builder for figures drawn from two.
@@ -3541,12 +3536,14 @@ func TestAStepsPerYearJoinIsExactOrRefused(t *testing.T) {
 // TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks is the per-year
 // join on the wire, and the fix for fisc-ko1j.13 with it.
 //
-// TWO CLAIMS, READ BACK FROM THE CONFIG BLOB. Each year's config entry names
-// the file its first rung draws -- FY2026-27's names fund-flows-2027, not the
-// one file the stem maps to -- and carries that document's caveat refs with
-// the anchor composed per (stem, caveat), so a caveat on a depth-1 mark links
-// to ITS document's paragraph rather than losing its link because the year's
-// refs are the spine's. The same-document second step resolves to the first's
+// TWO CLAIMS, READ BACK FROM THE CONFIG BLOB, AND THE CAVEAT HREF CARRIES
+// BOTH. The entry carries the caveat refs of the document THIS year's rung
+// draws, with the anchor composed per (stem, caveat) -- so the href reading
+// caveat-fund-flows-2027-- is the evidence that FY2026-27's rung resolved to
+// its own document, and the evidence that a caveat on a depth-1 mark links to
+// that document's paragraph rather than losing its link to the spine's refs.
+// The entry names no file to assert on: a step's document is the year's column
+// and its schedule key, and neither is per-step. The same-document second step resolves to the first's
 // document, so the client reads one entry per step. And the second year's step
 // document is cited: its doc_id reaches the docs map and the footer, or app.js
 // would drop every citation drawn from it under that year.
@@ -3573,8 +3570,7 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 				RenderTiers: []int{0, 2, 5},
 				Steps: []export.DrillStep{
 					{Key: "group", After: []string{""}, From: 2, Projection: "fund-flows",
-						YearProjections: map[string]string{"sankey": "fund-flows", "sankey-2027": "fund-flows-2027"},
-						Tiers:           []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
+						Tiers: []int{0, 3, 4}, Back: "All fund groups", Noun: "thing", Tail: "funds", Description: "One."},
 					{Key: "division", After: []string{"group"}, From: 4, Tiers: []int{4, 5},
 						Back: "All divisions", Noun: "thing", Tail: "categories", Description: "Two."},
 				}},
@@ -3592,8 +3588,6 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 		Years []struct {
 			Stem  string `json:"stem"`
 			Steps []struct {
-				Stem    string `json:"stem"`
-				Path    string `json:"path"`
 				Caveats []struct {
 					ID   string `json:"id"`
 					Href string `json:"href"`
@@ -3614,13 +3608,6 @@ func TestEachYearOpensIntoItsOwnStepDocumentWithItsOwnCaveatLinks(t *testing.T) 
 			t.Fatalf("year %s carries %d step entries, want one per declared step", y.Stem, len(y.Steps))
 		}
 		for k, s := range y.Steps {
-			// STEM AND NOT A PATH. A step no longer names a file: its schedule
-			// lives in the year's own column, and the client selects it. What
-			// still has to be per-year is WHICH document the entry was built
-			// from, which is what this says.
-			if s.Stem != want {
-				t.Errorf("year %s step %d draws %s, want %s", y.Stem, k, s.Stem, want)
-			}
 			href := ""
 			for _, c := range s.Caveats {
 				if c.ID == caveat {

@@ -327,11 +327,16 @@ type yearView struct {
 	ChartTitle string `json:"chart_title"`
 }
 
-// stepView is one rung's document for one year: where to fetch it and what
-// its caveats link to. A same-document step resolves to the step before it,
-// so the client reads one entry per step whatever the step declared.
+// stepView is what one rung's document discloses for one year: the caveats its
+// marks link to and the nodes it decomposes. One entry per declared step,
+// whatever each step declared, because a same-document step resolves to the
+// step before it.
+//
+// NOTHING HERE NAMES A FILE. The client fetches the column its year landed on
+// and selects a schedule out of it by [DrillStep.Projection], so a per-step
+// stem was a third name for a document already identified twice -- and it was
+// shipped, and read by nothing.
 type stepView struct {
-	Stem    string      `json:"stem"`
 	Caveats []caveatRef `json:"caveats"`
 	// Opens is every node id this year's document actually decomposes under
 	// the step -- at the step's From where it keeps a flank and at any tier
@@ -845,7 +850,7 @@ type navItem struct {
 // with its trailing slash. A FUNCTION AND NOT A URL because the caller, not
 // this file, decides between a remote browse view and the copy the site ships
 // -- see Write.
-func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, []Citation, error) {
+func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) string) ([]sitePage, []Citation, error) {
 	views := o.views()
 	nav := make([]navItem, 0, len(views))
 	for _, v := range views {
@@ -929,11 +934,11 @@ func buildSite(o *Options, pageTextBase func(docID string) string) ([]sitePage, 
 		case HistoryTemplate:
 			data, err = buildHistoryPage(o, v, here, byID, pageTextBase)
 		case SankeyTemplate:
-			data, err = buildSankeyPage(o, v, here, byID, pageTextBase)
+			data, err = buildSankeyPage(o, v, here, byID, ix, pageTextBase)
 		case ProvenanceTemplate:
 			data, err = buildProvenancePage(o, v, here, byID, pageTextBase)
 		case CaveatsTemplate:
-			data, err = buildCaveatsPage(o, v, here, byID, pageTextBase)
+			data, err = buildCaveatsPage(o, v, here, byID, ix, pageTextBase)
 		default:
 			return nil, nil, cmdutil.WithHint(
 				fmt.Errorf("view %q renders template %q, which this package has no builder for",
@@ -1164,11 +1169,9 @@ type stepDocument struct {
 // resolves to for that year, with its own caveat refs, and the pages those
 // documents cite.
 //
-// THE JOIN IS APPLIED HERE, ONCE. A step that names a projection draws its
-// YearProjections entry for this year -- validate has already refused a year
-// with none -- and a step that names none draws the document of the step
-// before it, so the list is one entry per step whatever each declared. The
-// client reads it and never resolves a stem.
+// THE JOIN IS [StepStems]' AND IS NOT SPELLED HERE. A step names a schedule,
+// the year names a column, and the document is what the two select -- refused
+// by name where the column carries no such schedule.
 //
 // THE PAGES FEED THE SAME UNION THE YEARS DO, one layer further in. The
 // footer's Sources and the client's docs map are built from one list, and a
@@ -1183,21 +1186,19 @@ type stepDocument struct {
 // built by another is refused for the reason a year built by another is: the
 // footer credits one builder for every figure on the page.
 func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
-	projections map[string][]byte, caveatsPath string,
+	projections map[string][]byte, ix ColumnIndex, caveatsPath string,
 ) ([]stepView, []sourceMeta, error) {
+	stems, serr := StepStems(v.Steps, year, ix)
+	if serr != nil {
+		return nil, nil, fmt.Errorf("view %q (year stem %q declares fiscal_year %d, basis %q): %w",
+			v.Path, year, fiscalYear, basis, serr)
+	}
 	var (
 		out   []stepView
 		cited []sourceMeta
 	)
-	prev := year
 	for i, s := range v.Steps {
-		stem := prev
-		if s.Projection != "" {
-			stem = s.Projection
-			if y, ok := s.YearProjections[year]; ok {
-				stem = y
-			}
-		}
+		stem := stems[i]
 		raw, ok := projections[stem]
 		if !ok {
 			return nil, nil, fmt.Errorf(
@@ -1236,38 +1237,27 @@ func stepDocuments(v View, year, builtBy string, fiscalYear int, basis string,
 		// column being wrong. Neither side's decoder requires them, so both are
 		// checked rather than assumed. Found by pass two of /code-review over
 		// pass one's own fix.
-		switch {
-		case fiscalYear == 0 || basis == "":
-			return nil, nil, fmt.Errorf(
-				"view %q's year stem %q declares fiscal_year %d and basis %q; a step "+
-					"document can only be checked against a column the year itself states",
-				v.Path, year, fiscalYear, basis)
-		case doc.Metadata.FiscalYear == 0 || doc.Metadata.Basis == "":
-			return nil, nil, fmt.Errorf(
-				"view %q's step %d draws %q for year stem %q, and that document declares "+
-					"fiscal_year %d and basis %q; a document that does not say which column "+
-					"it is of cannot be shown under a year that does",
-				v.Path, i, stem, year, doc.Metadata.FiscalYear, doc.Metadata.Basis)
-		}
-		if doc.Metadata.FiscalYear != fiscalYear || doc.Metadata.Basis != basis {
-			return nil, nil, fmt.Errorf(
-				"view %q's step %d draws %q for year stem %q, and that document is FY%d %s "+
-					"where the year on screen is FY%d %s; opening a node would answer with "+
-					"another year's figures under this year's heading",
-				v.Path, i, stem, year, doc.Metadata.FiscalYear, doc.Metadata.Basis,
-				fiscalYear, basis)
-		}
+		// TWO COLUMN GUARDS USED TO STAND HERE and nothing replaces them,
+		// because the state they refused can no longer be reached: a step
+		// document stating no column, and one stating another year's. Both
+		// were arms against a DECLARED per-year map, which could name any
+		// built document at all. [ColumnIndex] is built from each document's
+		// own fiscal_year and basis, so a document is only ever selected
+		// under the column it itself declares, and a document declaring none
+		// is in no column and is refused above by name. A comparison here
+		// would now be one that cannot fail.
 		opens, openErr := openableNodes(v, i, s, stem, raw)
 		if openErr != nil {
 			return nil, nil, openErr
 		}
 		cited = append(cited, doc.Metadata.Sources...)
 		out = append(out, stepView{
-			Stem:    stem,
+			// The anchor stays STEM-keyed and stays inside this function:
+			// two schedules of one column can each carry a caveat with the
+			// same id, and the column's key cannot tell them apart.
 			Caveats: caveatRefs(doc.Metadata.Caveats, stem, caveatsPath),
 			Opens:   opens,
 		})
-		prev = stem
 	}
 	return out, cited, nil
 }
@@ -1415,7 +1405,7 @@ func projectionRefs(projections map[string][]byte) []projectionRef {
 }
 
 func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string,
 ) (pageData, error) {
 	caveatsPath := caveatsPathOf(o)
 	doc, meta, err := decodeSankey(v.Projection, o.Projections[v.Projection])
@@ -1477,7 +1467,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 				v.Path, v.Projection, meta.GeneratedBy, stem, m.GeneratedBy)
 		}
 		cited = append(cited, m.Sources...)
-		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, m.FiscalYear, m.Basis, o.Projections, caveatsPath)
+		steps, stepped, stepErr := stepDocuments(v, stem, meta.GeneratedBy, m.FiscalYear, m.Basis, o.Projections, ix, caveatsPath)
 		if stepErr != nil {
 			return pageData{}, stepErr
 		}
@@ -2251,7 +2241,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 // because it is three lines and the failure it prevents is one a reader cannot
 // detect, not because it is load-bearing over the current corpus.
 func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string,
 ) (caveatsPageData, error) {
 	caveatsPath := caveatsPathOf(o)
 	// WHICH DOCUMENTS A VIEW ACTUALLY RENDERS, by the same rule
@@ -2281,13 +2271,13 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// site draws are reached that way alone. Built from projections and
 		// year stems only, this told every reader of the caveats page that
 		// the charts do not flag fund-flows' marks, while they do.
-		for _, s := range v.Steps {
-			if s.Projection != "" {
-				drawn[s.Projection] = true
-			}
-			for _, stem := range s.YearProjections {
-				drawn[stem] = true
-			}
+		//
+		// RESOLVED PER YEAR, because a step names a SCHEDULE and every year
+		// the view lists opens that schedule out of its own column. Marking
+		// the schedule key itself would be right only where it happens to
+		// spell a stem too, which is the coincidence this lane removed.
+		for _, stem := range v.DrawnStems(ix) {
+			drawn[stem] = true
 		}
 	}
 	anchors := map[string]string{}

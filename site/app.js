@@ -147,13 +147,14 @@
  */
 
 /**
- * One rung's document for one year: where to fetch it and what its caveats
- * link to, verbatim from export.stepView.
+ * What one rung's document discloses for one year, verbatim from
+ * export.stepView. It names no file: a step's document is the year's column
+ * and the schedule key the step declares, and neither is per-step.
  *
  * @typedef {Object} FiscStepDoc
- * @property {string} stem
- * @property {string} path
  * @property {FiscCaveatRef[]} caveats
+ * @property {string[]} [opens]  node ids this year's document decomposes under
+ *   the step; absent means it declares no such set and every node is offered
  */
 
 /**

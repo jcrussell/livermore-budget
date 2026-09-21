@@ -483,7 +483,7 @@ func yearStems(name string, projections map[string][]byte) []string {
 // WHY THE FUND-FLOWS PAIR IS NOT A CHART PROBLEM ANY MORE. It was: the
 // drill-down's 61-node fund column laid every node and every ribbon out at zero
 // height, and c3a337d landed the fold that fixes it. index.html opens the spine
-// into fund-flows now, joining the two documents on Column -- see stepStems --
+// into fund-flows now, joining the two documents on Column -- see opensInto --
 // and that join is what those two cannot satisfy: see the const. Every entry
 // left here is a printed column pp.66-67 have no year for, on one projection or
 // the other.
@@ -549,22 +549,22 @@ const fundFlowsNoSpineColumn = "a published column of the General Fund drill-dow
 // OR THROUGH A STEP'S DOCUMENTS, and all three arms are needed: the spine's
 // second year has no view of its own and is reached only from the first
 // view's year control, and both fund-flows documents the site draws are
-// reached only by opening a node -- fund-flows-2027 through the step's
-// per-year join alone.
+// reached only by opening a node -- fund-flows-2027 by resolving the step's
+// schedule in its own year's column, which is what export.View.DrawnStems
+// answers and what the caveats page asks the same way.
 func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
+	_, ix, err := export.ColumnsOf(built)
+	if err != nil {
+		return err
+	}
 	reachable := make(map[string]struct{}, len(vs))
 	for _, v := range vs {
 		reachable[v.Projection] = struct{}{}
 		for _, stem := range v.YearStems {
 			reachable[stem] = struct{}{}
 		}
-		for _, s := range v.Steps {
-			if s.Projection != "" {
-				reachable[s.Projection] = struct{}{}
-			}
-			for _, stem := range s.YearProjections {
-				reachable[stem] = struct{}{}
-			}
+		for _, stem := range v.DrawnStems(ix) {
+			reachable[stem] = struct{}{}
 		}
 	}
 	for _, d := range project.PublishedDocuments() {
@@ -630,35 +630,33 @@ func stepByKey(steps []export.DrillStep, key string) (export.DrillStep, bool) {
 	return export.DrillStep{}, false
 }
 
-// stepStems is the per-year join a drill step declares: for each of the
-// spine projection's built documents, the built document of the step's
-// projection that covers the same Column, keyed spine stem -> step stem.
+// opensInto reports whether the step's projection published a document for the
+// same column as the spine's opening one -- which decides whether the step is
+// DECLARED at all, not which document any year of it draws.
 //
 // ON COLUMN, NOT ON DECLARED ORDER, and that is what dissolves fisc-zojk's
 // first obstacle. yearStems walks PublishedDocuments() in declared order,
 // which for fund-flows is 2024-actual, 2025-revised, 2026, 2027 -- so the bare
 // stem is THIRD, and a view opening on it through a YearStems list is refused
 // by View.validate. A step is not a YearStems list: nothing here asks which
-// document comes first, only which document is the same fiscal year on the
-// same basis as the one on screen, and PublishedDocuments states that.
+// document comes first, only whether one covers the column the reader lands on.
 //
-// A SPINE YEAR WITH NO MATCH GETS NO ENTRY, and View.validate refuses the
-// view by naming that year rather than this function guessing a document for
-// it. A spine year with TWO matches is not a state PublishedDocuments can
-// produce -- buildProjections refuses two documents at one stem, and a
-// projection declares each Column once -- so the first is taken and the
-// second would be a defect in that declaration, not here.
+// A BOOLEAN AND NOT A PER-YEAR MAP. Which document each year draws is
+// export.ColumnIndex's, derived from the documents' own fiscal year and basis;
+// this is the composition root's separate question -- whether the corpus it
+// just built can support the rung -- and its answer decides a declaration
+// rather than a lookup. The map was both at once, and a year it resolved
+// wrongly satisfied every arm that guarded it.
 //
-// Only built documents on both sides, for yearStems' reason: the join must
-// name files the site has, not files it means to have.
-func stepStems(spine, step string, projections map[string][]byte) map[string]string {
+// Only built documents on both sides, for yearStems' reason: a declaration
+// must be supportable by files the site HAS, not by files it means to have.
+func opensInto(opening, step string, projections map[string][]byte) bool {
+	if _, ok := projections[opening]; !ok {
+		return false
+	}
 	docs := project.PublishedDocuments()
-	out := map[string]string{}
 	for _, d := range docs {
-		if d.Projection != spine {
-			continue
-		}
-		if _, ok := projections[d.Stem]; !ok {
+		if d.Stem != opening {
 			continue
 		}
 		for _, e := range docs {
@@ -666,12 +664,11 @@ func stepStems(spine, step string, projections map[string][]byte) map[string]str
 				continue
 			}
 			if _, ok := projections[e.Stem]; ok {
-				out[d.Stem] = e.Stem
-				break
+				return true
 			}
 		}
 	}
-	return out
+	return false
 }
 
 // views is the site's pages, in nav order, the page it opens on first.
@@ -746,7 +743,7 @@ func views(built result) []export.View {
 	// property of the drawn chart, and step 0's description says it in fewer
 	// words for the reader who cannot see the column stop.
 	//
-	// THE JOIN IS PER YEAR AND ON COLUMN -- see stepStems. Both spine years
+	// THE JOIN IS PER YEAR AND ON COLUMN -- see export.ColumnIndex. Both spine years
 	// reach their own fund-flows column, which is what makes fund-flows-2027
 	// reachable and retired its unviewedDocuments entry; the actual and
 	// revised columns have no spine year and stay declared there.
@@ -759,7 +756,7 @@ func views(built result) []export.View {
 	// other's is a state assertPublishedBuilt already refuses in the real
 	// pipeline, and hiding it under a custom Builder would be the silence
 	// unviewedDocuments exists to refuse.
-	if years := stepStems(export.PrimaryProjection, project.FundFlowsProjection, projections); years[export.PrimaryProjection] != "" {
+	if opensInto(export.PrimaryProjection, project.FundFlowsProjection, projections) {
 		spine.Steps = []export.DrillStep{
 			{
 				// THE SPINE'S CHART AND NO OTHER, WHICH IS A MEASUREMENT AND
@@ -775,11 +772,10 @@ func views(built result) []export.View {
 				// height with no ribbon under it and nothing on the page
 				// saying so. validateSteps refuses that declaration by name
 				// now, so this list is held rather than remembered.
-				Key:             "fund-group",
-				After:           []string{""},
-				From:            2,
-				Projection:      years[export.PrimaryProjection],
-				YearProjections: years,
+				Key:        "fund-group",
+				After:      []string{""},
+				From:       2,
+				Projection: project.FundFlowsProjection,
 				// A WINDOW WHOSE KEPT FLANK IS TIER 0, which is the case Keep
 				// is a slice for: the spine draws its revenue categories to the
 				// LEFT of its fund groups, so they stay the left column here
@@ -960,12 +956,11 @@ func views(built result) []export.View {
 				// and the two are told apart by From. The role is declared
 				// because transfers/in and fund-balance/draw share tier 0 with
 				// the categories and open into nothing pp.127-140 print.
-				Key:             "revenue-category",
-				After:           []string{""},
-				From:            0,
-				Role:            "revenue_source",
-				Projection:      years[export.PrimaryProjection],
-				YearProjections: years,
+				Key:        "revenue-category",
+				After:      []string{""},
+				From:       0,
+				Role:       "revenue_source",
+				Projection: project.FundFlowsProjection,
 				// A WINDOW, AND THE CATEGORY IS ITS CENTRE. The node the
 				// reader clicked stays on the screen, in the middle column,
 				// with the lines pp.127-140 print under it on one side and the
@@ -1038,22 +1033,21 @@ func views(built result) []export.View {
 	// one entry: p0067 publishes 130,502,087 where pp.85-125's rows come to
 	// 130,252,087, which is fisc-av0w. The chart draws the 250,000 as a mark of
 	// its own rather than letting the ribbons fall short of the node.
-	if years := stepStems(export.PrimaryProjection, project.DepartmentSpendingProjection, projections); years[export.PrimaryProjection] != "" {
+	if opensInto(export.PrimaryProjection, project.DepartmentSpendingProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
 			{
-				Key:             "object-category",
-				After:           []string{""},
-				From:            5,
-				Role:            "object_category",
-				Projection:      years[export.PrimaryProjection],
-				YearProjections: years,
-				Keep:            []int{2},
-				Tiers:           []int{2, 5, 4},
-				Caps:            []export.TierCap{{Tier: 4, Cap: 8}},
-				Noun:            "object category",
-				Back:            "All object categories",
-				Tail:            "divisions",
-				Gaps:            check.SpendingGaps(),
+				Key:        "object-category",
+				After:      []string{""},
+				From:       5,
+				Role:       "object_category",
+				Projection: project.DepartmentSpendingProjection,
+				Keep:       []int{2},
+				Tiers:      []int{2, 5, 4},
+				Caps:       []export.TierCap{{Tier: 4, Cap: 8}},
+				Noun:       "object category",
+				Back:       "All object categories",
+				Tail:       "divisions",
+				Gaps:       check.SpendingGaps(),
 				Description: "The fund groups that pay for this object category are on the " +
 					"left; the divisions that spend it are on the right \u2014 Budget Book " +
 					"pp.85-125's rows for this category, every division in the city that " +
@@ -1101,20 +1095,19 @@ func views(built result) []export.View {
 	// the receiving legs come to p76's printed grand total -- $21,525,997 in
 	// FY2025-26 and $21,624,633 in FY2026-27 -- which is the spine's own
 	// transfers/in to the cent, so the opened node has nothing to fall short by.
-	if years := stepStems(export.PrimaryProjection, project.TransfersByFundProjection, projections); years[export.PrimaryProjection] != "" {
+	if opensInto(export.PrimaryProjection, project.TransfersByFundProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
 			{
-				Key:             "transfers",
-				After:           []string{""},
-				From:            0,
-				Side:            export.SideSource,
-				Role:            "transfer_in",
-				Projection:      years[export.PrimaryProjection],
-				YearProjections: years,
-				Tiers:           []int{2, 3},
-				Noun:            "money coming in",
-				Back:            "All money coming in",
-				Tail:            "funds",
+				Key:        "transfers",
+				After:      []string{""},
+				From:       0,
+				Side:       export.SideSource,
+				Role:       "transfer_in",
+				Projection: project.TransfersByFundProjection,
+				Tiers:      []int{2, 3},
+				Noun:       "money coming in",
+				Back:       "All money coming in",
+				Tail:       "funds",
 				Description: "Budget Book p76, Summary of Transfers: the funds that pay each " +
 					"transfer the city makes to itself are on the left, and the funds that " +
 					"receive them are on the right. One ribbon is one figure the page prints, " +
@@ -1175,16 +1168,14 @@ func views(built result) []export.View {
 	// threw rather than dropping the step, which is the guard working, and
 	// keeping the shape uniform is cheaper than widening the parse.
 	_, openable := stepByKey(spine.Steps, "fund-group")
-	if years := stepStems(export.PrimaryProjection, project.DepartmentFundingProjection,
-		projections); openable && years[export.PrimaryProjection] != "" {
+	if openable && opensInto(export.PrimaryProjection, project.DepartmentFundingProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{
 			{
-				Key:             "fund-departments",
-				After:           []string{"fund-group"},
-				From:            3,
-				Role:            "fund",
-				Projection:      years[export.PrimaryProjection],
-				YearProjections: years,
+				Key:        "fund-departments",
+				After:      []string{"fund-group"},
+				From:       3,
+				Role:       "fund",
+				Projection: project.DepartmentFundingProjection,
 				// [the group | this fund | the departments it pays for].
 				// The step before it draws tier 2 to the LEFT of tier 3, so
 				// the group stays the left column here -- the same window

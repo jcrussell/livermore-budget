@@ -27,6 +27,62 @@ import { fileURLToPath } from "node:url";
 export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
 /**
+ * The JSON keys a Go struct ships, read off its json tags.
+ *
+ * WHAT IT DELIBERATELY DOES NOT DO is understand Go. It finds the named
+ * `type X struct { ... }` and takes every `json:"name..."` inside it, dropping
+ * `-` and the option words. That is enough for a flat record of scalars and
+ * slices, which is what an artifact struct is here, and it fails loudly on a
+ * type it cannot find rather than answering an empty set -- an empty set is
+ * what makes a cross-language pin agree with anything.
+ *
+ * @param {string} file  path under the repo root
+ * @param {string} name  the struct's name
+ * @returns {string[]} the keys, in declaration order
+ */
+export function goJSONKeys(file, name) {
+  const src = readFileSync(join(repoRoot, file), "utf8");
+  const at = src.indexOf(`type ${name} struct {`);
+  if (at < 0) throw new Error(`${file} declares no type ${name}`);
+  const open = src.indexOf("{", at);
+  let depth = 0, end = -1;
+  for (let i = open; i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}" && --depth === 0) { end = i; break; }
+  }
+  if (end < 0) throw new Error(`${file}'s type ${name} has no closing brace`);
+  const keys = [...src.slice(open, end).matchAll(/`json:"([^"]*)"`/g)]
+    .map((m) => m[1].split(",")[0])
+    .filter((k) => k !== "" && k !== "-");
+  if (!keys.length) throw new Error(`${file}'s type ${name} ships no json key`);
+  return keys;
+}
+
+/**
+ * The properties a JSDoc `@typedef` in app.js declares, and which are optional.
+ *
+ * @param {string} src  app.js's source
+ * @param {string} name  the typedef's name
+ * @returns {{name: string, optional: boolean}[]}
+ */
+export function typedefProperties(src, name) {
+  const at = src.indexOf(`@typedef {Object} ${name}`);
+  if (at < 0) throw new Error(`app.js declares no typedef ${name}`);
+  const end = src.indexOf("*/", at);
+  if (end < 0) throw new Error(`app.js's typedef ${name} has no closing comment`);
+  // ONE LEVEL OF NESTING IN THE TYPE, because a JSDoc type is often an inline
+  // object -- `{{facts:number, nodes:number, links:number}} counts`. A [^}]*
+  // type stopped at the inner brace and read the key as part of the type, so
+  // the property vanished and the pin reported a key Go ships and the client
+  // does not declare. It declared it.
+  const property = /@property \{(?:[^{}]|\{[^{}]*\})*\}\s+(\[?)([A-Za-z_]\w*)\]?/g;
+  const out = [...src.slice(at, end).matchAll(property)]
+    .map((m) => ({ name: m[2], optional: m[1] === "[" }));
+  if (!out.length) throw new Error(`app.js's typedef ${name} declares no property`);
+  return out;
+}
+
+/**
  * Where the page fetches Go's rung answer, read out of internal/export's own
  * constant rather than spelled again here.
  *

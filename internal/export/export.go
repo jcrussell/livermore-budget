@@ -500,30 +500,22 @@ type DrillStep struct {
 	// one tier of one chart are told apart by something the caller declared
 	// rather than by declaration order.
 	Role string `json:"role,omitempty"`
-	// Projection is the filename stem of the document this step draws, or ""
-	// to draw the same document as the step before it -- the view's own, for
-	// the first step. A named one must be a key of [Options.Projections].
+	// Projection is the SCHEDULE this step draws, or "" to draw the same
+	// document as the step before it -- the view's own, for the first step.
+	// Every column the view lists must carry it; validateSteps refuses one
+	// that does not.
+	//
+	// A SCHEDULE KEY AND NOT A FILENAME STEM, which is what makes the per-year
+	// join disappear rather than move. A reader fetches the column their year
+	// landed on and selects this key out of it ([ColumnIndex]), so the year is
+	// carried by the file and the step names only the printed schedule. It was
+	// a stem, resolved through a declared per-year map, and that map could
+	// point a year at another year's figures while satisfying every arm that
+	// guarded it.
 	//
 	// Omitted from the JSON when empty, so the client reads an absent key as
-	// "the same document" rather than as a stem named "".
+	// "the same document" rather than as a schedule named "".
 	Projection string `json:"projection,omitempty"`
-	// YearProjections is the document this step draws for each year the view
-	// lists, keyed by the view's year stem: the step's own per-year join. One
-	// entry per [View.YearStems] entry, the opening year's equal to Projection,
-	// and none at all on a view that lists no years or a step that names no
-	// projection.
-	//
-	// NOT SHIPPED AS THIS MAP. The client never joins: the packager resolves
-	// each year's step documents into that year's config entry, beside the
-	// year's own path and caveat refs, so a year on screen already knows the
-	// files its rungs will draw. A map on the wire would be a second join for
-	// the client to spell.
-	//
-	// DECLARED BY THE CALLER, NOT DERIVED HERE, for [View.YearStems]'s reason:
-	// which document of one projection is the same fiscal year as which
-	// document of another is the composition root's knowledge, and this package
-	// does not import internal/project to find out.
-	YearProjections map[string]string `json:"-"`
 	// Tiers is the tier set drawn once a node has opened -- this step's
 	// RenderTiers, and a different declaration from the chart's before it.
 	Tiers []int `json:"tiers"`
@@ -732,7 +724,7 @@ func ColumnPath(year int, basis string) string {
 // ErrNoPrimary reports a projection set with no PrimaryProjection in it.
 var ErrNoPrimary = errors.New("no " + PrimaryProjection + " projection to build the page from")
 
-func (o *Options) validate() error {
+func (o *Options) validate(ix ColumnIndex) error {
 	if o.Dir == "" {
 		return errors.New("output directory is required")
 	}
@@ -748,7 +740,7 @@ func (o *Options) validate() error {
 		}
 	}
 	for i := range o.Views {
-		if err := o.views()[i].validate(o.Projections); err != nil {
+		if err := o.views()[i].validate(o.Projections, ix); err != nil {
 			return err
 		}
 	}
@@ -918,7 +910,7 @@ func (o *Options) views() []View {
 
 // validate refuses a view that could not be rendered, or that would land on a
 // path the site owns.
-func (v View) validate(built map[string][]byte) error {
+func (v View) validate(built map[string][]byte, ix ColumnIndex) error {
 	badRoot := v.rootOutsideRenderTiers()
 	switch {
 	case v.Path == "":
@@ -1055,7 +1047,7 @@ func (v View) validate(built map[string][]byte) error {
 		return fmt.Errorf("view %q renders projection %q, which is not among its year stems %v",
 			v.Path, v.Projection, v.YearStems)
 	}
-	return v.validateSteps(built)
+	return v.validateSteps(built, ix)
 }
 
 // rootOutsideRenderTiers is the first step opening from the view's own chart at
@@ -1110,7 +1102,7 @@ type parentChart struct {
 	keep []int
 }
 
-func (v View) validateSteps(built map[string][]byte) error {
+func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 	// KEYS FIRST, AS A PASS OF THEIR OWN, so that After below resolves against
 	// a set already known to name one step each. Interleaved with the arms that
 	// follow, a duplicate key later in the list would be met by whichever arm
@@ -1240,21 +1232,6 @@ func (v View) validateSteps(built map[string][]byte) error {
 				"view %q's step %d declares a gap on %d node(s) and draws the document "+
 					"before it; a gap is one cell two documents print at two figures, and a "+
 					"step that switches no document has only one", v.Path, i, len(s.Gaps))
-		// THE PER-YEAR JOIN IS EXACT OR REFUSED. A year with no entry would
-		// have the client open the year's chart into a file it was never
-		// told about; an entry for no year is a claim about a document the
-		// page cannot show; and an opening-year entry disagreeing with
-		// Projection is two answers to which file the first drill fetches.
-		case s.Projection == "" && len(s.YearProjections) > 0:
-			return fmt.Errorf(
-				"view %q's step %d names no projection and maps %d year(s) to one; a step "+
-					"drawing the document before it draws that document's every year, so the "+
-					"map would be ignored", v.Path, i, len(s.YearProjections))
-		case s.Projection != "" && len(v.YearStems) == 0 && len(s.YearProjections) > 0:
-			return fmt.Errorf(
-				"view %q's step %d maps %d year(s) and the view lists no year stems; there "+
-					"is no year on screen for the map to be read against",
-				v.Path, i, len(s.YearProjections))
 		// A SIDE IS A VOCABULARY OF TWO. Anything else is a declaration that
 		// would be carried to a client reading it against the two it knows,
 		// which is a step that silently opens the wrong end of its links.
@@ -1521,31 +1498,29 @@ func (v View) validateSteps(built map[string][]byte) error {
 						"unexplained", v.Path, i, id, s.Gaps[id])
 			}
 		}
-		if s.Projection != "" && len(v.YearStems) > 0 {
+		// EVERY YEAR THE VIEW LISTS OPENS INTO SOMETHING, asked of the column
+		// the reader will fetch rather than of a map the packager wrote.
+		//
+		// Four arms guarded that map: that every year stem had an entry, that
+		// the entry was built, that the opening year's agreed with Projection,
+		// and that no entry named an unlisted year. Three of those states can
+		// no longer be spelled -- there is one key and it IS Projection. The
+		// first is this, and it is stronger: a map satisfying all four could
+		// still name a document that never folded into the column the year
+		// resolves to, and no arm could see it.
+		if s.Projection != "" {
 			for _, stem := range v.YearStems {
-				got, ok := s.YearProjections[stem]
-				switch {
-				case !ok:
+				col, folded := ix.Column(stem)
+				if !folded {
 					return fmt.Errorf(
-						"view %q's step %d names no document for year stem %q; a reader on "+
-							"that year would open a node into nothing", v.Path, i, stem)
-				case stem == v.Projection && got != s.Projection:
-					return fmt.Errorf(
-						"view %q's step %d renders %q and maps the opening year %q to %q; one "+
-							"step cannot draw two documents for one year",
-						v.Path, i, s.Projection, stem, got)
+						"view %q lists year stem %q, whose document folded into no column, "+
+							"so step %d has no column to open into", v.Path, stem, i)
 				}
-				if _, built := built[got]; !built {
+				if _, ok := ix.Stem(col, s.Projection); !ok {
 					return fmt.Errorf(
-						"view %q's step %d renders projection %q for year stem %q, which was "+
-							"not built", v.Path, i, got, stem)
-				}
-			}
-			for stem := range s.YearProjections {
-				if !slices.Contains(v.YearStems, stem) {
-					return fmt.Errorf(
-						"view %q's step %d maps year stem %q, which the view does not list; "+
-							"the entry describes a year no reader can switch to", v.Path, i, stem)
+						"view %q's step %d opens into schedule %q, and column %s (year stem "+
+							"%q) carries no such schedule; a reader on that year would open "+
+							"a node into nothing", v.Path, i, s.Projection, col, stem)
 				}
 			}
 		}
@@ -1828,7 +1803,15 @@ type plannedFile struct {
 // Prepare resolves an Options into a Plan, or refuses it. It touches no
 // filesystem outside the inputs it reads.
 func Prepare(o Options) (*plan, error) {
-	if err := o.validate(); err != nil {
+	// ONE FOLD FOR THE WHOLE EXPORT, and everything downstream reads it: the
+	// write plan takes the columns and the pages take the index, so which
+	// document a step draws is answered by the same walk that writes the file
+	// the reader will fetch it out of.
+	columns, ix, cerr := ColumnsOf(o.Projections)
+	if cerr != nil {
+		return nil, cerr
+	}
+	if err := o.validate(ix); err != nil {
 		return nil, err
 	}
 	// Where a page-text citation points is decided once, here, and handed to
@@ -1845,7 +1828,7 @@ func Prepare(o Options) (*plan, error) {
 		base = LocalPageTextBase
 	}
 
-	pages, cited, err := buildSite(&o, base)
+	pages, cited, err := buildSite(&o, ix, base)
 	if err != nil {
 		return nil, err
 	}
@@ -1898,10 +1881,6 @@ func Prepare(o Options) (*plan, error) {
 	}
 	// ONE DOCUMENT PER PUBLISHED COLUMN, written by the same call that writes
 	// the page naming them.
-	columns, cerr := ColumnsOf(o.Projections)
-	if cerr != nil {
-		return nil, cerr
-	}
 	for _, name := range sortedKeys(columns) {
 		encoded, eerr := encodeColumn(columns[name])
 		if eerr != nil {

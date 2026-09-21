@@ -118,7 +118,7 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		// come from, and the year's own, which the overview the first rungs
 		// open from was folded from. The guards below ask these documents
 		// what they hold; they do not ask the walk again.
-		stems := stepStemsFor(spine, col.Stem)
+		stems := stepStemsFor(t, spine, built.Projections, col.Stem)
 		records := map[string]map[string]export.GraphNode{}
 		for _, stem := range append(slices.Clone(stems), col.Stem) {
 			if _, read := records[stem]; read {
@@ -573,7 +573,7 @@ func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
 	}
 	var replayed, outwardIDs, flankIDs, residuals, gaps, markCents, endsPlural int
 	for _, col := range doc.Columns {
-		stems := stepStemsFor(spine, col.Stem)
+		stems := stepStemsFor(t, spine, built.Projections, col.Stem)
 		read := func(stem string) export.Graph {
 			t.Helper()
 			g, err := export.DecodeGraph(built.Projections[stem])
@@ -1064,4 +1064,20 @@ func TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor(t *testing.T) {
 			}
 		})
 	}
+}
+
+// stepStemsFor is the test's own resolution of what each step draws for one
+// year, asked of the index the packager resolves through. It is a wrapper and
+// not a second spelling: export.StepStems is the function under test's own.
+func stepStemsFor(t *testing.T, spine export.View, projections map[string][]byte, year string) []string {
+	t.Helper()
+	_, ix, err := export.ColumnsOf(projections)
+	if err != nil {
+		t.Fatalf("ColumnsOf: %v", err)
+	}
+	stems, err := export.StepStems(spine.Steps, year, ix)
+	if err != nil {
+		t.Fatalf("StepStems for %q: %v", year, err)
+	}
+	return stems
 }

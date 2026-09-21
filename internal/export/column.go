@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 
 	"github.com/jcrussell/livermore-budget/schema"
@@ -123,13 +124,46 @@ type decoded struct {
 	} `json:"metadata"`
 }
 
+// ColumnIndex answers which built document is one schedule of one column:
+// [ColumnPath] -> [scheduleKey] -> filename stem.
+//
+// IT IS THE JOIN THE CLIENT ALREADY MAKES. site/app.js fetches the column the
+// year landed and selects a schedule out of it by [DrillStep.Projection], so a
+// step's document is fully determined by (column, schedule key). Go resolving
+// it any other way is a second answer to a settled question, and the map that
+// used to be declared per step could point a year at another year's figures
+// while satisfying every arm that guarded it.
+//
+// Built in [ColumnsOf]'s own loop so the fold and the index cannot disagree
+// about which documents are column-shaped.
+type ColumnIndex struct {
+	schedules map[string]map[string]string
+	columns   map[string]string
+}
+
+// Stem answers the document at one schedule of one column, and whether the
+// column carries that schedule at all.
+func (ix ColumnIndex) Stem(column, schedule string) (string, bool) {
+	stem, ok := ix.schedules[column][schedule]
+	return stem, ok
+}
+
+// Column answers which column a built document folded into, and whether it
+// folded into one at all -- revenue-trends and the two balance documents state
+// no column and are in none.
+func (ix ColumnIndex) Column(stem string) (string, bool) {
+	col, ok := ix.columns[stem]
+	return col, ok
+}
+
 // ColumnsOf folds every published document into one document per column.
 //
 // A document stating no fiscal year or basis is skipped, not refused:
 // revenue-trends and the two balance documents carry a series and no column.
-func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, error) {
+func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, ColumnIndex, error) {
 	byColumn := map[string]*ColumnDoc{}
 	index := map[string]map[string]int{}
+	ix := ColumnIndex{schedules: map[string]map[string]string{}, columns: map[string]string{}}
 
 	stems := make([]string, 0, len(projections))
 	for stem := range projections {
@@ -142,7 +176,7 @@ func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, error) {
 		schedule := scheduleKey(stem)
 		var d decoded
 		if err := json.Unmarshal(raw, &d); err != nil {
-			return nil, fmt.Errorf("decode %s: %w", stem, err)
+			return nil, ColumnIndex{}, fmt.Errorf("decode %s: %w", stem, err)
 		}
 		if d.Metadata.FiscalYear == 0 || d.Metadata.Basis == "" || len(d.Nodes) == 0 {
 			continue
@@ -162,7 +196,16 @@ func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, error) {
 			}
 			byColumn[key] = col
 			index[key] = map[string]int{}
+			ix.schedules[key] = map[string]string{}
 		}
+		if was, dup := ix.schedules[key][schedule]; dup {
+			// Two stems folding into one slot is a silent overwrite of a
+			// whole schedule, and which one won would depend on sort order.
+			return nil, ColumnIndex{}, fmt.Errorf(
+				"column %s: %q and %q are both schedule %q", key, was, stem, schedule)
+		}
+		ix.schedules[key][schedule] = stem
+		ix.columns[stem] = key
 		at := index[key]
 
 		drawn := make([]ColumnSchedNode, 0, len(d.Nodes))
@@ -178,7 +221,7 @@ func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, error) {
 			} else if col.Nodes[i] != node {
 				// Two schedules meaning different things by one id is not
 				// something a rule here could pick between.
-				return nil, fmt.Errorf(
+				return nil, ColumnIndex{}, fmt.Errorf(
 					"column %s: %q disagrees between schedules about the same node: %+v and %+v",
 					key, n.ID, col.Nodes[i], node)
 			}
@@ -193,7 +236,7 @@ func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, error) {
 			from, okFrom := at[l.Source]
 			to, okTo := at[l.Target]
 			if !okFrom || !okTo {
-				return nil, fmt.Errorf("column %s, schedule %s: link %s -> %s names a node the document does not carry",
+				return nil, ColumnIndex{}, fmt.Errorf("column %s, schedule %s: link %s -> %s names a node the document does not carry",
 					key, schedule, l.Source, l.Target)
 			}
 			links = append(links, ColumnLink{
@@ -218,7 +261,7 @@ func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, error) {
 		col.Tiers = tiersOf(col.Nodes)
 		out[key] = *col
 	}
-	return out, nil
+	return out, ix, nil
 }
 
 // yearSuffix is what project.PublishedStem appends to a projection name.
@@ -285,4 +328,88 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 			doc.Column.FiscalYear, doc.Column.Basis, schema.Column, err)
 	}
 	return b, nil
+}
+
+// StepStems is the document each declared step draws for one year, in
+// declaration order: the step's own schedule where it names one, the step
+// before it's where it names none. The first step draws `year` itself if it
+// names no schedule of its own.
+//
+// ONE SPELLING, TWO CALLERS -- stepDocuments here and the rung walk in
+// pkg/cmd/export. They were two, and they disagreed: where a step's year
+// carried no entry, one resolved "" and the other fell back to the declared
+// projection, so the shipped rung answer and the page could name different
+// documents for one rung.
+//
+// A SCHEDULE THE COLUMN DOES NOT CARRY IS REFUSED BY NAME, which is what the
+// four arms guarding the old declared map add up to and the one thing they
+// could not say: those checked that the packager had written an entry, and
+// this checks that the document it names folded into the column a reader will
+// actually fetch.
+//
+// THE COLUMN IS LOOKED UP HERE AND NOT BY THE CALLER, so a year that folded
+// into none is a failure only for a step that needs one. A view whose steps
+// all draw the document before them selects nothing out of a column, and a
+// document stating no fiscal year is still walkable.
+func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error) {
+	out := make([]string, len(steps))
+	prev := year
+	for i, s := range steps {
+		if s.Projection != "" {
+			column, folded := ix.Column(year)
+			if !folded {
+				return nil, fmt.Errorf(
+					"step %d opens into schedule %q and year %q folded into no column, so "+
+						"there is nothing to select that schedule out of",
+					i, s.Projection, year)
+			}
+			stem, ok := ix.Stem(column, s.Projection)
+			if !ok {
+				return nil, fmt.Errorf(
+					"step %d opens into schedule %q and column %s (year %q) carries no such "+
+						"schedule; a reader on that year would open a node into nothing",
+					i, s.Projection, column, year)
+			}
+			prev = stem
+		}
+		out[i] = prev
+	}
+	return out, nil
+}
+
+// DrawnStems is every document this view's steps draw, across every year it
+// lists: the schedule each step names, resolved in each year's own column.
+//
+// ONE SPELLING FOR TWO QUESTIONS -- which documents the caveats page may
+// promise a chart flag for, and which documents the published set may call
+// reachable. Both used to read [DrillStep]'s declared per-year map, and both
+// got the same wrong answer when it was built from projections and year stems
+// alone: every reader of the caveats page was told the charts do not flag
+// fund-flows' marks, while they do.
+//
+// A step drawing the document before it adds nothing, because that document
+// is already in the list or is the year's own. A year that folded into no
+// column contributes nothing rather than failing: [StepStems] is where that
+// is refused, by name, for the step that needed it.
+func (v View) DrawnStems(ix ColumnIndex) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, s := range v.Steps {
+		if s.Projection == "" {
+			continue
+		}
+		for _, year := range slices.Concat([]string{v.Projection}, v.YearStems) {
+			column, folded := ix.Column(year)
+			if !folded {
+				continue
+			}
+			stem, ok := ix.Stem(column, s.Projection)
+			if !ok || seen[stem] {
+				continue
+			}
+			seen[stem] = true
+			out = append(out, stem)
+		}
+	}
+	return out
 }

@@ -19,12 +19,47 @@
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
   KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes, parseSpineRenderTiers,
-  parseSpendingGaps, openableFrom,
+  parseSpendingGaps, openableFrom, goJSONKeys, typedefProperties,
 } from "./harness.mjs";
 
 export async function checks() {
   const out = [];
   const doc = goldenGraph();
+
+  // THE TYPEDEFS ARE HELD TO THE STRUCTS THAT WRITE THEM.
+  //
+  // A JSDoc typedef is the client's only statement of what an artifact
+  // carries, and nothing kept it in step: FiscStepDoc declared a `path` Go had
+  // stopped shipping, declared a `stem` nothing read, and omitted `opens`,
+  // which stepDecomposes is built on. None of that could fail a check, because
+  // a typedef is a comment.
+  //
+  // KEYS AND NOT TYPES. Go's json tag names the key; whether it holds a string
+  // or a number is schema/'s to say, and asking here would be a third
+  // spelling. An optional property is permitted against any key, because
+  // `omitempty` and `[name]` mean the same thing from opposite sides and
+  // pinning the two together would fail on a key Go always writes and the
+  // client sensibly guards.
+  for (const [type, file, struct] of [
+    ["FiscStepDoc", "internal/export/page.go", "stepView"],
+    ["FiscYear", "internal/export/page.go", "yearView"],
+    ["FiscConfig", "internal/export/page.go", "clientConfig"],
+  ]) {
+    const app = loadApp();
+    const declared = typedefProperties(app.source, type);
+    const shipped = goJSONKeys(file, struct);
+    const names = declared.map((p) => p.name);
+    const invented = names.filter((n) => !shipped.includes(n)).sort();
+    const missed = shipped.filter((k) => !names.includes(k)).sort();
+    out.push({
+      name: `app.js's ${type} declares exactly the keys ${struct} ships`,
+      ok: invented.length === 0 && missed.length === 0,
+      detail: invented.length || missed.length
+        ? `${invented.length} declared and not shipped [${invented}]; ` +
+          `${missed.length} shipped and not declared [${missed}]`
+        : `${shipped.length} key(s), agreed both ways: ${shipped.join(", ")}`,
+    });
+  }
 
   // THE STUB'S REACH, PINNED AGAINST THE FILE IT IS POINTED AT.
   //
