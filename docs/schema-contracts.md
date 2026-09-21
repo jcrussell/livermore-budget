@@ -52,16 +52,70 @@ because a struct has already lost the difference between a key that was absent
 and one present and empty — and that difference is what "absent is not zero"
 rests on. Validating after decode could not see the defect above at all.
 
+## A shape, yes; an open set, no
+
+A schema here states a record's SHAPE and a DECLARED code set. It never closes
+an open data set.
+
+The two look alike and are not, and the fund column is where the difference was
+measured. `role` is a declared vocabulary — `internal/project` composes the
+values, `pkg/cmd/export` re-spells five of them in its step declarations, and
+`internal/export` selects fund groups by a sixth copy — so an enum in
+`column.schema.json` is what makes those copies one claim, held in both
+directions by a test in each package.
+
+The fund groups are not. `data/funds.yaml` declares seven fund types and grows
+without asking any of these files, so `fund_groups` is an ordered array of
+whatever the column holds and the schema enumerates no id. The alternative was
+already in the tree and had the defect the rule predicts: `site/app.js` held six
+ids as a literal, `fy2024-actual` publishes seven, and the seventh's position
+was whatever `indexOf` returned for a miss.
+
+The same distinction is why `docs` in `page.schema.json` is keyed by
+`additionalProperties` rather than by doc id. Which documents a page cites is
+the corpus's; naming them in the contract would make it a copy of the corpus.
+
 ## What each schema closes, and what it leaves open
 
 `fact.schema.json` sets `additionalProperties: false`. A fact record is a closed
 contract.
+
+`page.schema.json` closes every object in it, and that is the property with the
+most behind it. `window.FISC_CONFIG` is the one artifact that crosses this
+boundary without being FETCHED — it is rendered into the page's own `<script>` —
+so there is no cached-copy question to ask on arrival and nothing on the client
+side would ever have caught a key added or dropped. `additionalProperties: false`
+is what makes a field added to one of those structs refused at the export,
+naming it, rather than shipped to a client that ignores it.
+
+Measured by adding `Grain []int` to `export.DrillStep` and to one step literal:
+`fisc export` refuses with `unexpected additional properties ["grain"]`,
+`tools/jscheck` refuses by name at the parse, and the two struct-to-schema parity
+tests go red. Before, all three were green.
 
 `manifest.schema.json` does not. `internal/corpus`'s own type documents that
 unknown fields are tolerated because `tools/extract.py` may add reporting keys
 and `schema_version` is the guard that matters. A schema closing that object
 would refuse a manifest the Go reader accepts, which is a contract disagreeing
 with itself.
+
+## What has no schema, and why that is not an oversight yet
+
+The projection documents `internal/project` builds — `sankey.json` and its
+siblings — have none. Their shape is stated by the Go structs and by the fenced
+block in [`sankey-contract.md`](sankey-contract.md), which is TWO spellings and
+not three: there is no schema for that block to duplicate.
+
+That is worth saying because the block looks like the one deleted from
+`general-fund-drilldown-contract.md` and is not. The drilldown block described an
+artifact a schema had just been written for, so it was a third spelling that
+could never be compared against bytes. This one is the only prose statement of a
+shape nothing else states, and deleting it would remove information rather than
+duplication. `fisc-1wmy` is where the projection schema would go.
+
+`data/revenue-trends.json` and the two fund-balance documents have none either.
+They ship as themselves, byte for byte, held by a copy test and goldens rather
+than by a shape contract.
 
 ## Why a column's schedules are not merged
 

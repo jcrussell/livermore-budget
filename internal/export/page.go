@@ -13,6 +13,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/amount"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // The page templates inside the site asset tree, one per view.
@@ -659,6 +660,35 @@ type clientConfig struct {
 	// the walk behind [RungsPath] never reached must not be handed another
 	// page's. Set only where both hold — see buildSankeyPage.
 	Rungs string `json:"rungs,omitempty"`
+}
+
+// encodeConfig renders window.FISC_CONFIG and refuses bytes that do not match
+// the published schema, as encodeColumn does for a column.
+//
+// REFUSED AT THE BUILD AND NOT AT THE FETCH. This one is rendered into the
+// page's own <script>, so there is no cached-copy question to ask on arrival --
+// which is exactly why nothing on the client side would ever have caught a
+// dropped key. The template renders these same structs by GO FIELD NAME, so a
+// tag that went missing still draws the opening year correctly and blanks only
+// what a reader gets after switching.
+func encodeConfig(cfg clientConfig) ([]byte, error) {
+	blob, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("encode page config: %w", err)
+	}
+	resolved, err := schema.Load(schema.Page)
+	if err != nil {
+		return nil, err
+	}
+	var v any
+	if err := json.Unmarshal(blob, &v); err != nil {
+		return nil, fmt.Errorf("re-read page config: %w", err)
+	}
+	if err := resolved.Validate(v); err != nil {
+		return nil, fmt.Errorf("the page config this build produced for %q does not match %s: %w",
+			cfg.Primary, schema.Page, err)
+	}
+	return blob, nil
 }
 
 // rungsFor is the rung answer's path for one view, or "" where nothing
@@ -1537,9 +1567,9 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		// opens nothing needs no answer at all.
 		Rungs: rungsFor(v),
 	}
-	blob, err := json.Marshal(cfg)
+	blob, err := encodeConfig(cfg)
 	if err != nil {
-		return pageData{}, fmt.Errorf("encode page config: %w", err)
+		return pageData{}, err
 	}
 
 	return pageData{

@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -18,12 +17,10 @@ import (
 // there, nothing is a property there that the artifact cannot carry, and the
 // declared schema version is the one the packager stamps.
 //
-// IT USED TO READ A FENCED BLOCK IN docs/general-fund-drilldown-contract.md,
-// and that block was a third spelling of a shape the structs already state and
-// the schema now states machine-readably. A schema is better than the block in
-// the way that matters here: it is compared against the emitted BYTES by
-// encodeRungs, where the block could only ever be compared against the struct
-// tags. The prose kept the argument, which is what a schema cannot say.
+// THE SCHEMA AND NOT A FENCED BLOCK IN docs/, because a schema is compared
+// against the emitted BYTES by encodeRungs and a block can only ever be
+// compared against the struct tags. The prose keeps the argument, which is what
+// a schema cannot say.
 //
 // THE COMPARISON IS OF NAMES AND NOT OF TYPES, deliberately. Whether `ids` is
 // an array of strings is the schema's to enforce against real bytes; whether
@@ -39,8 +36,11 @@ func TestTheSchemaStatesWhatTheRungAnswerCarries(t *testing.T) {
 		t.Fatalf("%s is not valid JSON: %v", schema.Rungs, err)
 	}
 
-	stated := schemaNames(doc, "")
-	emitted := emittedNames(reflect.TypeOf(rungsDoc{}), "")
+	stated, err := schema.Names(schema.Rungs)
+	if err != nil {
+		t.Fatalf("read %s: %v", schema.Rungs, err)
+	}
+	emitted := schema.StructNames(reflect.TypeOf(rungsDoc{}), "")
 	slices.Sort(stated)
 	slices.Sort(emitted)
 	if len(stated) == 0 {
@@ -65,56 +65,4 @@ func TestTheSchemaStatesWhatTheRungAnswerCarries(t *testing.T) {
 		t.Errorf("%s pins schema_version %d and the packager stamps %d; a bump moves both.",
 			schema.Rungs, int(got), rungsSchemaVersion)
 	}
-}
-
-// schemaNames is every dotted JSON name the schema declares, with array
-// nesting collapsed: "columns", "columns.stem", "columns.rungs.draws.ids" --
-// the same spelling emittedNames produces off the structs.
-func schemaNames(node map[string]any, prefix string) []string {
-	var out []string
-	if items, ok := node["items"].(map[string]any); ok {
-		return schemaNames(items, prefix)
-	}
-	props, ok := node["properties"].(map[string]any)
-	if !ok {
-		return nil
-	}
-	for k, v := range props {
-		name := k
-		if prefix != "" {
-			name = prefix + "." + k
-		}
-		out = append(out, name)
-		if child, ok := v.(map[string]any); ok {
-			out = append(out, schemaNames(child, name)...)
-		}
-	}
-	return out
-}
-
-// emittedNames is the same set read off the structs encodeRungs marshals. A
-// field with no json tag is named by its Go name, which is what encoding/json
-// would write, so an untagged field goes red here rather than slipping past a
-// tag lookup that returned "".
-func emittedNames(t reflect.Type, prefix string) []string {
-	var out []string
-	for i := range t.NumField() {
-		f := t.Field(i)
-		name := strings.Split(f.Tag.Get("json"), ",")[0]
-		if name == "" {
-			name = f.Name
-		}
-		if prefix != "" {
-			name = prefix + "." + name
-		}
-		out = append(out, name)
-		ft := f.Type
-		for ft.Kind() == reflect.Slice || ft.Kind() == reflect.Pointer {
-			ft = ft.Elem()
-		}
-		if ft.Kind() == reflect.Struct {
-			out = append(out, emittedNames(ft, name)...)
-		}
-	}
-	return out
 }

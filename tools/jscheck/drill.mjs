@@ -2720,7 +2720,7 @@ export async function checks() {
         detail: String((e && e.stack) || e) }];
     }
   };
-  for (const fn of [gapAtTheCentre, categoryProbes, keylessSteps, severalParents, windowChecks,
+  for (const fn of [gapAtTheCentre, categoryProbes, severalParents, windowChecks,
     objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe, widenedColumns,
     gestureChecks, expansionChecks]) {
     out.push(...(await group(fn)));
@@ -3700,12 +3700,16 @@ function quotesFigures(app, col, gross, reduced, net) {
  * have opened, with every Go test green. No step the site ships names two
  * charts yet -- this is measured on the shipped shape with one field replaced.
  *
- * FOUR READS AND NOT ONE, because "the fund opens" is satisfied by a client
+ * THREE READS AND NOT ONE, because "the fund opens" is satisfied by a client
  * that opens everything: the same step reached through a list that does NOT
- * name the rung on screen must NOT open, and a bare string -- the shape the
- * wire carried before this -- must be dropped by STEPS rather than quietly
- * matched by `.includes` on a string, which would be true of "fund-group" and
- * of "und-grou" alike.
+ * name the rung on screen must NOT open.
+ *
+ * A BARE STRING IS NOT ASKED ABOUT HERE, and it is worth saying where it went.
+ * `.includes` on a string is true of "fund-group" and of "und-grou" alike, so
+ * the shape matters -- but it is schema/page.schema.json that refuses it, over
+ * the bytes `fisc export` writes, and tools/jscheck/contract.mjs asserts the
+ * key is required and an array there. A second refusal in app.js would be a
+ * worse one: it DROPS the step, so the page opens nothing and says nothing.
  *
  * THE SUBJECT IS THE FUND STEP, which is the one hanging off the fund group's
  * chart: its `after` is what is replaced, and fund/100 is the mark that opens
@@ -3728,76 +3732,16 @@ async function severalParents() {
     await read(["fund-group"]),
     await read(["nope", "fund-group"]),
     await read(["nope"]),
-    await read("fund-group"),
   ];
-  const [shipped, member, stranger, asString] = got;
+  const [shipped, member, stranger] = got;
   return [{
     name: "a step opens from every chart its `after` names, and from no other -- membership, so one view can be reached from several",
     ok: got.every((r) => r.outcome === "drew") &&
       shipped.steps === PAGE.steps.length && shipped.opens &&
       member.steps === PAGE.steps.length && member.opens &&
-      stranger.steps === PAGE.steps.length && !stranger.opens &&
-      asString.steps === PAGE.steps.length - 1 && !asString.opens,
+      stranger.steps === PAGE.steps.length && !stranger.opens,
     detail: got.map((r) => `${JSON.stringify(r.after)}: ${r.steps} step(s) read, the spine ` +
       `${r.outcome}, fund/100 ${r.opens ? "opens" : "does not open"}`).join("; "),
-  }];
-}
-
-/**
- * What the client does with a step the wire declares without a key or without
- * an `after`: drops it, so nothing opens, rather than reading either as "".
- *
- * THE CONSEQUENCE IS THE WHOLE DRILL, WHICH IS WHY IT IS MEASURED HERE AND NOT
- * ONLY GO-SIDE. export.DrillStep's `after` reaches the client only through its
- * JSON tag; dropped back to `json:"-"` the config carries no `after` at all,
- * every step falls out of STEPS, and the page a reader gets isolates on a
- * click with no sign that it ever opened anything.
- *
- * AND READ AS A ROOT INSTEAD, A KEYLESS STEP MATCHES ITSELF. A list carrying
- * "" is the root marker, so a step with no key becomes its own parent --
- * measured under a config whose steps carried none, Patrol opened into Patrol
- * without end. Dropping is what makes that unrepresentable, and it is why the
- * client tests for an ARRAY rather than for a truthy value: a dropped field is
- * `undefined`, which is not one. The packager is what refuses the same thing
- * one side over (export.validateSteps, and seam.mjs's `noKey` arm on the
- * parse).
- */
-async function keylessSteps() {
-  const without = async (/** @type {string} */ field) => {
-    const { app, main } = await opened(null, (config) => {
-      config.steps = config.steps.map((s) => {
-        const copy = Object.assign({}, s);
-        delete copy[field];
-        return copy;
-      });
-    });
-    const nodeAt = (/** @type {string} */ id) => app.projection.nodes.find((n) => n.id === id);
-    const outcome = await openInto(app, "fund-group/general");
-    return {
-      field, steps: app.STEPS.length,
-      groupOpens: app.drillable(nodeAt("fund-group/general")),
-      categoryOpens: app.drillable(nodeAt("revenue/taxes/property")),
-      columns: app.openableColumns(), outcome, depth: app.drilled.length,
-      banners: refusals(main).length,
-    };
-  };
-  // THE CONTROL FIRST, so this arm cannot be green because the fixture stopped
-  // drawing: the same page with both fields present opens two things.
-  const { app: control } = await opened(null, null);
-  const controlOpens = control.STEPS.length === PAGE.steps.length &&
-    control.openableColumns().join("|") === OPENABLE_COLUMNS;
-  const got = [await without("key"), await without("after")];
-  return [{
-    name: "a step the wire declares with no key, or with no `after`, is dropped rather than read as a root -- so the drill vanishes instead of opening a node into itself",
-    ok: controlOpens && got.every((r) => r.steps === 0 && !r.groupOpens && !r.categoryOpens &&
-      r.columns.length === 0 && r.outcome === "failed" && r.depth === 0 && r.banners === 0),
-    detail: `with both fields the page reads ${control.STEPS.length} step(s) and offers ` +
-      `${JSON.stringify(control.openableColumns())}; ` +
-      got.map((r) => `without \`${r.field}\`: ${r.steps} step(s), fund group ` +
-        `${r.groupOpens ? "STILL opens" : "does not open"}, category ` +
-        `${r.categoryOpens ? "STILL opens" : "does not open"}, columns ` +
-        `${JSON.stringify(r.columns)}, a click came to "${r.outcome}" at depth ${r.depth} ` +
-        `with ${r.banners} banner(s)`).join("; "),
   }];
 }
 

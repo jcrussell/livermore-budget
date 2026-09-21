@@ -11,8 +11,16 @@
  * fiscal year, the headline totals, the caveats, where the source documents
  * live — and it carries the projection's own metadata block verbatim, so the
  * page and the JSON cannot disagree about a figure. Everything bulky (nodes,
- * links, fact ids) is fetched from data/<projection>.json, so a reader can
+ * links, fact ids) is fetched as one file per published column, so a reader can
  * curl the provenance file on its own.
+ *
+ * NOTHING HERE RE-CHECKS THE SHAPE OF EITHER. Go validates every artifact
+ * against schema/ before writing it — the config against page.schema.json, a
+ * column against column.schema.json, the rung answer against rungs.schema.json
+ * — so a key check on arrival would be a second implementation of a check that
+ * already ran against the bytes. What this file still refuses is the two
+ * questions no schema can answer: a 200 carrying an error page, and a file
+ * cached from before the last deploy.
  */
 
 /* global d3 */
@@ -356,9 +364,13 @@ const SCHEMA_VERSION = 1;
  * Absent, the fold is skipped entirely rather than run with a set covering
  * every tier, so a page that does not opt in is laid out by exactly the code
  * that laid it out before the fold existed.
+ *
+ * ABSENT AND NOT EMPTY IS THE ONLY DISTINCTION READ HERE. That it is a list of
+ * integers when present is schema/page.schema.json's, checked against the bytes
+ * the export wrote.
  * @type {number[]}
  */
-const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.render_tiers : [];
+const RENDER_TIERS = (CONFIG && CONFIG.render_tiers) || [];
 
 /**
  * How this page drills: the steps the packager declared, empty for a page
@@ -375,26 +387,19 @@ const RENDER_TIERS = CONFIG && Array.isArray(CONFIG.render_tiers) ? CONFIG.rende
  * categories open into different views of the same document, and a depth
  * cannot tell them apart. Several entries are one chart reachable from
  * several, which is the other direction and the same list. stepFor is the one
- * reader of that rule. The packager validates the tree
- * (export.validateSteps): keys unique, every entry naming an earlier step, at
- * most one step per (after, from, role).
+ * reader of that rule.
+ *
+ * READ AND NOT VETTED. The packager validates the tree -- keys unique, every
+ * entry naming an earlier step, at most one step per (after, from, role)
+ * (export.validateSteps) -- and schema/page.schema.json holds the emitted
+ * bytes to the shape, closed, so a step missing a key is a page `fisc export`
+ * refuses to write. A filter here would be a second implementation of that,
+ * and a worse one: it DROPS what it does not recognise, so the reader gets a
+ * chart whose nodes will not open and no banner saying why.
  *
  * @type {FiscDrillStep[]}
  */
-const STEPS = CONFIG && Array.isArray(CONFIG.steps)
-  // A STEP WITH NO KEY OR NO PARENTAGE IS NOT A STEP OF THE TREE, and is
-  // dropped as one with no tiers is. What is refused is parentage that is
-  // ABSENT, and the list refuses it where the string did: a step whose `after`
-  // was dropped carries `undefined`, which is not an array and falls out here
-  // rather than being read as a root. A step read as a root is one its own
-  // children match by "" -- measured, on a config whose steps carried no keys:
-  // Patrol opened into Patrol without end, because the division step matched
-  // from its own chart. A root says so by carrying "" IN the list, and the
-  // packager requires that rather than an empty one (export.validateSteps).
-  ? CONFIG.steps.filter((s) => s && Array.isArray(s.tiers) && s.tiers.length > 0 &&
-      typeof s.key === "string" && Array.isArray(s.after) &&
-      s.after.every((a) => typeof a === "string"))
-  : [];
+const STEPS = (CONFIG && CONFIG.steps) || [];
 
 /**
  * The key of the step whose chart is on screen, "" on the overview.
@@ -1946,8 +1951,13 @@ function focusInChart() {
  * @returns {FiscStepDoc | null}
  */
 function stepDocFor(step) {
-  const steps = shownYear && Array.isArray(shownYear.steps) ? shownYear.steps : [];
-  const at = CONFIG && Array.isArray(CONFIG.steps) ? CONFIG.steps.indexOf(step) : -1;
+  // BOTH LISTS ARE READ, NEITHER IS VETTED. `years[].steps` and `steps` are
+  // optional in schema/page.schema.json and arrays of a stated shape where they
+  // appear, held against the bytes encodeConfig wrote; absent is the only state
+  // this has to tell apart, and `|| []` is what tells it. STEPS rather than
+  // CONFIG.steps so the page has one spelling of the declaration.
+  const steps = (shownYear && shownYear.steps) || [];
+  const at = STEPS.indexOf(step);
   const entry = at >= 0 ? steps[at] : undefined;
   return entry || null;
 }

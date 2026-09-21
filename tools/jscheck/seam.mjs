@@ -16,11 +16,40 @@
 // So each check below asserts that a seam CAN SEE something, in the smallest
 // way that would go red if the seam regressed to answering nothing.
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import {
   loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
   KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes, parseSpineRenderTiers,
-  parseSpendingGaps, openableFrom, goJSONKeys, typedefProperties,
+  parseSpendingGaps, openableFrom, goJSONKeys, typedefProperties, repoRoot,
 } from "./harness.mjs";
+
+/**
+ * The property names schema/page.schema.json states at a dotted path, "" being
+ * the config itself.
+ *
+ * READ WITH JSON.parse AND NOT VALIDATED AGAINST. There is no npm here and
+ * there must not be, so this side reads the committed contract rather than
+ * implementing one -- the same trade tools/extract.py makes, and the one
+ * tools/jscheck/contract.mjs already makes over the column.
+ *
+ * @param {string} path
+ * @returns {string[]}
+ */
+function pageSchemaKeys(path) {
+  let node = JSON.parse(
+    readFileSync(join(repoRoot, "schema", "page.schema.json"), "utf8"));
+  for (const key of path ? path.split(".") : []) {
+    while (node && node.items) node = node.items;
+    node = (node.properties || {})[key];
+    if (!node) throw new Error(`page.schema.json declares no ${path}`);
+  }
+  while (node && node.items) node = node.items;
+  const keys = Object.keys(node.properties || {});
+  if (!keys.length) throw new Error(`page.schema.json states no property at "${path}"`);
+  return keys;
+}
 
 export async function checks() {
   const out = [];
@@ -83,36 +112,47 @@ export async function checks() {
   // which stepDecomposes is built on. None of that could fail a check, because
   // a typedef is a comment.
   //
-  // KEYS AND NOT TYPES. Go's json tag names the key; whether it holds a string
-  // or a number is schema/'s to say, and asking here would be a third
-  // spelling. An optional property is permitted against any key, because
-  // `omitempty` and `[name]` mean the same thing from opposite sides and
-  // pinning the two together would fail on a key Go always writes and the
-  // client sensibly guards.
-  for (const [type, file, struct] of [
-    ["FiscStepDoc", "internal/export/page.go", "stepView"],
-    ["FiscYear", "internal/export/page.go", "yearView"],
-    ["FiscConfig", "internal/export/page.go", "clientConfig"],
+  // KEYS AND NOT TYPES HERE. Go's json tag names the key; whether it holds a
+  // string or a number is schema/'s to say. An optional property is permitted
+  // against any key, because `omitempty` and `[name]` mean the same thing from
+  // opposite sides and pinning the two together would fail on a key Go always
+  // writes and the client sensibly guards.
+  //
+  // AND THE SCHEMA IS THE THIRD PARTY, which is what that deferral was waiting
+  // for. Each of these structs is part of window.FISC_CONFIG, and
+  // schema/page.schema.json is now applied to the bytes encodeConfig writes --
+  // so the typedef, the struct tag and the contract are compared as one set
+  // rather than in pairs. The schema path is where the type lives; reaching it
+  // from here is how a key stated in two of the three stops passing.
+  for (const [type, file, struct, path] of [
+    ["FiscStepDoc", "internal/export/page.go", "stepView", "years.steps"],
+    ["FiscYear", "internal/export/page.go", "yearView", "years"],
+    ["FiscConfig", "internal/export/page.go", "clientConfig", ""],
     // AND THE STEP DECLARATION, which is the one with a live defect behind it
     // (fisc-kops): the json tag on DrillStep.Residual is the ONLY thing
     // putting the residual on FISC_CONFIG, and both sides check the
     // declaration while nothing checked the wire between them. Tagging it
     // json:"-" left both Go packages and every jscheck module green.
-    ["FiscDrillStep", "internal/export/export.go", "DrillStep"],
+    ["FiscDrillStep", "internal/export/export.go", "DrillStep", "steps"],
   ]) {
     const app = loadApp();
     const declared = typedefProperties(app.source, type);
     const shipped = goJSONKeys(file, struct);
+    const stated = pageSchemaKeys(path);
     const names = declared.map((p) => p.name);
     const invented = names.filter((n) => !shipped.includes(n)).sort();
     const missed = shipped.filter((k) => !names.includes(k)).sort();
+    const unstated = shipped.filter((k) => !stated.includes(k)).sort();
+    const unshipped = stated.filter((k) => !shipped.includes(k)).sort();
     out.push({
-      name: `app.js's ${type} declares exactly the keys ${struct} ships`,
-      ok: invented.length === 0 && missed.length === 0,
-      detail: invented.length || missed.length
+      name: `app.js's ${type}, ${struct} and page.schema.json name the same keys`,
+      ok: !invented.length && !missed.length && !unstated.length && !unshipped.length,
+      detail: (invented.length || missed.length || unstated.length || unshipped.length)
         ? `${invented.length} declared and not shipped [${invented}]; ` +
-          `${missed.length} shipped and not declared [${missed}]`
-        : `${shipped.length} key(s), agreed both ways: ${shipped.join(", ")}`,
+          `${missed.length} shipped and not declared [${missed}]; ` +
+          `${unstated.length} shipped and not in the schema [${unstated}]; ` +
+          `${unshipped.length} in the schema and not shipped [${unshipped}]`
+        : `${shipped.length} key(s), agreed three ways: ${shipped.join(", ")}`,
     });
   }
 

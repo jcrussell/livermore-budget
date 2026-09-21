@@ -3,7 +3,9 @@ package export
 import (
 	"encoding/json"
 	"io/fs"
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -74,6 +76,53 @@ func TestRoleFundGroupIsOneOfTheSchemasRoles(t *testing.T) {
 	if !slices.Contains(roles, roleFundGroup) {
 		t.Errorf("%s's role enum does not list %q, which this package selects fund groups by: %v",
 			schema.Column, roleFundGroup, roles)
+	}
+}
+
+// TestTheSchemaStatesWhatAColumnCarries holds schema/column.schema.json to the
+// struct encodeColumn marshals: every JSON name the artifact can carry is a
+// property there, and nothing is a property there the artifact cannot carry.
+//
+// THE VALIDATOR ALONE DOES NOT COVER THIS DIRECTION. encodeColumn refuses bytes
+// the schema rejects, so a key ADDED to the struct is caught by
+// additionalProperties. A key the schema stops REQUIRING is not: every column
+// this corpus produces still carries it, so the export stays green and the only
+// thing that noticed was a hand-written list in tools/jscheck.
+func TestTheSchemaStatesWhatAColumnCarries(t *testing.T) {
+	stated, err := schema.Names(schema.Column)
+	if err != nil {
+		t.Fatalf("read %s: %v", schema.Column, err)
+	}
+	emitted := schema.StructNames(reflect.TypeOf(ColumnDoc{}), "")
+
+	// WHERE THE SCHEMA KNOWS MORE THAN THIS PACKAGE, NAMED RATHER THAN
+	// TOLERATED. `counts` is a [json.RawMessage]: internal/project composes it
+	// and this package copies the bytes, so the struct cannot state the keys
+	// inside and [schema.StructNames] rightly stops. The SCHEMA can state them,
+	// because it is applied to the emitted bytes rather than to the struct, and
+	// site/app.js reads them -- so holding it opaque here to make two lists
+	// match would delete a real check to pass a test about a different thing.
+	//
+	// The prefix itself must be in both, which is what keeps this an exemption
+	// for one blob rather than a hole the next pass-through field falls into.
+	const passThrough = "schedules.counts"
+	if !slices.Contains(stated, passThrough) || !slices.Contains(emitted, passThrough) {
+		t.Fatalf("%q is exempted below and is not a field of both the schema and the struct",
+			passThrough)
+	}
+	stated = slices.DeleteFunc(stated, func(n string) bool {
+		return strings.HasPrefix(n, passThrough+".")
+	})
+
+	slices.Sort(stated)
+	slices.Sort(emitted)
+	if len(stated) == 0 {
+		t.Fatalf("%s states no property, so this test compares nothing", schema.Column)
+	}
+	if diff := cmp.Diff(emitted, stated); diff != "" {
+		t.Errorf("%s and the emitted column name different fields (-emitted +stated):\n%s\n"+
+			"Every name a column carries is a property of the schema, and only those.",
+			schema.Column, diff)
 	}
 }
 

@@ -40,7 +40,7 @@ export const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", ".."
  * @param {string} name  the struct's name
  * @returns {string[]} the keys, in declaration order
  */
-export function goJSONKeys(file, name) {
+export function goFields(file, name) {
   const src = readFileSync(join(repoRoot, file), "utf8");
   const at = src.indexOf(`type ${name} struct {`);
   if (at < 0) throw new Error(`${file} declares no type ${name}`);
@@ -51,11 +51,23 @@ export function goJSONKeys(file, name) {
     else if (src[i] === "}" && --depth === 0) { end = i; break; }
   }
   if (end < 0) throw new Error(`${file}'s type ${name} has no closing brace`);
-  const keys = [...src.slice(open, end).matchAll(/`json:"([^"]*)"`/g)]
-    .map((m) => m[1].split(",")[0])
-    .filter((k) => k !== "" && k !== "-");
-  if (!keys.length) throw new Error(`${file}'s type ${name} ships no json key`);
-  return keys;
+  // THE GO NAME AND THE JSON KEY TOGETHER, because two readers need different
+  // halves and pairing them elsewhere would be a guess. parseStepShapes reads
+  // data.go's literals, where a field appears under its GO name; seam.mjs and
+  // contract.mjs are about the wire, where it appears under its tag. Deriving
+  // one from the other holds only while every tag is its field lowercased,
+  // which is true today and is not a rule anything states.
+  const fields = [...src.slice(open, end)
+    .matchAll(/^\t(\w+)\s+[^`\n]*`json:"([^"]*)"`/gm)]
+    .map((m) => ({ field: m[1], json: m[2].split(",")[0] }))
+    .filter((f) => f.json !== "" && f.json !== "-");
+  if (!fields.length) throw new Error(`${file}'s type ${name} ships no json key`);
+  return fields;
+}
+
+/** The json keys a Go struct ships, in declaration order. */
+export function goJSONKeys(file, name) {
+  return goFields(file, name).map((f) => f.json);
 }
 
 /**
@@ -1429,6 +1441,28 @@ export function parseSpineRenderTiers(src) {
  * field this returns is either read or refused now, and the three counts below
  * are what catch an entry this missed.
  */
+/**
+ * The export.DrillStep fields [parseStepShapes] has been taught about, DECLARED
+ * HERE AND NOT DERIVED FROM THE STRUCT.
+ *
+ * fisc-mglf: the read-or-refuse guards inside that parse were added one at a
+ * time, after someone hit each, and neither generalised. A new DrillStep field
+ * was not matched, not guarded and not reported, so every check over a step
+ * shape went on measuring a declaration missing it -- green.
+ *
+ * DERIVING THIS FROM export.DrillStep WOULD BE THE TRAP AND NOT THE FIX: a set
+ * read off the struct grows the moment the field is added there, so the very
+ * change this exists to catch would teach it to accept one. The struct is the
+ * OTHER half of a pair, and contract.mjs compares the two.
+ *
+ * The first row is read; the second is present in the literals and deliberately
+ * not read, being words the page renders rather than shapes a check measures.
+ */
+export const KNOWN_STEP_FIELDS = [
+  "Key", "After", "From", "Side", "Role", "Tiers", "Keep", "Widen", "Caps",
+  "Projection", "Back", "Tail", "Noun", "Description", "Residual", "Gaps",
+];
+
 export function parseStepShapes(src) {
   // EVERY []export.DrillStep LITERAL, IN SOURCE ORDER, AND NOT THE FIRST. The
   // spine's steps are joined to two different projections -- pp.127-140 and
@@ -1451,8 +1485,19 @@ export function parseStepShapes(src) {
   // step 0, silently. That is the defect this function cited fisc-0flg for and
   // then repeated; found by pass three of /code-review.
   const starts = [...block.matchAll(/^\t{3}\{/gm)];
+  // The default for a field nobody has taught this function about is refusal:
+  // see [KNOWN_STEP_FIELDS] for why it is declared rather than derived.
+  const known = new Set(KNOWN_STEP_FIELDS);
   for (const [i, m] of starts.entries()) {
     const body = block.slice(m.index, i + 1 < starts.length ? starts[i + 1].index : undefined);
+    for (const f of body.matchAll(/^\t{4}(\w+):/gm)) {
+      if (!known.has(f[1])) {
+        throw new Error(`step ${i} in data.go declares ${f[1]}, which this parse has not ` +
+          `been taught about. Add it to KNOWN_STEP_FIELDS -- reading it if a check should ` +
+          `measure it, listing it as unread if not -- and to schema/page.schema.json, which ` +
+          `is closed and will refuse the export until it names the field too`);
+      }
+    }
     const from = body.match(/From:\s*(\d+),/);
     const tiers = body.match(/Tiers:\s*\[\]int\{([\d,\s]*)\}/);
     // A CAP MAY NAME ITS OWN NOUN. `{Tier: 4, Cap: 24, Tail: "divisions"}`

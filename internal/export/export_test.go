@@ -19,6 +19,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/export"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/schema"
 	"github.com/jcrussell/livermore-budget/site"
 )
 
@@ -1206,7 +1207,47 @@ func TestTheStylesheetHasOneTextMeasure(t *testing.T) {
 // fails does not destroy the previous site first. Keeping the one-step form
 // here rather than in the package means that ordering has no shortcut around
 // it in production.
+// TestAPageWithNoBuildStampIsRefused is the one arm [writeSite]'s default is
+// written around.
+//
+// AN EMPTY exported_by IS A GATE SWITCHED OFF, not a cosmetic gap. site/app.js
+// refuses a fetched artifact whose generated_by disagrees with
+// CONFIG.exported_by, and that comparison is the only thing left that catches a
+// column a reader cached from before the last deploy -- the site publishes no
+// cache-busting. Two empty strings pass it for every file, forever.
+func TestAPageWithNoBuildStampIsRefused(t *testing.T) {
+	_, err := export.Prepare(export.Options{
+		Dir:         t.TempDir(),
+		Projections: map[string][]byte{"sankey": goldenSankey(t)},
+		Docs:        budgetDocs(),
+		PageText:    pageTextFS(),
+	})
+	if err == nil {
+		t.Fatal("got nil error, want a refusal of a page carrying no build stamp")
+	}
+	for _, want := range []string{schema.Page, "exported_by"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not name %q: %v", want, err)
+		}
+	}
+}
+
+// writeSite prepares and writes one site, stamping the build where the caller
+// did not.
+//
+// THE STAMP IS FILLED IN AND THE TEST THAT IS ABOUT IT PLANTS ITS OWN. An empty
+// GeneratedBy is refused by page.schema.json, because the client's one surviving
+// cache gate compares a fetched artifact's generated_by with CONFIG.exported_by
+// and two empty strings pass it trivially -- so a page with no stamp is a page
+// with that gate switched off. Every test above is about something else and the
+// real command has never produced one (generatedBy() is "fisc " plus the build),
+// so defaulting here keeps those arms about their own subject.
+// TestAPageWithNoBuildStampIsRefused is the one that asserts the refusal, and it
+// calls Prepare directly rather than coming through here.
 func writeSite(o export.Options) ([]string, error) {
+	if o.GeneratedBy == "" {
+		o.GeneratedBy = "fisc (test)"
+	}
 	p, err := export.Prepare(o)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,422 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/page.schema.json",
+  "title": "fisc page config",
+  "description": "window.FISC_CONFIG: what site/app.js has before it has fetched anything. THE ONE ARTIFACT THAT CROSSES THIS BOUNDARY WITHOUT BEING FETCHED -- it is rendered into the page's own <script>, so a reader cannot hold a stale copy of it beside a fresh app.js the way they can of a column. It is a contract all the same: a dropped json tag is silent, because the template renders the same structs by Go field name and only what a reader gets AFTER switching year goes blank. EVERY OBJECT HERE IS CLOSED. additionalProperties: false is what makes a field added to one of these structs refused by name at the export rather than shipped to a client that ignores it.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "exported_by",
+    "primary",
+    "metadata",
+    "years",
+    "docs"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "The projection's own version, which site/app.js compares against its SCHEMA_VERSION constant before it draws. NOT A const HERE: this encoder does not choose the number, it passes the projection's through, and a const would be a third party to a pin internal/export already holds between app.js and the producer.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "exported_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The export that wrote this page. Every artifact it links carries the same string as generated_by, and the client refuses a pair that disagree -- which is the only thing that catches a column cached from before the last deploy."
+    },
+    "primary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The projection this page is of."
+    },
+    "metadata": {
+      "description": "The primary projection's metadata block, verbatim. HELD AS AN OPAQUE OBJECT because it is another package's document passed straight through; internal/project owns its shape and this side must not state a second version of it.",
+      "type": "object"
+    },
+    "years": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "description": "One published year with the words that belong to it, built by the packager so the client never composes a figure or a caveat itself.",
+        "type": "object",
+        "required": [
+          "year",
+          "label",
+          "stem",
+          "path",
+          "basis",
+          "title",
+          "hero",
+          "figures",
+          "caveats",
+          "counts",
+          "chart_title"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "year": {
+            "description": "A FLOOR WOULD BE A NUMBER NOTHING MEASURED. Which fiscal years exist is data/sources.yaml's and the registry's; this contract says the key is an integer and leaves the range to the party that can check it.",
+            "type": "integer"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "stem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The column file this year is fetched from."
+          },
+          "basis": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string"
+          },
+          "hero": {
+            "description": "One headline figure, already formatted. THE WORDS ARE THE PACKAGER'S: the client never composes a figure, which is what keeps the server-rendered tile and the one a year switch paints from disagreeing.",
+            "type": "object",
+            "required": [
+              "label",
+              "value",
+              "note",
+              "kind"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "label": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "description": "Which tile this is, so the page can style a hero differently from the rest without reading its position."
+              }
+            }
+          },
+          "figures": {
+            "type": "array",
+            "items": {
+              "description": "One headline figure, already formatted. THE WORDS ARE THE PACKAGER'S: the client never composes a figure, which is what keeps the server-rendered tile and the one a year switch paints from disagreeing.",
+              "type": "object",
+              "required": [
+                "label",
+                "value",
+                "note",
+                "kind"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "description": "Which tile this is, so the page can style a hero differently from the rest without reading its position."
+                }
+              }
+            }
+          },
+          "caveats": {
+            "type": "array",
+            "items": {
+              "description": "What a chart page is given about a caveat: the line it shows and the link to the paragraph. NO `text`, deliberately -- the paragraph lives on the caveats page, and a key here would put it back within a template's reach.",
+              "type": "object",
+              "required": [
+                "id",
+                "summary",
+                "href"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "href": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "counts": {
+            "description": "What the year's document holds, for the counts sentence.",
+            "type": "object",
+            "required": [
+              "facts",
+              "nodes",
+              "links"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "facts": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "nodes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "links": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "description": "What one of this year's rungs draws, one entry per declared step.",
+              "type": "object",
+              "required": [
+                "caveats"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "caveats": {
+                  "type": "array",
+                  "items": {
+                    "description": "What a chart page is given about a caveat: the line it shows and the link to the paragraph. NO `text`, deliberately -- the paragraph lives on the caveats page, and a key here would put it back within a template's reach.",
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "summary",
+                      "href"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "summary": {
+                        "type": "string"
+                      },
+                      "href": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "opens": {
+                  "description": "Node ids this year's document decomposes under the step. ABSENT IS NOT EMPTY: absent means the step declares no such set and every node at the tier is offered, where [] means it decomposes none.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          },
+          "chart_title": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "docs": {
+      "description": "Cited documents by doc_id. KEYED BY DATA AND SO NOT ENUMERATED: which documents a page cites is the corpus's, and naming them here would make this contract a copy of it.",
+      "type": "object",
+      "additionalProperties": {
+        "description": "Where one cited document's provenance is served from. Every provenance URL on the site is built out of these three bases.",
+        "type": "object",
+        "required": [
+          "title",
+          "publisher",
+          "pdf_url",
+          "page_text_base",
+          "records_base"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "pdf_url": {
+            "type": "string",
+            "description": "The city's own URL, opened at the page."
+          },
+          "page_text_base": {
+            "type": "string",
+            "description": "Directory holding the committed page text; the client appends pNNNN.txt. RELATIVE OR ABSOLUTE, unlike records_base beside it: it goes absolute under --source-browse-url, so the client must not assume a scheme."
+          },
+          "records_base": {
+            "type": "string",
+            "description": "Directory holding this document's fact-store shards; the client appends pNNNN.jsonl. ALWAYS SITE-RELATIVE. \"\" means the caller published no records for this document and the client renders no records link -- absent, not a base pointing nowhere."
+          }
+        }
+      }
+    },
+    "render_tiers": {
+      "description": "The node tiers the page draws, left to right. OMITTED AND NOT [] WHEN ABSENT, which app.js relies on: a page that declares nothing hands its graph to d3's own aligner, and an empty list would be a second spelling of that state.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "steps": {
+      "description": "How the page opens a node. OMITTED AND NOT [] WHEN ABSENT, for render_tiers' reason: app.js reads an absent key as \"this page isolates on a click\".",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "description": "How the page opens a node, one hop per step.",
+        "type": "object",
+        "required": [
+          "key",
+          "after",
+          "from",
+          "tiers",
+          "back",
+          "tail",
+          "noun",
+          "description"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What other steps name this one by."
+          },
+          "after": {
+            "description": "The keys of the steps whose charts this one opens from, carrying \"\" for the view's own. A ROOT SAYS SO BY CARRYING \"\" IN THE LIST, not by carrying an empty one: a step read as a root is one its own children match by \"\", which opens a chart into itself without end.",
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "from": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "side": {
+            "type": "string",
+            "enum": [
+              "source"
+            ],
+            "description": "Which end of a link the opened node is; absent for the end links point at."
+          },
+          "role": {
+            "type": "string",
+            "description": "Which nodes at `from` open, by node.role; absent opens every node at the tier."
+          },
+          "projection": {
+            "type": "string",
+            "description": "The schedule this step draws, selected out of the year's own column; absent means the same document as the step before it."
+          },
+          "tiers": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "keep": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "widen": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "caps": {
+            "type": "array",
+            "items": {
+              "description": "How many marks one tier draws before the rest fold into a tail. THE PERMISSION AND NOT THE FOLD: which members a fold then hides is the client's, because folding is fitting to a viewport Go cannot see.",
+              "type": "object",
+              "required": [
+                "tier",
+                "cap"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "tier": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "cap": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "tail": {
+                  "type": "string",
+                  "description": "The plural noun the folded tail is counted in; absent takes the step's own."
+                }
+              }
+            }
+          },
+          "back": {
+            "type": "string"
+          },
+          "tail": {
+            "type": "string"
+          },
+          "noun": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "residual": {
+            "description": "Endpoints of the chart this step opens FROM whose flow the document it draws does not decompose, id to declared reason.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "gaps": {
+            "description": "Nodes this step OPENS whose total the document it draws does not reach, id to the declared reason two documents print one cell at two figures.",
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "root": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The node whose subtree the page draws; omitted when it draws the whole document."
+    },
+    "rungs": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Where Go's answer for every rung this page opens is served. OMITTED MEANS NOBODY ANSWERS THIS PAGE'S RUNGS -- a page whose steps the walk never reached must not be handed another page's."
+    }
+  }
+}

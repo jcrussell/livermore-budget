@@ -128,4 +128,7 @@ const (
 	// Rungs is the answer a page opens nodes against: which nodes each column
 	// of each reachable chart holds, and which marks the client adds.
 	Rungs = "rungs.schema.json"
+	// Page is window.FISC_CONFIG: what the page has before it has fetched
+	// anything, and which artifacts it may fetch.
+	Page = "page.schema.json"
 )
