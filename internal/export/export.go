@@ -1807,7 +1807,7 @@ func Prepare(o Options) (*plan, error) {
 	// write plan takes the columns and the pages take the index, so which
 	// document a step draws is answered by the same walk that writes the file
 	// the reader will fetch it out of.
-	columns, ix, cerr := ColumnsOf(o.Projections)
+	columns, ix, cerr := ColumnsOf(o.Projections, o.GeneratedBy)
 	if cerr != nil {
 		return nil, cerr
 	}

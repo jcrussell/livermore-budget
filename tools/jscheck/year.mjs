@@ -723,9 +723,9 @@ async function chainedYears(plan, paths) {
  * the repaint the drill lands on the new year's empty stack and the page
  * shows FY 2026-27 in the control over FY 2025-26's General Fund. The third
  * arm is the per-year join on the wire: FY 2026-27's fund groups open into
- * fund-flows-2027, the file the packager put in that year's entry, and not
- * into the one file CONFIG.projections maps the stem to -- which is what the
- * client used to read, and drew FY2025-26's funds under FY2026-27's chart.
+ * that year's own column, selected by the step's schedule key, so the year the
+ * figures are of is carried by the file a reader fetched rather than by
+ * anything the client resolves.
  * @returns {Promise<{name: string, ok: boolean, detail: string}[]>}
  */
 async function yearSwitchClosesTheDrill() {

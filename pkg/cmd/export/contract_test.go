@@ -2,137 +2,94 @@ package export
 
 import (
 	"encoding/json"
-	"fmt"
-	"os"
+	"io/fs"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
-// contractPath is the document that states what the rung answer carries and
-// what it deliberately does not, relative to this package.
-const contractPath = "../../../docs/general-fund-drilldown-contract.md"
-
-// contractHeading opens the section this test reads. The section's first
-// fenced json block is the one it parses, which is why the shape goes first
-// there.
-const contractHeading = "## Go's half: the rung answer"
-
-// TestTheContractStatesWhatTheRungAnswerCarries holds the contract's shape
-// block to the emitted structs: every JSON name the artifact can carry is
-// named there, nothing is named there that the artifact cannot carry, and the
+// TestTheSchemaStatesWhatTheRungAnswerCarries holds schema/rungs.schema.json
+// to the emitted structs: every JSON name the artifact can carry is a property
+// there, nothing is a property there that the artifact cannot carry, and the
 // declared schema version is the one the packager stamps.
 //
-// WHY THE DOCUMENT IS A TEST SUBJECT AT ALL. This artifact's Go half and its
-// client half are written in different languages and checked by different
-// gates, so the only place that states the seam whole is prose -- and prose
-// that nothing reads drifts from the code beside it in silence, which is the
-// defect this section was written for. A key set and a version number are the
-// two claims in it a machine can hold, so those two are held and the rest is
-// left to a reader.
+// IT USED TO READ A FENCED BLOCK IN docs/general-fund-drilldown-contract.md,
+// and that block was a third spelling of a shape the structs already state and
+// the schema now states machine-readably. A schema is better than the block in
+// the way that matters here: it is compared against the emitted BYTES by
+// encodeRungs, where the block could only ever be compared against the struct
+// tags. The prose kept the argument, which is what a schema cannot say.
 //
-// IT PARSES A FENCED BLOCK AND NOT A SENTENCE, deliberately. A checker that
-// pattern-matched the prose would be a regex fighting English, red on a
-// rewording that changed no claim and green on a claim that quietly went
-// false. A fenced json block is a machine-readable region a writer opts into,
-// and everything outside it here is out of this test's reach by design.
-func TestTheContractStatesWhatTheRungAnswerCarries(t *testing.T) {
-	block, err := contractShapeBlock()
+// THE COMPARISON IS OF NAMES AND NOT OF TYPES, deliberately. Whether `ids` is
+// an array of strings is the schema's to enforce against real bytes; whether
+// the struct and the schema even agree on WHICH keys exist is the thing a
+// reader of either one would otherwise have to check by eye.
+func TestTheSchemaStatesWhatTheRungAnswerCarries(t *testing.T) {
+	raw, err := fs.ReadFile(schema.FS(), schema.Rungs)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("read %s: %v", schema.Rungs, err)
 	}
-	var shape any
-	if err = json.Unmarshal(block, &shape); err != nil {
-		t.Fatalf("%s: the shape block under %q is not valid JSON: %v", contractPath, contractHeading, err)
+	var doc map[string]any
+	if err = json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("%s is not valid JSON: %v", schema.Rungs, err)
 	}
 
-	stated, err := statedNames(shape, "")
-	if err != nil {
-		t.Fatalf("%s: %v", contractPath, err)
-	}
+	stated := schemaNames(doc, "")
 	emitted := emittedNames(reflect.TypeOf(rungsDoc{}), "")
 	slices.Sort(stated)
 	slices.Sort(emitted)
+	if len(stated) == 0 {
+		t.Fatalf("%s states no property, so this test compares nothing", schema.Rungs)
+	}
 	if diff := cmp.Diff(emitted, stated); diff != "" {
-		t.Errorf("%s's shape block and the emitted artifact name different fields (-emitted +stated):\n%s\n"+
-			"Every name the rung answer carries is stated in the %q section, and only those.",
-			contractPath, diff, contractHeading)
+		t.Errorf("%s and the emitted artifact name different fields (-emitted +stated):\n%s\n"+
+			"Every name the rung answer carries is a property of the schema, and only those.",
+			schema.Rungs, diff)
 	}
 
-	top, ok := shape.(map[string]any)
+	props, _ := doc["properties"].(map[string]any)
+	version, ok := props["schema_version"].(map[string]any)
 	if !ok {
-		t.Fatalf("%s: the shape block is not a JSON object", contractPath)
+		t.Fatalf("%s states no schema_version property", schema.Rungs)
 	}
-	version, ok := top["schema_version"].(float64)
+	got, ok := version["const"].(float64)
 	if !ok {
-		t.Fatalf("%s: the shape block states no numeric schema_version", contractPath)
+		t.Fatalf("%s pins schema_version to no const; any version would validate", schema.Rungs)
 	}
-	if int(version) != rungsSchemaVersion {
-		t.Errorf("%s states schema_version %d and the packager stamps %d; a bump moves both.",
-			contractPath, int(version), rungsSchemaVersion)
+	if int(got) != rungsSchemaVersion {
+		t.Errorf("%s pins schema_version %d and the packager stamps %d; a bump moves both.",
+			schema.Rungs, int(got), rungsSchemaVersion)
 	}
 }
 
-// contractShapeBlock is the contents of the first fenced json block after
-// contractHeading. A missing heading or a missing block is an error and not an
-// empty answer: either would otherwise pass this test by having nothing to
-// compare.
-func contractShapeBlock() ([]byte, error) {
-	raw, err := os.ReadFile(contractPath)
-	if err != nil {
-		return nil, err
-	}
-	lines := strings.Split(string(raw), "\n")
-	start := slices.Index(lines, contractHeading)
-	if start < 0 {
-		return nil, fmt.Errorf("%s has no %q section, which is where the rung answer's shape is stated", contractPath, contractHeading)
-	}
-	open := -1
-	for i := start + 1; i < len(lines); i++ {
-		switch {
-		case open < 0 && lines[i] == "```json":
-			open = i
-		case open >= 0 && lines[i] == "```":
-			return []byte(strings.Join(lines[open+1:i], "\n")), nil
-		case open < 0 && strings.HasPrefix(lines[i], "## "):
-			return nil, fmt.Errorf("%s's %q section ends before it states a ```json shape block", contractPath, contractHeading)
-		}
-	}
-	return nil, fmt.Errorf("%s's %q section opens a ```json block and does not close it", contractPath, contractHeading)
-}
-
-// statedNames is every dotted JSON name the shape block spells, with array
-// nesting collapsed: "columns", "columns.stem", "columns.rungs.draws.ids".
-//
-// A SAMPLE OF ONE IS REQUIRED. Reading the first element of a longer array
-// would let a second entry state a name this test never compared, which is
-// exactly the silent gap the section exists to close.
-func statedNames(v any, prefix string) ([]string, error) {
+// schemaNames is every dotted JSON name the schema declares, with array
+// nesting collapsed: "columns", "columns.stem", "columns.rungs.draws.ids" --
+// the same spelling emittedNames produces off the structs.
+func schemaNames(node map[string]any, prefix string) []string {
 	var out []string
-	switch t := v.(type) {
-	case map[string]any:
-		for k, child := range t {
-			name := k
-			if prefix != "" {
-				name = prefix + "." + k
-			}
-			out = append(out, name)
-			nested, err := statedNames(child, name)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, nested...)
-		}
-	case []any:
-		if len(t) != 1 {
-			return nil, fmt.Errorf("the shape block gives %d entries at %q; one stands for the shape and more than one hides a name", len(t), prefix)
-		}
-		return statedNames(t[0], prefix)
+	if items, ok := node["items"].(map[string]any); ok {
+		return schemaNames(items, prefix)
 	}
-	return out, nil
+	props, ok := node["properties"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	for k, v := range props {
+		name := k
+		if prefix != "" {
+			name = prefix + "." + k
+		}
+		out = append(out, name)
+		if child, ok := v.(map[string]any); ok {
+			out = append(out, schemaNames(child, name)...)
+		}
+	}
+	return out
 }
 
 // emittedNames is the same set read off the structs encodeRungs marshals. A

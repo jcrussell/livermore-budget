@@ -16,7 +16,7 @@
 
 import {
   loadApp, settle, twoYearConfig, plannedFetch, refusals, goldenGraph,
-  RUNGS_PATH, rungsAnswer,
+  RUNGS_PATH, rungsAnswer, columnOf,
 } from "./harness.mjs";
 // THE DRILL-CONFIGURED PAGE IS BUILT IN drill.mjs AND IS NOT REBUILT HERE. The
 // column budget only changes a chart in a window -- the overview is drawn at
@@ -78,6 +78,44 @@ function clickYear(app, stem) {
 
 export async function checks() {
   const out = [];
+
+  // THE ONE VERSION GATE LEFT, and it is about the page and this script rather
+  // than about a fetched document. understands() took a version and had three
+  // callers, all of them documents; those went because Go validates every
+  // artifact against schema/ before writing it, and which COPY arrived is
+  // answered by comparing generated_by with exported_by. This pair has no
+  // second file to compare -- app.js carries no stamp of its own -- so a
+  // constant is the only handshake available, and it is why SCHEMA_VERSION
+  // survives the deletion.
+  //
+  // ASSERTED ON THE FETCH AND NOT ON THE BANNER, which is not a weaker claim
+  // but a different one. The gate is the first statement in main() and runs
+  // during load, before a harness can plant the <main> a banner lands in --
+  // so the banner is genuinely unobservable here while the REFUSAL is exactly
+  // observable: a page that will not draw asks for nothing. "Refused before
+  // anything is fetched" is what the check is named for.
+  {
+    const asked = async (v) => {
+      const config = twoYearConfig();
+      config.schema_version = v;
+      const fetch = plannedFetch({ "data/sankey.json": { doc: goldenGraph() } });
+      page({ config, fetch });
+      await settle();
+      return fetch.asked.length;
+    };
+    const ok = loadApp().SCHEMA_VERSION;
+    const good = await asked(ok);
+    const newer = await asked(ok + 1);
+    const older = await asked(ok - 1);
+    out.push({
+      name: "a page packaged for another schema_version is refused before anything is fetched",
+      ok: good > 0 && newer === 0 && older === 0,
+      detail: `schema_version ${ok} fetches ${good} file(s); ${ok + 1} and ${ok - 1} ` +
+        `fetch ${newer} and ${older} -- the page and this script are separately ` +
+        `cached files, which is the skew no stamp comparison can see`,
+    });
+  }
+
   const config = twoYearConfig();
   const doc = goldenGraph();
 
@@ -251,17 +289,18 @@ export async function checks() {
   // not drawn (fisc-bsg). A page whose words and whose figures are about
   // different fiscal years is a worse outcome than a page that refuses.
   //
-  // So it is now refused BEFORE anything repaints, by drawableSankey, and this
-  // check asserts both halves: a banner appears AND the page is still wholly
-  // the year it was already showing. Asserting the banner alone is what let the
-  // split state ship -- `make js` was green over it.
+  // So this check asserts both halves: a banner appears AND the page is still
+  // wholly the year it was already showing. Asserting the banner alone is what
+  // let the split state ship -- `make js` was green over it. What keeps the
+  // page whole is the ordering, not a gate: showYear shapes, lays out and
+  // builds the table's rows before it writes a word.
   {
     const { app, main } = page({
       config,
       fetch: plannedFetch({
         "data/sankey.json": { doc },
-        // Right version, no graph. understands() lets it through, because the
-        // version really is one this page renders.
+        // Right version, no graph -- the shape schema/column.schema.json
+        // refuses and no gate on this side does any more.
         "data/sankey-2027.json": { doc: { schema_version: 1, metadata: {}, nodes: null, links: null } },
       }),
     });
@@ -273,23 +312,28 @@ export async function checks() {
     const lede = app.dom.byId.get("lede-year");
     const stillFirst = lede && lede.textContent === "FY 2025-26 adopted" &&
       app.dom.document.title.includes("FY 2025-26");
-    // THE MESSAGE IS THE ASSERTION, and that is not fussiness about wording.
-    // Measured: laying out before repainting ALREADY leaves this page whole,
-    // because layOut is where `nodes.map` throws -- so "a banner appeared and
-    // the page is on one year" passes with the gate deleted. What the gate buys
-    // is the SENTENCE: a reader gets "the file is truncated" instead of
-    // "TypeError: Cannot read properties of null (reading 'map')", which is an
-    // internal error shown to a reader for what is really a bad file. Assert
-    // the thing the gate actually changes, or the check does not cover it.
+    // THE SENTENCE IS WHAT WAS LOST, AND IT IS THE ONLY THING THAT WAS.
+    // Measured, and it was measured when the gate still existed: laying out
+    // before repainting ALREADY leaves this page whole, because layOut is
+    // where `nodes.map` throws. What drawableSankey bought was the WORDING --
+    // "the file is truncated" rather than "TypeError: Cannot read properties
+    // of null (reading 'map')". That gate has gone, because Go refuses to
+    // write a column with no graph (schema/column.schema.json requires nodes
+    // and links) and re-checking it here was a second implementation.
+    //
+    // So this asserts what survives and reports what does not: the reader is
+    // told, and the page is untouched, but the words are the last resort's.
+    // Nothing on this side covers the wording, and the file that would need it
+    // is one this export cannot have written.
     const text = banners.length ? banners[0].textContent : "";
-    const explains = text.includes("truncated") && !text.includes("TypeError");
     out.push({
-      name: "a year document with no graph is refused, in words a reader can act on",
-      ok: banners.length === 1 && Boolean(stillFirst) && explains,
+      name: "a year document with no graph leaves the page whole and the reader told",
+      ok: banners.length === 1 && Boolean(stillFirst),
       detail: `${banners.length} refusal banner(s) after a well-formed document with no graph` +
         (banners.length ? `: "${text}"` : "") +
-        `; the page still reads "${lede ? lede.textContent : "(no lede)"}", and the banner names a ` +
-        `truncated FILE rather than reporting a TypeError at the reader`,
+        `; the page still reads "${lede ? lede.textContent : "(no lede)"}" and its title with it. ` +
+        `The words are the last-resort catch's, not a sentence about the file: that was ` +
+        `drawableSankey's and went with it`,
     });
   }
 
@@ -387,149 +431,101 @@ export async function checks() {
     });
   }
 
-  // ------------------------------- the draw's LAST step, which nothing watched
+  // ---------------------- a malformed document, now that nothing re-checks it
   //
-  // A document with a graph but no metadata.sources. It passes drawableSankey,
-  // it lays out, and then buildTable -- the last and largest step of the
-  // repaint -- calls citations(projection.metadata.sources) and throws on
-  // `for (const source of undefined)`.
+  // THESE FIVE FIXTURES USED TO BE FIVE ARMS, each asserting that
+  // drawableSankey named the key it lacked. That gate is gone: every one of
+  // these keys is `required` in schema/column.schema.json and encodeColumn
+  // refuses to write bytes that fail it, so the client re-checking them was a
+  // second implementation of a check Go already makes. tools/jscheck/contract
+  // .mjs is where that claim lives now, and it reddens if the schema is
+  // relaxed -- which is what makes this deletion safe rather than argued.
   //
-  // IT IS THE SAME DEFECT AS fisc-bsg: paintYearWords, buildLegend and
-  // buildDerivedList have already run, so the page is left reading FY 2026-27
-  // over FY2025-26's chart. The fix that closed fisc-bsg claimed "everything in
-  // the draw that can throw is in layOut" and this is the counter-example.
+  // WHAT IS ASSERTED HERE IS THE PROPERTY THAT SURVIVED, and it is fisc-bsg's:
+  // whatever the fault, the page is never left reading one year's words over
+  // another year's chart. showYear shapes and lays out before it writes a
+  // word, so a throw from either lands with the page wholly the year it was
+  // on; a throw from buildTable -- the LAST step of the repaint -- would not,
+  // which is the split fisc-bsg is about and the reason this block exists at
+  // all rather than being deleted with the gate.
   //
-  // It hid because page() planted no <tbody>, so buildTable returned at its
-  // first line in every check here. A gate is only worth what the checks behind
-  // it can reach.
+  // TWO OF THE FIVE NOW DRAW RATHER THAN REFUSE, and that is a real loss,
+  // recorded here rather than discovered later: a schedule with no `sources`,
+  // and a locator with no `pages`, are both guarded by citations(), so the
+  // chart draws with provenance missing and no banner. The page is consistent
+  // -- the words and the chart are the same year -- but a reader is not told.
+  // Nothing on this side covers it; schema/column.schema.json requiring both
+  // is what stops such a file being written, and a hand-edited one is the
+  // residual.
   {
-    const { app, main, body } = page({
-      config,
-      fetch: plannedFetch({
-        "data/sankey.json": { doc },
-        "data/sankey-2027.json": {
-          doc: { schema_version: 1, metadata: {}, nodes: doc.nodes, links: doc.links },
-        },
-      }),
-    });
-    await settle();
-    const rowsFirst = body.children.length;
-    clickYear(app, "sankey-2027");
-    await settle();
+    const sources = [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }];
+    const fixtures = [
+      // No metadata at all beyond the column: the schedule states no sources.
+      { key: "metadata.sources",
+        doc: { schema_version: 1, metadata: {}, nodes: doc.nodes, links: doc.links } },
+      { key: "links[].fact_ids",
+        doc: { schema_version: 1, metadata: { fiscal_year: 2027, sources },
+          nodes: doc.nodes, links: doc.links.map((l) => ({ ...l, fact_ids: undefined })) } },
+      // ONE DEEPER. A locator carrying a doc_id and no pages passes anything a
+      // top-level check could ask, and citations() does `for (const page of
+      // source.pages)`. The doc id MUST be one CONFIG.docs carries, or
+      // citations() returns at `if (!doc) continue` and never reaches pages --
+      // and this fixture would be green because the gate fired earlier rather
+      // than because anything was prevented.
+      { key: "links[].locators[].pages",
+        doc: { schema_version: 1, metadata: { fiscal_year: 2027, sources },
+          nodes: doc.nodes,
+          links: doc.links.map((l) => ({
+            ...l, locators: [{ doc_id: "livermore-budget-fy2026-2027" }],
+          })) } },
+      { key: "links[].locators",
+        doc: { schema_version: 1, metadata: { fiscal_year: 2027, sources },
+          nodes: doc.nodes, links: doc.links.map((l) => ({ ...l, locators: undefined })) } },
+      { key: "metadata.sources[].pages",
+        doc: { schema_version: 1,
+          metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027" }] },
+          nodes: doc.nodes, links: doc.links } },
+    ];
+    const split = [];
+    const refused = [];
+    const drewAnyway = [];
+    for (const bad of fixtures) {
+      const { app, main, body } = page({
+        config,
+        fetch: plannedFetch({
+          "data/sankey.json": { doc },
+          "data/sankey-2027.json": { doc: bad.doc },
+        }),
+      });
+      await settle();
+      const rowsFirst = body.children.length;
+      clickYear(app, "sankey-2027");
+      await settle();
 
-    const banners = refusals(main);
-    const lede = app.dom.byId.get("lede-year");
-    const stillFirst = lede && lede.textContent === "FY 2025-26 adopted";
+      const banners = refusals(main);
+      const lede = app.dom.byId.get("lede-year");
+      const onFirst = Boolean(lede) && lede.textContent === "FY 2025-26 adopted";
+      const tableFrozen = body.children.length === rowsFirst;
+      // TWO CONSISTENT OUTCOMES AND ONE THAT IS NOT. Refused: a banner, the
+      // old year's words, the old year's table. Drew: no banner, the new
+      // year's words. Anything else is the words and the chart disagreeing,
+      // which is the defect.
+      if (banners.length && onFirst && tableFrozen) refused.push(bad.key);
+      else if (!banners.length && !onFirst) drewAnyway.push(bad.key);
+      else {
+        split.push(`${bad.key} (${banners.length} banner(s), lede "${lede ? lede.textContent : "(none)"}", ` +
+          `${body.children.length} rows against ${rowsFirst})`);
+      }
+    }
     out.push({
-      name: "a document whose metadata carries no sources is refused before the page repaints",
-      ok: banners.length === 1 && Boolean(stillFirst) && body.children.length === rowsFirst,
-      detail: `${banners.length} banner(s)` + (banners.length ? `: "${banners[0].textContent}"` : "") +
-        `; the page reads "${lede ? lede.textContent : "(no lede)"}" and the flow table holds ` +
-        `${body.children.length} rows against ${rowsFirst} before the click -- buildTable is the ` +
-        `LAST step of the repaint, so a throw there is the fisc-bsg split reached one function later`,
-    });
-  }
-
-  // --------------------------- the same last step, two keys further in (fisc-60r)
-  //
-  // The block above closed metadata.sources. buildTable dereferences two MORE
-  // keys the gate did not name, and both are one element deeper than anything a
-  // top-level Array.isArray can see:
-  //
-  //   links[].fact_ids          `l.fact_ids.join(" ")`
-  //   links[].locators          citations(l.locators), one call per row
-  //   metadata.sources[].pages  citations(), `for (const page of source.pages)`
-  //
-  // The last of those is now reached from pin() rather than from buildTable
-  // (fisc-5hxr), so it is no longer a half-repaint case; the first two are,
-  // and links[].locators is dereferenced on every row of every repaint.
-  //
-  // Each is the fisc-bsg split repaint reached one function later, by the same
-  // route and with the same consequence: paintYearWords, buildLegend and
-  // buildDerivedList have run, so the reader is left with one year's words over
-  // another year's chart. Both documents below are shaped correctly at the top
-  // level -- they pass every arm that existed before -- which is exactly why
-  // drawableSankey's stated rule ("every key the draw DEREFERENCES before it
-  // could report a failure") did not meet itself.
-  //
-  // WHAT IS ASSERTED IS THAT NOTHING MOVED, not merely that a banner appeared.
-  // A half-repainted page also shows a banner.
-  for (const bad of [{
-    key: "links[].fact_ids",
-    doc: {
-      schema_version: 1,
-      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }] },
-      nodes: doc.nodes,
-      links: doc.links.map((l) => ({ ...l, fact_ids: undefined })),
-    },
-  }, {
-    // ONE DEEPER, and the arm fisc-5hxr shipped without: a locator carrying a
-    // doc_id and no pages passes every top-level check, and citations() does
-    // `for (const page of source.pages)`. On the spine nothing folds and
-    // layOut never reads locators, so it reaches buildTable and throws there.
-    key: "links[].locators[].pages",
-    doc: {
-      schema_version: 1,
-      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }] },
-      nodes: doc.nodes,
-      // The doc id MUST be one CONFIG.docs carries, or citations() returns at
-      // `if (!doc) continue` and never reaches source.pages -- and this check
-      // would pass because the gate fired rather than because a throw was
-      // prevented.
-      links: doc.links.map((l) => ({
-        ...l, locators: [{ doc_id: "livermore-budget-fy2026-2027" }],
-      })),
-    },
-  }, {
-    // The key the pin panel and the flow table now dereference to build a
-    // per-mark source link. A document without it draws a chart whose every
-    // citation throws at the reader.
-    key: "links[].locators",
-    doc: {
-      schema_version: 1,
-      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027", pages: [66] }] },
-      nodes: doc.nodes,
-      links: doc.links.map((l) => ({ ...l, locators: undefined })),
-    },
-  }, {
-    // WEAKER THAN ITS SIBLINGS SINCE fisc-5hxr, and recorded so a later reader
-    // does not assume otherwise. buildTable no longer calls
-    // citations(projection.metadata.sources) -- it reads each link's own
-    // locators -- so deleting this arm no longer produces a half-repaint here;
-    // the only remaining reader is pin(), on a click. The arm stays because a
-    // detail panel that throws at a reader is still worth naming in words, and
-    // this case still proves the gate fires.
-    key: "metadata.sources[].pages",
-    doc: {
-      schema_version: 1,
-      metadata: { fiscal_year: 2027, sources: [{ doc_id: "livermore-budget-fy2026-2027" }] },
-      nodes: doc.nodes,
-      links: doc.links,
-    },
-  }]) {
-    const { app, main, body } = page({
-      config,
-      fetch: plannedFetch({
-        "data/sankey.json": { doc },
-        "data/sankey-2027.json": { doc: bad.doc },
-      }),
-    });
-    await settle();
-    const rowsFirst = body.children.length;
-    clickYear(app, "sankey-2027");
-    await settle();
-
-    const banners = refusals(main);
-    const lede = app.dom.byId.get("lede-year");
-    const stillFirst = lede && lede.textContent === "FY 2025-26 adopted";
-    const named = banners.length === 1 && banners[0].textContent.includes(bad.key);
-    out.push({
-      name: `a document missing ${bad.key} is refused before the page repaints`,
-      ok: named && Boolean(stillFirst) && body.children.length === rowsFirst,
-      detail: `${banners.length} banner(s)` + (banners.length ? `: "${banners[0].textContent}"` : "") +
-        `; the page still reads "${lede ? lede.textContent : "(no lede)"}" and the flow table holds ` +
-        `${body.children.length} rows against ${rowsFirst} before the click, so nothing was ` +
-        `half-repainted -- and the banner NAMES ${bad.key} rather than reporting a generic throw`,
+      name: "a malformed year document never leaves the words and the chart on different years",
+      ok: split.length === 0,
+      detail: split.length
+        ? `${split.length} fixture(s) half-repainted: ${split.join("; ")}`
+        : `${refused.length} refused with the page untouched [${refused}]; ` +
+          `${drewAnyway.length} drew with provenance missing and no banner [${drewAnyway}] -- ` +
+          `citations() guards both, so nothing here tells the reader; ` +
+          `schema/column.schema.json requiring them is what stops such a file being written`,
     });
   }
 
@@ -722,6 +718,50 @@ export async function checks() {
     });
   }
 
+  // ------------------------------------------- a column from another build
+  //
+  // THE ONE CHECK THAT REPLACED EIGHT, and the only one on this side that Go
+  // cannot make. encodeColumn refuses to write a column that fails
+  // schema/column.schema.json, so no file this export produced is the wrong
+  // shape; what no schema can express is that the reader's copy of the column
+  // and their copy of the page came out of different runs. The site publishes
+  // no cache-busting, so that is not hypothetical -- it is how every key
+  // drawableSankey ever gained reached a reader for the first time.
+  //
+  // THE BODY IS WELL-FORMED ON PURPOSE. A malformed one would be refused by
+  // something else and this arm would be green for the wrong reason.
+  {
+    const { app, main } = page({
+      config,
+      fetch: plannedFetch({
+        "data/sankey.json": { doc },
+        "data/sankey-2027.json": { doc },
+        "fy2027-adopted.json": {
+          doc: Object.assign(columnOf({ sankey: doc }, { fiscal_year: 2027, basis: "adopted" }),
+            { generated_by: "fisc other" }),
+        },
+      }),
+    });
+    await settle();
+    const rowsBefore = refusals(main).length;
+    clickYear(app, "sankey-2027");
+    await settle();
+
+    const banners = refusals(main);
+    const text = banners.length ? banners[0].textContent : "";
+    const lede = app.dom.byId.get("lede-year");
+    const onFirst = Boolean(lede) && lede.textContent === "FY 2025-26 adopted";
+    out.push({
+      name: "a column from another build is refused, and the page stays on the year it drew",
+      ok: rowsBefore === 0 && banners.length === 1 && Boolean(onFirst) &&
+        text.includes("fisc other") && text.includes("holding a copy"),
+      detail: `${banners.length} banner(s)` + (banners.length ? `: "${text}"` : "") +
+        `; the page still reads "${lede ? lede.textContent : "(no lede)"}". The document is ` +
+        `well-formed -- only its stamp differs -- so nothing but this comparison could ` +
+        `have refused it`,
+    });
+  }
+
   // ------------------------------------------------- the rung answer's fetch
   //
   // WHICH NODES A COLUMN DRAWS IS GO'S ANSWER, FETCHED. So the page has a file
@@ -745,15 +785,22 @@ export async function checks() {
         plan: { [RUNGS_PATH]: { ok: false, status: 404 } },
         says: "HTTP 404",
       },
+      // THE SHAPE ROWS ARE GONE AND THE COPY ROW REPLACES THEM. A rung answer
+      // of another schema_version, and one missing draws[].ids, were two rows
+      // here; both are states schema/rungs.schema.json refuses and encodeRungs
+      // will not write, so the client re-checking them was a second
+      // implementation (tools/jscheck/contract.mjs holds that claim now).
+      //
+      // What Go cannot see is which COPY the browser has -- rungs.json and the
+      // page are separate files with no cache-busting between them, and each
+      // is valid on its own. `truncated` above is kept as the BODY of this
+      // row on purpose: it proves the refusal is about the stamp and not about
+      // the shape, because a correctly-shaped answer from another build is
+      // refused just the same.
       {
-        name: "a rung answer of another schema",
-        plan: { [RUNGS_PATH]: { doc: Object.assign({}, answer, { schema_version: 99 }) } },
-        says: "schema_version 99",
-      },
-      {
-        name: "a rung answer missing the ids a column holds",
-        plan: { [RUNGS_PATH]: { doc: truncated } },
-        says: "draws[].tier, .ids",
+        name: "a rung answer from another build",
+        plan: { [RUNGS_PATH]: { doc: Object.assign(truncated, { generated_by: "fisc other" }) } },
+        says: "fisc other",
       },
     ]) {
       const fetch = plannedFetch(Object.assign({ "data/sankey.json": { doc } }, tc.plan));

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -76,7 +77,12 @@ func TestTheRungArtifactIsWhatGoComputes(t *testing.T) {
 		t.Fatalf("%s declares schema_version %d, want %d", rungsServedPath, doc.SchemaVersion, rungsSchemaVersion)
 	}
 	want, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(rungsPath)))
-	if readErr != nil || !bytes.Equal(got, want) {
+	// THE STAMP IS BLANKED ON BOTH SIDES, as the projection goldens' is. It
+	// carries the commit and the build date, so comparing it would make this
+	// fixture stale on every build and say nothing about the walk.
+	stamp := regexp.MustCompile(`"generated_by": "[^"]*"`)
+	blank := []byte(`"generated_by": ""`)
+	if readErr != nil || !bytes.Equal(stamp.ReplaceAll(got, blank), stamp.ReplaceAll(want, blank)) {
 		// bin/ is where `fisc build --output bin/facts-rebuilt.jsonl` lands
 		// too: gitignored, inside the checkout, and still there after the
 		// test returns, which a t.TempDir is not.
@@ -1071,7 +1077,7 @@ func TestRungsRefuseAKeptHalfTheArtifactHasNoShapeFor(t *testing.T) {
 // not a second spelling: export.StepStems is the function under test's own.
 func stepStemsFor(t *testing.T, spine export.View, projections map[string][]byte, year string) []string {
 	t.Helper()
-	_, ix, err := export.ColumnsOf(projections)
+	_, ix, err := export.ColumnsOf(projections, "fisc test")
 	if err != nil {
 		t.Fatalf("ColumnsOf: %v", err)
 	}

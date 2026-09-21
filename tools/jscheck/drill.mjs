@@ -2733,14 +2733,13 @@ export async function checks() {
     out.push(...(await group(fn)));
   }
 
-  // SIX REFUSAL PATHS, EACH WITH ITS NEW CALLER. isDocument, understands,
-  // drawableSankey and the fetch's own two failures had exactly one caller --
-  // showYear -- and drillDown is the second. A click that reached a guard
-  // showYear did not, or skipped one it did, would draw at depth 1 a file the
-  // year control refuses at depth 0, and none of the year arms could tell.
-  // Each arm here plans one failure for the step document and asserts the
-  // drill FAILED, the reader was told in the words that name the fault, the
-  // stack is still empty, and the spine's own sentence is still on screen.
+  // THE REFUSALS A DRILL CAN STILL REACH, and there are fewer of them than
+  // there were paths: a drill makes no request, so the fetch's own failures
+  // and the column's two gates are the YEAR control's and are driven in
+  // lifecycle.mjs. What a click can still meet is a column carrying no
+  // schedule the step names. Each arm here asserts the drill FAILED, the
+  // reader was told in the words that name the fault, the stack is still
+  // empty, and the spine's own sentence is still on screen.
   //
   // THE FIFTH IS THE JOIN'S OWN: a year the packager shipped with no step
   // entries. The client resolves nothing itself, so a year with no entry

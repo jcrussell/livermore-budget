@@ -555,7 +555,7 @@ const fundFlowsNoSpineColumn = "a published column of the General Fund drill-dow
 // schedule in its own year's column, which is what export.View.DrawnStems
 // answers and what the caveats page asks the same way.
 func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
-	_, ix, err := export.ColumnsOf(built)
+	_, ix, err := export.ColumnsOf(built, "")
 	if err != nil {
 		return err
 	}

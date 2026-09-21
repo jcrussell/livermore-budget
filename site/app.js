@@ -1484,16 +1484,6 @@ function drawnDoc() {
  */
 const RUNGS_PATH = CONFIG && typeof CONFIG.rungs === "string" ? CONFIG.rungs : "";
 
-/**
- * The rung-answer schema this client reads.
- *
- * SEPARATE FROM SCHEMA_VERSION, because they version different things: that
- * one is the projection documents' and is stamped by internal/project, this
- * one is the rung answer's and is stamped by the packager. A single constant
- * would tie a change in what a chart MEANS to a change in what Go says it
- * DRAWS, and neither bump implies the other.
- */
-const RUNGS_SCHEMA = 5;
 
 /**
  * Go's answer for every rung, by stem and path; null until it lands,
@@ -1911,13 +1901,10 @@ function focusInChart() {
  * caveat refs its marks link to, or null when the year on screen was packaged
  * with none.
  *
- * READ OFF THE YEAR, NEVER JOINED HERE. A step's document is per fiscal year --
- * FY2026-27's fund groups open into fund-flows-2027, not into the one file a
- * stem maps to in CONFIG.projections -- and which file that is belongs to the
- * packager, which resolves every step for every year into the year's own
- * config entry. This file resolves nothing: it reads the entry for the year on
- * screen for the step being opened, and refuses when there is none rather than
- * draw a file the year was never told about.
+ * READ OFF THE YEAR, NEVER JOINED HERE. What a step draws is per fiscal year,
+ * and the year carries it: this reads the entry for the year on screen for the
+ * step being opened, and refuses when there is none rather than describe a
+ * rung the year was never told about.
  *
  * BY THE STEP'S PLACE IN THE DECLARATION, NOT BY DEPTH. The packager writes
  * one entry per declared step in declaration order (export.stepDocuments),
@@ -1934,15 +1921,16 @@ function stepDocFor(step) {
 }
 
 /**
- * The document a step draws, fetched and vetted on the first drill that needs
- * it and cached for the rest of the year; null when it could not be had, with
+ * The document a step draws: a schedule selected out of the column the year on
+ * screen was fetched from, or the document the step opened from where it names
+ * no schedule of its own. Null when the column carries no such schedule, with
  * the reader told unless `superseded` says nobody is waiting.
  *
- * EVERY GUARD showYear RUNS, RUN HERE TOO. isDocument, understands and
- * drawableSankey each fail closed for a reason that is about the file rather
- * than about which gesture asked for it, and a click that skipped one would
- * draw at depth 1 a document the year control would refuse at depth 0.
- * loadColumn is the one place they are sequenced.
+ * NOTHING IS FETCHED AND NOTHING IS VETTED HERE. The column arrived in one
+ * request and was refused or accepted whole by loadColumn; a schedule inside an
+ * accepted column is one Go's schema already passed. `superseded` still matters
+ * because a drill can be overtaken by a year switch between the click and this
+ * call.
  * @param {FiscDrillStep} step
  * @param {FiscProjection} from  the document of the chart the step opens from
  * @param {() => boolean} superseded
@@ -1991,6 +1979,7 @@ function redrawStack(next) {
   drilled = next;
   let drawn;
   let laid;
+  let rows;
   try {
     const doc = drawnDoc();
     if (!doc) throw new Error("no document to open");
@@ -2003,6 +1992,12 @@ function redrawStack(next) {
     // finite `widen` list to the rung's dropped set and never removes one.
     while (dropEmptyColumns(drawn)) drawn = shapeFor(doc);
     laid = layOut(drawn);
+    // WITH THE SHAPE AND THE LAY-OUT, not with the repaint. Building a row
+    // reads every link's fact ids and locators, which is the last place in a
+    // draw that can throw on a document; inside the try it is a refusal with
+    // the chart left as it was, and after the repaint it was a half-written
+    // table under the other year's heading.
+    rows = tableRows(drawn);
   } catch (e) {
     // BACK TO WHERE THE READER WAS, not to a blank page. shapeFor throws on a
     // document its tier set cannot describe, which is a fault in this view's
@@ -2029,7 +2024,7 @@ function redrawStack(next) {
   buildLegend();
   paintChartHint();
   buildDerivedList();
-  buildTable();
+  buildTable(rows);
   render(laid);
   restoreFocus(hadFocus);
   return true;
@@ -5138,14 +5133,12 @@ function buildDerivedList() {
   }
 }
 
-function buildTable() {
-  if (!projection) return;
-  const body = el("flow-table").querySelector("tbody");
-  if (!body) return;
-  body.replaceChildren();
-  const labels = new Map(projection.nodes.map((n) => [n.id, n.label]));
+function tableRows(doc) {
+  const out = [];
+  if (!doc) return out;
+  const labels = new Map(doc.nodes.map((n) => [n.id, n.label]));
 
-  for (const l of projection.links) {
+  for (const l of doc.links) {
     const tr = document.createElement("tr");
     // A CONTRA ROW READS AS THE SCHEDULE PRINTED IT: a signed figure, and in
     // place of "printed" the words for what it reduces, so the table says the
@@ -5172,8 +5165,30 @@ function buildTable() {
       td.append(document.createTextNode(" "));
     }
     tr.append(td);
-    body.append(tr);
+    out.push(tr);
   }
+  return out;
+}
+
+/**
+ * Writes rows tableRows already built, in one swap.
+ *
+ * SEPARATE FROM BUILDING THEM, AND THAT SEPARATION IS THE WHOLE POINT. This
+ * was one function that emptied the <tbody> and then appended row by row, and
+ * it is the LAST step of showYear's repaint -- so a document that threw part
+ * way through left a half-built table under a heading for the other year,
+ * which is fisc-bsg reached one function past the fix for it. The old answer
+ * was a gate refusing such a document before the repaint; the gate has gone,
+ * because Go validates every column against schema/column.schema.json before
+ * writing it and the client re-checking was a second implementation. So the
+ * page has to be safe against a throw instead of guarded from one: tableRows
+ * runs beside shapeFor and layOut, before a word is written, and this only
+ * ever swaps a finished list in.
+ */
+function buildTable(rows) {
+  const body = el("flow-table").querySelector("tbody");
+  if (!body) return;
+  body.replaceChildren(...rows);
 }
 
 /* ------------------------------------------------------------------ *
@@ -5448,37 +5463,7 @@ function clearRefusal() {
   if (existing) existing.remove();
 }
 
-/**
- * Reports whether a document is one this client understands, refusing visibly
- * when it is not.
- *
- * Note which way this fails: it returns false and the caller stops, rather
- * than drawing what it can. A partial chart of public money asserts the part
- * it drew is the whole, which is the same class of false claim as a wrong
- * total.
- *
- * @param {number} got the document's schema_version
- * @param {string} what what to name in the message
- * @returns {boolean}
- */
-function understands(got, what) {
-  if (got === SCHEMA_VERSION) return true;
-  const why = got > SCHEMA_VERSION
-    ? "The data is newer than this page. If you have visited before, a cached copy of " +
-      "app.js may be the cause; reload to pick up the current one."
-    : "The data is older than this page.";
-  fail(
-    "This page will not draw " + what + ": it declares schema_version " + got +
-    ", and this page renders schema_version " + SCHEMA_VERSION + ". " + why +
-    " Drawing it anyway would produce a chart that is wrong rather than one that fails."
-  );
-  return false;
-}
 
-/**
- * The schema version of a column document this client reads.
- */
-const COLUMN_SCHEMA = 1;
 
 /**
  * One schedule of a column document, in the shape the rest of this file reads.
@@ -5501,15 +5486,12 @@ function scheduleOf(column, key) {
   if (!sched) return null;
   const table = Array.isArray(column.nodes) ? column.nodes : [];
 
-  // A SCHEDULE THAT IS PRESENT AND MALFORMED GOES ON TO drawableSankey, which
-  // names the key it lacks. Refusing it here would say "no such schedule" of a
-  // schedule that is there.
-  if (!Array.isArray(sched.nodes) || !Array.isArray(sched.links)) {
-    return /** @type {any} */ ({
-      schema_version: SCHEMA_VERSION, projection: key,
-      nodes: sched.nodes, links: sched.links, metadata: sched.metadata || sched,
-    });
-  }
+  // A SCHEDULE THAT IS PRESENT AND MALFORMED IS NOT SPECIAL-CASED. It was
+  // carried through unrepaired so drawableSankey could name the key it lacked;
+  // with that gate gone, the map below throws and the last-resort catch says
+  // the chart failed to draw. Both land before showYear writes a word, so the
+  // page stays wholly the year it was on either way -- what is lost is the
+  // sentence, for a file this export cannot have written.
 
   const nodes = sched.nodes.map((n) => {
     const base = table[n.node] || {};
@@ -5527,9 +5509,10 @@ function scheduleOf(column, key) {
       source: from.id, target: to.id,
       value_cents: l.value_cents, kind: l.kind,
       transfer_id: l.transfer_id || "",
-      // NOT DEFAULTED: drawableSankey refuses a link that carries neither, and
-      // filling them in here would repair a malformed column before the guard
-      // that exists to name it ever saw one.
+      // NOT DEFAULTED. Both are required of every link by
+      // schema/column.schema.json, so a column this export wrote has them;
+      // filling them in here would invent a provenance the document does not
+      // carry, which is worse than a chart that does not draw.
       fact_ids: l.fact_ids, locators: l.locators,
       derived: Boolean(l.derived), partition: Boolean(l.partition),
     };
@@ -5560,12 +5543,15 @@ function scheduleOf(column, key) {
  */
 function isDocument(doc, what) {
   if (doc && typeof doc === "object") return true;
-  // SEPARATE FROM drawableSankey AND RUN BEFORE understands(), because
-  // understands takes doc.schema_version and would dereference a null first --
-  // which is a real answer from a server: HTTP 200 with the body `null` parses
-  // fine. While this check lived inside drawableSankey it could never run, and
-  // the reader got "TypeError: Cannot read properties of null" instead of a
-  // sentence.
+  // FIRST OF THE TWO GATES AND NOT SECOND, because the other dereferences the
+  // body to read its generated_by and a 200 whose body is `null` is a real
+  // answer from a server -- an error page served with a success status. Read
+  // in the other order the reader gets "TypeError: Cannot read properties of
+  // null" for what is a routine deployment fault.
+  //
+  // IT IS NOT A SHAPE CHECK, which is why it survives where eight of those did
+  // not: what a server ANSWERED is not something schema/column.schema.json can
+  // express, because the file Go wrote is not what arrived.
   fail(
     "This page will not draw " + what + ": the file is not a document at all. " +
     "It is most likely an error page served with a success status. Nothing on " +
@@ -5574,132 +5560,16 @@ function isDocument(doc, what) {
   return false;
 }
 
-/**
- * Reports whether a sankey document carries the shape its schema_version
- * promises, refusing visibly if it does not.
- *
- * IT IS DELIBERATELY NOT PART OF understands(). That function takes a version
- * NUMBER and every word of its refusal is about version skew -- "the data is
- * newer than this page", "reload to pick up the current one". A document at the
- * right version that is simply truncated would get a message that is false, and
- * the reader would go clear a cache that was never the problem. Two different
- * failures, two different sentences. It runs AFTER understands for the same
- * reason: a schema_version 2 document may legitimately have none of these keys,
- * and telling its reader the file is truncated would be the wrong diagnosis.
- *
- * WHAT IT BUYS IS THE SENTENCE, AND NOT THE ATOMICITY -- measured, because the
- * two are easy to conflate. Laying out before repainting (see layOut) is what
- * keeps the page whole for nodes and links: `nodes.map` throws inside layOut, so
- * with those two arms deleted the page STILL refuses without a split repaint.
- * What changes is what the reader is told, and tools/jscheck asserts the wording
- * for that reason.
- *
- * THE buildTable KEYS ARE THE EXCEPTION AND ARE WHY THIS LIST IS NOT A GUESS.
- * Three of them are NOT covered by layOut, and every one is reached from
- * buildTable, which is the LAST step of the repaint, so a throw lands after
- * paintYearWords, buildLegend and buildDerivedList have run, leaving the page
- * reading one year over another year's chart. That is fisc-bsg exactly, reached
- * one function past its fix, and it survived a commit because tools/jscheck
- * planted no <tbody> and so buildTable returned at its first line in every
- * lifecycle check.
- *
- *   links[].fact_ids          buildTable, `l.fact_ids.join(" ")`
- *   links[].locators          buildTable, `citations(l.locators)`
- *   links[].locators[].pages  citations(), `for (const page of source.pages)`
- *
- * links[].fact_ids was missing while this comment already stated the rule
- * below, which is fisc-60r: a schema_version 1 document whose links lack
- * fact_ids passed here AND passed layOut -- neither touches the key -- and
- * threw inside buildTable.
- *
- * TWO OF THE FOUR ARMS ARE NOW KEPT FOR A WEAKER REASON, and saying so is the
- * point of a list that claims not to be a guess. metadata.sources and
- * metadata.sources[].pages used to be reached from buildTable, through
- * citations(projection.metadata.sources). They are not any more: fisc-5hxr
- * moved the flow table onto each link's OWN locators, and the only remaining
- * reader of the document-scope list is pin(), for a node mark. pin runs on a
- * click, after the repaint has finished, so a throw there breaks the detail
- * panel rather than leaving one year's words over another year's chart. The
- * arms stay -- a panel that throws at a reader is still a defect the gate can
- * name in words -- but they are no longer fisc-bsg cases and must not be cited
- * as though they were. links[].locators IS one: buildTable dereferences it on
- * every row of every repaint.
- *
- * The per-element arms cost one scan each of links and sources, both of which
- * the repaint already walks more than once.
- *
- * THE RULE THIS LIST FOLLOWS, then: every key the draw DEREFERENCES before it
- * could report a failure. Not every key the contract names -- a client that
- * re-validated the whole document would be a second implementation of
- * `fisc verify` -- and not fewer, or the gate is decorative. A document whose
- * links name nodes it does not carry still passes here and throws in layOut,
- * correctly, because that is what the last-resort .catch is for.
- * @param {any} doc
- * @param {string} what
- */
-function drawableSankey(doc, what) {
-  const missing = [];
-  if (!Array.isArray(doc.nodes)) missing.push("nodes");
-  if (!Array.isArray(doc.links)) missing.push("links");
-  else if (doc.links.some((l) => !Array.isArray(l.fact_ids))) missing.push("links[].fact_ids");
-  else if (doc.links.some((l) => !Array.isArray(l.locators))) missing.push("links[].locators");
-  else if (doc.links.some((l) => l.locators.some((s) => !Array.isArray(s.pages)))) {
-    // ONE ELEMENT DEEPER, for the same reason metadata.sources[].pages is:
-    // citations() does `for (const page of source.pages)` and a locator
-    // carrying only a doc_id passes every arm above. On the spine there is no
-    // fold and layOut never touches locators, so such a document reaches
-    // buildTable and throws there -- after paintYearWords, buildLegend and
-    // buildDerivedList have repainted. That is fisc-bsg exactly, and it is the
-    // arm fisc-5hxr forgot for the key it introduced.
-    missing.push("links[].locators[].pages");
-  }
-  if (!doc.metadata || typeof doc.metadata !== "object") missing.push("metadata");
-  else if (!Array.isArray(doc.metadata.sources)) missing.push("metadata.sources");
-  else if (doc.metadata.sources.some((s) => !Array.isArray(s.pages))) {
-    missing.push("metadata.sources[].pages");
-  }
-  // NO ARM FOR metadata.caveats, AND THE REASON IS THIS GATE'S OWN RULE. It
-  // refuses a document over every key the draw DEREFERENCES, because a missing
-  // one throws mid-repaint and leaves a half-painted page. caveatsFor
-  // dereferences neither: it tests Array.isArray on the block and on each
-  // applies_to and returns [] otherwise.
-  //
-  // So an arm here would refuse a whole chart over a key whose absence costs a
-  // BADGE. A reader holding a cached pre-caveats document -- the case this gate
-  // exists for, since the year files are fetched lazily with no cache-busting --
-  // would get a banner instead of a chart that draws perfectly minus one chip.
-  // That is a worse outcome than the one being prevented, and it was shipped
-  // for one commit on a justification that read "caveatsFor dereferences
-  // applies_to", which the guarded code makes false.
-  if (!missing.length) return true;
-  // THE THIRD CAUSE IS NAMED BECAUSE IT IS THE LIKELIEST AND THE ONLY ONE THE
-  // READER CAN FIX. The site publishes no cache-busting on data/<stem>.json and
-  // the year documents are fetched lazily on click, so a browser can hold a
-  // pre-deploy document beside a post-deploy app.js -- and every key this gate
-  // has gained since launch reaches the reader that way first. Telling them the
-  // file is truncated when their copy is merely old sends them to file a bug
-  // about a file that is fine.
-  fail(
-    "This page will not draw " + what + ": it declares schema_version " +
-    SCHEMA_VERSION + ", which promises " + missing.join(", ") + ", and the file " +
-    "does not carry " + (missing.length === 1 ? "it" : "them") + ". Your browser " +
-    "may be holding a copy from before the last update — reload the page. " +
-    "Otherwise the file is truncated or is not the document this page expected. " +
-    "Nothing on the page was changed."
-  );
-  return false;
-}
 
 /**
  * Fetches one document and vets it, returning it, or null with the reader told
  * why -- unless `superseded` says nobody is waiting, in which case nothing is
  * painted and null is returned without a word.
  *
- * ONE FETCH PATH FOR THE YEAR AND FOR A STEP. Every guard here -- the HTTP
- * status, the body that will not parse, isDocument, understands, drawableSankey
- * -- has two callers now, and a click's fetch that skipped one would draw at
- * depth 1 a file the year control refuses at depth 0. `superseded` IS
- * CONSULTED BEFORE EVERY BANNER: without that, a reader who switched away
+ * ONE FETCH PER YEAR AND NONE PER STEP. Every guard here -- the HTTP status,
+ * the body that will not parse, isDocument, and the build stamp -- runs once
+ * for the column, and a drill selects a schedule out of what it accepted.
+ * `superseded` IS CONSULTED BEFORE EVERY BANNER: without that, a reader who switched away
  * while a fetch was failing got the file:// remediation banner -- role="alert"
  * -- pasted over a year that drew correctly, the page asserting something
  * untrue about what is on screen.
@@ -5746,21 +5616,36 @@ async function loadColumn(path, superseded) {
     return null;
   }
   if (superseded()) return null;
-  // The fetched file is what actually gets drawn, and it is a separate
-  // document from the config: the packager stamps the config from the
-  // projection it was handed, so agreeing with the config is not evidence the
-  // file on the wire agrees too.
+  // A 200 CARRYING `null` OR AN ERROR PAGE IS NOT A SHAPE FAULT, and it is the
+  // one thing no schema Go validates can reach: it is about what a server
+  // answered, not about what the export wrote. It runs first because the
+  // comparison below dereferences the body.
   if (!isDocument(doc, path)) return null;
-  if (doc.schema_version !== COLUMN_SCHEMA) {
-    fail("This page will not draw " + path + ": it declares schema_version " +
-      doc.schema_version + ", and this page reads column schema_version " +
-      COLUMN_SCHEMA + ". Drawing it anyway would produce a chart that is wrong " +
-      "rather than one that fails.");
-    return null;
-  }
-  if (!Array.isArray(doc.nodes) || !doc.schedules || typeof doc.schedules !== "object") {
-    fail("This page will not draw " + path + ": a column carries a node table and " +
-      "a schedule for each printed page of the budget, and this one does not.");
+  // ONE CHECK, AND IT IS THE ONLY ONE THIS SIDE CAN MAKE THAT GO CANNOT.
+  //
+  // encodeColumn validates every column against schema/column.schema.json and
+  // refuses to write one that fails, so no file this export produced can be
+  // the wrong shape. Re-checking the keys here was a second implementation of
+  // that, kept in step by hand and by nothing else -- and the list had grown
+  // to eight arms under a doc comment that said a client re-validating the
+  // contract "would be a second implementation of fisc verify".
+  //
+  // What Go cannot see is which COPY the browser has. The site publishes no
+  // cache-busting, so a reader can hold a pre-deploy column beside a
+  // post-deploy app.js, and every key that gate ever gained reached a reader
+  // that way first. The stamp is version, short commit and date
+  // (internal/build), so any deploy from another commit fails this where a
+  // schema_version comparison fires only when someone remembers to bump it.
+  //
+  // BEFORE ANY REPAINT, which is what keeps fisc-bsg closed. showYear shapes
+  // and lays out before it writes a word, so a fault caught here leaves the
+  // page wholly the year it was already on.
+  if (doc.generated_by !== CONFIG.exported_by) {
+    fail("This page will not draw " + path + ": the page was packaged by " +
+      CONFIG.exported_by + " and this file by " + (doc.generated_by || "an unstated build") +
+      ". Your browser is most likely holding a copy from before the last update — " +
+      "reload the page. Drawing them together would produce a chart that is wrong " +
+      "rather than one that fails. Nothing on the page was changed.");
     return null;
   }
   return doc;
@@ -5784,64 +5669,18 @@ function selectSchedule(col, key) {
       "called " + key + ".");
     return null;
   }
-  if (!drawableSankey(doc, key)) return null;
   return doc;
 }
 
-/**
- * Reports whether a fetched rung answer carries the shape this page reads,
- * refusing visibly when it does not.
- *
- * THE RULE IS drawableSankey's: every key the page DEREFERENCES, and no more.
- * An answer missing one of them is not a chart drawn slightly wrong, it is a
- * TypeError inside a click handler, which is the shape that leaves a reader
- * looking at a chart nothing will admit is broken.
- *
- * NOT A SECOND IMPLEMENTATION OF THE WALK THAT WROTE IT. Whether Go's answer
- * is RIGHT is pkg/cmd/export's business -- TestTheRungArtifactIsWhatGoComputes
- * and TestTheRungArtifactIsWhatTheReachPrimitivesAnswer -- and this page has no
- * second reading of the documents left to disagree with it. All this asks is
- * whether the file can be read at all.
- *
- * @param {any} doc
- * @param {string} what
- */
-function readableRungs(doc, what) {
-  const missing = [];
-  if (!Array.isArray(doc.columns)) missing.push("columns");
-  else if (doc.columns.some((c) => typeof c.stem !== "string" || !Array.isArray(c.rungs))) {
-    missing.push("columns[].stem, columns[].rungs");
-  } else if (doc.columns.some((c) => c.rungs.some((r) => !Array.isArray(r.path) ||
-    !Array.isArray(r.draws)))) {
-    missing.push("columns[].rungs[].path, .draws");
-  } else if (doc.columns.some((c) => c.rungs.some((r) => r.draws.some((d) =>
-    typeof d.tier !== "number" || !Array.isArray(d.ids))))) {
-    // ONE ELEMENT DEEPER, AND ids IS THE KEY THAT NEEDS IT. Go writes it even
-    // when empty, precisely so a column answered with nothing can be told from
-    // a column left out -- and a reader that accepted the absence would read
-    // the first as the second and draw a column Go says holds nothing.
-    missing.push("columns[].rungs[].draws[].tier, .ids");
-  }
-  if (!missing.length) return true;
-  fail(
-    "This page will not open anything: " + what + " declares schema_version " +
-    RUNGS_SCHEMA + ", which promises " + missing.join(", ") + ", and the file does " +
-    "not carry " + (missing.length === 1 ? "it" : "them") + ". Your browser may be " +
-    "holding a copy from before the last update — reload the page. Otherwise the " +
-    "file is truncated or is not the answer this page expected. Nothing on the " +
-    "page was changed."
-  );
-  return false;
-}
 
 /**
  * Fetches Go's rung answer and indexes it, or refuses in words.
  *
- * ITS OWN FETCH AND NOT loadColumn's, because every guard in that one is
- * about a SANKEY document -- drawableSankey names nodes, links and locators,
- * and this file carries none of them. Sharing it would mean a flag deciding
- * which half of the vetting applies, which is the shape that ships a file
- * vetted by the wrong half.
+ * ITS OWN FETCH AND NOT loadColumn's, because the two refuse in different
+ * words: this file is what the page opens a NODE with, so a reader who cannot
+ * have it is told nothing will open rather than that nothing will draw. The
+ * gates themselves are now the same two, which is what makes keeping them
+ * apart a matter of the sentence rather than of the vetting.
  *
  * NO SUPERSEDED CALLBACK, because nothing can overtake it: it is fetched once
  * on the page-load path, before the first year is drawn, and it answers every
@@ -5874,14 +5713,20 @@ async function loadRungs(path) {
     return null;
   }
   if (!isDocument(doc, path)) return null;
-  if (doc.schema_version !== RUNGS_SCHEMA) {
-    fail("This page will not open anything: " + path + " declares schema_version " +
-      doc.schema_version + ", and this page reads schema_version " + RUNGS_SCHEMA +
-      ". Opening a node against an answer of another shape would draw a chart that " +
-      "is wrong rather than one that fails. Nothing on the page was changed.");
+  // ONE CHECK, loadColumn's, for loadColumn's reason. encodeRungs refuses an
+  // answer that does not match schema/rungs.schema.json, so no answer this
+  // export wrote can be the wrong shape; what it cannot see is a copy the
+  // browser kept from an earlier deploy, which is every key this gate ever
+  // gained reaching a reader for the first time.
+  if (doc.generated_by !== CONFIG.exported_by) {
+    fail("This page will not open anything: the page was packaged by " +
+      CONFIG.exported_by + " and " + path + " by " +
+      (doc.generated_by || "an unstated build") + ". Your browser is most likely " +
+      "holding a copy from before the last update — reload the page. Opening a node " +
+      "against another run's answer would draw a chart that is wrong rather than one " +
+      "that fails. Nothing on the page was changed.");
     return null;
   }
-  if (!readableRungs(doc, path)) return null;
   const by = new Map();
   for (const column of doc.columns) {
     for (const rung of column.rungs) by.set(rungKey(column.stem, rung.path), rung);
@@ -5958,6 +5803,13 @@ async function showYear(year) {
   drilled = [];
   const drawn = shapeFor(doc);
   const laid = layOut(drawn);
+  // WITH THE SHAPE AND THE LAY-OUT, and inside the same guarantee. Building a
+  // row reads every link's fact ids and locators; done during the repaint it
+  // was the one step of a draw that could throw AFTER paintYearWords had
+  // written the new year's words, which is the fisc-bsg split. Done here it
+  // propagates to the caller's .catch with the page still wholly the year it
+  // was on.
+  const rows = tableRows(drawn);
 
   // THE FOLDED DOCUMENT IS THE ONE THE PAGE DESCRIBES, not the one it fetched.
   // The legend, the flow table, the inferred list, the tooltips and the detail
@@ -5985,7 +5837,7 @@ async function showYear(year) {
   buildLegend();
   paintChartHint();
   buildDerivedList();
-  buildTable();
+  buildTable(rows);
   render(laid);
   return DREW;
 }
@@ -6197,10 +6049,29 @@ function wireYears(years) {
 async function main() {
   wireTheme();
   wireColumns();
+  // THE ONE VERSION GATE THAT SURVIVED, and it is about a different pair from
+  // the ones that went. The document gates compared a FETCHED file against a
+  // constant; those are gone because Go validates every artifact against
+  // schema/ before writing it, and the copy question is answered by comparing
+  // generated_by with exported_by. This compares THIS SCRIPT against the page
+  // it was served in -- and app.js is a separately cached file with no stamp
+  // of its own, so there is no pair of strings to compare and a constant is
+  // the only handshake available.
+  //
   // Before the fetch, not after: FISC_CONFIG carries the projection's own
   // metadata block, and the headline the page has already rendered from it
   // server-side is read under the same contract as the graph.
-  if (!understands(CONFIG.schema_version, "this page's data")) return;
+  if (CONFIG.schema_version !== SCHEMA_VERSION) {
+    fail("This page will not draw: it was packaged for schema_version " +
+      CONFIG.schema_version + " and this script renders schema_version " +
+      SCHEMA_VERSION + ". " + (CONFIG.schema_version > SCHEMA_VERSION
+        ? "The page is newer than this script; a cached copy of app.js is the " +
+          "likely cause, so reload to pick up the current one."
+        : "The page is older than this script.") +
+      " Drawing it anyway would produce a chart that is wrong rather than one " +
+      "that fails.");
+    return;
+  }
 
   const years = CONFIG.years || [];
   if (!years.length) {

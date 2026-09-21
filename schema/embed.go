@@ -125,4 +125,7 @@ const (
 	Locator = "locator.schema.json"
 	// Caveat is what a document cannot say about itself.
 	Caveat = "caveat.schema.json"
+	// Rungs is the answer a page opens nodes against: which nodes each column
+	// of each reachable chart holds, and which marks the client adds.
+	Rungs = "rungs.schema.json"
 )

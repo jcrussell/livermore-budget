@@ -26,11 +26,12 @@ import { checks as seamChecks } from "./seam.mjs";
 import { checks as lifecycleChecks } from "./lifecycle.mjs";
 import { checks as rungChecks } from "./rungs.mjs";
 import { checks as chartChecks } from "./chart.mjs";
+import { checks as contractChecks } from "./contract.mjs";
 
 let failed = 0;
 // Sequentially, not Promise.all: each module loads app.js into its own vm
 // context and the output is meant to read in a fixed order.
-for (const module of [layoutChecks, foldChecks, drillChecks, yearChecks, seamChecks, lifecycleChecks, rungChecks, chartChecks]) {
+for (const module of [contractChecks, layoutChecks, foldChecks, drillChecks, yearChecks, seamChecks, lifecycleChecks, rungChecks, chartChecks]) {
   let produced;
   try {
     produced = await module();

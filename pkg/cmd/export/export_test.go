@@ -1557,7 +1557,7 @@ func TestOpensIntoJoinsOnColumnNotOnDeclaredOrder(t *testing.T) {
 	// THE OPENING YEAR JOINS TO THE BARE STEM AND NOT TO THE FIRST DECLARED,
 	// which is the whole claim. Asked of the index, because that is what the
 	// page and the rung walk both resolve through.
-	_, ix, err := export.ColumnsOf(built)
+	_, ix, err := export.ColumnsOf(built, "fisc test")
 	if err != nil {
 		t.Fatalf("ColumnsOf: %v", err)
 	}

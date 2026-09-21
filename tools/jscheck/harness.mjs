@@ -107,7 +107,14 @@ export const RUNGS_PATH = (() => {
  * the file a reader gets.
  */
 export function rungsAnswer() {
-  return JSON.parse(readFileSync(join(repoRoot, "testdata", "rungs.json"), "utf8"));
+  const doc = JSON.parse(readFileSync(join(repoRoot, "testdata", "rungs.json"), "utf8"));
+  // THE COMMITTED STAMP IS DROPPED so plannedFetch fills in the harness's.
+  // The golden carries whichever build captured it, and app.js refuses an
+  // answer whose generated_by disagrees with the page's -- which would make
+  // every check here fail for the committed file's build date rather than for
+  // anything about app.js. An arm about that refusal plants its own stamp.
+  delete doc.generated_by;
+  return doc;
 }
 
 /**
@@ -615,7 +622,7 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
  * adds no behaviour: it reads bindings that already exist.
  */
 const NAMES = [
-  "FUND_ORDER", "nodeRank", "restackLinks", "understands", "isFundGroup",
+  "FUND_ORDER", "nodeRank", "restackLinks", "isFundGroup",
   "paintYearWords", "wireYears", "showYear", "maybeEl", "SCHEMA_VERSION",
   "NODE_WIDTH", "NODE_PADDING", "CHART_HEIGHT", "LABEL_GUTTER",
   // chartWidth REPLACED THE CHART_WIDTH CONSTANT, and layout.mjs and fold.mjs
@@ -812,8 +819,8 @@ export function loadApp(opts = {}) {
   // stops early does not fail; it stops testing.
   sandbox.FISC_CONFIG = {
     schema_version: 1,
+    exported_by: HARNESS_STAMP,
     primary: "sankey",
-    projections: { sankey: "data/sankey.json" },
     years: [{
       year: 2026, label: "FY 2025-26", stem: "sankey", path: "fy2026-adopted.json",
       basis: "adopted",
@@ -838,7 +845,15 @@ export function loadApp(opts = {}) {
   // runInContext returns, main has already read FISC_CONFIG, wired the toggle
   // and reached its fetch. Anything installed afterwards is installed after the
   // code that would have used it.
-  if (o.config) sandbox.FISC_CONFIG = o.config;
+  if (o.config) {
+    // THE STAMP IS FILLED IN AND NEVER OVERWRITTEN, as plannedFetch does for
+    // the bodies. app.js refuses an artifact whose generated_by disagrees with
+    // CONFIG.exported_by, and an arm that plans a config for some other
+    // purpose should not have to know that; an arm about THAT refusal plants
+    // its own and this must not undo it.
+    if (!Object.hasOwn(o.config, "exported_by")) o.config.exported_by = HARNESS_STAMP;
+    sandbox.FISC_CONFIG = o.config;
+  }
   if (o.fetch) sandbox.fetch = o.fetch;
 
   // THE YEAR RADIOS THE TEMPLATE RENDERS, planted before app.js runs.
@@ -1615,19 +1630,19 @@ export function twoYearConfig() {
   });
   return {
     schema_version: 1,
+    exported_by: HARNESS_STAMP,
     primary: "sankey",
     projections: { sankey: "data/sankey.json", "sankey-2027": "data/sankey-2027.json" },
     years: [year(2026, "FY 2025-26", "sankey"), year(2027, "FY 2026-27", "sankey-2027")],
     // POPULATED, AND IT IS LOAD-BEARING. citations() opens with
     // `const doc = CONFIG.docs[source.doc_id]; if (!doc) continue;`, so an
     // EMPTY docs map makes it return before it reaches
-    // `for (const page of source.pages)` -- and every required-key check for a
-    // `[].pages` key then passes because the GATE fired, never because a throw
-    // was prevented. That is the green-but-dead shape this file already warns
-    // about one fixture over. With this populated, deleting the
-    // metadata.sources[].pages or links[].locators[].pages arm from
-    // drawableSankey produces a real TypeError inside buildTable, which is
-    // what those checks are supposed to be standing in front of.
+    // `for (const page of source.pages)`, and a fixture about a `[].pages` key
+    // is then green because citations() RETURNED EARLY rather than because
+    // anything was prevented. That is the green-but-dead shape this file warns
+    // about one fixture over. With this populated, a locator carrying no pages
+    // reaches the row build and throws there, which is the state
+    // lifecycle.mjs's malformed-document fixtures exist to place.
     docs: {
       "livermore-budget-fy2026-2027": {
         title: "Adopted Budget FY2026-2027",
@@ -1677,7 +1692,7 @@ export function columnOf(schedules, col) {
   };
   const out = {
     schema_version: 1,
-    generated_by: "harness",
+    generated_by: HARNESS_STAMP,
     column: Object.assign({ fiscal_year: 2026, basis: "adopted", label: "FY 2025-26" }, col),
     nodes: table,
     tiers: [],
@@ -1736,6 +1751,18 @@ function stemParts(path) {
   return { year: Number(m[2]), name: m[1] };
 }
 
+/**
+ * The build stamp every fixture here shares.
+ *
+ * ONE STRING FOR THE PAGE AND FOR EVERY ARTIFACT IT FETCHES, because that
+ * agreement is what site/app.js checks in place of the eight key arms it used
+ * to run: Go refuses to write an artifact of the wrong shape, so the only
+ * question left at the fetch is whether the file came out of the same export
+ * as the page. An arm testing that refusal plants its own `generated_by` and
+ * the default below leaves it alone.
+ */
+export const HARNESS_STAMP = "fisc harness";
+
 export function plannedFetch(plan) {
   const asked = [];
   // THE RUNG ANSWER IS PLANNED BY DEFAULT AND OVERRIDABLE. Every check that
@@ -1744,6 +1771,19 @@ export function plannedFetch(plan) {
   // the check is about -- while a check whose subject IS that banner still
   // plans its own entry, which wins.
   const full = Object.assign({ [RUNGS_PATH]: { doc: rungsAnswer() } }, plan);
+
+  // THE STAMP IS FILLED IN AND NEVER OVERWRITTEN. app.js refuses an artifact
+  // whose generated_by disagrees with CONFIG.exported_by, so every planned body
+  // needs one -- and an arm about THAT refusal plants its own, which this must
+  // not undo. Applied at the funnel rather than at ~100 call sites, which is
+  // also what keeps an arm's plan about the thing the arm is about.
+  for (const key of Object.keys(full)) {
+    const entry = full[key];
+    if (entry && entry.doc && typeof entry.doc === "object" &&
+        !Object.hasOwn(entry.doc, "generated_by")) {
+      entry.doc.generated_by = HARNESS_STAMP;
+    }
+  }
 
   // THE COLUMN IS ASSEMBLED FROM THE PLAN, not written out in it. The client
   // fetches one file per column now; the arms still plan the schedules they are

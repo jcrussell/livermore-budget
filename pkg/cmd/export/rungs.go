@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // rungsPath is the committed copy of Go's answer for every rung the drill
@@ -38,8 +39,13 @@ const rungsSchemaVersion = 5
 // figure in it is computed by export.ReachOf over a document, so a comparison
 // against it is a comparison against what Go says the chart holds.
 type rungsDoc struct {
-	SchemaVersion int          `json:"schema_version"`
-	Columns       []rungColumn `json:"columns"`
+	SchemaVersion int `json:"schema_version"`
+	// GeneratedBy is the export that wrote this answer, so the client can
+	// refuse one that did not come out of the same run as the page it is
+	// opening nodes on -- the failure no schema can express and the only one
+	// a reader actually meets, since the site publishes no cache-busting.
+	GeneratedBy string       `json:"generated_by"`
+	Columns     []rungColumn `json:"columns"`
 }
 
 // rungColumn is one published year, by the spine document's stem, which is
@@ -171,13 +177,13 @@ const (
 // a residual lends the fund group's flank are compared rather than
 // subtracted on both sides.
 func rungsOf(projections map[string][]byte, spine export.View) (rungsDoc, error) {
-	doc := rungsDoc{SchemaVersion: rungsSchemaVersion}
+	doc := rungsDoc{SchemaVersion: rungsSchemaVersion, GeneratedBy: generatedBy()}
 	// THE SAME RESOLUTION THE PAGE MAKES, and the same call. This walked its
 	// own copy of it, and the two disagreed where a step's year carried no
 	// entry: one resolved "" and the other fell back to the declared
 	// projection, so the shipped answer and the page could name different
 	// documents for one rung.
-	_, ix, err := export.ColumnsOf(projections)
+	_, ix, err := export.ColumnsOf(projections, "")
 	if err != nil {
 		return rungsDoc{}, fmt.Errorf("rungs: %w", err)
 	}
@@ -536,5 +542,23 @@ func encodeRungs(doc rungsDoc) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(b, '\n'), nil
+	b = append(b, '\n')
+
+	// REFUSED AT THE WRITE AND NOT AT THE FETCH, which is encodeColumn's rule
+	// applied to the other artifact this site serves a browser. site/app.js
+	// used to re-check these keys by hand on arrival -- a second statement of
+	// the shape, kept in step with this struct by nobody.
+	resolved, rerr := schema.Load(schema.Rungs)
+	if rerr != nil {
+		return nil, rerr
+	}
+	var v any
+	if uerr := json.Unmarshal(b, &v); uerr != nil {
+		return nil, fmt.Errorf("re-read the rung answer: %w", uerr)
+	}
+	if verr := resolved.Validate(v); verr != nil {
+		return nil, fmt.Errorf("the rung answer this build produced does not match %s: %w",
+			schema.Rungs, verr)
+	}
+	return b, nil
 }

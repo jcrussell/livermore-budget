@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/rungs.schema.json",
+  "title": "fisc rung answer",
+  "description": "Go's reading of a page's declared drill steps against the documents they draw: for every opened path, which nodes each column of the resulting chart holds, and which marks the client adds that no page prints. NOT A RE-ENCODING OF THE DECLARATIONS -- every figure here is computed over a document, so the client comparing against it is comparing against what Go says the chart holds rather than against a second reading of its own.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "generated_by",
+    "columns"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 5
+    },
+    "generated_by": {
+      "description": "The export that wrote this answer. The page carries the same string as exported_by, and the client refuses a pair that disagree: they are separate files with no cache-busting between them, so a reader can hold one from before the last deploy.",
+      "type": "string",
+      "minLength": 1
+    },
+    "columns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "stem",
+          "rungs"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "stem": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rungs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "path",
+                "step",
+                "draws"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "path": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "step": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "draws": {
+                  "description": "One entry per column of the chart this rung draws, in the order the reader meets them left to right. A COLUMN SAYS WHAT IT HOLDS, NOT WHAT WOULD FIT: the ids are unfolded and no cap has been applied, because which of them a viewport leaves room for is the client's.",
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "tier",
+                      "role",
+                      "ids"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "tier": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "role": {
+                        "enum": [
+                          "centre",
+                          "flank",
+                          "outward"
+                        ]
+                      },
+                      "ids": {
+                        "description": "Written even when empty, so a column the document draws nothing at can be told from a column that was not answered. A reader that accepted the absence would read the first as the second.",
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "carried": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                },
+                "marks": {
+                  "description": "The marks the client draws on this rung that no page prints: the gap between what the chart above sends into the opened node and what the drawn document breaks it into, and the residual standing beside the opened node's parts.",
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "role",
+                      "tier"
+                    ],
+                    "additionalProperties": false,
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "role": {
+                        "enum": [
+                          "residual",
+                          "gap"
+                        ]
+                      },
+                      "tier": {
+                        "type": "integer",
+                        "minimum": 0
+                      },
+                      "in_cents": {
+                        "type": "integer"
+                      },
+                      "out_cents": {
+                        "type": "integer"
+                      },
+                      "ends": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

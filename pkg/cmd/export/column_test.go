@@ -72,7 +72,7 @@ func TestEveryColumnLinkEqualsTheFactsItCites(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	columns, _, err := export.ColumnsOf(built.Projections)
+	columns, _, err := export.ColumnsOf(built.Projections, "fisc test")
 	if err != nil {
 		t.Fatalf("columnsOf: %v", err)
 	}
@@ -144,7 +144,7 @@ func TestEveryColumnIndexResolves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	columns, _, err := export.ColumnsOf(built.Projections)
+	columns, _, err := export.ColumnsOf(built.Projections, "fisc test")
 	if err != nil {
 		t.Fatalf("columnsOf: %v", err)
 	}

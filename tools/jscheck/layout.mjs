@@ -171,6 +171,11 @@ function extentOverflow(graph) {
 // to say something else fails here rather than passing quietly. That is the
 // pattern internal/export/export_test.go:623 already uses to pin the client's
 // SCHEMA_VERSION literal to the producer's.
+//
+// THE VERSION GATE ITSELF IS NOT CHECKED HERE ANY MORE. It was, through
+// understands(), which took a number and answered a boolean; the gate is now
+// one comparison inside main() and is reached the way a reader reaches it, in
+// lifecycle.mjs.
 const CLAIMED = {
   crossings: 195,
   overlapDollars: 457434169,
@@ -535,13 +540,6 @@ export async function checks() {
       name: "no ribbon overflows the node face it meets",
       ok: extentOverflow(graph) <= 1e-9,
       detail: `worst overflow ${extentOverflow(graph).toFixed(6)}px`,
-    },
-    {
-      name: "the client refuses a document it does not understand",
-      ok: app.understands(app.SCHEMA_VERSION, "x") === true &&
-          app.understands(app.SCHEMA_VERSION + 1, "x") === false &&
-          app.understands(app.SCHEMA_VERSION - 1, "x") === false,
-      detail: `schema_version ${app.SCHEMA_VERSION} is accepted and its neighbours are refused`,
     },
   ].concat(await labelChecks(app, graph)).concat(await wideChecks(app))
     .concat(await expandedChecks()).concat(await everyViewChecks());

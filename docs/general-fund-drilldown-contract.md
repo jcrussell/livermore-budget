@@ -559,44 +559,37 @@ client's own walk to that answer, and the page fetches it under the name the
 config carries. The committed `testdata/rungs.json` is pinned to the bytes the
 export serves, so a fixture and a served file cannot be two answers.
 
-The shape, with each value naming its type rather than standing for a figure —
-except `schema_version`, which is the version this section describes:
+**The shape lives in [`schema/rungs.schema.json`](../schema/rungs.schema.json)**,
+not here. It used to be a fenced block in this section, which made three
+spellings of one record — the emitted structs, the block, and a reader's memory
+— and only the first two could ever be compared. The schema is compared against
+the emitted BYTES: `encodeRungs` refuses an answer that does not match it, the
+way `encodeColumn` refuses a column. `TestTheSchemaStatesWhatTheRungAnswerCarries`
+holds the schema's property set to the structs' JSON tags in both directions, so
+a field added to the artifact with no line in the schema is red, and so is a
+schema bumped without the packager's constant moving.
 
-```json
-{
-  "schema_version": 5,
-  "columns": [
-    {
-      "stem": "string",
-      "rungs": [
-        {
-          "path": ["string"],
-          "step": "string",
-          "draws": [
-            {"tier": "int", "role": "string", "ids": ["string"], "carried": ["string"]}
-          ],
-          "marks": [
-            {
-              "id": "string",
-              "role": "string",
-              "tier": "int",
-              "in_cents": "int64",
-              "out_cents": "int64",
-              "ends": ["string"]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
+What a schema cannot say is why the record has the shape it does, and that is
+what the rest of this section is for.
 
-**That block is read by a test and not only by a reader.** `pkg/cmd/export`
-parses it out of this file and refuses a key set that is not the emitted
-structs' JSON tags, and a `schema_version` that is not the one the packager
-stamps. A field added to the artifact without a line here, or a schema bumped
-without this section moving, is red.
+**`ids` is written even when empty, and that is the load-bearing one.** A flank
+whose only mark is carried answers with nothing, and a column the document draws
+nothing at is still a column the step declares; both have to be told from "not
+answered" by a reader of the file. A client that accepted the absence would read
+the first as the second and draw a column Go says holds nothing.
+
+**A column says what it HOLDS, not what would fit.** No cap has been applied to
+these ids. `DrillStep.Caps` declares which columns may fold and `DrillStep.Widen`
+which a fourth column buys; both ship in `CONFIG.steps` and the fitting happens
+in the client, because folding is fitting to a viewport Go cannot see. A fold Go
+pre-computed would also hide the rungs under it from the walk that answers them
+(`fisc-qics`).
+
+**`generated_by` is not part of the answer, it is part of the delivery.** The
+page carries the same string as `exported_by`, and `site/app.js` refuses a pair
+that disagree: these are two files with no cache-busting between them, so a
+reader can hold one from before the last deploy. No schema can express that,
+because each file is valid on its own.
 
 - `columns[]` is a **published year**, by the spine document's stem, and not a
   chart column. The chart's columns are a rung's `draws`; the two words meet in

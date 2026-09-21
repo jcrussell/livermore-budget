@@ -176,7 +176,7 @@ func (ix ColumnIndex) Column(stem string) (string, bool) {
 //
 // A document stating no fiscal year or basis is skipped, not refused:
 // revenue-trends and the two balance documents carry a series and no column.
-func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, ColumnIndex, error) {
+func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]ColumnDoc, ColumnIndex, error) {
 	byColumn := map[string]*ColumnDoc{}
 	index := map[string]map[string]int{}
 	ix := ColumnIndex{schedules: map[string]map[string]string{}, columns: map[string]string{}}
@@ -202,7 +202,21 @@ func ColumnsOf(projections map[string][]byte) (map[string]ColumnDoc, ColumnIndex
 		if !seen {
 			col = &ColumnDoc{
 				SchemaVersion: columnSchemaVersion,
-				GeneratedBy:   d.Metadata.GeneratedBy,
+				// THE EXPORT'S STAMP AND NOT THE PROJECTION'S, because this
+				// file is the export's artifact and the one claim a reader
+				// needs from it is "the page you are reading and I came out
+				// of one run". The client compares it against
+				// CONFIG.exported_by, which is the only thing that can catch
+				// a cached column beside a fresh app.js -- see loadColumn in
+				// site/app.js.
+				//
+				// NOTHING HERE REFUSES TWO SCHEDULES BUILT BY DIFFERENT RUNS,
+				// and that is deliberate rather than missed. buildProjections
+				// runs once, so the state is unreachable in the pipeline; the
+				// disagreement that IS reachable -- a step document crediting
+				// a builder the footer does not name -- is refused by
+				// stepDocuments, where the credit is actually made.
+				GeneratedBy: generatedBy,
 				Column: ColumnKey{
 					FiscalYear: d.Metadata.FiscalYear,
 					Basis:      d.Metadata.Basis,
