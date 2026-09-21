@@ -1874,8 +1874,22 @@ func Prepare(o Options) (*plan, error) {
 	if err := copyTree(o.assetTree(), "vendor", add); err != nil {
 		return nil, err
 	}
+	// A DOCUMENT THAT FOLDED INTO A COLUMN IS PUBLISHED AS THAT COLUMN AND NOT
+	// ALSO AS ITSELF. Sixteen of the nineteen fold, and shipping both was the
+	// same figures twice -- 1,661,760 bytes of them, measured over the
+	// committed corpus, none of it fetched: site/app.js asks for a column and
+	// for rungs.json and for nothing else.
+	//
+	// THE THREE THAT DO NOT FOLD STILL SHIP AS THEMSELVES, and that is not a
+	// leftover: revenue-trends, fund-balances and changes-in-fund-balances
+	// carry a series and state no fiscal year or basis at all, so there is no
+	// column to be part of, and data/revenue-trends.json is the only published
+	// form trends.html has.
 	for _, name := range sortedKeys(o.Projections) {
-		if err := add(path.Join(dataDir, name+".json"), o.Projections[name]); err != nil {
+		if _, folded := ix.Column(name); folded {
+			continue
+		}
+		if err := add(ix.PublishedPath(name), o.Projections[name]); err != nil {
 			return nil, err
 		}
 	}

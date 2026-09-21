@@ -8,7 +8,6 @@ import (
 	"html/template"
 	"io/fs"
 	"maps"
-	"path"
 	"slices"
 	"strings"
 
@@ -268,9 +267,8 @@ type sourceRef struct {
 	Pages     []pageRef
 }
 
-// projectionRef names a projection file the page ships.
+// projectionRef names one data file the site publishes.
 type projectionRef struct {
-	Name string
 	Path string
 }
 
@@ -930,13 +928,13 @@ func buildSite(o *Options, ix ColumnIndex, pageTextBase func(docID string) strin
 		// received. Fail closed instead.
 		switch v.Template {
 		case TrendsTemplate:
-			data, err = buildTrendsPage(o, v, here, byID, pageTextBase)
+			data, err = buildTrendsPage(o, v, here, byID, ix, pageTextBase)
 		case HistoryTemplate:
-			data, err = buildHistoryPage(o, v, here, byID, pageTextBase)
+			data, err = buildHistoryPage(o, v, here, byID, ix, pageTextBase)
 		case SankeyTemplate:
 			data, err = buildSankeyPage(o, v, here, byID, ix, pageTextBase)
 		case ProvenanceTemplate:
-			data, err = buildProvenancePage(o, v, here, byID, pageTextBase)
+			data, err = buildProvenancePage(o, v, here, byID, ix, pageTextBase)
 		case CaveatsTemplate:
 			data, err = buildCaveatsPage(o, v, here, byID, ix, pageTextBase)
 		default:
@@ -1396,10 +1394,33 @@ func openableNodes(v View, i int, s DrillStep, stem string, raw []byte) ([]strin
 
 // projectionRefs is every data file the site publishes, which is the whole set
 // on every page: they are downloadable provenance, not this view's figures.
-func projectionRefs(projections map[string][]byte) []projectionRef {
-	refs := make([]projectionRef, 0, len(projections))
-	for _, name := range sortedKeys(projections) {
-		refs = append(refs, projectionRef{Name: name, Path: path.Join(dataDir, name+".json")})
+//
+// ONE ENTRY PER FILE AND NOT PER DOCUMENT, which is the difference the column
+// makes: five schedules of FY2026 adopted are one download. It listed a path
+// per stem, and once the folded stems stopped being written that sentence
+// offered a reader nineteen links, sixteen of them 404s.
+//
+// RUNGS IS A DATA FILE TOO and is listed where the site ships one. It is
+// fetched by the same page that fetches a column and was never in this list,
+// so "every data file the site publishes" was already one short.
+func projectionRefs(o *Options, ix ColumnIndex) []projectionRef {
+	seen := map[string]bool{}
+	var paths []string
+	for _, name := range sortedKeys(o.Projections) {
+		p := ix.PublishedPath(name)
+		if seen[p] {
+			continue
+		}
+		seen[p] = true
+		paths = append(paths, p)
+	}
+	if _, ships := o.Files[RungsPath]; ships {
+		paths = append(paths, RungsPath)
+	}
+	slices.Sort(paths)
+	refs := make([]projectionRef, 0, len(paths))
+	for _, p := range paths {
+		refs = append(refs, projectionRef{Path: p})
 	}
 	return refs
 }
@@ -1501,16 +1522,10 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 
 	sources, clientDocs := sourcesFor(unionSources(cited), byID, pageTextBase, o.RecordsBase)
 
-	refs := projectionRefs(o.Projections)
-	files := make(map[string]string, len(refs))
-	for _, r := range refs {
-		files[r.Name] = r.Path
-	}
 	cfg := clientConfig{
 		SchemaVersion: doc.SchemaVersion,
 		ExportedBy:    o.GeneratedBy,
 		Primary:       v.Projection,
-		Projections:   files,
 		Metadata:      doc.Metadata,
 		Years:         years,
 		Docs:          clientDocs,
@@ -1537,7 +1552,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Sources:      sources,
 			ProjectionBy: meta.GeneratedBy,
 			ExportedBy:   o.GeneratedBy,
-			Projections:  refs,
+			Projections:  projectionRefs(o, ix),
 			DataPath:     open.Path,
 			Scope:        meta.Scope,
 			Caveats:      open.Caveats,
@@ -1712,7 +1727,7 @@ type trendsBody struct {
 // compute, and a total this document does not carry is a total the city did not
 // print on the page these series came from.
 func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string,
 ) (trendsPageData, error) {
 	caveatsPath := caveatsPathOf(o)
 	raw := o.Projections[v.Projection]
@@ -1779,7 +1794,7 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
-	refs := projectionRefs(o.Projections)
+	refs := projectionRefs(o, ix)
 	title := v.Title
 	if title == "" {
 		title = "City of Livermore revenue by fund"
@@ -1793,7 +1808,7 @@ func buildTrendsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ProjectionBy: meta.GeneratedBy,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  refs,
-			DataPath:     path.Join(dataDir, v.Projection+".json"),
+			DataPath:     ix.PublishedPath(v.Projection),
 			Scope:        meta.Scope,
 			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
 			CaveatsPath:  caveatsPath,
@@ -1873,7 +1888,7 @@ type historySection struct {
 // itself with [Section.Rows] adds the refusal the key match cannot make: a
 // series its key claims but its rows do not name.
 func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	pageTextBase func(string) string,
+	ix ColumnIndex, pageTextBase func(string) string,
 ) (historyPageData, error) {
 	caveatsPath := caveatsPathOf(o)
 	raw := o.Projections[v.Projection]
@@ -1992,7 +2007,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 	}
 
 	sources, _ := sourcesFor(meta.Sources, byID, pageTextBase, o.RecordsBase)
-	refs := projectionRefs(o.Projections)
+	refs := projectionRefs(o, ix)
 	title := v.Title
 	if title == "" {
 		title = "City of Livermore ten-year history"
@@ -2006,7 +2021,7 @@ func buildHistoryPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			ProjectionBy: meta.GeneratedBy,
 			ExportedBy:   o.GeneratedBy,
 			Projections:  refs,
-			DataPath:     path.Join(dataDir, v.Projection+".json"),
+			DataPath:     ix.PublishedPath(v.Projection),
 			Scope:        meta.Scope,
 			Caveats:      caveatRefs(meta.Caveats, v.Projection, caveatsPath),
 			CaveatsPath:  caveatsPath,
@@ -2116,7 +2131,7 @@ type downloadRef struct {
 // written. This package does not know how that path is built and must not
 // learn -- the locator-to-URL rule belongs to whoever produced the records.
 func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
-	pageTextBase func(docID string) string) (provenancePageData, error) {
+	ix ColumnIndex, pageTextBase func(docID string) string) (provenancePageData, error) {
 	if len(o.PageIndex) == 0 {
 		// A page listing nothing is not an empty state, it is a page that
 		// should not have been asked for: views() adds this one only when
@@ -2193,7 +2208,7 @@ func buildProvenancePage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Nav:         nav,
 			Sources:     sources,
 			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o.Projections),
+			Projections: projectionRefs(o, ix),
 			// NO DataPath. Every other page names the projection it draws;
 			// this one draws none, and pointing it at an unrelated document
 			// would be a false statement about where its figures came from.
@@ -2324,7 +2339,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		docs = append(docs, caveatDocument{
 			Stem:     stem,
 			Label:    label,
-			DataPath: path.Join(dataDir, stem+".json"),
+			DataPath: ix.PublishedPath(stem),
 			Entries:  entries,
 			Drawn:    drawn[stem],
 		})
@@ -2345,7 +2360,7 @@ func buildCaveatsPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 			Lede:        v.Lede,
 			Nav:         nav,
 			ExportedBy:  o.GeneratedBy,
-			Projections: projectionRefs(o.Projections),
+			Projections: projectionRefs(o, ix),
 			CaveatsPath: caveatsPath,
 			// NO Sources, AND THAT IS THE POINT rather than an omission.
 			// TestEachViewsFooterCitesItsOwnSources enforces that a page must

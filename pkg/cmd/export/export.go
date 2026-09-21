@@ -55,11 +55,24 @@ type result struct {
 	// locator-to-URL rule is this package's, and internal/export publishes the
 	// base without learning it.
 	RecordsBase map[string]string
+	// Structure is the verification lattice, one document per fiscal year.
+	//
+	// IT IS BUILT AND IT IS NOT PUBLISHED, which is why it is its own field
+	// and not an entry in Files. Nothing under site/, tools/ or docs/ names
+	// these documents and `fisc verify` never reads the exported tree, so
+	// shipping them put 877,403 bytes -- measured over the committed corpus --
+	// in front of a reader who has no way to use them. They stay built so
+	// structure_test.go can go on re-measuring each part against the whole.
+	//
+	// THE OPEN QUESTION IS NOT WHICH PATH IT TAKES, it is who reads it at all:
+	// an artifact built and tested and consumed by nothing is a check with no
+	// subject. fisc-d02r records it.
+	Structure map[string][]byte
 }
 
 // builder produces everything to publish: the projection documents, keyed by
-// the filename stem they are written under (data/<stem>.json), and any other
-// assets the site ships.
+// the projection name (a column of its own, or data/<stem>.json where it
+// states no column), and any other assets the site ships.
 //
 // This is the seam onto internal/project (fisc-gxa.1). It is a function type
 // rather than that package's Projection interface on purpose: internal/export

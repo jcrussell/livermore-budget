@@ -746,16 +746,24 @@ async function yearSwitchClosesTheDrill() {
     const asked = (p) => fetch.asked.filter((x) => x === p).length;
     const drawn = app.projection.nodes.find((n) => n.id === "fund/100");
     const label = drawn ? drawn.label : "";
+    // ASSERTED AS THE WHOLE ASKED SET, not as two zeroes. The two zeroes were
+    // the claim while data/<stem>.json still existed as a published path; once
+    // the site stopped writing those files, "nobody asked for data/x.json"
+    // became true of every possible client and discriminated nothing. What
+    // still discriminates is the set: a column per year and nothing else.
+    const unique = [...new Set(fetch.asked)].sort();
+    // rungs.json is the page's own eager fetch and is not a drill's.
+    const wanted = ["fy2026-adopted.json", "fy2027-adopted.json", "rungs.json"];
+    const extra = unique.filter((p) => !wanted.includes(p));
     out.push({
-      name: "the year on screen opens into its own step document, not the one the stem maps to",
+      name: "the year on screen opens into its own step document, and a drill asks for nothing",
       ok: first === "drew" && second === "drew" &&
-          asked("data/fund-flows.json") === 0 && asked("data/fund-flows-2027.json") === 0 &&
+          extra.length === 0 && unique.length === wanted.length &&
           label === "General Fund, the other year",
-      detail: `FY 2025-26 opened its own fund-flows schedule with ${asked("data/fund-flows.json")} fetch; ` +
-        `after the switch FY 2026-27 opened from data/fund-flows-2027.json ` +
-        `(${asked("data/fund-flows-2027.json")} fetch) and drew fund/100 labelled "${label}" -- ` +
-        `a client joining on CONFIG.projections would fetch the first file twice and draw ` +
-        `"General Fund" under the wrong year`,
+      detail: `two drills and a year switch asked for ${unique.length} path(s) -- ` +
+        `[${unique}] -- and drew fund/100 labelled "${label}". A client joining on a ` +
+        `per-step stem would fetch a fund-flows document here; a client joining on the ` +
+        `wrong year's would draw "General Fund" under FY 2026-27`,
     });
   }
   {

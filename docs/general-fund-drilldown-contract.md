@@ -29,12 +29,15 @@ facts — and it is the only thing that asserts a line is drawn under the catego
 Four, one per printed column — a flow diagram of two budgets is not a chart of
 anything:
 
-| stem | column |
-|---|---|
-| `data/fund-flows-2024-actual.json` | FY2023-24 actual |
-| `data/fund-flows-2025-revised.json` | FY2024-25 revised |
-| `data/fund-flows.json` | FY2025-26 adopted |
-| `data/fund-flows-2027.json` | FY2026-27 adopted |
+Each is the `fund-flows` schedule of its own column, and the column is the file
+a reader fetches:
+
+| stem | column | published at |
+|---|---|---|
+| `fund-flows-2024-actual` | FY2023-24 actual | `fy2024-actual.json` |
+| `fund-flows-2025-revised` | FY2024-25 revised | `fy2025-revised.json` |
+| `fund-flows` | FY2025-26 adopted | `fy2026-adopted.json` |
+| `fund-flows-2027` | FY2026-27 adopted | `fy2027-adopted.json` |
 
 A column is published only when **both** schedules print it. One alone would draw
 a whole revenue side against an empty expenditure side, which reads as a city

@@ -13,10 +13,13 @@ new extraction, no new mapping.
 
 ## Where it goes
 
-`<output>/data/revenue-trends.json`, beside `data/sankey.json`. Same layout,
-same relative paths, same `extracted/<doc-id>/pages/pNNNN.txt` provenance tree
+`<output>/data/revenue-trends.json`. Same layout, same relative paths, same `extracted/<doc-id>/pages/pNNNN.txt` provenance tree
 (`export.PageTextDir`), which for this document is fourteen pages rather than
 the spine's two.
+
+It ships under a name of its own rather than inside a column, and that follows
+from the same fact the next paragraph turns into a rule: a document stating no
+fiscal year and no basis names no column to be a schedule of.
 
 **The stem carries no fiscal year, and that is a rule rather than a spelling.**
 `project.PublishedStem(name, year)` suffixes every year but the opening one, so

@@ -14,9 +14,15 @@ lives only in prose drifts from the code that implements it.
 
 ## Where it goes
 
-`<output>/data/<projection>.json`, so `fisc export -o dist` writes
-`dist/data/sankey.json` and `fisc export -o site` writes `site/data/sankey.json`.
-One code path, one layout.
+`<output>/fy<year>-<basis>.json`, one document per published column, so
+`fisc export -o dist` writes `dist/fy2026-adopted.json` and `fisc export -o site`
+writes `site/fy2026-adopted.json`. One code path, one layout.
+
+A projection stating a fiscal year and a basis is **a schedule inside its
+column**, keyed by the stem with its year suffix stripped, and is not published
+under a name of its own. One that states neither — `revenue-trends` and the two
+balance documents carry a series and no column — ships at
+`<output>/data/<stem>.json` as itself.
 
 **The stem is a function of the whole column list**, and `project.Stem` is the
 only place that rule is spelled — `fisc export` writes the files, `fisc verify`

@@ -16,9 +16,9 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
-// TestTheStructureShipsOnTheAssetChannelAndIsMeasured is two things. It pins
-// that buildAll puts one structure per fiscal year where the site will serve
-// it and no monolith beside them; that each part declares its year and
+// TestTheStructureIsPartitionedByYearAndIsMeasured is two things. It pins
+// that buildAll produces one structure per fiscal year and no monolith beside
+// them, and that the site publishes none of them; that each part declares its year and
 // carries only that year's facts, with the views re-indexed into them and a
 // view admitting none of that year omitted rather than shipped empty; that
 // the parts together carry every fact of the whole document exactly once;
@@ -32,7 +32,7 @@ import (
 // never fires unless some part omits a view while another carries every
 // one; each guard names the shape it refuses and where the committed corpus
 // supplies the opposite, and logs which years did.
-func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
+func TestTheStructureIsPartitionedByYearAndIsMeasured(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatalf("resolve repo root: %v", err)
@@ -57,10 +57,18 @@ func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
 		t.Errorf("the unpartitioned document declares fiscal year %d, and nothing ships it", whole.FiscalYear)
 	}
 
-	// THE MONOLITH DOES NOT SHIP, and nothing else at the root is a structure
-	// but the per-year parts.
-	if _, ok := built.Files["structure.json"]; ok {
-		t.Error("buildAll ships structure.json, the unpartitioned document nothing reads")
+	// THE LATTICE IS BUILT AND IS NOT PUBLISHED. It reached the reader's
+	// download through the asset channel and nothing in site/, tools/ or
+	// docs/ ever named it; result.Structure is where it lives now, so this
+	// arm asks the asset channel to carry NONE of it rather than asking it to
+	// carry the parts and not the monolith.
+	for rel := range built.Files {
+		if strings.HasPrefix(rel, "structure") {
+			t.Errorf("the site publishes %s, and nothing a reader has can read it", rel)
+		}
+	}
+	if _, ok := built.Structure["structure.json"]; ok {
+		t.Error("buildAll builds structure.json, the unpartitioned document nothing reads")
 	}
 	years := []int{}
 	for _, f := range whole.Facts {
@@ -69,12 +77,9 @@ func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
 		}
 	}
 	slices.Sort(years)
-	for rel := range built.Files {
-		if !strings.HasPrefix(rel, "structure") {
-			continue
-		}
+	for rel := range built.Structure {
 		if !slices.ContainsFunc(years, func(y int) bool { return structurePath(y) == rel }) {
-			t.Errorf("%s ships and is no fiscal year's structure; the whole spans %v", rel, years)
+			t.Errorf("%s was built and is no fiscal year's structure; the whole spans %v", rel, years)
 		}
 	}
 
@@ -106,9 +111,9 @@ func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
 	parts := map[int]structure.Document{}
 	for _, year := range years {
 		path := structurePath(year)
-		raw, ok := built.Files[path]
+		raw, ok := built.Structure[path]
 		if !ok {
-			t.Errorf("buildAll ships no %s; the asset channel carries %d files", path, len(built.Files))
+			t.Errorf("buildAll builds no %s; the lattice carries %d part(s)", path, len(built.Structure))
 			continue
 		}
 		var part structure.Document
@@ -239,7 +244,7 @@ func TestTheStructureShipsOnTheAssetChannelAndIsMeasured(t *testing.T) {
 	}
 	t.Logf("scaffolding alone: raw %d gzip %d", len(scaffold), gzipped(t, scaffold, gzip.DefaultCompression))
 	for _, year := range years {
-		raw := built.Files[structurePath(year)]
+		raw := built.Structure[structurePath(year)]
 		t.Logf("%s, %d facts, %d views: raw %d gzip %d (best %d)", structurePath(year),
 			len(parts[year].Facts), len(parts[year].Views),
 			len(raw), gzipped(t, raw, gzip.DefaultCompression), gzipped(t, raw, gzip.BestCompression))

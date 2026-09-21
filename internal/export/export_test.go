@@ -102,8 +102,10 @@ func TestWriteProducesTheSiteLayout(t *testing.T) {
 	want := []string{
 		".fisc-export",
 		"app.js",
-		"data/sankey.json",
-		// One document per published column, which is what the page fetches.
+		// ONE DOCUMENT PER PUBLISHED COLUMN AND NOT ALSO ONE PER SCHEDULE.
+		// data/sankey.json was here: sankey folds into this column, so
+		// shipping it too was the same figures at two paths, and the second
+		// was fetched by nothing.
 		"fy2026-adopted.json",
 		"index.html",
 		"style.css",
@@ -192,13 +194,40 @@ func TestEveryAssetThePageAsksForWasWritten(t *testing.T) {
 	}
 }
 
-func TestWriteCopiesProjectionVerbatim(t *testing.T) {
-	dir, _ := writeGolden(t)
-	got, err := os.ReadFile(filepath.Join(dir, "data", "sankey.json"))
+// TestWriteCopiesAColumnlessProjectionVerbatim is the verbatim-copy contract,
+// narrowed to where it still holds and said so.
+//
+// IT USED TO BE ASKED OF sankey, and that is no longer a copy: a document
+// stating a fiscal year and a basis folds into its column and is re-encoded
+// there. What replaces the guarantee for those is stronger and is held
+// elsewhere -- encodeColumn refuses bytes that do not match
+// schema/column.schema.json, and pkg/cmd/export/column_test.go holds every
+// column's figures to facts/facts.jsonl.
+//
+// What has no column and no schema is revenue-trends and the two balance
+// documents, which carry a series and state no year. Those ship as themselves
+// and must ship BYTE FOR BYTE, because nothing else looks at them at all.
+func TestWriteCopiesAColumnlessProjectionVerbatim(t *testing.T) {
+	series := []byte(`{"schema_version":1,"projection":"revenue-trends",` +
+		`"metadata":{"generated_by":"fisc test","sources":[]},"series":[]}` + "\n")
+	dir := t.TempDir()
+	written, err := writeSite(export.Options{
+		Dir:         dir,
+		Projections: map[string][]byte{"sankey": goldenSankey(t), "revenue-trends": series},
+		Docs:        budgetDocs(),
+		GeneratedBy: "fisc test",
+	})
 	if err != nil {
-		t.Fatalf("read exported projection: %v", err)
+		t.Fatalf("Write: %v", err)
 	}
-	if diff := cmp.Diff(string(goldenSankey(t)), string(got)); diff != "" {
+	if slices.Contains(written, "data/sankey.json") {
+		t.Error("sankey folds into a column and must not also ship at data/sankey.json")
+	}
+	got, rerr := os.ReadFile(filepath.Join(dir, "data", "revenue-trends.json"))
+	if rerr != nil {
+		t.Fatalf("read exported projection: %v", rerr)
+	}
+	if diff := cmp.Diff(string(series), string(got)); diff != "" {
 		t.Errorf("exported projection differs from its input (-want +got):\n%s", diff)
 	}
 }
@@ -552,8 +581,8 @@ func TestFilesShipVerbatimBesideTheSite(t *testing.T) {
 		t.Errorf("Write did not report the asset it wrote:\n%v", written)
 	}
 	// The channel must not disturb the contract it sits beside.
-	if !slices.Contains(written, "data/sankey.json") {
-		t.Errorf("the projection is no longer at data/sankey.json:\n%v", written)
+	if !slices.Contains(written, "fy2026-adopted.json") {
+		t.Errorf("the projection's column is no longer at fy2026-adopted.json:\n%v", written)
 	}
 }
 
@@ -619,10 +648,9 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 
 	cfg := configBlob(t, page)
 	var got struct {
-		SchemaVersion int               `json:"schema_version"`
-		Primary       string            `json:"primary"`
-		Projections   map[string]string `json:"projections"`
-		Metadata      json.RawMessage   `json:"metadata"`
+		SchemaVersion int             `json:"schema_version"`
+		Primary       string          `json:"primary"`
+		Metadata      json.RawMessage `json:"metadata"`
 		Docs          map[string]struct {
 			PDFURL       string `json:"pdf_url"`
 			PageTextBase string `json:"page_text_base"`
@@ -635,9 +663,10 @@ func TestPageConfigCarriesTheProjectionMetadataVerbatim(t *testing.T) {
 	if got.Primary != "sankey" {
 		t.Errorf("got primary %q, want %q", got.Primary, "sankey")
 	}
-	if diff := cmp.Diff(map[string]string{"sankey": "data/sankey.json"}, got.Projections); diff != "" {
-		t.Errorf("projection paths (-want +got):\n%s", diff)
-	}
+	// NO PROJECTIONS MAP IS ASSERTED, because there is none: app.js
+	// dereferenced CONFIG.projections nowhere, and a stem -> path map on the
+	// wire was a third name for a document the year already names by its
+	// column and the step by its schedule.
 	if got.SchemaVersion != 1 {
 		t.Errorf("got schema_version %d, want 1", got.SchemaVersion)
 	}

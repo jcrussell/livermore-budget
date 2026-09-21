@@ -3,6 +3,7 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"path"
 	"regexp"
 	"slices"
 	"sort"
@@ -146,6 +147,21 @@ type ColumnIndex struct {
 func (ix ColumnIndex) Stem(column, schedule string) (string, bool) {
 	stem, ok := ix.schedules[column][schedule]
 	return stem, ok
+}
+
+// PublishedPath is where a reader fetches a built document: the column it
+// folded into, or its own file under data/ where it folded into none.
+//
+// ONE ANSWER FOR THREE QUESTIONS -- which files the write plan lays down,
+// which the footer's disclosure links, and which the caveats page points a
+// document at. Three spellings of it would be three chances for the site to
+// link a path it does not write, which is exactly what a reader meets as a
+// 404 and no test sees.
+func (ix ColumnIndex) PublishedPath(stem string) string {
+	if column, folded := ix.Column(stem); folded {
+		return column
+	}
+	return path.Join(dataDir, stem+".json")
 }
 
 // Column answers which column a built document folded into, and whether it

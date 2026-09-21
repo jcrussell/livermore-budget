@@ -22,15 +22,18 @@ import (
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
 )
 
-// structurePath is where the structure for one fiscal year lands: at the site
-// root beside the store's own downloads, and NOT under data/, which is the
-// projections' directory and one file per projection by contract.
+// structurePath names the structure document for one fiscal year.
+//
+// THE SITE DOES NOT SHIP IT -- see result.Structure -- so this is the name the
+// part is keyed by rather than a path a reader fetches. It is kept in the
+// shape of one because the day something reads the lattice it will want it
+// served, and the partition is the reason that would be cheap.
 //
 // ONE FILE PER YEAR, AND NO MONOLITH. A year is the one dimension the reader
 // already switches on, so a part is the whole of what one column of the site
 // reads, and a client that fetches the year on screen fetches nothing it will
 // not draw. structure.PartitionByYear says why that is not per-interaction
-// slicing, and TestTheStructureShipsOnTheAssetChannelAndIsMeasured re-measures
+// slicing, and TestTheStructureIsPartitionedByYearAndIsMeasured re-measures
 // each part against the whole under -v.
 func structurePath(year int) string {
 	return fmt.Sprintf("structure-%d.json", year)
@@ -74,9 +77,7 @@ func buildAll(repoRoot string) (result, error) {
 	if err != nil {
 		return result{}, err
 	}
-	for path, b := range parts {
-		assets.Files[path] = b
-	}
+
 	// THE RUNG ANSWER SHIPS TOO. Go walks every rung of the spine to build
 	// it, and until it shipped the walk's only reader was
 	// the test that pinned testdata/rungs.json to it; the client drew each
@@ -97,6 +98,7 @@ func buildAll(repoRoot string) (result, error) {
 	assets.Files[rungsServedPath] = served
 	return result{
 		Projections: projections,
+		Structure:   parts,
 		Files:       assets.Files,
 		PageIndex:   assets.pageIndex(),
 		Downloads:   assets.downloads(),

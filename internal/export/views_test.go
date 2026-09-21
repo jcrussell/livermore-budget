@@ -196,42 +196,55 @@ func TestEachViewsFooterCitesItsOwnSources(t *testing.T) {
 //
 // This crosses the client's own config against every document it can fetch, which
 // is the set of paths the browser will actually construct.
+//
+// THE FETCHABLE SET IS THE YEARS' COLUMNS. It was CONFIG.projections, which no
+// longer exists because app.js dereferenced it nowhere; the documents the
+// browser really opens are the column its year landed on, and every schedule
+// inside it is one a drill can select. So the walk is one layer deeper and
+// covers strictly more: a source cited by a schedule the client could reach
+// only by opening a node was never in the old set.
 func TestEveryCitationTheClientComposesResolves(t *testing.T) {
 	dir := twoViews(t, 127, 128)
 	cfg := clientConfigOf(t, readFile(t, dir, "index.html"))
 
 	checked := 0
-	for stem, rel := range cfg.Projections {
-		var doc struct {
-			Metadata struct {
+	for _, y := range cfg.Years {
+		var column struct {
+			Schedules map[string]struct {
 				Sources []struct {
 					DocID string `json:"doc_id"`
 					Pages []int  `json:"pages"`
 				} `json:"sources"`
-			} `json:"metadata"`
+			} `json:"schedules"`
 		}
-		raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
+		raw, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(y.Path)))
 		if err != nil {
-			t.Fatalf("the client can fetch %s at %s, and it is not there: %v", stem, rel, err)
+			t.Fatalf("the client fetches year %s at %s, and it is not there: %v", y.Stem, y.Path, err)
 		}
-		if err := json.Unmarshal(raw, &doc); err != nil {
-			t.Fatalf("decode %s: %v", stem, err)
+		if err := json.Unmarshal(raw, &column); err != nil {
+			t.Fatalf("decode %s: %v", y.Path, err)
 		}
-		for _, src := range doc.Metadata.Sources {
-			d, ok := cfg.Docs[src.DocID]
-			if !ok {
-				// Not a failure of this check: the client skips a document it
-				// has no entry for, so no link is composed. Recorded so a
-				// reader knows the loop did not silently cover nothing.
-				t.Logf("%s cites %s, which the client config does not describe", stem, src.DocID)
-				continue
-			}
-			for _, p := range src.Pages {
-				checked++
-				href := d.PageTextBase + fmt.Sprintf("p%04d.txt", p)
-				if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(href))); err != nil {
-					t.Errorf("the client would compose %q for %s page %d, and it is not in "+
-						"the output: %v", href, src.DocID, p, err)
+		if len(column.Schedules) == 0 {
+			t.Fatalf("%s carries no schedule, so this loop covers nothing", y.Path)
+		}
+		for key, sched := range column.Schedules {
+			for _, src := range sched.Sources {
+				d, ok := cfg.Docs[src.DocID]
+				if !ok {
+					// Not a failure of this check: the client skips a document
+					// it has no entry for, so no link is composed. Recorded so
+					// a reader knows the loop did not silently cover nothing.
+					t.Logf("%s's %s schedule cites %s, which the client config does not describe",
+						y.Path, key, src.DocID)
+					continue
+				}
+				for _, p := range src.Pages {
+					checked++
+					href := d.PageTextBase + fmt.Sprintf("p%04d.txt", p)
+					if _, err := os.Stat(filepath.Join(dir, filepath.FromSlash(href))); err != nil {
+						t.Errorf("the client would compose %q for %s page %d, and it is not in "+
+							"the output: %v", href, src.DocID, p, err)
+					}
 				}
 			}
 		}
@@ -1457,8 +1470,11 @@ func TestTheRungAnswerIsNamedToThePageThatCanUseIt(t *testing.T) {
 
 // clientConfigOf decodes window.FISC_CONFIG out of a rendered page.
 type clientCfg struct {
-	Projections map[string]string `json:"projections"`
-	Docs        map[string]struct {
+	Years []struct {
+		Stem string `json:"stem"`
+		Path string `json:"path"`
+	} `json:"years"`
+	Docs map[string]struct {
 		PageTextBase string `json:"page_text_base"`
 	} `json:"docs"`
 	RenderTiers []int  `json:"render_tiers"`

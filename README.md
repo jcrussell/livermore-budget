@@ -84,9 +84,10 @@ make site                           # build the static site into dist/
 python3 -m http.server -d dist 8000 # then open http://localhost:8000
 ```
 
-The page fetches `data/sankey.json` rather than inlining it, so it needs a
-server; a provenance file you cannot `curl` on its own is not much of an audit
-trail.
+The page fetches `fy2026-adopted.json` — one document per published column,
+carrying every schedule that column prints — rather than inlining it, so it
+needs a server; a provenance file you cannot `curl` on its own is not much of an
+audit trail.
 
 ```bash
 ./bin/fisc build      # mappings/ + data/extracted/ -> facts/facts.jsonl

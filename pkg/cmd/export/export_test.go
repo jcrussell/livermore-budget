@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -201,7 +202,10 @@ func TestExportRunWritesASiteAndSaysHowToServeIt(t *testing.T) {
 		t.Fatalf("exportRun: %v", err)
 	}
 
-	for _, rel := range []string{"index.html", "app.js", "style.css", ".nojekyll", "vendor/d3.min.js", "data/sankey.json"} {
+	// THE COLUMN AND NOT data/sankey.json: a document stating a fiscal year
+	// and a basis is published as its column and not also as itself.
+	for _, rel := range []string{"index.html", "app.js", "style.css", ".nojekyll",
+		"vendor/d3.min.js", "fy2026-adopted.json"} {
 		if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(rel))); err != nil {
 			t.Errorf("missing %s: %v", rel, err)
 		}
@@ -668,7 +672,14 @@ func TestExportRunCleanEmptiesItsOwnOutput(t *testing.T) {
 	if err := exportRun(opts); err != nil {
 		t.Fatalf("first export: %v", err)
 	}
+	// SEEDED IN A SUBDIRECTORY, because that is the case --clean has to reach
+	// and a file at the root would not prove it. data/ need not exist: the
+	// fixture's one projection folds into a column, so nothing was written
+	// under it.
 	stale := filepath.Join(opts.OutputDir, "data", "gone.json")
+	if err := os.MkdirAll(filepath.Dir(stale), 0o750); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
 	if err := os.WriteFile(stale, []byte("{}"), 0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
@@ -906,19 +917,23 @@ func keys(m map[string][]byte) []string {
 	return out
 }
 
-// TestTheCommittedStemsAreUnchanged pins the published paths as literal strings,
+// TestTheCommittedStemsAreUnchanged pins the DOCUMENT NAMES as literal strings,
 // which is fisc-rmx's own acceptance criterion and the only thing that makes the
 // naming rule safe to change again. They are TYPED rather than generated, which
 // is the whole of the test: a list derived from the same rule under test would
 // agree with a rename by construction.
 //
-// docs/sankey-contract.md promises data/sankey.json, and
-// docs/revenue-trends-contract.md promises data/revenue-trends.json. The year
-// radio's value is the stem (site/app.js resolves the clicked year by
-// years.find(y => y.stem === target.value)), and every link anyone has ever made
-// to the site is one of these paths. A rule that renamed them would break the
-// contracts and the toggle at once, silently, because every internal consumer
-// would rename with it.
+// A STEM IS AN INTERNAL IDENTITY AND MOSTLY NOT A PUBLISHED PATH. Sixteen of
+// these nineteen fold into a column and are published as that column; three
+// state no fiscal year and ship as data/<stem>.json. What the stem still
+// determines everywhere is the schedule key -- scheduleKey inverts
+// project.PublishedStem -- and the year radio's value, which site/app.js
+// resolves by years.find(y => y.stem === target.value). A rename would move
+// both at once, silently, because every internal consumer would rename with it.
+//
+// THE PUBLISHED PATHS ARE PINNED SEPARATELY, by
+// TestTheSitePublishesOneFilePerColumnAndNothingTwice, which is the claim this
+// test used to be making and could not: it never read an export.
 func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -943,6 +958,70 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	sort.Strings(got)
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("stems mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// TestTheSitePublishesOneFilePerColumnAndNothingTwice pins what `fisc export`
+// lays down, as typed literals, and is the check the format change owes.
+//
+// NOTHING HELD THE SHIPPED SET BEFORE. The stem list above reads
+// buildProjections and never reaches an export, and the goldens compare
+// against the same in-memory map -- so a format change that regenerated them
+// was green by construction, and a file silently leaving or entering dist/
+// was a diff nobody read.
+//
+// TYPED AND NOT DERIVED, for the stem list's reason. Deriving the want from
+// ColumnsOf would agree with any change to ColumnsOf.
+//
+// SIXTEEN DOCUMENTS ARE HERE AS FOUR COLUMNS and three are here as
+// themselves, which is the whole distinction: revenue-trends, fund-balances
+// and changes-in-fund-balances state no fiscal year or basis, so there is no
+// column for them to be part of.
+func TestTheSitePublishesOneFilePerColumnAndNothingTwice(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	opts, _, _, _ := testOptions(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = buildAll
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	var got []string
+	walkErr := filepath.WalkDir(opts.OutputDir, func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, rerr := filepath.Rel(opts.OutputDir, p)
+		if rerr != nil {
+			return rerr
+		}
+		rel = filepath.ToSlash(rel)
+		// The fact shards and the extracted page text are their own channels,
+		// disclosed on their own panels and named by their own tests.
+		if strings.HasSuffix(rel, ".json") && !strings.HasPrefix(rel, "facts/") &&
+			!strings.HasPrefix(rel, "extracted/") && !strings.HasPrefix(rel, "provenance/") {
+			got = append(got, rel)
+		}
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatalf("walk: %v", walkErr)
+	}
+	sort.Strings(got)
+	want := []string{
+		"data/changes-in-fund-balances.json",
+		"data/fund-balances.json",
+		"data/revenue-trends.json",
+		"fy2024-actual.json",
+		"fy2025-revised.json",
+		"fy2026-adopted.json",
+		"fy2027-adopted.json",
+		"rungs.json",
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("the JSON the site publishes (-want +got):\n%s", diff)
 	}
 }
 

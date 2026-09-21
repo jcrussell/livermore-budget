@@ -16,8 +16,10 @@ mapping. The schedule titled "pp.168-169" publishes only p168's rows; see
 
 ## Where they go
 
-`<output>/data/<stem>.json`, beside `data/revenue-trends.json`. Each stem is its
-projection's `Name()` verbatim, for the trends contract's stated reason: a
+`<output>/data/<stem>.json`, beside `data/revenue-trends.json`. These three are
+the documents that state no fiscal year or basis, so they fold into no column
+and are published under names of their own. Each stem is its projection's
+`Name()` verbatim, for the trends contract's stated reason: a
 projection publishing one document spanning many columns must not go through
 `project.PublishedStem`, which would write byte-identical files under stems that
 lie about which year each covers.
