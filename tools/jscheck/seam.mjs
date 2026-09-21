@@ -93,6 +93,12 @@ export async function checks() {
     ["FiscStepDoc", "internal/export/page.go", "stepView"],
     ["FiscYear", "internal/export/page.go", "yearView"],
     ["FiscConfig", "internal/export/page.go", "clientConfig"],
+    // AND THE STEP DECLARATION, which is the one with a live defect behind it
+    // (fisc-kops): the json tag on DrillStep.Residual is the ONLY thing
+    // putting the residual on FISC_CONFIG, and both sides check the
+    // declaration while nothing checked the wire between them. Tagging it
+    // json:"-" left both Go packages and every jscheck module green.
+    ["FiscDrillStep", "internal/export/export.go", "DrillStep"],
   ]) {
     const app = loadApp();
     const declared = typedefProperties(app.source, type);

@@ -262,9 +262,16 @@
  *   opens every node at the tier
  * @property {number} from  the tier whose nodes open, in the chart on screen
  *   before they do
- * @property {string} [projection]  the document this step draws; absent means
- *   the same one as the step before
+ * @property {string} [projection]  the schedule this step draws, selected out
+ *   of the year's own column; absent means the same document as the step
+ *   before it
  * @property {number[]} tiers  the tier set drawn once one has
+ * @property {number[]} [keep]  the flank of the chart on screen that stays
+ *   drawn beside the opened node; absent means the step keeps none
+ * @property {number[]} [widen]  the tiers a fourth column buys, in the order
+ *   they are added
+ * @property {string} [noun]  what one mark of the opened tier is called, for
+ *   the words the page composes about it
  * @property {FiscTierCap[]} [caps]  per tier; a tier with none is drawn whole
  * @property {string} back  what the breadcrumb's return control says
  * @property {string} tail  the plural noun a capped aggregate is counted in
