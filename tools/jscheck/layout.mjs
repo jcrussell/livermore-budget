@@ -24,7 +24,7 @@
 // chart a reader sees. Pre-restack figures appear only where a check is about
 // what restackLinks itself does.
 
-import { loadApp, goldenGraph, spineConfig, stylesheet } from "./harness.mjs";
+import { loadApp, goldenGraph, spineConfig, stylesheet, plannedFetch, settle } from "./harness.mjs";
 import { openedWindow, openedWide, openedExpanded, openedAsShipped,
   everyOpenedView, COLUMNS } from "./drill.mjs";
 
@@ -415,7 +415,16 @@ function tightest(fits) {
 export async function checks() {
   // THE PAGE index.html SHIPS, NOT loadApp'S BARE DEFAULT: the config carries
   // the column order data.go declares, which is what alignFor reads.
-  const app = loadApp({ config: spineConfig() });
+  //
+  // AND IT DRAWS BEFORE ANYTHING IS MEASURED. nodeRank orders the fund column
+  // by the place the COLUMN gives each group, so an app that laid a document
+  // out without fetching one is an app ordering by a list it was never served
+  // -- every group ties and the column degenerates to size-descending, which
+  // is one of the alternatives measured below and would be reported as
+  // nodeRank's own number.
+  const app = loadApp({ config: spineConfig(), checkedStem: "sankey",
+    fetch: plannedFetch({ "data/sankey.json": { doc: goldenGraph() } }) });
+  await settle();
   const byRank = (a, b) => app.nodeRank(a) - app.nodeRank(b) || b.value - a.value;
 
   const graph = layout(app, byRank);
@@ -521,15 +530,22 @@ export async function checks() {
           "measures the aligner the page uses",
     },
     {
-      name: "the fund column is pinned to the palette's order",
+      name: "the fund column is pinned to the order the column shipped",
       ok: (() => {
         const drawn = graph.nodes.filter(app.isFundGroup)
           .sort((a, b) => a.y0 - b.y0).map((n) => n.id);
-        return JSON.stringify(drawn) ===
-               JSON.stringify(app.FUND_ORDER.filter((f) => drawn.includes(f)));
+        // THE SERVED LIST FILTERED BY WHAT IS DRAWN, and the filter is what
+        // makes this an equality rather than a subset test: every group the
+        // chart lays out has to appear, in the served order, with nothing
+        // between them. A group the packager's sequence does not name is at
+        // the END of that list, so this fails if the page draws it anywhere
+        // else -- which is the direction an indexOf that answers -1 breaks in.
+        const served = app.fundGroups().map((g) => g.id);
+        return served.length > 0 && JSON.stringify(drawn) ===
+               JSON.stringify(served.filter((f) => drawn.includes(f)));
       })(),
-      detail: "fund groups run top to bottom in FUND_ORDER, which is what " +
-              "supplying .nodeSort() at all is for",
+      detail: "fund groups run top to bottom in the order internal/export's " +
+              "fundGroupsOf shipped, which is what supplying .nodeSort() at all is for",
     },
     {
       name: "restackLinks moves ribbons without resizing them",

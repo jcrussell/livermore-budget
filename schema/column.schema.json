@@ -9,6 +9,7 @@
     "column",
     "nodes",
     "tiers",
+    "fund_groups",
     "schedules"
   ],
   "additionalProperties": false,
@@ -75,7 +76,25 @@
             "minimum": 0
           },
           "role": {
-            "type": "string"
+            "description": "What this node is for, so a client never has to parse its id. THE DECLARED SET AND NOT THE OBSERVED ONE: internal/project declares these constants and pkg/cmd/export re-spells five of them in its step declarations, so this enum is the one list all three are held to. A role present in no published column today is still valid -- writing the enum from the corpus is the mistake docs/schema-contracts.md records about `basis` and `units`.",
+            "type": "string",
+            "enum": [
+              "department",
+              "fund",
+              "fund_balance_contribution",
+              "fund_balance_draw",
+              "fund_group",
+              "general_fund",
+              "object_category",
+              "reserve_increase",
+              "revenue_line",
+              "revenue_source",
+              "transfer_destination",
+              "transfer_in",
+              "transfer_out",
+              "transfer_source",
+              "whole_department"
+            ]
           },
           "derived": {
             "type": "boolean"
@@ -107,6 +126,30 @@
               "type": "integer",
               "minimum": 0
             }
+          }
+        }
+      }
+    },
+    "fund_groups": {
+      "description": "The fund groups this column draws, in the order the page lays the fund column out. AN ORDERED LIST AND NOT A CLOSED SET: which groups exist is the document's, the order is the packager's, and neither is enumerated here. data/funds.yaml grows a fund type without asking this file, so a schema naming the ids it expects would refuse a correct column the first time the registry grew. site/app.js held both as six-element literals that could not see a seventh; this is what replaced them.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "slug"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "The fund-group node's id, as it appears in the nodes table.",
+            "type": "string",
+            "minLength": 1
+          },
+          "slug": {
+            "description": "The fund type, which site/style.css binds a hue to. Shipped rather than cut out of the id by the client, for the reason `role` exists: a client that parses an id is a second implementation of a vocabulary this side owns.",
+            "type": "string",
+            "minLength": 1
           }
         }
       }

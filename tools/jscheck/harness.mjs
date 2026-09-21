@@ -567,10 +567,10 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
     storage,
     // getComputedStyle ANSWERS FROM THE SHIPPED STYLESHEET, and that is not
     // polish. While it returned "#000000" for every name it was asked, it
-    // returned a truthy colour for properties that DO NOT EXIST -- so renaming
-    // every entry of FUND_COLOR_VAR to a name appearing nowhere in style.css,
-    // which in a browser paints every ribbon and every legend swatch with no
-    // colour at all, left the whole suite green. A stub that answers a question
+    // returned a truthy colour for properties that DO NOT EXIST -- so having
+    // fundColorVar compose a name appearing nowhere in style.css, which in a
+    // browser paints every ribbon and every legend swatch with no colour at
+    // all, left the whole suite green. A stub that answers a question
     // it was never asked is the fisc-dn9 shape: it does not fail, it stops
     // testing.
     getComputedStyle: () => ({
@@ -622,7 +622,8 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
  * adds no behaviour: it reads bindings that already exist.
  */
 const NAMES = [
-  "FUND_ORDER", "nodeRank", "restackLinks", "isFundGroup",
+  "fundGroups", "fundGroupPlace", "fundColorVar",
+  "nodeRank", "restackLinks", "isFundGroup",
   "paintYearWords", "wireYears", "showYear", "maybeEl", "SCHEMA_VERSION",
   "NODE_WIDTH", "NODE_PADDING", "CHART_HEIGHT", "LABEL_GUTTER",
   // chartWidth REPLACED THE CHART_WIDTH CONSTANT, and layout.mjs and fold.mjs
@@ -1736,7 +1737,64 @@ export function columnOf(schedules, col) {
     byTier.get(n.tier).push(i);
   });
   out.tiers = [...byTier.keys()].sort((a, b) => a - b).map((t) => ({ tier: t, nodes: byTier.get(t) }));
+  out.fund_groups = fundGroupsOf(table);
   return out;
+}
+
+/**
+ * The role a fixture's node carries, for an id whose form implies one.
+ *
+ * A FIXTURE STANDS IN FOR THE PACKAGER AND HAS TO WRITE WHAT IT WOULD.
+ * internal/project puts role: "fund_group" on every node it gives a
+ * `fund-group/` id, and site/app.js's isFundGroup reads the role rather than
+ * the prefix -- so a fixture spelling the id and leaving the role empty is a
+ * document no export could produce, and an arm built on one is asking what the
+ * page does with a file it will never be served.
+ *
+ * @param {string} id
+ * @returns {string}
+ */
+export function roleOf(id) {
+  return id.startsWith("fund-group/") ? "fund_group" : "";
+}
+
+/**
+ * The declared fund-column order, read out of the packager rather than spelled
+ * again here.
+ *
+ * READ AND NOT COPIED, FOR RUNGS_PATH's REASON. This sequence is a measured CVD
+ * result, and a copy here would let the two drift while every arm that orders a
+ * fund column kept passing against the copy.
+ */
+export const FUND_GROUP_ORDER = (() => {
+  const src = readFileSync(join(repoRoot, "internal", "export", "column.go"), "utf8");
+  const m = /\nvar fundGroupDisplayOrder = \[\]string\{([^}]*)\}/.exec(src);
+  if (!m) throw new Error("internal/export/column.go declares no fundGroupDisplayOrder");
+  const slugs = [...m[1].matchAll(/"([^"]+)"/g)].map((q) => q[1]);
+  if (!slugs.length) throw new Error("internal/export/column.go's fundGroupDisplayOrder is empty");
+  return slugs;
+})();
+
+/**
+ * The fund groups a node table holds, ordered as internal/export's fundGroupsOf
+ * orders them: the declared sequence first, then anything else by id.
+ *
+ * A NODE TABLE AND NOT A DOCUMENT, because this is what encodeColumn writes
+ * `fund_groups` from. A fixture whose fund-group node carries no `role` yields
+ * none -- which is the point: a published column has never carried one, and an
+ * arm built on a node the packager could not have written is an arm about a
+ * document that cannot reach a reader.
+ */
+export function fundGroupsOf(table) {
+  const place = (slug) => {
+    const i = FUND_GROUP_ORDER.indexOf(slug);
+    return i >= 0 ? i : FUND_GROUP_ORDER.length;
+  };
+  return table
+    .filter((n) => n.role === "fund_group" && n.id.includes("/"))
+    .map((n) => ({ id: n.id, slug: n.id.slice(n.id.indexOf("/") + 1) }))
+    .sort((a, b) => place(a.slug) - place(b.slug) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
 /**

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/schema"
 )
@@ -24,6 +25,7 @@ type ColumnDoc struct {
 	Column        ColumnKey              `json:"column"`
 	Nodes         []ColumnNode           `json:"nodes"`
 	Tiers         []ColumnTier           `json:"tiers"`
+	FundGroups    []ColumnFundGroup      `json:"fund_groups"`
 	Schedules     map[string]ColumnSched `json:"schedules"`
 }
 
@@ -51,6 +53,19 @@ type ColumnSchedNode struct {
 	ConstraintTier string `json:"constraint_tier,omitempty"`
 	Rationale      string `json:"rationale,omitempty"`
 	SourceNote     string `json:"source_note,omitempty"`
+}
+
+// ColumnFundGroup is one fund group this column draws, in the order the page
+// lays the fund column out.
+//
+// THE SLUG IS SHIPPED RATHER THAN CUT OUT OF THE ID BY THE CLIENT. site/app.js
+// binds a hue per fund group, and the binding lives in site/style.css where
+// every other colour does; the slug is the key it looks one up by. Handing the
+// client the id alone would have it parse `fund-group/permanent` to reach the
+// custom property, which is the id-parsing [ColumnNode.Role] exists to remove.
+type ColumnFundGroup struct {
+	ID   string `json:"id"`
+	Slug string `json:"slug"`
 }
 
 // ColumnTier is the reader's left-to-right. A tier with no node is absent.
@@ -289,6 +304,11 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 	out := make(map[string]ColumnDoc, len(byColumn))
 	for key, col := range byColumn {
 		col.Tiers = tiersOf(col.Nodes)
+		groups, err := fundGroupsOf(col.Nodes)
+		if err != nil {
+			return nil, ColumnIndex{}, fmt.Errorf("column %s: %w", key, err)
+		}
+		col.FundGroups = groups
 		out[key] = *col
 	}
 	return out, ix, nil
@@ -334,6 +354,79 @@ func tiersOf(nodes []ColumnNode) []ColumnTier {
 		out = append(out, ColumnTier{Tier: t, Nodes: at[t]})
 	}
 	return out
+}
+
+// roleFundGroup is [ColumnNode.Role] on a node that IS a fund group.
+//
+// Spelled here because this package reads projections as bytes and imports
+// neither internal/project, which composes the value, nor pkg/cmd/export,
+// which re-spells it in its step declarations. TestRoleFundGroupIsOneOfThe
+// SchemasRoles holds this copy to schema/column.schema.json's `role` enum,
+// which is the one list all three are checked against.
+const roleFundGroup = "fund_group"
+
+// fundGroupDisplayOrder is the fund column top to bottom, by fund-type slug,
+// and with it the categorical slot each group wears.
+//
+// THIS ORDER IS MEASURED, NOT CHOSEN FOR LOOKS. Ribbons stack at a node in
+// column order, so the fund colours that touch are the consecutive pairs of
+// whichever groups are present at that node. Over the pairs that actually
+// occur in this graph, this ordering's worst pair is CVD dE 9.1 light / 8.4
+// dark (target 8) and normal-vision dE 19.6 / 19.3 (floor 15). The obvious
+// orderings do not clear that: sorting the column by size drops the worst dark
+// pair to 6.9, and one ordering collapses it to 1.6. Re-run the dataviz
+// validator over the touching pairs before changing this. fisc-y0k.
+//
+// IT IS A PREFERENCE AND NOT A MEMBERSHIP LIST. data/funds.yaml grows a fund
+// type without asking this file, and [fundGroupsOf] puts one this sequence
+// does not name AFTER the ones it does, in id order, rather than dropping it
+// or refusing the column. Six is the palette's capacity, not the world's:
+// site/style.css declares six hues and a seventh group draws --muted, which is
+// a rendering limit and stays on that side.
+var fundGroupDisplayOrder = []string{
+	"internal-service",
+	"capital",
+	"general",
+	"special-revenue",
+	"enterprise",
+	"debt-service",
+}
+
+// fundGroupsOf is the fund groups this column draws, ordered for the page.
+//
+// The client reads this instead of holding a list of its own: which groups
+// exist is the document's and the order is the packager's, and site/app.js
+// spelled both as six-element literals that could not see a seventh.
+func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
+	out := []ColumnFundGroup{}
+	for _, n := range nodes {
+		if n.Role != roleFundGroup {
+			continue
+		}
+		// An id form is read by cutting at the FIRST slash, which is the id
+		// grammar internal/project composes these under. A fund group whose id
+		// carries no form is refused rather than shipped with the whole id as
+		// its slug, which would send the client looking up a custom property
+		// no stylesheet declares and draw it muted with no other symptom.
+		cut := strings.Index(n.ID, "/")
+		if cut < 0 || cut == len(n.ID)-1 {
+			return nil, fmt.Errorf("node %q is role %s and its id names no fund type", n.ID, roleFundGroup)
+		}
+		out = append(out, ColumnFundGroup{ID: n.ID, Slug: n.ID[cut+1:]})
+	}
+	place := func(g ColumnFundGroup) int {
+		if i := slices.Index(fundGroupDisplayOrder, g.Slug); i >= 0 {
+			return i
+		}
+		return len(fundGroupDisplayOrder)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if p, q := place(out[i]), place(out[j]); p != q {
+			return p < q
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out, nil
 }
 
 // encodeColumn renders one column and refuses bytes that do not match the

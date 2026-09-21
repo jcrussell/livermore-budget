@@ -337,39 +337,6 @@ const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
 const SCHEMA_VERSION = 1;
 
 /**
- * The fund-group column, top to bottom, and with it the categorical slot each
- * fund group wears (position 1 gets slot 1, and so on — see style.css).
- *
- * This order is measured, not chosen for looks. Ribbons stack at a node in
- * column order, so the fund colours that touch are the consecutive pairs of
- * whichever funds are present at that node. Over the pairs that actually
- * occur in this graph, this ordering's worst pair is CVD dE 9.1 light / 8.4
- * dark (target 8) and normal-vision dE 19.6 / 19.3 (floor 15). The obvious
- * orderings do not clear that: sorting the column by size drops the worst
- * dark pair to 6.9, and one ordering collapses it to 1.6. Re-run the dataviz
- * validator over the touching pairs before changing this.
- * @type {string[]}
- */
-const FUND_ORDER = [
-  "fund-group/internal-service",
-  "fund-group/capital",
-  "fund-group/general",
-  "fund-group/special-revenue",
-  "fund-group/enterprise",
-  "fund-group/debt-service",
-];
-
-/** Fund group id -> the CSS custom property holding its hue. */
-const FUND_COLOR_VAR = {
-  "fund-group/internal-service": "--fund-internal-service",
-  "fund-group/capital": "--fund-capital",
-  "fund-group/general": "--fund-general",
-  "fund-group/special-revenue": "--fund-special-revenue",
-  "fund-group/enterprise": "--fund-enterprise",
-  "fund-group/debt-service": "--fund-debt-service",
-};
-
-/**
  * The node tiers this page draws, coarsest first; empty draws the document as
  * it stands.
  *
@@ -667,11 +634,51 @@ function cssVar(name) {
 }
 
 /**
+ * The fund groups the column on screen draws, in the order Go laid them out.
+ *
+ * NOT A CONSTANT IN THIS FILE, because the set is open. data/funds.yaml
+ * declares seven fund types and fy2024-actual publishes all seven, so any list
+ * held here would be a closed set over an open one. internal/export's
+ * fundGroupsOf orders whatever the column holds and puts a group its sequence
+ * does not name last, so a type the registry grows arrives here in a
+ * determined place rather than nowhere.
+ *
+ * @returns {{id: string, slug: string}[]}
+ */
+function fundGroups() {
+  return (column && Array.isArray(column.fund_groups)) ? column.fund_groups : [];
+}
+
+/**
+ * A fund group's place in the drawn order; past the end for one the column
+ * does not carry.
+ *
+ * ONE RULE FOR TWO CALLERS, which is the whole of what it is for. nodeRank and
+ * buildLegend both order by this, and an unplaced group has to land in the
+ * same place in each: last. Two spellings of the answer put it last in the
+ * legend and first in the fund column, ahead of every group the palette knows,
+ * on one chart. fisc-zojk.
+ *
+ * @param {string} id
+ * @returns {number}
+ */
+function fundGroupPlace(id) {
+  const groups = fundGroups();
+  const i = groups.findIndex((g) => g.id === id);
+  return i >= 0 ? i : groups.length;
+}
+
+/**
  * @param {FiscNode | LaidNode} node
  * @returns {boolean}
  */
 function isFundGroup(node) {
-  return node.id.startsWith("fund-group/");
+  // THE ROLE AND NOT THE ID. internal/project/sankey.go declares the role
+  // vocabulary as the thing that says what a node is for "without the client
+  // parsing its id", and this read `id.startsWith("fund-group/")` against it.
+  // schema/column.schema.json states the enum, so the value is held to one
+  // list rather than to a prefix two languages spell.
+  return node.role === "fund_group";
 }
 
 /**
@@ -735,8 +742,7 @@ function linkColor(link) {
     : isFundGroup(link.target) ? link.target.id
     : source === target ? source
     : "";
-  const name = /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[group];
-  return name ? cssVar(name) : cssVar("--muted");
+  return cssVar(fundColorVar(group));
 }
 
 /**
@@ -753,17 +759,27 @@ function nodeColor(node) {
  * Spelled once because nodeColor and the legend swatch must agree, or the
  * legend names a mark by a colour the chart does not draw it in.
  *
+ * COMPOSED FROM THE SLUG THE COLUMN SHIPS, not from a map in this file and not
+ * by cutting the id up here. site/style.css declares one custom property per
+ * fund type and that is where a hue belongs; the palette's CAPACITY is this
+ * side's limit, so a group style.css has no hue for resolves to "" and takes
+ * --muted -- which is what a seventh fund group draws today, by construction
+ * rather than by a missing entry in a literal.
+ *
  * @param {string} id
  * @returns {string}
  */
 function fundColorVar(id) {
-  return /** @type {Record<string,string>} */ (FUND_COLOR_VAR)[id] || "--muted";
+  const group = fundGroups().find((g) => g.id === id);
+  if (!group) return "--muted";
+  const name = "--fund-" + group.slug;
+  return cssVar(name) ? name : "--muted";
 }
 
 /**
  * Sort key inside a column: where in the fund column this node's money sits.
  *
- * A fund group is simply its own place in FUND_ORDER. Everything else takes
+ * A fund group is simply its own place in the drawn order. Everything else takes
  * the value-weighted mean position of the fund groups it touches, so a node
  * comes to rest opposite the funds it actually feeds or draws on. That is the
  * barycentre heuristic, and it is roughly what d3 would compute for itself if
@@ -801,8 +817,11 @@ function fundColorVar(id) {
  * @returns {number}
  */
 function nodeRank(node) {
-  const fund = FUND_ORDER.indexOf(node.id);
-  if (fund >= 0) return fund;
+  // THE SHARED PLACE RULE AND NOT indexOf. A group the column carries and the
+  // packager's sequence does not name scored -1 here and sorted to the TOP of
+  // the fund column, ahead of internal-service, while buildLegend put the same
+  // group last. fundGroupPlace is the one answer both now read.
+  if (isFundGroup(node)) return fundGroupPlace(node.id);
 
   let weight = 0;
   let place = 0;
@@ -813,9 +832,10 @@ function nodeRank(node) {
     // unchanged. On the drill-down the ends are funds and departments, and
     // without the walk every one of them scores -1 and the column degenerates
     // to the size ordering measured as the worst of the four.
-    const at = FUND_ORDER.indexOf(fundGroupOf(other));
+    const group = fundGroupOf(other);
     // A node in no fund group is ignored rather than counted as position zero.
-    if (at < 0) continue;
+    if (!group) continue;
+    const at = fundGroupPlace(group);
     place += at * l.value;
     weight += l.value;
   }
@@ -5079,16 +5099,12 @@ function buildLegend() {
   const legend = el("legend");
   legend.replaceChildren();
   if (drilled.length) return;
-  // THE DOCUMENT'S GROUPS, ORDERED BY THE PALETTE, not the palette's filtered
-  // by the document: FUND_ORDER holds six and data/funds.yaml declares seven, so
-  // a loop over FUND_ORDER drops a mark the chart draws. One the palette does
-  // not know sorts last and takes --muted, which is what nodeColor gives it.
-  const place = (/** @type {FiscNode} */ n) => {
-    const i = FUND_ORDER.indexOf(n.id);
-    return i >= 0 ? i : FUND_ORDER.length;
-  };
+  // THE DOCUMENT'S GROUPS, IN THE ORDER GO SHIPPED, not a palette in this file
+  // filtered by the document. A group the packager's sequence does not name
+  // sorts last and takes --muted, which is what nodeColor gives it.
   const groups = projection.nodes.filter(isFundGroup).slice()
-    .sort((a, b) => place(a) - place(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    .sort((a, b) => fundGroupPlace(a.id) - fundGroupPlace(b.id) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   for (const node of groups) {
     const button = document.createElement("button");
     button.type = "button";

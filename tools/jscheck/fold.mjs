@@ -17,6 +17,7 @@
 
 import {
   loadApp, goldenGraph, goldenFundFlows, goldenFundFlows2027, plannedFetch, settle, spineConfig,
+  roleOf,
 } from "./harness.mjs";
 // DRILLED IS drill.mjs's COLUMN SHAPE, not this file's: openedWide drives the
 // page through a real drill and needs the fixture that stands one up.
@@ -180,7 +181,7 @@ function appDrawing(tiers, fetch, extra) {
  */
 function miniature() {
   const node = (id, tier, parent) => ({
-    id, label: id, tier, parent, constraint_tier: "", role: "",
+    id, label: id, tier, parent, constraint_tier: "", role: roleOf(id),
     derived: false, rationale: "", source_note: "",
   });
   // locators default to one page of doc "d" so every synthetic link is shaped
@@ -264,29 +265,53 @@ function attempt(fn) {
  * drill.mjs pins, so the spine's overview is where the palette's order meets
  * the DOM and the only place buildLegend's output can be read.
  */
-async function spineLegend(doc) {
+async function spineLegend(doc, dropGroup) {
   // ON THE FIRST YEAR, SAID RATHER THAN INHERITED. The page's own default is
   // the NEWEST year, and this arm plans one document and reads the legend the
   // draw built -- opening on a year whose document is unplanned refuses the
   // fetch and leaves the legend empty, which would read as a palette defect.
-  const app = loadApp({ config: spineConfig(), checkedStem: "sankey",
-    fetch: plannedFetch({ "data/sankey.json": { doc: doc || goldenGraph() } }) });
+  const planned = plannedFetch({ "data/sankey.json": { doc: doc || goldenGraph() } });
+  // A COLUMN WHOSE fund_groups OMITS A GROUP ITS NODE TABLE CARRIES, which is
+  // the one shape the client cannot check for itself: it is served a list and
+  // a node table and has no way to know the first is short. internal/export
+  // builds the list FROM the table, so this is unreachable from that packager
+  // -- and it is exactly the state a future one would reach by filtering, so
+  // what the page does with it is a claim rather than an accident.
+  const fetch = dropGroup
+    ? (/** @type {string} */ path) => planned(path).then((res) => {
+      if (!/^fy\d{4}-[a-z]+\.json$/.test(path)) return res;
+      return res.json().then((col) => Object.assign({}, res, {
+        json: () => Promise.resolve(Object.assign({}, col, {
+          fund_groups: col.fund_groups.filter((g) => g.id !== dropGroup),
+        })),
+      }));
+    })
+    : planned;
+  const app = loadApp({ config: spineConfig(), checkedStem: "sankey", fetch });
   await settle();
   const legend = app.dom.byId.get("legend");
-  if (!legend) return { ids: [], vars: [] };
+  if (!legend) return { ids: [], vars: [], served: [] };
   return {
     ids: legend.children.map((b) => b.dataset.node),
     vars: legend.children.map((b) => (b.children[0] || {}).dataset?.var),
+    // Where the fund column actually put each group, top to bottom, which is
+    // nodeRank's answer rather than buildLegend's.
+    column: (app.projection ? app.layOut(app.shapeFor(app.projection)).nodes : [])
+      .filter(app.isFundGroup).sort((a, b) => a.y0 - b.y0).map((n) => n.id),
+    // THE ORDER THE COLUMN SHIPPED, read off the app that drew this legend and
+    // not off a second app: what the page is held to is the list it was
+    // actually served, and an app that fetched nothing carries none.
+    served: app.fundGroups().map((g) => g.id),
   };
 }
 
 /**
- * The spine with a fund group the palette has no hue for.
+ * The spine with a fund group site/style.css has no hue for.
  *
- * data/funds.yaml declares seven fund types and FUND_ORDER holds six;
- * fund-flows-2024-actual.json and department-funding-2024-actual.json carry
- * fund-group/permanent, and no view opens either, so this is the only way to
- * ask what the page does with one.
+ * data/funds.yaml declares seven fund types and the stylesheet declares six
+ * hues; fund-flows-2024-actual.json and department-funding-2024-actual.json
+ * carry fund-group/permanent, and no view opens either, so this is the only
+ * way to ask what the page does with one.
  */
 function spineWithASeventhGroup() {
   const doc = goldenGraph();
@@ -299,9 +324,39 @@ function spineWithASeventhGroup() {
   return doc;
 }
 
+/**
+ * The spine with a fund group whose id is not under `fund-group/`.
+ *
+ * WHAT IT SEPARATES: `role` and the id prefix agree on every node every
+ * published document carries, so nothing else in this tree can tell which of
+ * the two the page reads. internal/project/sankey.go declares the role
+ * vocabulary as what says "what a node is for without the client parsing its
+ * id", and schema/column.schema.json states the enum -- so the role is the
+ * answer, and a document that disagrees with the prefix is the only question
+ * that gets a different answer from each.
+ *
+ * The packager derives a slug by cutting at the first slash either way, so
+ * this group's hue is looked up as --fund-permanent exactly as the one below
+ * it is, and is muted for the same reason: no stylesheet declares it.
+ */
+function spineWithAnOddlyNamedGroup() {
+  const doc = goldenGraph();
+  const model = doc.nodes.find((n) => n.id === "fund-group/debt-service");
+  doc.nodes.push(Object.assign({}, model, {
+    id: "fund-type/permanent", label: "Permanent Funds",
+  }));
+  const link = doc.links.find((l) => l.target === model.id);
+  doc.links.push(Object.assign({}, link, { target: "fund-type/permanent" }));
+  return doc;
+}
+
 export async function checks() {
-  const legend = (await spineLegend()).ids;
+  const spineKeys = await spineLegend();
+  const legend = spineKeys.ids;
   const seventh = await spineLegend(spineWithASeventhGroup());
+  // The served list short by one, with the node table unchanged.
+  const short = await spineLegend(undefined, "fund-group/general");
+  const odd = await spineLegend(spineWithAnOddlyNamedGroup());
   const whole = loadApp();
   // THE SPINE AS index.html DECLARES IT, which `whole` is not: that one carries
   // no tier set, which is the "drawn whole" state the unfolded fund-flows
@@ -397,9 +452,9 @@ export async function checks() {
       // THE INHERITANCE IS DORMANT AT THE TIER SET THE PAGE SHIPS, and this is
       // the check that keeps it honest rather than merely present. At {0,2,4}
       // every folded link already has a fund-group END, so linkColor and
-      // nodeRank never reach the parent walk: reverting nodeRank to
-      // FUND_ORDER.indexOf(other.id) leaves every other check in this tree
-      // green. Measured, 2026-08-28.
+      // nodeRank never reach the parent walk: having nodeRank place the
+      // neighbour itself rather than the group above it leaves every other
+      // check in this tree green. Measured, 2026-08-28.
       //
       // It is not dead code -- it is what the fold's re-pointed parents are
       // FOR, and the moment tier 5 is drawn every department-to-object link
@@ -605,29 +660,74 @@ export async function checks() {
     {
       // READ OFF THE PAGE, NOT DERIVED FROM THE FOLD: main() drew the spine and
       // buildLegend built these buttons, one per fund group the chart touches,
-      // so equality with FUND_ORDER says both that all six have flows and that
-      // they are keyed in the palette's order.
-      name: "the legend is the six fund groups, in the palette's order, and each has flows",
-      ok: JSON.stringify(legend) === JSON.stringify(whole.FUND_ORDER),
+      // so equality with the order the column shipped says both that every
+      // group it names has flows and that they are keyed in that order.
+      name: "the legend is the column's fund groups, in the order it shipped them, and each has flows",
+      ok: spineKeys.served.length > 0 && JSON.stringify(legend) === JSON.stringify(spineKeys.served),
       detail: legend.length
         ? legend.map((id) => id.replace("fund-group/", "")).join(", ")
         : "the legend is empty",
     },
     {
-      // The arm above cannot see this: a loop over FUND_ORDER makes the legend
-      // a subset of it, so an equality check reports a group that went missing
-      // and never one that arrived.
-      name: "a fund group the palette has no hue for is still in the legend, last, and muted",
-      ok: seventh.ids.length === whole.FUND_ORDER.length + 1 &&
+      // A GROUP style.css HAS NO HUE FOR IS STILL THE COLUMN'S, and the
+      // packager puts it last because its sequence does not name it. The arm
+      // above cannot see this on its own: it compares the legend with the
+      // served list, and both grow together. What is asserted here is that
+      // growing is all that happens -- the six keep their places and their
+      // hues, and only the newcomer is muted.
+      name: "a fund group the stylesheet has no hue for is still in the legend, last, and muted",
+      ok: seventh.ids.length === spineKeys.served.length + 1 &&
           seventh.ids[seventh.ids.length - 1] === "fund-group/permanent" &&
-          JSON.stringify(seventh.ids.slice(0, -1)) === JSON.stringify(whole.FUND_ORDER) &&
-          seventh.vars[seventh.vars.length - 1] === "--muted",
+          JSON.stringify(seventh.ids.slice(0, -1)) === JSON.stringify(spineKeys.served) &&
+          JSON.stringify(seventh.ids) === JSON.stringify(seventh.served) &&
+          seventh.vars[seventh.vars.length - 1] === "--muted" &&
+          seventh.vars.slice(0, -1).every((v) => v !== "--muted"),
       detail: `${seventh.ids.length} swatch(es): ` +
         seventh.ids.map((id, i) => id.replace("fund-group/", "") + " " + seventh.vars[i]).join(", ") +
-        ` -- the six the palette knows in its own order, then the one it does not, ` +
-        `drawn the colour nodeColor already gives it`,
+        ` -- the ${spineKeys.served.length} the stylesheet has hues for in the order the ` +
+        `column shipped, then the one it does not, drawn the colour nodeColor already gives it`,
     },
   );
+  out.push({
+    // THE ONE PLACE THE FALLBACK IN fundGroupPlace IS LOAD-BEARING. A group
+    // the served list does not name has no index, and the answer has to be
+    // "after everything it does name". An index of -1 is a perfectly ordinary
+    // number to sort by: it puts the group the page knows LEAST about at the
+    // TOP of the fund column and the head of the legend, ahead of every group
+    // the packager placed deliberately. fisc-zojk.
+    //
+    // BOTH READERS, because one rule serving two is the fix and not a
+    // convenience: nodeRank orders the column and buildLegend orders the key,
+    // and two spellings of "unplaced" put the same group in two places on one
+    // chart.
+    name: "a fund group the served order omits is drawn last, in the column and in the legend alike",
+    ok: short.ids.length === spineKeys.ids.length &&
+        short.ids[short.ids.length - 1] === "fund-group/general" &&
+        short.column[short.column.length - 1] === "fund-group/general" &&
+        JSON.stringify(short.ids.slice(0, -1)) ===
+          JSON.stringify(spineKeys.ids.filter((id) => id !== "fund-group/general")),
+    detail: `legend ${short.ids.map((id) => id.replace("fund-group/", "")).join(", ")}; ` +
+      `column ${short.column.map((id) => id.replace("fund-group/", "")).join(", ")} ` +
+      `-- general is drawn and unplaced, and both readers put it after every group the list names`,
+  });
+  out.push({
+    // A NODE IS A FUND GROUP BECAUSE OF ITS ROLE, NOT ITS ID. Both agree on
+    // every node every published document carries, so this is the only shape
+    // that asks which one the page reads -- and the page has to read the role,
+    // because that is what internal/project declares roles FOR and what
+    // schema/column.schema.json holds to an enum. A prefix test drops this
+    // group from the legend, from the fund column and from every hue decision,
+    // silently, on a document the schema accepts.
+    name: "a fund group is one by its role, even where its id is not under fund-group/",
+    ok: odd.ids.length === spineKeys.ids.length + 1 &&
+        odd.ids[odd.ids.length - 1] === "fund-type/permanent" &&
+        odd.column[odd.column.length - 1] === "fund-type/permanent" &&
+        odd.vars[odd.vars.length - 1] === "--muted",
+    detail: `${odd.ids.length} swatch(es), last ${odd.ids[odd.ids.length - 1]} ` +
+      `drawn ${odd.vars[odd.vars.length - 1]}; the fund column ends ` +
+      `${odd.column[odd.column.length - 1]} -- read by role, the node is a group the ` +
+      `packager's sequence does not name; read by prefix it is not a group at all`,
+  });
   out.push(...(await capIsWhatMakesTheColumnDrawable()));
   return out;
 }

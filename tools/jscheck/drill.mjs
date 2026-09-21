@@ -30,6 +30,7 @@ import {
   goldenTransfers, goldenTransfers2027,
   stepDescriptions, stepShapes, spineRenderTiers,
   settle, refusals, twoYearConfig, repoRoot, residualDeclaration, RUNGS_PATH, rungsAnswer,
+  roleOf,
 } from "./harness.mjs";
 
 /**
@@ -2345,7 +2346,7 @@ export async function checks() {
     const { app } = await opened();
     const node = (/** @type {string} */ id, /** @type {number} */ tier,
       /** @type {string} */ parent) =>
-      ({ id, label: id, tier, parent, constraint_tier: "", role: "", derived: false,
+      ({ id, label: id, tier, parent, constraint_tier: "", role: roleOf(id), derived: false,
         rationale: "", source_note: "" });
     const link = (/** @type {string} */ a, /** @type {string} */ b,
       /** @type {number} */ v) =>
@@ -2772,7 +2773,7 @@ export async function checks() {
   // hand the code a document with the shape, rather than record a known gap.
   {
     const node = (id, tier, parent) =>
-      ({ id, label: id, tier, parent, constraint_tier: "", role: "", derived: false,
+      ({ id, label: id, tier, parent, constraint_tier: "", role: roleOf(id), derived: false,
         rationale: "", source_note: "" });
     const link = (a, b, v) =>
       ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
@@ -2887,12 +2888,12 @@ export async function checks() {
   // the legend is empty whether or not buildLegend decides anything -- which
   // makes the decision unfalsifiable on the corpus. A step opening a fund into
   // {2,4} keeps the fund's GROUP as the drawn ancestor of a folded fund, so
-  // fund-group/general is on the chart at depth 1 and FUND_ORDER knows it: a
-  // buildLegend that only read the drawn nodes would draw one swatch, whose
-  // toggle isolates the only group on the chart.
+  // fund-group/general is on the chart at depth 1 and the served order names
+  // it: a buildLegend that only read the drawn nodes would draw one swatch,
+  // whose toggle isolates the only group on the chart.
   {
     const node = (id, tier, parent) =>
-      ({ id, label: id, tier, parent, constraint_tier: "", role: "", derived: false,
+      ({ id, label: id, tier, parent, constraint_tier: "", role: roleOf(id), derived: false,
         rationale: "", source_note: "" });
     const link = (a, b, v) =>
       ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
@@ -2911,8 +2912,8 @@ export async function checks() {
       ],
     };
     // THE GROUP'S OWN COLUMN IS ONE OF THE TWO, which is what this probe is
-    // for: the step draws the tier the opened node sits at, so fund-group/general
-    // is on the chart at depth 1 and FUND_ORDER knows it.
+    // for: the step draws the tier the opened node sits at, so
+    // fund-group/general is on the chart at depth 1 and the column names it.
     const answer = probeAnswer("probe", [
       { path: ["fund-group/general"], step: "fund", draws: [
         { tier: 2, role: "outward", ids: ["fund-group/general"] },
@@ -4283,7 +4284,7 @@ async function objectCategoryChecks() {
  */
 function crossTabProbe(steps) {
   const node = (id, tier, parent, label) =>
-    ({ id, label, tier, parent, constraint_tier: "", role: "", derived: false,
+    ({ id, label, tier, parent, constraint_tier: "", role: roleOf(id), derived: false,
       rationale: "", source_note: "" });
   const link = (a, b, v) =>
     ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
@@ -4405,7 +4406,7 @@ async function columnAndPartitionChecks() {
  */
 async function foreignFlankProbe() {
   const node = (id, tier, parent, label) =>
-    ({ id, label, tier, parent, constraint_tier: "", role: "", derived: false,
+    ({ id, label, tier, parent, constraint_tier: "", role: roleOf(id), derived: false,
       rationale: "", source_note: "" });
   const link = (a, b, v) =>
     ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
