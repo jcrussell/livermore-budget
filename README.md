@@ -12,27 +12,33 @@ defect here regardless of how good the chart looks.
 
 ## What is covered today
 
-**Thirty-six pages of 786, across two of the three documents.** This is still a
-proof of concept, and saying so
-plainly is part of the point.
+**Thirty-eight pages of 786, across two of the three documents** (measured at
+`6da1c44`). This is still a proof of concept, and saying so plainly is part of
+the point.
 
 | document | pages | extracted | mapped |
 |---|---:|---:|---:|
 | FY 2025-2027 Budget Book | 268 | all | **35** (pp. 66–67, 76, 85–125 in part, 127–140, 167–170) |
 | 2025-2030 Capital Improvement Plan | 323 | all | 0 |
-| FY 2024-25 Annual Comprehensive Financial Report | 195 | all | **1** (p. 41 in part) |
+| FY 2024-25 Annual Comprehensive Financial Report | 195 | all | **3** (pp. 41, 167–168, in part) |
 
-Those pages yield **1,780 facts** across six schedules, each of which reconciles
-against something the city itself printed:
+Those pages carry nine schedules, each of which reconciles against something the
+city itself printed. **No fact count is given here**, for the reason the gate
+line's is not: it is a count of this repository's own contents, it moves with
+every coverage commit, and `./bin/fisc verify` states the current one off the
+run you just did.
 
-| schedule | facts | what it is | fiscal years |
-|---|---:|---|---|
-| pp. 66–67 | 240 | the citywide spine, all funds gross | 2026, 2027 adopted |
-| pp. 127–140 | 924 | revenue by fund and line item | 2024 actual, 2025 revised, 2026 + 2027 adopted |
-| pp. 167–170 | 196 | General Fund department × object category | the same four |
-| p. 76 | 88 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
-| pp. 85–125 | 312 | which funds pay for each department | 2024 actual, 2025 revised, 2026 + 2027 adopted |
-| ACFR p. 41 | 20 | the General Fund's revenues, transfers, General Government divisions and fund balances | 2025 audited |
+| schedule | what it is | fiscal years |
+|---|---|---|
+| pp. 66–67 | the citywide spine, all funds gross | 2026, 2027 adopted |
+| pp. 127–140 | revenue by fund and line item | 2024 actual, 2025 revised, 2026 + 2027 adopted |
+| pp. 167–170 | General Fund department × object category | the same four |
+| p. 76 | the transfer schedule, both legs of every transfer | 2026, 2027 adopted |
+| pp. 85–125 | which funds pay for each department | 2024 actual, 2025 revised, 2026 + 2027 adopted |
+| pp. 85–124 | departmentwide expenditure by object category | the same four |
+| ACFR p. 41 | the General Fund's revenues, transfers, General Government divisions and fund balances | 2025 audited |
+| ACFR p. 167 | fund balances, ten years | 2016–2025 audited |
+| ACFR p. 168 | changes in fund balances, ten years | 2016–2025 audited |
 
 The spine gives the all-funds picture the chart draws:
 
@@ -63,14 +69,10 @@ document's caveats in full — the other pages show each as one line and link
 here, so a reader meets the chart before the apparatus rather than scrolling
 past 254 words of it.
 
-Three schedules are published and checked but **not yet drawn**: pp.85-125 (312
-facts), p.76 (88) and ACFR p.41 (20). `fisc verify` declares each undrawn
-schedule with the reason it is undrawn rather than leaving it unsaid, and retires
-the declaration by itself the moment a projection starts drawing one — which is
-how pp.167-170 left this list. The CIP is extracted and entirely unmapped; the
-ACFR is extracted and one page of it is mapped. (That last sentence read "the CIP
-and the ACFR are extracted and entirely unmapped" until this was written, and had
-been false since the ACFR's first facts landed.) See `bd ready`.
+One schedule is mapped and checked but **drawn by no projection**: ACFR p.41.
+Its facts are in the store, carry their provenance and are held by the same
+checks as every other; nothing on the site shows them. The CIP is extracted and
+entirely unmapped. See `bd ready`.
 
 ## Build and look at it
 
@@ -116,7 +118,7 @@ data/extracted/<doc>/              786 pages of -layout text + -bbox geometry,
   │  mappings/*.yaml               the judgment layer: which rows, which columns,
   │                                what they mean. Written to be read.
   ▼
-facts/facts.jsonl                  1,780 content-addressed facts, each carrying
+facts/facts.jsonl                  content-addressed facts, each carrying
                                    doc_id / page / offset / token
   │  internal/project              projections over (columns, scope): one column
   │                                 per Sankey year, four for the revenue trends
@@ -124,17 +126,11 @@ facts/facts.jsonl                  1,780 content-addressed facts, each carrying
 dist/                              static site: d3-sankey, no bundler, no build step
 ```
 
-Four invariants hold throughout, and most of the code exists to enforce them:
-
-- **Amounts are integer cents.** Never float. These PDFs corrupt figures into
-  *plausible wrong values* rather than errors, so `internal/amount` recognises a
-  closed set of shapes and treats everything else as an error.
-- **Absent is not zero.** A printed `-` is a zero the city published; a blank
-  cell means the line does not apply.
-- **Fail closed on ambiguity.** A rule that no longer resolves is an error, not a
-  guess.
-- **Published is not derived.** Anything we inferred carries `derived: true` with
-  a rationale, and `fisc verify` fails on one that does not.
+Four invariants hold throughout and most of the code exists to enforce them:
+amounts are integer cents, absent is not zero, ambiguity fails closed, and
+published is not derived. They are stated once, in `AGENTS.md` under
+"Provenance invariants", with what each costs and what refuses a breach — a
+second wording here is a second thing to keep true.
 
 ## Sources
 
