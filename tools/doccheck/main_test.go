@@ -597,7 +597,7 @@ func TestDocRefsInFindsCitedPathsAndSkipsURLs(t *testing.T) {
 	path := filepath.Join(dir, "x.md")
 	write(t, path, `# T
 
-See [the charter](docs/agents-md-charter.md) and `+"`docs/m0-spike.md`"+`.
+See [the charter](docs/schema-contracts.md) and `+"`docs/m0-spike.md`"+`.
 
 docs/review-loop-evidence.md opens a line. Not ours:
 https://github.com/x/y/blob/main/docs/SYNC.md
@@ -614,7 +614,7 @@ Relative, from a subdirectory: [contract](../docs/sankey-contract.md) and
 		paths = append(paths, c.title)
 	}
 	want := []string{
-		"docs/agents-md-charter.md",
+		"docs/schema-contracts.md",
 		"docs/m0-spike.md",
 		"docs/review-loop-evidence.md",
 		"../docs/sankey-contract.md",

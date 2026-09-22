@@ -1,8 +1,9 @@
 # Agent Instructions
 
-**Rules live here. The arguments for them live in `docs/`** — see
-[`docs/agents-md-charter.md`](docs/agents-md-charter.md) for why the split is
-that way round and why it is not a second `docs/agents/`.
+**Rules live here. Measurements a reader would otherwise re-derive live in
+`docs/`.** There is no third place, and no argument for a rule anywhere: this
+repository has no users to persuade, so a paragraph defending a rule is a
+paragraph to keep true for nobody.
 
 ## What this project is
 
@@ -380,11 +381,16 @@ Breaking one is a defect even when tests pass.
 ## Where writing goes
 
 - **Three homes, and each claim has exactly one.** A RULE goes in this file,
-  once. EVIDENCE for a rule goes in `docs/`, and states no rule. What is true of
-  THIS declaration goes in its doc comment.
+  once. A MEASUREMENT a reader would otherwise re-derive or re-litigate goes in
+  `docs/`, and states no rule. What is true of THIS declaration goes in its doc
+  comment.
 - This file arrives in every session unasked; a `docs/` file does not. So a rule
   an agent must follow without being told to look it up cannot live in `docs/`,
-  and evidence a reader goes looking for should not live here.
+  and a measurement nobody needs in hand should not live here.
+- **Do not argue for a rule.** The rule is the decision; the argument is what it
+  cost to reach, and it is in git. A `docs/` page earns its place by holding a
+  number that is expensive to recover — 115 findings classified, twenty mutations
+  and what each caught — and not by explaining why the rule is right.
 - **A comment is tactical**: the surprise, the invariant this seam upholds, the
   mutation that proves the guard. If a comment has grown into an essay it is
   documentation in the wrong place — move the argument to `docs/` and leave the
@@ -431,9 +437,7 @@ Breaking one is a defect even when tests pass.
   is what the alternative looks like: it refused a float `amount_cents`, an empty
   `token` and a string `fund` on the day it landed.
 
-Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md);
-the split itself is argued in
-[`docs/agents-md-charter.md`](docs/agents-md-charter.md).
+Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
 
 ## Go
 
