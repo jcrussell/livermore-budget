@@ -244,6 +244,78 @@ const EMPTY_DROP = { nodes: 18, links: 19 };
 const FILLED_WIDE = { nodes: 37, links: 36, bands: "12/1/23" };
 
 /**
+ * Where a residual's OUTGOING endpoint stands, on a step whose widening the
+ * reader's budget has not bought.
+ *
+ * REACHED DIRECTLY, because no click can reach it on the committed corpus: every
+ * residual the walk answers carries an inflow alone, so carryResidual's outgoing
+ * branch is driven by fixtures and this is one of them (fisc-ko1j.29).
+ *
+ * THE DEFECT IT HOLDS OFF. An endpoint whose flow LEAVES is placed at the last
+ * drawn tier, and a step's DECLARED tiers are not the drawn ones the moment its
+ * `widen` is unbought -- the fund step declares {2,3,4,5} and a reader at three
+ * columns is shown {2,3,4}. Placed at the declared last, the endpoint carries
+ * tier 5, which this chart has no column for, and d3-sankey clamps a node it
+ * cannot place to the FIRST column: the ribbon then runs from the residual in
+ * the right-hand column backwards across the whole chart. Nothing refuses it,
+ * because every node and every ribbon is still drawn.
+ *
+ * THE TWO LISTS ARE EQUAL ON A STEP THAT DECLARES NO WIDENING, which is why
+ * reading the wrong one is invisible until one does.
+ */
+async function residualEndpointColumn() {
+  const { app } = await opened();
+  const opens = "fund/100";
+  // DECLARED {2,3,4,5} AND DRAWN {2,3,4}, which is the fund step's own shape at
+  // the budget every reader gets.
+  const step = { key: "probe", after: [""], from: 3, tiers: [2, 3, 4, 5], widen: [5],
+    back: "Back", tail: "categories", noun: "fund", description: "d",
+    residual: { "transfers/out": "declared here so the rationale has a reason to read" } };
+  const node = (/** @type {string} */ id, /** @type {number} */ tier) =>
+    ({ id, label: id, tier, parent: "", constraint_tier: "", role: "", derived: false,
+      rationale: "", source_note: "" });
+  const link = (/** @type {string} */ a, /** @type {string} */ b, /** @type {number} */ v) =>
+    ({ source: a, target: b, value_cents: v, kind: "external", transfer_id: "",
+      fact_ids: [], locators: [], derived: false });
+  const drawn = { projection: "probe",
+    nodes: [node("fund-group/general", 2), node(opens, 3), node("dept/patrol", 4)],
+    links: [link("fund-group/general", opens, 500), link(opens, "dept/patrol", 300)] };
+  // THE CHART ABOVE, which is where a carried endpoint's ribbon and its record
+  // both come from. transfers/out sits at tier 5 THERE, which is the tier the
+  // placement must override rather than inherit.
+  const from = { projection: "spine",
+    nodes: [node(opens, 3), node("transfers/out", 5)],
+    links: [link(opens, "transfers/out", 200)] };
+  const mark = { id: app.residualID(opens), role: "residual", tier: 3, out_cents: 200,
+    ends: ["transfers/out"] };
+  let threw = "";
+  /** @type {any} */
+  let got = null;
+  try {
+    got = app.carryResidual(drawn, from, { id: opens, step }, mark);
+  } catch (e) {
+    threw = String((e && e.message) || e);
+  }
+  const placed = got && got.nodes.find((/** @type {any} */ n) => n.id === "transfers/out");
+  const drawnTiers = drawn.nodes.map((n) => n.tier);
+  return [{
+    name: "a residual's outgoing endpoint stands in a column the chart has, not in one the step only declares",
+    ok: threw === "" && Boolean(placed) && placed.tier === 4 &&
+        drawnTiers.includes(placed.tier) && !drawnTiers.includes(5),
+    detail: threw !== ""
+      ? `carryResidual refused the probe: ${threw}`
+      : placed
+        ? `the step declares tiers {${step.tiers.join(",")}} and the chart draws ` +
+          `{${drawnTiers.join(",")}}; transfers/out was placed at tier ${placed.tier} ` +
+          `(want 4, the last DRAWN tier)` +
+          (drawnTiers.includes(placed.tier)
+            ? ""
+            : ` -- a tier with no column, which d3-sankey clamps to the first`)
+        : "carryResidual added no node for the outgoing endpoint at all",
+  }];
+}
+
+/**
  * Every fact id a committed document publishes, read off its own links.
  * @param {{links: {fact_ids: string[]}[]}} doc
  * @returns {Set<string>}
@@ -2722,7 +2794,7 @@ export async function checks() {
   };
   for (const fn of [gapAtTheCentre, categoryProbes, severalParents, windowChecks,
     objectCategoryChecks, columnAndPartitionChecks, foreignFlankProbe, widenedColumns,
-    gestureChecks, expansionChecks]) {
+    residualEndpointColumn, gestureChecks, expansionChecks]) {
     out.push(...(await group(fn)));
   }
 

@@ -3558,7 +3558,19 @@ function carryResidual(drawn, from, rung, mark) {
   // chart above's columns, which the step's tier set need not contain, and a
   // tier layOut's align cannot place is clamped to the first column -- the
   // shape drill.mjs records d3-sankey dying on.
-  const tiers = step.tiers;
+  //
+  // DRAWN AND NOT DECLARED, WHICH IS THE WHOLE OF THE SENTENCE ABOVE. A step
+  // whose `widen` the budget does not buy draws fewer columns than it declares,
+  // and the declared set's last entry is then a tier this chart has no column
+  // for -- so an outgoing endpoint placed there is clamped to the FIRST column
+  // and its ribbon runs backwards across the chart. The two lists are equal on
+  // a step that declares no widening, which is why reading the wrong one is
+  // invisible until one does.
+  //
+  // FILTERED IN THE STEP'S OWN ORDER, because Tiers is a column order and not a
+  // sorted set: the revenue-category step declares {1,0,2}, so "the last drawn
+  // tier" is the last of that order the chart kept, not the highest number.
+  const tiers = step.tiers.filter((t) => drawn.nodes.some((n) => n.tier === t));
   const have = new Set(drawn.nodes.map((n) => n.id));
   const fromByID = new Map(from.nodes.map((n) => [n.id, n]));
   /** @type {FiscNode[]} */
