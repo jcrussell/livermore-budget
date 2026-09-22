@@ -7,8 +7,10 @@
 // a page of empty tiles and is silent — the template never sees the JSON, so
 // nothing else notices.
 //
-// internal/export pins the Go side of that contract (TestYearViewKeysAreTheOnes
-// TheClientReads). This pins the client side, against the same shipped app.js.
+// internal/export pins the Go side of that contract
+// (TestTheSchemaStatesWhatThePageConfigCarries, which walks yearView against
+// schema/page.schema.json). This pins the client side, against the same
+// shipped app.js.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

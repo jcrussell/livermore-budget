@@ -401,8 +401,10 @@ func TestPageRendersCaveatsWithoutJavaScript(t *testing.T) {
 		// print the text today whatever the template does, because caveatRef
 		// carries no such field -- so what it really guards is somebody putting
 		// one back. The structural form of that claim is
-		// TestCaveatRefKeysAreTheOnesTheClientReads, which fails the moment the
-		// field exists rather than when a template happens to render it.
+		// TestTheSchemaStatesWhatThePageConfigCarries, which walks caveatRef
+		// against schema/page.schema.json's additionalProperties: false and so
+		// fails the moment the field exists rather than when a template happens
+		// to render it.
 		if len(caveat.Text) > 80 && strings.Contains(visible, template.HTMLEscapeString(caveat.Text)) {
 			t.Errorf("caveat %q's full text is on index.html; the summary is meant to "+
 				"stand in for it, not to precede it", caveat.ID)

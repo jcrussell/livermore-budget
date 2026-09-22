@@ -320,8 +320,9 @@ var yearSuffix = regexp.MustCompile(`-(\d{4})(-actual|-revised)?$`)
 // scheduleKey is the schedule a stem's document becomes in its column.
 //
 // It inverts project.PublishedStem, which appends the year to a projection name
-// when a projection publishes more than one column. TestScheduleKeyInvertsThe
-// StemRule holds the two together.
+// when a projection publishes more than one column. NOTHING HOLDS THE TWO
+// TOGETHER: this package does not import internal/project, so the two spellings
+// of one rule can drift in silence. fisc-9akl.
 func scheduleKey(stem string) string {
 	return yearSuffix.ReplaceAllString(stem, "")
 }

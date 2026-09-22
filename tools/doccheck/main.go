@@ -47,6 +47,12 @@
 // one cited in the scanned files must resolve. That is the narrow half of the
 // evidence-doc contract and deliberately no more of it: the declared map, the
 // opening markers and the backlinks belong to fisc-ak39.
+//
+// AND A CITED GO TEST NAME IS THE SAME CLAIM IN THE MOST DANGEROUS FORM. A
+// comment saying a named test pins something reads as coverage, so nobody
+// looks; when the name resolves to nothing the claim is not merely dead but
+// misleading about what is guarded. See testNamePattern for why this one is
+// writable where a general identifier check is not.
 package main
 
 import (
@@ -181,6 +187,40 @@ var docPathPattern = regexp.MustCompile(`(^|[^A-Za-z0-9_./-])((?:\.\.?/)*docs/[A
 var srcPathPattern = regexp.MustCompile(
 	`(^|[^A-Za-z0-9_./-])((?:internal|pkg|cmd|tools)/[A-Za-z0-9._/-]+\.(?:go|mjs))`)
 
+// testNamePattern finds a Go test cited by name, and testDeclPattern is what it
+// resolves against.
+//
+// THIS ARM IS WRITABLE WHERE A GENERAL IDENTIFIER CHECK IS NOT, and the shape is
+// the whole reason. A Go test name is `Test` followed by a capital, it is
+// declared in exactly one place and in one form, and no other vocabulary in this
+// tree spells anything that way -- unlike a check id, which shares its spelling
+// with scopes, stems and taxonomy slugs and so cannot be told from them by shape.
+//
+// A NAME MAY BE WRAPPED AND A WRAPPED NAME IS NOT A DEAD ONE. Both forms are
+// tried, which is what keeps the false-positive rate at zero without an
+// exemption list: unwrapped for a name that runs into the next sentence, and the
+// joined form for one gofmt broke across two comment lines. unwrap says how.
+//
+// Measured over the scanned paths when this arm landed: 965 cited names, 955
+// resolving, and every one of the 10 that did not was a real dead pointer -- five
+// of them naming a test that pins a contract and does not exist.
+var (
+	testNamePattern = regexp.MustCompile(`(^|[^A-Za-z0-9_])(Test[A-Z][A-Za-z0-9_]*)`)
+	testDeclPattern = regexp.MustCompile(`(?m)^func (Test[A-Z][A-Za-z0-9_]*)\(`)
+)
+
+// unwrap rejoins an identifier a comment broke across two lines: the optional
+// soft hyphen, the newline, and the next line's indentation and comment marker,
+// but ONLY between two identifier characters.
+//
+// THE FLANK CONDITION IS THE WHOLE GUARD. Joining unconditionally would glue the
+// last word of one line to the first of the next everywhere, inventing names out
+// of ordinary prose; requiring an identifier character on each side confines it
+// to the case a wrap actually produces. It still over-joins a name that ends a
+// line and is followed by a capitalised word, which is why the unwrapped form is
+// tried as well rather than instead.
+var unwrap = regexp.MustCompile(`([A-Za-z0-9_])-?\n[ \t]*(?://+|\*|#)?[ \t]*([A-Za-z0-9_])`)
+
 // headingPattern and boldPattern are the two shapes an anchor takes in AGENTS.md.
 // Bold is an anchor and not only a decoration because the tree cites one:
 // "History's home is git" is a bolded lead phrase inside a section, not a
@@ -248,7 +288,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "doccheck: %s yielded no headings at all, so every citation would resolve\n", agents)
 		return 2
 	}
-	cites, malformed, docRefs, srcRefs, err := scanUnder(root, args[1:], anchors)
+	cites, malformed, docRefs, srcRefs, testRefs, declaredTests, err := scanUnder(root, args[1:], anchors)
 	if err != nil {
 		fmt.Fprintf(stderr, "doccheck: %v\n", err)
 		return 2
@@ -278,6 +318,16 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "doccheck: no docs/ path found anywhere in the scanned paths")
 		fmt.Fprintln(stderr, "  The tree has always carried some, so this is docPathPattern failing")
 		fmt.Fprintln(stderr, "  to match rather than a tree with nothing to check.")
+		return 2
+	}
+	// A third floor, and this one guards two patterns at once: a scan that cites
+	// no test at all, or one that finds no declaration to resolve against, would
+	// pass every citation in the tree.
+	if len(testRefs) == 0 || len(declaredTests) == 0 {
+		fmt.Fprintf(stderr, "doccheck: the scanned paths yielded %d cited test name(s) and %d declaration(s)\n",
+			len(testRefs), len(declaredTests))
+		fmt.Fprintln(stderr, "  The tree has always carried both, so this is testNamePattern or")
+		fmt.Fprintln(stderr, "  testDeclPattern failing to match rather than a tree with nothing to check.")
 		return 2
 	}
 	var dead []cite
@@ -354,6 +404,25 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "  path is a second source nothing keeps in step -- which is how these")
 		fmt.Fprintln(stderr, "  die. Name the function or the type and let the reader grep.")
 		fmt.Fprintln(stderr, "  See AGENTS.md, \"Where writing goes\".")
+	}
+	if deadRefs := deadTests(testRefs, declaredTests); len(deadRefs) > 0 {
+		fail = true
+		sortCites(deadRefs)
+		var prev cite
+		for _, c := range deadRefs {
+			if c == prev {
+				continue
+			}
+			prev = c
+			fmt.Fprintf(stderr, "%s:%d: cites %s, which no _test.go declares\n", c.file, c.line, c.title)
+		}
+		fmt.Fprintln(stderr, "")
+		fmt.Fprintln(stderr, "doccheck: the test names above resolve to nothing.")
+		fmt.Fprintln(stderr, "  A comment naming a test reads as coverage, so a dead one says the")
+		fmt.Fprintln(stderr, "  claim beside it is guarded when nothing guards it -- which is worse")
+		fmt.Fprintln(stderr, "  than saying nothing. Re-point it at the test that makes the claim")
+		fmt.Fprintln(stderr, "  now, drop the sentence, or write the test.")
+		fmt.Fprintln(stderr, "  See AGENTS.md, \"Prove it can fail\".")
 	}
 	if fail {
 		return 1
@@ -460,7 +529,8 @@ func fold(s string) string {
 // lookup, so the same arguments exempt the same file from anywhere -- the
 // working directory is no part of the interface here any more than it is in
 // treeRoot.
-func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs, srcRefs []cite, err error) {
+func scanUnder(root string, paths []string, anchors map[string]bool) (cites, malformed, docRefs, srcRefs []cite, testRefs []testRef, declared map[string]bool, err error) {
+	declared = map[string]bool{}
 	for _, p := range paths {
 		// #nosec G703 -- the path list is this command's argument; it checks the
 		// paths it is asked to.
@@ -497,13 +567,31 @@ func scanUnder(root string, paths []string, anchors map[string]bool) (cites, mal
 				return err
 			}
 			srcRefs = append(srcRefs, src...)
+			tests, err := testRefsIn(path)
+			if err != nil {
+				return err
+			}
+			testRefs = append(testRefs, tests...)
+			// THE DECLARATIONS COME FROM THE SAME WALK, so a package that
+			// leaves the scanned path list takes its tests with it and the
+			// citations of them go red, rather than resolving against a
+			// file nothing else here reads.
+			if strings.HasSuffix(norm(path), "_test.go") {
+				decls, err := testDeclsIn(path)
+				if err != nil {
+					return err
+				}
+				for _, d := range decls {
+					declared[d] = true
+				}
+			}
 			return nil
 		})
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, nil, nil, nil, nil, nil, err
 		}
 	}
-	return cites, malformed, docRefs, srcRefs, nil
+	return cites, malformed, docRefs, srcRefs, testRefs, declared, nil
 }
 
 // citesIn reads the whole file rather than scanning it line by line, because a
@@ -596,6 +684,78 @@ func pathRefsIn(path string, pattern *regexp.Regexp) ([]cite, error) {
 		})
 	}
 	return out, nil
+}
+
+// testRef is one cited Go test name, with the joined forms of the same
+// occurrence that a wrap could have produced. A ref is alive when ANY of them
+// is declared; see testNamePattern.
+type testRef struct {
+	cite
+	alts []string
+}
+
+// testDeclsIn returns the test functions a _test.go file declares.
+func testDeclsIn(path string) ([]string, error) {
+	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
+	if err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, m := range testDeclPattern.FindAllStringSubmatch(string(b), -1) {
+		out = append(out, m[1])
+	}
+	return out, nil
+}
+
+// testRefsIn returns every Go test name cited in a file, each carrying the
+// names the same file yields once unwrapped that extend it. A wrapped citation
+// appears here as the short prefix plus the whole name as an alternative.
+func testRefsIn(path string) ([]testRef, error) {
+	b, err := os.ReadFile(path) // #nosec G304,G703 -- see scanUnder.
+	if err != nil {
+		return nil, err
+	}
+	text := string(b)
+	var joined []string
+	for _, m := range testNamePattern.FindAllStringSubmatch(unwrap.ReplaceAllString(text, "$1$2"), -1) {
+		joined = append(joined, m[2])
+	}
+	var refs []testRef
+	for _, loc := range testNamePattern.FindAllStringSubmatchIndex(text, -1) {
+		name := text[loc[4]:loc[5]]
+		var alts []string
+		for _, j := range joined {
+			if j != name && strings.HasPrefix(j, name) {
+				alts = append(alts, j)
+			}
+		}
+		refs = append(refs, testRef{
+			cite: cite{title: name, file: norm(path), line: 1 + strings.Count(text[:loc[4]], "\n")},
+			alts: alts,
+		})
+	}
+	return refs, nil
+}
+
+// deadTests returns the cited names that no declaration answers, in either form.
+func deadTests(refs []testRef, declared map[string]bool) []cite {
+	var dead []cite
+	for _, r := range refs {
+		if declared[r.title] {
+			continue
+		}
+		var alive bool
+		for _, a := range r.alts {
+			if declared[a] {
+				alive = true
+				break
+			}
+		}
+		if !alive {
+			dead = append(dead, r.cite)
+		}
+	}
+	return dead
 }
 
 // missingDocs returns the cited paths that resolve to nothing. A bare docs/

@@ -1157,10 +1157,9 @@ func TestBuildProjectionsDoesNotRefuseASecondSchedule(t *testing.T) {
 // TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered is the assertion
 // whose absence let four documents ship unreachable.
 //
-// WHAT WENT WRONG, and it is why the name of this test matters. Its predecessor
-// was called TestViewsNamesEveryDocumentTheSitePublishes and its body asserted
-// A COUNT IS NOT COVERAGE, which is the whole reason this test is named for the
-// claim rather than for the number. published-projection-built and
+// A COUNT IS NOT COVERAGE, and it is why the name of this test matters.
+// published-projection-built and assertPublishedBuilt each assert every
+// published document was BUILT, and neither asks whether a page renders it. published-projection-built and
 // assertPublishedBuilt each assert every published document was BUILT, and
 // neither asks whether a page renders it -- so a document can ship as bytes
 // nobody can open with `fisc verify` green over it, and an assertion on how
@@ -2149,9 +2148,9 @@ func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 // (stepStems), so a drill measured over FY2026's capture alone leaves FY2027's
 // with nothing able to see it go wrong -- and the two are not the same shape:
 // fund/207 prints a dash in the FY2027 column and is not a node there. The
-// stem is spelled rather than computed for TestStepStemsJoinsOnColumnNotOn
-// DeclaredOrder's reason: it is the file the join names, and a test deriving
-// it the way the code does would agree with the code by construction.
+// stem is spelled rather than computed, because it is the file the join names
+// and a test deriving it the way the code does would agree with the code by
+// construction.
 func TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 	fixtureIsTheDocumentExported(t, "fund-flows-2027", "fund-flows-2027.golden.json")
 }

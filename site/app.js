@@ -1202,9 +1202,9 @@ let baseDescription = "";
  * <desc> on a drill dropped it.
  *
  * TAKEN BY POSITION, NOT BY ITS WORDS. Matching the sentence here would be a
- * second copy of wording the templates own, and the two would drift the first
- * time either was edited. Both templates put it last;
- * TestTheTablePointerIsTheLastSentenceOfEveryChartDescription pins that.
+ * second copy of wording the template owns, and the two would drift the first
+ * time either was edited. The template puts it last, and
+ * TestAClosedFlowTableIsNotDescribedAsListedBelow pins the sentence itself.
  * @type {string}
  */
 let tablePointer = "";

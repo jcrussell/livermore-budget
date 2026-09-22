@@ -28,7 +28,8 @@ func jsonTags(t *testing.T, v any) []string {
 	return out
 }
 
-// TestValidateCaveatsRefusesEveryShapeThatWouldRenderIsThePointOfIt.
+// TestValidateCaveatsRefusesEveryShapeThatWouldRender, and that it refuses
+// EVERY such shape is the point of it.
 //
 // THE GUARD HAD NO TEST AT ALL: adding `if true { return nil }` as its first
 // statement left `go test ./...` entirely green.

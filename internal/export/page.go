@@ -175,7 +175,7 @@ type projectionMetadata struct {
 // A SEPARATE TYPE FROM project.Caveat, like every other decode struct in this
 // file, because this package consumes projections as bytes and does not import
 // internal/project. The field set is the contract, and it is pinned by
-// TestCaveatMetaKeysAreTheOnesTheDocumentCarries rather than by the two
+// TestEveryNameThisPackageDecodesIsOneAProjectionStates rather than by the two
 // declarations happening to agree.
 type caveatMeta struct {
 	ID        string   `json:"id"`

@@ -577,11 +577,17 @@ func TestTheScanRunsFromAnyWorkingDirectory(t *testing.T) {
 		"package main\n\n// AGENTS.md calls that guard \"the designed answer\". See docs/gone.md.\n")
 	write(t, filepath.Join(root, "tools", "beadrefs", "main_test.go"), "package main\n")
 	src := filepath.Join(root, "x.go")
-	write(t, src, "package x\n\n// see AGENTS.md, \"The extraction boundary\". See docs/real.md.\n")
+	write(t, src, "package x\n\n// see AGENTS.md, \"The extraction boundary\". See docs/real.md.\n"+
+		"// TestTheOnlyOne is what pins it.\n")
+	// AND A DECLARATION FOR THAT CITATION TO RESOLVE AGAINST, for the reason the
+	// citation and the docs/ path are here: run refuses a scan that finds none of
+	// the three, because a pattern that has stopped matching reports nothing dead.
+	decls := filepath.Join(root, "x_test.go")
+	write(t, decls, "package x\n\nfunc TestTheOnlyOne(t *testing.T) {}\n")
 
 	t.Chdir(t.TempDir())
 	var stderr strings.Builder
-	code := run([]string{filepath.Join(root, "AGENTS.md"), src, filepath.Join(root, "tools")}, &stderr)
+	code := run([]string{filepath.Join(root, "AGENTS.md"), src, decls, filepath.Join(root, "tools")}, &stderr)
 	if code != 0 {
 		t.Errorf("run = %d from an unrelated working directory, want 0; stderr:\n%s", code, stderr.String())
 	}
@@ -680,4 +686,104 @@ func write(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatalf("write %s: %v", path, err)
 	}
+}
+
+// A cited test name resolves against a declaration or it is dead, and the two
+// halves of the wrap rule each have a case here.
+//
+// THE FIXTURES SPELL THE NAMES IN A GO COMMENT because that is where the tree
+// carries them, and this file is exempt from the scan for the reason the exempt
+// map gives: a fixture naming a test that must NOT resolve would otherwise be
+// reported beside the real ones.
+func TestADeadTestNameIsRefusedAndTheThreeLiveShapesAreNot(t *testing.T) {
+	dir := t.TempDir()
+	decls := filepath.Join(dir, "x_test.go")
+	write(t, decls, "package x\n\nfunc TestTheLiveOne(t *testing.T) {}\n\n"+
+		"func TestTheWrappedOneEndsHere(t *testing.T) {}\n\n"+
+		"func TestTheHyphenatedOne(t *testing.T) {}\n\n"+
+		"func TestTheSentenceRunsOn(t *testing.T) {}\n")
+	src := filepath.Join(dir, "y.go")
+	write(t, src, "package y\n\n"+
+		"// TestTheLiveOne pins it.\n"+
+		"// TestTheWrappedOne\n// EndsHere pins it too.\n"+
+		"// TestTheHyphenated-\n// One pins it as well.\n"+
+		"// TestTheSentenceRunsOn. Is the point of it.\n"+
+		"// TestTheDeadOne pins nothing at all.\n")
+
+	refs, err := testRefsIn(src)
+	if err != nil {
+		t.Fatalf("testRefsIn: %v", err)
+	}
+	// Five citations, or the assertion below is about a file nothing read.
+	if len(refs) != 5 {
+		t.Fatalf("read %d cited names, want 5: %v", len(refs), refs)
+	}
+	declared, err := testDeclsIn(decls)
+	if err != nil {
+		t.Fatalf("testDeclsIn: %v", err)
+	}
+	set := map[string]bool{}
+	for _, d := range declared {
+		set[d] = true
+	}
+
+	var got []string
+	for _, c := range deadTests(refs, set) {
+		got = append(got, c.title)
+	}
+	want := []string{"TestTheDeadOne"}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("deadTests (-want +got):\n%s", diff)
+	}
+}
+
+// The over-join case, stated on its own because it is the reason BOTH forms are
+// tried rather than only the joined one. "TestTheSentenceRunsOn.\n// Is the
+// point" joins to a name no test declares; the unwrapped form is what answers.
+func TestUnwrapOverJoinsAndTheUnwrappedFormIsWhatAnswers(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(dir, "y.go")
+	write(t, src, "package y\n\n// TestTheSentenceRunsOn\n// Is the point of it.\n")
+	refs, err := testRefsIn(src)
+	if err != nil {
+		t.Fatalf("testRefsIn: %v", err)
+	}
+	if len(refs) != 1 {
+		t.Fatalf("read %d cited names, want 1", len(refs))
+	}
+	if !slicesContains(refs[0].alts, "TestTheSentenceRunsOnIs") {
+		t.Fatalf("unwrap did not produce the over-joined form; alts = %v", refs[0].alts)
+	}
+	set := map[string]bool{"TestTheSentenceRunsOn": true}
+	if dead := deadTests(refs, set); len(dead) != 0 {
+		t.Errorf("the unwrapped form is declared and the citation still reported dead: %v", dead)
+	}
+}
+
+// testDeclPattern reads a declaration and not a call, a string or a citation of
+// one. Without the line anchor every comment naming a test would declare it, and
+// the arm would resolve every citation against itself.
+func TestTestDeclPatternReadsDeclarationsOnly(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "x_test.go")
+	write(t, path, "package x\n\n"+
+		"// TestNotDeclaredHere is only named.\n"+
+		"func TestDeclared(t *testing.T) {\n\tname := \"TestInAStringLiteral\"\n\t_ = name\n}\n"+
+		"\tfunc TestIndentedIsNotATopLevelFunc(t *testing.T) {}\n")
+	got, err := testDeclsIn(path)
+	if err != nil {
+		t.Fatalf("testDeclsIn: %v", err)
+	}
+	if diff := cmp.Diff([]string{"TestDeclared"}, got); diff != "" {
+		t.Errorf("testDeclsIn (-want +got):\n%s", diff)
+	}
+}
+
+func slicesContains(hay []string, needle string) bool {
+	for _, h := range hay {
+		if h == needle {
+			return true
+		}
+	}
+	return false
 }

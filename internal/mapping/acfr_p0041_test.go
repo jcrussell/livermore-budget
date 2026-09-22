@@ -589,7 +589,7 @@ func TestACFRp0041HasNoGeometryColumnGuard(t *testing.T) {
 
 	// WHY the two substrates disagree, so the count above is explained rather
 	// than merely recorded: the orphan "0.0" of
-	// TestACFRp0041RevenueBlockCannotBeResolved is printed close enough to the
+	// TestACFRp0041RevenueBlockNeedsItsOrphanDeclared is printed close enough to the
 	// baseline of the row above that -bbox groups the two into one line, while
 	// -layout puts the orphan on its own. One page feature, both failures.
 	var orphan, miscellaneous *geom.Word
