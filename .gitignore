@@ -19,7 +19,7 @@ dist/
 # Generated site data (written by `fisc export`, one JSON per projection)
 site/data/
 
-# M0 spike scratch (regenerate with docs/m0-spike/spike.py)
+# M0 spike scratch: xberg output from a throwaway run, kept out of the tree
 docs/m0-spike/spike/
 
 # Beads runtime is governed by .beads/.gitignore -- do not duplicate it here.

@@ -19,9 +19,9 @@ Throwaway validation run before any schema was frozen. The question it had to
 answer: **can we get labelled, checkable budget figures out of these PDFs, and
 from which substrate?**
 
-Answer: **yes, from page text.** The reference implementation in
-[`m0-spike/spine.py`](m0-spike/spine.py) maps 136 facts from Budget Book p66–67
-and all 16 column totals tie *exactly* to the totals the document itself prints.
+Answer: **yes, from page text.** The spike mapped 136 facts from Budget Book
+p66–67 and all 16 column totals tied *exactly* to the totals the document itself
+prints.
 
 ## Verified numbers
 
@@ -154,8 +154,4 @@ approach and to give the real implementation (`internal/mapping`, bead
 publishing 240 facts over 24 columns for both budget years where the spike read
 136 over 16. So the target has been hit and this section is settled.
 
-**The scripts here no longer run.** `m0-spike/spike.py` imports xberg, which was
-removed with `fisc-yqv`, and `m0-spike/spike/` holds its markdown and
-`tables.json` output — a substrate that no longer exists. They are kept as the
-evidence behind finding 4, not as anything executable. `mappings/*.yaml` plus
-`fisc build` is the live path.
+`mappings/*.yaml` plus `fisc build` is the live path.
