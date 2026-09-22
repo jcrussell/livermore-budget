@@ -324,7 +324,19 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
           return name in self.style.properties ? self.style.properties[name] : "";
         },
       },
-      classList: { add() {}, remove() {}, toggle() {} },
+      // NO classList, DELIBERATELY, AND THAT IS WHAT MAKES .classed() REAL.
+      // d3 reads `node.classList || new ClassList(node)` and its own fallback
+      // adds and removes through getAttribute("class") and setAttribute --
+      // which this node answers for real. A stub classList of three empty
+      // functions satisfied that `||` and threw every class away, so
+      // applyEmphasis's .classed("dim") and .classed("hot") -- the whole of
+      // what isolating a node DOES for a sighted reader -- wrote nothing any
+      // check could read. Green because nothing was watching, like setProperty
+      // above it.
+      //
+      // A REAL classList HERE WOULD BE A SECOND IMPLEMENTATION of code d3 is
+      // already carrying, and the one the page runs in a browser is the
+      // browser's. Absent, the path a check drives is d3's own.
       attributes: {},
       // ownerDocument AND namespaceURI ARE WHAT MAKE render() RUN AT ALL, and
       // they are the trap a naive `#chart` node walks into: d3's creatorInherit

@@ -92,6 +92,20 @@ function ribbonsIn(chart) {
 }
 
 /**
+ * Whether a drawn element carries a class token.
+ *
+ * READ OFF THE class ATTRIBUTE, because that is where it lands: applyEmphasis
+ * goes through d3's .classed(), which has no classList to use on these nodes
+ * and so adds and removes through getAttribute/setAttribute -- the same
+ * attribute nodeClass writes once at render.
+ * @param {any} element
+ * @param {string} token
+ */
+function carries(element, token) {
+  return (element.getAttribute("class") || "").split(/\s+/).includes(token);
+}
+
+/**
  * The number a folded tail promises the reader, read off the words drawn in it.
  *
  * OFF THE TSPANS AND NOT OFF THE COUNT capColumn COMPOSED THE LABEL FROM. "21
@@ -240,6 +254,7 @@ export async function checks() {
     const seen = {
       states: 0, answered: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
       tails: 0, ownMarks: 0, offscreen: 0, expansions: 0, revealed: 0, refused: 0,
+      emphasis: 0,
     };
 
     for (const width of [3, 4]) {
@@ -385,12 +400,27 @@ export async function checks() {
             c.tagName === "text" && c.className === "halo");
           const tspans = text ? text.children.map((/** @type {any} */ c) => c.textContent) : [];
           const want = {
-            class: app.nodeClass(d),
             role: "button",
             tabindex: "0",
             "aria-keyshortcuts": "Enter Space",
           };
           const bad = Object.keys(want).filter((k) => m.getAttribute(k) !== want[k]);
+          // THE class ATTRIBUTE CARRIES TWO CLAIMS AND THEY ARE CHECKED APART.
+          // nodeClass composes what the mark IS -- published or derived, opens
+          // or not -- once, at render, and never changes. applyEmphasis adds
+          // and removes `dim` and `hot` through the same attribute as the
+          // reader isolates and releases, so a plain equality would be a claim
+          // about WHEN this arm happened to look. What holds at every moment is
+          // that every token nodeClass composes is there, and that anything
+          // else is one of the two the emphasis owns.
+          const drawnClass = (m.getAttribute("class") || "").split(/\s+/).filter(Boolean);
+          const rule = app.nodeClass(d).split(/\s+/).filter(Boolean);
+          const missing = rule.filter((/** @type {string} */ c) => !drawnClass.includes(c));
+          const extra = drawnClass.filter((/** @type {string} */ c) =>
+            !rule.includes(c) && c !== "dim" && c !== "hot");
+          if (missing.length) bad.push(`class is missing ${missing.join(" ")}`);
+          if (extra.length) bad.push(`class carries ${extra.join(" ")}, which is neither nodeClass's nor the emphasis's`);
+          seen.attributes += rule.length;
           if (m.getAttribute("aria-pressed") === null) bad.push("aria-pressed");
           if (!(m.getAttribute("aria-label") || "")) bad.push("aria-label");
           seen.attributes += Object.keys(want).length + 2;
@@ -425,8 +455,30 @@ export async function checks() {
           const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
           seen.gestures += dispatch(subject, "click", { timeStamp: 1000 });
           if (app.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.isolated)})`);
+          // WHAT THE ISOLATION DOES FOR A READER WHO CAN SEE THE PAGE, which
+          // app.isolated and the legend's aria-pressed do not witness: the
+          // dimming. Stated as invariants rather than by recomputing
+          // applyEmphasis's predicate here -- a copy would agree with itself.
+          // The touching half is the one that matters: a page that dimmed
+          // EVERYTHING would satisfy "something dimmed" and show the reader a
+          // uniformly grey chart.
+          const lit = ribbonsIn(chart).filter((/** @type {any} */ p) =>
+            p.__data__.source.id === id || p.__data__.target.id === id);
+          const dimmedRibbons = ribbonsIn(chart).filter((/** @type {any} */ p) => carries(p, "dim"));
+          const dimmedMarks = marksIn(chart).filter((/** @type {any} */ m) => carries(m, "dim"));
+          seen.emphasis += dimmedRibbons.length + dimmedMarks.length;
+          if (dimmedRibbons.length === 0) note("isolates and dims no ribbon at all");
+          if (dimmedMarks.length === 0) note("isolates and dims no other mark at all");
+          if (lit.some((/** @type {any} */ p) => carries(p, "dim"))) {
+            note(`dims ${lit.filter((/** @type {any} */ p) => carries(p, "dim")).length} of its own ${lit.length} ribbon(s)`);
+          }
+          if (carries(subject, "dim")) note("dims itself while isolated");
+
           seen.gestures += dispatch(subject, "click", { timeStamp: 2000 });
           if (app.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.isolated)})`);
+          const stuck = ribbonsIn(chart).filter((/** @type {any} */ p) => carries(p, "dim")).length +
+            marksIn(chart).filter((/** @type {any} */ m) => carries(m, "dim")).length;
+          if (stuck > 0) note(`leaves ${stuck} mark(s) and ribbon(s) dimmed after the isolation is released`);
 
           seen.gestures += dispatch(subject, "keydown", { key: " ", timeStamp: 3000 });
           if (app.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.isolated)})`);
@@ -611,13 +663,15 @@ export async function checks() {
     });
     out.push({
       name: `${col.label}: a gesture on a drawn mark does what the page says it does`,
-      ok: wrong.gestures.length === 0 && drove && seen.gestures > 0,
+      ok: wrong.gestures.length === 0 && drove && seen.gestures > 0 && seen.emphasis > 0,
       detail: wrong.gestures.length
         ? `${wrong.gestures.length} gesture(s) that did something else, ${firstOf(wrong.gestures)}`
         : `${seen.gestures} handler(s) fired over ${seen.states} state(s): a click isolates and ` +
           `a second releases, Space isolates, the click that Space synthesises does not undo it, ` +
           `a held key does nothing, and a double click and Enter each open the node Go answers a ` +
-          `rung for`,
+          `rung for; and the isolation DIMS -- ${seen.emphasis} mark(s) and ribbon(s) read back ` +
+          `dimmed, none of them the isolated node or a flow of its own, and none left dimmed ` +
+          `once it is released`,
     });
     out.push({
       name: `${col.label}: every state drew a chart rather than a refusal`,
