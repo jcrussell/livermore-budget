@@ -119,6 +119,25 @@ export async function checks() {
   const config = twoYearConfig();
   const doc = goldenGraph();
 
+  // A PAGE THAT OFFERS A COLUMN BEYOND THE FLOOR, which is what the two column
+  // arms below are about and what twoYearConfig alone is not.
+  //
+  // THE CEILING IS DERIVED FROM THE STEPS NOW, so a stepless config offers
+  // exactly three columns -- and the arms that used to run on one were
+  // measuring a budget of four on a page that could not draw a fourth. The
+  // number they reported moved when nothing on screen would have.
+  //
+  // FOUR TIERS AND A widen, spelled here rather than read out of data.go, for
+  // drill.mjs's "a chart with a second width" reason: this is a page with a
+  // fourth column, not a model of the site's own steps. Nothing drills it, so
+  // the step is never opened and needs no projection.
+  const widened = () => Object.assign(twoYearConfig(), {
+    steps: [{
+      key: "widened", after: [""], from: 2, tiers: [2, 3, 4, 5], widen: [5],
+      back: "Back", tail: "funds", noun: "fund group", description: "d",
+    }],
+  });
+
   // ---------------------------------------------------------------- defect 1
   //
   // The opening fetch never settles and the reader clicks the other year. Not a
@@ -544,10 +563,11 @@ export async function checks() {
   // widened BACK for the two behaviours to differ at all.
   {
     const { app } = page({
-      config,
+      config: widened(),
       fetch: plannedFetch({ "data/sankey.json": { doc } }),
-      // Above COLUMN_QUERIES' only threshold, which is chartWidth(4) plus the
-      // stylesheet's own cushion. seam.mjs is what says the stub answers this.
+      // Above the threshold COLUMN_QUERIES composes for a fourth column, which
+      // is chartWidth(4) plus the stylesheet's own cushion. seam.mjs is what
+      // says the stub answers this.
       viewport: 2000,
     });
     await settle();
@@ -555,8 +575,11 @@ export async function checks() {
     const more = app.dom.byId.get("column-more");
     const fewer = app.dom.byId.get("column-fewer");
     const disabled = (/** @type {any} */ b) => b.getAttribute("disabled") !== null;
-    // Both steppers are dead: this config declares no steps, so the page has
-    // one width. So this pair no longer witnesses that wireColumns ran, and the
+    // Both steppers are dead even here, and the reason is the OVERVIEW rather
+    // than the config: activeTiers returns RENDER_TIERS while nothing is
+    // drilled, so no budget changes a column on this chart and moves() disables
+    // both. What widened() buys is the BUDGET, which the ceiling is now derived
+    // from -- so this pair still does not witness wireColumns running, and the
     // arm below drives stepColumns' plumbing rather than a gesture a reader
     // could make here. drill.mjs's "a chart with a second width offers it" is
     // where the control is driven as a reader drives it.
@@ -595,6 +618,39 @@ export async function checks() {
     });
   }
 
+  // THE CAP THE STYLESHEET APPLIES IS HANDED OVER AT BOOT, WHICH IS THE HALF
+  // layout.mjs CANNOT SEE.
+  //
+  // That file reads .chart-wrap's declaration and app.js's CHART_MAX and says
+  // they agree; neither of those runs main(), so nothing there witnesses the
+  // hand-off itself. Without this arm the stylesheet could name --chart-max,
+  // app.js could compute the right number for it, and the page could still set
+  // nothing -- every reader bounded by 100% instead, which is wider than the
+  // chart is laid out at and so draws it upscaled rather than refusing.
+  //
+  // IT IS OBSERVABLE ONLY BECAUSE THE STUB RECORDS setProperty. A no-op stub
+  // makes this claim untestable and the arm green by watching nothing, which is
+  // the shape this file warns about two fixtures up.
+  {
+    const { app } = page({
+      config: widened(),
+      fetch: plannedFetch({ "data/sankey.json": { doc } }),
+    });
+    await settle();
+    const handed = app.dom.document.documentElement.style.getPropertyValue("--chart-max");
+    out.push({
+      name: "the page hands the stylesheet the width its widest chart is laid out at",
+      ok: handed === app.chartWidth(app.OFFERED_COLUMNS) + "px" &&
+          app.OFFERED_COLUMNS > app.NARROW_COLUMNS,
+      detail: `boot set --chart-max to ${JSON.stringify(handed)}; this page offers ` +
+        `${app.OFFERED_COLUMNS} columns (floor ${app.NARROW_COLUMNS}) and lays them out at ` +
+        `${app.chartWidth(app.OFFERED_COLUMNS)}px` +
+        (handed === app.chartWidth(app.OFFERED_COLUMNS) + "px"
+          ? ""
+          : " -- so the stylesheet's cap falls back to 100% and the chart draws upscaled"),
+    });
+  }
+
   // A SAVED CHOICE IS READ BACK, AND ONE THIS BUILD CANNOT HONOUR IS NOT.
   //
   // savedColumns is reached exactly once, during wireColumns, so without a
@@ -606,8 +662,8 @@ export async function checks() {
   // chose 4.
   {
     const fetch = () => plannedFetch({ "data/sankey.json": { doc } });
-    const saved = page({ config, fetch: fetch(), storage: { "fisc-columns": "4" } });
-    const stale = page({ config, fetch: fetch(), storage: { "fisc-columns": "9" } });
+    const saved = page({ config: widened(), fetch: fetch(), storage: { "fisc-columns": "4" } });
+    const stale = page({ config: widened(), fetch: fetch(), storage: { "fisc-columns": "9" } });
     await settle();
     out.push({
       name: "a saved column count is honoured on the next visit, and one out of range is discarded",

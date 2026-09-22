@@ -614,9 +614,9 @@ button[aria-pressed="true"] {
 /* THE CHART IS NOT PROSE AND WILL NOT TAKE THE PROSE CONTAINER'S WIDTH. main is
    1180px because that is what the page's text, tiles and tables sit in, and the
    chart is the one element on it whose width is a measurement: app.js lays a
-   window of four columns out at chartWidth(4), and an <svg> with a viewBox
-   inside a 1180px box draws that whole picture at 78% -- every label a fifth
-   smaller on the wide viewport that was the reason to draw a fourth column.
+   window out at chartWidth(columns), and an <svg> with a viewBox inside a
+   1180px box draws that whole picture smaller -- every label shrunk on exactly
+   the wide viewport that was the reason to draw another column.
    Asking for more columns and getting less chart is the defect (fisc-5e2b).
 
    SO THE FIGURE BREAKS OUT OF THE MEASURE AND NOTHING ELSE DOES. The 50% is
@@ -626,14 +626,24 @@ button[aria-pressed="true"] {
    the small-viewport rules below meet a .chart-wrap the same width as the
    prose.
 
-   1513px IS chartWidth(4) AND IS PINNED, NOT COPIED: tools/jscheck/layout.mjs
-   reads this declaration and app.js's own chartWidth, and goes red if the
-   allowance is ever less than the width the page lays a four-column window out
-   at. The 56px is the 40px of body padding plus a 16px cushion for a classic
-   scrollbar, which 100vw counts and the reader's window does not. */
+   THE CAP IS NOT A NUMBER IN THIS FILE. app.js sets --chart-max on :root from
+   chartWidth() over the widest step the packager declared, so the ceiling is
+   derived from Go's own declarations rather than typed here and typed again
+   there -- which is what it was, in four places, one of which had to be found
+   whenever another moved. The 100% fallback is the no-script state: #chart
+   ships with a title and a description and no marks, so there is no chart for a
+   cap to bound.
+
+   --chart-cushion IS RECORDED HERE AND IN app.js, WHICH IS TWO PARTIES AND NOT
+   TWO SPELLINGS: this file subtracts it from 100vw, app.js adds it to a chart
+   width to compose the media query at which that chart fits, and
+   tools/jscheck/layout.mjs reads both and refuses a disagreement. It is the
+   40px of body padding plus a 16px cushion for a classic scrollbar, which 100vw
+   counts and the reader's window does not. */
 .chart-wrap {
   position: relative;
-  --chart-room: min(1513px, calc(100vw - 56px));
+  --chart-cushion: 56px;
+  --chart-room: min(var(--chart-max, 100%), calc(100vw - var(--chart-cushion)));
   width: var(--chart-room);
   margin-inline: calc(50% - var(--chart-room) / 2);
 }

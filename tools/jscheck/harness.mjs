@@ -312,7 +312,18 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
       children: [],
       textContent: "",
       innerHTML: "",
-      style: { setProperty() {} },
+      // setProperty RECORDS RATHER THAN DISCARDING, because a custom property
+      // app.js hands the stylesheet is a number the page's geometry depends on
+      // and a no-op stub makes every claim about it unobservable -- green
+      // because nothing was watching, which is the class of fixture this
+      // project refuses. properties is the map a check reads back.
+      style: {
+        properties: {},
+        setProperty(name, value) { self.style.properties[name] = String(value); },
+        getPropertyValue(name) {
+          return name in self.style.properties ? self.style.properties[name] : "";
+        },
+      },
       classList: { add() {}, remove() {}, toggle() {} },
       attributes: {},
       // ownerDocument AND namespaceURI ARE WHAT MAKE render() RUN AT ALL, and
@@ -674,11 +685,13 @@ const NAMES = [
   // calls, which is why a check drives the widening through it rather than by
   // editing a step.
   "activeTiers", "drawnColumns", "setColumnBudget",
-  // AND THE TWO CONSTANTS THE CONTROL IS BOUNDED BY. WIDE_COLUMNS is the
-  // stylesheet's cap restated in the script, and layout.mjs compares the two
-  // rather than spelling either; COLUMN_QUERIES is the responsive rule, whose
-  // thresholds layout.mjs re-derives from that same cap's cushion.
-  "WIDE_COLUMNS", "COLUMN_QUERIES", "NARROW_COLUMNS",
+  // AND WHAT BOUNDS THE CONTROL, none of which is a number in either file now.
+  // OFFERED_COLUMNS is read off the packager's own steps, CHART_MAX is the width
+  // that count lays out at and is what app.js hands the stylesheet, and
+  // COLUMN_QUERIES is the responsive rule composed from CHART_CUSHION.
+  // layout.mjs re-derives all four from chartWidth and the shipped stylesheet
+  // rather than spelling any of them.
+  "OFFERED_COLUMNS", "CHART_MAX", "CHART_CUSHION", "COLUMN_QUERIES", "NARROW_COLUMNS",
   "STEPS", "stepFor", "aggregateID", "isAggregate", "residualID", "isResidual",
   "isCarried", "carryResidual", "withinNode", "docAt", "drawnDoc",
   // THE GAP, which is the other mark a rung can stand beside an opened node:
@@ -1411,6 +1424,30 @@ export function spineRenderTiers() {
  */
 export function spineConfig() {
   return Object.assign(twoYearConfig(), { render_tiers: spineRenderTiers() });
+}
+
+/**
+ * [spineConfig] plus the steps pkg/cmd/export/data.go declares, for the arms
+ * about how many columns the page can be asked for.
+ *
+ * WHY IT IS A SECOND BUILDER AND NOT spineConfig ITSELF. The column ceiling is
+ * derived from the steps now -- app.js reads OFFERED_COLUMNS off the longest
+ * `tiers` on the page -- so an arm about the widest chart the site draws is
+ * measuring a three-column page under a stepless config. Folding the steps into
+ * spineConfig would fix that and move the LABEL arms with it, because a
+ * drillable node's label is not the same width as an inert one: it takes the
+ * spine's middle column from 4 of 6 outward anchors crossing to 6 of 6. Whether
+ * those arms should be measuring the drillable page is a real question and a
+ * separate one; fisc-clbw carries it.
+ *
+ * THE TIER SETS ARE READ OUT OF data.go rather than spelled, for [stepShapes]'
+ * own reason. Nothing using this opens a step, so the words a step renders are
+ * not filled in -- only the shape a column count is derived from.
+ */
+export function steppedSpineConfig() {
+  return Object.assign(spineConfig(), {
+    steps: stepShapes().map((shape) => Object.assign({}, shape)),
+  });
 }
 
 export function parseSpineRenderTiers(src) {

@@ -24,7 +24,8 @@
 // chart a reader sees. Pre-restack figures appear only where a check is about
 // what restackLinks itself does.
 
-import { loadApp, goldenGraph, spineConfig, stylesheet, plannedFetch, settle } from "./harness.mjs";
+import { loadApp, goldenGraph, spineConfig, steppedSpineConfig, stylesheet,
+  plannedFetch, settle } from "./harness.mjs";
 import { openedWindow, openedWide, openedExpanded, openedAsShipped,
   everyOpenedView, COLUMNS } from "./drill.mjs";
 
@@ -361,25 +362,42 @@ function tightestStack(fits) {
  *
  * A DECLARATION, NOT A RENDERING, and the comment on TestTheStylesheetHasOneTextMeasure
  * is the same warning: nothing here parses CSS, so this reads .chart-wrap's
- * allowance as text and can say only what style.css says. What that is worth is
- * that the number has to agree with one app.js computes -- the width a window of
- * four columns is laid out at -- and the two live in files nothing else compares.
+ * allowance as text and can say only what style.css says.
+ *
+ * THE CAP IS NO LONGER A NUMBER IN THE STYLESHEET, so what this reads is which
+ * PROPERTY the cap comes through, and the px comes from the value app.js hands
+ * that property. The pair is still two files that nothing else compares -- the
+ * difference is that a disagreement is now a wiring mistake rather than a
+ * number somebody forgot to raise in one of four places.
  *
  * IT PINS THE SHAPE OF THE DECLARATION AND NOT ONLY ITS NUMBER. An equivalent
  * rule written with clamp() would go red here; that is the cost of reading a
  * stylesheet with a regex, and the direction it fails in is the safe one.
+ *
+ * @param {string} css
+ * @param {number | null} handed the px app.js set --chart-max to, or null
  */
-function chartAllowance(css) {
+function chartAllowance(css, handed) {
   const rule = /\.chart-wrap\s*\{([^}]*)\}/.exec(css);
   if (!rule) return { px: null, why: "style.css declares no .chart-wrap rule" };
-  const room = /--chart-room:\s*min\(\s*(\d+)px/.exec(rule[1]);
-  if (!room) return { px: null, why: `.chart-wrap declares no --chart-room cap: ${rule[1].trim()}` };
+  if (!/--chart-room:\s*min\(\s*var\(--chart-max[,)]/.test(rule[1])) {
+    return { px: null, why: `.chart-wrap does not cap --chart-room with --chart-max: ${rule[1].trim()}` };
+  }
   if (!/(^|[\s;])width:\s*var\(--chart-room\)/.test(rule[1])) {
     return { px: null, why: ".chart-wrap caps --chart-room but does not take its width from it" };
   }
-  const cushion = /--chart-room:\s*min\([^)]*calc\(100vw\s*-\s*(\d+)px\)/.exec(rule[1]);
+  if (handed === null) {
+    return { px: null, why: "app.js set no --chart-max, so the stylesheet's cap falls back to 100%" };
+  }
+  // THE CUSHION IS READ OFF ITS OWN DECLARATION AND NOT OUT OF THE min(), since
+  // the second operand is now a var() too. Both are in this rule, so a cushion
+  // declared nowhere is still caught.
+  const cushion = /--chart-cushion:\s*(\d+)px/.exec(rule[1]);
+  if (!/calc\(100vw\s*-\s*var\(--chart-cushion\)\)/.test(rule[1])) {
+    return { px: null, why: ".chart-wrap does not take its sub-cap width from 100vw less --chart-cushion" };
+  }
   return {
-    px: Number(room[1]),
+    px: handed,
     // WHAT THE CAP COSTS BELOW ITSELF, which is the other half of the same
     // declaration and the half COLUMN_QUERIES has to agree with. Below the cap
     // the chart gets 100vw minus this, so the viewport at which a chart of n
@@ -607,17 +625,28 @@ async function wideChecks(app) {
   const innerFits = labelFit(inner, inner.layOut(inner.projection));
   const ambiguous = sameWords(fits).concat(sameWords(innerFits));
   const stack = tightestStack(fits);
-  const allowance = chartAllowance(stylesheet());
+  // THE CEILING IS ASKED OF A PAGE THAT DECLARES THE SITE'S STEPS, because it
+  // is derived from them: the `app` these arms are otherwise measured on
+  // carries no steps, so its ceiling is the floor and every claim below would
+  // be about a three-column page. fisc-clbw is why that config is not simply
+  // fixed in place.
+  const offered = loadApp({ config: steppedSpineConfig() });
+  // THE PX IS app.js's OWN CONSTANT, because the stylesheet no longer carries
+  // one: wireColumns hands --chart-max the value of CHART_MAX, and what this
+  // reads off the stylesheet is that the cap comes through that property at all.
+  // That the hand-off actually happens at boot is lifecycle.mjs's arm, driven
+  // through main() where this file never runs one.
+  const allowance = chartAllowance(stylesheet(), offered.CHART_MAX);
   // What each responsive threshold actually buys the chart, at the threshold.
   // Math.min with the cap because a query above it is bounded by the cap, which
   // is the arm above's subject rather than this one's.
-  const queryRoom = (app.COLUMN_QUERIES || []).map((/** @type {any} */ q) => {
+  const queryRoom = (offered.COLUMN_QUERIES || []).map((/** @type {any} */ q) => {
     const at = Number(/\(min-width:\s*(\d+)px\)/.exec(q.query)[1]);
     return {
       query: q.query,
       columns: q.columns,
       room: Math.min(allowance.px, at - allowance.cushion),
-      wants: app.chartWidth(q.columns),
+      wants: offered.chartWidth(q.columns),
     };
   });
   return [
@@ -649,17 +678,18 @@ async function wideChecks(app) {
     },
     {
       name: "the four-column window is laid out at its own width, not at the three-column one",
-      ok: app.chartWidth(4) === WIDE_GEOMETRY.width &&
-          app.chartWidth(3) === WIDE_GEOMETRY.narrow &&
-          Math.max(...laid.nodes.map((n) => n.x1)) === WIDE_GEOMETRY.width - app.LABEL_GUTTER &&
+      ok: app.chartWidth(3) === NARROW_DESIGN_WIDTH &&
+          app.chartWidth(columns) > NARROW_DESIGN_WIDTH &&
+          Math.max(...laid.nodes.map((n) => n.x1)) === app.chartWidth(columns) - app.LABEL_GUTTER &&
           Math.min(...laid.nodes.map((n) => n.x0)) === app.LABEL_GUTTER &&
           bandWidth(laid) === app.BAND,
-      detail: `chartWidth(3) is ${app.chartWidth(3)}px and chartWidth(4) is ` +
-        `${app.chartWidth(4)}px (want ${WIDE_GEOMETRY.narrow} and ${WIDE_GEOMETRY.width}); ` +
-        `the window draws from ${Math.min(...laid.nodes.map((n) => n.x0))}px to ` +
+      detail: `chartWidth(3) is ${app.chartWidth(3)}px (want ${NARROW_DESIGN_WIDTH}, which is ` +
+        `what every figure in this file was measured at) and this window's ${columns} columns ` +
+        `lay out at ${app.chartWidth(columns)}px; it draws from ` +
+        `${Math.min(...laid.nodes.map((n) => n.x0))}px to ` +
         `${Math.max(...laid.nodes.map((n) => n.x1))}px with ${bandWidth(laid)}px of clear ` +
         `run between columns (want ${app.LABEL_GUTTER}px, ` +
-        `${WIDE_GEOMETRY.width - app.LABEL_GUTTER}px and ${app.BAND}px)`,
+        `${app.chartWidth(columns) - app.LABEL_GUTTER}px and ${app.BAND}px)`,
     },
     {
       // THE DEFECT AS A PROPERTY OF WHAT IS DRAWN. Not "tier 5 carries its
@@ -699,20 +729,30 @@ async function wideChecks(app) {
       // narrower than the width app.js lays the chart out at does not clip it
       // and does not reflow it -- it draws the same picture smaller, and a
       // reader who asks for a fourth column gets a fifth less chart (fisc-5e2b).
-      // AND IT IS ASKED OF app.js's OWN CEILING RATHER THAN OF A LITERAL 4.
-      // WIDE_COLUMNS is what the column control will not go above; asking about
-      // the number 4 would leave raising that ceiling a change nothing here
-      // notices, which is the whole of the failure this arm is for.
+      // AND IT IS AN EQUALITY NOW, NOT A FLOOR. While the cap was a literal in
+      // the stylesheet, `>=` was all this could ask: a cap wider than the
+      // ceiling was slack rather than a defect. The cap is derived from the
+      // same declarations the ceiling is, so slack IS the defect -- it means
+      // one of them was computed from something else.
+      //
+      // OFFERED_COLUMNS IS READ RATHER THAN SPELLED, for the reason the literal
+      // 4 was refused here before: asking about a number would leave the
+      // ceiling moving without this arm noticing, which is the whole failure
+      // this arm is for.
       name: "the stylesheet lets the widest chart app.js will draw draw at the width it lays it out at",
-      ok: allowance.px !== null && allowance.px >= app.chartWidth(app.WIDE_COLUMNS),
+      ok: allowance.px !== null && allowance.px === offered.chartWidth(offered.OFFERED_COLUMNS) &&
+          allowance.cushion === offered.CHART_CUSHION,
       detail: allowance.px === null
         ? allowance.why
-        : `style.css allows the chart ${allowance.px}px and app.js lays its ceiling of ` +
-          `${app.WIDE_COLUMNS} columns out at ${app.chartWidth(app.WIDE_COLUMNS)}px` +
-          (allowance.px >= app.chartWidth(app.WIDE_COLUMNS)
+        : `style.css caps the chart through --chart-max, which app.js sets to ${allowance.px}px, ` +
+          `and app.js lays its offered ${offered.OFFERED_COLUMNS} columns out at ` +
+          `${offered.chartWidth(offered.OFFERED_COLUMNS)}px` +
+          (allowance.px === offered.chartWidth(offered.OFFERED_COLUMNS)
             ? ""
-            : `, so it draws at ` +
-              `${Math.round((allowance.px / app.chartWidth(app.WIDE_COLUMNS)) * 100)}% of that`),
+            : ` -- the two disagree, so one of them is not chartWidth(OFFERED_COLUMNS)`) +
+          `; the cushion is ${allowance.cushion}px in the stylesheet against app.js's ` +
+          `${offered.CHART_CUSHION}px` +
+          (allowance.cushion === offered.CHART_CUSHION ? "" : " -- SKEWED"),
     },
     {
       // THE BREAKPOINTS AGAINST THE SAME DECLARATION, WHICH IS THE OTHER WAY
@@ -725,7 +765,8 @@ async function wideChecks(app) {
       // two shipped files rather than pinned as a number here.
       //
       // EVERY ENTRY, not the widest: a list is the shape of the responsive
-      // rule, and the arm has to stay true of the tier fisc-ipif would add.
+      // rule, and the list is now composed rather than typed, so this arm is
+      // what says the composition is right at every column it offers.
       name: "every viewport the page adds a column at has room for that column",
       ok: allowance.px !== null && allowance.cushion !== null &&
           queryRoom.length > 0 && queryRoom.every((q) => q.room >= q.wants),
@@ -780,10 +821,17 @@ const WIDE_PATH = ["fund-group/general", "fund/100"];
 const DIVISION_WINDOW = "dept/patrol";
 const WIDE_BANDS = { keys: "0:1 1:2 2:3", sizes: "1/23/30" };
 
-// What four columns are laid out at. PINNED BOTH WAYS: chartWidth(3) is 1180
-// because every figure in this file was measured at that width and a band
-// chosen for its own sake would move all of them at once.
-const WIDE_GEOMETRY = { narrow: 1180, width: 1513 };
+// The one width this file pins, and it is the THREE-column one: every figure
+// here was measured at 1180px, and BAND is 319 precisely so that three columns
+// come to it, so a band chosen for its own sake would move all of them at once.
+//
+// NO WIDER WIDTH IS PINNED HERE, AND NONE MAY BE. chartWidth(n) is a function
+// of this width's own constants, so a wider one written down is a copy of
+// something already derivable -- and the page's ceiling, its media queries and
+// the stylesheet's cap are all that same function now. The arm below asks what
+// a window was laid out at against chartWidth(its own column count), which is
+// the claim wanted and holds at any count.
+const NARROW_DESIGN_WIDTH = 1180;
 
 // The label selection itself, pinned as whole lines.
 //

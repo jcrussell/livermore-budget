@@ -20,7 +20,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import {
-  loadApp, settle, settleCheck, twoYearConfig, plannedFetch, refusals, goldenGraph,
+  loadApp, settle, settleCheck, twoYearConfig, steppedSpineConfig, plannedFetch,
+  refusals, goldenGraph,
   KNOWN_SELECTORS, selectorsIn, parseResidualLiteral, parseStepShapes, parseSpineRenderTiers,
   parseSpendingGaps, openableFrom, goJSONKeys, typedefProperties, repoRoot,
 } from "./harness.mjs";
@@ -301,7 +302,12 @@ export async function checks() {
   // theme's, or "the page follows the viewport" would be green under a page
   // that followed the theme setting instead.
   {
+    // THE CONFIG DECLARES STEPS BECAUSE COLUMN_QUERIES IS COMPOSED FROM THEM.
+    // app.js derives its ceiling from the longest `tiers` on the page, so the
+    // bare default config offers the floor and there is no width query for this
+    // arm to drive -- which would have made it green by having nothing to ask.
     const app = loadApp({
+      config: steppedSpineConfig(),
       viewport: 2000,
       fetch: plannedFetch({ "data/sankey.json": { doc } }),
     });

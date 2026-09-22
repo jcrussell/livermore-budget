@@ -560,6 +560,19 @@ function chartWidth(n) {
   return 2 * LABEL_GUTTER + BAND * (columns - 1) + NODE_WIDTH * columns;
 }
 
+/**
+ * The px `100vw` counts that the reader's window does not: the body's own
+ * padding plus room for a classic scrollbar.
+ *
+ * RECORDED HERE AND IN style.css, WHICH IS TWO PARTIES AND NOT TWO SPELLINGS.
+ * The stylesheet subtracts it from 100vw and this file adds it to a chart width
+ * to ask at what viewport that chart fits; tools/jscheck/layout.mjs reads both
+ * and refuses a disagreement, the way `fisc verify` cross-checks a hash
+ * tools/extract.py computed independently. One side reading the other would be
+ * a lookup, and a lookup cannot disagree.
+ */
+const CHART_CUSHION = 56;
+
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -1007,32 +1020,35 @@ let drilled = [];
  */
 const NARROW_COLUMNS = 3;
 /**
- * The most columns this page has room to draw.
+ * The most columns any step this page declares can ask for.
  *
- * IT IS A MEASUREMENT OF THE STYLESHEET, NOT A TASTE. style.css caps
- * .chart-wrap's --chart-room at chartWidth(4), and the chart is an <svg> with a
- * viewBox: a budget above this does not draw a wider chart, it draws the same
- * picture smaller. tools/jscheck/layout.mjs reads the cap off the shipped
- * declaration and this constant off the shipped script, so raising one without
- * the other goes red rather than shipping a reader who asks for a column and
- * gets less chart.
+ * DERIVED FROM GO'S OWN DECLARATIONS, WHICH IS WHY NO CEILING IS WRITTEN DOWN.
+ * A step's `tiers` is every column it can draw and `widen` says which of them a
+ * narrow client does without, so the longest `tiers` on the page IS the widest
+ * chart it could ever be asked for. Declaring a ceiling beside that was one
+ * number in four places -- here, a media query, the stylesheet's cap and
+ * layout.mjs's expected geometry -- and raising it meant finding all four.
  *
- * IT IS THE ROOM AND NOT THE DEMAND. What a chart WANTS is its step's tier
- * count, which syncColumns asks drawnColumns for rather than restating here.
- * Adding a fifth column is still both halves, the stylesheet's and a step's;
- * fisc-ipif.
+ * IT IS THE DEMAND AND NOT THE ROOM. COLUMN_QUERIES answers the room, one
+ * threshold per column it could offer, so a reader gets the smaller of the two
+ * without either being compared to the other. A page declaring no step offers
+ * the floor, because its chart is drawn at RENDER_TIERS whatever the budget.
  */
-const WIDE_COLUMNS = 4;
+const OFFERED_COLUMNS = STEPS.reduce(
+  (most, s) => Math.max(most, (s.tiers || []).length),
+  NARROW_COLUMNS,
+);
 
 /**
  * The viewport widths that buy a column beyond the floor, and what each buys.
  *
- * 1569 IS chartWidth(4) PLUS THE STYLESHEET'S OWN 56px CUSHION, and it is that
- * rather than a round 1500 because the threshold has to be the width at which
- * the fourth column FITS: --chart-room is calc(100vw - 56px) below its cap, so
- * at a 1500px viewport a four-column chart is drawn at 95% of the width it was
- * laid out at. A breakpoint chosen for looking like a breakpoint reintroduces
- * the defect in miniature. layout.mjs re-derives this from the two files.
+ * EACH THRESHOLD IS chartWidth(n) PLUS THE STYLESHEET'S OWN CUSHION, computed
+ * rather than typed, because the threshold has to be the width at which the nth
+ * column FITS: --chart-room is calc(100vw - CHART_CUSHION) below its cap, so at
+ * a viewport 13px short a four-column chart is drawn at 99% of the width it was
+ * laid out at. A threshold typed as a round number puts the reader one column
+ * narrower than they asked for, and a threshold typed as the right number is
+ * arithmetic done once, by hand, that nothing re-does when a constant moves.
  *
  * ASKED THROUGH matchMedia AND NOT THROUGH resize, because a query is the
  * question being asked -- "is there room for another column" is a threshold,
@@ -1045,10 +1061,28 @@ const WIDE_COLUMNS = 4;
  * design width scaled by the viewBox, so narrowing the window shrinks the
  * picture rather than reflowing it (see chartWidth). Nothing here reads a
  * viewport as a reason to draw FEWER columns than the floor.
+ *
+ * @type {{query: string, columns: number}[]}
  */
-const COLUMN_QUERIES = [
-  { query: "(min-width: 1569px)", columns: WIDE_COLUMNS },
-];
+const COLUMN_QUERIES = (() => {
+  const out = [];
+  for (let n = NARROW_COLUMNS + 1; n <= OFFERED_COLUMNS; n++) {
+    out.push({ query: "(min-width: " + (chartWidth(n) + CHART_CUSHION) + "px)", columns: n });
+  }
+  return out;
+})();
+
+/**
+ * The widest chart this page can be asked to draw, in px: what style.css caps
+ * .chart-wrap at, through the --chart-max it is handed.
+ *
+ * SET BY THIS FILE RATHER THAN DECLARED IN THE STYLESHEET, because the chart's
+ * geometry is this file's and a number in the stylesheet would be a second
+ * spelling of it. There is no cost to a reader with JavaScript off: #chart
+ * ships with a <title> and a <desc> and no marks, so without this script there
+ * is no chart for a cap to bound, which is what the page's <noscript> says.
+ */
+const CHART_MAX = chartWidth(OFFERED_COLUMNS);
 
 /**
  * How many columns the chart may draw, which is what decides whether a step's
@@ -5323,7 +5357,7 @@ function savedColumns() {
     const raw = localStorage.getItem("fisc-columns");
     if (raw === null) return null;
     const n = Math.floor(Number(raw));
-    if (!Number.isFinite(n) || n < NARROW_COLUMNS || n > WIDE_COLUMNS) return null;
+    if (!Number.isFinite(n) || n < NARROW_COLUMNS || n > OFFERED_COLUMNS) return null;
     return n;
   } catch (e) {
     return null;
@@ -5352,7 +5386,7 @@ function syncColumns() {
   // declaring a `widen` has a second width, so elsewhere the budget rises and
   // nothing is drawn differently; a stepper with nothing to do is disabled.
   const moves = (/** @type {number} */ delta) => {
-    const want = Math.min(WIDE_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
+    const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
     return want !== columnBudget && drawnColumns(want) !== drawnColumns();
   };
   bound("column-fewer", !moves(-1));
@@ -5398,7 +5432,7 @@ function applyColumns(redraw) {
  * @param {number} delta
  */
 function stepColumns(delta) {
-  const want = Math.min(WIDE_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
+  const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
   if (want === columnBudget) return;
   // BACK TO THE VIEWPORT'S OWN ANSWER IS A RELEASE, NOT A CHOICE. It is the
   // reader's way of handing the decision back, and without it the first press
@@ -5428,6 +5462,12 @@ function stepColumns(delta) {
  * re-disables whichever one is at its bound.
  */
 function wireColumns() {
+  // THE CAP THE STYLESHEET APPLIES IS HANDED TO IT HERE, on :root as syncTheme
+  // hands it the theme, because custom properties inherit and .chart-wrap
+  // carries no id to reach. style.css's --chart-room takes the smaller of this
+  // and the room the window actually has; without this it falls back to 100%,
+  // which is the no-script state where there is no chart to bound anyway.
+  document.documentElement.style.setProperty("--chart-max", CHART_MAX + "px");
   columnOverride = savedColumns();
   const fewer = maybeEl("column-fewer");
   const more = maybeEl("column-more");
