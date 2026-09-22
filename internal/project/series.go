@@ -6,6 +6,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // seriesSpec is one series document's identity: the parts of a
@@ -175,7 +176,7 @@ func (sp seriesSpec) build(facts []fact.Fact, o Options) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return encode(d, sp.name)
+	return encode(d, sp.name, schema.Series)
 }
 
 // fundName is the city's name for a fund, falling back to "" so the client

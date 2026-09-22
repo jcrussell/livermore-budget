@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -88,8 +89,21 @@ func fundFlowsOptions() Options {
 }
 
 // fundFlowsFact is one fact at an address. The amount is what nets.
+// factID is the id of the fixture fact `tag` names, so an assertion can read by
+// the handle it was written with while the document carries an id of the shape
+// a store holds.
+func factID(tag string) string { return fmt.Sprintf("fisc-f-%012x", tag[0]) }
+
+// fundFlowsFact builds one fact of this file's fixture.
+//
+// tag IS A HANDLE AND THE ID IS BUILT FROM IT, rather than the handle being the
+// id: schema/fact-id.schema.json says a fact id is `fisc-f-` and twelve hex
+// digits, so a link citing "a" is a link no store can hold and no published
+// document can contain. A fixture shaped like something that cannot occur is
+// one whose tests pass against a document the tree would refuse.
 func fundFlowsFact(scope string, kind mapping.Kind, category, department, group string,
-	fund *int, cents int64, id string) fact.Fact {
+	fund *int, cents int64, tag string) fact.Fact {
+	id := factID(tag)
 	return fact.Fact{
 		ID: id, DocID: testDoc, Scope: scope, Kind: kind, Category: category,
 		Department: department, FundGroup: group, Fund: fund, RowLabel: printedRow(category),
@@ -410,10 +424,10 @@ func TestALineRollsUpIntoItsCategoryOncePerKind(t *testing.T) {
 	if v := got[KindInternalService].ValueCents; v != 500 {
 		t.Errorf("the internal-service rollup is %d, want 500", v)
 	}
-	if diff := cmp.Diff([]string{"a", "b"}, got[KindExternal].FactIDs); diff != "" {
+	if diff := cmp.Diff([]string{factID("a"), factID("b")}, got[KindExternal].FactIDs); diff != "" {
 		t.Errorf("the external rollup cites the wrong rows (-want +got):\n%s", diff)
 	}
-	if diff := cmp.Diff([]string{"f"}, got[KindInternalService].FactIDs); diff != "" {
+	if diff := cmp.Diff([]string{factID("f")}, got[KindInternalService].FactIDs); diff != "" {
 		t.Errorf("the internal-service rollup cites the wrong rows (-want +got):\n%s", diff)
 	}
 	// PUBLISHED, NOT INFERRED. A rollup of rows the city printed is a reading of
@@ -452,7 +466,7 @@ func TestAPrintedZeroIsNotInItsLinesRollup(t *testing.T) {
 	if rollup == nil {
 		t.Fatal("the line rolls up into nothing, so the category has no inflow at all")
 	}
-	if diff := cmp.Diff([]string{"a", "b"}, rollup.FactIDs); diff != "" {
+	if diff := cmp.Diff([]string{factID("a"), factID("b")}, rollup.FactIDs); diff != "" {
 		t.Errorf("the rollup's citation is not the rows that flowed (-want +got):\n%s", diff)
 	}
 	if rollup.ValueCents != 3000 {

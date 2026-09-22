@@ -189,9 +189,9 @@ func TestTheTrendsMetadataKeyOrderMatchesTheContract(t *testing.T) {
 // escaping ON, because that is json.Marshal's default, and nothing would say so
 // until a reader saw an ampersand entity on the page.
 func TestEncodeLeavesHTMLAlone(t *testing.T) {
-	got, err := encode(map[string]string{"label": "Fines & Forfeitures"}, "test")
+	got, err := marshal(map[string]string{"label": "Fines & Forfeitures"}, "test")
 	if err != nil {
-		t.Fatalf("encode: %v", err)
+		t.Fatalf("marshal: %v", err)
 	}
 	if !strings.Contains(string(got), "Fines & Forfeitures") {
 		t.Errorf("got %s, want the ampersand unescaped", got)

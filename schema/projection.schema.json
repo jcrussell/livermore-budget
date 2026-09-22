@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/projection.schema.json",
+  "title": "fisc graph projection",
+  "description": "One document internal/project builds as a graph: the citywide spine and the four schedules drawn beside it. It is a Go-to-Go contract rather than a published one -- internal/export folds these into one file per column and a reader fetches the column -- and it is a schema because the two packages are otherwise coupled by json tags alone. internal/export decodes it without importing internal/project, so a tag renamed on either side reads as a zero value with no error anywhere.",
+  "type": "object",
+  "required": ["schema_version", "projection", "metadata", "nodes", "links"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "projection": {
+      "description": "A DECLARED SET AND NOT AN OPEN ONE: internal/project names each of these in a constant that pkg/cmd/export's step declarations read, so the enum is what makes those copies one claim.",
+      "enum": ["sankey", "fund-flows", "department-spending", "department-funding", "transfers-by-fund"]
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "generated_by", "fiscal_year", "fiscal_year_label", "basis",
+        "currency", "units", "sources", "counts", "caveats"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "generated_by": { "type": "string", "minLength": 1 },
+        "fiscal_year": { "type": "integer", "minimum": 1900 },
+        "fiscal_year_label": { "type": "string", "minLength": 1 },
+        "basis": { "enum": ["actual", "revised", "adopted", "projected"] },
+        "scope": { "type": "string", "minLength": 1 },
+        "scopes": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "currency": { "const": "USD" },
+        "units": { "const": "cents" },
+        "sources": {
+          "type": "array",
+          "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
+        },
+        "headline": {
+          "description": "The spine's own figures. Their keys mean nothing on any other schedule, which is why no other document carries the block at all rather than carrying it zeroed. A DECLARED SET AND NOT AN OPEN ONE -- internal/check reads these names to reconcile the published totals against the facts, so an open map would let a renamed key pass here and fail there.",
+          "type": "object",
+          "required": ["all_funds_gross_revenue_cents", "all_funds_gross_expenditure_cents", "external_revenue_cents", "external_expenditure_cents", "internal_transfer_in_cents", "internal_transfer_out_cents", "naive_expenditure_cents", "transfer_residual_cents"],
+          "additionalProperties": false,
+          "properties": {
+            "all_funds_gross_revenue_cents": { "type": "integer" },
+            "all_funds_gross_expenditure_cents": { "type": "integer" },
+            "external_revenue_cents": { "type": "integer" },
+            "external_expenditure_cents": { "type": "integer" },
+            "internal_transfer_in_cents": { "type": "integer" },
+            "internal_transfer_out_cents": { "type": "integer" },
+            "naive_expenditure_cents": { "type": "integer" },
+            "transfer_residual_cents": { "type": "integer" }
+          }
+        },
+        "counts": {
+          "description": "How much of the corpus this document accounts for. facts minus facts_cited is the part of the schedule the chart cannot show -- zero-valued cells and stock rows -- and stating both is what makes that gap a quantity a check can assert.",
+          "type": "object",
+          "required": ["facts", "facts_cited", "nodes", "links"],
+          "additionalProperties": false,
+          "properties": {
+            "facts": { "type": "integer", "minimum": 0 },
+            "facts_cited": { "type": "integer", "minimum": 0 },
+            "facts_cited_twice": { "type": "integer", "minimum": 0 },
+            "facts_uncited": { "type": "integer", "minimum": 0 },
+            "transfers": { "type": "integer", "minimum": 0 },
+            "nodes": { "type": "integer", "minimum": 0 },
+            "links": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "caveats": {
+          "type": "array",
+          "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/caveat.schema.json" }
+        }
+      },
+      "allOf": [
+        {
+          "description": "ONE SCHEDULE OR SEVERAL, NAMED EITHER WAY AND NEVER BOTH. Envelope.Scope is singular because a document carrying one is of exactly one schedule; fund-flows is built over two, so it states `scopes` and no `scope` rather than writing one of them into a singular key. This is the claim the fenced block in docs/sankey-contract.md could not make.",
+          "oneOf": [
+            { "required": ["scope"], "not": { "required": ["scopes"] } },
+            { "required": ["scopes"], "not": { "required": ["scope"] } }
+          ]
+        }
+      ]
+    },
+    "nodes": {
+      "description": "EMPTY IS A DOCUMENT AND NOT AN ERROR: a projection built over facts that select nothing publishes an empty graph rather than refusing, and internal/export skips such a document when folding columns. What is refused is a null -- every key present on every object, no omitempty anywhere.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id", "label", "tier", "parent", "constraint_tier", "role",
+          "derived", "rationale", "source_note"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "tier": { "type": "integer", "minimum": 0 },
+          "parent": { "type": "string" },
+          "constraint_tier": { "type": "string" },
+          "role": { "type": "string" },
+          "derived": { "type": "boolean" },
+          "rationale": { "type": "string" },
+          "source_note": { "type": "string" }
+        }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "source", "target", "value_cents", "kind", "transfer_id",
+          "fact_ids", "locators", "derived", "partition"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "source": { "type": "string", "minLength": 1 },
+          "target": { "type": "string", "minLength": 1 },
+          "value_cents": {
+            "description": "Integer cents as the document printed it, signed: a contra row -- a reduction the schedule prints in parentheses -- arrives negative.",
+            "type": "integer"
+          },
+          "kind": { "enum": ["external", "internal_transfer", "internal_service", "fund_balance"] },
+          "transfer_id": { "type": "string" },
+          "fact_ids": {
+            "type": "array",
+            "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json" }
+          },
+          "locators": {
+            "type": "array",
+            "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
+          },
+          "derived": { "type": "boolean" },
+          "partition": { "type": "boolean" }
+        },
+        "allOf": [
+          {
+            "description": "A published link cites at least one fact and names where it was read; a derived one cites nothing, because no page prints it.",
+            "if": { "properties": { "derived": { "const": false } } },
+            "then": {
+              "properties": {
+                "fact_ids": { "minItems": 1 },
+                "locators": { "minItems": 1 }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "description": "A DOCUMENT THAT DRAWS SOMETHING SAYS WHERE IT READ IT. An empty projection -- built over facts that select nothing -- publishes an empty graph and cites nothing, which is honest; a projection with nodes and no sources is a chart with no provenance, which is the one thing this project cannot ship. So the floor is conditional rather than absent.",
+      "if": { "properties": { "nodes": { "minItems": 1 } }, "required": ["nodes"] },
+      "then": { "properties": { "metadata": { "properties": { "sources": { "minItems": 1 } } } } }
+    },
+    {
+      "description": "THE HEADLINE IS THE SPINE'S ALONE. Its keys are all_funds_gross_* and naive_expenditure_cents, which are claims about the citywide totals and mean nothing on a schedule drawn over part of the city.",
+      "if": { "properties": { "projection": { "const": "sankey" } }, "required": ["projection"] },
+      "then": { "properties": { "metadata": { "required": ["headline"] } } },
+      "else": { "properties": { "metadata": { "not": { "required": ["headline"] } } } }
+    }
+  ]
+}

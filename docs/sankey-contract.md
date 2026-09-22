@@ -65,35 +65,9 @@ to ship travels the same channel (`export.Options.Files`).
 
 ## Shape
 
-```jsonc
-{
-  "schema_version": 1,
-  "projection": "sankey",
-  "metadata": {
-    "generated_by": "...", "fiscal_year": 2026, "fiscal_year_label": "FY 2025-26",
-    "basis": "adopted", "scope": "all-funds-gross",
-    "currency": "USD", "units": "cents",
-    "sources": [{"doc_id": "livermore-budget-fy2026-2027", "pages": [66, 67]}],
-    "headline": { /* see below */ },
-    "counts": {"facts": 120, "facts_cited": 58, "nodes": 25, "links": 58},
-    "caveats": [
-      {"id": "...", "summary": "...", "text": "...", "applies_to": ["..."]}
-    ]
-  },
-  "nodes": [{
-    "id": "revenue/taxes/property", "label": "Property Taxes",
-    "tier": 0, "parent": "", "constraint_tier": "", "role": "revenue_source",
-    "derived": false, "rationale": "", "source_note": ""
-  }],
-  "links": [{
-    "source": "revenue/taxes/property", "target": "fund-group/general",
-    "value_cents": 6414376200, "kind": "external", "transfer_id": "",
-    "fact_ids": ["fisc-f-..."],
-    "locators": [{"doc_id": "livermore-budget-fy2026-2027", "pages": [66]}],
-    "derived": false, "partition": false
-  }]
-}
-```
+`schema/projection.schema.json` holds it, and `internal/project`'s encoder
+validates every document against it before returning the bytes. What follows is
+what the schema cannot say.
 
 Every key is present on every object, in declaration order. **No `omitempty`,
 no `null`** — the same discipline as `fact.Fact`, and for the same reason: a

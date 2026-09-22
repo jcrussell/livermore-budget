@@ -131,4 +131,10 @@ const (
 	// Page is window.FISC_CONFIG: what the page has before it has fetched
 	// anything, and which artifacts it may fetch.
 	Page = "page.schema.json"
+	// Projection is one document internal/project builds as a graph: the
+	// citywide spine and the four schedules drawn beside it.
+	Projection = "projection.schema.json"
+	// Series is one built as a series per printed row instead: the revenue
+	// trends and the two ACFR fund-balance schedules.
+	Series = "series.schema.json"
 )

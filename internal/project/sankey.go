@@ -11,6 +11,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/structure"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // LinkKind says what a link is, which is what decides whether it belongs in
@@ -580,7 +581,7 @@ func (s *sankey) Build(facts []fact.Fact, o Options) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return encode(g, s.Name())
+	return encode(g, s.Name(), schema.Projection)
 }
 
 // cellKey addresses one printed cell of the schedule: a row's classification

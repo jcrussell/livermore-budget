@@ -5,8 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"sync"
+
+	"github.com/google/jsonschema-go/jsonschema"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // This file holds the parts of a published document that are NOT the Sankey's.
@@ -246,7 +250,46 @@ func (l *locatorSet) sources() []Source {
 //
 // name is the projection's, so a failure names the document that could not be
 // written rather than the type that could not be marshalled.
-func encode(v any, name string) ([]byte, error) {
+//
+// IT VALIDATES THE BYTES IT IS ABOUT TO RETURN, against the schema the caller
+// names. This is the one place every projection passes through, so the check
+// belongs here rather than six times over -- and it is the BYTES rather than
+// the struct, because a struct has already lost the difference between a key
+// that was absent and one present and empty.
+//
+// WHAT IT GUARDS IS A SEAM NO COMPILER SEES. internal/export reads these
+// documents back without importing this package: its `decoded` struct and the
+// decoders in page.go are a second spelling of these shapes, joined to them by
+// json tags alone. A tag renamed on either side decodes to a zero value and
+// nothing anywhere returns an error, which is the failure page.schema.json was
+// written for one layer up.
+func encode(v any, name, schemaName string) ([]byte, error) {
+	raw, err := marshal(v, name)
+	if err != nil {
+		return nil, err
+	}
+	var doc any
+	if err = json.Unmarshal(raw, &doc); err != nil {
+		return nil, fmt.Errorf("re-read %s projection: %w", name, err)
+	}
+	resolved, err := projectionSchema(schemaName)
+	if err != nil {
+		return nil, err
+	}
+	if err = resolved.Validate(doc); err != nil {
+		return nil, fmt.Errorf("the %s projection does not match %s: %w", name, schemaName, err)
+	}
+	return raw, nil
+}
+
+// marshal is [encode]'s bytes without its shape check: the canonical JSON every
+// projection publishes.
+//
+// SPLIT OUT SO THE ENCODER'S OWN CLAIM STAYS TESTABLE. What this settles -- HTML
+// escaping off, two-space indent, one trailing newline -- is true of any value,
+// and pinning it through a schema would need a fixture shaped like a document to
+// assert something that has nothing to do with the shape.
+func marshal(v any, name string) ([]byte, error) {
 	var b bytes.Buffer
 	enc := json.NewEncoder(&b)
 	enc.SetEscapeHTML(false)
@@ -255,6 +298,31 @@ func encode(v any, name string) ([]byte, error) {
 		return nil, fmt.Errorf("encode %s projection: %w", name, err)
 	}
 	return b.Bytes(), nil
+}
+
+// schemaCache holds [encode]'s compiled schemas, one compile per name for the
+// life of the process.
+//
+// MEMOISED BECAUSE THIS RUNS INSIDE `fisc verify`, not only at build: the
+// projections-build and published-projection-built checks construct every
+// document, so a compile per document would be paid once for each of them for
+// an answer that cannot change. Guarded because a caller may build projections
+// concurrently and this package promises nothing about that either way.
+var schemaCache sync.Map
+
+// projectionSchema is the compiled schema named, compiled at most once.
+func projectionSchema(name string) (*jsonschema.Resolved, error) {
+	if got, ok := schemaCache.Load(name); ok {
+		return got.(*jsonschema.Resolved), nil
+	}
+	resolved, err := schema.Load(name)
+	if err != nil {
+		return nil, fmt.Errorf("loading %s: %w", name, err)
+	}
+	// LoadOrStore RATHER THAN Store, so two callers racing here agree about
+	// which compiled schema every later caller gets.
+	actual, _ := schemaCache.LoadOrStore(name, resolved)
+	return actual.(*jsonschema.Resolved), nil
 }
 
 // Envelope is what every document of this project carries, and it is the

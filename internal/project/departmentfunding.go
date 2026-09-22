@@ -7,6 +7,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // DepartmentFundingProjection is this document's name and file stem.
@@ -163,7 +164,7 @@ func (d *departmentFunding) Build(facts []fact.Fact, o Options) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	return encode(doc, d.Name())
+	return encode(doc, d.Name(), schema.Projection)
 }
 
 // Document builds the graph and returns it, so `fisc verify` reads the same

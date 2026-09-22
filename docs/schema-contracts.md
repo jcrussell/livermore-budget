@@ -99,23 +99,35 @@ and `schema_version` is the guard that matters. A schema closing that object
 would refuse a manifest the Go reader accepts, which is a contract disagreeing
 with itself.
 
-## What has no schema, and why that is not an oversight yet
+## Every artifact has one now, and they are not one schema
 
-The projection documents `internal/project` builds — `sankey.json` and its
-siblings — have none. Their shape is stated by the Go structs and by the fenced
-block in [`sankey-contract.md`](sankey-contract.md), which is TWO spellings and
-not three: there is no schema for that block to duplicate.
+`internal/project` builds documents of two shapes, and one schema for both would
+state the union of two things and refuse neither.
 
-That is worth saying because the block looks like the one deleted from
-`general-fund-drilldown-contract.md` and is not. The drilldown block described an
-artifact a schema had just been written for, so it was a third spelling that
-could never be compared against bytes. This one is the only prose statement of a
-shape nothing else states, and deleting it would remove information rather than
-duplication. `fisc-1wmy` is where the projection schema would go.
+`projection.schema.json` holds the five graph documents. They share an envelope
+and differ three ways, all of which it states and none of which a fenced example
+could: only `sankey` carries a `headline`, only `fund-flows` states `scopes`
+rather than `scope`, and the `counts` block has three optional members. The
+scope pair is a `oneOf` -- exactly one of the two, never both -- because
+`Envelope.Scope` is singular by design and a document built over two schedules
+must not write one of them into a singular key.
 
-`data/revenue-trends.json` and the two fund-balance documents have none either.
-They ship as themselves, byte for byte, held by a copy test and goldens rather
-than by a shape contract.
+`series.schema.json` holds the three built as a series per printed row. Those
+are the only projections a reader fetches as themselves, so it is holding served
+bytes rather than bytes passed between packages.
+
+The seam they were written for has no compiler behind it: `internal/export`
+decodes these documents without importing `internal/project`, so `decoded` and
+the decoders in `page.go` are joined to them by json tags alone. A tag renamed
+on one side reads as a zero value with no error anywhere -- the page renders,
+the figure is absent, nothing is red. `internal/project` is held to the schemas
+by equality and `internal/export` by containment, because a decoder may read a
+subset and may not read a name no document carries.
+
+Two things the schemas refused on the day they landed, both of which had been
+true of the tree and stated nowhere: a series' `fund` is null rather than zero
+where the row sits under no numbered fund, and no fund is numbered 0; and a
+projection with nodes must cite a source, while an empty one may cite none.
 
 ## Why a column's schedules are not merged
 

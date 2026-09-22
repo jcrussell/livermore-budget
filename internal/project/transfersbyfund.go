@@ -8,6 +8,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // TransfersByFundProjection is this document's name and file stem.
@@ -175,7 +176,7 @@ func (t *transfersByFund) Build(facts []fact.Fact, o Options) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return encode(doc, t.Name())
+	return encode(doc, t.Name(), schema.Projection)
 }
 
 // Document builds the transfer network and returns it, so `fisc verify` reads

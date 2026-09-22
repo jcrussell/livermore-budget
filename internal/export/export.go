@@ -15,7 +15,7 @@
 //	<dir>/style.css           copied verbatim from site/
 //	<dir>/vendor/*            vendored d3 and d3-sankey, with licences
 //	<dir>/.nojekyll           zero bytes; stops GitHub Pages running Jekyll
-//	<dir>/data/<name>.json    one file per projection
+//	<dir>/data/<name>.json    the projections that fold into no column
 //	<dir>/extracted/<doc>/pages/pNNNN.txt   the cited pages' committed text
 //	<dir>/<Files...>          whatever else the caller ships
 //

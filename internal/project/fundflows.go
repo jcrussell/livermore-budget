@@ -10,6 +10,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/pkg/cmdutil"
+	"github.com/jcrussell/livermore-budget/schema"
 )
 
 // FundFlowsProjection is this document's name and file stem.
@@ -287,7 +288,7 @@ func (f *fundFlows) Build(facts []fact.Fact, o Options) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return encode(doc, f.Name())
+	return encode(doc, f.Name(), schema.Projection)
 }
 
 // Document builds the drill-down and returns it, so `fisc verify` reads the

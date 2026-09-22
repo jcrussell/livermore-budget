@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jcrussell.github.io/livermore-budget/schema/series.schema.json",
+  "title": "fisc series projection",
+  "description": "One document internal/project builds as a series per printed row rather than as a graph: the revenue trends and the two ACFR fund-balance schedules. These are the only projections a reader fetches as themselves -- internal/export folds the graph documents into one file per column and copies these through verbatim -- so this schema holds bytes that are served rather than only passed between packages.",
+  "type": "object",
+  "required": ["schema_version", "projection", "metadata", "series"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "projection": {
+      "enum": ["revenue-trends", "fund-balances", "changes-in-fund-balances"]
+    },
+    "metadata": {
+      "description": "THE ENVELOPE AND NO MORE. It carries no fiscal_year, fiscal_year_label, basis or headline, and their absence is the contract rather than an omission: a document of four columns and three bases has no singular year or basis, and publishing them zeroed to keep a familiar shape is the absent-is-not-zero error this project refuses everywhere else. `columns` is what carries them, one entry per printed column.",
+      "type": "object",
+      "required": ["generated_by", "scope", "currency", "units", "columns", "sources", "counts", "caveats"],
+      "additionalProperties": false,
+      "properties": {
+        "generated_by": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "currency": { "const": "USD" },
+        "units": { "const": "cents" },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["fiscal_year", "fiscal_year_label", "basis", "comparable_group"],
+            "additionalProperties": false,
+            "properties": {
+              "fiscal_year": { "type": "integer", "minimum": 1900 },
+              "fiscal_year_label": { "type": "string", "minLength": 1 },
+              "basis": { "enum": ["actual", "revised", "adopted", "projected", "audited"] },
+              "comparable_group": {
+                "description": "Which columns may be read against each other. A basis is not a comparability claim on its own -- the ACFR's ten audited years are one group and the budget book's actual, revised and adopted columns are three.",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
+        },
+        "counts": {
+          "description": "NO facts_cited HERE. Every point IS a fact, so the gap the graph documents state between facts and facts_cited has nothing to be a gap between.",
+          "type": "object",
+          "required": ["facts", "series", "points"],
+          "additionalProperties": false,
+          "properties": {
+            "facts": { "type": "integer", "minimum": 0 },
+            "series": { "type": "integer", "minimum": 0 },
+            "points": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "caveats": {
+          "type": "array",
+          "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/caveat.schema.json" }
+        }
+      }
+    },
+    "series": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "series_id", "label", "fund", "fund_name", "fund_group",
+          "kind", "category", "category_label", "points"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "series_id": { "type": "string", "minLength": 1 },
+          "label": { "type": "string", "minLength": 1 },
+          "fund": {
+            "description": "NULL AND NOT ZERO where the row sits under no numbered fund -- the ACFR's fund-balance schedules print a fund's components and an aggregate across funds, never a fund. It is fact.Fact.Fund carried through, and no fund is numbered 0, so zero would be a fund rather than the absence of one. AGENTS.md, \"Provenance invariants\".",
+            "type": ["integer", "null"],
+            "minimum": 1
+          },
+          "fund_name": { "type": "string" },
+          "fund_group": { "type": "string" },
+          "kind": { "enum": ["revenue", "expenditure", "transfer_in", "transfer_out", "fund_balance"] },
+          "category": { "type": "string" },
+          "category_label": { "type": "string" },
+          "points": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "description": "ONE POINT IS ONE FACT, carrying the provenance the fact carries: which page, which byte, which token. That is what lets a reader of this file check a figure without holding the fact store as well.",
+              "type": "object",
+              "required": [
+                "fiscal_year", "basis", "amount_cents", "fact_id",
+                "doc_id", "page", "offset", "token", "derived"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "fiscal_year": { "type": "integer", "minimum": 1900 },
+                "basis": { "enum": ["actual", "revised", "adopted", "projected", "audited"] },
+                "amount_cents": { "type": "integer" },
+                "fact_id": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/fact-id.schema.json" },
+                "doc_id": { "type": "string", "minLength": 1 },
+                "page": { "type": "integer", "minimum": 1 },
+                "offset": { "type": "integer", "minimum": 0 },
+                "token": { "type": "string", "minLength": 1 },
+                "derived": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
