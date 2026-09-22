@@ -935,9 +935,9 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		{"a drill with no noun", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Noun = "" })},
 			"two rungs of one trail drawing the same words"},
-		// THE OPENED CHART'S OWN WORDS, for ChartDescription's reason one
-		// rung down: without them the <desc> a screen reader hears at depth 1
-		// is the opening state's, over a chart that no longer draws it.
+		// THE OPENED CHART'S OWN WORDS, for the reason DrillStep.Description
+		// exists: without them the <desc> a screen reader hears at depth 1 is
+		// the opening state's, over a chart that no longer draws it.
 		{"a drill with no description", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Description = "" })},
 			"told the opening state's over a chart it no longer draws"},
@@ -2771,10 +2771,9 @@ func chartAndSpine(t *testing.T) string {
 func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 	dir := chartAndSpine(t)
 	// THE ATTRIBUTE HAS THREE SPELLINGS and this matched two. `open`, `open>`
-	// and `open=""` are one boolean attribute; the character class stopped at
-	// whitespace and `>`, so a disclosure written `open=""` shipped open past
-	// here. Mutation-measured on chart.html.tmpl: the whole Go suite stayed
-	// green.
+	// and `open=""` are one boolean attribute; a character class stopping at
+	// whitespace and `>` lets a disclosure written `open=""` ship open past
+	// here, measured by mutation with the whole Go suite staying green.
 	open := regexp.MustCompile(`<details[^>]*\sopen(?:[\s>]|="")`)
 
 	for _, page := range []string{export.IndexPath} {
@@ -2867,11 +2866,9 @@ func TestAClosedFlowTableIsNotDescribedAsListedBelow(t *testing.T) {
 			continue
 		}
 		// THE TEMPLATE'S OWN WORDS. index.html.tmpl writes the whole <desc>
-		// itself -- a second template once rendered {{.ChartDescription}} ahead
-		// of its own sentence, and a caller-supplied description carrying
-		// "opens" could satisfy the escape hatch for a suffix that had reverted
-		// to "listed below", so the caller's half was stripped before the
-		// assertion. There is no caller's half now.
+		// itself, so there is no caller-supplied half to strip before the
+		// assertion and nothing a description carrying "opens" could satisfy
+		// the escape hatch with.
 		//
 		// Whitespace collapsed first: the template wraps this sentence to fit
 		// its own margins, so "opens from" straddles a newline and a literal
@@ -3103,10 +3100,9 @@ var sentenceSplit = regexp.MustCompile(`[.!?]\s+`)
 // so narrowing validate to a period alone -- which would refuse a description a
 // reader-facing caller may legitimately write -- was measured green.
 //
-// ON A STEP AND NOT ON A VIEW. The rule was written for View.ChartDescription,
-// which a second chart template published and which went with it; endsASentence
-// still guards DrillStep.Description, for the same reason and against the same
-// splitter, so the case moved to the declaration that still carries it.
+// ON A STEP AND NOT ON A VIEW. endsASentence guards DrillStep.Description,
+// which is the only caller-supplied description the packager accepts, and it
+// is measured against the splitter site/app.js runs on the served page.
 func TestAStepDescriptionMayCloseWithAnyTerminatorAppJsSplitsOn(t *testing.T) {
 	for _, tc := range []struct {
 		desc   string

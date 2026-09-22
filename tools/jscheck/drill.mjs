@@ -1408,7 +1408,7 @@ async function gestureChecks() {
       `"${secondClick}" under the reader and came back to "${closedDouble.isolated}" at depth ` +
       `${closedDouble.depth} (want "${seed}", nothing opened); the same gesture on ${opensID} ` +
       `opened it to depth ${opensDouble.depth} on "${opensDouble.top}" following ` +
-      `"${opensDouble.isolated}", which drawChart cleared on the way -- so what the restore is ` +
+      `"${opensDouble.isolated}", which redrawStack cleared on the way -- so what the restore is ` +
       `witnessed by is the mark that does not open`,
   });
 
@@ -3333,7 +3333,7 @@ async function walkCategory(col) {
   const property = "revenue/taxes/property";
   const asked0 = fetch.asked.slice();
   const desc = app.dom.document.getElementById("chart-desc");
-  const served = templateDesc("index.html.tmpl", "");
+  const served = templateDesc("index.html.tmpl");
   desc.textContent = served;
   const pointer = served.slice(served.indexOf(". ") + 2);
   const text = (/** @type {any} */ el) => {
@@ -4202,6 +4202,30 @@ async function objectCategoryChecks() {
         `the centre takes ${into} and sends ${outOf}; the counts line reads "${counts}" and ` +
         `the flow table holds ${rows} row(s)`,
     });
+    // WHAT THE MARK SAYS ABOUT ITSELF, held to what it is worth. The arm above
+    // reads the DECLARED half of the rationale -- the packager's sentence,
+    // carried verbatim -- and nothing read the half this page composes or the
+    // source note at all, so both were words no check could see go wrong.
+    //
+    // THE FIGURES ARE PARSED BACK OUT AND SUBTRACTED rather than the sentence
+    // being spelled here: a copy of the wording would check the copy, and what
+    // is worth holding is that the two totals the mark quotes differ by exactly
+    // what it draws. Spelling it would also make every rewording of a
+    // reader-facing sentence a red arm, which teaches people to edit the check.
+    if (pins.gapCents && mark) {
+      const quoted = (mark.rationale.match(/\$[\d,]+(?:\.\d{2})?/g) || [])
+        .slice(0, 2)
+        .map((/** @type {string} */ f) => Math.round(Number(f.slice(1).replace(/,/g, "")) * 100));
+      const spread = quoted.length === 2 ? quoted[0] - quoted[1] : null;
+      out.push({
+        name: `${col.label} object: the gap mark's own words quote two totals that differ by exactly what it draws, and it says it is derived`,
+        ok: spread === pins.gapCents && flow.value_cents === pins.gapCents &&
+          /^Derived, not published/.test(mark.source_note || ""),
+        detail: `the mark quotes ${quoted.length} total(s) differing by ${spread} cent(s) ` +
+          `and draws ${flow ? flow.value_cents : "no"} (want ${pins.gapCents}); its source ` +
+          `note reads ${JSON.stringify((mark.source_note || "").slice(0, 60))}`,
+      });
+    }
     await at(app);
   }
 
@@ -4727,7 +4751,7 @@ async function walkChain(col) {
   const out = [];
   const { app, fetch, body } = await opened(null, null, col);
   const desc = app.dom.document.getElementById("chart-desc");
-  const served = templateDesc("index.html.tmpl", "");
+  const served = templateDesc("index.html.tmpl");
   desc.textContent = served;
   const pointer = served.slice(served.indexOf(". ") + 2);
   const [groupStep, fundStep, divisionStep] = PAGE.steps;
@@ -5083,11 +5107,11 @@ async function walkChain(col) {
  * copy of a sentence the template owns, and the copy is what stays green while
  * the original drifts.
  */
-function templateDesc(file, description) {
+function templateDesc(file) {
   const src = readFileSync(join(repoRoot, "site", file), "utf8");
   const m = src.match(/<desc id="chart-desc">([\s\S]*?)<\/desc>/);
   if (!m) throw new Error(file + " renders no #chart-desc to pin against");
-  return m[1].replace(/\s+/g, " ").trim().replaceAll("{{.ChartDescription}}", description);
+  return m[1].replace(/\s+/g, " ").trim();
 }
 
 

@@ -139,10 +139,12 @@
     <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
   </div>
   {{- /* SHIPPED EMPTY AND hidden, filled by app.js, on a page that declares
-         no steps as much as on one that does. chart.html.tmpl says why it
-         cannot be rendered server-side; unconditional here because the spine
-         is the page a chain is declared on and the element has to be there
-         before the declaration is. Hidden, it is not a control that lies. */}}
+         no steps as much as on one that does. It cannot be rendered
+         server-side because its trail is where the reader has walked to and
+         the server knows only the opening state; unconditional here because
+         the spine is the page a chain is declared on and the element has to
+         be there before the declaration is. Hidden, it is not a control that
+         lies. */}}
   <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
   <div class="chart-wrap">
     <!-- role="group", not "img": an img is a leaf, and the marks inside carry

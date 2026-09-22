@@ -2261,7 +2261,7 @@ function clickNode(d, at) {
  * the two clicks underneath it isolated.
  *
  * THE RESTORE IS OBSERVABLE ON A NODE THAT DOES NOT OPEN, and that is where it
- * earns its place. On one that does, drawChart clears the isolation anyway --
+ * earns its place. On one that does, redrawStack clears the isolation anyway --
  * an id from the chart being replaced need not exist on the chart replacing it
  * -- so there the restore buys only the frame: the emphasis the reader sees
  * last before the redraw is their own, rather than a flash of the node they
@@ -2433,9 +2433,9 @@ function paintChartName() {
  * The last sentence of a server-rendered description, with the template's own
  * line wrapping collapsed.
  *
- * Returns "" for a description of one sentence, which is what a caller-supplied
- * ChartDescription with no template suffix would be -- appending nothing beats
- * appending half of the chart's own sentence.
+ * Returns "" for a description of one sentence, which is what a step's own
+ * Description with no template suffix after it would be -- appending nothing
+ * beats appending half of the chart's own sentence.
  *
  * @param {string} s
  * @returns {string}
@@ -2446,8 +2446,9 @@ function lastSentence(s) {
   // other two run into the template's sentence.
   //
   // AN UNTERMINATED DESCRIPTION CANNOT REACH HERE. The packager refuses one --
-  // see export.View.validate's endsASentence arm, which exists because every
-  // fixture in this repo happened to end in a period and hid the case.
+  // see export.View.validateSteps' endsASentence arm over DrillStep.Description,
+  // which exists because every fixture in this repo happened to end in a period
+  // and hid the case.
   const parts = String(s).replace(/\s+/g, " ").trim().split(/[.!?]\s+/);
   return parts.length < 2 ? "" : parts[parts.length - 1].trim();
 }
@@ -3397,9 +3398,12 @@ function isCarried(id) {
  * the opened General Fund shows 144,650,802 flowing out of a group the chart
  * above said takes in 159,388,024 (FY2025-26, dollars), and nothing tells the
  * reader why. The difference is the RESIDUAL: money the city printed at group
- * grain and nowhere finer. `fisc verify`'s drill-reconciles-across-documents
- * proves it is exactly the declared endpoints' share; this is what makes it
- * visible.
+ * grain and nowhere finer. WHICH endpoints those are is Go's answer and not
+ * this page's -- check.ResidualNodes declares them and the step ships the set
+ * here -- and the figures each reason quotes are cells fisc verify holds to
+ * the printed pages: the fund-level cuts carry no fund-balance row and no
+ * transfer out, and the general group's transfer in is a declared exception of
+ * cuts-tie-along-the-lattice. This page is what makes the difference visible.
  *
  * CARRIED, NOT COMPUTED. Every link added here is a link of the chart above
  * with its value_cents, fact_ids, locators, kind and derived flag untouched --
@@ -3454,9 +3458,10 @@ function isCarried(id) {
  * of documents, which neither document can hold -- the page is the only place
  * both exist at once. Putting it in the fund-flows projection is refused on
  * its own grounds: it would put all-funds-gross and revenue-by-fund in one
- * scope set, which projection-scopes-are-disjoint refuses by name, and it
- * would read as capital being decomposed and silently drop the
- * only-the-General-Fund caveat.
+ * scope set, where a detail row and its spine row land on one cell key and
+ * the graph gains a second link between the same pair -- which
+ * checkDistinctLinks refuses at build -- and it would read as capital being
+ * decomposed and silently drop the only-the-General-Fund caveat.
  *
  * A GROUP WITH NOTHING TO CARRY DRAWS NOTHING, and says so by being answered
  * no mark: three groups' transfers in are decomposed whole and they draw no
@@ -3758,8 +3763,8 @@ function markGap(drawn, rung, mark) {
       declared + " This mark is what is left, drawn so that the ribbons and the node agree; " +
       "no page prints it as a figure of its own.",
     source_note: "Derived, not published: one document's total for this cell less the other's, " +
-      "taken from the two charts on screen. `fisc verify` holds that difference to the figure " +
-      "the reason above declares.",
+      "taken from the two charts on screen. Both of those totals are figures `fisc verify` " +
+      "holds to the pages the city printed.",
   };
   const link = mark.in_cents
     ? { source: opened, target: id, value_cents: mark.in_cents }
@@ -5965,9 +5970,9 @@ function paintYearWords(year) {
   // replaceChildren over #figures would paint the headline into the collapsed
   // panel and leave the tile above the chart reading the year the reader left.
   //
-  // maybeEl for both: chart.html.tmpl renders neither, deliberately -- see the
-  // comment at the head of its <main>, which is about why a page drawing one
-  // grain of one document must publish no total.
+  // maybeEl for both: only index.html.tmpl renders them, deliberately. A page
+  // drawing one grain of one document must publish no total, so the pages that
+  // are not the spine have neither element to paint into.
   const hero = maybeEl("hero");
   if (hero) hero.replaceChildren(tile(year.hero));
 
@@ -6012,13 +6017,10 @@ function paintYearWords(year) {
   paintCounts();
 
   // THE CHART'S ACCESSIBLE NAME IS BUILT IN GO, like every other string this
-  // function writes. It was composed here from a literal, and the moment a
-  // second page drew a chart that literal was WRONG on it: the drill-down's
-  // template names a diagram "by fund and division", and the first repaint
-  // replaced that with the spine's wording -- so two different charts announced
-  // themselves identically to a screen reader. Same defect as fisc-rn0, which
-  // is why sankeyTitle exists, reached through the one string that had not been
-  // moved yet.
+  // function writes, and sankeyTitle is where. A name composed here from a
+  // literal is right for one chart and wrong for every other, so a drill-down
+  // and the spine would announce themselves identically to a screen reader.
+  // Same defect as fisc-rn0.
   // DELEGATED, so a year switch and a drill cannot write this element
   // differently. paintChartName also restores the <desc>, which paintYearWords
   // never touched and which a drill rewrites.

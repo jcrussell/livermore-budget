@@ -108,7 +108,7 @@ var exempt = map[string]string{
 // a token in no other file left a full run green.
 var exemptIDs = map[string]exemptID{
 	"fisc-theme":   {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice; also inlined in every site/*.html.tmpl"},
-	"fisc-year":    {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control; also in chart.html.tmpl"},
+	"fisc-year":    {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control"},
 	"fisc-columns": {file: "site/app.js", what: "the localStorage key holding the reader's chosen column count; also in tools/jscheck/lifecycle.mjs"},
 }
 
