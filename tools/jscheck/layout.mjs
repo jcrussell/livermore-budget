@@ -833,24 +833,52 @@ const WIDE_BANDS = { keys: "0:1 1:2 2:3", sizes: "1/23/30" };
 // the claim wanted and holds at any count.
 const NARROW_DESIGN_WIDTH = 1180;
 
-// The label selection itself, pinned as whole lines.
+// Where a drawn label actually sits, read off the mark render() appended.
 //
-// THE ARMS BELOW MEASURE labelPlacement AND NOT WHAT render() DOES WITH IT. The
-// stub answers no "#chart" selector, so no check here can read an attribute
-// back off a drawn <text>; the rule and its use are two claims and only one of
-// them is reachable. The mutation says how much that matters: with these lines
-// reverted to `d.depth === 0` and labelPlacement left untouched in the file,
-// every other arm here stayed green. This is the one that goes red.
+// THE ARMS BELOW MEASURE labelPlacement AND drawnPlacement MEASURES ITS USE,
+// which is the difference between a rule being right and a chart drawing it.
+// The <text> is reached by walking a mark's children the way chart.mjs does,
+// rather than by a selector, because "text.halo" is a shape the stub's matcher
+// answers on descendants and the mark's own children are the narrower question.
 //
-// Whole lines, the way the figure phrases below are whole sentences: a
-// substring of one of these matches the comment that argues for it.
-const LABEL_SELECTION = [
-  "const lastColumn = Math.max(...graph.nodes.map(columnOf));",
-  '.attr("y", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).y)',
-  '.attr("dy", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).dy)',
-  '.attr("x", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).x)',
-  '.attr("text-anchor", /** @param {LaidNode} d */ (d) => labelPlacement(d, lastColumn).anchor)',
-];
+// x, y AND text-anchor ARE COMPARED AS THE STRINGS THE PAGE WROTE, and dy as
+// the ABSENCE d3 leaves when labelPlacement answers null -- an interior column
+// takes no half-em shift, and an attribute set to "null" would be a different
+// drawing from one not set at all.
+//
+// @param {any} app a page with a chart already drawn
+// @param {any} laid the same chart's nodes, as laid out
+function drawnPlacement(app, laid) {
+  const last = Math.max(...laid.nodes.map((/** @type {any} */ n) => app.columnOf(n)));
+  const chart = app.dom.document.getElementById("chart");
+  const marks = chart ? chart.querySelectorAll("g.node") : [];
+  const wrong = [];
+  let read = 0;
+  for (const m of marks) {
+    const d = m.__data__;
+    const text = m.children.find((/** @type {any} */ c) =>
+      c.tagName === "text" && c.className === "halo");
+    if (!text) {
+      wrong.push(`${d && d.id}: the mark has no text.halo to place`);
+      continue;
+    }
+    const want = app.labelPlacement(d, last);
+    const got = {
+      x: text.getAttribute("x"), y: text.getAttribute("y"),
+      dy: text.getAttribute("dy"), anchor: text.getAttribute("text-anchor"),
+    };
+    read += 4;
+    const bad = [];
+    if (got.x !== String(want.x)) bad.push(`x ${got.x} want ${want.x}`);
+    if (got.y !== String(want.y)) bad.push(`y ${got.y} want ${want.y}`);
+    if (got.dy !== (want.dy === null ? null : String(want.dy))) {
+      bad.push(`dy ${JSON.stringify(got.dy)} want ${JSON.stringify(want.dy)}`);
+    }
+    if (got.anchor !== want.anchor) bad.push(`text-anchor ${got.anchor} want ${want.anchor}`);
+    if (bad.length) wrong.push(`${d.id}: ${bad.join(", ")}`);
+  }
+  return { read: read, marks: marks.length, wrong: wrong, last: last };
+}
 
 /**
  * Where every label lands, on the spine and inside a window.
@@ -871,12 +899,18 @@ async function labelChecks(app, spine) {
   const crowded = middle.filter((f) => outward(f, gap).right > f.room.to);
   const groupLaid = group.layOut(group.projection);
   const disagree = groupLaid.nodes.filter((n) => group.columnOf(n) !== n.depth).map((n) => n.id);
+  // READ OFF THE OBJECT-CATEGORY WINDOW, because it is the chart the arm above
+  // measures and it has an INTERIOR column: on the spine every placement rule
+  // agrees, so a comparison there would be green whichever rule drew it.
+  const drawn = drawnPlacement(object, object.layOut(object.projection));
 
   return [
     {
-      // THE MUTATION THIS ARM IS FOR: restore `d.depth === 0 ? ... : ...` on
-      // the label selection and the window's middle column is anchored outward
-      // again, past the midline, and this goes red naming the node.
+      // THE MUTATION THIS ARM IS FOR: change labelPlacement's interior branch
+      // back to anchoring outward, and the window's middle column runs past the
+      // midline and this goes red naming the node. It does NOT see render()
+      // reverted to `d.depth === 0`, because it reads labelPlacement and not
+      // the page; that is the arm below.
       name: "every label in the object-category window is anchored on a side it has room on",
       ok: inWindow.length > 0 && inWindow.every((f) => f.clearance >= 0) &&
           new Set(inWindow.map((f) => f.col)).size === 3,
@@ -902,16 +936,18 @@ async function labelChecks(app, spine) {
               `${MIDDLE_OUTWARD.of})`,
     },
     {
-      name: "the label selection draws with the rule these arms measure",
-      ok: LABEL_SELECTION.every((q) => app.source.includes(q)),
-      detail: (() => {
-        const missing = LABEL_SELECTION.filter((q) => !app.source.includes(q));
-        return missing.length === 0
-          ? `all ${LABEL_SELECTION.length} lines of render()'s label selection read ` +
-            `labelPlacement, so the placement measured above is the placement drawn`
-          : `render()'s label selection no longer reads labelPlacement: ${missing.length} of ` +
-            `${LABEL_SELECTION.length} lines are gone, starting "${missing[0]}"`;
-      })(),
+      // THE MUTATION THIS ARM IS FOR: revert render()'s four label .attr lines
+      // to `d.depth === 0 ? ... : ...` and leave labelPlacement untouched, and
+      // this goes red naming every interior mark. Every other arm in this file
+      // stays green under it, including the two above -- they read
+      // labelPlacement, which that mutation does not touch.
+      name: "every label is drawn where labelPlacement puts it",
+      ok: drawn.marks > 0 && drawn.read === drawn.marks * 4 && drawn.wrong.length === 0,
+      detail: drawn.marks === 0
+        ? "the window drew no marks, so nothing here read a placement off the page at all"
+        : `${drawn.read} attribute(s) read off ${drawn.marks} drawn label(s) over ` +
+          `${drawn.last + 1} column(s), each equal to labelPlacement's own answer` +
+          (drawn.wrong.length ? `; ${drawn.wrong.length} disagree: ${drawn.wrong[0]}` : ""),
     },
     {
       name: "a label keys on the column the view declares, not on d3's longest path",

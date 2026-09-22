@@ -1225,19 +1225,17 @@ const MARKS = { nodes: 478, opens: 76, derivedOnly: 17, both: 0, expands: 9 };
 
 // The lines of render() that hang the affordance on the mark, pinned whole.
 //
-// THESE ARMS MEASURE THE RULES AND NOT WHAT render() DOES WITH THEM, which is
-// layout.mjs's LABEL_SELECTION problem and the same cause: the stub answers no
-// "#chart" selector, so d3 lays every selection render() builds over a null
-// node. No <g> is created, no attribute is written, and no handler is
-// registered -- measured directly: D3.select("#chart").size() is 0 and an
-// .attr() accessor is invoked zero times. So the class, the marker and the
-// three gestures are reachable here only because they are NAMED in app.js, and
-// that they are the ones the chart is drawn and wired with is this pin's claim
-// rather than any arm's.
+// THESE ARMS MEASURE THE RULES AND NOT WHAT render() DOES WITH THEM, so this
+// pin is what says the rules measured are the ones the chart is drawn and wired
+// with. SIX OF THE SEVEN LINES NO LONGER NEED IT: tools/jscheck/chart.mjs
+// compares the class and aria-keyshortcuts off drawn marks and fires all three
+// gestures by DISPATCH, over the real corpus. The seventh is the flag tspan,
+// which nothing reads off a drawn mark, so the pin stands until that arm exists
+// -- fisc-k3zj carries what it would take.
 //
-// WHICH IS ALSO WHY THE GESTURES ARE FUNCTIONS AND NOT CLOSURES. A body written
-// inline on that selection executes in no check in this directory, however many
-// checks it grows.
+// THE GESTURES ARE FUNCTIONS AND NOT CLOSURES so that a check can name them. A
+// body written inline on render()'s selection is reachable from no module here,
+// however many checks it grows.
 const GESTURE_WIRING = [
   '.attr("class", /** @param {LaidNode} d */ (d) => nodeClass(d))',
   '.text(/** @param {LaidNode} d */ (d) => nodeFlags(d))',
