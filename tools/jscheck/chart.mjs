@@ -254,7 +254,7 @@ export async function checks() {
     const seen = {
       states: 0, answered: 0, marks: 0, attributes: 0, ribbons: 0, gestures: 0,
       tails: 0, ownMarks: 0, offscreen: 0, expansions: 0, revealed: 0, refused: 0,
-      emphasis: 0,
+      emphasis: 0, focus: 0,
     };
 
     for (const width of [3, 4]) {
@@ -498,8 +498,25 @@ export async function checks() {
           }
 
           if (opener) {
+            // FOCUS ON A MARK IS THE STATE A READER IS ACTUALLY IN, and it is
+            // the state focusInChart() could not recognise until the stub
+            // answered contains(): a reader's focus is on a g.node, never on
+            // #chart itself, so every focus arm in this directory drove the one
+            // branch nobody uses and the branch everybody uses answered false.
+            // A drill REPLACES the chart, so the element focus was on is gone
+            // and restoreFocus has to put it somewhere -- which is the whole of
+            // what hadFocus decides.
+            app.dom.document.activeElement = subject;
             seen.gestures += dispatch(subject, "dblclick", { timeStamp: 10000 });
             await settle();
+            const landed = app.dom.document.activeElement;
+            seen.focus++;
+            if (!landed || landed === subject) {
+              note(`left focus ${landed ? "on the mark the drill replaced" : "nowhere"} after opening`);
+            } else if (!carries(landed, "crumb-back") && !carries(landed, "node")) {
+              note(`put focus on ${JSON.stringify(landed.getAttribute("class"))} after opening, ` +
+                `which is neither the rung's own return control nor a mark of the chart it drew`);
+            }
             if (app.drilled.length !== before + 1) {
               note(`does not open on a double click (${app.drilled.length} rung(s), was ${before})`);
             }
@@ -663,7 +680,8 @@ export async function checks() {
     });
     out.push({
       name: `${col.label}: a gesture on a drawn mark does what the page says it does`,
-      ok: wrong.gestures.length === 0 && drove && seen.gestures > 0 && seen.emphasis > 0,
+      ok: wrong.gestures.length === 0 && drove && seen.gestures > 0 && seen.emphasis > 0 &&
+        seen.focus > 0,
       detail: wrong.gestures.length
         ? `${wrong.gestures.length} gesture(s) that did something else, ${firstOf(wrong.gestures)}`
         : `${seen.gestures} handler(s) fired over ${seen.states} state(s): a click isolates and ` +
@@ -671,7 +689,9 @@ export async function checks() {
           `a held key does nothing, and a double click and Enter each open the node Go answers a ` +
           `rung for; and the isolation DIMS -- ${seen.emphasis} mark(s) and ribbon(s) read back ` +
           `dimmed, none of them the isolated node or a flow of its own, and none left dimmed ` +
-          `once it is released`,
+          `once it is released; and from focus on a MARK -- the state a reader is in -- a drill ` +
+          `moved it to the rung's own return control ${seen.focus} time(s) rather than leaving ` +
+          `it on the element the redraw destroyed`,
     });
     out.push({
       name: `${col.label}: every state drew a chart rather than a refusal`,

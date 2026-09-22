@@ -347,6 +347,28 @@ function domStub(ids = TEMPLATE_IDS, viewport = 0, seed = null) {
       // refuses it on every state it drives.
       get ownerDocument() { return document; },
       namespaceURI: ns || XHTML_NS,
+      // contains AND closest ARE focusInChart()'s TWO GUARDED BRANCHES, and
+      // without them the branch a reader is actually in cannot be reached at
+      // all. That function asks `active === chart || chart.contains(active) ||
+      // active.closest(".breadcrumb")`; a reader's focus is on a MARK or on a
+      // breadcrumb control, never on #chart itself, so a stub defining neither
+      // answered false for every realistic state and true only for the one
+      // state no reader can be in. The check was green and the page's own
+      // question was never asked.
+      //
+      // closest MATCHES ON THE SAME GRAMMAR AS querySelector -- simpleMatcher --
+      // rather than on a second one, and walks self first the way the DOM's
+      // does. The only call is for ".breadcrumb", which is the `.class` shape.
+      contains(other) {
+        for (let n = other; n; n = n.parent) if (n === self) return true;
+        return false;
+      },
+      closest(sel) {
+        const match = simpleMatcher(String(sel).trim());
+        if (!match) return null;
+        for (let n = self; n; n = n.parent) if (match(n)) return n;
+        return null;
+      },
       setAttribute(name, value) { self.attributes[name] = String(value); },
       getAttribute(name) { return name in self.attributes ? self.attributes[name] : null; },
       removeAttribute(name) { delete self.attributes[name]; },
