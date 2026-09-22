@@ -102,8 +102,8 @@ func TestFundBalancesKeepsTheTwoBlocksApart(t *testing.T) {
 }
 
 // TestHistorySlicesTakeTheWholeScope is fisc-rmw's constraint on both ACFR
-// projections: one slice, every column the store carries, or the scope's
-// unprojectedScopes entry could have stayed green over a half-drawn schedule.
+// projections: one slice, every column the store carries, or the document
+// draws part of a scope and says nothing about the part it left.
 func TestHistorySlicesTakeTheWholeScope(t *testing.T) {
 	balances := balancesFixture(t)
 	changes := historyFacts(t, ChangesScope, "revenues", "Sales taxes",

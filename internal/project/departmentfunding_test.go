@@ -368,8 +368,9 @@ func TestNetDepartmentFundingRefusesAFactOfAnotherScope(t *testing.T) {
 	}
 }
 
-// TestSlicesDeclaresEveryPrintedColumn: all four, which is what retires
-// unprojectedScopes' entry outright rather than half.
+// TestSlicesDeclaresEveryPrintedColumn: all four, because this is the only
+// document that draws these rows and three of four would publish most of a
+// schedule with nothing saying which column was left.
 func TestSlicesDeclaresEveryPrintedColumn(t *testing.T) {
 	facts := fundingFacts(t, nil)
 	for _, c := range []Column{{FiscalYear: 2024, Basis: mapping.BasisActual},

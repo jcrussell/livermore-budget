@@ -203,7 +203,8 @@ them is a defect in this document:
   row at all, so the schedule cannot carry it. In the adopted years the gap is
   480,400 and 486,735 exactly, which is the spine's own `TRANSFER IN:` General
   Fund cell and is published under scope `transfers-by-fund` off p76. It is
-  already `revenue-detail-ties-to-spine`'s one declared exception. The
+  already held apart on the revenue-detail cut by
+  `structure.BudgetBookExceptions`, one entry per adopted year. The
   historical columns are the same missing row; pp.66-67 print no actual or
   revised column, so nothing on the spine reconciles them.
 - **capital FY2024-25, −4,125,627** — `fisc-zl9`. General Fund CIP Reserves has
@@ -369,11 +370,9 @@ has no nodes and no links. Three checks cover it instead.
   above as what reads it. Each arm names its checks, so adding a shape without
   adding checks fails there rather than widening the exemption silently.
 
-`revenue-detail-ties-to-spine` continues to reconcile this schedule against the
-spine, unchanged. It reads the fact store directly through `detailSums` and has
-never consulted `unprojectedScopes`, so publishing this document costs it
-nothing — which is what makes retiring that scope's `unprojectedScopes` entry
-safe rather than a loss of coverage.
+`cuts-tie-along-the-lattice` continues to reconcile this schedule against the
+spine, unchanged. It reads the fact store rather than any graph, so publishing
+this document costs it nothing.
 
 ## What this document is not
 

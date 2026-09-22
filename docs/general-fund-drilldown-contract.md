@@ -13,8 +13,9 @@ single-grain file — see *No headline*.
 
 **The spine is not retired by this and must not be.** It remains the only
 document that publishes the city's printed totals, and the two are reconciled per
-cell, at zero tolerance, by `revenue-detail-ties-to-spine` and
-`expenditure-detail-ties-to-spine`, which read the fact store and need no graph.
+cell, at zero tolerance, by `cuts-tie-along-the-lattice`'s `revenue-detail` and
+`general-fund-departments` comparisons, which read the fact store and need no
+graph.
 
 **The drawn document is reconciled against the spine as well**, by
 `revenue-lines-tie-to-their-categories`: the links this file publishes into its
@@ -162,10 +163,11 @@ sit in one document finds them in the other.
 
 Two scopes may sit in one document only because they are **disjoint by kind**:
 pp.127-140 publish revenue and `transfer_in`, pp.167-170 publish expenditure, and
-every cell key carries kind. `projection-scopes-are-disjoint` asserts it, fails
-closed on any undeclared pair, and refuses the pairs that restate the same money
-— including `revenue-by-fund` with `transfers-by-fund`, which overlap by
-$21,045,597 of FY2026 `transfer_in`.
+every cell key carries kind. `peers-overlap-only-by-declared-identity` asserts
+it, fails closed on any undeclared overlap, and holds a pair that restates the
+same money to a named identity — `revenue-by-fund` with `transfers-by-fund`
+overlap by $21,045,597 of FY2026 `transfer_in`, under
+`a-transfer-in-is-printed-at-both-ends`.
 
 ## `counts`
 

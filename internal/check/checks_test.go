@@ -1052,14 +1052,11 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 // TestNodeHierarchyWellFormedIsFailable damages a hierarchy four ways, one per
 // claim.
 //
-// THIS REPLACES TestAggregationInvarianceErrorsWhenAHierarchyArrives, which
-// asserted the old check's hard error on the first parented node. That error was
-// a ratchet on an unwritten fold and it did its job: the fold is now written, and
-// it is STRUCTURAL rather than arithmetic. The arithmetic version could not fail
-// -- a fold maps each link to exactly one folded link, so the sum is invariant
-// under relabelling whatever node.parent says -- and the inter-document version
-// is already discharged, per cell and at zero tolerance, by the
-// <kind>-detail-ties-to-spine family.
+// THE CHECK IS STRUCTURAL RATHER THAN ARITHMETIC, and an arithmetic version
+// could not fail: a fold maps each link to exactly one folded link, so the sum
+// is invariant under relabelling whatever node.parent says. The inter-document
+// comparison is discharged per cell and at zero tolerance by
+// cuts-tie-along-the-lattice.
 //
 // The fixture's spine carries no hierarchy, so each case builds one, which is
 // also what proves the check is not merely counting nothing.
@@ -1639,7 +1636,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 
 	// THE BEAD'S OWN CASE. Both funds exist, both are the right TYPE for the
 	// fund group the columns declare, and the column sums are identical either
-	// way — so fact-funds-resolve, revenue-detail-ties-to-spine and CheckTotals
+	// way — so fact-funds-resolve, cuts-tie-along-the-lattice and CheckTotals
 	// all pass. Only the printed name disagrees.
 	t.Run("a fund swapped for another of the same type fails", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{
@@ -1670,7 +1667,7 @@ func TestRuleFundsMatchTheirHeadings(t *testing.T) {
 
 	// CLAUSE 2, AND THE REASON IT EXISTS. Nine of the schedule's 69 funds print
 	// zero in BOTH budget years, so dropping one leaves every reconciled sum
-	// unchanged and revenue-detail-ties-to-spine green. Clause 1 cannot see it:
+	// unchanged and cuts-tie-along-the-lattice green. Clause 1 cannot see it:
 	// it only inspects rules that exist.
 	t.Run("a printed fund total no rule claims fails", func(t *testing.T) {
 		res := resultFor(t, runChecks(t, fundRuleSubject(t, page, []mapping.Rule{

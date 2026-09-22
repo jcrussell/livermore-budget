@@ -134,7 +134,7 @@ func unassignable(v Vocabulary, slug string) string {
 //
 // SCOPED TO THIS FAMILY DELIBERATELY. It is not a claim that a typo reddens
 // exactly one check overall -- `category: taxes` on an expenditure fact also
-// reddens expenditure-detail-ties-to-spine, because money really has left the
+// reddens cuts-tie-along-the-lattice, because money really has left the
 // category the spine expects. That is a different fact about the corpus, not a
 // duplicate report of this one.
 //

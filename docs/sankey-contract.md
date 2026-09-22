@@ -531,16 +531,15 @@ non-major sources as special-revenue sources alone. Both years divide cleanly
 (FY2027: Capital 35,830,251 + Special Revenue 100,000 = 35,930,251,
 `p0075.txt:56`).
 
-Those four rows are pinned twice over now, and neither pin existed when the
-wrong figures were written. `TestP76SourcesDecomposeTheResidualByFundType`
-(19bb265) resolves every payer through `registry.FundByLabel` and asserts
+Those four rows are pinned twice over. `TestP76SourcesDecomposeTheResidualByFundType`
+resolves every payer through `registry.FundByLabel` and asserts
 `spine_TRANSFER_OUT == p76_paid + to_CIP` for all six groups in both budget
-years; `transfers-detail-ties-to-spine` then makes the same claim over the
-published facts, with the to-CIP figures declared in `internal/check` as
-`toCIP`. What both replaced is
-`TestP76AccountsForTheInSideAndNoneOfTheResidual`, which asserts only that
-Capital and Internal Service together do not exceed the whole residual -- a
-bound loose enough that the wrong figures satisfied it. Still open is `fisc-4ac`:
+years; `cuts-tie-along-the-lattice`'s `transfers-detail` comparison makes the
+same claim over the published facts, with the to-CIP figures declared as the six
+`p76-lists-no-transfer-to-the-cip-*` entries of `structure.BudgetBookExceptions`.
+Neither pin is `TestP76AccountsForTheInSideAndNoneOfTheResidual`, which asserts
+only that Capital and Internal Service together do not exceed the whole residual
+-- a bound loose enough that the wrong figures satisfied it. Still open is `fisc-4ac`:
 tying the declared constants to `headline.transfer_residual_cents` in both
 projected years, which is the one direction neither test covers.
 
@@ -587,11 +586,12 @@ different checks. Measured by mutating the fact and running `fisc verify`:
 | `amount_cents` and token both corrected | `fact-offset-points-at-token` -- p67 at offset 2548 is `"16,796,010"`, but the fact cites `"16,546,010"` |
 
 Each route yields **three** failures, not one: the fact check above plus
-`funding-sources-tie-to-spine` and `departmentwide-ties-to-spine`, which are
-declared against the spine's present figure and go red the moment it moves. The
-table names only the fact check because that is the arm a synthetic figure cannot
-get past -- the tie checks would fall silent again if the exceptions were
-re-pointed, and the fact checks would not.
+`cuts-tie-along-the-lattice` twice, whose
+`p0067-internal-service-is-250000-high-by-fund-group` and
+`-by-object` exceptions pin the spine's present figure and go red the moment it
+moves. The table names only the fact check because that is the arm a synthetic
+figure cannot get past -- the lattice arms would fall silent again if the
+exceptions were re-pointed, and the fact checks would not.
 
 So there is no edit to this fact that keeps its p67 citation, and re-citing it to
 p0183 would make the spine no longer a read of pp.66-67.
@@ -603,20 +603,20 @@ tying everywhere. The declaration is *conditional on the graph actually drawing
 `26,544,515`*, so correcting the fact retires the sentence with nobody having to
 remember it.
 
-Two checks carry a named exception for this $250,000, and **not for the same
-cell** -- they reach it on different axes, which is what makes them independent
-witnesses rather than two copies of one claim. `funding-sources-tie-to-spine`
+Two exceptions carry this $250,000, and **not for the same cell** -- they reach
+it on different axes, which is what makes them independent witnesses rather than
+two copies of one claim. `p0067-internal-service-is-250000-high-by-fund-group`
 holds out `(FY2027, adopted, internal-service)`, a FUND GROUP, against two
-figures both of which pages print. `departmentwide-ties-to-spine` holds out
-`(FY2027, adopted, services-and-supplies)`, an OBJECT CATEGORY, where its own
-summary is careful to say neither figure is printed anywhere and all three are
-arithmetic. pp.85-125 decompose the money by department, division and object with
+figures both of which pages print. `p0067-internal-service-is-250000-high-by-object`
+holds out `(FY2027, adopted, services-and-supplies)`, an OBJECT CATEGORY, where
+its own `Printed` is careful to say neither figure is printed anywhere and all
+three are arithmetic; `SameResidualAs` is what grounds the second in the first. pp.85-125 decompose the money by department, division and object with
 no fund dimension at all, and still put the difference in this category and this
 year and in none of the other seven cells.
 
-`funding-sources-tie-to-spine`'s failure message already says what to do if the
-city reissues the page: *delete this exception rather than re-pointing it; the
-cell then ties on its own*. `fisc-av0w`.
+The failure message `internal/structure`'s exception machinery prints already
+says what to do if the city reissues the page: *delete the exception rather than
+re-pointing it: the cell then ties on its own*. `fisc-av0w`.
 
 ## What the fund groups must satisfy
 

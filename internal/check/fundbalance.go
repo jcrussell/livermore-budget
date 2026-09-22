@@ -44,7 +44,7 @@ const categoryFundBalanceChange = "fund-balance/change"
 // arithmetic is the DOCUMENT's rather than ours -- the city prints all three
 // lines and never asks a reader to add them. So this is the store checking
 // itself against a figure the city published independently of the other two,
-// which is the same species of claim as the detail-ties-to-spine checks and a
+// which is the same species of claim as cuts-tie-along-the-lattice and a
 // different one from CheckTotals, which ties rows to a total on their own page
 // at build time.
 //

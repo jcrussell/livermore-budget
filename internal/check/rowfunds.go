@@ -22,7 +22,8 @@ import (
 // one. An earlier version asserted only that each anchor's fund was one of the
 // two the row declared, on the argument that swapping a row's ends moves money
 // between the in and out sides of a fund group and
-// transfers-detail-ties-to-spine reddens on that. THAT ARGUMENT IS ONLY TRUE
+// cuts-tie-along-the-lattice's transfers-detail comparison reddens on that.
+// THAT ARGUMENT IS ONLY TRUE
 // WHEN THE TWO ENDS ARE IN DIFFERENT GROUPS. Measured: swapping the ends of
 // "Transfer From Water  to Water Replacement" -- 640 and 642, both enterprise
 // -- rebuilds cleanly and every check stays green with the payer and payee
@@ -62,7 +63,7 @@ var rowAnchorPrefixes = []rowAnchorPrefix{
 // Income Hsng 200/812, Traffic Imp Fee 510/823, Host Comm Impact 282/820,
 // Measure D 550/828, State Gas Tax 560/834 -- and every twin is type: capital,
 // so a leg under the wrong twin moves INSIDE the collapsed cell
-// transfers-detail-ties-to-spine compares and that check stays green. Three of
+// cuts-tie-along-the-lattice compares and that check stays green. Three of
 // the five do not even change fund group, so factFundsResolve cannot see them.
 // This is the only thing that does.
 //

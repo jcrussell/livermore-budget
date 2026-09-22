@@ -235,8 +235,8 @@ func TestEveryDeclaredCutSitsAtTheLevelItDeclares(t *testing.T) {
 
 // TestTheGeneralFundDepartmentsDecomposeTheSpine is the reproduction that
 // matters: one generic comparison, driven off the lattice, produces the
-// arithmetic expenditure-detail-ties-to-spine produces from a hand-written
-// key and a hand-written restriction.
+// arithmetic a hand-written key and a hand-written restriction would have to
+// produce one schedule at a time.
 //
 // EIGHT CELLS AND NONE ONE-SIDED. pp.167-170 are the General Fund's four object
 // categories over two published columns, and every one has a spine cell facing

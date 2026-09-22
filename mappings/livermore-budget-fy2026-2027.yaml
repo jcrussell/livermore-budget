@@ -522,9 +522,9 @@ rules:
   # both budget years, total 144,650,802 / 149,014,579. Mapped at
   # `all-funds-gross` they would be summed ON TOP of the spine's cells and the
   # published General Fund expenditure would double with every check green.
-  # That is fisc-brx's decision and fisc-u2v's mechanism; `internal/check`'s
-  # unprojectedScopes carries the declaration and
-  # expenditure-detail-ties-to-spine is the check that ties the two together.
+  # That is fisc-brx's decision and fisc-u2v's mechanism;
+  # cuts-tie-along-the-lattice is what ties the two together, through the
+  # general-fund-departments cut.
   #
   # WHAT THE PAGES LOOK LIKE. Eleven ALL-CAPS DEPARTMENT headings, each opening
   # a run of mixed-case DIVISIONS. A division prints two or three object rows
@@ -1197,7 +1197,7 @@ rules:
   # CIP 50,762,251. So pp.73-75 and p76 are the same money and agree; it is the
   # REVENUE column that does not, and the cause is unresolved.
   #
-  # revenue-detail-ties-to-spine WOULD catch the over-inclusion -- it requires
+  # cuts-tie-along-the-lattice WOULD catch the over-inclusion -- it requires
   # this scope's per-cell sums to equal the spine's -- but it would surface as a
   # mysterious red check rather than as a known property of the document, which
   # is why this note is here rather than only in the tracker. fisc-zs5.
@@ -3171,7 +3171,8 @@ rules:
       row labels: without it the anchor matches a data row rather than the
       section header. FY2026 sums to 480,400 and FY2027 to 486,735, which is
       p0066.txt:24's General Fund TRANSFER IN cell to the cent -- and the cell
-      revenue-detail-ties-to-spine hands to this scope.
+      structure.BudgetBookExceptions holds apart on the revenue-detail cut,
+      naming this scope as what carries it.
     parts:
       - page: 76
         section: "General Fund\n"
@@ -3311,8 +3312,8 @@ rules:
     note: >-
       One transfer into a Permanent fund, and both budget figures are "-" --
       published zeros, not absent. pp.66-67 print NO Permanent column at all
-      (fisc-u8o), so this is the one key transfers-detail-ties-to-spine has
-      with no spine counterpart. It is published because the page publishes it:
+      (fisc-u8o), so this is the one key the transfers-detail cut has with no
+      spine counterpart. It is published because the page publishes it:
       "absent is not zero" cuts both ways, and a zero the city printed is a
       figure. The payer, "Open Space", is 300 and not Doolan Canyon Open Space
       (471), which is the receiving side's near-twin.
@@ -3401,8 +3402,9 @@ rules:
   # already publish, cut by paying fund instead of by object -- so publishing it
   # at all-funds-gross would double the city's expenditure with every check
   # green, which is fisc-u2v's mechanism (see the bd memory
-  # detail-pages-double-the-spine). Hence scope: department-funding-sources, one
-  # unprojectedScopes entry, and funding-sources-tie-to-spine.
+  # detail-pages-double-the-spine). Hence scope: department-funding-sources,
+  # and the funding-sources cut cuts-tie-along-the-lattice compares against
+  # the spine.
   #
   # THE TWELFTH CELL IS THE CITY'S ERROR, NOT OURS. pp.172-183 ("Citywide
   # Expenditures") print every fund's object rows and one Total per fund group.
@@ -3414,8 +3416,9 @@ rules:
   # sum to 250,000 less. 16,546,010 is that sum and is PRINTED ON NO PAGE; do
   # not cite it as one. Five other published schedules --
   # p0183:64, p0075:53, p0205:17, p0209:20, p0061:39 -- all say 26,294,515 and
-  # none says 26,544,515. Tracked as fisc-av0w; funding-sources-tie-to-spine
-  # carries one named exception for that cell and nothing else.
+  # none says 26,544,515. Tracked as fisc-av0w; the funding-sources cut
+  # carries one named exception for that cell --
+  # p0067-internal-service-is-250000-high-by-fund-group -- and nothing else.
   #
   # A SEVENTH GROUP APPEARS AND IS HARMLESS. Doolan Canyon Preserve Endow (470)
   # is `permanent`, which has no spine column (fisc-u8o). It is 620,581 in
@@ -3842,11 +3845,11 @@ rules:
       data/funds.yaml; no twin's printed name appears on this page. NO SUM WOULD
       CATCH A SWAP -- every one of these four twins carries its operating fund's
       own type, so replacing 640 with 641 moves no money out of its group and
-      leaves fact-funds-resolve and funding-sources-tie-to-spine both green. It
+      leaves fact-funds-resolve and cuts-tie-along-the-lattice both green. It
       is caught by row-funds-match-their-anchors, via the
-      row_labels_name_funds declaration above: measured, that swap now leaves
-      fisc verify at 39 passed, 1 failed, where before the declaration it left
-      it at 40 passed, 0 failed. That was fisc-90fp.
+      row_labels_name_funds declaration above: measured, that swap takes
+      `fisc verify` from zero failures to one, where before the declaration
+      the same swap left the whole run green. That was fisc-90fp.
     parts:
       - page: 124
         section: "Department Funding Sources\n"

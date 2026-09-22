@@ -20,9 +20,10 @@ import (
 // mechanism one schedule over (fisc-aes).
 //
 // The one check that would see it is exempt exactly there:
-// revenue-detail-ties-to-spine declares (transfer_in, transfers/in, general) as
-// its single exception, because pp.127-130 print no General Fund Transfers In
-// row -- and that is the same key a doubled leg would land on.
+// cuts-tie-along-the-lattice reads structure.BudgetBookExceptions, which pins
+// (transfer_in, transfers/in, general) on both sides because pp.127-130 print no
+// General Fund Transfers In row -- and that is the same key a doubled leg would
+// land on.
 func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -62,9 +63,10 @@ func TestTheGeneralFundTransferInLegIsNotDoubled(t *testing.T) {
 		}
 	}
 
-	// BOTH BUDGET YEARS, TOGETHER. revenue-detail-ties-to-spine's hand-off is
-	// per slice: cover FY2026 only and its arm 3 fires -- "the hand-off has
-	// failed" -- and that check goes RED rather than merely quiet.
+	// BOTH BUDGET YEARS, TOGETHER. structure.BudgetBookExceptions declares that
+	// hand-off one exception per budget year, each pinning both sides of its own
+	// cell, so a scope covering FY2026 alone leaves FY2027's pin naming a cell
+	// the detail does not carry.
 	if p76 := scopes["transfers-by-fund"]; p76 != 88 {
 		t.Errorf("the transfers-by-fund scope holds %d facts, want 88 "+
 			"(22 printed rows x 2 budget years x 2 legs)", p76)

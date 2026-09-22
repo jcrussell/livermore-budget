@@ -302,9 +302,10 @@ func (*factOffsetPointsAtToken) Run(_ context.Context, s *Subject) (Result, erro
 // of ACFR transfers where the page prints 53,000,000. Every other check is
 // satisfied: fact.MakeID hashes rule_id so the ids differ and fact-ids-unique
 // holds; both re-parse their own token and both offsets land on it, because it IS
-// the same printed figure; no detail-ties-to-spine check spans that scope and none
-// can, since it is FY2025 audited against a spine printing no audited column; and
-// projection-scopes-are-disjoint compares scopes, while both facts are in one.
+// the same printed figure; cuts-tie-along-the-lattice declares no cut over that
+// scope and none could, since it is FY2025 audited against a spine printing no
+// audited column; and peers-overlap-only-by-declared-identity compares two
+// scopes, while both facts are in one.
 //
 // SO THE DISCRIMINATOR CANNOT BE THE ADDRESS ALONE. A rule refusing every shared
 // (doc_id, page, offset) would redden the 44 addresses p76 legitimately shares.
@@ -443,8 +444,9 @@ func declaresCounterpart(rule *mapping.Rule, label string) bool {
 // misread -- so summing transfer_out across the two cancels rather than
 // accumulates. Before SignNetted, Fact.Sign read "positive" under BOTH
 // conventions, so a consumer had no way to tell and nothing in this package
-// could see it: the two scopes share no key, no detail-ties-to-spine check
-// spans them and none can, and fact-kind-matches-category is satisfied by both.
+// could see it: the two scopes share no key, cuts-tie-along-the-lattice declares
+// no cut spanning them and none could, and fact-kind-matches-category is
+// satisfied by both.
 //
 // WHAT IT DOES NOT DO, because the gap should be stated rather than discovered.
 // It makes the convention LEGIBLE; it does not stop a consumer summing across

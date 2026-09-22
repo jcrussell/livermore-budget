@@ -383,8 +383,8 @@ func yearStems(name string, projections map[string][]byte) []string {
 // than an omission.
 //
 // AN ENTRY THAT HAS STOPPED BEING TRUE MUST GO RED, NOT QUIET, which is the
-// same standard internal/check's staleDeclarations applies to
-// unprojectedScopes: the moment a view names one of these stems, the entry is a
+// same standard internal/check's staleDocumentDeclarations applies to
+// uncheckedDocuments: the moment a view names one of these stems, the entry is a
 // false statement about the site, so assertPublishedReachable refuses it and
 // the entry is deleted rather than left for whoever forgets.
 //
@@ -421,8 +421,8 @@ const fundingNoSpineColumn = "a published column of pp.85-125's Department Fundi
 	"opens into this document one fiscal year at a time, joining on Column, and pp.66-67 " +
 	"print no actual and no revised column -- so there is no spine year to open this one " +
 	"from. It is published because pp.85-125 DO print those two columns and this is the " +
-	"only document that draws that block: drawing two of the four would leave " +
-	"internal/check's unprojectedScopes entry half true rather than retired. Those two " +
+	"only document that draws that block: drawing two of the four would publish half a " +
+	"schedule with nothing saying which half. Those two " +
 	"columns also tie to no citywide figure at all, which the document says in a caveat of " +
 	"its own. caveats.html lists its caveats, which indexes the document rather than " +
 	"rendering it and does not retire this entry"
@@ -433,8 +433,8 @@ const spendingNoSpineColumn = "a published column of the departmentwide cross-ta
 	"fiscal year at a time, joining on Column, and pp.66-67 print no actual and no revised " +
 	"column -- so there is no spine year to open this one from. It is published because " +
 	"pp.85-125 DO print those two columns and this is the only document that draws those " +
-	"pages: drawing two of the four would leave internal/check's unprojectedScopes entry " +
-	"half true rather than retired. caveats.html lists its caveats, which indexes the " +
+	"pages: drawing two of the four would publish half a schedule with nothing saying " +
+	"which half. caveats.html lists its caveats, which indexes the " +
 	"document rather than rendering it and does not retire this entry"
 
 const fundFlowsNoSpineColumn = "a published column of the General Fund drill-down that the chart " +
@@ -707,14 +707,14 @@ func views(built result) []export.View {
 				Noun: "fund group",
 				Back: "All fund groups",
 				Tail: "funds",
-				// THE RESIDUAL IS THE CHECK'S DECLARATION, READ, NOT COPIED.
-				// drill-reconciles-across-documents declares which spine
-				// endpoints pp.127-140 and 167-170 cannot decompose, each
-				// with its reason, and proves the identity that set closes;
-				// the chart carries the same set onto one derived node per
-				// opened group. Two spellings of a set that must agree
-				// drift, so this is the one place the client's set comes
-				// from, and check.ResidualNodes exists for this line.
+				// THE RESIDUAL IS A DECLARATION, READ, NOT COPIED.
+				// check.ResidualNodes names which spine endpoints
+				// pp.127-140 and 167-170 cannot decompose, each with its
+				// reason, and the money each reason quotes is what
+				// cuts-tie-along-the-lattice compares; the chart carries
+				// the same set onto one derived node per opened group. Two
+				// spellings of a set that must agree drift, so this is the
+				// one place the client's set comes from.
 				//
 				// THIS IMPORT IS NOT THE COUPLING joinComma REFUSES. That
 				// rule is about a command and a check sharing a helper for
@@ -934,10 +934,11 @@ func views(built result) []export.View {
 	// fold on all four.
 	//
 	// THE GAP IS THE CHECK'S DECLARATION, READ, NOT COPIED -- the argument the
-	// residual above makes one field over. spending-window-reconciles proves
-	// each object category's spine inflow equals pp.85-125's division rows plus
-	// the declared gap, and check.SpendingGaps() is that same table keyed by
-	// the node the chart draws it at. FY2026-27's services-and-supplies is the
+	// residual above makes one field over. check.SpendingGaps() reads
+	// structure.BudgetBookExceptions' departmentwide-against-spine entries,
+	// keyed by the node the chart draws each at, and
+	// cuts-tie-along-the-lattice pins both of an entry's sides against the
+	// corpus on every run. FY2026-27's services-and-supplies is the
 	// one entry: p0067 publishes 130,502,087 where pp.85-125's rows come to
 	// 130,252,087, which is fisc-av0w. The chart draws the 250,000 as a mark of
 	// its own rather than letting the ribbons fall short of the node.

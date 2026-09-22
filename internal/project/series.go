@@ -24,10 +24,10 @@ type seriesSpec struct {
 // of one printed row across its columns is a chart of exactly one thing, where
 // [Sankey.Slices] returns one Options per column.
 //
-// IT SELECTS THE SCOPE EXHAUSTIVELY -- every column the store carries.
-// internal/check's staleDeclarations retires an unprojectedScopes entry only
-// when a scope is drawn in FULL, so a document covering half the scope would
-// leave that entry green and false while half its facts were already published.
+// IT SELECTS THE SCOPE EXHAUSTIVELY -- every column the store carries. A
+// document covering half the scope publishes half its facts and says nothing
+// about the half it left, which no check downstream can tell from a schedule
+// the city printed at half the width.
 //
 // An empty result means the store carries no fact of this schedule, which is a
 // statement about the corpus and not an error.

@@ -100,8 +100,8 @@ func readSpineRevenue(t *testing.T) map[groupCatYear]amount.Cents {
 }
 
 // TestRevenueDetailTiesToTheSpineOffThePages is the same arithmetic
-// revenue-detail-ties-to-spine does, done against the DOCUMENTS rather than
-// against the fact store.
+// cuts-tie-along-the-lattice does over the revenue-detail cut, done against the
+// DOCUMENTS rather than against the fact store.
 //
 // It exists so the check and the corpus cannot drift together. The check reads
 // Subject.Facts, which `fisc build` produced from these same rules; if the rules
@@ -203,8 +203,8 @@ func TestRevenueDetailTiesToTheSpineOffThePages(t *testing.T) {
 // PRINTS, which is why the loop below names 2026 and 2027 rather than iterating
 // whatever the store holds. pp.66-67 print no actual and no revised column, so
 // there is nothing for FY2024 actual or FY2025 revised to be a decomposition
-// OF -- revenue-detail-ties-to-spine names both pairs as unreconciled in its
-// summary on every run. Those years are not merely unchecked: FY2024-25's
+// OF -- revenue-lines-tie-to-their-categories names both pairs as unreconciled
+// in its summary on every run. Those years are not merely unchecked: FY2024-25's
 // capital column is short of p63's Table 2 by $4,125,627, because General Fund
 // CIP Reserves has no section on pp.131-140 (fisc-zl9, disclosed to readers as a
 // trends caveat). Widening this loop to four years goes red for a blunter

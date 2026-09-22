@@ -194,8 +194,8 @@ func fyBasis(f fact.Fact) string { return fmt.Sprintf("FY%d %s", f.FiscalYear, f
 // incompleteSeries are the series a trends document legitimately cannot fill in
 // every column, each with the reason.
 //
-// It is the same kind of declaration as unprojectedScopes and
-// uncheckedDocuments, and it carries the same danger: an entry is a human saying
+// It is the same kind of declaration as uncheckedDocuments, and it carries the
+// same danger: an entry is a human saying
 // a gap is real, and an entry that outlives its reason is an exemption nobody
 // can see expiring. staleSeriesDeclarations is the branch that refuses that.
 //
@@ -307,8 +307,9 @@ func missingColumns(s project.Series, cols []project.Column) []project.Column {
 // staleSeriesDeclarations refuses an incompleteSeries entry that has stopped
 // being true, in either of the two ways it can.
 //
-// Same shape and same argument as staleDeclarations over unprojectedScopes: a
-// declaration nobody can see expiring is a declaration that outlives its reason.
+// Same shape and same argument as staleDocumentDeclarations over
+// uncheckedDocuments: a declaration nobody can see expiring is a declaration
+// that outlives its reason.
 func staleSeriesDeclarations(seen map[string]bool, declared map[string]int) []Finding {
 	var out []Finding
 	for _, id := range sortedStrings(incompleteSeries) {

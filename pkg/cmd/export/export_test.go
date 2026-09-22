@@ -1186,7 +1186,7 @@ func TestEveryPublishedDocumentIsRenderedOrDeclaredUnrendered(t *testing.T) {
 	// And a declaration that has stopped being true must go red rather than
 	// quiet, which is the property that retires an entry instead of leaving an
 	// exemption for whoever forgets. Same standard internal/check's
-	// staleDeclarations applies to unprojectedScopes.
+	// staleDocumentDeclarations applies to uncheckedDocuments.
 	// Built from the REAL view set plus one, so the only thing wrong with it is
 	// the stale declaration -- starting from a bare slice would trip the
 	// missing-view arm above instead and prove nothing about this one.
@@ -1427,9 +1427,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			Back:       "All object categories",
 			Tail:       "divisions",
 			// READ OFF THE CHECK FOR check.ResidualNodes' REASON, one field
-			// over: spending-window-reconciles proves the identity this set
-			// closes, and a literal here would be a second spelling nothing
-			// holds to it.
+			// over: cuts-tie-along-the-lattice pins both sides of every
+			// entry this set is built from, and a literal here would be a
+			// second spelling nothing holds to it.
 			Gaps: check.SpendingGaps(),
 			Description: "The fund groups that pay for this object category are on the " +
 				"left; the divisions that spend it are on the right \u2014 Budget Book " +

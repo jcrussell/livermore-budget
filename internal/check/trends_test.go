@@ -243,7 +243,7 @@ func TestASeriesShortAColumnIsCaught(t *testing.T) {
 
 // TestAStaleIncompleteSeriesDeclarationIsCaught pins the expiry branch. A
 // declaration nobody can see expiring is a declaration that outlives its reason,
-// which is the same argument unprojectedScopes and uncheckedDocuments make.
+// which is the same argument uncheckedDocuments makes.
 func TestAStaleIncompleteSeriesDeclarationIsCaught(t *testing.T) {
 	s := trendsSubject(t, trendsTestFacts(t))
 	id := s.Projections[0].Trends.Series[0].SeriesID

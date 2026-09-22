@@ -131,9 +131,9 @@ func (*departmentSpending) Name() string { return DepartmentSpendingProjection }
 // ALL FOUR PRINTED COLUMNS, not the two the spine publishes. pp.85-125 print
 // FY2023-24 Actual, FY2024-25 Revised and both adopted years, and two reasons
 // make drawing all four the right answer. It is the only document that draws
-// these pages at all, and unprojectedScopes' declaration for them retires only
-// when they are drawn EXHAUSTIVELY -- draw two of four and staleDeclarations'
-// partial arm fires and demands the reason be rewritten. And a reader asking
+// these pages at all, so drawing two of the four would publish half a schedule
+// with nothing on the site or in the fact store saying which half. And a reader
+// asking
 // which divisions spent the money in FY2024 is asking the question this document
 // exists to answer; that the spine prints no actual column is a fact about
 // pp.66-67 rather than about pp.85-125.

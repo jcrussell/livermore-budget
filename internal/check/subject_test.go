@@ -734,8 +734,9 @@ func TestTheYearTheSitePublishesMustBeBuilt(t *testing.T) {
 //
 // THE MUTATION IS A RETARGET AND NOT A DELETION, and the difference is what
 // makes this evidence. Deleting the revenue-by-fund facts leaves
-// facts-are-projected nothing to report, so "the run reddens about a document
-// rather than about 924 facts" would be satisfied by there being no facts —
+// cuts-tie-along-the-lattice's coverage arm nothing to report, so "the run
+// reddens about a document rather than about 924 facts" would be satisfied by
+// there being no facts —
 // true of the fixed and the unfixed check alike. Renaming the scope is what the
 // bead describes ("a scope typo in a mapping rule does it"): the facts survive,
 // no projection is of them, Trends.Slices returns nil, and the old check went on

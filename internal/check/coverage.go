@@ -133,8 +133,8 @@ func keysOf(o project.Options) []sliceKey {
 // was ASKED FOR and sees nothing missing; documents-are-checked passes over what
 // remains; trend-points-tie-to-facts and trend-series-are-complete both go
 // VACUOUS, which fails only under --strict and is silenced outright by adding a
-// declaration; and facts-are-projected reddens with 924 findings ABOUT FACTS
-// rather than one about a missing document. Per-column is the same argument one
+// declaration; and nothing reddens about the missing document at all.
+// Per-column is the same argument one
 // level down: a document that lost FY2023-24 builds fine, every series is
 // complete over the three columns that remain, and trend-series-are-complete
 // passes green over 231 subjects while counts.facts falls from 924 to 693

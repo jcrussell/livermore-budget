@@ -33,7 +33,7 @@ const (
 //
 // A LINE TIER THAT DOES NOT FOLD BACK TO WHAT IT REPLACED HAS CHANGED THE
 // DOCUMENT, and no other check in this tree can tell the two apart. The amounts
-// still tie to the spine either way (revenue-detail-ties-to-spine sums facts and
+// still tie to the spine either way (cuts-tie-along-the-lattice sums facts and
 // never reads a link), every link still cites facts that sum to it
 // (link-values-tie-to-facts is per link), and the counts still reconcile against
 // the document's own arrays. What none of them holds is that the SAME money

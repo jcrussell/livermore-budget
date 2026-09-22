@@ -37,10 +37,9 @@ func TestEveryDeclarationNamesACheckThatExists(t *testing.T) {
 	}
 }
 
-// TestEveryDeclarationCarriesItsReasonAndItsBead holds the declarations to the
-// standard unprojectedScopes is held to by TestUnprojectedScopesAreDeclarations:
-// a declaration whose reason is thin is a declaration nobody re-reads, and
-// re-reading is the whole mechanism.
+// TestEveryDeclarationCarriesItsReasonAndItsBead holds every declaration to one
+// standard: a declaration whose reason is thin is a declaration nobody re-reads,
+// and re-reading is the whole mechanism.
 //
 // The count is deliberately NOT pinned. Pinning it would make every wave that
 // retires a check edit a number in a test, which is bookkeeping rather than

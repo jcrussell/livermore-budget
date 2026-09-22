@@ -716,8 +716,8 @@ func TestATransferInLinkIsNotExternal(t *testing.T) {
 // facts would parent every department to fund/100 and source every division
 // link from it -- attributing the whole of the spending to the General Fund on
 // no evidence. Nothing downstream would see it: the amounts are unchanged, so
-// expenditure-detail-ties-to-spine still ties, and fact-funds-resolve only
-// examines facts that DO name a fund.
+// cuts-tie-along-the-lattice still ties, and fact-funds-resolve only examines
+// facts that DO name a fund.
 func TestTheExpenditureSideRefusesAFundlessFact(t *testing.T) {
 	facts := []fact.Fact{
 		fundFlowsFact(scopeExpenditureByDepartment, mapping.KindExpenditure,

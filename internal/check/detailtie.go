@@ -15,10 +15,9 @@ import (
 // summed inside a kind restriction, and compared as a union so a dropped row is
 // a one-sided failure and not an empty comparison.
 //
-// IT HAD FIVE CONSUMERS AND HAS ONE. The <kind>-detail-ties-to-spine checks it
-// was extracted for are cuts-tie-along-the-lattice now, which compares facts to
-// facts through internal/structure and carries each schedule's exceptions as
-// structure.BudgetBookExceptions. What is left here is a document-to-facts
+// IT HAS ONE CONSUMER. cuts-tie-along-the-lattice compares facts to facts
+// through internal/structure and carries each schedule's exceptions as
+// structure.BudgetBookExceptions, so what is left here is a document-to-facts
 // comparison; re-pointing it at structure.KeyOf retires this file (fisc-6714).
 
 // detailRestriction is the slice of the fact store one comparison reads: the

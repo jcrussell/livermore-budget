@@ -1173,11 +1173,12 @@ var (
 // IT RETIRES ITSELF. The caveat is emitted only when the graph actually draws
 // Published; correct the fact and the condition stops matching and the sentence
 // stops being printed. What that alone would NOT catch is the entry going dead
-// while still sitting here, so TestContestedTotalsAreStillContested asserts over
-// the committed corpus that every entry still describes what is drawn AND still
-// agrees with internal/check's fundingSourcesExceptions, which verifies both
-// figures against the corpus on every run. Between them, neither a stale caveat
-// nor a stale declaration can survive.
+// while still sitting here, so two tests cover it over the committed corpus:
+// TestContestedTotalsAreStillContested asserts every entry still describes what
+// is drawn, and TestContestedTotalsAgreeWithTheirCheckException that it still
+// agrees with structure.BudgetBookExceptions' funding-sources pins, which
+// cuts-tie-along-the-lattice verifies against the corpus on every run. Between
+// them, neither a stale caveat nor a stale declaration can survive.
 type contestedTotal struct {
 	Column    Column
 	FundGroup string

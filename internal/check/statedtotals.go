@@ -64,7 +64,7 @@ import (
 //     across parts. Break a spanning rule or a label-less part's anchor and this
 //     check still reports pass, with the counts moved. Widening it correctly
 //     needs the exemptions to be DECLARED the way declaredVacuous and
-//     unprojectedScopes are, rather than inferred from a predicate over the
+//     structure.BudgetBookExceptions are, rather than inferred from a predicate over the
 //     rule's shape; that is fisc-xbvs and it is not done here.
 type factOffsetIsNotAStatedTotal struct{}
 

@@ -11,11 +11,9 @@ import (
 // fundBalanceResult runs the whole suite over a fixture whose cells have been
 // altered and returns this check's verdict.
 //
-// It used to also return the *Report, on the stated grounds that the tests below
-// would say which OTHER checks a mutation reddened. None of them did — all three
-// callers discarded it — and the premise was wrong anyway: cellsSubject leaves
-// fact-offset-points-at-token and facts-are-projected red on the UNMUTATED
-// baseline, so "what else went red" says nothing about the mutation.
+// IT RETURNS ONE VERDICT AND NOT THE WHOLE REPORT, because the rest of the run
+// says nothing about the mutation: cellsSubject leaves other checks red on the
+// UNMUTATED baseline, so "what else went red" is not evidence here.
 func fundBalanceResult(t *testing.T, cells []testCell) Result {
 	t.Helper()
 	return resultFor(t, runChecks(t, cellsSubject(t, cells)), "fund-balance-identity")

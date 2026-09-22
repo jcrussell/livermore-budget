@@ -39,7 +39,7 @@ type Report struct {
 	// Declared is every entry in declaredVacuous with what its check reported
 	// here, in check-id order. Published rather than merely consulted, so a
 	// reader of the report can see the whole exemption surface without reading
-	// the source, the way facts-are-projected prints the unprojected scopes.
+	// the source.
 	Declared []declaration `json:"declared_vacuous"`
 	// Undeclared are the vacuous checks no declaration covers. They are what
 	// --strict fails on; see [Report.Failed].
@@ -169,8 +169,8 @@ func (r *Report) add(c Check, res Result) {
 // undeclared vacancy is a coverage shortfall, which is what --strict is for and
 // what a default run deliberately tolerates (see ReportOptions.Strict). A stale
 // declaration is a false statement in this package's own source, which no run
-// should pass — it is the same standard staleDeclarations applies to
-// unprojectedScopes.
+// should pass — it is the same standard staleDocumentDeclarations applies to
+// uncheckedDocuments.
 func (r *Report) Failed() bool {
 	if r.Counts.Fail > 0 || r.Counts.Error > 0 {
 		return true

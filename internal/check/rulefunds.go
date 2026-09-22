@@ -17,7 +17,7 @@ import (
 // anchors on, so a fund mis-assigned WITHIN ITS OWN FUND TYPE survives every
 // other check at once:
 //
-//   - revenue-detail-ties-to-spine passes, because both funds are in the same
+//   - cuts-tie-along-the-lattice passes, because both funds are in the same
 //     fund group and the column sums are unchanged;
 //   - fact-funds-resolve passes, because it asserts the fund EXISTS and that its
 //     type matches the fact's fund group, and both are true of the wrong fund;
@@ -61,7 +61,7 @@ import (
 // BOTH budget years — 2022 COP Construction Fund, Transferable Development Cred,
 // Doolan Canyon Preserve Endow, four grant funds, Import Mitigation Fee, Human
 // Services Facility Fee — so dropping any one of them leaves every FY2026 and
-// FY2027 sum unchanged and revenue-detail-ties-to-spine green, while up to
+// FY2027 sum unchanged and cuts-tie-along-the-lattice green, while up to
 // $4.7M of FY2024 revenue vanishes. So the check reads the pages those rules
 // touch and requires every printed fund total on them to be claimed.
 //

@@ -815,10 +815,10 @@ func describeLegs(legs []project.Link) string {
 // THE INTER-DOCUMENT FOLD IS REAL AND IS ALREADY DISCHARGED ELSEWHERE, which is
 // the other half of why this one is structural. Folding this document's fund
 // totals to fund groups and comparing them against the SPINE's published
-// fund-group figures is a comparison between two schedules, and the
-// <kind>-detail-ties-to-spine family makes exactly that comparison, per cell, at
-// zero tolerance, over Subject.Facts and without a graph. Rebuilding it here
-// would buy nothing.
+// fund-group figures is a comparison between two schedules, and
+// cuts-tie-along-the-lattice makes exactly that comparison, per cell, at zero
+// tolerance, over Subject.Facts and without a graph. Rebuilding it here would
+// buy nothing.
 //
 // WHAT IS GENUINELY NEW IS STRUCTURAL, and none of it was asserted anywhere
 // before:

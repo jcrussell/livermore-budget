@@ -20,16 +20,15 @@ import (
 // warning -- that a permanently red gate gets commented out -- starts applying
 // to the flag itself.
 //
-// So this is the shape the repository already uses three times:
-// unprojectedScopes, StatedTotalDeltas and Part.OmittedRows. A declaration that
-// is loud, that carries its reason, and THAT FAILS WHEN IT GOES STALE.
+// So this is the shape the repository already uses elsewhere: uncheckedDocuments,
+// mapping.StatedTotalDeltas and mapping.Part.OmittedRows. A declaration that is
+// loud, that carries its reason, and THAT FAILS WHEN IT GOES STALE.
 //
 // WHAT IT IS NOT. It does not promote a vacuous check to passing and it does
 // not weaken any check. A declared check is still reported VACUOUS, still
 // counted in Counts.Vacuous, and still printed with the reason it has nothing
 // to look at. The declaration says only that a human has looked at it and named
-// the work that retires it -- the same claim unprojectedScopes makes about
-// facts.
+// the work that retires it.
 type vacancy struct {
 	// reason is why the check has nothing to look at, said about the CORPUS or
 	// the code rather than about our intentions. It is printed verbatim on
@@ -77,8 +76,8 @@ func (d declaration) Ran() bool { return d.Status != "" }
 //
 // This fails whether or not --strict was passed, because a declaration that has
 // stopped being true is a false statement in this package's source rather than
-// a shortfall in coverage -- the same standard staleDeclarations applies to
-// unprojectedScopes.
+// a shortfall in coverage -- the same standard staleDocumentDeclarations
+// applies to uncheckedDocuments.
 //
 // ONLY PASS AND FAIL ARE VERDICTS, and the other two statuses are why this is
 // a whitelist rather than "anything but vacuous". A run that reports SKIPPED or

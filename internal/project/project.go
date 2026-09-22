@@ -183,13 +183,9 @@ func PublishedDocuments() []PublishedDocument {
 	// THE DRILL-DOWN PUBLISHES ALL FOUR COLUMNS, not just the two adopted years
 	// the spine prints. Two reasons, and the second is the load-bearing one.
 	//
-	// It is the only document that draws pp.167-170 at all, and
-	// unprojectedScopes' declaration for that schedule retires only when the
-	// schedule is drawn EXHAUSTIVELY: draw two of its four columns and
-	// staleDeclarations' partial arm fires and demands the reason be rewritten
-	// to say which slices it still covers. Publishing all four retires the
-	// declaration outright, which is the mechanism working rather than being
-	// worked around.
+	// It is the only document that draws pp.167-170 at all, so drawing two of
+	// its four columns would publish half a schedule with nothing on the site or
+	// in the fact store saying which half was left.
 	//
 	// And the historical columns are worth drawing on their own account: a
 	// reader asking where a fund's money came from in FY2024 is asking the
@@ -207,8 +203,8 @@ func PublishedDocuments() []PublishedDocument {
 
 	// THE CROSS-TAB PUBLISHES ALL FOUR COLUMNS TOO, and for the drill-down's
 	// first reason rather than its second: it is the only document that draws
-	// Budget Book pp.85-125 at all, and unprojectedScopes' declaration for that
-	// schedule retires only when the schedule is drawn EXHAUSTIVELY.
+	// Budget Book pp.85-125 at all, so two of the four would be half a schedule
+	// with nothing saying which half.
 	//
 	// Two of the four are unreachable from any chart until the spine's
 	// right-hand column opens, and are declared in `fisc export`'s
@@ -225,8 +221,8 @@ func PublishedDocuments() []PublishedDocument {
 
 	// THE FUNDING SOURCES PUBLISH ALL FOUR COLUMNS, on the cross-tab's argument
 	// one block down the same eleven pages: this is the only document that
-	// draws pp.85-125's LOWER block, and unprojectedScopes' declaration for
-	// that schedule retires only when it is drawn EXHAUSTIVELY.
+	// draws pp.85-125's LOWER block, so two of the four would be half a
+	// schedule with nothing saying which half.
 	//
 	// Two of the four are unreachable from any chart until a reader switches
 	// year, and the spine publishes no actual and no revised column at all; the
@@ -245,8 +241,8 @@ func PublishedDocuments() []PublishedDocument {
 	// THE TRANSFER NETWORK PUBLISHES THE TWO ADOPTED COLUMNS AND p76 PRINTS
 	// FOUR, which is the opposite shape from the two documents above and is not
 	// a narrower promise. The other two publish four because the corpus carries
-	// four and drawing two would leave an unprojectedScopes entry half true;
-	// here the corpus carries two, because p76's historical columns miss its own
+	// four and drawing two would leave half a schedule unsaid; here the corpus
+	// carries two, because p76's historical columns miss its own
 	// printed grand total by $6,858,051 and by exactly $5,000,000 and the rules
 	// read and skip them. So this IS the whole schedule, and stating two columns
 	// is what makes a corpus that lost one reportable.

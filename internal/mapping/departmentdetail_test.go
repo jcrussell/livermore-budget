@@ -140,8 +140,8 @@ func TestPublishedDepartmentDetailResolves(t *testing.T) {
 // No figure is typed into this test. pp.167-170's 49 object rows are summed per
 // object category, pp.66-67's General Fund expenditure block is read by its own
 // rules, and the two are compared. That is the same arithmetic
-// expenditure-detail-ties-to-spine does over the fact store, done here against
-// the pages themselves -- so the check and the corpus cannot drift together.
+// cuts-tie-along-the-lattice does over the fact store, done here against the
+// pages themselves -- so the check and the corpus cannot drift together.
 func TestDepartmentDetailTiesToTheSpineOffThePages(t *testing.T) {
 	detail := detailByCategory(t)
 	spine := spineGeneralFundExpenditure(t)

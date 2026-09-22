@@ -661,8 +661,8 @@ type DrillStep struct {
 	// declared once for every year the view lists, so a declared figure would
 	// need a year axis this map cannot have. The client takes the difference
 	// between the two sides of the node it drew and the reason names the column
-	// it is of; internal/check's spending-window-reconciles is what holds that
-	// difference to the declared figure, on the documents, at verify time.
+	// it is of; GapOf takes the same difference off the drawn graph at export
+	// time and refuses one no declaration here accounts for.
 	//
 	// A STEP DECLARING ONE CLAIMS EVERY OTHER NODE IT OPENS BALANCES. The
 	// client refuses a shortfall on a node named nowhere here rather than

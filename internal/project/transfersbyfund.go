@@ -22,8 +22,9 @@ const TransfersByFundProjection = "transfers-by-fund"
 // (kind, category, fund_group, fund, year, basis) carrying $42,183,495 of
 // transfer_in across the published columns, because pp.127-140 print a fund's
 // transfers in and p76 prints the same movement from the payer's end. One
-// document holding both would double it, which projection-scopes-are-disjoint
-// refuses; and at the spine's scope the same rows double the city's transfers.
+// document holding both would double it, which
+// peers-overlap-only-by-declared-identity refuses; and at the spine's scope the
+// same rows double the city's transfers.
 const TransfersByFundScope = "transfers-by-fund"
 
 // TransfersByFundScopes is the schedule set, as [Options.Scopes] holds it.
@@ -147,8 +148,7 @@ func (*transfersByFund) Name() string { return TransfersByFundProjection }
 // exactly $5,000,000 -- millions, nothing like the <=$5 rounding class
 // stated_total_deltas is for -- so mappings/ reads and skips them and no fact
 // carries them. This therefore draws the schedule exhaustively over what the
-// store holds, which is what retires unprojectedScopes' entry for it rather
-// than leaving it half true.
+// store holds.
 func (*transfersByFund) Slices(facts []fact.Fact, version string) []Options {
 	seen := map[Column]bool{}
 	for i := range facts {

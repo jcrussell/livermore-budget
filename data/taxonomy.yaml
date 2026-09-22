@@ -1534,11 +1534,10 @@ categories:
   # option (a), and the 78 rows carry it: 536 facts resolve as a division and
   # 264 as a department, measured off the run that landed it.
   #
-  # WHAT THAT BOUGHT is the guard the note here used to say was missing.
-  # netCells refuses a fact carrying a department, so a funding-source rule
-  # mis-scoped to `all-funds-gross` now fails when the projection is built --
-  # "carries department \"city-council\"" against the fact's own id -- where
-  # before it was something only funding-sources-tie-to-spine would see.
+  # THE GUARD IS netCells, WHICH REFUSES A FACT CARRYING A DEPARTMENT, so a
+  # funding-source rule mis-scoped to `all-funds-gross` fails when the
+  # projection is built -- "carries department \"city-council\"" against the
+  # fact's own id -- rather than only at cuts-tie-along-the-lattice.
   #
   # SUMMING THIS WITH THE FOUR ABOVE DOUBLES THE CITY'S EXPENDITURE, and
   # the scope is what prevents it, not this note: these facts are

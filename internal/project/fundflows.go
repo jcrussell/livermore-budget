@@ -183,8 +183,8 @@ type FundFlowsMetadata struct {
 //
 // THE SPINE IS NOT RETIRED BY THIS. sankey.json remains the citywide overview
 // and the only document that publishes a headline; this is the drill-down. The
-// two are reconciled per cell at zero tolerance by the <kind>-detail-ties-to-spine
-// family, which reads Subject.Facts and needs no graph at all (fisc-l25).
+// two are reconciled per cell at zero tolerance by cuts-tie-along-the-lattice,
+// which reads Subject.Facts and needs no graph at all (fisc-l25).
 //
 // # The shape
 //
@@ -914,8 +914,8 @@ func (f *fundFlows) netFundFlows(facts []fact.Fact) (map[revKey]*cellSum, map[ex
 			// division link is sourced from it -- attributing the whole of the
 			// spending to the General Fund on no evidence at all. Nothing
 			// downstream would see it: the amounts are unchanged, so
-			// expenditure-detail-ties-to-spine still ties, and
-			// fact-funds-resolve only examines facts that DO name a fund.
+			// cuts-tie-along-the-lattice still ties, and fact-funds-resolve
+			// only examines facts that DO name a fund.
 			if fa.Fund == nil {
 				return nil, nil, cmdutil.WithHint(
 					fmt.Errorf("fund-flows: fact %s (%s) names no fund", fa.ID, fa.Department),

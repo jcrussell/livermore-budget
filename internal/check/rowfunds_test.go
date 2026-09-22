@@ -20,9 +20,9 @@ import (
 // Five of p76's payer labels match an operating fund AND its CIP twin, and every
 // twin is type: capital. So:
 //
-//   - transfers-detail-ties-to-spine cannot see it: the swap moves the leg
-//     inside the collapsed {capital, special-revenue, permanent} cell and the
-//     joint sum is unchanged.
+//   - cuts-tie-along-the-lattice cannot see it: the swap moves the leg inside
+//     the collapsed {capital, special-revenue, permanent} cell and the joint
+//     sum is unchanged.
 //   - factFundsResolve cannot see three of the five (510, 550, 560), because
 //     those are already capital and the fund group does not change.
 //
@@ -356,7 +356,7 @@ func TestRowFundsIsVacuousWithoutAPerRowSchedule(t *testing.T) {
 // The first version of this check asserted only that each anchor's fund was one
 // of the two the row declared, on the reasoning that swapping a row's ends moves
 // money between the in and out sides of a fund group and
-// transfers-detail-ties-to-spine reddens on it. That holds only when the two
+// cuts-tie-along-the-lattice reddens on it. That holds only when the two
 // ends are in DIFFERENT groups. "Transfer From Water  to Water Replacement" is
 // 640 and 642, both enterprise: swap them and the payer and payee are genuinely
 // inverted in the published facts while every group sum is unchanged and

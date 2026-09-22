@@ -542,9 +542,9 @@ func acfrLine(t *testing.T, want string) string {
 }
 
 // TestACFRp0041HasNoGeometryColumnGuard pins the claim that
-// mappings/livermore-acfr-fy2025.yaml, data/taxonomy.yaml's neighbourhood and
-// internal/check's unprojectedScopes entry all make in prose: the twenty figures
-// this lane publishes are read with NO column-position guard over them.
+// mappings/livermore-acfr-fy2025.yaml and data/taxonomy.yaml's neighbourhood
+// both make in prose: the twenty figures this lane publishes are read with NO
+// column-position guard over them.
 //
 // docs/extraction-substrate.md calls that guard "the designed answer" for a
 // token landing in the wrong column, so a page that cannot have it is a real

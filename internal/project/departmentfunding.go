@@ -126,15 +126,15 @@ func (*departmentFunding) Name() string { return DepartmentFundingProjection }
 // Slices is one Options per column the schedule carries, [Sankey.Slices]'s rule.
 //
 // ALL FOUR PRINTED COLUMNS, for departmentSpending.Slices' two reasons: this is
-// the only document that draws these rows at all, so unprojectedScopes' entry
-// for them retires only when they are drawn exhaustively, and a reader asking
-// which funds paid for Police in FY2024 is asking the question this document
-// exists to answer.
+// the only document that draws these rows at all, so drawing two of the four
+// would publish half a schedule with nothing saying which half, and a reader
+// asking which funds paid for Police in FY2024 is asking the question this
+// document exists to answer.
 //
 // THE TWO HISTORICAL COLUMNS TIE TO NOTHING ON THE SPINE, and that is a fact
 // about pp.66-67 rather than a weakness here: those pages print no actual and
-// no revised column, so funding-sources-tie-to-spine has nothing to compare
-// them against and the only figure they reconcile to is each department's own
+// no revised column, so cuts-tie-along-the-lattice has nothing to compare them
+// against and the only figure they reconcile to is each department's own
 // printed Total Department Funding Sources. The caveat below says so to a
 // reader.
 func (*departmentFunding) Slices(facts []fact.Fact, version string) []Options {
