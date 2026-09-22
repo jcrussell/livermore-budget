@@ -201,9 +201,11 @@ var srcPathPattern = regexp.MustCompile(
 // exemption list: unwrapped for a name that runs into the next sentence, and the
 // joined form for one gofmt broke across two comment lines. unwrap says how.
 //
-// Measured over the scanned paths when this arm landed: 965 cited names, 955
-// resolving, and every one of the 10 that did not was a real dead pointer -- five
-// of them naming a test that pins a contract and does not exist.
+// Measured over the scanned paths at 0cf899c, where this arm landed: 965
+// DISTINCT names cited against 948 declared, 955 of them resolving, and every
+// one of the 10 that did not was a real dead pointer -- five of them naming a
+// test that pins a contract and does not exist. Distinct names and not
+// occurrences: the same name is cited more than once.
 var (
 	testNamePattern = regexp.MustCompile(`(^|[^A-Za-z0-9_])(Test[A-Z][A-Za-z0-9_]*)`)
 	testDeclPattern = regexp.MustCompile(`(?m)^func (Test[A-Z][A-Za-z0-9_]*)\(`)
