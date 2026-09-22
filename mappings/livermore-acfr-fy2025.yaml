@@ -274,8 +274,8 @@ rules:
       (Uses)" is that rule's total_row: its figure is consumed as a total and
       cited by no fact, so un-skipping it collides with nothing. Measured --
       un-skipping it with sign: netted publishes the block's own (25.19) as a
-      THIRD transfer_out fact, making ACFR transfers/out 25.72 + 25.19, with
-      fisc verify at 44 passed, 0 FAILED. Without the sign it goes red, but on
+      THIRD transfer_out fact, making ACFR transfers/out 25.72 + 25.19, and
+      fisc verify reporting ZERO FAILURES. Without the sign it goes red, but on
       the ORIENTATION check and not the doubling, which is the
       green-because-the-gate-fired shape and not a guard. Tracked as fisc-eaic.
 

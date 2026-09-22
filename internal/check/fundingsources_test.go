@@ -321,11 +321,10 @@ func TestEveryFundingSourceFactMatchesThePrintedRow(t *testing.T) {
 		// through data/funds.yaml to exactly one fund, so the number a rule
 		// types is checkable against the line it was typed for.
 		//
-		// THIS IS NO LONGER THE ONLY THING ASSERTING IT, and the difference is
-		// the whole of fisc-90fp. These assertions made the 640 -> 641 swap red
-		// under `go test` while it stayed GREEN under `fisc verify` -- 40 passed,
-		// 0 failed -- so the guarantee lived in one lane's test rather than in
-		// the gate. The eleven rules now declare row_labels_name_funds and
+		// THIS IS NOT THE ONLY THING ASSERTING IT, and the difference is the
+		// whole of fisc-90fp. These assertions alone make the 640 -> 641 swap red
+		// under `go test` while `fisc verify` reports zero failures, which puts
+		// the guarantee in one lane's test rather than in the gate. The eleven rules now declare row_labels_name_funds and
 		// row-funds-match-their-anchors makes the same comparison, in the gate,
 		// for any schedule that opts in. This stays because it is the fact-side
 		// statement of it: it reads f.RowLabel off the published record, where

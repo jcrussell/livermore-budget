@@ -38,7 +38,7 @@ import (
 //     defect, not the doubling being caught -- see AGENTS.md, "green because the
 //     gate fired".
 //   - un-skipped and ALSO declared sign: netted, which is CORRECT for that
-//     figure, `fisc verify` reported 44 passed, 0 failed while the store
+//     figure, `fisc verify` reported zero failures while the store
 //     published the block's own printed total as a third transfer_out fact:
 //     ACFR transfers/out became 25.72 + 25.19.
 //

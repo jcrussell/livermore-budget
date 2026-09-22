@@ -544,13 +544,13 @@ func validateRule(r *Rule, errf errFunc) error {
 		// category, so a department row still says what KIND of spending the
 		// figure is.
 		//
-		// The rule used to accept `department:` INSTEAD, and the hole was
-		// silent rather than theoretical. A fact with no category is in no
-		// graph unless its scope is projected, so in scope transfers-by-fund
-		// -- 88 facts, selected by no projection -- it is named by NOTHING:
-		// measured, swapping a p76 row's category: for a department: produced
-		// two facts with category "" and left fisc verify at 38 passed, 0
-		// failed. internal/check cannot close that: factVocabulary declines an
+		// ACCEPTING `department:` INSTEAD LEAVES A SILENT HOLE rather than a
+		// theoretical one. A fact with no category is in no graph unless its
+		// scope is projected, so in scope transfers-by-fund -- 88 facts,
+		// selected by no projection -- it is named by NOTHING: measured,
+		// swapping a p76 row's category: for a department: produces two
+		// facts with category "" and leaves `fisc verify` reporting zero
+		// failures. internal/check cannot close that: factVocabulary declines an
 		// absent value on purpose ("an absent value is the mapping's
 		// business") and factKindMatchesCategory skips it. So it is closed
 		// here, at the boundary, which is where it was always the mapping's
