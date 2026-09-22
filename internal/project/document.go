@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
-	"sync"
-
-	"github.com/google/jsonschema-go/jsonschema"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/schema"
@@ -272,9 +269,9 @@ func encode(v any, name, schemaName string) ([]byte, error) {
 	if err = json.Unmarshal(raw, &doc); err != nil {
 		return nil, fmt.Errorf("re-read %s projection: %w", name, err)
 	}
-	resolved, err := projectionSchema(schemaName)
+	resolved, err := schema.Load(schemaName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("loading %s: %w", schemaName, err)
 	}
 	if err = resolved.Validate(doc); err != nil {
 		return nil, fmt.Errorf("the %s projection does not match %s: %w", name, schemaName, err)
@@ -298,31 +295,6 @@ func marshal(v any, name string) ([]byte, error) {
 		return nil, fmt.Errorf("encode %s projection: %w", name, err)
 	}
 	return b.Bytes(), nil
-}
-
-// schemaCache holds [encode]'s compiled schemas, one compile per name for the
-// life of the process.
-//
-// MEMOISED BECAUSE THIS RUNS INSIDE `fisc verify`, not only at build: the
-// projections-build and published-projection-built checks construct every
-// document, so a compile per document would be paid once for each of them for
-// an answer that cannot change. Guarded because a caller may build projections
-// concurrently and this package promises nothing about that either way.
-var schemaCache sync.Map
-
-// projectionSchema is the compiled schema named, compiled at most once.
-func projectionSchema(name string) (*jsonschema.Resolved, error) {
-	if got, ok := schemaCache.Load(name); ok {
-		return got.(*jsonschema.Resolved), nil
-	}
-	resolved, err := schema.Load(name)
-	if err != nil {
-		return nil, fmt.Errorf("loading %s: %w", name, err)
-	}
-	// LoadOrStore RATHER THAN Store, so two callers racing here agree about
-	// which compiled schema every later caller gets.
-	actual, _ := schemaCache.LoadOrStore(name, resolved)
-	return actual.(*jsonschema.Resolved), nil
 }
 
 // Envelope is what every document of this project carries, and it is the

@@ -109,22 +109,18 @@ func ValidateJSONL(r io.Reader, name string) error {
 	return nil
 }
 
-// The schemas this package carries.
+// The schemas a caller names. Three more are embedded and have no constant --
+// fact-id, locator and caveat -- because nothing loads them by name: they are
+// reached only as $ref targets, resolved from the referring schema's URL.
 const (
 	// Fact is one line of facts/facts.jsonl and of every published page shard.
 	Fact = "fact.schema.json"
-	// FactID is a fact's identity, $ref'd by Fact and by Column.
-	FactID = "fact-id.schema.json"
 	// Manifest is data/extracted/<doc_id>/manifest.json, which
 	// tools/extract.py writes and internal/corpus reads.
 	Manifest = "manifest.schema.json"
 	// Column is one published column: a node table, the tier order, and one
 	// entry per printed schedule.
 	Column = "column.schema.json"
-	// Locator is which pages a figure was read from.
-	Locator = "locator.schema.json"
-	// Caveat is what a document cannot say about itself.
-	Caveat = "caveat.schema.json"
 	// Rungs is the answer a page opens nodes against: which nodes each column
 	// of each reachable chart holds, and which marks the client adds.
 	Rungs = "rungs.schema.json"

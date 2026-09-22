@@ -196,12 +196,6 @@ func TestAbsentIsNotZero(t *testing.T) {
 	if err != nil || got != 0 {
 		t.Errorf("Parse(\"-\") = (%v, %v), want (0, nil)", got, err)
 	}
-
-	// parseOrZero opts out, but only where a rule says blanks mean zero.
-	got, err = parseOrZero("", Dollars)
-	if err != nil || got != 0 {
-		t.Errorf("parseOrZero(\"\") = (%v, %v), want (0, nil)", got, err)
-	}
 }
 
 // Exactness is the whole point: these values are summed and compared against

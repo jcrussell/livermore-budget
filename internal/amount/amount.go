@@ -362,14 +362,3 @@ func Parse(s string, u Units) (Cents, error) {
 	}
 	return Cents(cents), nil
 }
-
-// parseOrZero is Parse with absent cells treated as zero. Use it only where a
-// rule has declared that a blank means zero for that table; the default is to
-// keep the distinction.
-func parseOrZero(s string, u Units) (Cents, error) {
-	c, err := Parse(s, u)
-	if errors.Is(err, ErrAbsent) {
-		return 0, nil
-	}
-	return c, err
-}
