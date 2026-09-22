@@ -2,9 +2,17 @@
 /**
  * fisc — the published page's client script.
  *
- * Plain browser JavaScript with JSDoc types, checked with `tsc --checkJs`.
- * There is no bundler and no npm in the deploy path: this file is served
- * exactly as it is committed, alongside the vendored d3 bundles.
+ * Plain browser JavaScript with JSDoc types. There is no bundler and no npm
+ * in the deploy path: this file is served exactly as it is committed,
+ * alongside the vendored d3 bundles.
+ *
+ * NOTHING IN THIS TREE RUNS tsc, and the `@ts-check` above is for an editor
+ * and for whoever cares to run one locally. The types are a convention, not
+ * a gate: no Makefile target, no CI step and no node_modules reach them, and
+ * adding them would put npm on a deploy path AGENTS.md, "The node boundary"
+ * keeps it off. What IS enforced is narrower and lives elsewhere -- tools/jscheck's
+ * seam arm compares the typedefs below against the Go struct tags and
+ * schema/page.schema.json, which is what stands in for a typechecker here.
  *
  * The division of labour with the Go side is deliberate. `window.FISC_CONFIG`
  * carries the metadata the page needs before it has fetched anything — the
