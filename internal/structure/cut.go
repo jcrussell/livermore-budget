@@ -270,11 +270,16 @@ func containsKind(haystack []mapping.Kind, needle mapping.Kind) bool {
 // every cut at a level with a department axis says which tier it names, no two
 // cuts share a name, and at most one is the reference.
 //
-// A CUT NO FACT FALLS IN IS RETURNED, NOT REFUSED. A declared level over zero
-// facts is a claim nothing can check, and a cut that lost its every rule would
-// sit in a comparison as a side that prints nothing -- so the caller gets the
-// names and decides, because a fixture that maps one schedule is not a corpus
-// that lost five.
+// A CUT NO FACT FALLS IN IS RETURNED, NOT REFUSED, unless it selects by rule.
+// A declared level over zero facts is a claim nothing can check, and a cut
+// that lost its every rule would sit in a comparison as a side that prints
+// nothing -- so the caller gets the names and decides, because a fixture that
+// maps one schedule is not a corpus that lost five. A cut naming a RULE is
+// different: the rule is a claim about the store, and one no fact carries is
+// refused before the cut can be returned as empty. Measured: with
+// acfr-p0167-general-fund-balances deleted from its mapping and its facts
+// from the store, the cut naming it was returned as empty, and a caller
+// deciding emptiness by scope instead counted it as compared.
 func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty []string, err error) {
 	names := map[string]bool{}
 	references := 0
@@ -310,6 +315,18 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 			return nil, fmt.Errorf("cut %q declares no basis; which columns its pages print is a claim "+
 				"about the pages and not a default", c.Name)
 		}
+		for _, r := range c.Rules {
+			found := false
+			for i := range facts {
+				if facts[i].RuleID == r && facts[i].Scope == c.Scope {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return nil, fmt.Errorf("cut %q selects rule %q, which produces no fact in scope %q", c.Name, r, c.Scope)
+			}
+		}
 		derived, ok := c.DerivedLevel(byRule, facts)
 		if !ok {
 			if c.admitsNone(facts) {
@@ -338,18 +355,6 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 				return nil, fmt.Errorf("cut %q declares basis %q and carries no such column", c.Name, b)
 			}
 		}
-		for _, r := range c.Rules {
-			found := false
-			for i := range facts {
-				if facts[i].RuleID == r && facts[i].Scope == c.Scope {
-					found = true
-					break
-				}
-			}
-			if !found {
-				return nil, fmt.Errorf("cut %q selects rule %q, which produces no fact in scope %q", c.Name, r, c.Scope)
-			}
-		}
 		want := derived
 		for _, a := range c.Placeholders {
 			want = Drop(want, a)
@@ -363,6 +368,19 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		return nil, fmt.Errorf("%d cuts are declared the reference; the columns of an agreement are one cut's", references)
 	}
 	return empty, nil
+}
+
+// EmptyCuts is the cuts no fact falls in, by the admission rule ValidateCuts
+// early-outs on. It is for a caller that has no rule files to run ValidateCuts
+// with and still has to know which cuts to leave out of a comparison.
+func EmptyCuts(facts []fact.Fact, cuts []Cut) []string {
+	var empty []string
+	for _, c := range cuts {
+		if c.admitsNone(facts) {
+			empty = append(empty, c.Name)
+		}
+	}
+	return empty
 }
 
 // admitsNone says whether no fact falls in the cut.

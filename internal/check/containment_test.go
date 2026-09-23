@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
+	"github.com/jcrussell/livermore-budget/internal/mapping"
 )
 
 // TestTheCommittedCutsTieAlongTheLattice pins what the one lattice-driven
@@ -149,6 +150,55 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 			if strings.Contains(f.Detail, "by-object") {
 				t.Errorf("an exception on an empty cut was reported: %s", f.Detail)
 			}
+		}
+	})
+
+	// THE GRAIN ARM CANNOT SEE A RULE THAT LEFT THE MAPPING. The case above
+	// keeps the rules and drops the facts; this one drops both, which is what
+	// a mapping edit that deletes a rule leaves behind, and the only thing
+	// left to notice is the cut still naming the rule. The cut shares its
+	// scope with a sibling that still has facts, so emptiness judged by scope
+	// says it is populated and hands it to every pair as a side printing
+	// nothing.
+	t.Run("a cut naming a rule that left the mapping with its facts is refused, not counted as compared", func(t *testing.T) {
+		const rule = "acfr-p0167-general-fund-balances"
+		kept := make([]fact.Fact, 0, len(facts))
+		for i := range facts {
+			if facts[i].RuleID != rule {
+				kept = append(kept, facts[i])
+			}
+		}
+		if len(kept) == len(facts) {
+			t.Fatalf("the store carries no fact of %s", rule)
+		}
+		files := make([]*mapping.File, 0, len(s.Files))
+		for _, f := range s.Files {
+			c := *f
+			c.Rules = nil
+			for _, r := range f.Rules {
+				if r.ID != rule {
+					c.Rules = append(c.Rules, r)
+				}
+			}
+			files = append(files, &c)
+		}
+		mutated := *s
+		mutated.Facts = kept
+		mutated.Files = files
+		res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+		if diff := cmp.Diff(StatusFail, res.Status); diff != "" {
+			t.Fatalf("status (-want +got):\n%s", diff)
+		}
+		// EXACTLY ONE FINDING, and it is the cut's own: the sibling cut and
+		// every pair are untouched, the coverage arm has no fact of the rule
+		// left to find uncovered, and the grain arm has no rule left to see.
+		// So with this refusal absent the check is green and its summary
+		// counts the cut among those compared, which is the measured state
+		// this case exists to keep red.
+		if len(res.Findings) != 1 || res.Findings[0].Subject != "cuts" ||
+			!strings.Contains(res.Findings[0].Detail, `"acfr-fund-balances/general" selects rule "`+rule+`"`) ||
+			!strings.Contains(res.Findings[0].Detail, "produces no fact") {
+			t.Errorf("want exactly the cuts arm refusing the cut by the rule it names, got:\n  %v", res.Findings)
 		}
 	})
 }

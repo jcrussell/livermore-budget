@@ -70,17 +70,36 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	// hundred one-sided cells. The rule files are what carry each rule's
 	// grain, and a subject with none loaded says so rather than skipping this
 	// arm silently.
+	//
+	// A CUT NO FACT FALLS IN IS NOT COMPARED, and is named. Which cuts those
+	// are is ValidateCuts' answer and is read from it, never re-decided here
+	// by whether the cut's SCOPE has a fact: a cut selecting by rule shares
+	// its scope with a sibling, so a scope with facts says nothing about
+	// whether the cut has any. Where ValidateCuts refused or did not run -- a
+	// fixture loads no rule file -- the same admission rule is asked directly.
 	levelsChecked := false
+	var empty []string
+	emptyKnown := false
 	if len(s.Files) > 0 {
 		byRule, err := structure.LevelOfRule(s.Facts, s.Files)
 		if err != nil {
 			findings = append(findings, finding("grain", "%v", err))
 		} else {
 			levelsChecked = true
-			if _, err := structure.ValidateCuts(s.Facts, byRule, cuts); err != nil {
+			names, err := structure.ValidateCuts(s.Facts, byRule, cuts)
+			if err != nil {
 				findings = append(findings, finding("cuts", "%v", err))
+			} else {
+				empty, emptyKnown = names, true
 			}
 		}
+	}
+	if !emptyKnown {
+		empty = structure.EmptyCuts(s.Facts, cuts)
+	}
+	isEmpty := map[string]bool{}
+	for _, name := range empty {
+		isEmpty[name] = true
 	}
 
 	// EVERY FACT IS IN ONE CUT OR A DECLARED RESIDUE. A comparison covers the
@@ -90,26 +109,6 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	coverage, uncovered := structure.Covered(s.Facts, cuts, residue)
 	for _, f := range coverage {
 		findings = append(findings, finding("coverage", "%s", f))
-	}
-
-	// A CUT NO FACT FALLS IN IS NOT COMPARED, and is named. Over the committed
-	// corpus the grain arm above has already gone red on it -- a rule with a
-	// grain and no fact -- so this is the fixture's path, where the miniature
-	// spine has no schedule behind it, and the summary says which.
-	var empty []string
-	isEmpty := map[string]bool{}
-	for _, c := range cuts {
-		none := true
-		for i := range s.Facts {
-			if s.Facts[i].Scope == c.Scope {
-				none = false
-				break
-			}
-		}
-		if none {
-			empty = append(empty, c.Name)
-			isEmpty[c.Name] = true
-		}
 	}
 
 	var (
