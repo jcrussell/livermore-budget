@@ -14,6 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/export"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // TestTheRungArtifactIsWhatGoComputes pins testdata/rungs.json to the bytes
@@ -1173,5 +1174,70 @@ func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 	}
 	if checked != len(doc.Columns) || checked == 0 {
 		t.Fatalf("checked %d of %d columns", checked, len(doc.Columns))
+	}
+}
+
+// TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins holds each column's gap
+// marks to the exceptions structure declares, per (year, basis, cell): the
+// FY2025-26 column answers no gap, because no pin names it, and the
+// FY2026-27 column answers services-and-supplies at the pin's own difference
+// rather than at a literal. The licence GapOf reads is keyed by node alone
+// (fisc-sixz), so this is the arm that sees a gap drawn on a column the
+// exception does not pin, which the artifact would otherwise carry with the
+// other year's prose.
+func TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	var doc rungsDoc
+	if err := json.Unmarshal(built.Files[rungsServedPath], &doc); err != nil {
+		t.Fatalf("decode %s: %v", rungsServedPath, err)
+	}
+	pinned := 0
+	for _, col := range doc.Columns {
+		var meta struct {
+			Column struct {
+				FiscalYear int    `json:"fiscal_year"`
+				Basis      string `json:"basis"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(built.Projections[col.Stem], &meta); err != nil {
+			t.Fatalf("%s: %v", col.Stem, err)
+		}
+		if meta.Column.FiscalYear == 0 || meta.Column.Basis == "" {
+			t.Fatalf("%s: the spine document names no fiscal year or basis, so no pin can be matched to it", col.Stem)
+		}
+		want := map[string]int64{}
+		for _, e := range structure.BudgetBookExceptions() {
+			if e.Cut != "departmentwide" || e.Against != "spine" || e.At != structure.LevelCategory {
+				continue
+			}
+			for _, p := range e.Cells {
+				if p.Year == meta.Column.FiscalYear && p.Basis == meta.Column.Basis {
+					want["expenditure/"+p.Coords[structure.AxisCategory]] = p.Against.Cents - p.Cut.Cents
+					pinned++
+				}
+			}
+		}
+		got := map[string]int64{}
+		for _, r := range col.Rungs {
+			for _, m := range r.Marks {
+				if m.Role == export.RoleGap {
+					got[r.Path[len(r.Path)-1]] = m.InCents - m.OutCents
+				}
+			}
+		}
+		if diff := cmp.Diff(want, got); diff != "" {
+			t.Errorf("%s (FY%d %s): the gap marks answered are not the cells the exceptions pin for this column (-pinned +answered):\n%s",
+				col.Stem, meta.Column.FiscalYear, meta.Column.Basis, diff)
+		}
+	}
+	if pinned == 0 {
+		t.Fatal("no exception pins a departmentwide cell on any published column, so no gap was held to anything")
 	}
 }
