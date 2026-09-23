@@ -32,8 +32,11 @@ import (
 //   - facts against the slice: a document that quietly narrowed what it drew.
 //   - facts_cited against the distinct union of every link's fact_ids: a
 //     citation the document dropped.
-//   - the identity facts = cited + uncited: money that reached no link and is
-//     not a printed zero, which is the schedule silently shrinking.
+//   - the identity facts = cited + uncited: that the two numbers the document
+//     publishes add up to the third. It does NOT witness what an uncited fact
+//     is worth -- uncited is defined as reached-no-link, so the identity holds
+//     whatever those facts carry -- and uncited-facts-are-printed-zeros is the
+//     check that does.
 //   - facts_cited_twice: the overlap between the two grains, published as a
 //     number because `links` is NOT a partition of `facts_cited` in this
 //     document and the spine's shape would lead a reader to assume it is.
@@ -115,7 +118,7 @@ func (*fundFlowsCountsReconcile) Run(_ context.Context, s *Subject) (Result, err
 			findings = append(findings, finding(p.String(),
 				"counts.facts is %d and facts_cited + facts_uncited is %d + %d = %d. This "+
 					"document's published identity is that every fact is either behind a "+
-					"link or a printed zero, and a gap is money it dropped in silence",
+					"link or uncited, and the two numbers it publishes do not add up to the third",
 				c.Facts, c.FactsCited, c.FactsUncited, c.FactsCited+c.FactsUncited))
 		}
 

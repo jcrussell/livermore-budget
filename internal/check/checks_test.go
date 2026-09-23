@@ -82,6 +82,11 @@ func TestFixtureVerdicts(t *testing.T) {
 		// The drill-down's three checks are vacuous over the miniature spine,
 		// which carries neither of the schedules it draws.
 		"fund-flows-counts-reconcile": "vacuous over 0",
+		// And the two over the schedule documents likewise: the fixture builds
+		// none of the four, so there is no count to re-derive and no uncited
+		// fact to value.
+		"schedule-counts-reconcile":       "vacuous over 0",
+		"uncited-facts-are-printed-zeros": "vacuous over 0",
 		// The line tier is a property of the drill-down, so with no drill-down
 		// there is no line node and no flow into a fund. Its vacancy is NOT
 		// declared, and must not become so: over the committed corpus it has
@@ -127,7 +132,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 23, Vacuous: 21, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 23, Vacuous: 23, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -149,8 +154,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 21 {
-		t.Fatalf("vacuous count = %d, want 21", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 23 {
+		t.Fatalf("vacuous count = %d, want 23", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")

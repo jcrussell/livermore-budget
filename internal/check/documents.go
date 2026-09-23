@@ -210,25 +210,29 @@ func documentShape(p projection) string {
 		// The six structural checks that read Subject.Linked: graph-acyclic,
 		// node-tiers-are-declared, derived-nodes-justified,
 		// link-values-tie-to-facts, node-hierarchy-well-formed and
-		// constraint-tier-vocabulary. NOT the three headline ones, which is the
-		// whole point of the shape: this document publishes no headline.
+		// constraint-tier-vocabulary; plus fund-flows-counts-reconcile and
+		// uncited-facts-are-printed-zeros. NOT the three headline ones, which
+		// is the whole point of the shape: this document publishes no headline.
 		return "linked graph, no headline"
 	case p.DepartmentSpending != nil:
-		// The same six structural checks that read Subject.Linked. The
+		// The same six structural checks that read Subject.Linked, plus
+		// schedule-counts-reconcile and uncited-facts-are-printed-zeros. The
 		// arithmetic this document rests on is cuts-tie-along-the-lattice,
 		// which reads the FACTS and needs no graph.
 		return "cross-tab, no headline"
 	case p.DepartmentFunding != nil:
-		// The same six structural checks that read Subject.Linked. The
+		// The same six structural checks that read Subject.Linked, plus
+		// schedule-counts-reconcile and uncited-facts-are-printed-zeros. The
 		// arithmetic this document rests on is cuts-tie-along-the-lattice,
-		// which reads the FACTS and needs no graph -- so there is no check of
-		// this shape alone, and the shape is named apart from the cross-tab's
-		// because they are two readings of the same eleven pages.
+		// which reads the FACTS and needs no graph; the shape is named apart
+		// from the cross-tab's because they are two readings of the same
+		// eleven pages.
 		return "funding graph, no headline"
 	case p.TransfersByFund != nil:
 		// The same six structural checks that read Subject.Linked, plus
 		// transfer-legs-pair, which is the only check in the tree that reads
-		// Link.TransferID and had no subject at all until this shape existed.
+		// Link.TransferID and had no subject at all until this shape existed,
+		// plus schedule-counts-reconcile and uncited-facts-are-printed-zeros.
 		// The arithmetic this document rests on is cuts-tie-along-the-lattice,
 		// which reads the FACTS and is therefore not named here.
 		return "paired legs, no headline"

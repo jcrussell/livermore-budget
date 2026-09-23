@@ -251,6 +251,8 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		"node-tiers-are-declared":                 StatusPass,
 		"link-kinds-match-their-facts":            StatusPass,
 		"fund-flows-counts-reconcile":             StatusPass,
+		"schedule-counts-reconcile":               StatusPass,
+		"uncited-facts-are-printed-zeros":         StatusPass,
 		"revenue-lines-tie-to-their-categories":   StatusPass,
 		"projections-build":                       StatusPass,
 		"published-projection-built":              StatusPass,
