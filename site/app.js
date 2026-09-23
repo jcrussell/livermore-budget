@@ -3225,9 +3225,10 @@ function linkClass(d) {
  *
  * `expands` IS THE SAME KIND OF CLAIM ABOUT THE OTHER GESTURE, and it is
  * expandable's answer for expandable's reason. A folded tail is the other mark
- * a reader expects something to happen on -- measured over the chain, 9 of the
- * 44 views it opens draw one -- and what happens is a redraw of the column it
- * was cut out of rather than a rung.
+ * a reader expects something to happen on, and it is rare. Measured over the
+ * drill tree: 9 of the 76 views FY2025-26 opens draw one, and the same is true
+ * of 9 of the 74 views FY2026-27 opens. What happens is a redraw of the column
+ * it was cut out of rather than a rung.
  *
  * THE TWO ARE DISJOINT AND THE CLASS DOES NOT ENFORCE THAT. drillable refuses
  * an aggregate by name and expandable requires one, so no mark can carry both;
@@ -3262,8 +3263,8 @@ function nodeClass(d) {
  * ONE PAIR IS REAL AND THE OTHER IS LATENT, and the difference is worth
  * stating. A folded tail is ALWAYS an inference -- capColumn writes derived on
  * it because the city printed no line called "24 smaller funds" -- so every
- * mark that expands carries the diamond beside the plus, on 9 of the 44 views
- * the chain opens. The diamond-and-triangle pair is the one no committed
+ * mark that expands carries the diamond beside the plus, on the 9 views of
+ * each budget that draw one. The diamond-and-triangle pair is the one no committed
  * document produces, and a rule written only for the marks that exist would be
  * a rule the first derived openable node breaks silently, in the label's own
  * gutter.
@@ -4555,17 +4556,22 @@ function render(laid) {
     // gesture carries two meanings, and no view has to choose.
     //
     // AN OPENED CHART IS WORTH ISOLATING ON, which is what makes two gestures
-    // necessary rather than merely possible. A window is three columns at its
-    // narrowest, and tools/jscheck/drill.mjs walks the chain and measures it:
-    // all 44 views it opens draw three at the page's own budget, and at a
-    // four-column budget one of them draws four. None draws two. So every
-    // opened view has a middle column, and dimming everything not adjacent to
-    // one node takes real ribbons off it.
+    // necessary rather than merely possible. A WINDOW is three columns at its
+    // narrowest, and the drill tree is walked and measured: of the 76 views
+    // FY2025-26 opens, 75 draw three columns at the page's own budget, and at
+    // a four-column budget 74 draw three and one draws four. Of the 74 views
+    // FY2026-27 opens it is 73 and then 72.
     //
-    // AND THE ISOLATE IS THE GESTURE MOST MARKS HAVE. Of the 343 nodes those
-    // views draw, 24 open. Putting the drill on the single click would give 7%
-    // of an opened chart's marks one meaning and 93% of them another, on the
-    // same mark shape, told apart only by trying one.
+    // THE ONE THAT IS NOT A WINDOW DRAWS TWO, and it is a step that keeps no
+    // flank: transfers/in draws the opened node's parts alone, tiers 2 and 3,
+    // which is a filter. Isolating there still dims, because two columns still
+    // have ribbons between them -- what it does not have is a middle column.
+    //
+    // AND THE ISOLATE IS THE GESTURE MOST MARKS HAVE. Of the 453 marks those
+    // views draw on FY2025-26, 55 open; on FY2026-27, 53 of 446. Putting the
+    // drill on the single click would give 12% of an opened chart's marks one
+    // meaning and 88% of them another, on the same mark shape, told apart only
+    // by trying one.
     .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
       e.stopPropagation();
       clickNode(d, e.timeStamp);
