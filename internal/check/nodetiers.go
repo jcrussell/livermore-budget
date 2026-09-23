@@ -125,6 +125,14 @@ var endpointTiers = map[string]int{
 //     cross-tab from a chain by looking, so a check that inferred it would be
 //     inferring what a published table means.
 //
+// THE PARTITION CLAIM IS HELD TO THE DOCUMENT THAT MAKES IT, because a flag a
+// link sets on itself is otherwise an exemption nothing verifies. A cross-tab
+// is one printed matrix or it is not: a document declaring a partition on any
+// link declares it on every link, since a matrix has no cell that is a flow;
+// and its links run between ONE pair of tiers, the matrix's two axes. A
+// document mixing the two, or partitioning across three tiers, is refused,
+// which is what keeps the flag a claim rather than a way past the ordering.
+//
 // ANY OTHER DESCENDING LINK IS STILL REFUSED, which is what keeps these
 // exceptions rather than a repeal: a fund-to-revenue-category link is neither a
 // fold nor a cross-tab, and there is no column order that makes it forward.
@@ -138,7 +146,8 @@ func (*nodeTiersAreDeclared) Full() bool { return false }
 func (*nodeTiersAreDeclared) Description() string {
 	return "every node's tier is the one docs/sankey-contract.md's table gives for its id " +
 		"form, and every link runs from a coarser tier to a finer one unless it is a rollup " +
-		"into the source's own parent or a declared partition"
+		"into the source's own parent or a declared partition, which a document declares on " +
+		"every link or none and along one pair of tiers"
 }
 
 func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) {
@@ -177,6 +186,8 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			}
 		}
 
+		partitioned, plain := 0, 0
+		axes := map[[2]int]bool{}
 		for _, l := range p.Links {
 			links++
 			src, sok := tierOf[l.Source]
@@ -206,6 +217,13 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 					l.Source, l.Target, missing))
 				continue
 			}
+			if l.Partition {
+				partitions++
+				partitioned++
+				axes[[2]int{src, dst}] = true
+			} else {
+				plain++
+			}
 			if src < dst {
 				continue
 			}
@@ -213,7 +231,6 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 			case parentOf[l.Source] == l.Target:
 				rollups++
 			case l.Partition:
-				partitions++
 			default:
 				findings = append(findings, finding(p.String(),
 					"link %q -> %q runs from tier %d to tier %d, %q is not %q's own "+
@@ -224,6 +241,29 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 						"every other ribbon on the page",
 					l.Source, l.Target, src, dst, l.Target, l.Source))
 			}
+		}
+
+		// THE DOCUMENT'S CLAIM, held after its links have each been read.
+		if partitioned > 0 && plain > 0 {
+			findings = append(findings, finding(p.String(),
+				"this document declares a partition on %d of its %d links and none on the "+
+					"other %d. A partition says the document is one printed matrix read along "+
+					"its second axis, and a matrix has no cell that is a flow; a document that "+
+					"draws both is neither, and a flag set on one link of a flow diagram is an "+
+					"exemption from the tier ordering that nothing holds",
+				partitioned, partitioned+plain, plain))
+		}
+		if len(axes) > 1 {
+			pairs := make([]string, 0, len(axes))
+			for a := range axes {
+				pairs = append(pairs, fmt.Sprintf("%d -> %d", a[0], a[1]))
+			}
+			sort.Strings(pairs)
+			findings = append(findings, finding(p.String(),
+				"this document's partition links run between %d pairs of tiers (%s). One "+
+					"printed matrix has two axes, so its cells run between one pair; links "+
+					"partitioning across more tiers than that are flows wearing the flag",
+				len(axes), strings.Join(pairs, ", ")))
 		}
 	}
 

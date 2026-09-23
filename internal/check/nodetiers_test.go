@@ -116,6 +116,29 @@ func TestNodeTiersAreDeclaredIsFailable(t *testing.T) {
 			},
 			want: "not a node of this graph",
 		},
+		{
+			// A FLAG ON ONE LINK OF A FLOW DIAGRAM. Before the document-level
+			// arm this was green whichever way the link ran: the flag exempted
+			// the link from the ordering claim and nothing asked whether the
+			// document was a matrix at all.
+			name: "a partition declared on one link of a document that draws flows",
+			damage: func(t *testing.T, g *project.Graph) {
+				g.Links[0].Partition = true
+			},
+			want: "declares a partition on 1 of its",
+		},
+		{
+			// THE FLAG ON EVERY LINK, so the mixing arm has nothing to say,
+			// and the links still run between more than one pair of tiers,
+			// which no single printed matrix does.
+			name: "a partition declared on every link of a document spanning more than one pair of tiers",
+			damage: func(t *testing.T, g *project.Graph) {
+				for i := range g.Links {
+					g.Links[i].Partition = true
+				}
+			},
+			want: "pairs of tiers",
+		},
 	}
 
 	for _, c := range cases {
@@ -209,22 +232,38 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 // bool, nothing else moved -- must still be refused BY NAME, or the exemption
 // has become "any descending link between two parentless nodes", which is most
 // of them.
+//
+// THE CROSS-TAB IS A DOCUMENT OF ITS OWN, not a link planted in the spine's
+// fixture: the flag is the document's claim about every link it draws, and a
+// partition link inside a flow diagram is exactly the shape the document-level
+// arm refuses (TestNodeTiersAreDeclaredIsFailable).
 func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 	crossTab := func(t *testing.T, partition bool) *Subject {
 		t.Helper()
-		s := tieredSubject(t)
-		g := s.graphs()[0].Graph
+		col := project.Column{FiscalYear: testYear, Basis: project.PublishedBasis}
 		// Both ends parentless and neither the other's parent, which is what
 		// the committed cross-tab publishes.
-		g.Nodes = append(g.Nodes,
-			project.Node{ID: "expenditure/wages-and-benefits", Tier: 5, Role: "object_category"},
-			project.Node{ID: "dept/police-patrol", Tier: 4, Role: "department"})
-		g.Links = append(g.Links, project.Link{
-			Source: "expenditure/wages-and-benefits", Target: "dept/police-patrol",
-			ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"},
-			Partition: partition,
-		})
-		return s
+		doc := &project.DepartmentSpendingDocument{
+			Nodes: []project.Node{
+				{ID: "expenditure/wages-and-benefits", Tier: 5, Role: "object_category"},
+				{ID: "expenditure/services-and-supplies", Tier: 5, Role: "object_category"},
+				{ID: "dept/police-patrol", Tier: 4, Role: "department"},
+			},
+			Links: []project.Link{
+				{Source: "expenditure/wages-and-benefits", Target: "dept/police-patrol",
+					ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"},
+					Partition: partition},
+				{Source: "expenditure/services-and-supplies", Target: "dept/police-patrol",
+					ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"y"},
+					Partition: partition},
+			},
+		}
+		return &Subject{Projections: []projection{{
+			Name: project.DepartmentSpendingProjection,
+			Options: project.Options{Columns: []project.Column{col},
+				Scopes: project.DepartmentSpendingScopes(), Version: testVersion},
+			DepartmentSpending: doc,
+		}}}
 	}
 
 	if res := runNodeTiers(t, crossTab(t, true)); res.Status != StatusPass {
