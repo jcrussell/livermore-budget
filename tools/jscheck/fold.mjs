@@ -70,7 +70,7 @@ async function capIsWhatMakesTheColumnDrawable() {
   };
   const sr = await measure("fund-group/special-revenue");
   const cap = await measure("fund-group/capital");
-  // EACH PHRASE CARRIES ENOUGH OF ITS OWN SENTENCE TO BE UNIQUE, layout.mjs's
+  // EACH PHRASE CARRIES ENOUGH OF ITS OWN SENTENCE TO BE UNIQUE, layout.test.mjs's
   // rule: a bare includes("19") is satisfied by any of the places 19 appears.
   const phrases = [
     `${sr.whole.sub} of its ${sr.whole.ribbons} ribbons under one pixel`,
@@ -369,7 +369,7 @@ export async function checks() {
   const byPair = new Map(mini.links.map((l) => [l.source + " -> " + l.target, l]));
 
   // The spine, laid out by the function the page ships, against the same graph
-  // laid out by layout.mjs's local rebuild of it.
+  // laid out by layout.test.mjs's local rebuild of it.
   const spine = attempt(() => spineApp.layOut(goldenGraph()));
 
   const out = [];
@@ -622,12 +622,12 @@ export async function checks() {
               "printed most of, and listed whole under what we inferred",
     },
     {
-      // THE REIMPLEMENTATION IS NOW PINNED TO THE SHIPPED FUNCTION. layout.mjs
+      // THE REIMPLEMENTATION IS NOW PINNED TO THE SHIPPED FUNCTION. layout.test.mjs
       // measures 195 crossings against its own rebuild of layOut, which stayed
       // green no matter what layOut did -- so this compares the two, and a
       // change to the shipped nodeAlign, nodeSort or extent that moved the
       // spine would now show up as a difference here.
-      name: "the spine the page ships is the spine layout.mjs measures",
+      name: "the spine the page ships is the spine layout.test.mjs measures",
       ok: (() => {
         if (!spine.ok) return false;
         const graph = spine.value;
@@ -642,7 +642,7 @@ export async function checks() {
       })(),
       detail: spine.ok
         ? `${spine.value.nodes.length} nodes and ${spine.value.links.length} ribbons in ` +
-          "the same places under layOut() and under layout.mjs's rebuild of it"
+          "the same places under layOut() and under layout.test.mjs's rebuild of it"
         : `laying the spine out threw: ${spine.why}`,
     },
     {
@@ -733,7 +733,7 @@ export async function checks() {
 }
 
 /**
- * layout.mjs's rebuild of layOut, duplicated here for the one check that
+ * layout.test.mjs's rebuild of layOut, duplicated here for the one check that
  * compares the two. Kept in step with that file by the check itself: if they
  * diverge, the comparison against the shipped function fails in one of them.
  */

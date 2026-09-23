@@ -296,7 +296,7 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
   documents** ("pp.85-125's 78 rows", "the corpus is 786 pages"), and **a count
   that is the evidence for a decision**.
 - Pin every surviving count to something that re-measures it —
-  `tools/jscheck/layout.mjs` is what that looks like. Where nothing can, name the
+  `tools/jscheck/layout.test.mjs` is what that looks like. Where nothing can, name the
   commit it was taken at.
 - **Rebuild `bin/fisc` and run it before quoting a check count**, and read the
   gate line off the run you are describing. A count copied from anywhere — this

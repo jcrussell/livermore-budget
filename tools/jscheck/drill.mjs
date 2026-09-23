@@ -15,7 +15,7 @@
 // nodes have no ancestor at tier 3 or 4. Both are shapes a Go test cannot see
 // and a reader meets on the first click.
 //
-// EVERY FIGURE HERE IS PINNED, NOT BOUNDED, for layout.mjs's reason: a bound
+// EVERY FIGURE HERE IS PINNED, NOT BOUNDED, for layout.test.mjs's reason: a bound
 // that holds is not evidence a number is still the number, and these are the
 // numbers pkg/cmd/export/data.go's comments quote to justify the tier sets and
 // the caps.
@@ -239,7 +239,7 @@ const EMPTY_DROP = { nodes: 18, links: 19 };
  * set and only export.ResidualOf can say how. The three bands now account for
  * every ribbon -- 12 + 1 + 23 = 36 -- where before two of the 38 spanned two
  * columns at once, from an endpoint at tier 0 to a mark at tier 3, which is
- * the shape layout.mjs's bands() throws on wherever it is asked.
+ * the shape layout.test.mjs's bands() throws on wherever it is asked.
  */
 const FILLED_WIDE = { nodes: 37, links: 36, bands: "12/1/23" };
 
@@ -506,7 +506,7 @@ export const COLUMNS = [
     // THE SAME WINDOW WITH ROOM FOR A FOURTH COLUMN: [the group | fund/100 |
     // its 23 divisions | the object-category cells they spend on]. `bands` is
     // the ribbons crossing each pair of adjacent columns, left to right, which
-    // is what tools/jscheck/layout.mjs counts crossings inside and throws on a
+    // is what tools/jscheck/layout.test.mjs counts crossings inside and throws on a
     // link that spans two of. `right` is where d3 put the last column's rect,
     // which is chartWidth(4) - LABEL_GUTTER when the width was believed.
     fundWide: { nodes: 34, links: 54, hairlines: 2, tail: "36 smaller categories",
@@ -1048,7 +1048,7 @@ export async function everyOpenedView(app, visit) {
  * The spine's first published column, opened into one node, for a caller in
  * another module.
  *
- * layout.mjs NEEDS A WINDOW AND THIS FILE IS WHERE ONE IS BUILT. The label rule
+ * layout.test.mjs NEEDS A WINDOW AND THIS FILE IS WHERE ONE IS BUILT. The label rule
  * it measures keys on the column a view DECLARES, and the spine cannot tell
  * that rule from one keyed on d3's longest path -- every path through the spine
  * is the same length, so the two agree on all 25 of its nodes. A check written
@@ -1068,7 +1068,7 @@ export async function openedWindow(id) {
  * The same page opened down a path at a stated column budget, for a caller in
  * another module.
  *
- * layout.mjs NEEDS A CHART OF FOUR COLUMNS AND THIS FILE IS WHERE ONE IS BUILT,
+ * layout.test.mjs NEEDS A CHART OF FOUR COLUMNS AND THIS FILE IS WHERE ONE IS BUILT,
  * which is openedWindow's argument at one more column: the band count and the
  * label room are claims about a shape a reader reaches only on a wide window,
  * and rebuilding the page config there would be a second copy of PAGE.
@@ -1155,7 +1155,7 @@ export async function openedAsShipped(path, column = COLUMNS[0]) {
  * The worst group's window with its folded tail drawn out, for a caller in
  * another module.
  *
- * layout.mjs NEEDS THE SHAPE A READER CAN NOW ASK FOR. The uncapped column has
+ * layout.test.mjs NEEDS THE SHAPE A READER CAN NOW ASK FOR. The uncapped column has
  * been measurable since the cap landed -- by shaping the view under a step
  * whose cap cannot engage -- and no label check ever ran over it, because no
  * reader could reach it. A double click reaches it now, so what it does to the
@@ -3740,7 +3740,7 @@ async function gapAtTheCentre() {
  * Whether contraNote's own comment in site/app.js quotes the three figures
  * this column measures off the golden.
  *
- * MATCHED AS WHOLE QUOTED PHRASES, layout.mjs's rule: a bare includes() of a
+ * MATCHED AS WHOLE QUOTED PHRASES, layout.test.mjs's rule: a bare includes() of a
  * figure is satisfied by that figure appearing anywhere in a 3,700-line file,
  * so each phrase carries enough of its own sentence to be unique.
  *
@@ -5158,7 +5158,7 @@ async function windowAt(col, budget, path, tweak, answer) {
     hairlines: widths.filter((w) => w < 1).length,
     tail: tail ? tail.label : "",
     // Every adjacent pair of drawn columns, as the count of ribbons crossing
-    // it: layout.mjs's bands() throws on a link that spans more than one, so a
+    // it: layout.test.mjs's bands() throws on a link that spans more than one, so a
     // band with nothing in it is a column no ribbon reaches.
     bands: app.activeTiers().slice(1).map((t, k) => app.projection.links.filter((l) => {
       const at = (/** @type {string} */ id) =>

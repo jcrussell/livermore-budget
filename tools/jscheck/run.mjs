@@ -1,8 +1,13 @@
-// run.mjs — `make js`.
+// run.mjs — the half of `make js` that has not moved to `node --test` yet.
 //
-// Runs every check over site/app.js and exits non-zero if any fails. Node and
+// Runs its modules over site/app.js and exits non-zero if any fails. Node and
 // the standard library only: no npm, no package.json, no node_modules, and
 // nothing here is served to a reader.
+//
+// IT SHRINKS BY ONE ENTRY PER CONVERTED MODULE, and the import list and the
+// array below are two edits rather than one: drop a module from only the array
+// and it is imported and never run. When the last one leaves, this file and
+// settleCheck go with it. fisc-oo8q.
 //
 // IT AWAITS, AND THAT IS LOAD-BEARING RATHER THAN COSMETIC. Until 2026-08-26
 // this file was fully synchronous: a check's `ok` was an already-evaluated
@@ -18,7 +23,6 @@
 // other checks and read as a broken harness rather than a broken page.
 
 import { settleCheck } from "./harness.mjs";
-import { checks as layoutChecks } from "./layout.mjs";
 import { checks as foldChecks } from "./fold.mjs";
 import { checks as drillChecks } from "./drill.mjs";
 import { checks as yearChecks } from "./year.mjs";
@@ -31,7 +35,7 @@ import { checks as contractChecks } from "./contract.mjs";
 let failed = 0;
 // Sequentially, not Promise.all: each module loads app.js into its own vm
 // context and the output is meant to read in a fixed order.
-for (const module of [contractChecks, layoutChecks, foldChecks, drillChecks, yearChecks, seamChecks, lifecycleChecks, rungChecks, chartChecks]) {
+for (const module of [contractChecks, foldChecks, drillChecks, yearChecks, seamChecks, lifecycleChecks, rungChecks, chartChecks]) {
   let produced;
   try {
     produced = await module();
@@ -49,6 +53,6 @@ for (const module of [contractChecks, layoutChecks, foldChecks, drillChecks, yea
   }
 }
 console.log(failed === 0
-  ? `\nsite/app.js: every published layout claim holds.`
+  ? `\nsite/app.js: every claim these modules make about the page holds.`
   : `\nsite/app.js: ${failed} claim${failed === 1 ? "" : "s"} the page makes about itself no longer hold.`);
 process.exit(failed === 0 ? 0 : 1);

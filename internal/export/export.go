@@ -431,7 +431,7 @@ type Section struct {
 // fisc-ppkq: the vendored d3-sankey derives its column count from topology and
 // clamps the align function into it, so expanding one node in place draws that
 // node's children in the same column as the next tier while the unexpanded
-// ribbons span two -- which tools/jscheck/layout.mjs's bands() refuses outright.
+// ribbons span two -- which tools/jscheck/layout.test.mjs's bands() refuses outright.
 // Filtering to one node keeps every tier set uniform, which is the only shape
 // this build lays out.
 //

@@ -637,7 +637,7 @@ button[aria-pressed="true"] {
    --chart-cushion IS RECORDED HERE AND IN app.js, WHICH IS TWO PARTIES AND NOT
    TWO SPELLINGS: this file subtracts it from 100vw, app.js adds it to a chart
    width to compose the media query at which that chart fits, and
-   tools/jscheck/layout.mjs reads both and refuses a disagreement. It is the
+   tools/jscheck/layout.test.mjs reads both and refuses a disagreement. It is the
    40px of body padding plus a 16px cushion for a classic scrollbar, which 100vw
    counts and the reader's window does not. */
 .chart-wrap {

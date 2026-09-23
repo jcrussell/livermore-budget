@@ -535,7 +535,7 @@ const LABEL_GUTTER = 250;
  *
  * 319 BECAUSE THREE COLUMNS MUST COME TO 1180 EXACTLY. That was the chart's
  * fixed design width while three columns was the only shape, and every figure
- * layout.mjs pins -- the crossings, the overlapped value, every label's
+ * layout.test.mjs pins -- the crossings, the overlapped value, every label's
  * clearance -- is of a chart laid out at it. A band chosen for its own sake
  * would move all of them at once and none of them for a reason.
  */
@@ -574,7 +574,7 @@ function chartWidth(n) {
  *
  * RECORDED HERE AND IN style.css, WHICH IS TWO PARTIES AND NOT TWO SPELLINGS.
  * The stylesheet subtracts it from 100vw and this file adds it to a chart width
- * to ask at what viewport that chart fits; tools/jscheck/layout.mjs reads both
+ * to ask at what viewport that chart fits; tools/jscheck/layout.test.mjs reads both
  * and refuses a disagreement, the way `fisc verify` cross-checks a hash
  * tools/extract.py computed independently. One side reading the other would be
  * a lookup, and a lookup cannot disagree.
@@ -1035,7 +1035,7 @@ const NARROW_COLUMNS = 3;
  * narrow client does without, so the longest `tiers` on the page IS the widest
  * chart it could ever be asked for. Declaring a ceiling beside that was one
  * number in four places -- here, a media query, the stylesheet's cap and
- * layout.mjs's expected geometry -- and raising it meant finding all four.
+ * layout.test.mjs's expected geometry -- and raising it meant finding all four.
  *
  * IT IS THE DEMAND AND NOT THE ROOM. COLUMN_QUERIES answers the room, one
  * threshold per column it could offer, so a reader gets the smaller of the two
@@ -3256,7 +3256,7 @@ function nodeClass(d) {
  *
  * THEY COMPOSE, because nothing stops a node being an inference that also
  * opens. They draw in that order with nothing between them, so a pair costs
- * the label two glyph widths -- which is the width tools/jscheck/layout.mjs
+ * the label two glyph widths -- which is the width tools/jscheck/layout.test.mjs
  * fits it against, by calling this rather than by spelling it a second time.
  *
  * ONE PAIR IS REAL AND THE OTHER IS LATENT, and the difference is worth
@@ -4205,7 +4205,7 @@ function restackLinks(graph) {
  * does not.
  *
  * THE SPINE'S OWN FIGURES DO NOT MOVE WHEN IT DECLARES ITS ORDER, and that is
- * measured rather than argued: tools/jscheck/layout.mjs lays the committed
+ * measured rather than argued: tools/jscheck/layout.test.mjs lays the committed
  * goldens out through this function, so the crossing and overlap figures below
  * are the ones the page draws under whatever the page declares. Both aligners
  * were run over both published spine columns and agreed to the digit, because
@@ -4396,7 +4396,7 @@ function labelPlacement(d, last) {
  * the breadcrumb says it -- and in the fund window, whose fourth column draws
  * the largest cells of eight different divisions, it draws six marks reading
  * "Wages & Benefits". The pair does not fit on one line either way: measured by
- * tools/jscheck/layout.mjs, "Fire Administration — Services & Supplies" wants
+ * tools/jscheck/layout.test.mjs, "Fire Administration — Services & Supplies" wants
  * 348px of a gutter that is 250px wide, so the qualifier is a line of its own
  * and is spent only where a reader could not otherwise tell two marks apart.
  *
@@ -4451,7 +4451,7 @@ function labelQualifiers(nodes) {
  * only duplicates anywhere are fund-flows' 44 tier-5 cells, and tier 5 is drawn
  * last in every window that reaches it -- so nothing draws this branch and no
  * check can see it. fisc-xhqt carries the measurement and what would retire it;
- * the vertical arm in tools/jscheck/layout.mjs is what would name an interior
+ * the vertical arm in tools/jscheck/layout.test.mjs is what would name an interior
  * pair if a real document ever drew one.
  *
  * @param {string} anchor

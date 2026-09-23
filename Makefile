@@ -240,9 +240,22 @@ lint-if-available: ## Run lint, warning rather than failing if golangci-lint is 
 # `make site`, `make build` and `fisc export` never run this, and a contributor
 # without node can still build, test and serve the site. There is no
 # package.json, no node_modules and no npm.
+#
+# TWO RUNNERS WHILE THERE ARE TWO. The arms are moving to node's own test runner
+# module by module (fisc-oo8q): node:test and node:assert are standard library,
+# so this adds no package.json and no node_modules and node stays off the deploy
+# path. run.mjs drives what has not moved; `node --test` drives the *.test.mjs
+# files that have. When the last module converts, the first line goes.
+#
+# THE GLOB IS QUOTED SO NODE EXPANDS IT, not the shell. Handing `node --test` a
+# DIRECTORY makes it try to load that path as a module and fail with
+# MODULE_NOT_FOUND, which reads like a broken suite rather than a wrong
+# argument; and an unquoted pattern matching nothing would reach node as the
+# literal string.
 .PHONY: js
-js: ## Check site/app.js's layout claims under node (needs node; nothing else does)
+js: ## Check site/app.js's claims about itself under node (needs node; nothing else does)
 	node tools/jscheck/run.mjs
+	node --test "tools/jscheck/*.test.mjs"
 
 # js-if-available is to `js` what lint-if-available is to `lint`, and for the
 # same reason: node must not become mandatory to commit.

@@ -683,13 +683,13 @@ const NAMES = [
   "nodeRank", "restackLinks", "isFundGroup",
   "paintYearWords", "wireYears", "showYear", "maybeEl", "SCHEMA_VERSION",
   "NODE_WIDTH", "NODE_PADDING", "CHART_HEIGHT", "LABEL_GUTTER",
-  // chartWidth REPLACED THE CHART_WIDTH CONSTANT, and layout.mjs and fold.mjs
+  // chartWidth REPLACED THE CHART_WIDTH CONSTANT, and layout.test.mjs and fold.mjs
   // build their own d3.sankey from it: a chart of four columns is laid out
   // wider, so a harness holding the old constant would measure every crossing
   // and every label clearance against a width the page no longer draws that
   // chart at.
   "chartWidth", "BAND",
-  // layOut AND foldDocument ARE EXPORTED BECAUSE layout.mjs REIMPLEMENTED THE
+  // layOut AND foldDocument ARE EXPORTED BECAUSE layout.test.mjs REIMPLEMENTED THE
   // FIRST OF THEM. Its layout() builds its own d3.sankey from the constants
   // above, which was fine while the only thing to get wrong was a constant --
   // and it meant every figure that file pins (195 crossings, $457,434,169, the
@@ -701,7 +701,7 @@ const NAMES = [
   // to match it.
   "layOut", "foldDocument", "fundGroupOf", "RENDER_TIERS",
   // alignFor IS THE ALIGNER THE PAGE ACTUALLY USES, taken off the page for the
-  // reason every constant above it is: layout.mjs builds its own d3.sankey,
+  // reason every constant above it is: layout.test.mjs builds its own d3.sankey,
   // and a hard-coded nodeAlign there would measure a chart the page does not
   // draw the moment a view declares a column order.
   "alignFor",
@@ -723,7 +723,7 @@ const NAMES = [
   // OFFERED_COLUMNS is read off the packager's own steps, CHART_MAX is the width
   // that count lays out at and is what app.js hands the stylesheet, and
   // COLUMN_QUERIES is the responsive rule composed from CHART_CUSHION.
-  // layout.mjs re-derives all four from chartWidth and the shipped stylesheet
+  // layout.test.mjs re-derives all four from chartWidth and the shipped stylesheet
   // rather than spelling any of them.
   "OFFERED_COLUMNS", "CHART_MAX", "CHART_CUSHION", "COLUMN_QUERIES", "NARROW_COLUMNS",
   "STEPS", "stepFor", "aggregateID", "isAggregate", "residualID", "isResidual",
@@ -738,7 +738,7 @@ const NAMES = [
   // its own function and is reached here rather than re-spelled.
   "trailOfRungs",
   "caveatsFor", "columnShare", "caveatHref", "showTip", "pin",
-  // THE LABEL RULE AND THE WORDS IT PLACES. layout.mjs measures whether a label
+  // THE LABEL RULE AND THE WORDS IT PLACES. layout.test.mjs measures whether a label
   // has room where it was anchored, which needs the rule, the column it keys on
   // and the TEXT -- a box measured from a label this file spelled itself would
   // be a box the page never draws.
@@ -2064,4 +2064,35 @@ export async function settleCheck(c) {
       detail: `the check itself threw: ${e && e.stack ? e.stack : String(e)}`,
     };
   }
+}
+
+/**
+ * A value measured through [loadApp], re-homed into this realm.
+ *
+ * THE SURPRISE, and it is why this exists rather than being inlined at each
+ * call: app.js runs in a node `vm` context, so an array d3 built in there
+ * carries THAT realm's Array.prototype. assert.deepStrictEqual compares
+ * prototypes, so a measured `[]` is not deep-equal to an `[]` written in a
+ * test file -- and both sides print identically, so the failure reads as the
+ * assertion library being broken. Array.isArray is the one check that answers
+ * across realms, which is what this walks on.
+ *
+ * Apply it to the MEASURED side of a comparison. The wanted side is written
+ * here and is already of this realm.
+ *
+ * Array.from AND NOT .map, which is the second half of the same surprise:
+ * Array.prototype.map builds its result through the RECEIVER's constructor, so
+ * mapping a vm array hands back another vm array and the re-homing silently
+ * does nothing. Array.from is this realm's and allocates here.
+ */
+export function here(v) {
+  if (Array.isArray(v)) return Array.from(v, here);
+  if (v && typeof v === "object" && Object.getPrototypeOf(v) !== null &&
+      String(Object.prototype.toString.call(v)) === "[object Object]") {
+    /** @type {Record<string, any>} */
+    const out = {};
+    for (const k of Object.keys(v)) out[k] = here(v[k]);
+    return out;
+  }
+  return v;
 }

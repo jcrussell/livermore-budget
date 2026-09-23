@@ -619,7 +619,7 @@ export async function checks() {
   }
 
   // THE CAP THE STYLESHEET APPLIES IS HANDED OVER AT BOOT, WHICH IS THE HALF
-  // layout.mjs CANNOT SEE.
+  // layout.test.mjs CANNOT SEE.
   //
   // That file reads .chart-wrap's declaration and app.js's CHART_MAX and says
   // they agree; neither of those runs main(), so nothing there witnesses the

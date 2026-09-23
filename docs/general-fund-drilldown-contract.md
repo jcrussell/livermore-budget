@@ -497,7 +497,7 @@ pins every opened view's against the fact ids the committed goldens publish.
 (`fisc-ppkq`). The vendored build takes the column count from topology and
 clamps the align into it, so expanding one group draws the funds and the
 divisions in the same column while the unexpanded ribbons span two — which
-`tools/jscheck/layout.mjs`'s `bands()` refuses. The shape that works is
+`tools/jscheck/layout.test.mjs`'s `bands()` refuses. The shape that works is
 filtering to one node and rescaling to its own total.
 
 **Rescaling alone is not enough, and `fisc-ppkq` says it is.** Measured:

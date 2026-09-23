@@ -773,7 +773,7 @@ export async function checks() {
   // THE SPINE'S COLUMN ORDER IS READ OR REFUSED, NEVER DEFAULTED TO "DRAWN
   // WHOLE". An empty RenderTiers is a real state -- it means d3 decides the
   // columns -- so a parse that fell back to [] on a literal it could not read
-  // would hand drill.mjs and layout.mjs the state index.html is no longer in,
+  // would hand drill.mjs and layout.test.mjs the state index.html is no longer in,
   // and every pin over them would measure a chart the site does not draw. The
   // literals below are ones data.go does not contain.
   {

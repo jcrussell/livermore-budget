@@ -619,7 +619,7 @@ func views(built result) []export.View {
 		// lucky -- the spine is a clean three-layer DAG whose tier 0 is pure
 		// source and tier 5 pure sink, and sankeyJustify's own rule puts a
 		// link-less sink in the LAST column, which is where indexOf puts tier
-		// 5. tools/jscheck/layout.mjs keeps that measurement in the tree.
+		// 5. tools/jscheck/layout.test.mjs keeps that measurement in the tree.
 		RenderTiers: []int{0, 2, 5},
 	}
 	// THE SPINE OPENS INTO FUND-FLOWS, AND FUND-FLOWS INTO ITSELF: one page
@@ -788,7 +788,7 @@ func views(built result) []export.View {
 				// columns: 6 nodes and 6 links at tiers {2,3}, 23 and 23 at
 				// {3,4}, 44 and 44 at {4,5} -- every adjacent pair of these four
 				// columns carries ribbons, which is the condition a sankey band
-				// is counted under (tools/jscheck/layout.mjs bands()).
+				// is counted under (tools/jscheck/layout.test.mjs bands()).
 				//
 				// BOTH DECLARATIONS, AND THEY SAY DIFFERENT THINGS. Tiers is
 				// where the column is drawn -- at the end away from the kept
