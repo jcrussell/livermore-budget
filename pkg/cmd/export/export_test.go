@@ -1374,10 +1374,12 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"divisions that spend it are on the right \u2014 that fund's rows of " +
 				"Budget Book pp.167-170, rescaled to its total. The two sides of the " +
 				"fund in the middle are not one figure: what it takes in is its revenue " +
-				"and what leaves it here is what its divisions spend, and the difference " +
-				"is the money the city transfers out of the fund and adds to its " +
-				"reserves, which pp.66-67 print for the fund group as a whole and no " +
-				"published schedule breaks down by fund.",
+				"and what leaves it here is what its divisions spend. The difference is " +
+				"what pp.66-67 print for the fund group as a whole \u2014 the money the city " +
+				"transfers out and sets aside in its balances and reserves \u2014 less the " +
+				"money the group takes in that no fund receives, which the chart above " +
+				"carries to a node of its own beside the funds; no published schedule " +
+				"breaks either down by fund.",
 		},
 		{
 			Key:   "division",

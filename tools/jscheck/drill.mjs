@@ -4969,14 +4969,14 @@ async function walkChain(col) {
         at2.desc === "Opened into General Fund group, then General Fund. " + fundStep.description +
           " Use the breadcrumb above the chart, or press Escape, to go back. " + pointer &&
         fundStep.description.includes("what it takes in is its revenue") &&
-        fundStep.description.includes("transfers out of the fund and adds to its reserves") &&
+        fundStep.description.includes("less the money the group takes in that no fund receives") &&
         focus2 === "← All funds",
     detail: open2 === "drew"
       ? `${m2.nodes} nodes, ${m2.links} links, ${m2.hairlines} under 1px; counts "${at2.counts}"; ` +
         `breadcrumb ${JSON.stringify(at2.crumbControls)} + "${at2.crumbHere}"; ` +
         `the fund takes in ${centre2.in} and pays its divisions ${centre2.out} ` +
         `(want ${col.fundCentre.join(" / ")}), a difference of ${centre2.in - centre2.out} that the ` +
-        `step's sentence ${fundStep.description.includes("transfers out of the fund") ? "names" : "does NOT name"}; ` +
+        `step's sentence ${fundStep.description.includes("less the money the group takes in") ? "names as two terms" : "does NOT name as two terms"}; ` +
         `${divisions2} divisions drawn${foldedDivisions2 ? " AND a tier-4 aggregate" : ", none folded"}; ` +
         `a division ${patrolOpens ? "opens" : "does NOT open"}; no second fetch; focus on "${focus2}"`
       : `opening fund/100 came to "${open2}"`,

@@ -1087,3 +1087,91 @@ func stepStemsFor(t *testing.T, spine export.View, projections map[string][]byte
 	}
 	return stems
 }
+
+// TestTheFundStepsSentenceIsItsArithmetic holds the fund step's Description
+// to the identity it states, over every published column. What fund/100
+// takes in less what its divisions draw is what pp.66-67 print leaving the
+// general group other than through its divisions -- transfers out and the
+// fund-balance rows -- LESS the residual the group's own rung carries in,
+// read off the rungs artifact rather than recomputed. Measured off this
+// test, in cents: 1,322,266,800 = 1,473,722,200 - 151,455,400 in FY2025-26
+// and 1,534,356,800 = 1,583,030,300 - 48,673,500 in FY2026-27. A sentence
+// naming the first term alone, which is what the old wording did, is off by
+// the residual in both years, and the words are pinned here beside the
+// arithmetic so that neither can move without the other.
+func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	spine, err := spineView(built)
+	if err != nil {
+		t.Fatal(err)
+	}
+	si := slices.IndexFunc(spine.Steps, func(s export.DrillStep) bool { return s.Key == "fund" })
+	if si < 0 {
+		t.Fatal("no fund step on the spine")
+	}
+	const twoTerms = "less the money the group takes in that no fund receives"
+	if !strings.Contains(spine.Steps[si].Description, twoTerms) {
+		t.Fatalf("the fund step's description does not say %q, so the arithmetic below is not what the reader is told", twoTerms)
+	}
+	var doc rungsDoc
+	if err := json.Unmarshal(built.Files[rungsServedPath], &doc); err != nil {
+		t.Fatalf("decode %s: %v", rungsServedPath, err)
+	}
+	const group, fund = "fund-group/general", "fund/100"
+	checked := 0
+	for _, col := range doc.Columns {
+		stems := stepStemsFor(t, spine, built.Projections, col.Stem)
+		year, err := export.DecodeGraph(built.Projections[col.Stem])
+		if err != nil {
+			t.Fatalf("%s: %v", col.Stem, err)
+		}
+		drawn, err := export.DecodeGraph(built.Projections[stems[si]])
+		if err != nil {
+			t.Fatalf("%s: %s: %v", col.Stem, stems[si], err)
+		}
+		var in, out, leaving int64
+		for _, l := range drawn.Links {
+			switch {
+			case l.Source == group && l.Target == fund:
+				in += l.ValueCents
+			case l.Source == fund:
+				out += l.ValueCents
+			}
+		}
+		for _, l := range year.Links {
+			if l.Source == group && !strings.HasPrefix(l.Target, "expenditure/") {
+				leaving += l.ValueCents
+			}
+		}
+		ri := slices.IndexFunc(col.Rungs, func(r rung) bool { return slices.Equal(r.Path, []string{group}) })
+		if ri < 0 {
+			t.Fatalf("%s: no rung opens %s", col.Stem, group)
+		}
+		var residual int64
+		for _, m := range col.Rungs[ri].Marks {
+			if m.Role == export.RoleResidual {
+				residual += m.InCents
+			}
+		}
+		if in == 0 || out == 0 || leaving == 0 || residual == 0 {
+			t.Fatalf("%s: in %d, out %d, leaving %d, residual %d; a zero term proves nothing", col.Stem, in, out, leaving, residual)
+		}
+		t.Logf("%s: fund/100 takes %d and its divisions draw %d, a difference of %d; the group's transfers out and fund-balance rows come to %d less %d carried in, which is %d",
+			col.Stem, in, out, in-out, leaving, residual, leaving-residual)
+		if in-out != leaving-residual {
+			t.Errorf("%s: the fund step's sentence states in - out = leaving - residual, and %d - %d != %d - %d",
+				col.Stem, in, out, leaving, residual)
+		}
+		checked++
+	}
+	if checked != len(doc.Columns) || checked == 0 {
+		t.Fatalf("checked %d of %d columns", checked, len(doc.Columns))
+	}
+}

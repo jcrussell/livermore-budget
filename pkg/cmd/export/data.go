@@ -825,20 +825,29 @@ func views(built result) []export.View {
 				// WHAT THIS CENTRE DOES NOT CLAIM, said in the chart's own
 				// words because no mark can say it. A fund's revenue and its
 				// spending are two schedules and they are not one cell printed
-				// twice: what is left over is what the city transfers out and
-				// adds to reserves, which pp.66-67 print for the GROUP and no
-				// fund-level schedule attributes to a fund. Measured off both
-				// goldens: fund/100 takes 157,873,470 and pays 144,650,802 to
-				// its divisions in FY2025-26, and 164,358,147 against
-				// 149,014,579 in FY2026-27.
+				// twice. THE DIFFERENCE HAS TWO TERMS AND THE SENTENCE NAMES
+				// BOTH: what pp.66-67 print leaving the GROUP other than through
+				// its divisions -- transfers out and the fund-balance rows --
+				// LESS what the group takes in that no fund receives, which is
+				// the residual mark the step above carries. Measured off both
+				// goldens, in dollars: fund/100 takes 157,873,470 and pays
+				// 144,650,802 to its divisions in FY2025-26, a difference of
+				// 13,222,668, against 14,737,222 leaving the group and
+				// 1,514,554 carried in; and 164,358,147 against 149,014,579 in
+				// FY2026-27, 15,343,568 against 15,830,303 less 486,735. A
+				// sentence naming the first term alone is off by the residual
+				// in both years, and TestTheFundStepsSentenceIsItsArithmetic
+				// holds these words to that identity.
 				Description: "The fund group this fund belongs to is on the left and the " +
 					"divisions that spend it are on the right — that fund's rows of " +
 					"Budget Book pp.167-170, rescaled to its total. The two sides of the " +
 					"fund in the middle are not one figure: what it takes in is its revenue " +
-					"and what leaves it here is what its divisions spend, and the difference " +
-					"is the money the city transfers out of the fund and adds to its " +
-					"reserves, which pp.66-67 print for the fund group as a whole and no " +
-					"published schedule breaks down by fund.",
+					"and what leaves it here is what its divisions spend. The difference is " +
+					"what pp.66-67 print for the fund group as a whole — the money the city " +
+					"transfers out and sets aside in its balances and reserves — less the " +
+					"money the group takes in that no fund receives, which the chart above " +
+					"carries to a node of its own beside the funds; no published schedule " +
+					"breaks either down by fund.",
 			},
 			{
 				Key:   "division",
@@ -1094,17 +1103,15 @@ func views(built result) []export.View {
 				Noun:  "fund",
 				Back:  "All funds",
 				Tail:  "departments",
-				// THE DIFFERENCE IS NAMED IN BOTH DIRECTIONS, and the first
-				// draft of this sentence was not. It said the difference is
-				// what the city "transfers out of the fund and adds to its
-				// reserves" -- the fund step's wording, which is true of
-				// fund/100 and false of a fund that pays departments MORE than
-				// its revenue. Measured over both committed columns: 7 of the
-				// 54 funds this step opens in FY2025-26 and 5 of the 52 in
-				// FY2026-27 pay out more than pp.127-140 give them, the widest
-				// being fund/240 at 1,064,044 against 322,600. A sentence that
-				// is wrong on one window in eight is worse than no sentence,
-				// because only the reader who checks can tell which they have.
+				// THE DIFFERENCE IS NAMED IN BOTH DIRECTIONS. "Transfers out
+				// and adds to its reserves" is true of fund/100 and false of a
+				// fund that pays departments MORE than its revenue. Measured
+				// over both committed columns: 7 of the 54 funds this step
+				// opens in FY2025-26 and 5 of the 52 in FY2026-27 pay out more
+				// than pp.127-140 give them, the widest being fund/240 at
+				// 1,064,044 against 322,600. A sentence that is wrong on one
+				// window in eight is worse than no sentence, because only the
+				// reader who checks can tell which they have.
 				Description: "The fund group this fund belongs to is on the left and the " +
 					"city departments it pays for are on the right \u2014 that fund's rows " +
 					"of Budget Book pp.85-125, rescaled to its total. The two sides of the " +
