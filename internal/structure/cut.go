@@ -3,6 +3,7 @@ package structure
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
@@ -194,7 +195,8 @@ type Cut struct {
 	// appears nowhere else in the store: nothing is being selected, the field
 	// is standing in for an axis the pages do not have. Read as an axis it
 	// makes a comparison against the spine's four object categories share no
-	// key at all.
+	// key at all. ValidateCuts holds the declaration to both halves of that:
+	// one value over the cut's facts, carried by no other scope.
 	Placeholders []Axis
 }
 
@@ -363,11 +365,53 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 			return nil, fmt.Errorf("cut %q declares level %q and its facts put it at %q (placeholders %v dropped from %q)",
 				c.Name, c.Level, want, c.Placeholders, derived)
 		}
+		// A PLACEHOLDER IS TOLD FROM A FOOTPRINT BY VOCABULARY, and that is
+		// measured rather than trusted: the axis carries one value over the
+		// cut's facts, and no fact of any other scope carries that value. A
+		// second value is an axis the pages do have; a value another schedule
+		// selects by is a footprint, and dropping it would sum away money the
+		// comparison should key on.
+		for _, a := range c.Placeholders {
+			values := map[string]bool{}
+			for i := range facts {
+				if c.admits(&facts[i]) {
+					values[coordOf(&facts[i], a)] = true
+				}
+			}
+			if len(values) != 1 {
+				return nil, fmt.Errorf("cut %q declares axis %q a placeholder and its facts carry %d values on it (%s); "+
+					"a placeholder is one value standing in for an axis the pages do not have",
+					c.Name, a, len(values), joinSorted(values))
+			}
+			var value string
+			for v := range values {
+				value = v
+			}
+			for i := range facts {
+				f := &facts[i]
+				if f.Scope == c.Scope || coordOf(f, a) != value {
+					continue
+				}
+				return nil, fmt.Errorf("cut %q declares axis %q a placeholder carrying %q, and scope %q carries that value too (rule %q); "+
+					"a value another schedule selects by is a footprint and not a placeholder",
+					c.Name, a, value, f.Scope, f.RuleID)
+			}
+		}
 	}
 	if references > 1 {
 		return nil, fmt.Errorf("%d cuts are declared the reference; the columns of an agreement are one cut's", references)
 	}
 	return empty, nil
+}
+
+// joinSorted renders a value set in a stable order, for a refusal.
+func joinSorted(values map[string]bool) string {
+	out := make([]string, 0, len(values))
+	for v := range values {
+		out = append(out, v)
+	}
+	sort.Strings(out)
+	return strings.Join(out, ", ")
 }
 
 // EmptyCuts is the cuts no fact falls in, by the admission rule ValidateCuts

@@ -325,6 +325,49 @@ func TestAPairIsComparedOnlyWhereTheLatticeSaysHow(t *testing.T) {
 		}
 	})
 
+	// THE PLACEHOLDER DECLARATION IS MEASURED AGAINST THE STORE'S VOCABULARY.
+	// Both mutations leave the derived level, the placeholder drop and the
+	// declared level exactly as they are, so a validation that only asked
+	// Drop(derived) == Level accepted both.
+	t.Run("a placeholder axis carrying a second value is refused", func(t *testing.T) {
+		byRule, err := structure.LevelOfRule(facts, committedFiles(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		planted := make([]fact.Fact, len(facts))
+		copy(planted, facts)
+		for i := range planted {
+			if planted[i].Scope == "department-funding-sources" {
+				planted[i].Category = "wages-and-benefits"
+				break
+			}
+		}
+		_, err = structure.ValidateCuts(planted, byRule, structure.BudgetBookCuts())
+		if err == nil || !strings.Contains(err.Error(), `"funding-sources"`) ||
+			!strings.Contains(err.Error(), "placeholder") || !strings.Contains(err.Error(), "2 values") {
+			t.Fatalf("ValidateCuts = %v, want the placeholder refused for carrying two values", err)
+		}
+	})
+
+	t.Run("a placeholder whose one value another schedule carries is refused as a footprint", func(t *testing.T) {
+		byRule, err := structure.LevelOfRule(facts, committedFiles(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		planted := make([]fact.Fact, len(facts))
+		copy(planted, facts)
+		for i := range planted {
+			if planted[i].Scope == "department-funding-sources" {
+				planted[i].Category = "services-and-supplies"
+			}
+		}
+		_, err = structure.ValidateCuts(planted, byRule, structure.BudgetBookCuts())
+		if err == nil || !strings.Contains(err.Error(), `"funding-sources"`) ||
+			!strings.Contains(err.Error(), `"services-and-supplies"`) || !strings.Contains(err.Error(), "footprint") {
+			t.Fatalf("ValidateCuts = %v, want the placeholder refused as a footprint another scope carries", err)
+		}
+	})
+
 	t.Run("a second reference is refused", func(t *testing.T) {
 		byRule, err := structure.LevelOfRule(facts, committedFiles(t))
 		if err != nil {
