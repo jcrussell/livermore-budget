@@ -1,9 +1,10 @@
 // Package schema holds the machine-checkable contracts for the artifacts this
 // project publishes or reads across a language boundary.
 //
-// Go validates fully, through this package. The client's tests and
-// tools/extract.py read the same files and compare their own refusals against
-// the `required` arrays, because neither may take a dependency.
+// Go validates fully, through this package. tools/extract.py reads the same
+// files and compares its own refusals against the `required` arrays, because
+// it may not take a dependency; the client reads none and draws what Go
+// validated.
 //
 // The embed is here because //go:embed patterns cannot escape the directory of
 // the file that declares them, which is site/embed.go's reason too.

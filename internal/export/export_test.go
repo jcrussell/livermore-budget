@@ -840,6 +840,47 @@ func TestClientSchemaVersionIsPinnedToTheProducer(t *testing.T) {
 	}
 }
 
+// TestThePageBootsTheClientAsAModule pins the two halves of the handshake
+// between the template and the client: the template imports boot from
+// ./app.js in a module script, and app.js exports a function by that name.
+//
+// PINNED AS TEXT ON BOTH SIDES, because nothing in this tree runs the page. A
+// rename on either side leaves a page that loads and draws nothing, with the
+// only report a console error no test reads; this is the one test that would
+// see it. The module script must also come AFTER the three classic scripts,
+// which set the globals app.js reads at import.
+func TestThePageBootsTheClientAsAModule(t *testing.T) {
+	page, err := fs.ReadFile(site.FS(), export.SankeyTemplate)
+	if err != nil {
+		t.Fatalf("read embedded %s: %v", export.SankeyTemplate, err)
+	}
+	app, err := fs.ReadFile(site.FS(), "app.js")
+	if err != nil {
+		t.Fatalf("read embedded app.js: %v", err)
+	}
+	const boot = `<script type="module">import { boot } from "./app.js"; boot();</script>`
+	at := bytes.Index(page, []byte(boot))
+	if at < 0 {
+		t.Fatalf("%s does not boot the client with %q", export.SankeyTemplate, boot)
+	}
+	for _, classic := range []string{
+		`<script src="vendor/d3.min.js"></script>`,
+		`<script src="vendor/d3-sankey.min.js"></script>`,
+		`<script>window.FISC_CONFIG = {{.ConfigJSON}};</script>`,
+	} {
+		i := bytes.Index(page, []byte(classic))
+		if i < 0 || i > at {
+			t.Errorf("%s loads %q after the module that reads what it sets, or not at all", export.SankeyTemplate, classic)
+		}
+	}
+	if !bytes.Contains(app, []byte("\nexport function boot() {")) {
+		t.Errorf("site/app.js exports no boot function; the template's import would resolve to undefined and the page would draw nothing")
+	}
+	if bytes.Contains(app, []byte("\nmain().catch(")) {
+		t.Errorf("site/app.js still calls main() at file scope; importing it would boot a page, so a test could not reach a function without drawing")
+	}
+}
+
 // A projection whose schema this binary does not know has to be refused, not
 // rendered: the keys still decode, so the page would come out plausible and
 // wrong. Both directions are errors — an older document is as unreadable as a

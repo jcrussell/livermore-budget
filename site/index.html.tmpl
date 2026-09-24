@@ -405,6 +405,10 @@
 <script src="vendor/d3.min.js"></script>
 <script src="vendor/d3-sankey.min.js"></script>
 <script>window.FISC_CONFIG = {{.ConfigJSON}};</script>
-<script src="app.js"></script>
+<!-- app.js IS A MODULE AND THE THREE ABOVE ARE NOT. A module script is
+     deferred, so it runs after the classic scripts that set window.d3 and
+     window.FISC_CONFIG have executed in order; and importing it runs nothing,
+     so boot() is called here rather than at app.js's file scope. -->
+<script type="module">import { boot } from "./app.js"; boot();</script>
 </body>
 </html>

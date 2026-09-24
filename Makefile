@@ -228,41 +228,40 @@ lint-if-available: ## Run lint, warning rather than failing if golangci-lint is 
 	}; \
 	$(MAKE) --no-print-directory lint
 
-# js runs site/app.js under node and checks the claims it makes about itself.
+# js runs the client's tests: node's own test runner over site/*.test.mjs,
+# each of which imports the shipped site/app.js under jsdom and drives it over
+# the artifacts Go pins under testdata/.
 #
-# The chart's legibility figures -- 195 ribbon crossings, $457,434,169 of
-# overlapping ribbon, 14 stale-stacked pairs -- can only be produced by laying
-# the graph out, so before this target they were measured once by hand, out of
-# tree, and quoted in comments forever after (fisc-gxa.7). tools/jscheck loads
-# the SHIPPED app.js and the vendored d3 into a node vm and re-measures them.
+# NODE AND NPM ARE OFF THE DEPLOY PATH, the way tools/extract.py is off the
+# build path: `make site`, `make build` and `fisc export` never run either, and
+# a contributor without node can still build, test and serve the site. jsdom is
+# the one dependency, dev-only, pinned by package.json and package-lock.json.
 #
-# NODE IS OFF THE DEPLOY PATH, the way tools/extract.py is off the build path:
-# `make site`, `make build` and `fisc export` never run this, and a contributor
-# without node can still build, test and serve the site. There is no
-# package.json, no node_modules and no npm.
-#
-# TWO RUNNERS WHILE THERE ARE TWO. The arms are moving to node's own test runner
-# module by module (fisc-oo8q): node:test and node:assert are standard library,
-# so this adds no package.json and no node_modules and node stays off the deploy
-# path. run.mjs drives what has not moved; `node --test` drives the *.test.mjs
-# files that have. When the last module converts, the first line goes.
+# THE INSTALL IS A MAKE RULE ON THE LOCKFILE, so `npm ci` runs once per
+# lockfile change rather than on every `make pre-commit`: npm writes
+# node_modules/.package-lock.json as the last step of a successful install,
+# which is what makes it a usable stamp. `npm ci` and not `npm install`,
+# because the lockfile is the pin and a drifted one must refuse rather than be
+# rewritten.
 #
 # THE GLOB IS QUOTED SO NODE EXPANDS IT, not the shell. Handing `node --test` a
 # DIRECTORY makes it try to load that path as a module and fail with
 # MODULE_NOT_FOUND, which reads like a broken suite rather than a wrong
 # argument; and an unquoted pattern matching nothing would reach node as the
 # literal string.
+node_modules/.package-lock.json: package-lock.json
+	npm ci --ignore-scripts --no-audit --no-fund
+
 .PHONY: js
-js: ## Check site/app.js's claims about itself under node (needs node; nothing else does)
-	node tools/jscheck/run.mjs
-	node --test "tools/jscheck/*.test.mjs"
+js: node_modules/.package-lock.json ## Run the client's tests under node and jsdom (needs node and npm; nothing else does)
+	node --test "site/*.test.mjs"
 
 # js-if-available is to `js` what lint-if-available is to `lint`, and for the
 # same reason: node must not become mandatory to commit.
 .PHONY: js-if-available
-js-if-available: ## Run js, warning rather than failing if node is absent
-	@command -v node >/dev/null 2>&1 || { \
-		echo "warning: node not on PATH, skipping the app.js checks; CI will still run them" >&2; \
+js-if-available: ## Run js, warning rather than failing if node or npm is absent
+	@command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1 || { \
+		echo "warning: node or npm not on PATH, skipping the client tests; CI will still run them" >&2; \
 		exit 0; \
 	}; \
 	$(MAKE) --no-print-directory js

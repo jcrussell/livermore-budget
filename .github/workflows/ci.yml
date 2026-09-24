@@ -140,20 +140,21 @@ jobs:
       - run: make test
 
   js:
-    name: app.js layout claims
+    name: app.js tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           lfs: false # ~67 MB of PDFs no Go code reads; see the header note.
-      # The only job in this workflow that needs node, and it needs nothing
-      # else: no npm install, no package.json, no lockfile. tools/jscheck loads
-      # the committed site/app.js and the vendored d3 into a vm and re-measures
-      # the figures that file quotes about itself. Node stays off the deploy
-      # path -- pages-build runs `fisc export` and never touches this.
+      # The only job in this workflow that needs node, and the only place npm
+      # runs: `make js` installs jsdom from the committed lockfile and runs
+      # node's test runner over site/*.test.mjs, which import the shipped
+      # site/app.js. Node stays off the deploy path -- pages-build runs
+      # `fisc export` and never touches this.
       - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6.0.0
         with:
           node-version: '22'
+          cache: npm
       - run: make js
 
   narration:

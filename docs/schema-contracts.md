@@ -20,18 +20,18 @@ omitted `basis: "projected"` and `units: "thousands"`: both declared in
 A schema built from today's data refuses a correct record the first time the
 corpus grows one.
 
-## One schema, three readers, one dependency
+## One schema, two readers, one dependency
 
-Go validates fully, with `github.com/google/jsonschema-go`. The client's tests
-compare the schema's `required` arrays against `app.js`'s own refusals.
-`tools/extract.py` checks what it wrote against the same arrays.
+Go validates fully, with `github.com/google/jsonschema-go`. `tools/extract.py`
+checks what it wrote against the same `required` arrays. The client reads no
+schema at all: it draws what Go validated before writing, and refuses only a
+200 carrying an error page and a copy from another build.
 
-Only Go takes the dependency. The client ships without npm and the extractor
-runs where PyPI is unreachable, so a JSON Schema *implementation* on those sides
-is out — but reading the committed file and checking required keys and types is
-thirty lines of standard library, and it is the schema being read rather than
-restated. A required-key list copied into either would be the second spelling the
-schema exists to remove.
+Only Go takes the dependency. The extractor runs where PyPI is unreachable, so
+a JSON Schema *implementation* there is out — but reading the committed file and
+checking required keys and types is thirty lines of standard library, and it is
+the schema being read rather than restated. A required-key list copied into it
+would be the second spelling the schema exists to remove.
 
 Hand-rolling the Go validator was the first plan and was rejected: it is the
 second implementation of a standard thing.
@@ -88,9 +88,8 @@ is what makes a field added to one of those structs refused at the export,
 naming it, rather than shipped to a client that ignores it.
 
 Measured by adding `Grain []int` to `export.DrillStep` and to one step literal:
-`fisc export` refuses with `unexpected additional properties ["grain"]`,
-the client's tests refuse it by name at the parse, and the two struct-to-schema parity
-tests go red. Before, all three were green.
+`fisc export` refuses with `unexpected additional properties ["grain"]` and
+the two struct-to-schema parity tests go red. Before, both were green.
 
 `manifest.schema.json` does not. `internal/corpus`'s own type documents that
 unknown fields are tolerated because `tools/extract.py` may add reporting keys

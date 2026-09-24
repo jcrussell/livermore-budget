@@ -227,7 +227,7 @@ Why, measured: [`docs/prose-claims-evidence.md`](docs/prose-claims-evidence.md).
   lane reshapes the declarations an earlier one wrote, so a per-lane pass spends
   itself on shapes that are gone by the time the branch lands.
 - **Deferring the review never defers the check.** Each lane still ships its
-  jscheck arm and its stated mutation in its own commit (`fisc-rx1d`), and every
+  test and its stated mutation in its own commit (`fisc-rx1d`), and every
   finding a lane does not fix is still a bead in the session that found it. A
   lane that lands with neither is a lane nothing can see go wrong, whenever the
   review happens.
@@ -276,8 +276,7 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md) �
   and put both in the commit message.
 - The doctrine is written down: `internal/check/vacuity.go` — a vacuous check is
   declared or `--strict` fails on it. `internal/check/check.go` sets out what
-  these checks can and cannot witness. `tools/jscheck/seam.mjs` checks the thing
-  that checks it.
+  these checks can and cannot witness.
 - **Ask what the fixture is hiding, not whether the test passes.** A test that is
   **green because the gate fired** earlier — rejected before it reached the code
   under test — is indistinguishable by exit code from one green because the
@@ -295,8 +294,8 @@ Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
 - Two kinds earn their place and nothing else does: **a count against the
   documents** ("pp.85-125's 78 rows", "the corpus is 786 pages"), and **a count
   that is the evidence for a decision**.
-- Pin every surviving count to something that re-measures it —
-  `tools/jscheck/layout.test.mjs` is what that looks like. Where nothing can, name the
+- Pin every surviving count to something that re-measures it — the layout
+  tests under `site/` are what that looks like. Where nothing can, name the
   commit it was taken at.
 - **Rebuild `bin/fisc` and run it before quoting a check count**, and read the
   gate line off the run you are describing. A count copied from anywhere — this
@@ -481,23 +480,28 @@ rather than inferring from the code.
 
 ## The node boundary
 
-- `site/app.js` is served to readers exactly as committed — no bundler, no npm,
-  no module system. Keep it that way.
-- `make js` runs `tools/jscheck`, which loads **the shipped `app.js`** and the
-  vendored d3 into a node `vm` and re-measures the figures it quotes about
-  itself. It reaches into the file rather than copying functions out of it,
-  because a copy would check the copy and let the original drift.
-- **Node stays off the deploy path.** `make build`, `make site` and `fisc export`
-  never run it; there is no `package.json` and no `node_modules`. A contributor
-  with only Go can still build, test and land a change.
-- **A change to `app.js` ships its check in the same commit.** A client change
-  with no jscheck beside it is a change nothing can see go wrong — do not open
+- `site/app.js` is served to readers exactly as committed: a browser-native ES
+  module the page template boots, with no bundler and no npm on the deploy path.
+  The vendored d3 stays a classic script that sets a global.
+- `make js` runs `node --test` over `site/*.test.mjs` under jsdom. jsdom is a
+  dev-only dependency pinned by `package.json` and `package-lock.json`; `npm ci`
+  is the only npm command in the tree and `make js` runs it only when the
+  lockfile changes. `make build`, `make site` and `fisc export` never run node.
+  A contributor with only Go can still build, test and land a change.
+- **A JavaScript test tests what the client does** — fitting, layout, class and
+  label derivation, rendering, gestures, the year control, refusal banners — over
+  the artifacts Go pins under `testdata/`. It never re-derives a figure Go
+  emitted, and it never parses Go source or an artifact Go already writes.
+- **A test imports the shipped `app.js`.** It holds no copy of a function and
+  reads no source text. A test that needs a malformed artifact takes a
+  `structuredClone` of a pinned one minus one stated key.
+- **A change to `app.js` ships its test in the same commit.** A client change
+  with no test beside it is a change nothing can see go wrong — do not open
   review on one.
-- **Quote what the current code does.** A claim whose baseline no longer exists
-  in the tree cannot be checked; every such figure is now pinned rather than
-  bounded, so a comment edited without re-measuring fails `make js`.
-- `fisc-rx1d` carries the audit of which of `app.js`'s current paths no module
-  drives.
+- **`app.js` quotes no measured figure about itself.** A figure that is evidence
+  for a decision lives in the test that asserts it, printed with `t.diagnostic`
+  so a reader of the run sees the measurement.
+- `fisc-rx1d` carries the audit of which of `app.js`'s paths no test drives.
 
 Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
 

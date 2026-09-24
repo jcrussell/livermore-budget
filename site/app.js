@@ -2,17 +2,15 @@
 /**
  * fisc — the published page's client script.
  *
- * Plain browser JavaScript with JSDoc types. There is no bundler and no npm
- * in the deploy path: this file is served exactly as it is committed,
- * alongside the vendored d3 bundles.
+ * A browser-native ES module with JSDoc types. There is no bundler and no npm
+ * in the deploy path: this file is served exactly as it is committed, beside
+ * the vendored d3 bundles, and the page template boots it by importing
+ * [boot]. Every top-level binding is exported so the tests under site/ can
+ * import the shipped file rather than a copy of it; nothing runs at import.
  *
  * NOTHING IN THIS TREE RUNS tsc, and the `@ts-check` above is for an editor
  * and for whoever cares to run one locally. The types are a convention, not
- * a gate: no Makefile target, no CI step and no node_modules reach them, and
- * adding them would put npm on a deploy path AGENTS.md, "The node boundary"
- * keeps it off. What IS enforced is narrower and lives elsewhere -- tools/jscheck's
- * seam arm compares the typedefs below against the Go struct tags and
- * schema/page.schema.json, which is what stands in for a typechecker here.
+ * a gate: no Makefile target and no CI step reach them.
  *
  * The division of labour with the Go side is deliberate. `window.FISC_CONFIG`
  * carries the metadata the page needs before it has fetched anything — the
@@ -333,10 +331,10 @@
  */
 
 /** d3 and d3-sankey are vendored UMD bundles with no type declarations. */
-const D3 = /** @type {any} */ (/** @type {any} */ (globalThis).d3);
+export const D3 = /** @type {any} */ (/** @type {any} */ (globalThis).d3);
 
 /** @type {FiscConfig} */
-const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
+export const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
 
 /**
  * The projection schema this client draws.
@@ -353,7 +351,7 @@ const CONFIG = /** @type {any} */ (globalThis).FISC_CONFIG;
  * draw a chart that is WRONG, not one that fails, and a wrong chart of public
  * money is the single outcome this project exists to avoid. So it refuses.
  */
-const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 1;
 
 /**
  * The node tiers this page draws, coarsest first; empty draws the document as
@@ -381,7 +379,7 @@ const SCHEMA_VERSION = 1;
  * the export wrote.
  * @type {number[]}
  */
-const RENDER_TIERS = (CONFIG && CONFIG.render_tiers) || [];
+export const RENDER_TIERS = (CONFIG && CONFIG.render_tiers) || [];
 
 /**
  * How this page drills: the steps the packager declared, empty for a page
@@ -410,13 +408,13 @@ const RENDER_TIERS = (CONFIG && CONFIG.render_tiers) || [];
  *
  * @type {FiscDrillStep[]}
  */
-const STEPS = (CONFIG && CONFIG.steps) || [];
+export const STEPS = (CONFIG && CONFIG.steps) || [];
 
 /**
  * The key of the step whose chart is on screen, "" on the overview.
  * @returns {string}
  */
-function openedKey() {
+export function openedKey() {
   return drilled.length ? drilled[drilled.length - 1].step.key : "";
 }
 
@@ -461,7 +459,7 @@ function openedKey() {
  * @param {{id?: string, tier: number, role?: string}} node
  * @returns {FiscDrillStep | null}
  */
-function stepFor(node) {
+export function stepFor(node) {
   const key = openedKey();
   for (const s of STEPS) {
     if (!s.after.includes(key)) continue;
@@ -491,7 +489,7 @@ function stepFor(node) {
  * @param {string | undefined} id
  * @returns {boolean}
  */
-function stepDecomposes(step, id) {
+export function stepDecomposes(step, id) {
   if (!id) return true;
   const entry = stepDocFor(step);
   if (!entry || !Array.isArray(entry.opens)) return true;
@@ -500,18 +498,18 @@ function stepDecomposes(step, id) {
 
 
 /** Human wording for link.kind. The JSON's vocabulary is not English. */
-const KIND_LABEL = {
+export const KIND_LABEL = {
   external: "external money",
   internal_transfer: "transfer between funds",
   internal_service: "internal service charge",
   fund_balance: "fund balance movement",
 };
 
-const NODE_WIDTH = 14;
-const NODE_PADDING = 14;
+export const NODE_WIDTH = 14;
+export const NODE_PADDING = 14;
 /** The surface gap that separates stacked ribbons, in px (1px each side). */
-const RIBBON_GAP = 2;
-const CHART_HEIGHT = 820;
+export const RIBBON_GAP = 2;
+export const CHART_HEIGHT = 820;
 
 /**
  * Room reserved either side of the plot for node labels, in px. Sized from
@@ -525,7 +523,7 @@ const CHART_HEIGHT = 820;
  * serve a chart of any width, and adding one per column would buy room for
  * labels no column asks for.
  */
-const LABEL_GUTTER = 250;
+export const LABEL_GUTTER = 250;
 
 /**
  * The clear horizontal run between one column's rects and the next's, in px:
@@ -542,7 +540,7 @@ const LABEL_GUTTER = 250;
  * clearance -- is of a chart laid out at it. A band chosen for its own sake
  * would move all of them at once and none of them for a reason.
  */
-const BAND = 319;
+export const BAND = 319;
 
 /**
  * How wide a chart of `n` columns is laid out, in px.
@@ -563,7 +561,7 @@ const BAND = 319;
  * @param {number} n
  * @returns {number}
  */
-function chartWidth(n) {
+export function chartWidth(n) {
   // A CHART HAS A COLUMN. d3-sankey divides by (columns - 1) and a count of 0
   // or 1 has no band at all; clamping here keeps the width finite rather than
   // letting a degenerate tier set reach the extent.
@@ -582,14 +580,14 @@ function chartWidth(n) {
  * tools/extract.py computed independently. One side reading the other would be
  * a lookup, and a lookup cannot disagree.
  */
-const CHART_CUSHION = 56;
+export const CHART_CUSHION = 56;
 
-const money = new Intl.NumberFormat("en-US", {
+export const money = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   maximumFractionDigits: 0,
 });
-const moneyCompact = new Intl.NumberFormat("en-US", {
+export const moneyCompact = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   notation: "compact",
@@ -597,12 +595,12 @@ const moneyCompact = new Intl.NumberFormat("en-US", {
 });
 
 /** @param {number} cents */
-function fmt(cents) {
+export function fmt(cents) {
   return money.format(cents / 100);
 }
 
 /** @param {number} cents */
-function fmtShort(cents) {
+export function fmtShort(cents) {
   return moneyCompact.format(cents / 100);
 }
 
@@ -618,12 +616,12 @@ function fmtShort(cents) {
  * @param {number} cents
  * @returns {string}
  */
-function fmtSigned(cents) {
+export function fmtSigned(cents) {
   return (cents < 0 ? "\u2212" : "") + fmt(Math.abs(cents));
 }
 
 /** @param {number} cents */
-function fmtShortSigned(cents) {
+export function fmtShortSigned(cents) {
   return (cents < 0 ? "\u2212" : "") + fmtShort(Math.abs(cents));
 }
 
@@ -631,7 +629,7 @@ function fmtShortSigned(cents) {
  * @param {string} id
  * @returns {HTMLElement}
  */
-function el(id) {
+export function el(id) {
   const found = document.getElementById(id);
   if (!found) throw new Error("missing element #" + id);
   return found;
@@ -650,7 +648,7 @@ function el(id) {
  * @param {string} id
  * @returns {HTMLElement | null}
  */
-function maybeEl(id) {
+export function maybeEl(id) {
   return document.getElementById(id);
 }
 
@@ -658,7 +656,7 @@ function maybeEl(id) {
  * @param {string} name CSS custom property, including the leading dashes.
  * @returns {string}
  */
-function cssVar(name) {
+export function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
@@ -674,7 +672,7 @@ function cssVar(name) {
  *
  * @returns {{id: string, slug: string}[]}
  */
-function fundGroups() {
+export function fundGroups() {
   return (column && Array.isArray(column.fund_groups)) ? column.fund_groups : [];
 }
 
@@ -691,7 +689,7 @@ function fundGroups() {
  * @param {string} id
  * @returns {number}
  */
-function fundGroupPlace(id) {
+export function fundGroupPlace(id) {
   const groups = fundGroups();
   const i = groups.findIndex((g) => g.id === id);
   return i >= 0 ? i : groups.length;
@@ -701,7 +699,7 @@ function fundGroupPlace(id) {
  * @param {FiscNode | LaidNode} node
  * @returns {boolean}
  */
-function isFundGroup(node) {
+export function isFundGroup(node) {
   // THE ROLE AND NOT THE ID. internal/project/sankey.go declares the role
   // vocabulary as the thing that says what a node is for "without the client
   // parsing its id", and this read `id.startsWith("fund-group/")` against it.
@@ -725,7 +723,7 @@ function isFundGroup(node) {
  * @param {FiscNode | LaidNode} node
  * @returns {string}
  */
-function fundGroupOf(node) {
+export function fundGroupOf(node) {
   // STARTED FROM THE HIERARCHY, NOT FROM THE COPY IT WAS HANDED. layOut passes
   // a LAID node -- a shallow copy of a FOLDED node -- whose parent foldDocument
   // sets to "" when the ancestor it folded to was filtered away. That is right
@@ -764,7 +762,7 @@ function fundGroupOf(node) {
  * @param {LaidLink} link
  * @returns {string}
  */
-function linkColor(link) {
+export function linkColor(link) {
   const source = fundGroupOf(link.source);
   const target = fundGroupOf(link.target);
   const group = isFundGroup(link.source) ? link.source.id
@@ -778,7 +776,7 @@ function linkColor(link) {
  * @param {LaidNode} node
  * @returns {string}
  */
-function nodeColor(node) {
+export function nodeColor(node) {
   return cssVar(fundColorVar(node.id));
 }
 
@@ -798,7 +796,7 @@ function nodeColor(node) {
  * @param {string} id
  * @returns {string}
  */
-function fundColorVar(id) {
+export function fundColorVar(id) {
   const group = fundGroups().find((g) => g.id === id);
   if (!group) return "--muted";
   const name = "--fund-" + group.slug;
@@ -845,7 +843,7 @@ function fundColorVar(id) {
  * @param {LaidNode} node
  * @returns {number}
  */
-function nodeRank(node) {
+export function nodeRank(node) {
   // THE SHARED PLACE RULE AND NOT indexOf. A group the column carries and the
   // packager's sequence does not name scored -1 here and sorted to the TOP of
   // the fund column, ahead of internal-service, while buildLegend put the same
@@ -898,7 +896,7 @@ function nodeRank(node) {
  * @param {FiscSource[]} sources
  * @returns {{label:string, href:string}[]}
  */
-function citations(sources) {
+export function citations(sources) {
   /** @type {{label:string, href:string}[]} */
   const out = [];
   for (const source of sources) {
@@ -932,7 +930,7 @@ function citations(sources) {
  * @param {string} [text]
  * @returns {HTMLElement}
  */
-function h(tag, className, text) {
+export function h(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
   // Labels come out of the data file; they are inserted as text, never as
@@ -946,7 +944,7 @@ function h(tag, className, text) {
  * @param {string} href
  * @returns {HTMLAnchorElement}
  */
-function link(label, href) {
+export function link(label, href) {
   const a = document.createElement("a");
   a.textContent = label;
   a.href = href;
@@ -959,9 +957,9 @@ function link(label, href) {
  * ------------------------------------------------------------------ */
 
 /** @type {FiscProjection | null} */
-let projection = null;
+export let projection = null;
 /** Node id whose flows are isolated, or "" for all of them. */
-let isolated = "";
+export let isolated = "";
 /**
  * One opened node: which it is, the document its chart is shaped FROM, and the
  * step that opened it.
@@ -1020,7 +1018,7 @@ let isolated = "";
  * is not.
  * @type {Rung[]}
  */
-let drilled = [];
+export let drilled = [];
 /**
  * The fewest columns any chart this page draws is laid out in: a window's kept
  * flank, the node the reader opened and what it opens into.
@@ -1029,7 +1027,7 @@ let drilled = [];
  * these three plus one per widening, so a budget under it would drop a column
  * that is not optional and leave the centre against a wall.
  */
-const NARROW_COLUMNS = 3;
+export const NARROW_COLUMNS = 3;
 /**
  * The most columns any step this page declares can ask for.
  *
@@ -1045,7 +1043,7 @@ const NARROW_COLUMNS = 3;
  * without either being compared to the other. A page declaring no step offers
  * the floor, because its chart is drawn at RENDER_TIERS whatever the budget.
  */
-const OFFERED_COLUMNS = STEPS.reduce(
+export const OFFERED_COLUMNS = STEPS.reduce(
   (most, s) => Math.max(most, (s.tiers || []).length),
   NARROW_COLUMNS,
 );
@@ -1075,7 +1073,7 @@ const OFFERED_COLUMNS = STEPS.reduce(
  *
  * @type {{query: string, columns: number}[]}
  */
-const COLUMN_QUERIES = (() => {
+export const COLUMN_QUERIES = (() => {
   const out = [];
   for (let n = NARROW_COLUMNS + 1; n <= OFFERED_COLUMNS; n++) {
     out.push({ query: "(min-width: " + (chartWidth(n) + CHART_CUSHION) + "px)", columns: n });
@@ -1093,7 +1091,7 @@ const COLUMN_QUERIES = (() => {
  * ships with a <title> and a <desc> and no marks, so without this script there
  * is no chart for a cap to bound, which is what the page's <noscript> says.
  */
-const CHART_MAX = chartWidth(OFFERED_COLUMNS);
+export const CHART_MAX = chartWidth(OFFERED_COLUMNS);
 
 /**
  * How many columns the chart may draw, which is what decides whether a step's
@@ -1111,7 +1109,7 @@ const CHART_MAX = chartWidth(OFFERED_COLUMNS);
  * SEEDED BEFORE THE FIRST FETCH AND MOVED ONLY THROUGH setColumnBudget.
  * wireColumns owns both.
  */
-let columnBudget = NARROW_COLUMNS;
+export let columnBudget = NARROW_COLUMNS;
 
 /**
  * The column count the reader asked for, or null when they have not asked.
@@ -1124,7 +1122,7 @@ let columnBudget = NARROW_COLUMNS;
  * than being read off columnBudget: the two are equal in exactly the state
  * where the reader has NOT chosen.
  */
-let columnOverride = null;
+export let columnOverride = null;
 
 /**
  * Sets how many columns the chart may draw, and says whether that moved.
@@ -1142,7 +1140,7 @@ let columnOverride = null;
  * @param {number} n
  * @returns {boolean} whether the budget changed
  */
-function setColumnBudget(n) {
+export function setColumnBudget(n) {
   const want = Math.max(NARROW_COLUMNS, Math.floor(Number(n)) || NARROW_COLUMNS);
   if (want === columnBudget) return false;
   columnBudget = want;
@@ -1163,7 +1161,7 @@ function setColumnBudget(n) {
  * step that does; docAt reads them as one sequence.
  * @type {FiscProjection | null}
  */
-let fetched = null;
+export let fetched = null;
 /**
  * The column document the year on screen was fetched from: one file per
  * (fiscal year, basis), carrying every schedule that column prints.
@@ -1179,7 +1177,7 @@ let fetched = null;
  * wrapped it.
  * @type {any}
  */
-let column = null;
+export let column = null;
 /**
  * The drill's own gesture token, bumped by every push and pop of the stack.
  *
@@ -1189,12 +1187,12 @@ let column = null;
  * against. Compared after the await, beside the year token: a year switch
  * mid-drill bumps that one, and the drill stands down for it too.
  */
-let opening = 0;
+export let opening = 0;
 /**
  * The year on screen, so paintCounts can be called without one in hand.
  * @type {FiscYear | null}
  */
-let shownYear = null;
+export let shownYear = null;
 /**
  * The chart description the page shipped, so returning from a drill can restore
  * it. Captured on first paint rather than read from the config, because it is
@@ -1202,7 +1200,7 @@ let shownYear = null;
  * description only into the markup.
  * @type {string}
  */
-let baseDescription = "";
+export let baseDescription = "";
 /**
  * The pointer to the flow table, lifted off the shipped description so a drill
  * can keep it.
@@ -1218,7 +1216,7 @@ let baseDescription = "";
  * TestAClosedFlowTableIsNotDescribedAsListedBelow pins the sentence itself.
  * @type {string}
  */
-let tablePointer = "";
+export let tablePointer = "";
 /**
  * The nodes as laid out, so columnShare can total the column a mark is in.
  *
@@ -1228,9 +1226,9 @@ let tablePointer = "";
  * lands in none.
  * @type {LaidNode[]}
  */
-let laidNodes = [];
+export let laidNodes = [];
 /** @type {LaidNode | LaidLink | null} */
-let pinned = null;
+export let pinned = null;
 /**
  * How long after one activation of a node a later event on the same node is
  * taken to be part of that same activation, in milliseconds.
@@ -1242,14 +1240,14 @@ let pinned = null;
  * and in both cases the only thing telling it from a real second activation is
  * how soon it arrived on the same node.
  */
-const ACTIVATION_WINDOW = 500;
+export const ACTIVATION_WINDOW = 500;
 
 /**
  * The node and timestamp of the last Enter/Space activation, so that the click
  * some assistive tech synthesises from that same key press does not undo it.
  * @type {{id:string, at:number}}
  */
-let keyActivation = { id: "", at: -Infinity };
+export let keyActivation = { id: "", at: -Infinity };
 
 /**
  * The node a click last isolated, when, and what had been isolated before it,
@@ -1268,7 +1266,7 @@ let keyActivation = { id: "", at: -Infinity };
  * faithfully restore that.
  * @type {{id:string, at:number, was:string}}
  */
-let clickIsolate = { id: "", at: -Infinity, was: "" };
+export let clickIsolate = { id: "", at: -Infinity, was: "" };
 
 /**
  * Every node of the document being laid out, by id, so fundGroupOf can walk
@@ -1281,7 +1279,7 @@ let clickIsolate = { id: "", at: -Infinity, was: "" };
  * ribbons on a theme change without laying anything out again.
  * @type {Map<string, FiscNode>}
  */
-let groupIndex = new Map();
+export let groupIndex = new Map();
 
 /* ------------------------------------------------------------------ *
  * Chart
@@ -1299,7 +1297,7 @@ let groupIndex = new Map();
  * @param {Set<string>|undefined} keys
  * @returns {FiscSource[]}
  */
-function regroupLocators(keys) {
+export function regroupLocators(keys) {
   /** @type {Map<string, number[]>} */
   const byDoc = new Map();
   for (const k of keys || []) {
@@ -1331,7 +1329,7 @@ function regroupLocators(keys) {
  * @param {Set<number>} drawn
  * @returns {string}
  */
-function foldTarget(byID, n, drawn) {
+export function foldTarget(byID, n, drawn) {
   let at = n;
   for (let hops = 0; !drawn.has(at.tier); hops++) {
     const up = at.parent ? byID.get(at.parent) : undefined;
@@ -1375,7 +1373,7 @@ function foldTarget(byID, n, drawn) {
  *   against the position of the column it names them at
  * @returns {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: Set<number>) => boolean}
  */
-function heldBy(held) {
+export function heldBy(held) {
   return (src, dst, byID, drawn) => {
     const from = foldTarget(byID, src, drawn);
     const to = foldTarget(byID, dst, drawn);
@@ -1403,7 +1401,7 @@ function heldBy(held) {
  * @param {(src: FiscNode, dst: FiscNode, byID: Map<string,FiscNode>, drawn: Set<number>) => boolean} holds
  * @returns {FiscProjection}
  */
-function filterLinks(doc, id, tiers, holds) {
+export function filterLinks(doc, id, tiers, holds) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   // A NAME THIS DOCUMENT DOES NOT CARRY IS A FAULT IN THE VIEW, and it must say
   // so. Unchecked, an unknown id gives an empty subtree, no links, and
@@ -1484,7 +1482,7 @@ function filterLinks(doc, id, tiers, holds) {
  * @param {number[]} tiers
  * @returns {(n: FiscNode) => boolean}
  */
-function scoped(doc, tiers) {
+export function scoped(doc, tiers) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const drawn = new Set(tiers);
   /** Tiers at which some node has a drawn ancestor. */
@@ -1520,7 +1518,7 @@ function scoped(doc, tiers) {
  * @param {string} id
  * @returns {Set<string>}
  */
-function withinNode(doc, id) {
+export function withinNode(doc, id) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const inside = new Set();
   for (const n of doc.nodes) {
@@ -1547,7 +1545,7 @@ function withinNode(doc, id) {
  * @param {number} depth
  * @returns {FiscProjection | null}
  */
-function docAt(depth) {
+export function docAt(depth) {
   return depth <= 0 ? fetched : (drilled[depth - 1] ? drilled[depth - 1].doc : null);
 }
 
@@ -1555,7 +1553,7 @@ function docAt(depth) {
  * The document the chart on screen is shaped from.
  * @returns {FiscProjection | null}
  */
-function drawnDoc() {
+export function drawnDoc() {
   return docAt(drilled.length);
 }
 
@@ -1564,7 +1562,7 @@ function drawnDoc() {
  * of. export.RungsPath, through the config, so the file the site writes and
  * the URL the page asks for are one string.
  */
-const RUNGS_PATH = CONFIG && typeof CONFIG.rungs === "string" ? CONFIG.rungs : "";
+export const RUNGS_PATH = CONFIG && typeof CONFIG.rungs === "string" ? CONFIG.rungs : "";
 
 
 /**
@@ -1572,7 +1570,7 @@ const RUNGS_PATH = CONFIG && typeof CONFIG.rungs === "string" ? CONFIG.rungs : "
  * and null forever on a page that is told of no answer.
  * @type {Map<string, FiscRung> | null}
  */
-let rungAnswers = null;
+export let rungAnswers = null;
 
 /**
  * One rung's key in `rungAnswers`. The separator is a unit separator rather
@@ -1581,7 +1579,7 @@ let rungAnswers = null;
  * @param {string} stem
  * @param {string[]} path
  */
-function rungKey(stem, path) {
+export function rungKey(stem, path) {
   return stem + "\u001f" + path.join("\u001f");
 }
 
@@ -1616,7 +1614,7 @@ function rungKey(stem, path) {
  * @param {string} step the key of the step that opened the last rung
  * @returns {FiscRung}
  */
-function answeredRung(step) {
+export function answeredRung(step) {
   const stem = shownYear ? shownYear.stem : "";
   const path = drilled.map((r) => r.id);
   const answer = rungAnswers ? rungAnswers.get(rungKey(stem, path)) : null;
@@ -1657,7 +1655,7 @@ function answeredRung(step) {
  * @param {number[]} tiers
  * @returns {Map<string, number>}
  */
-function heldFor(answer, tiers) {
+export function heldFor(answer, tiers) {
   const want = new Set(tiers);
   /** @type {Map<string, number>} */
   const held = new Map();
@@ -1696,7 +1694,7 @@ function heldFor(answer, tiers) {
  *
  * @returns {number[]}
  */
-function activeTiers(budget) {
+export function activeTiers(budget) {
   if (!drilled.length) return RENDER_TIERS;
   const at = budget === undefined ? columnBudget : budget;
   const rung = drilled[drilled.length - 1];
@@ -1724,7 +1722,7 @@ function activeTiers(budget) {
  * @param {number} [budget] the width to ask about; the current one by default
  * @returns {number}
  */
-function drawnColumns(budget) {
+export function drawnColumns(budget) {
   return activeTiers(budget).length || NARROW_COLUMNS;
 }
 
@@ -1796,7 +1794,7 @@ function drawnColumns(budget) {
  * describing the overview under a drilled chart is the same false statement one
  * gesture over.
  */
-function paintCounts() {
+export function paintCounts() {
   const counts = maybeEl("counts-line");
   if (!counts || !shownYear) return;
   const links = projection ? projection.links.length : shownYear.counts.links;
@@ -1912,7 +1910,7 @@ function paintCounts() {
  * @param {{id: string, tier: number, role?: string}} d
  * @returns {boolean}
  */
-function drillable(d) {
+export function drillable(d) {
   return Boolean(stepFor(d)) && !isAggregate(d.id) && !isCarried(d.id);
 }
 
@@ -1938,7 +1936,7 @@ function drillable(d) {
  * @param {{id: string, tier: number}} d
  * @returns {boolean}
  */
-function expandable(d) {
+export function expandable(d) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung || !isAggregate(d.id)) return false;
   if (rung.expanded && rung.expanded.has(d.tier)) return false;
@@ -1954,7 +1952,7 @@ function expandable(d) {
  * chart. activeTiers is the same list openableColumns names columns off.
  * @returns {number[]}
  */
-function expandedTiers() {
+export function expandedTiers() {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung || !rung.expanded) return [];
   return activeTiers().filter((t) => rung.expanded.has(t));
@@ -1970,7 +1968,7 @@ function expandedTiers() {
  * calls a defect, produced by the test that was supposed to prevent it.
  * @returns {boolean}
  */
-function focusInChart() {
+export function focusInChart() {
   const active = document.activeElement;
   const chart = maybeEl("chart");
   return Boolean(active) && Boolean(chart) &&
@@ -1995,7 +1993,7 @@ function focusInChart() {
  * @param {FiscDrillStep} step
  * @returns {FiscStepDoc | null}
  */
-function stepDocFor(step) {
+export function stepDocFor(step) {
   // BOTH LISTS ARE READ, NEITHER IS VETTED. `years[].steps` and `steps` are
   // optional in schema/page.schema.json and arrays of a stated shape where they
   // appear, held against the bytes encodeConfig wrote; absent is the only state
@@ -2023,7 +2021,7 @@ function stepDocFor(step) {
  * @param {() => boolean} superseded
  * @returns {Promise<FiscProjection | null>}
  */
-async function stepDocument(step, from, superseded) {
+export async function stepDocument(step, from, superseded) {
   if (!step.projection) return from;
   if (superseded()) return null;
   return selectSchedule(column, step.projection);
@@ -2058,7 +2056,7 @@ async function stepDocument(step, from, superseded) {
  * @param {Rung[]} next
  * @returns {boolean} whether the new depth is on screen
  */
-function redrawStack(next) {
+export function redrawStack(next) {
   // ASKED BEFORE ANYTHING IS REPAINTED. The element focus is on is one the
   // repaint below removes, so after it there is nothing left to ask about.
   const hadFocus = focusInChart();
@@ -2137,7 +2135,7 @@ function redrawStack(next) {
  * @param {string} id
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
-async function drillDown(id) {
+export async function drillDown(id) {
   const depth = drilled.length;
   const from = docAt(depth);
   // THE NODE THE READER ACTIVATED, OFF THE CHART THEY ACTIVATED IT ON. Which
@@ -2181,7 +2179,7 @@ async function drillDown(id) {
  * stands down instead of landing on the shorter stack.
  * @param {number} depth
  */
-function drillUp(depth) {
+export function drillUp(depth) {
   if (depth < 0 || depth >= drilled.length) return;
   opening++;
   redrawStack(drilled.slice(0, depth));
@@ -2196,7 +2194,7 @@ function drillUp(depth) {
  * here is a repaint that threw, and a click handler has nowhere else to put it.
  * @param {string} id
  */
-function openNode(id) {
+export function openNode(id) {
   void drillDown(id).catch((e) => fail("The chart failed to draw: " + String(e)));
 }
 
@@ -2215,7 +2213,7 @@ function openNode(id) {
  *
  * @param {{tier: number}} d
  */
-function expandTier(d) {
+export function expandTier(d) {
   const at = drilled.length - 1;
   const rung = drilled[at];
   if (!rung) return;
@@ -2233,7 +2231,7 @@ function expandTier(d) {
  * which is unambiguous only while nothing else is stacked.
  * @param {number} tier
  */
-function collapseTier(tier) {
+export function collapseTier(tier) {
   const at = drilled.length - 1;
   const rung = drilled[at];
   if (!rung || !rung.expanded || !rung.expanded.has(tier)) return;
@@ -2282,7 +2280,7 @@ function collapseTier(tier) {
  * @param {() => T} run
  * @returns {T | undefined}
  */
-function guarded(gesture, run) {
+export function guarded(gesture, run) {
   try {
     return run();
   } catch (e) {
@@ -2293,7 +2291,7 @@ function guarded(gesture, run) {
   }
 }
 
-function clickNode(d, at) {
+export function clickNode(d, at) {
   pin(d);
   if (d.id === keyActivation.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
   const within = d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW;
@@ -2317,7 +2315,7 @@ function clickNode(d, at) {
  * @param {LaidNode} d
  * @param {number} at the event's timestamp
  */
-function doubleClickNode(d, at) {
+export function doubleClickNode(d, at) {
   if (d.id === clickIsolate.id && at - clickIsolate.at < ACTIVATION_WINDOW) {
     setIsolated(clickIsolate.was);
   }
@@ -2346,7 +2344,7 @@ function doubleClickNode(d, at) {
  * @param {string} key
  * @param {number} at the event's timestamp
  */
-function keyNode(d, key, at) {
+export function keyNode(d, key, at) {
   keyActivation = { id: d.id, at: at };
   // Escape unpins while leaving focus where it was, so the panel can be
   // empty here even though focus already pinned this node once.
@@ -2388,7 +2386,7 @@ function keyNode(d, key, at) {
  * @param {boolean} hadFocus whether focus was inside the chart before the
  *   repaint that just replaced it.
  */
-function restoreFocus(hadFocus) {
+export function restoreFocus(hadFocus) {
   if (!hadFocus) return;
   // focus() IS ON HTMLElement AND SVGElement, NOT ON Element, so the runtime
   // test stays and the cast is what tells tsc --checkJs the same thing. The
@@ -2433,7 +2431,7 @@ function restoreFocus(hadFocus) {
  * the subject is the view's, built in Go, and this says which part of it is on
  * screen. Returning to the overview puts both back.
  */
-function paintChartName() {
+export function paintChartName() {
   // EVERY RUNG, OUTERMOST FIRST, so a reader two deep hears the whole path:
   // "opened into General Fund, then Patrol". One rung reads as it always did.
   const trail = trailOfRungs().join(", then ");
@@ -2484,7 +2482,7 @@ function paintChartName() {
  * @param {string} s
  * @returns {string}
  */
-function lastSentence(s) {
+export function lastSentence(s) {
   // ANY TERMINATOR, not just a period: export.View accepts ".", "!" and "?" as
   // the close of a caller's description, and splitting on ". " alone let the
   // other two run into the template's sentence.
@@ -2524,7 +2522,7 @@ function lastSentence(s) {
  * Server-rendered for the opening state, so it survives with JavaScript off --
  * where it is also true, because without a script nothing can be opened at all.
  */
-function paintChartHint() {
+export function paintChartHint() {
   const hint = maybeEl("chart-hint");
   if (!hint || !STEPS.length) return;
   const anyOpens = Boolean(projection) && projection.nodes.some(drillable);
@@ -2599,7 +2597,7 @@ function paintChartHint() {
  * left-hand column three of thirteen do not.
  * @returns {string[]}
  */
-function openableColumns() {
+export function openableColumns() {
   if (!projection) return [];
   const drawn = new Set(projection.nodes.map((n) => n.tier));
   const tiers = activeTiers().filter((t) => drawn.has(t));
@@ -2622,13 +2620,13 @@ function openableColumns() {
  * @param {string[]} parts
  * @returns {string}
  */
-function joinOr(parts) {
+export function joinOr(parts) {
   if (parts.length < 3) return parts.join(" or ");
   return parts.slice(0, -1).join(", ") + " or " + parts[parts.length - 1];
 }
 
 /** How many fund-group swatches the legend is showing. */
-function buildLegendCount() {
+export function buildLegendCount() {
   const legend = maybeEl("legend");
   return legend ? legend.children.length : 0;
 }
@@ -2641,7 +2639,7 @@ function buildLegendCount() {
  * the node they clicked is no longer on the chart to click again: opening a
  * fund group removes the group. Without this the drill is a trapdoor.
  */
-function paintBreadcrumb() {
+export function paintBreadcrumb() {
   const bar = maybeEl("breadcrumb");
   if (!bar) return;
   if (!drilled.length) {
@@ -2707,7 +2705,7 @@ function paintBreadcrumb() {
  * @param {number} tier
  * @returns {number}
  */
-function columnSize(tier) {
+export function columnSize(tier) {
   if (!projection) return 0;
   return projection.nodes.filter((n) =>
     n.tier === tier && !isCarried(n.id) && !n.carried_from).length;
@@ -2723,7 +2721,7 @@ function columnSize(tier) {
  * @param {number} tier
  * @returns {string}
  */
-function tailNoun(tier) {
+export function tailNoun(tier) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung) return "items";
   const cap = (rung.step.caps || []).find((c) => c.tier === tier);
@@ -2751,7 +2749,7 @@ function tailNoun(tier) {
  * @param {number} k
  * @returns {string}
  */
-function labelOfRung(k) {
+export function labelOfRung(k) {
   const rung = drilled[k];
   if (!rung) return "";
   const doc = docAt(k);
@@ -2780,7 +2778,7 @@ function labelOfRung(k) {
  * past it would be this file naming the tiers after all.
  * @returns {string[]}
  */
-function trailOfRungs() {
+export function trailOfRungs() {
   const words = drilled.map((_, k) => labelOfRung(k));
   return words.map((w, k) => {
     if (!words.some((other, j) => j !== k && other === w)) return w;
@@ -2799,7 +2797,7 @@ function trailOfRungs() {
  * @param {FiscProjection} doc
  * @returns {FiscProjection}
  */
-function shapeFor(doc) {
+export function shapeFor(doc) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   if (!rung) {
     // THE OVERVIEW IS THE DOCUMENT FOLDED AND FILTERED TO NOTHING. A view could
@@ -2871,7 +2869,7 @@ function shapeFor(doc) {
  * @param {FiscProjection} drawn
  * @returns {boolean} whether anything was dropped
  */
-function dropEmptyColumns(drawn) {
+export function dropEmptyColumns(drawn) {
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   const widen = rung && rung.step.widen ? rung.step.widen : [];
   if (!widen.length) return false;
@@ -2912,7 +2910,7 @@ function dropEmptyColumns(drawn) {
  *   columns, against the position of the column it names them at
  * @returns {FiscProjection}
  */
-function sideOf(doc, rung, tiers, held) {
+export function sideOf(doc, rung, tiers, held) {
   const step = rung.step;
   let shaped = filterLinks(doc, rung.id, tiers, heldBy(held));
   const inside = withinNode(doc, rung.id);
@@ -3028,7 +3026,7 @@ function sideOf(doc, rung, tiers, held) {
  *   refused as one rather than as a rung nothing answers
  * @returns {FiscProjection}
  */
-function windowFor(onScreen, stepDoc, rung, answer) {
+export function windowFor(onScreen, stepDoc, rung, answer) {
   const step = rung.step;
   // THE COLUMNS ON SCREEN AND NOT THE COLUMNS DECLARED. A step may offer more
   // than the budget draws, and a half shaped at a column the chart does not lay
@@ -3123,7 +3121,7 @@ function windowFor(onScreen, stepDoc, rung, answer) {
  * @param {LaidNode} d
  * @returns {{y:number, height:number} | null}
  */
-function contraBand(d) {
+export function contraBand(d) {
   if (!d.targetLinks.some((l) => l.contra)) return null;
   const arriving = d.targetLinks.reduce((sum, l) => sum + l.width, 0);
   const excess = arriving - (d.y1 - d.y0);
@@ -3170,7 +3168,7 @@ function contraBand(d) {
  * @param {Record<string, number> | undefined} amounts
  * @returns {FiscProjection} drawn itself when the rung names none
  */
-function markAmounts(drawn, amounts) {
+export function markAmounts(drawn, amounts) {
   if (!amounts) return drawn;
   for (const [id, cents] of Object.entries(amounts)) {
     if (!(cents > 0)) {
@@ -3222,7 +3220,7 @@ function markAmounts(drawn, amounts) {
  * @param {FiscProjection} drawn  shaped and folded
  * @returns {FiscProjection} drawn itself when nothing in it is negative
  */
-function markContra(drawn) {
+export function markContra(drawn) {
   if (!drawn.links.some((l) => l.value_cents < 0 || l.contra)) return drawn;
   return Object.assign({}, drawn, {
     links: drawn.links.map((l) => {
@@ -3243,7 +3241,7 @@ function markContra(drawn) {
  * @param {LaidNode} d
  * @returns {boolean}
  */
-function isContraNode(d) {
+export function isContraNode(d) {
   const links = d.sourceLinks.concat(d.targetLinks);
   return links.length > 0 && links.every((l) => Boolean(l.contra));
 }
@@ -3258,7 +3256,7 @@ function isContraNode(d) {
  * @param {LaidNode} d
  * @returns {boolean}
  */
-function isPartitionNode(d) {
+export function isPartitionNode(d) {
   const links = d.sourceLinks.concat(d.targetLinks);
   return links.length > 0 && links.every((l) => Boolean(l.partition));
 }
@@ -3269,7 +3267,7 @@ function isPartitionNode(d) {
  * @param {LaidLink | LaidNode} d
  * @returns {number}
  */
-function markCents(d) {
+export function markCents(d) {
   if (isLink(d)) {
     const l = /** @type {LaidLink} */ (d);
     return l.contra ? -l.value_cents : l.value_cents;
@@ -3300,7 +3298,7 @@ function markCents(d) {
  * @param {LaidNode} d
  * @returns {string}
  */
-function contraNote(d) {
+export function contraNote(d) {
   const arriving = d.targetLinks.reduce((sum, l) => sum + l.value, 0);
   const leaving = d.sourceLinks.reduce((sum, l) => sum + l.value, 0);
   const side = arriving >= leaving ? d.targetLinks : d.sourceLinks;
@@ -3326,7 +3324,7 @@ function contraNote(d) {
  * is never reversed, and what the shape means is carried in a class and a
  * sentence.
  */
-const PARTITION_NOTE = "a cross-tab: one printed table read along a second axis, " +
+export const PARTITION_NOTE = "a cross-tab: one printed table read along a second axis, " +
   "not money moving in the direction drawn";
 
 /**
@@ -3334,7 +3332,7 @@ const PARTITION_NOTE = "a cross-tab: one printed table read along a second axis,
  * @param {LaidLink} d
  * @returns {string}
  */
-function linkClass(d) {
+export function linkClass(d) {
   return "link" + (d.derived ? " derived" : "") + (d.contra ? " contra" : "") +
     (d.partition ? " partition" : "");
 }
@@ -3363,7 +3361,7 @@ function linkClass(d) {
  * @param {LaidNode} d
  * @returns {string}
  */
-function nodeClass(d) {
+export function nodeClass(d) {
   return "node" + (d.derived ? " derived" : "") + (isContraNode(d) ? " contra" : "") +
     (drillable(d) ? " opens" : "") + (expandable(d) ? " expands" : "");
 }
@@ -3400,7 +3398,7 @@ function nodeClass(d) {
  * @param {LaidNode} d
  * @returns {string}
  */
-function nodeFlags(d) {
+export function nodeFlags(d) {
   const marks = (d.derived ? "\u25c7" : "") + (drillable(d) ? "\u25b8" : "") +
     (expandable(d) ? "\u229e" : "");
   return marks ? "  " + marks : "";
@@ -3414,7 +3412,7 @@ function nodeFlags(d) {
  * and not a line item. The amount on its ribbons is a sum of printed figures,
  * exactly as every folded ribbon's is.
  */
-const AGGREGATE_PREFIX = "aggregate/tail/";
+export const AGGREGATE_PREFIX = "aggregate/tail/";
 
 /**
  * The id of the node one tier's capped tail is folded into.
@@ -3428,7 +3426,7 @@ const AGGREGATE_PREFIX = "aggregate/tail/";
  * @param {number} tier
  * @returns {string}
  */
-function aggregateID(tier) {
+export function aggregateID(tier) {
   return AGGREGATE_PREFIX + tier;
 }
 
@@ -3437,7 +3435,7 @@ function aggregateID(tier) {
  * @param {string} id
  * @returns {boolean}
  */
-function isAggregate(id) {
+export function isAggregate(id) {
   return id.startsWith(AGGREGATE_PREFIX);
 }
 
@@ -3448,14 +3446,14 @@ function isAggregate(id) {
  * residual, beside the node it opened, and naming it after that node is what
  * keeps two rungs' residuals from ever sharing an id in one document.
  */
-const RESIDUAL_PREFIX = "residual/";
+export const RESIDUAL_PREFIX = "residual/";
 
 /**
  * The id of the node an opened node's undecomposed flows are carried onto.
  * @param {string} opened
  * @returns {string}
  */
-function residualID(opened) {
+export function residualID(opened) {
   return RESIDUAL_PREFIX + opened;
 }
 
@@ -3464,7 +3462,7 @@ function residualID(opened) {
  * @param {string} id
  * @returns {boolean}
  */
-function isResidual(id) {
+export function isResidual(id) {
   return id.startsWith(RESIDUAL_PREFIX);
 }
 
@@ -3477,14 +3475,14 @@ function isResidual(id) {
  * across with its citations, and a gap is one cell two schedules print at two
  * figures, which no page prints at all. markGap says which is which.
  */
-const GAP_PREFIX = "gap/";
+export const GAP_PREFIX = "gap/";
 
 /**
  * The id of the node an opened node's undecomposed difference is drawn at.
  * @param {string} opened
  * @returns {string}
  */
-function gapID(opened) {
+export function gapID(opened) {
   return GAP_PREFIX + opened;
 }
 
@@ -3493,7 +3491,7 @@ function gapID(opened) {
  * @param {string} id
  * @returns {boolean}
  */
-function isGap(id) {
+export function isGap(id) {
   return id.startsWith(GAP_PREFIX);
 }
 
@@ -3514,7 +3512,7 @@ function isGap(id) {
  * @param {string} id
  * @returns {boolean}
  */
-function isCarried(id) {
+export function isCarried(id) {
   if (isResidual(id) || isGap(id)) return true;
   const rung = drilled.length ? drilled[drilled.length - 1] : null;
   return Boolean(rung && rung.step.residual &&
@@ -3612,7 +3610,7 @@ function isCarried(id) {
  *   nothing where it answers none
  * @returns {FiscProjection}
  */
-function carryResidual(drawn, from, rung, mark) {
+export function carryResidual(drawn, from, rung, mark) {
   const step = rung.step;
   const residual = step.residual && typeof step.residual === "object" ? step.residual : null;
   if (!mark || !from) return drawn;
@@ -3852,7 +3850,7 @@ function carryResidual(drawn, from, rung, mark) {
  * @returns {FiscProjection} drawn itself where the step declares no gap at all,
  *   or the node it opened balances
  */
-function markGap(drawn, rung, mark) {
+export function markGap(drawn, rung, mark) {
   const gaps = rung.step.gaps;
   if (!gaps || typeof gaps !== "object") return drawn;
   const opened = rung.id;
@@ -3955,7 +3953,7 @@ function markGap(drawn, rung, mark) {
  * @param {string} noun  the plural noun for the tier's rows
  * @returns {FiscProjection} doc itself when the column fits whole
  */
-function capColumn(doc, tier, cap, opened, noun) {
+export function capColumn(doc, tier, cap, opened, noun) {
   const atTier = doc.nodes.filter((n) => n.tier === tier);
   // AN AGGREGATE OF ONE IS WORSE THAN NO AGGREGATE. This engaged at cap + 1, so
   // a column of 9 against a cap of 8 folded a single fund into a node labelled
@@ -4135,7 +4133,7 @@ function capColumn(doc, tier, cap, opened, noun) {
  *   one it opens INTO are two declarations, not one.
  * @returns {FiscProjection} doc itself when the tier set draws every tier.
  */
-function foldDocument(doc, tiers) {
+export function foldDocument(doc, tiers) {
   const wanted = tiers || RENDER_TIERS;
   if (!wanted.length) return doc;
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
@@ -4299,7 +4297,7 @@ function foldDocument(doc, tiers) {
  * ribbons still fill exactly its own height.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} graph
  */
-function restackLinks(graph) {
+export function restackLinks(graph) {
   /** @param {(l:LaidLink) => LaidNode} end */
   const byOtherEnd = (end) =>
     /** @param {LaidLink} a @param {LaidLink} b */ (a, b) =>
@@ -4367,7 +4365,7 @@ function restackLinks(graph) {
  * @param {number[]} tiers
  * @returns {(d: LaidNode) => number}
  */
-function alignFor(tiers) {
+export function alignFor(tiers) {
   return tiers.length
     ? /** @param {LaidNode} d */ (d) => tiers.indexOf(d.tier)
     : D3.sankeyJustify;
@@ -4393,7 +4391,7 @@ function alignFor(tiers) {
  *
  * @param {FiscProjection} doc
  */
-function layOut(doc) {
+export function layOut(doc) {
   // Assigned from the document being laid out, before anything that can throw,
   // so fundGroupOf never walks a parent chain belonging to another document.
   // BUILT FROM THE FETCHED DOCUMENT AS WELL AS THE DRAWN ONE, because a colour
@@ -4485,7 +4483,7 @@ function layOut(doc) {
  * @param {LaidNode} d
  * @returns {number}
  */
-function columnOf(d) {
+export function columnOf(d) {
   const tiers = activeTiers();
   // d3 clamps an aligner's answer into the drawn range, so a node whose tier
   // the view does not declare is drawn in column 0 and is labelled as one.
@@ -4512,7 +4510,7 @@ function columnOf(d) {
  * @param {number} last the largest column index this chart drew
  * @returns {{anchor: string, x: number, y: number, dy: string|null}}
  */
-function labelPlacement(d, last) {
+export function labelPlacement(d, last) {
   const col = columnOf(d);
   const middle = (d.y0 + d.y1) / 2;
   if (col === 0) return { anchor: "end", x: d.x0 - 10, y: middle, dy: "0.35em" };
@@ -4551,7 +4549,7 @@ function labelPlacement(d, last) {
  * @param {LaidNode[]} nodes
  * @returns {Map<string, string>}
  */
-function labelQualifiers(nodes) {
+export function labelQualifiers(nodes) {
   /** @type {Map<string, LaidNode[]>} */
   const sharing = new Map();
   for (const n of nodes) {
@@ -4596,7 +4594,7 @@ function labelQualifiers(nodes) {
  * @param {string} anchor
  * @returns {{qualifier: string, label: string}}
  */
-function labelLineShift(anchor) {
+export function labelLineShift(anchor) {
   return anchor === "middle"
     ? { qualifier: "-1.15em", label: "1.15em" }
     : { qualifier: "-0.6em", label: "1.15em" };
@@ -4608,7 +4606,7 @@ function labelLineShift(anchor) {
  * a caller that has nothing else on the page to keep consistent.
  * @param {{nodes:LaidNode[], links:LaidLink[]}} [laid]
  */
-function render(laid) {
+export function render(laid) {
   if (!projection) return;
   const graph = laid || layOut(projection);
   const svg = D3.select("#chart");
@@ -4807,7 +4805,7 @@ function render(laid) {
 }
 
 /** Re-reads the palette from CSS and repaints. Called after a theme change. */
-function paint() {
+export function paint() {
   D3.select("#chart").selectAll("path.link")
     .attr("stroke", /** @param {LaidLink} d */ (d) => linkColor(d));
   D3.select("#chart").selectAll("g.node rect")
@@ -4830,7 +4828,7 @@ function paint() {
  * button was lit.
  * @param {string} id
  */
-function setIsolated(id) {
+export function setIsolated(id) {
   isolated = id;
   for (const element of el("legend").querySelectorAll("button")) {
     const button = /** @type {HTMLElement} */ (element);
@@ -4841,7 +4839,7 @@ function setIsolated(id) {
 }
 
 /** Applies the isolation and the pinned selection to every mark. */
-function applyEmphasis() {
+export function applyEmphasis() {
   const svg = D3.select("#chart");
   svg.selectAll("path.link").classed("dim", /** @param {LaidLink} d */ (d) =>
     isolated !== "" && d.source.id !== isolated && d.target.id !== isolated);
@@ -4879,7 +4877,7 @@ function applyEmphasis() {
  * @param {boolean} ontoOurs  whether either end is a mark we drew
  * @returns {string}
  */
-function provenanceOf(derived, ontoOurs) {
+export function provenanceOf(derived, ontoOurs) {
   if (derived) return "inferred by us";
   return ontoOurs ? CARRIED_NOTE : "printed by the city";
 }
@@ -4889,19 +4887,19 @@ function provenanceOf(derived, ontoOurs) {
  * the words for it live -- PARTITION_NOTE's pattern, and for its reason: four
  * spellings of one claim about provenance is four things to keep true.
  */
-const CARRIED_NOTE = "figure printed by the city, re-pointed onto a mark of ours";
+export const CARRIED_NOTE = "figure printed by the city, re-pointed onto a mark of ours";
 
 /**
  * The short form of the same claim, for a chip. The diamond is the site's mark
  * for "this part is ours", and what is ours here is the re-pointing.
  */
-const CARRIED_CHIP = "\u25c7 re-pointed by us";
+export const CARRIED_CHIP = "\u25c7 re-pointed by us";
 
 /**
  * @param {LaidLink} d
  * @returns {string}
  */
-function linkDescription(d) {
+export function linkDescription(d) {
   return d.source.label + " to " + d.target.label + ", " + fmtSigned(markCents(d)) + ", " +
     (/** @type {Record<string,string>} */ (KIND_LABEL)[d.kind] || d.kind) +
     (d.contra ? ", " + d.contra : "") +
@@ -4913,7 +4911,7 @@ function linkDescription(d) {
  * @param {LaidNode} d
  * @returns {string}
  */
-function nodeDescription(d) {
+export function nodeDescription(d) {
   // WHAT EACH GESTURE DOES, for a reader who cannot see which marks carry the
   // triangle. Every node says it, because every node has two gestures now and a
   // mark that named neither would leave a keyboard reader to discover the
@@ -4984,7 +4982,7 @@ function nodeDescription(d) {
  *   off was carried from, so its anchors are that document's
  * @returns {string}
  */
-function caveatHref(id, carried) {
+export function caveatHref(id, carried) {
   const at = carried ? depthOfDocument(carried) : drilled.length;
   if (at < 0) return "";
   const refs = at > 0
@@ -5013,7 +5011,7 @@ function caveatHref(id, carried) {
  * @param {string} id
  * @returns {FiscCaveat[]}
  */
-function caveatsFor(id) {
+export function caveatsFor(id) {
   if (!projection) return [];
   // A CARRIED MARK IS OF THE CHART ABOVE, AND SO ARE ITS CAVEATS. carryResidual
   // copies the spine's endpoints onto the rung; the rung's own document has
@@ -5054,7 +5052,7 @@ function caveatsFor(id) {
  * @param {string} stem
  * @returns {number}
  */
-function depthOfDocument(stem) {
+export function depthOfDocument(stem) {
   for (let depth = drilled.length; depth >= 0; depth--) {
     const doc = docAt(depth);
     if (doc && doc.projection === stem) return depth;
@@ -5079,7 +5077,7 @@ function depthOfDocument(stem) {
  * @param {string} stem
  * @returns {FiscProjection | null}
  */
-function carriedSource(stem) {
+export function carriedSource(stem) {
   const at = depthOfDocument(stem);
   return at < 0 ? null : docAt(at);
 }
@@ -5097,7 +5095,7 @@ function carriedSource(stem) {
  * @param {LaidNode} d
  * @returns {string}
  */
-function columnShare(d) {
+export function columnShare(d) {
   if (!d.value) return "";
   let total = 0;
   let siblings = 0;
@@ -5134,7 +5132,7 @@ function columnShare(d) {
  * @param {LaidLink | LaidNode} d
  * @returns {boolean}
  */
-function isLink(d) {
+export function isLink(d) {
   return Object.prototype.hasOwnProperty.call(d, "fact_ids");
 }
 
@@ -5142,7 +5140,7 @@ function isLink(d) {
  * @param {MouseEvent | FocusEvent} event
  * @param {LaidLink | LaidNode} d
  */
-function showTip(event, d) {
+export function showTip(event, d) {
   const tip = el("tooltip");
   tip.replaceChildren();
 
@@ -5241,7 +5239,7 @@ function showTip(event, d) {
   tip.style.top = Math.min(y, Math.max(0, box.height - tip.offsetHeight - 4)) + "px";
 }
 
-function hideTip() {
+export function hideTip() {
   el("tooltip").hidden = true;
 }
 
@@ -5250,7 +5248,7 @@ function hideTip() {
  * links live: a tooltip you cannot click is no place for a citation.
  * @param {LaidLink | LaidNode} d
  */
-function pin(d) {
+export function pin(d) {
   pinned = d;
   const panel = el("detail");
   panel.replaceChildren();
@@ -5369,7 +5367,7 @@ function pin(d) {
  * fisc-0jy9; that a category's funds carry nothing saying which group each is
  * in is fisc-b4a6.
  */
-function buildLegend() {
+export function buildLegend() {
   if (!projection) return;
   const legend = el("legend");
   legend.replaceChildren();
@@ -5411,7 +5409,7 @@ function buildLegend() {
  * @param {FiscLink} l
  * @returns {string}
  */
-function homeOf(l) {
+export function homeOf(l) {
   if (!projection) return "";
   const derived = new Set(projection.nodes.filter((n) => n.derived).map((n) => n.id));
   if (derived.has(l.target)) return l.target;
@@ -5419,7 +5417,7 @@ function homeOf(l) {
   return "";
 }
 
-function buildDerivedList() {
+export function buildDerivedList() {
   if (!projection) return;
   const list = el("derived-list");
   list.replaceChildren();
@@ -5466,7 +5464,7 @@ function buildDerivedList() {
   }
 }
 
-function tableRows(doc) {
+export function tableRows(doc) {
   const out = [];
   if (!doc) return out;
   const labels = new Map(doc.nodes.map((n) => [n.id, n.label]));
@@ -5523,7 +5521,7 @@ function tableRows(doc) {
  * runs beside shapeFor and layOut, before a word is written, and this only
  * ever swaps a finished list in.
  */
-function buildTable(rows) {
+export function buildTable(rows) {
   const body = el("flow-table").querySelector("tbody");
   if (!body) return;
   body.replaceChildren(...rows);
@@ -5542,7 +5540,7 @@ function buildTable(rows) {
  * chart not to draw.
  * @returns {boolean}
  */
-function prefersDark() {
+export function prefersDark() {
   const stamped = document.documentElement.dataset.theme;
   if (stamped === "dark") return true;
   if (stamped === "light") return false;
@@ -5564,7 +5562,7 @@ function prefersDark() {
  * prefersDark() now returns true, clicking the control labelled "Dark mode"
  * makes the page LIGHT.
  */
-function syncTheme() {
+export function syncTheme() {
   const button = maybeEl("theme-toggle");
   if (!button) return;
   const dark = prefersDark();
@@ -5572,7 +5570,7 @@ function syncTheme() {
   button.textContent = dark ? "Light mode" : "Dark mode";
 }
 
-function wireTheme() {
+export function wireTheme() {
   const button = /** @type {HTMLButtonElement} */ (el("theme-toggle"));
   const sync = syncTheme;
   button.addEventListener("click", () => {
@@ -5596,7 +5594,7 @@ function wireTheme() {
  * the narrow chart, which is a chart, rather than declining to draw one.
  * @returns {number}
  */
-function viewportColumns() {
+export function viewportColumns() {
   if (typeof window.matchMedia !== "function") return NARROW_COLUMNS;
   let most = NARROW_COLUMNS;
   for (const q of COLUMN_QUERIES) {
@@ -5618,7 +5616,7 @@ function viewportColumns() {
  * is why this is wrapped; wireTheme's setItem is wrapped for the same reason.
  * @returns {number | null}
  */
-function savedColumns() {
+export function savedColumns() {
   try {
     const raw = localStorage.getItem("fisc-columns");
     if (raw === null) return null;
@@ -5639,7 +5637,7 @@ function savedColumns() {
  * property, so it is the same thing the template ships and the same thing
  * wireYears removes.
  */
-function syncColumns() {
+export function syncColumns() {
   const count = maybeEl("column-count");
   if (count) count.textContent = drawnColumns() + " columns";
   const bound = (/** @type {string} */ id, /** @type {boolean} */ atBound) => {
@@ -5677,7 +5675,7 @@ function syncColumns() {
  *
  * @param {boolean} redraw false during boot, where there is no document yet
  */
-function applyColumns(redraw) {
+export function applyColumns(redraw) {
   const before = drawnColumns();
   const moved = setColumnBudget(columnOverride === null ? viewportColumns() : columnOverride);
   syncColumns();
@@ -5697,7 +5695,7 @@ function applyColumns(redraw) {
  *
  * @param {number} delta
  */
-function stepColumns(delta) {
+export function stepColumns(delta) {
   const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
   if (want === columnBudget) return;
   // BACK TO THE VIEWPORT'S OWN ANSWER IS A RELEASE, NOT A CHOICE. It is the
@@ -5727,7 +5725,7 @@ function stepColumns(delta) {
  * and enabling them is this function's enhancement; syncColumns immediately
  * re-disables whichever one is at its bound.
  */
-function wireColumns() {
+export function wireColumns() {
   // THE CAP THE STYLESHEET APPLIES IS HANDED TO IT HERE, on :root as syncTheme
   // hands it the theme, because custom properties inherit and .chart-wrap
   // carries no id to reach. style.css's --chart-room takes the smaller of this
@@ -5756,7 +5754,7 @@ function wireColumns() {
  * ------------------------------------------------------------------ */
 
 /** Returns the provenance panel to its unpinned state. */
-function resetDetail() {
+export function resetDetail() {
   const panel = el("detail");
   panel.replaceChildren();
   panel.append(h("p", "subtle", "Select a flow or a node to pin its provenance here."));
@@ -5774,7 +5772,7 @@ function resetDetail() {
  *
  * @param {string} message
  */
-function fail(message) {
+export function fail(message) {
   const panel = el("detail");
   panel.replaceChildren();
   panel.append(h("p", "", message));
@@ -5800,7 +5798,7 @@ function fail(message) {
  * that did draw is the page asserting something untrue about what the reader is
  * looking at.
  */
-function clearRefusal() {
+export function clearRefusal() {
   const content = document.querySelector("main");
   if (!content) return;
   const existing = content.querySelector(".refusal");
@@ -5825,7 +5823,7 @@ function clearRefusal() {
  * @param {string} key the schedule to read -- a step's `projection`
  * @returns {FiscProjection | null} null when the column carries no such schedule
  */
-function scheduleOf(column, key) {
+export function scheduleOf(column, key) {
   const sched = column && column.schedules ? column.schedules[key] : null;
   if (!sched) return null;
   const table = Array.isArray(column.nodes) ? column.nodes : [];
@@ -5891,7 +5889,7 @@ function scheduleOf(column, key) {
  * @param {any} doc
  * @param {string} what
  */
-function isDocument(doc, what) {
+export function isDocument(doc, what) {
   if (doc && typeof doc === "object") return true;
   // FIRST OF THE TWO GATES AND NOT SECOND, because the other dereferences the
   // body to read its generated_by and a 200 whose body is `null` is a real
@@ -5934,7 +5932,7 @@ function isDocument(doc, what) {
  * @param {() => boolean} superseded
  * @returns {Promise<FiscProjection | null>}
  */
-async function loadColumn(path, superseded) {
+export async function loadColumn(path, superseded) {
   let doc;
   try {
     const response = await fetch(path);
@@ -6010,7 +6008,7 @@ async function loadColumn(path, superseded) {
  * @param {string} key
  * @returns {FiscProjection | null}
  */
-function selectSchedule(col, key) {
+export function selectSchedule(col, key) {
   const doc = scheduleOf(col, key);
   if (!doc) {
     fail("That could not be opened: the year on screen carries no schedule " +
@@ -6037,7 +6035,7 @@ function selectSchedule(col, key) {
  * @param {string} path
  * @returns {Promise<Map<string, FiscRung> | null>}
  */
-async function loadRungs(path) {
+export async function loadRungs(path) {
   let doc;
   try {
     const response = await fetch(path);
@@ -6092,9 +6090,9 @@ async function loadRungs(path) {
  * not be shown and the reader has been told. Reporting `false` for both is what
  * let a superseded opening fetch read as a page that had given up (fisc-8cg).
  */
-const DREW = "drew";
-const SUPERSEDED = "superseded";
-const FAILED = "failed";
+export const DREW = "drew";
+export const SUPERSEDED = "superseded";
+export const FAILED = "failed";
 
 /**
  * Fetches and draws one published year.
@@ -6107,9 +6105,9 @@ const FAILED = "failed";
  * @param {FiscYear} year
  * @returns {Promise<string>} DREW, SUPERSEDED or FAILED
  */
-let switching = 0;
+export let switching = 0;
 
-async function showYear(year) {
+export async function showYear(year) {
   // A switch token, because two switches can be in flight at once: a reader who
   // clicks twice gets two fetches, and without this the SLOWER one wins and the
   // page draws a year the control does not show. Compared after every await,
@@ -6210,7 +6208,7 @@ async function showYear(year) {
  * to the template's own sentence.
  * @param {FiscYear} year
  */
-function paintYearWords(year) {
+export function paintYearWords(year) {
   const tile = (f) => {
     const el = h("div", "tile" + (f.kind ? " " + f.kind : ""));
     el.appendChild(h("div", "label", f.label));
@@ -6343,7 +6341,7 @@ function paintYearWords(year) {
  * @param {FiscYear[]} years
  * @returns {FiscYear} always one of `years`; the newest when nothing is checked
  */
-function checkedYear(years) {
+export function checkedYear(years) {
   const group = maybeEl("year-toggle");
   if (group) {
     for (const input of group.children) {
@@ -6369,7 +6367,7 @@ function checkedYear(years) {
  * that matters -- see checkedYear.
  * @param {FiscYear[]} years
  */
-function wireYears(years) {
+export function wireYears(years) {
   const group = maybeEl("year-toggle");
   if (!group || years.length < 2) return;
   // The template ships it disabled, because without this file the control
@@ -6388,7 +6386,7 @@ function wireYears(years) {
   });
 }
 
-async function main() {
+export async function main() {
   wireTheme();
   wireColumns();
   // THE ONE VERSION GATE THAT SURVIVED, and it is about a different pair from
@@ -6506,4 +6504,15 @@ async function main() {
   await showYear(checkedYear(years));
 }
 
-main().catch((e) => fail("The chart failed to draw: " + String(e)));
+/**
+ * Boots the page: [main], with its last-resort catch turned into a refusal
+ * the reader can read.
+ *
+ * THE TEMPLATE CALLS THIS AND NOTHING RUNS AT IMPORT. A test imports this
+ * module to reach its functions and boots the page only when the test is
+ * about the page, so the two are separate exports rather than one file-scope
+ * call.
+ */
+export function boot() {
+  return main().catch((e) => fail("The chart failed to draw: " + String(e)));
+}
