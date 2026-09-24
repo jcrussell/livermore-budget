@@ -909,8 +909,8 @@ func views(built result) []export.View {
 					"right, as the citywide chart draws them. The category itself is the mark " +
 					"in the middle, and the two sides of it are the same figure read from two " +
 					"schedules. A line the schedule prints as a reduction is drawn in red at " +
-					"its printed size and named as one, so the category's own mark is the sum " +
-					"of every ribbon into it before those reductions.",
+					"its printed size and named as one, and the category's own mark is the " +
+					"figure net of them \u2014 the same one the citywide chart labels it with.",
 			},
 		}
 	}

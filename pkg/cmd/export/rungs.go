@@ -69,6 +69,27 @@ type rung struct {
 	Step  string      `json:"step"`
 	Draws []drawnTier `json:"draws"`
 	Marks []drawnMark `json:"marks,omitempty"`
+	// Amounts is the figure a mark prints, for the nodes on this rung whose
+	// drawn ribbons do not add up to it.
+	//
+	// EVERY OTHER MARK'S FIGURE IS THE SUM OF ITS RIBBONS and needs no entry:
+	// d3-sankey sizes a node at the larger of what enters and what leaves, and
+	// where every ribbon is positive that is the figure the document publishes.
+	// A node a schedule prints a REDUCTION under is the exception -- the
+	// reduction is drawn forward at its magnitude, because a ribbon cannot
+	// carry a minus sign, so the arriving ribbons come to the figure plus twice
+	// the reductions and the mark would print a number no page does.
+	//
+	// SO THE CLIENT'S RULE IS TOTAL AND THIS MAP'S IS NOT: draw a node at the
+	// amount named here if one is named, and let the layout size it otherwise.
+	// Which nodes need one is a reading of the documents and stays Go's
+	// (AGENTS.md, "Go vets, JavaScript renders").
+	//
+	// THE FIGURE IS THE SIGNED SUM AND NOT A SECOND DERIVATION. It is what the
+	// document's own arithmetic comes to, which is why rung-amounts-are-the-
+	// spine's-cell can hold it against the node the overview labels one click
+	// earlier rather than against a rule restated here.
+	Amounts map[string]int64 `json:"amounts,omitempty"`
 }
 
 // drawnMark is one node the client draws on a rung that no page prints: the
@@ -143,6 +164,35 @@ const (
 	roleFlank   = "flank"
 	roleOutward = "outward"
 )
+
+// contraSum answers the figure a node's mark should print, and whether it
+// needs naming at all: the signed sum of the ribbons the document draws into
+// it, reported only where at least one of them is a reduction.
+//
+// ONLY WHERE ONE IS NEGATIVE, because everywhere else the sum IS what the
+// layout arrives at and an entry would be Go restating the drawing. That is
+// what keeps this map small enough for a reader to check by eye, and what
+// makes a new entry in a golden diff worth reading.
+//
+// THE ARRIVING SIDE AND NOT THE LEAVING ONE, and the two agree: a category's
+// window draws its printed lines in and the fund groups its money reaches out,
+// and those are the same figure read from two schedules. The arriving side is
+// the one the reductions are on, so it is the side whose sum would otherwise
+// be misdrawn.
+func contraSum(g export.Graph, node string) (int64, bool) {
+	var sum int64
+	contra := false
+	for _, l := range g.Links {
+		if l.Target != node {
+			continue
+		}
+		sum += l.ValueCents
+		if l.ValueCents < 0 {
+			contra = true
+		}
+	}
+	return sum, contra
+}
 
 // rungsOf walks the spine's declared steps over the built documents, for
 // every published year, and answers each rung it reaches.
@@ -428,12 +478,19 @@ func (rungWalker) answer(g, screen, from export.Graph, s export.DrillStep, opene
 	// a column holds and what the next step is offered cannot be two readings
 	// of one document. The kept half went in first, whole, so that its record
 	// of the centre is the one carried, as windowFor's is.
+	var amounts map[string]int64
 	draws := make([]drawnTier, 0, len(s.Tiers))
 	for _, t := range s.Tiers {
 		switch {
 		case centre && t == s.From:
 			own, lent := partition([]string{opened}, onScreen)
 			draws = append(draws, drawnTier{Tier: t, Role: roleCentre, IDs: own, Carried: lent})
+			if cents, ok := contraSum(reach.Drawn, opened); ok {
+				if amounts == nil {
+					amounts = map[string]int64{}
+				}
+				amounts[opened] = cents
+			}
 		case slices.Contains(s.Keep, t):
 			// A MARK OF THE RUNG ABOVE AT A KEPT TIER IS REFUSED: the client
 			// draws it and counts it under neither set, and this rung's Marks
@@ -509,7 +566,7 @@ func (rungWalker) answer(g, screen, from export.Graph, s export.DrillStep, opene
 		marks = append(marks, drawnMark(c.Mark))
 	}
 	slices.SortFunc(marks, func(a, b drawnMark) int { return strings.Compare(a.ID, b.ID) })
-	return rung{Step: s.Key, Draws: draws, Marks: marks}, next.Graph(), nil
+	return rung{Step: s.Key, Draws: draws, Marks: marks, Amounts: amounts}, next.Graph(), nil
 }
 
 // carry is drawn with one mark applied: the ribbons the mark re-points

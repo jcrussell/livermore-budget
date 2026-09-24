@@ -3449,10 +3449,36 @@ async function walkCategory(col) {
   const keptTip = tipOn(keptGeneral);
   const erafTip = tipOn(eraf);
   if (eraf) app.pin(eraf);
-  const erafPanel = eraf ? text(app.dom.byId.get("detail")) : "";
+  const chart = app.dom.byId.get("chart");
+  const detailEl = app.dom.byId.get("detail");
+  const erafPanel = eraf ? text(detailEl) : "";
   const erafRow = body.children.find((tr) => tr.className === "contra" &&
     tr.children[0].textContent === "ERAF");
   const erafCells = erafRow ? erafRow.children.map((td) => td.textContent) : [];
+
+  // EVERY SURFACE THE GROSS COULD REACH, named one at a time rather than swept
+  // with one indexOf over the whole DOM. A sweep says "somewhere"; the reader
+  // who reported this met it in a tooltip, and a fix that moved it from the
+  // rect to the panel would be a different defect wearing a green check.
+  //
+  // MISSING IS NOT CLEAN. An element the stub does not hold reads as "" here
+  // and would pass -- so the surfaces are counted, and the arm requires all
+  // six to have been looked at.
+  const grossText = fmtDollars(want.gross);
+  const marks = chart ? Array.from(chart.querySelectorAll("g.node") || []) : [];
+  const centreMark = marks.find((/** @type {any} */ g) => text(g).includes("Property Taxes"));
+  const surfaces = [
+    ["the mark's tspans", centreMark && text(centreMark)],
+    ["its aria-label", centreMark && String(centreMark.getAttribute("aria-label") || "")],
+    ["the tooltip", centreTip],
+    ["the detail panel", detailEl && text(detailEl)],
+    ["the flow table", body && text(body)],
+    ["nodeDescription", centre && app.nodeDescription(centre)],
+  ];
+  const grossNowhere = surfaces
+    .filter(([, where]) => typeof where === "string" && where.includes(grossText))
+    .map(([name]) => name);
+  const grossUnread = surfaces.filter(([, where]) => typeof where !== "string").map(([name]) => name);
   const erafLine = laid1.nodes.find((n) => n.id === "revenue-line/taxes/property/eraf");
 
   // ESCAPE CLOSES IT, INNERMOST FIRST: the pin the panel check left is what
@@ -3520,12 +3546,19 @@ async function walkCategory(col) {
       `depth ${back0.depth} with legend ${back0.legend}`,
   });
   out.push({
-    name: `${col.label} category: the two contra rows run into the centre, whose mark is gross of them and says what it nets to`,
+    name: `${col.label} category: the two contra rows run into the centre, whose mark is the figure the city publishes and not the sum of what arrives`,
     ok: contraOK && drawnSum === spineSum && leavingSum === spineSum && Boolean(centre) && Boolean(eraf) &&
         centreGross === want.gross && centreReduced === want.reduced && centreNet === want.net &&
-        centre.value === centreGross && centreTip.includes(fmtDollars(centreGross)) &&
-        centreTip.includes(fmtDollars(centreReduced)) && centreTip.includes(fmtDollars(centreNet)) &&
+        // THE MARK IS THE NET Go NAMED, not d3's sum of what arrives. Those
+        // differ by twice the reductions here, which is the whole defect.
+        centre.value === centreNet && centre.value === spineSum &&
+        centreTip.includes(fmtDollars(centreNet)) && centreTip.includes(fmtDollars(centreReduced)) &&
         centreTip.includes("◇ our reading") && quotesFigures(app, col, centreGross, centreReduced, centreNet) &&
+        // AND THE GROSS REACHES NOTHING A READER CAN SEE. Asserting the mark
+        // alone would pass a page that fixed the rect and left the figure in
+        // the tooltip, the panel, the table or the screen-reader label -- and
+        // that reading is the one this defect was reported from.
+        grossNowhere.length === 0 && grossUnread.length === 0 &&
         Boolean(keptGeneral) && !keptTip.includes("printed as reductions") &&
         erafPrinted > 0 && erafTip.includes("−" + fmtDollars(erafPrinted)) &&
         erafTip.includes("reduction") && erafTip.includes("printed as a reduction of Property Taxes") &&
@@ -3536,10 +3569,11 @@ async function walkCategory(col) {
     detail: `${contra.length} contra ribbon(s): ${contra.map((l) => l.source.split("/").pop() + " " +
         l.value_cents + " into " + l.target + " (" + l.contra + ")").join(", ")}; signed sum into the centre ` +
       `${drawnSum} and out of it ${leavingSum}, the spine's cell ${spineSum}; the centre is sized at ` +
-      `${centre ? centre.value : "nothing"} (want ${want.gross}) and app.js ` +
+      `${centre ? centre.value : "nothing"} (want the published ${want.net}, where its ribbons come to ${want.gross}) and app.js ` +
       `${quotesFigures(app, col, centreGross, centreReduced, centreNet) ? "quotes" : "MISQUOTES"} that; ` +
       `its tooltip ${centreTip.includes(fmtDollars(centreNet)) ?
-        "names" : "DOES NOT name"} ${fmtDollars(centreNet)} net of ${fmtDollars(centreReduced)}, and the kept ` +
+        "names" : "DOES NOT name"} ${fmtDollars(centreNet)} and ${fmtDollars(centreReduced)} of reductions; ` +
+      `${grossNowhere.length ? "THE GROSS " + fmtDollars(want.gross) + " REACHES " + grossNowhere.join(", ") : "the gross " + fmtDollars(want.gross) + " reaches none of the " + surfaces.length + " surfaces read"}` + `${grossUnread.length ? ", and " + grossUnread.join(", ") + " COULD NOT BE READ" : ""}; the kept ` +
       `General Fund's ${keptTip.includes("printed as reductions") ? "WRONGLY carries" : "carries no"} ` +
       `reductions note; ERAF's tooltip ` +
       `${erafTip.includes("−") ? "carries the sign" : "LACKS the sign"} and ` +
@@ -3760,9 +3794,10 @@ function quotesFigures(app, col, gross, reduced, net) {
   if (col.stem !== "sankey") return !app.source.includes("Measured on " + year + ":");
   return [
     "Measured on " + year + ":",
-    `sized at ${fmtDollars(gross)}`,
+    `arriving at Property Taxes come to ${fmtDollars(gross)}`,
     `${fmtDollars(reduced)} of reductions among ${fmtDollars(gross - reduced)}`,
-    `p127 prints ${fmtDollars(net)}`,
+    `one click earlier is ${fmtDollars(net)}`,
+    `No page prints ${fmtDollars(gross)}`,
   ].every((q) => app.source.includes(q));
 }
 

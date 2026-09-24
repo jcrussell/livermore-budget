@@ -100,6 +100,14 @@
                     }
                   }
                 },
+                "amounts": {
+                  "description": "The figure a mark prints, for the nodes on this rung whose drawn ribbons do not add up to it. Every other mark is the sum of its ribbons and has no entry; a node a schedule prints a reduction under is the exception, because the reduction is drawn forward at its magnitude and the arriving ribbons come to the figure plus twice the reductions. The client draws a node at the amount named here if one is named and lets the layout size it otherwise.",
+                  "type": "object",
+                  "minProperties": 1,
+                  "additionalProperties": {
+                    "type": "integer"
+                  }
+                },
                 "marks": {
                   "description": "The marks the client draws on this rung that no page prints: the gap between what the chart above sends into the opened node and what the drawn document breaks it into, and the residual standing beside the opened node's parts.",
                   "type": "array",

@@ -1241,3 +1241,96 @@ func TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins(t *testing.T) {
 		t.Fatal("no exception pins a departmentwide cell on any published column, so no gap was held to anything")
 	}
 }
+
+// TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith is what makes
+// rung.Amounts evidence rather than a second spelling of the drawing.
+//
+// THE WHOLE POINT OF THE FIELD IS THAT THE RIBBONS DISAGREE WITH IT. A
+// category a schedule prints a reduction under has its reduction drawn forward
+// at its magnitude, so the ribbons arriving at the mark come to the figure plus
+// twice the reductions -- 10,343,009,200 against a published 6,945,941,400 on
+// FY2025-26. An amount re-derived from those same ribbons by the test would
+// agree with the walk by construction and witness nothing.
+//
+// SO IT IS COMPARED AGAINST THE OTHER DOCUMENT. The spine publishes that node's
+// own cell one click earlier, from pp.66-67, and the drill-down reads
+// pp.127-140: two schedules, independently mapped, and the amount is right only
+// if it is the figure the reader was just shown. That is the comparison, and it
+// is the same one the window itself makes -- the two sides of a category mark
+// are one figure read from two schedules.
+func TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	built, err := buildProjections(root)
+	if err != nil {
+		t.Fatalf("buildProjections: %v", err)
+	}
+
+	// The spine's own cell for a node: what the overview labels it with, which
+	// is everything leaving it at the citywide grain.
+	spineCell := func(t *testing.T, stem, node string) int64 {
+		t.Helper()
+		raw, ok := built[stem]
+		if !ok {
+			t.Fatalf("buildProjections did not build %q", stem)
+		}
+		g, decodeErr := export.DecodeGraph(raw)
+		if decodeErr != nil {
+			t.Fatalf("decode %s: %v", stem, decodeErr)
+		}
+		var sum int64
+		seen := false
+		for _, l := range g.Links {
+			if l.Source == node {
+				sum += l.ValueCents
+				seen = true
+			}
+		}
+		if !seen {
+			t.Fatalf("the %s spine draws nothing out of %q", stem, node)
+		}
+		return sum
+	}
+
+	raw, err := os.ReadFile(filepath.Join(root, rungsPath))
+	if err != nil {
+		t.Fatalf("read %s: %v", rungsPath, err)
+	}
+	var art struct {
+		Columns []struct {
+			Stem  string `json:"stem"`
+			Rungs []struct {
+				Path    []string         `json:"path"`
+				Amounts map[string]int64 `json:"amounts"`
+			} `json:"rungs"`
+		} `json:"columns"`
+	}
+	if err := json.Unmarshal(raw, &art); err != nil {
+		t.Fatalf("decode %s: %v", rungsPath, err)
+	}
+
+	named := 0
+	for _, col := range art.Columns {
+		for _, r := range col.Rungs {
+			for node, cents := range r.Amounts {
+				named++
+				if want := spineCell(t, col.Stem, node); cents != want {
+					t.Errorf("%s rung %v names %s at %d; the spine publishes that node's own "+
+						"cell at %d. The two are read from different schedules and the "+
+						"window exists to show they agree",
+						col.Stem, r.Path, node, cents, want)
+				}
+			}
+		}
+	}
+	// THE VACUITY GUARD, in this file's own idiom: an artifact naming no amount
+	// would pass every line above. Budget Book p127 prints ERAF and the RPTTF
+	// reduction under Property Taxes, and both published spine years open into
+	// that category, so the committed corpus supplies exactly two.
+	if named != 2 {
+		t.Errorf("%d amount(s) named across the artifact, want 2 -- Property Taxes on each "+
+			"published year. A walk naming none would report nothing and pass", named)
+	}
+}

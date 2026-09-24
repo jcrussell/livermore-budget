@@ -2808,8 +2808,9 @@ function shapeFor(doc) {
   const marks = answer.marks || [];
   const residual = marks.find((m) => m.role === "residual");
   const gap = marks.find((m) => m.role === "gap");
-  return markContra(
-    markGap(carryResidual(drawn, docAt(drilled.length - 1), rung, residual), rung, gap));
+  return markAmounts(markContra(
+    markGap(carryResidual(drawn, docAt(drilled.length - 1), rung, residual), rung, gap)),
+    answer.amounts);
 }
 
 /**
@@ -3066,6 +3067,59 @@ function windowFor(onScreen, stepDoc, rung, answer) {
 }
 
 /**
+ * Draws a node at the figure Go named for it, where Go named one.
+ *
+ * WHY A MARK'S FIGURE IS NOT THE LAYOUT'S TO DECIDE. d3-sankey sizes a node at
+ * the larger of what enters and what leaves it, which is the published figure
+ * wherever every ribbon is positive -- and is not, on a category a schedule
+ * prints a REDUCTION under. markContra draws those forward at their magnitude,
+ * because a ribbon cannot carry a minus sign, so the arriving ribbons come to
+ * the figure plus twice the reductions.
+ *
+ * Measured on FY2025-26: the ribbons
+ * arriving at Property Taxes come to $103,430,092,
+ * which is $16,985,339 of reductions among $86,444,753 of additions,
+ * and the figure the overview labels that node
+ * one click earlier is $69,459,414.
+ * No page prints $103,430,092.
+ *
+ * SETTING IT AT THE VALUE AND NOT AT THE SURFACES is why the label tspan, the
+ * tooltip, the detail panel, nodeDescription, both "printed by the city" chips
+ * and columnShare need no rule of their own: each reads the mark's figure, and
+ * there is now one figure to read.
+ *
+ * THE RULE HERE IS TOTAL AND GO'S IS NOT: draw a node at the amount named, and
+ * let the layout size every node it does not name. Which nodes need one is a
+ * reading of the documents (AGENTS.md, "Go vets, JavaScript renders"), and
+ * rung.Amounts is where Go says so.
+ *
+ * A NON-POSITIVE AMOUNT IS REFUSED RATHER THAN DRAWN, and it is not a tidiness
+ * guard: d3-sankey's vertical scale for a column is a min over that column's
+ * sums, so one node fixed at zero or below rescales every mark beside it and
+ * the whole chart misstates itself in silence. Unreachable on the committed
+ * columns -- both amounts are the spine's own positive cell -- and refused
+ * rather than left to the day a schedule prints a category net negative.
+ *
+ * @param {FiscProjection} drawn
+ * @param {Record<string, number> | undefined} amounts
+ * @returns {FiscProjection} drawn itself when the rung names none
+ */
+function markAmounts(drawn, amounts) {
+  if (!amounts) return drawn;
+  for (const [id, cents] of Object.entries(amounts)) {
+    if (!(cents > 0)) {
+      throw new Error("cannot draw " + drawn.projection + ": the answer draws " + id +
+        " at " + cents + ", and a node's figure sets the scale for its whole column");
+    }
+  }
+  return Object.assign({}, drawn, {
+    nodes: drawn.nodes.map((n) => (amounts[n.id] === undefined
+      ? n
+      : Object.assign({}, n, { fixedValue: amounts[n.id] }))),
+  });
+}
+
+/**
  * Draws every ribbon the schedule prints as a reduction forward, at its
  * magnitude, carrying the sentence the document put on it.
  *
@@ -3159,18 +3213,24 @@ function markCents(d) {
 }
 
 /**
- * For a node with contra ribbons among others, what its figure is gross of and
- * what it comes to net, or "" for every other node.
+ * What a mark's figure is net of, for a node with contra ribbons among others,
+ * and "" for every other node.
  *
- * IT IS ARITHMETIC AND SAYS SO, with columnShare's diamond and word: the
- * mark's own figure less TWICE what the reductions contributed to it, since
- * each is drawn at its magnitude and so was added where the schedule
- * subtracts it. Measured on FY2025-26: the Property Taxes category, the centre
- * of its own window, is sized at $103,430,092 — that is
- * $16,985,339 of reductions among $86,444,753 of additions, and
- * p127 prints $69,459,414, which nothing on the mark would say. That net is
- * what the two ribbons LEAVING the centre come to, so the note is what makes
- * the two sides of one mark agree.
+ * IT IS A SUM OVER PUBLISHED SUMMANDS AND NOT A DIFFERENCE, which is what
+ * changed when the figure became the document's. The mark used to print the
+ * gross of its reductions and this sentence computed the net beside it --
+ * arithmetic the client had no business doing, on a figure no page printed.
+ * The mark now prints the net Go named, so there is no difference left to
+ * compute and what remains is the total the reader cannot otherwise see: the
+ * reductions are drawn forward at their magnitude, so nothing on the chart
+ * says how much of the arriving ribbon is subtraction.
+ *
+ * THE DIAMOND STAYS, and it travels with this sentence rather than sitting on
+ * the mark. columnShare is the pattern: what is OURS is labelled where it is
+ * said. The figure beside it is the city's and nodeFlags gives it no diamond,
+ * deliberately -- every node figure on this chart is a sum of its ribbons, so
+ * a diamond owed here would be owed on every mark.
+ *
  * @param {LaidNode} d
  * @returns {string}
  */
@@ -3179,9 +3239,9 @@ function contraNote(d) {
   const leaving = d.sourceLinks.reduce((sum, l) => sum + l.value, 0);
   const side = arriving >= leaving ? d.targetLinks : d.sourceLinks;
   const reduced = side.filter((l) => l.contra).reduce((sum, l) => sum + l.value_cents, 0);
-  if (!reduced || reduced === d.value) return "";
-  return "\u25c7 our reading: " + fmt(reduced) + " of this is printed as reductions, so " +
-    fmt(d.value - 2 * reduced) + " net of them";
+  if (!reduced) return "";
+  return "\u25c7 our reading: " + fmt(reduced) + " of this category is printed as reductions, " +
+    "drawn here at their size";
 }
 
 /**

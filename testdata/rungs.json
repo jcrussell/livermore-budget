@@ -3272,7 +3272,10 @@
                 "fund-group/special-revenue"
               ]
             }
-          ]
+          ],
+          "amounts": {
+            "revenue/taxes/property": 6945941400
+          }
         },
         {
           "path": [
@@ -6596,7 +6599,10 @@
                 "fund-group/special-revenue"
               ]
             }
-          ]
+          ],
+          "amounts": {
+            "revenue/taxes/property": 7289184400
+          }
         },
         {
           "path": [
