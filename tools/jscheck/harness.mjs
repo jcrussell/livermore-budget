@@ -747,6 +747,10 @@ const NAMES = [
   // those hang. layout.test.mjs asks it directly, because a band re-derived
   // there would be the checker's arithmetic rather than the page's.
   "contraBand", "markAmounts",
+  // homeOf decides which derived node an inferred flow is listed under, which
+  // is what stops one flow being listed twice; the arm asks it rather than
+  // re-deriving the rule.
+  "homeOf",
   // THE TRAIL, NOT ONLY ONE RUNG'S WORDS. labelOfRung answers for a rung alone
   // and cannot see a sibling it reads the same as, so the qualifying rule is
   // its own function and is reached here rather than re-spelled.

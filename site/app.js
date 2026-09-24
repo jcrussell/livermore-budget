@@ -5316,6 +5316,31 @@ function buildLegend() {
   }
 }
 
+/**
+ * Which derived node an inferred flow is listed under, or "" for one whose
+ * endpoints are both printed.
+ *
+ * ONE ENTRY PER FLOW, WHICH IS THE DEFECT THIS EXISTS TO FIX. The list was
+ * built per node from every derived link touching it, so a flow with a derived
+ * node at BOTH ends was listed once under each and a reader met the same
+ * $1,034,154 twice in one list, as though the chart inferred two of them.
+ *
+ * THE MARK IT ARRIVES AT WINS, and the tie-break is not arbitrary: an inferred
+ * flow is evidence about the mark that RECEIVES it -- the residual carrying
+ * what a schedule does not break down -- and listing it under the endpoint it
+ * left says the least about why it exists.
+ *
+ * @param {FiscLink} l
+ * @returns {string}
+ */
+function homeOf(l) {
+  if (!projection) return "";
+  const derived = new Set(projection.nodes.filter((n) => n.derived).map((n) => n.id));
+  if (derived.has(l.target)) return l.target;
+  if (derived.has(l.source)) return l.source;
+  return "";
+}
+
 function buildDerivedList() {
   if (!projection) return;
   const list = el("derived-list");
@@ -5329,11 +5354,17 @@ function buildDerivedList() {
     li.append(h("div", "what", "◇ " + n.label));
     if (n.rationale) li.append(h("div", "why", n.rationale));
     if (n.source_note) li.append(h("div", "subtle", n.source_note));
-    const flows = links.filter((l) => l.source === n.id || l.target === n.id);
+    const flows = links.filter((l) => homeOf(l) === n.id);
     if (flows.length) {
       const total = flows.reduce((sum, l) => sum + l.value_cents, 0);
+      // "INFERRED", BECAUSE THE LINE ABOVE IT COUNTS A DIFFERENT SET. A
+      // residual's own note says how many ribbons it CARRIES -- printed flows
+      // re-pointed onto it, figures and citations unchanged -- and this counts
+      // the ones that are INFERRED. On the General Fund in FY2025-26 those are
+      // 2 and 1, two lines apart, and an unqualified "1 flow" under a
+      // "2 flows" reads as a correction of it rather than as another set.
       li.append(h("div", "subtle",
-        flows.length + " flow" + (flows.length === 1 ? "" : "s") + " totalling " + fmt(total) + ": " +
+        flows.length + " inferred flow" + (flows.length === 1 ? "" : "s") + " totalling " + fmt(total) + ": " +
         flows.map((l) => (labels.get(l.source) || l.source) + " → " + (labels.get(l.target) || l.target)).join("; ")));
     }
     list.append(li);
@@ -5342,8 +5373,7 @@ function buildDerivedList() {
   // orphans have to be listed too or the page would claim nothing was inferred
   // while drawing an inferred flow. Every derived link touching a derived node
   // is already accounted for above.
-  const named = new Set(nodes.map((n) => n.id));
-  const orphans = links.filter((l) => !named.has(l.source) && !named.has(l.target));
+  const orphans = links.filter((l) => homeOf(l) === "");
   for (const l of orphans) {
     const li = document.createElement("li");
     li.append(h("div", "what", "◇ " +

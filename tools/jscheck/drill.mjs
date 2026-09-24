@@ -2759,6 +2759,36 @@ export async function checks() {
     const spelled = answered
       ? [answered.label, answered.rationale].filter((w) => w && app.source.includes(w))
       : [];
+
+    // WHAT THE INFERRED LIST COUNTS, AND THAT IT COUNTS EACH FLOW ONCE.
+    // Two sentences sit two lines apart in this list and are true of different
+    // sets: the residual's own note counts the ribbons it CARRIES -- printed
+    // flows re-pointed onto it, unchanged -- and the line under it counts the
+    // ones that are INFERRED. On the General Fund in FY2025-26 those are 2 and
+    // 1, and while the second said a bare "1 flow" a reader took it as a
+    // correction of the first (fisc-hrfd).
+    const derivedLinks = app.projection.links.filter((/** @type {any} */ l) => l.derived);
+    // HOW MANY SUCH LINES THERE SHOULD BE IS DERIVED PER COLUMN AND NOT PINNED.
+    // The two budgets differ here: FY2025-26's residual receives an inferred
+    // fund-balance draw and FY2026-27's carries only a printed transfer, so
+    // one line and none is correct, and a constant would have been wrong for
+    // one of them whichever it named. One entry per derived node that homes
+    // at least one inferred flow.
+    const wantFlowLines = new Set(derivedLinks.map((/** @type {any} */ l) => app.homeOf(l))
+      .filter((/** @type {string} */ id) => id !== "")).size;
+    const listedFlows = (listed.match(/\d+ inferred flows? totalling/g) || []).length;
+    const namedOnce = derivedLinks.every((/** @type {any} */ l) => {
+      const name = (/** @type {string} */ id) => {
+        const n = app.projection.nodes.find((/** @type {any} */ x) => x.id === id);
+        return (n && n.label) || id;
+      };
+      const both = name(l.source) + " → " + name(l.target);
+      return listed.split(both).length - 1 === 1;
+    });
+    // AND THE CARRIED COUNT IS STILL THERE AND STILL SAYS "carried", so the
+    // fix is two sentences that each name their set rather than one sentence
+    // deleted to stop them disagreeing.
+    const saysCarried = /\d+ flows? of the chart above/.test(listed);
     out.push({
       name: `${col.label}: the residual is marked as ours, says why in the check's words, and reaches the inferred list, the tooltip and the panel; nothing carried opens`,
       ok: Boolean(r.node) && r.node.derived === true && Boolean(answered) &&
@@ -2768,6 +2798,7 @@ export async function checks() {
           r.node.source_note.includes("Carried, not computed") &&
           citedPages.every((pg) => r.node.source_note.includes(String(pg))) &&
           listed.includes(answered.label) && listed.includes(r.node.rationale) &&
+          listedFlows === wantFlowLines && namedOnce && saysCarried &&
           tip.includes("◇ inferred") && tip.includes(r.node.rationale) &&
           panel.includes("◇ our inference") && panel.includes(r.node.rationale) &&
           panel.includes(r.node.source_note) && opens.length === 0,
@@ -2780,7 +2811,11 @@ export async function checks() {
           (missingReasons.length ? ` (missing ${missingReasons.join(", ")})` : "") +
           `; source note names ${citedPages.every((pg) => r.node.source_note.includes(String(pg))) ? "" : "NOT "}` +
           `every cited page (${citedPages.join(", ")}); inferred list ` +
-          `${answered && listed.includes(answered.label) ? "lists it" : "OMITS it"}; tooltip ` +
+          `${answered && listed.includes(answered.label) ? "lists it" : "OMITS it"} with ` +
+          `${listedFlows} "N inferred flows" line(s) (want ${wantFlowLines}) beside a ` +
+          `${saysCarried ? "carried" : "MISSING carried"} ` +
+          `count, and names each of its ${derivedLinks.length} inferred flow(s) ` +
+          `${namedOnce ? "once" : "MORE THAN ONCE"}; tooltip ` +
           `${tip.includes("◇ inferred") ? "chips it inferred" : "chips it PRINTED"}; panel ` +
           `${panel.includes("◇ our inference") ? "chips it ours" : "chips it PRINTED"}; ` +
           `${opens.length ? opens.join(", ") + " WRONGLY open" : "no carried mark opens"}`
