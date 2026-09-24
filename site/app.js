@@ -62,10 +62,13 @@
  * @property {FiscSource[]} locators
  * @property {boolean} derived
  * @property {string} [contra]  the words for a link the schedule printed as a
- *   reduction, e.g. "printed as a reduction of Property Taxes". PRESENT ONLY
- *   ON A LINK THE CLIENT FLIPPED: a published link carries a signed
- *   value_cents and no such field; markContra draws the negative ones at
- *   their magnitude and records here what the sign meant.
+ *   reduction, e.g. "printed as a reduction of Property Taxes". THE
+ *   DOCUMENT'S, like partition: the words name the category the schedule
+ *   prints the row under, and the fold blanks a line's parent before the chart
+ *   is drawn, so a page composing them would name a category the reader is not
+ *   looking at. column.schema.json carries it only on a link the document
+ *   prints negative, which is why it is optional here. markContra draws those
+ *   at their magnitude and leaves the sentence to say what the sign meant.
  * @property {boolean} [partition]  the ribbon divides one printed table along
  *   a second axis rather than following money the schedule prints as moving
  *   that way. THE PROJECTION'S, unlike contra: the client cannot tell a
@@ -2771,7 +2774,7 @@ function shapeFor(doc) {
     // page permanently opened into that node; the declaration went with the
     // template that was its only reader, so every chart this page draws
     // undrilled is its whole document at the view's render tiers.
-    return markContra(foldDocument(doc), doc);
+    return markContra(foldDocument(doc));
   }
   const step = rung.step;
   // WHICH NODES EACH COLUMN HOLDS IS READ AND NOT DERIVED, which is this
@@ -2806,7 +2809,7 @@ function shapeFor(doc) {
   const residual = marks.find((m) => m.role === "residual");
   const gap = marks.find((m) => m.role === "gap");
   return markContra(
-    markGap(carryResidual(drawn, docAt(drilled.length - 1), rung, residual), rung, gap), doc);
+    markGap(carryResidual(drawn, docAt(drilled.length - 1), rung, residual), rung, gap));
 }
 
 /**
@@ -3063,57 +3066,54 @@ function windowFor(onScreen, stepDoc, rung, answer) {
 }
 
 /**
- * Draws every link the fold leaves negative as a contra ribbon: forward, at
- * its magnitude, carrying the words for what the schedule printed.
+ * Draws every ribbon the schedule prints as a reduction forward, at its
+ * magnitude, carrying the sentence the document put on it.
  *
- * WHAT A NEGATIVE LINK IS. pp.127-140 print ERAF and the RPTTF reduction as
- * reductions of Property Taxes -- rows in parentheses, netted into the
- * category's total -- and fund-flows publishes each as a line whose links carry
- * its signed figure, into the fund it reduces and back into the category it is
- * printed under. Folded to the category they vanish into the net cell; drawn as
- * that category's own lines they stand on their own, and a sankey has no ribbon
- * of negative width.
+ * A RIBBON IS NEVER REVERSED. A reduction pointed backwards gives its line a
+ * depth one past the mark it reduces, and the vendored d3-sankey sizes its
+ * column count from the deepest node: the view comes out with one column more
+ * than its step declares and the last of them empty, and its layering pass
+ * throws on the hole -- "Cannot read properties of undefined (reading 'sort')",
+ * the same failure layOut's comment records for a misaligned tier set. So the
+ * ribbon runs the way every other ribbon runs, and what makes it a reduction is
+ * said three ways: the class render() gives it, the sign every figure carries,
+ * and the sentence on the mark.
  *
- * NOT A REVERSED LINK, THOUGH THAT WAS THE FIRST DESIGN. A reduction pointed
- * backwards gives its line a depth one past the mark it reduces, and the
- * vendored d3-sankey sizes its column count from the deepest node: the view
- * came out with one column more than its step declares and the last of them
- * empty, and its layering pass throws on the hole -- "Cannot read properties of
- * undefined (reading 'sort')", the same failure layOut's comment records for a
- * misaligned tier set. So the ribbon runs the way every other ribbon runs, at
- * the printed size, and what makes it a reduction is said three ways: the class
- * render() gives it, the sign every figure carries, and the sentence on the mark.
+ * THE WORDS ARE THE DOCUMENT'S AND ARE NOT COMPOSED HERE. contra arrives on the
+ * link (scheduleOf), because the words name the category the SCHEDULE prints
+ * the row under and the fold has already blanked a line's parent by the time
+ * this runs -- a sentence built from what is left would name a category the
+ * reader is not looking at. contra-links-name-their-schedule holds the wire
+ * end.
  *
- * THE CENTRE'S FIGURE IS GROSS OF ITS REDUCTIONS, and contraNote says so on
- * the mark. d3-sankey sizes a node at the larger of what enters and what
- * leaves, and a contra ribbon enters; the Property Taxes category stands at the
- * sum of every ribbon into it, which is p127's total before ERAF and the RPTTF
- * reduction come off, while the two ribbons leaving it are the spine's own
- * cells and come to that total net. The step's description says the same for
- * the chart as a whole.
+ * WHAT IS DECIDED HERE IS ABOUT THE DRAWN CHART AND NOTHING ELSE, which is why
+ * these two arms are the client's. foldDocument merges ribbons by SUMMING them,
+ * so a fold can carry a pair across zero in either direction:
  *
- * THE WORDS NAME THE PARENT IN THE FILE, not in the drawn document: the fold
- * blanks a line's parent, and it is the category p127 prints the reduction
- * under that the reader should hear. A source the file does not carry -- a
- * capped tail whose folded rows net to a reduction, which no committed column
- * produces -- is named for what it is rather than for a category it is not.
+ *   - a merged ribbon that came out negative where no summand was printed as a
+ *     reduction is a reduction of the drawing and not of any schedule, and is
+ *     named for what it is rather than for a category it is not;
+ *   - a merged ribbon that came out positive while a summand WAS printed as a
+ *     reduction must lose the sentence, which is now false of the total drawn.
+ *
+ * Both are latent on the committed columns -- no fold in either published
+ * budget crosses zero -- and are refused rather than left to the day one does.
  *
  * @param {FiscProjection} drawn  shaped and folded
- * @param {FiscProjection} file  the document it was shaped from, unfolded
  * @returns {FiscProjection} drawn itself when nothing in it is negative
  */
-function markContra(drawn, file) {
-  if (!drawn.links.some((l) => l.value_cents < 0)) return drawn;
-  const byID = new Map(file.nodes.map((n) => [n.id, n]));
-  const under = (/** @type {string} */ id) => {
-    const n = byID.get(id);
-    const up = n && n.parent ? byID.get(n.parent) : undefined;
-    return up ? "printed as a reduction of " + up.label : "printed rows netting to a reduction";
-  };
+function markContra(drawn) {
+  if (!drawn.links.some((l) => l.value_cents < 0 || l.contra)) return drawn;
   return Object.assign({}, drawn, {
-    links: drawn.links.map((l) => (l.value_cents < 0
-      ? Object.assign({}, l, { value_cents: -l.value_cents, contra: under(l.source) })
-      : l)),
+    links: drawn.links.map((l) => {
+      if (l.value_cents < 0) {
+        return Object.assign({}, l, {
+          value_cents: -l.value_cents,
+          contra: l.contra || "printed rows netting to a reduction",
+        });
+      }
+      return l.contra ? Object.assign({}, l, { contra: "" }) : l;
+    }),
   });
 }
 
@@ -5623,6 +5623,13 @@ function scheduleOf(column, key) {
       // carry, which is worse than a chart that does not draw.
       fact_ids: l.fact_ids, locators: l.locators,
       derived: Boolean(l.derived), partition: Boolean(l.partition),
+      // DEFAULTED, WHERE fact_ids AND locators ARE NOT, and the asymmetry is
+      // the schema's: column.schema.json carries contra only on a link the
+      // document prints negative, so an absent one is the positive case and
+      // not a missing field. Reading it here is the whole of what makes the
+      // words the document's -- without this line Go's sentence never reaches
+      // the page and every other half of the change is dead.
+      contra: l.contra || "",
     };
   });
   const col = column.column || {};

@@ -3389,9 +3389,16 @@ async function walkCategory(col) {
   // folded into the tail: by magnitude they are the second and sixth largest
   // of the fourteen.
   const contra = app.projection.links.filter((l) => l.contra);
+  // THE WORDS ARE THE SCHEDULE'S AND NOT THE CHART'S, which is what moved when
+  // contra came off the wire. The client used to compose the sentence from the
+  // label of the node it was drawing, and this file renames that node
+  // "Property Taxes category" at :880 -- so the reader was told a row is
+  // printed as a reduction of a phrase no page prints, assembled from the
+  // window's own title. Go reads it off the projection's node, whose label is
+  // the city's word for the category, and this arm now pins that.
   const contraOK = contra.length === 2 &&
     contra.every((l) => l.target === property && l.value_cents > 0 &&
-      l.contra === "printed as a reduction of Property Taxes category") &&
+      l.contra === "printed as a reduction of Property Taxes") &&
     contra.map((l) => l.source).sort().join() ===
       "revenue-line/taxes/property/eraf,revenue-line/taxes/property/rpttf-reduction";
   // THE SIGNED SUM OVER THE DRAWN ROLLUPS IS THE SPINE'S CELL. The spine
@@ -3521,10 +3528,10 @@ async function walkCategory(col) {
         centreTip.includes("◇ our reading") && quotesFigures(app, col, centreGross, centreReduced, centreNet) &&
         Boolean(keptGeneral) && !keptTip.includes("printed as reductions") &&
         erafPrinted > 0 && erafTip.includes("−" + fmtDollars(erafPrinted)) &&
-        erafTip.includes("reduction") && erafTip.includes("printed as a reduction of Property Taxes category") &&
-        erafPanel.includes("printed as a reduction of Property Taxes category") &&
+        erafTip.includes("reduction") && erafTip.includes("printed as a reduction of Property Taxes") &&
+        erafPanel.includes("printed as a reduction of Property Taxes") &&
         erafCells.length > 0 && erafCells[2] === "−" + fmtDollars(erafPrinted) &&
-        erafCells[4] === "printed as a reduction of Property Taxes category" &&
+        erafCells[4] === "printed as a reduction of Property Taxes" &&
         app.linkClass(eraf) === "link contra" && Boolean(erafLine) && erafLine.value === erafPrinted,
     detail: `${contra.length} contra ribbon(s): ${contra.map((l) => l.source.split("/").pop() + " " +
         l.value_cents + " into " + l.target + " (" + l.contra + ")").join(", ")}; signed sum into the centre ` +
@@ -3536,7 +3543,7 @@ async function walkCategory(col) {
       `General Fund's ${keptTip.includes("printed as reductions") ? "WRONGLY carries" : "carries no"} ` +
       `reductions note; ERAF's tooltip ` +
       `${erafTip.includes("−") ? "carries the sign" : "LACKS the sign"} and ` +
-      `${erafTip.includes("printed as a reduction of Property Taxes category") ? "the sentence" : "NOT the sentence"}; ` +
+      `${erafTip.includes("printed as a reduction of Property Taxes") ? "the sentence" : "NOT the sentence"}; ` +
       `its table row reads ${JSON.stringify(erafCells.slice(0, 5))}; class "${eraf ? app.linkClass(eraf) : ""}"`,
   });
 

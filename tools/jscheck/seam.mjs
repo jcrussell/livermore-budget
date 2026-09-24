@@ -52,6 +52,22 @@ function pageSchemaKeys(path) {
   return keys;
 }
 
+/**
+ * The property names schema/column.schema.json states for one link of one
+ * schedule, read the way pageSchemaKeys reads the page's.
+ *
+ * @returns {string[]}
+ */
+function columnLinkSchemaKeys() {
+  const root = JSON.parse(
+    readFileSync(join(repoRoot, "schema", "column.schema.json"), "utf8"));
+  const node = (((((root.properties || {}).schedules || {}).additionalProperties || {})
+    .properties || {}).links || {}).items;
+  const keys = Object.keys((node || {}).properties || {});
+  if (!keys.length) throw new Error("column.schema.json states no property on a link");
+  return keys;
+}
+
 export async function checks() {
   const out = [];
   const doc = goldenGraph();
@@ -154,6 +170,58 @@ export async function checks() {
           `${unstated.length} shipped and not in the schema [${unstated}]; ` +
           `${unshipped.length} in the schema and not shipped [${unshipped}]`
         : `${shipped.length} key(s), agreed three ways: ${shipped.join(", ")}`,
+    });
+  }
+
+  // THE LINK, WHICH THE FOUR TYPEDEFS ABOVE DO NOT COVER -- and that gap is
+  // how a Go field can land with nothing on the far side. Contra was added to
+  // project.Link, to ColumnLink, to the anonymous decode struct and to both
+  // schemas, and until this arm existed the ONE edit that actually puts it in
+  // front of a reader -- scheduleOf copying it onto the drawn link -- was held
+  // by nothing. Every other guard compares Go to Go or the client to itself.
+  //
+  // THE TWO RENAMES ARE THE POINT OF THE MAPPING AND NOT AN EXCEPTION TO IT.
+  // ColumnLink references its ends by index into the column's node table, so
+  // the packager writes from/to where the client's shape carries source/target;
+  // scheduleOf is the code that resolves one into the other. Comparing the
+  // names raw would report two false differences forever and teach a reader to
+  // ignore this arm.
+  {
+    const app = loadApp();
+    const declared = typedefProperties(app.source, "FiscLink").map((p) => p.name);
+    const rename = { from: "source", to: "target" };
+    const asDrawn = (/** @type {string} */ k) => rename[k] || k;
+    const shipped = goJSONKeys("internal/export/column.go", "ColumnLink").map(asDrawn);
+    const stated = columnLinkSchemaKeys().map(asDrawn);
+
+    const missed = shipped.filter((k) => !declared.includes(k)).sort();
+    const invented = declared.filter((k) => !shipped.includes(k)).sort();
+    const unstated = shipped.filter((k) => !stated.includes(k)).sort();
+    const unshipped = stated.filter((k) => !shipped.includes(k)).sort();
+    // WHAT scheduleOf ACTUALLY COPIES, read out of the file rather than
+    // assumed from the typedef. A key can be declared on FiscLink, shipped by
+    // Go and stated in the schema, and still never be read off the served
+    // bytes -- which is precisely the shape contra was in before this landed,
+    // and the shape no comparison of the three declarations can see.
+    const body = app.source.slice(app.source.indexOf("function scheduleOf("));
+    const copied = shipped.filter((k) => new RegExp("\\b" + k + ":").test(
+      body.slice(0, body.indexOf("const col = column.column"))));
+    const dropped = shipped.filter((k) => !copied.includes(k)).sort();
+
+    out.push({
+      name: "app.js's FiscLink, export.ColumnLink and column.schema.json name the same " +
+        "keys, and scheduleOf copies every one",
+      ok: !missed.length && !invented.length && !unstated.length && !unshipped.length &&
+          !dropped.length,
+      detail: (missed.length || invented.length || unstated.length || unshipped.length ||
+          dropped.length)
+        ? `${missed.length} shipped and not declared [${missed}]; ` +
+          `${invented.length} declared and not shipped [${invented}]; ` +
+          `${unstated.length} shipped and not in the schema [${unstated}]; ` +
+          `${unshipped.length} in the schema and not shipped [${unshipped}]; ` +
+          `${dropped.length} agreed three ways and DROPPED BY scheduleOf [${dropped}]`
+        : `${shipped.length} key(s), agreed three ways and every one copied onto the drawn ` +
+          `link: ${shipped.slice().sort().join(", ")}`,
     });
   }
 
