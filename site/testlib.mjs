@@ -331,3 +331,67 @@ export async function everyOffer(app, visit, maxDepth = 8) {
 export function refusals(document) {
   return [...document.querySelectorAll("main .refusal")];
 }
+
+/**
+ * Checks one year's radio and fires the change a browser would: on the input,
+ * bubbling to the #year-toggle fieldset wireYears listens on. Dispatched on
+ * the fieldset itself, e.target is the fieldset, which has no value, and the
+ * handler returns without switching.
+ */
+export function clickYear(document, stem) {
+  const group = document.getElementById("year-toggle");
+  if (!group) throw new Error("the page rendered no year-toggle to click");
+  let picked = null;
+  for (const r of group.querySelectorAll("input[type=radio]")) {
+    r.checked = r.value === stem;
+    if (r.checked) picked = r;
+  }
+  if (!picked) throw new Error("the year control offers no radio for " + stem);
+  picked.dispatchEvent(new globalThis.Event("change", { bubbles: true }));
+}
+
+/**
+ * Fires one event on a drawn element the way a browser would.
+ *
+ * THE TIMESTAMP IS PLANTED, because the activation guard compares a click's
+ * timeStamp against the key that may have synthesised it, and jsdom stamps
+ * every event with the clock.
+ */
+export function fire(element, type, extra = {}) {
+  const { timeStamp, ...init } = extra;
+  const Ctor = type.startsWith("key") ? globalThis.KeyboardEvent : globalThis.MouseEvent;
+  const e = new Ctor(type, { bubbles: true, cancelable: true, ...init });
+  if (timeStamp !== undefined) Object.defineProperty(e, "timeStamp", { value: timeStamp });
+  element.dispatchEvent(e);
+  return e;
+}
+
+/**
+ * Collects what a DOM listener throws. jsdom reports a listener's exception
+ * to window's error event rather than to the dispatcher, so without this a
+ * gesture that throws past its guard is invisible to the test that fired it
+ * and "did not throw" is vacuous.
+ */
+export function listenerErrors(window) {
+  const errors = [];
+  window.addEventListener("error", (ev) => {
+    errors.push(String(ev.error || ev.message));
+    ev.preventDefault();
+  });
+  return errors;
+}
+
+/**
+ * Records every keydown listener the page attaches to the document, so a test
+ * can count the Escape handler the way it counts theme followers. Install
+ * before boot.
+ */
+export function keydownListeners(document) {
+  const attached = [];
+  const original = document.addEventListener.bind(document);
+  document.addEventListener = (type, fn, ...rest) => {
+    if (type === "keydown") attached.push(fn);
+    return original(type, fn, ...rest);
+  };
+  return attached;
+}

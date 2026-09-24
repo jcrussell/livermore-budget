@@ -15,8 +15,7 @@ import { describe, test, before } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  bootedApp, opened, expandAll, everyOffer, settle, refusals,
-  rungsFixture, columnFixture, pageFixture,
+  bootedApp, opened, expandAll, everyOffer, settle, refusals, rungsFixture, columnFixture, pageFixture, fire,
 } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
@@ -162,24 +161,6 @@ async function goTo(app, path) {
   }
 }
 
-/**
- * Fires one event on a drawn element the way a browser would.
- *
- * THE TIMESTAMP IS PLANTED, because the activation guard compares a click's
- * timeStamp against the key that may have synthesised it, and jsdom stamps
- * every event with the clock.
- * @param {Element} element
- * @param {string} type
- * @param {Record<string, any>} [extra]
- */
-function fire(element, type, extra = {}) {
-  const { timeStamp, ...init } = extra;
-  const Ctor = type.startsWith("key") ? KeyboardEvent : MouseEvent;
-  const e = new Ctor(type, { bubbles: true, cancelable: true, ...init });
-  if (timeStamp !== undefined) Object.defineProperty(e, "timeStamp", { value: timeStamp });
-  element.dispatchEvent(e);
-  return 1;
-}
 
 /** The step the pinned page declares under one key. */
 function stepByKey(key) {
@@ -348,7 +329,7 @@ async function drive(year) {
       if (subject) {
         const id = subject.__data__.id;
         const note = (what) => wrong.gestures.push(`${where}: ${id} ${what}`);
-        seen.gestures += fire(subject, "click", { timeStamp: 1000 });
+        seen.gestures++; fire(subject, "click", { timeStamp: 1000 });
         if (app.isolated !== id) note(`does not isolate on a click (isolated is ${JSON.stringify(app.isolated)})`);
         // The dimming is what the isolation does for a reader who can see the
         // page; stated as invariants rather than by recomputing the predicate.
@@ -363,21 +344,21 @@ async function drive(year) {
         }
         if (subject.classList.contains("dim")) note("dims itself while isolated");
 
-        seen.gestures += fire(subject, "click", { timeStamp: 2000 });
+        seen.gestures++; fire(subject, "click", { timeStamp: 2000 });
         if (app.isolated !== "") note(`does not release on a second click (isolated is ${JSON.stringify(app.isolated)})`);
         const stuck = ribbonsIn(chart).filter((p) => p.classList.contains("dim")).length +
           marksIn(chart).filter((m) => m.classList.contains("dim")).length;
         if (stuck > 0) note(`leaves ${stuck} mark(s) and ribbon(s) dimmed after the isolation is released`);
 
-        seen.gestures += fire(subject, "keydown", { key: " ", timeStamp: 3000 });
+        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: 3000 });
         if (app.isolated !== id) note(`does not isolate on Space (isolated is ${JSON.stringify(app.isolated)})`);
-        seen.gestures += fire(subject, "click", { timeStamp: 3000 });
+        seen.gestures++; fire(subject, "click", { timeStamp: 3000 });
         if (app.isolated !== id) note("is un-isolated by the click its own Space synthesised");
-        seen.gestures += fire(subject, "keydown", { key: " ", timeStamp: 9000 });
+        seen.gestures++; fire(subject, "keydown", { key: " ", timeStamp: 9000 });
         if (app.isolated !== "") note(`does not release on a second Space (isolated is ${JSON.stringify(app.isolated)})`);
 
         const before = app.drilled.length;
-        seen.gestures += fire(subject, "keydown", { key: "Enter", timeStamp: 9500, repeat: true });
+        seen.gestures++; fire(subject, "keydown", { key: "Enter", timeStamp: 9500, repeat: true });
         await settle();
         if (app.isolated !== "" || app.drilled.length !== before) {
           note(`acts on a held key (isolated ${JSON.stringify(app.isolated)}, ${app.drilled.length} rung(s))`);
@@ -388,7 +369,7 @@ async function drive(year) {
           // chart, so the element focus was on is gone and restoreFocus has
           // to put it somewhere real.
           subject.focus();
-          seen.gestures += fire(subject, "dblclick", { timeStamp: 10000 });
+          seen.gestures++; fire(subject, "dblclick", { timeStamp: 10000 });
           await settle();
           const landed = document.activeElement;
           seen.focus++;
@@ -405,7 +386,7 @@ async function drive(year) {
           const again = marksIn(chart).find((m) => m.__data__.id === id);
           if (!again) note("is gone from the chart it was just opened from");
           else {
-            seen.gestures += fire(again, "keydown", { key: "Enter", timeStamp: 11000 });
+            seen.gestures++; fire(again, "keydown", { key: "Enter", timeStamp: 11000 });
             await settle();
             if (app.drilled.length !== before + 1) {
               note(`does not open on Enter (${app.drilled.length} rung(s), was ${before})`);
