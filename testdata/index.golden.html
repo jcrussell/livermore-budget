@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>City of Livermore budget flows — FY 2026-27</title>
+<meta name="description" content="Every figure on this page is traced to a page of the City of Livermore's published budget, and what we inferred is marked as inferred.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="style.css">
+<script>
+  
+  
+  try {
+    var t = localStorage.getItem("fisc-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) {   }
+</script>
+</head>
+<body>
+
+<div class="wip-banner" role="status">⚠️ Work in progress — early preview, coverage is incomplete.</div>
+
+<nav class="site-nav" aria-label="Views">
+  <ul>
+    <li><span aria-current="page">Budget flows</span></li>
+    <li><a href="trends.html">Revenue tables</a></li>
+    <li><a href="history.html">Ten-year history</a></li>
+    <li><a href="balances.html">Fund balances</a></li>
+    <li><a href="caveats.html">Caveats</a></li>
+    <li><a href="provenance.html">Sources and data</a></li>
+  </ul>
+</nav>
+
+<header class="page-head">
+  <div>
+    <h1>Where Livermore's money comes from, and where it goes</h1>
+    <p class="lede">
+      
+      The <span id="lede-year">FY 2026-27 adopted</span> budget, all funds, gross — read out of the city's
+      published schedule and traced back to it. Figures the city printed are drawn solid;
+      the two things we inferred are drawn dashed and labelled.
+      <span id="chart-hint"></span>
+    </p>
+  </div>
+  <div class="head-controls">
+    
+    <fieldset class="year-toggle" id="year-toggle" disabled>
+      <legend>Budget year</legend>
+      <input type="radio" name="fisc-year" id="year-sankey" value="sankey"
+             >
+      <label for="year-sankey">FY 2025-26</label>
+      <input type="radio" name="fisc-year" id="year-sankey-2027" value="sankey-2027"
+             checked>
+      <label for="year-sankey-2027">FY 2026-27</label>
+    </fieldset>
+    <div class="column-control" role="group" aria-label="Chart columns">
+      <button type="button" id="column-fewer" aria-label="Fewer columns" disabled>&minus;</button>
+      <span id="column-count" aria-live="polite"></span>
+      <button type="button" id="column-more" aria-label="More columns" disabled>+</button>
+    </div>
+    <button type="button" id="theme-toggle" aria-pressed="false">Dark mode</button>
+  </div>
+</header>
+
+<main>
+<section class="figures" id="hero" aria-label="What the city spends">
+  <div class="tile hero">
+    <div class="label">What the city actually spends</div>
+    <div class="value">$252,854,896</div>
+    <div class="note">All funds, gross, FY 2026-27 adopted budget</div>
+  </div>
+</section>
+
+<h2>The flow</h2>
+
+<div class="card">
+  <div class="controls">
+    <div class="legend" id="legend" aria-label="Fund groups"></div>
+  </div>
+  <div class="legend" aria-label="How to read the marks">
+    <span><span class="key published" aria-hidden="true"></span> printed by the city</span>
+    <span><span class="key derived" aria-hidden="true"></span> ◇ our inference (dashed)</span>
+  </div>
+  <nav class="breadcrumb" id="breadcrumb" aria-label="Chart depth" hidden></nav>
+  <div class="chart-wrap">
+    
+    <svg class="sankey" id="chart" role="group" aria-labelledby="chart-title chart-desc">
+      <title id="chart-title">Sankey diagram of the FY 2026-27 adopted budget</title>
+      <desc id="chart-desc">
+        Revenue categories flow into six fund groups, which flow into object categories,
+        transfers out and fund balance. The same figures are in the flow table below, which
+        opens from the "Every flow, as a table" heading.
+      </desc>
+    </svg>
+    <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
+  </div>
+  <div class="detail" id="detail" aria-live="polite">
+    <p class="subtle">Select a flow or a node to pin its provenance here.</p>
+  </div>
+  <noscript>
+    <p>
+      This page draws its chart in the browser from
+      <a href="fy2027-adopted.json">fy2027-adopted.json</a>. With JavaScript off, that file and the
+      figures on this page are still the whole story: every amount, fact id and source page
+      is in it. The panels below open without a script, but two of them are FILLED by one:
+      "Every flow, as a table" will be empty and "What we inferred" will still say it is
+      loading. The file has both.
+    </p>
+  </noscript>
+</div>
+<p class="lede">
+  Revenue categories on the left, the city's six fund groups in the middle, what the money
+  is spent on at the right. Transfers between funds and movements of accumulated fund
+  balance are drawn as their own endpoints, because they are not money crossing the city's
+  boundary — counting them as spending is exactly the error the headline avoids.
+</p>
+<p class="lede subtle">
+  Hover, tap or tab to a flow for its amount, fact ids and sources.
+  Double click a node that opens to see its parts; a single click on any node, or
+  on a fund swatch, follows only that money. Escape closes an opened node, or puts the rest
+  back.
+</p>
+
+
+<details class="apparatus" id="figures-view">
+  <summary>
+    <h2>The figures behind it</h2>
+    <span class="apparatus-hint">the working, including the column total that counts
+      transfers twice</span>
+  </summary>
+  <section class="figures" id="figures" aria-label="The figures behind the headline">
+    <div class="tile error">
+      <div class="label">Naive column total</div>
+      <div class="value">$325,241,780</div>
+      <div class="note">The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by $72,386,884.</div>
+    </div>
+    <div class="tile">
+      <div class="label">All-funds gross revenue</div>
+      <div class="value">$302,443,043</div>
+      <div class="note">Ties to the printed schedule; includes internal service charges.</div>
+    </div>
+    <div class="tile">
+      <div class="label">External revenue</div>
+      <div class="value">$282,447,173</div>
+      <div class="note">Net of internal service charges billed between city departments.</div>
+    </div>
+    <div class="tile">
+      <div class="label">External spending</div>
+      <div class="value">$226,310,381</div>
+      <div class="note">Net of internal service charges.</div>
+    </div>
+    <div class="tile">
+      <div class="label">Transfers in / out</div>
+      <div class="value">$21,624,633 / $72,386,884</div>
+      <div class="note">Money moving between the city&#39;s own funds.</div>
+    </div>
+    <div class="tile">
+      <div class="label">Unmatched transfers</div>
+      <div class="value">$50,762,251</div>
+      <div class="note">Transfers out minus transfers in. No link in this chart pairs a transfer&#39;s two legs.</div>
+    </div>
+  </section>
+</details>
+
+<details class="apparatus" id="derived-view">
+  <summary>
+    <h2>What we inferred</h2>
+    <span class="apparatus-hint">the classifications that are ours, not the city's</span>
+  </summary>
+  <p class="lede">
+    A figure the city printed and a classification we made are different things, so they are
+    never drawn alike. Everything listed here is ours, with the reasoning and the row it came
+    from.
+  </p>
+  <ul class="derived-list" id="derived-list">
+    <li class="subtle">Loading from fy2027-adopted.json…</li>
+  </ul>
+</details>
+<details class="apparatus" id="caveats-view">
+  <summary>
+    <h2>Caveats</h2>
+    <span class="apparatus-hint"><span id="caveats-count">5</span> reasons this
+      chart will not reconcile row-for-row against the printed schedule</span>
+  </summary>
+  <p class="lede">
+    Every one of these ships with the data rather than in a footnote, so a reader who
+    downloads <a href="fy2027-adopted.json">fy2027-adopted.json</a> gets them too. The full text of each is on
+    <a href="caveats.html">the caveats page</a>, beside every other document's.
+  </p>
+  <ul class="caveats" id="caveats">
+    <li><a href="caveats.html#caveat-sankey-2027--transfer-legs-unpaired">No link pairs a transfer&#39;s two legs; transfers out exceed transfers in by $50,762,251, which the city prints as its own column.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--internal-service-is-outside-the-external-headline">Internal Service charges are billed between city departments, so they are outside the external headline.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--contested-total-internal-service">The city&#39;s own book prints two different figures for Internal Service Funds expenditure, $250,000 apart; this chart draws the one on pp.66-67.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--working-capital-is-a-stock">Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.</a></li>
+    <li><a href="caveats.html#caveat-sankey-2027--permanent-funds-have-no-column">Permanent Funds are a seventh fund type, and this schedule prints no column for them.</a></li>
+  </ul>
+</details>
+<details class="apparatus" id="table-view">
+  <summary>
+    <h2>Every flow, as a table</h2>
+    <span class="apparatus-hint">the chart's twin, same numbers —
+      <span id="counts-line">58 flows between 25 nodes, from 120 facts</span></span>
+  </summary>
+  <div class="table-scroll">
+    <table id="flow-table">
+      <thead>
+        <tr>
+          <th scope="col">From</th>
+          <th scope="col">To</th>
+          <th scope="col">Amount</th>
+          <th scope="col">Kind</th>
+          <th scope="col">Basis</th>
+          <th scope="col">Fact ids</th>
+          <th scope="col">Source</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</details>
+
+</main>
+
+<footer>
+  
+  <details class="apparatus" id="sources-view">
+    <summary>
+      <h3>Sources for every year this page can show</h3>
+      <span class="apparatus-hint">1 document,
+        every page this view cites, and 8 data files</span>
+    </summary>
+    <ul>
+      <li>
+        <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813">FY 2025-2027 Budget Book</a>, City of Livermore, California —
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=66">p66 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0066.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=67">p67 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0067.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=76">p76 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0076.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=85">p85 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0085.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=89">p89 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0089.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=93">p93 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0093.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=97">p97 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0097.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=101">p101 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0101.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=102">p102 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0102.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=105">p105 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0105.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=108">p108 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0108.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=111">p111 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0111.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=115">p115 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0115.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=119">p119 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0119.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=120">p120 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0120.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=124">p124 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0124.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=125">p125 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0125.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=127">p127 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0127.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=128">p128 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0128.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=129">p129 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0129.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=130">p130 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0130.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=131">p131 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0131.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=132">p132 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0132.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=133">p133 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0133.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=134">p134 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0134.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=135">p135 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0135.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=136">p136 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0136.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=137">p137 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0137.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=138">p138 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0138.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=139">p139 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0139.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=140">p140 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0140.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=167">p167 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0167.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=168">p168 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0168.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=169">p169 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0169.txt">extracted text</a>, 
+          <a href="https://www.livermoreca.gov/home/showpublisheddocument/12813#page=170">p170 (PDF)</a> /
+          <a href="extracted/livermore-budget-fy2026-2027/pages/p0170.txt">extracted text</a>
+      </li>
+    </ul>
+    <p class="subtle">
+      Every data file the site publishes, each fetchable on its own: <a href="data/changes-in-fund-balances.json">data/changes-in-fund-balances.json</a>, <a href="data/fund-balances.json">data/fund-balances.json</a>, <a href="data/revenue-trends.json">data/revenue-trends.json</a>, <a href="fy2024-actual.json">fy2024-actual.json</a>, <a href="fy2025-revised.json">fy2025-revised.json</a>, <a href="fy2026-adopted.json">fy2026-adopted.json</a>, <a href="fy2027-adopted.json">fy2027-adopted.json</a>, <a href="rungs.json">rungs.json</a>.
+    </p>
+  </details>
+  <p class="subtle">
+    Scope all-funds-gross, basis <span id="page-basis">adopted</span>. Projection: dev. Packaged by fisc dev.
+    
+    <span data-year-path>This chart is drawn from <a href="fy2027-adopted.json">fy2027-adopted.json</a>.</span>
+  </p>
+</footer>
+
+<script src="vendor/d3.min.js"></script>
+<script src="vendor/d3-sankey.min.js"></script>
+<script>window.FISC_CONFIG = {"schema_version":1,"exported_by":"fisc dev","primary":"sankey","metadata":{"generated_by":"dev","fiscal_year":2026,"fiscal_year_label":"FY 2025-26","basis":"adopted","scope":"all-funds-gross","currency":"USD","units":"cents","sources":[{"doc_id":"livermore-budget-fy2026-2027","pages":[66,67]}],"headline":{"all_funds_gross_revenue_cents":29996900700,"all_funds_gross_expenditure_cents":25409541200,"external_revenue_cents":28099917300,"external_expenditure_cents":22901804500,"internal_transfer_in_cents":2152599700,"internal_transfer_out_cents":5961273400,"naive_expenditure_cents":31370814600,"transfer_residual_cents":3808673700},"counts":{"facts":120,"facts_cited":58,"nodes":25,"links":58},"caveats":[{"id":"transfer-legs-unpaired","summary":"No link pairs a transfer's two legs; transfers out exceed transfers in by $38,086,737, which the city prints as its own column.","text":"Transfer legs are unpaired IN THIS DOCUMENT: no link here carries a transfer_id. Budget Book p76's transfer schedule is mapped and published, but at scope transfers-by-fund, and this document is of all-funds-gross -- so none of its facts is in this graph. They cannot simply be added to it: transfers-by-fund and revenue-by-fund both publish transfer_in over the same money, and the peers-overlap-only-by-declared-identity check holds every cell the two share to a declared identity -- so a document carrying both has to say which schedule it reads that money from rather than summing both. The legs ARE paired one document over: transfers-by-fund draws each end of every figure p76 prints as its own link, the two carrying the same transfer_id, and this chart's Transfers In opens into it. Transfers out ($59,612,734) exceed transfers in ($21,525,997), and the $38,086,737 difference is not an unexplained gap: the city prints it as a column of its own, \"Transfers Out to CIP\", on the sources-and-uses schedule at PDF p73 -- with p76's grand total printed beside it as the transfers-out figure that excludes the CIP. Only the citywide total is published: splitting it by fund group is our arithmetic, because that schedule prints one aggregate for every non-major fund. It is stated as headline.transfer_residual_cents rather than netted away or padded with an invented link.","applies_to":["transfers/in","transfers/out"]},{"id":"internal-service-is-outside-the-external-headline","summary":"Internal Service charges are billed between city departments, so they are outside the external headline.","text":"Internal Service Fund charges are billed to other City departments, so they are classified internal_service and excluded from the external headline. The all_funds_gross figures include them and match the city's own citywide totals.","applies_to":["fund-group/internal-service"]},{"id":"working-capital-is-a-stock","summary":"Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.","text":"The Sankey shows flows only. BEGINNING and ENDING WORKING CAPITAL are stocks and are recorded as facts but carry no link, so the chart will not reconcile row-for-row against pp.66-67.","applies_to":[]},{"id":"permanent-funds-have-no-column","summary":"Permanent Funds are a seventh fund type, and this schedule prints no column for them.","text":"Permanent Funds are a seventh fund type in data/funds.yaml (2 funds) with no column on this schedule.","applies_to":[]}]},"years":[{"year":2026,"label":"FY 2025-26","stem":"sankey","path":"fy2026-adopted.json","basis":"adopted","title":"City of Livermore budget flows — FY 2025-26","hero":{"label":"What the city actually spends","value":"$254,095,412","note":"All funds, gross, FY 2025-26 adopted budget","kind":"hero"},"figures":[{"label":"Naive column total","value":"$313,708,146","note":"The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by $59,612,734.","kind":"error"},{"label":"All-funds gross revenue","value":"$299,969,007","note":"Ties to the printed schedule; includes internal service charges.","kind":""},{"label":"External revenue","value":"$280,999,173","note":"Net of internal service charges billed between city departments.","kind":""},{"label":"External spending","value":"$229,018,045","note":"Net of internal service charges.","kind":""},{"label":"Transfers in / out","value":"$21,525,997 / $59,612,734","note":"Money moving between the city's own funds.","kind":""},{"label":"Unmatched transfers","value":"$38,086,737","note":"Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.","kind":""}],"caveats":[{"id":"transfer-legs-unpaired","summary":"No link pairs a transfer's two legs; transfers out exceed transfers in by $38,086,737, which the city prints as its own column.","href":"caveats.html#caveat-sankey--transfer-legs-unpaired"},{"id":"internal-service-is-outside-the-external-headline","summary":"Internal Service charges are billed between city departments, so they are outside the external headline.","href":"caveats.html#caveat-sankey--internal-service-is-outside-the-external-headline"},{"id":"working-capital-is-a-stock","summary":"Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.","href":"caveats.html#caveat-sankey--working-capital-is-a-stock"},{"id":"permanent-funds-have-no-column","summary":"Permanent Funds are a seventh fund type, and this schedule prints no column for them.","href":"caveats.html#caveat-sankey--permanent-funds-have-no-column"}],"counts":{"facts":120,"nodes":25,"links":58},"steps":[{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows--only-the-general-fund-is-decomposed"}],"opens":["fund-group/capital","fund-group/debt-service","fund-group/enterprise","fund-group/general","fund-group/internal-service","fund-group/special-revenue"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows--only-the-general-fund-is-decomposed"}],"opens":["fund/100"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows--only-the-general-fund-is-decomposed"}],"opens":["dept/administrative-services","dept/building-and-safety","dept/city-attorney","dept/city-clerk","dept/city-council","dept/city-manager","dept/community-development-admin","dept/engineering","dept/environmental-services","dept/finance","dept/fire-administration","dept/general-services","dept/housing-and-human-services","dept/human-resources","dept/innovation-and-economic-devel","dept/library","dept/maintenance","dept/patrol","dept/planning","dept/police-administration","dept/public-works-administration","dept/special-operations","dept/support-services"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows--only-the-general-fund-is-decomposed"}],"opens":["revenue/charges-for-services","revenue/contributions-outsourced","revenue/fines-and-forfeitures","revenue/intergovernmental","revenue/licenses-and-permits","revenue/miscellaneous-revenue","revenue/taxes/other","revenue/taxes/property","revenue/taxes/sales","revenue/use-of-money-and-property"]},{"caveats":[{"id":"no-fund-axis-on-these-pages","summary":"These rows say what a division spends, not what pays for it: the schedule has no fund and no fund group.","href":"caveats.html#caveat-department-spending--no-fund-axis-on-these-pages"},{"id":"the-ribbons-are-a-cross-tab","summary":"Each ribbon is a cell of one printed table read along a second axis, not money moving in the direction drawn.","href":"caveats.html#caveat-department-spending--the-ribbons-are-a-cross-tab"},{"id":"the-boundary-is-not-classified-here","summary":"Every expenditure ribbon is published as external because these rows name no fund group to classify it by.","href":"caveats.html#caveat-department-spending--the-boundary-is-not-classified-here"}],"opens":["expenditure/capital-outlay","expenditure/debt-services","expenditure/services-and-supplies","expenditure/wages-and-benefits"]},{"caveats":[{"id":"one-figure-is-two-ribbons","summary":"Every printed transfer is drawn twice, once from each end; summing every ribbon here comes to twice what the city transfers.","href":"caveats.html#caveat-transfers-by-fund--one-figure-is-two-ribbons"},{"id":"a-fund-is-drawn-once-per-end","summary":"A fund that both pays and receives appears in more than one column, under the same name.","href":"caveats.html#caveat-transfers-by-fund--a-fund-is-drawn-once-per-end"},{"id":"only-the-budget-columns-are-published","summary":"p76 prints four columns and this draws the two adopted ones; its historical columns do not add up to its own printed total.","href":"caveats.html#caveat-transfers-by-fund--only-the-budget-columns-are-published"},{"id":"the-paying-side-is-not-the-whole-of-transfers-out","summary":"p76's grand total is the transfers-IN side; the city's transfers out are larger, and the difference is a column this page does not list.","href":"caveats.html#caveat-transfers-by-fund--the-paying-side-is-not-the-whole-of-transfers-out"}],"opens":["transfer-from/100","transfer-from/282","transfer-from/286","transfer-from/311","transfer-from/510","transfer-from/560","transfer-from/620","transfer-from/640","transfers/in"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-department-funding--constraint-tier-is-our-reading"},{"id":"a-department-here-is-not-a-division","summary":"These rows are printed once per DEPARTMENT; the divisions drawn elsewhere on this site are a finer tier, and five names belong to both.","href":"caveats.html#caveat-department-funding--a-department-here-is-not-a-division"},{"id":"a-fund-takes-in-more-than-it-pays-departments","summary":"What a fund pays departments here is not what that fund takes in, and the two are printed by different schedules.","href":"caveats.html#caveat-department-funding--a-fund-takes-in-more-than-it-pays-departments"},{"id":"two-of-the-four-columns-tie-to-no-citywide-total","summary":"The FY2023-24 actual and FY2024-25 revised columns reconcile to each department's own printed total and to nothing citywide.","href":"caveats.html#caveat-department-funding--two-of-the-four-columns-tie-to-no-citywide-total"}],"opens":["fund/100","fund/200","fund/201","fund/202","fund/203","fund/204","fund/205","fund/206","fund/207","fund/210","fund/221","fund/222","fund/223","fund/224","fund/225","fund/240","fund/241","fund/242","fund/282","fund/283","fund/284","fund/285","fund/286","fund/287","fund/288","fund/289","fund/290","fund/310","fund/311","fund/320","fund/321","fund/330","fund/331","fund/400","fund/401","fund/402","fund/510","fund/512","fund/550","fund/551","fund/552","fund/553","fund/560","fund/561","fund/600","fund/610","fund/612","fund/620","fund/622","fund/623","fund/640","fund/642","fund/643","fund/700","fund/710","fund/720","fund/730","fund/740"]}],"chart_title":"Sankey diagram of the FY 2025-26 adopted budget"},{"year":2027,"label":"FY 2026-27","stem":"sankey-2027","path":"fy2027-adopted.json","basis":"adopted","title":"City of Livermore budget flows — FY 2026-27","hero":{"label":"What the city actually spends","value":"$252,854,896","note":"All funds, gross, FY 2026-27 adopted budget","kind":"hero"},"figures":[{"label":"Naive column total","value":"$325,241,780","note":"The wrong answer: summing the expenditure column counts transfers between funds twice, inflating the total by $72,386,884.","kind":"error"},{"label":"All-funds gross revenue","value":"$302,443,043","note":"Ties to the printed schedule; includes internal service charges.","kind":""},{"label":"External revenue","value":"$282,447,173","note":"Net of internal service charges billed between city departments.","kind":""},{"label":"External spending","value":"$226,310,381","note":"Net of internal service charges.","kind":""},{"label":"Transfers in / out","value":"$21,624,633 / $72,386,884","note":"Money moving between the city's own funds.","kind":""},{"label":"Unmatched transfers","value":"$50,762,251","note":"Transfers out minus transfers in. No link in this chart pairs a transfer's two legs.","kind":""}],"caveats":[{"id":"transfer-legs-unpaired","summary":"No link pairs a transfer's two legs; transfers out exceed transfers in by $50,762,251, which the city prints as its own column.","href":"caveats.html#caveat-sankey-2027--transfer-legs-unpaired"},{"id":"internal-service-is-outside-the-external-headline","summary":"Internal Service charges are billed between city departments, so they are outside the external headline.","href":"caveats.html#caveat-sankey-2027--internal-service-is-outside-the-external-headline"},{"id":"contested-total-internal-service","summary":"The city's own book prints two different figures for Internal Service Funds expenditure, $250,000 apart; this chart draws the one on pp.66-67.","href":"caveats.html#caveat-sankey-2027--contested-total-internal-service"},{"id":"working-capital-is-a-stock","summary":"Beginning and ending working capital are stocks, not flows, so the chart carries no link for them.","href":"caveats.html#caveat-sankey-2027--working-capital-is-a-stock"},{"id":"permanent-funds-have-no-column","summary":"Permanent Funds are a seventh fund type, and this schedule prints no column for them.","href":"caveats.html#caveat-sankey-2027--permanent-funds-have-no-column"}],"counts":{"facts":120,"nodes":25,"links":58},"steps":[{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows-2027--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows-2027--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows-2027--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows-2027--only-the-general-fund-is-decomposed"}],"opens":["fund-group/capital","fund-group/debt-service","fund-group/enterprise","fund-group/general","fund-group/internal-service","fund-group/special-revenue"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows-2027--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows-2027--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows-2027--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows-2027--only-the-general-fund-is-decomposed"}],"opens":["fund/100"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows-2027--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows-2027--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows-2027--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows-2027--only-the-general-fund-is-decomposed"}],"opens":["dept/administrative-services","dept/building-and-safety","dept/city-attorney","dept/city-clerk","dept/city-council","dept/city-manager","dept/community-development-admin","dept/engineering","dept/environmental-services","dept/finance","dept/fire-administration","dept/general-services","dept/housing-and-human-services","dept/human-resources","dept/innovation-and-economic-devel","dept/library","dept/maintenance","dept/patrol","dept/planning","dept/police-administration","dept/public-works-administration","dept/special-operations","dept/support-services"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-fund-flows-2027--constraint-tier-is-our-reading"},{"id":"the-revenue-schedule-is-published-twice","summary":"Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.","href":"caveats.html#caveat-fund-flows-2027--the-revenue-schedule-is-published-twice"},{"id":"mixed-grain-double-counts","summary":"This document holds the same money at two grains, so summing every link double-counts.","href":"caveats.html#caveat-fund-flows-2027--mixed-grain-double-counts"},{"id":"only-the-general-fund-is-decomposed","summary":"Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.","href":"caveats.html#caveat-fund-flows-2027--only-the-general-fund-is-decomposed"}],"opens":["revenue/charges-for-services","revenue/contributions-outsourced","revenue/fines-and-forfeitures","revenue/intergovernmental","revenue/licenses-and-permits","revenue/miscellaneous-revenue","revenue/taxes/other","revenue/taxes/property","revenue/taxes/sales","revenue/use-of-money-and-property"]},{"caveats":[{"id":"no-fund-axis-on-these-pages","summary":"These rows say what a division spends, not what pays for it: the schedule has no fund and no fund group.","href":"caveats.html#caveat-department-spending-2027--no-fund-axis-on-these-pages"},{"id":"the-ribbons-are-a-cross-tab","summary":"Each ribbon is a cell of one printed table read along a second axis, not money moving in the direction drawn.","href":"caveats.html#caveat-department-spending-2027--the-ribbons-are-a-cross-tab"},{"id":"the-boundary-is-not-classified-here","summary":"Every expenditure ribbon is published as external because these rows name no fund group to classify it by.","href":"caveats.html#caveat-department-spending-2027--the-boundary-is-not-classified-here"}],"opens":["expenditure/capital-outlay","expenditure/debt-services","expenditure/services-and-supplies","expenditure/wages-and-benefits"]},{"caveats":[{"id":"one-figure-is-two-ribbons","summary":"Every printed transfer is drawn twice, once from each end; summing every ribbon here comes to twice what the city transfers.","href":"caveats.html#caveat-transfers-by-fund-2027--one-figure-is-two-ribbons"},{"id":"a-fund-is-drawn-once-per-end","summary":"A fund that both pays and receives appears in more than one column, under the same name.","href":"caveats.html#caveat-transfers-by-fund-2027--a-fund-is-drawn-once-per-end"},{"id":"only-the-budget-columns-are-published","summary":"p76 prints four columns and this draws the two adopted ones; its historical columns do not add up to its own printed total.","href":"caveats.html#caveat-transfers-by-fund-2027--only-the-budget-columns-are-published"},{"id":"the-paying-side-is-not-the-whole-of-transfers-out","summary":"p76's grand total is the transfers-IN side; the city's transfers out are larger, and the difference is a column this page does not list.","href":"caveats.html#caveat-transfers-by-fund-2027--the-paying-side-is-not-the-whole-of-transfers-out"}],"opens":["transfer-from/100","transfer-from/282","transfer-from/286","transfer-from/311","transfer-from/510","transfer-from/560","transfer-from/620","transfer-from/640","transfers/in"]},{"caveats":[{"id":"constraint-tier-is-our-reading","summary":"A fund's constraint tier is our reading of the Description of Funds narrative, not a figure the city printed.","href":"caveats.html#caveat-department-funding-2027--constraint-tier-is-our-reading"},{"id":"a-department-here-is-not-a-division","summary":"These rows are printed once per DEPARTMENT; the divisions drawn elsewhere on this site are a finer tier, and five names belong to both.","href":"caveats.html#caveat-department-funding-2027--a-department-here-is-not-a-division"},{"id":"a-fund-takes-in-more-than-it-pays-departments","summary":"What a fund pays departments here is not what that fund takes in, and the two are printed by different schedules.","href":"caveats.html#caveat-department-funding-2027--a-fund-takes-in-more-than-it-pays-departments"},{"id":"two-of-the-four-columns-tie-to-no-citywide-total","summary":"The FY2023-24 actual and FY2024-25 revised columns reconcile to each department's own printed total and to nothing citywide.","href":"caveats.html#caveat-department-funding-2027--two-of-the-four-columns-tie-to-no-citywide-total"}],"opens":["fund/100","fund/200","fund/201","fund/202","fund/203","fund/204","fund/205","fund/206","fund/210","fund/221","fund/222","fund/223","fund/224","fund/225","fund/240","fund/241","fund/242","fund/282","fund/283","fund/284","fund/285","fund/286","fund/287","fund/288","fund/289","fund/310","fund/311","fund/320","fund/321","fund/330","fund/331","fund/400","fund/401","fund/402","fund/510","fund/550","fund/551","fund/552","fund/553","fund/560","fund/561","fund/600","fund/610","fund/612","fund/620","fund/622","fund/623","fund/640","fund/642","fund/643","fund/700","fund/710","fund/720","fund/730","fund/740"]}],"chart_title":"Sankey diagram of the FY 2026-27 adopted budget"}],"docs":{"livermore-budget-fy2026-2027":{"title":"FY 2025-2027 Budget Book","publisher":"City of Livermore, California","pdf_url":"https://www.livermoreca.gov/home/showpublisheddocument/12813","page_text_base":"extracted/livermore-budget-fy2026-2027/pages/","records_base":"facts/livermore-budget-fy2026-2027/pages/"}},"render_tiers":[0,2,5],"steps":[{"key":"fund-group","after":[""],"from":2,"projection":"fund-flows","tiers":[0,2,3],"keep":[0],"caps":[{"tier":3,"cap":8}],"back":"All fund groups","tail":"funds","noun":"fund group","description":"The revenue categories on the left are the citywide chart's own cells; this fund group is the mark in the middle, and its own funds are on the right, rescaled to the group's total — the citywide chart cannot show them, because the General Fund alone is half the fund column and the smallest fund is less than a thirty-thousandth of it. Money Budget Book pp.127-140 print for no fund at all passes the group's mark to a node of its own beside the funds, so what the group takes in here is what its funds take in. Every fund a department draws on opens further: the General Fund into the divisions that spend it, from Budget Book pp.167-170, and every other fund into the departments it pays for, from pp.85-125. A fund no department's funding schedule names ends the drill — not missing, but not broken down in any published schedule.","residual":{"fund-balance/contribution":"the mirror of the draw: a positive change in working capital, drawn out of the group to the same inferred node. No fund pays it for the same reason no fund receives the draw. It carries nothing on FY2026's decomposed group, where general's change is a draw, and 2,351,098 on FY2027's, where it turns positive -- a set measured on one column alone would have missed it","fund-balance/draw":"a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it: measured, general 1,034,154, capital 2,500,213 and internal-service 6,147,533 in FY2026 adopted, and every fund-level inflow short by exactly that","fund-balance/reserve-increase":"a printed row of pp.66-67 that the city books against the group as a whole: general's 4,699,425 in FY2026 adopted has no division and no object category on pp.167-170, which decompose expenditure and nothing else","transfers/in":"pp.66-67 print Transfers In per fund group and pp.127-140 print it per fund for eight funds in three groups, to the cent. The general group has no such fund, so its 480,400 is residual and the other groups' is decomposed whole -- which is why the rule is per group, and that cell is the one exception the revenue-detail cut declares against the spine","transfers/out":"pp.66-67 print Transfers Out per fund group and no fund-level schedule prints it from any fund: pp.167-170 decompose the General Fund's expenditure and stop there, so general's 10,037,797 in FY2026 adopted leaves the group beside its divisions rather than through one"}},{"key":"fund","after":["fund-group"],"from":3,"role":"general_fund","tiers":[2,3,4,5],"keep":[2],"widen":[5],"caps":[{"tier":4,"cap":24},{"tier":5,"cap":8,"tail":"categories"}],"back":"All funds","tail":"divisions","noun":"fund","description":"The fund group this fund belongs to is on the left and the divisions that spend it are on the right — that fund's rows of Budget Book pp.167-170, rescaled to its total. The two sides of the fund in the middle are not one figure: what it takes in is its revenue and what leaves it here is what its divisions spend. The difference is what pp.66-67 print for the fund group as a whole — the money the city transfers out and sets aside in its balances and reserves — less the money the group takes in that no fund receives, which the chart above carries to a node of its own beside the funds; no published schedule breaks either down by fund."},{"key":"division","after":["fund"],"from":4,"tiers":[3,4,5],"keep":[3],"caps":[{"tier":5,"cap":8}],"back":"All divisions","tail":"categories","noun":"division","description":"The fund that pays for this division is on the left and the object categories it spends on are on the right — that division's cells of Budget Book pp.167-170, rescaled to its total."},{"key":"revenue-category","after":[""],"from":0,"role":"revenue_source","projection":"fund-flows","tiers":[1,0,2],"keep":[2],"caps":[{"tier":1,"cap":8}],"back":"All revenue categories","tail":"lines","noun":"revenue category","description":"The lines Budget Book pp.127-140 print under this revenue category are on the left; the fund groups its money reaches are on the right, as the citywide chart draws them. The category itself is the mark in the middle, and the two sides of it are the same figure read from two schedules. A line the schedule prints as a reduction is drawn in red at its printed size and named as one, and the category's own mark is the figure net of them — the same one the citywide chart labels it with."},{"key":"object-category","after":[""],"from":5,"role":"object_category","projection":"department-spending","tiers":[2,5,4],"keep":[2],"caps":[{"tier":4,"cap":8}],"back":"All object categories","tail":"divisions","noun":"object category","description":"The fund groups that pay for this object category are on the left; the divisions that spend it are on the right — Budget Book pp.85-125's rows for this category, every division in the city that has one, rescaled to the category's total. The two columns are read from different schedules, and the right-hand one prints what a division spends whatever pays for it: it carries no fund at all, so no division here takes the colour of a fund group.","gaps":{"expenditure/services-and-supplies":"FY2027 adopted: the citywide spine publishes $130,502,087.00 in this object category and Budget Book pp.85-125's division rows come to $130,252,087.00, a difference of $250,000.00. pp.85-125's division rows are an independent witness rather than a sixth copy of the same schedule: they decompose the money by department, division and object with no fund axis, and they still put p0067's 250,000 in services-and-supplies in FY2026-27 and in none of the other seven cells, which tie to the cent (fisc-av0w)"}},{"key":"transfers","after":[""],"from":0,"side":"source","role":"transfer_in","projection":"transfers-by-fund","tiers":[2,3],"back":"All money coming in","tail":"funds","noun":"money coming in","description":"Budget Book p76, Summary of Transfers: the funds that pay each transfer the city makes to itself are on the left, and the funds that receive them are on the right. One ribbon is one figure the page prints, and a fund that both pays and receives is drawn once on each side, under the same name. This is the money coming IN, which is what the mark on the citywide chart counts; what the city transfers OUT is larger, because pp.72-75 print the transfers each fund makes to the Capital Improvement Program under a heading of their own and p76 does not list them."},{"key":"fund-departments","after":["fund-group"],"from":3,"role":"fund","projection":"department-funding","tiers":[2,3,4],"keep":[2],"back":"All funds","tail":"departments","noun":"fund","description":"The fund group this fund belongs to is on the left and the city departments it pays for are on the right — that fund's rows of Budget Book pp.85-125, rescaled to its total. The two sides of the fund in the middle are read from two different schedules and are not one figure: what it takes in is its revenue, from pp.127-140, and what leaves it here is what the departments draw on it. Either side may be the larger. The difference is money the city moves between its own funds and into or out of accumulated balance, which pp.66-67 print for the fund group as a whole and no published schedule breaks down by fund. A department here is the WHOLE department across every fund that pays it, which is a coarser thing than the divisions the General Fund opens into — five names belong to both tiers, so do not read one as the other."}],"rungs":"rungs.json"};</script>
+<script src="app.js"></script>
+</body>
+</html>

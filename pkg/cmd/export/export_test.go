@@ -961,6 +961,101 @@ func TestTheCommittedStemsAreUnchanged(t *testing.T) {
 	}
 }
 
+// TestTheServedPageIsWhatGoRenders pins testdata/index.golden.html to the
+// bytes `fisc export` writes at index.html over the committed store, the way
+// testdata/rungs.json is pinned: rebuild and compare, never in place, and on a
+// difference the served page is written under bin/ with the `cp -f` to run.
+//
+// THE PAGE IS THE CLIENT'S INPUT, which is why it is pinned as a whole and not
+// as its config alone: site/app.js reads window.FISC_CONFIG out of it and
+// every element it paints into, and the tests under site/ build their DOM from
+// this file. A fixture the tests assembled themselves would be a second
+// spelling of the template.
+//
+// THE STAMP IS BLANKED ON BOTH SIDES, in both places the page carries it: the
+// config's exported_by and the footer's "Packaged by". Each names the build,
+// so comparing either would make the fixture stale on every commit and say
+// nothing about the page.
+func TestTheServedPageIsWhatGoRenders(t *testing.T) {
+	servedArtifactIsTheFixture(t, "index.html", "index.golden.html", []stampBlank{
+		{regexp.MustCompile(`"exported_by":"[^"]*"`), `"exported_by":""`},
+		{regexp.MustCompile(`Packaged by [^<\n]*`), `Packaged by`},
+	})
+}
+
+// TestTheColumnArtifactsAreWhatGoEncodes pins the two spine columns the page
+// fetches, testdata/fy2026-adopted.column.json and
+// testdata/fy2027-adopted.column.json, to what `fisc export` writes at the
+// site root.
+//
+// THE COLUMN AND NOT THE PROJECTION GOLDENS, because the column is what
+// site/app.js fetches: loadColumn reads a ColumnDoc and scheduleOf turns one
+// of its schedules back into the document shape, and a test that handed the
+// client a projection golden would be driving a path no reader's browser
+// takes. The projection goldens stay for the projections' own tests.
+//
+// BOTH YEARS, because the two are not the same shape and a client test
+// driven over one twice could not see a year join to the wrong document.
+func TestTheColumnArtifactsAreWhatGoEncodes(t *testing.T) {
+	blank := []stampBlank{{regexp.MustCompile(`"generated_by":\s*"[^"]*"`), `"generated_by": ""`}}
+	for _, stem := range []string{"fy2026-adopted", "fy2027-adopted"} {
+		t.Run(stem, func(t *testing.T) {
+			servedArtifactIsTheFixture(t, stem+".json", stem+".column.json", blank)
+		})
+	}
+}
+
+// stampBlank is one build-stamp pattern and what it is replaced with before a
+// served artifact and its fixture are compared.
+type stampBlank struct {
+	pattern *regexp.Regexp
+	with    string
+}
+
+// servedArtifactIsTheFixture exports the committed store to a temp dir and
+// holds one written file, stamps blanked, to testdata/<fixture>.
+func servedArtifactIsTheFixture(t *testing.T, served, fixture string, blanks []stampBlank) {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	opts, _, _, _ := testOptions(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = buildAll
+	if runErr := exportRun(opts); runErr != nil {
+		t.Fatalf("exportRun: %v", runErr)
+	}
+	got, err := os.ReadFile(filepath.Join(opts.OutputDir, filepath.FromSlash(served)))
+	if err != nil {
+		t.Fatalf("fisc export wrote no %s: %v", served, err)
+	}
+	blanked := func(b []byte) []byte {
+		for _, s := range blanks {
+			b = s.pattern.ReplaceAll(b, []byte(s.with))
+		}
+		return b
+	}
+	for _, s := range blanks {
+		if !s.pattern.Match(got) {
+			t.Fatalf("%s carries no build stamp matching %s, so the comparison below would be blind to a stale one", served, s.pattern)
+		}
+	}
+	want, readErr := os.ReadFile(filepath.Join(root, "testdata", fixture))
+	if readErr != nil || !bytes.Equal(blanked(got), blanked(want)) {
+		rebuilt := filepath.Join(root, "bin", strings.TrimSuffix(fixture, filepath.Ext(fixture))+"-rebuilt"+filepath.Ext(fixture))
+		if err := os.MkdirAll(filepath.Dir(rebuilt), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(rebuilt, got, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Fatalf("testdata/%s is not what fisc export writes at %s over the committed store (%v); the served "+
+			"artifact is at %s -- regenerate with `cp -f %s testdata/%s` and read the diff before committing it",
+			fixture, served, readErr, rebuilt, rebuilt, fixture)
+	}
+}
+
 // TestTheSitePublishesOneFilePerColumnAndNothingTwice pins what `fisc export`
 // lays down, as typed literals, and is the check the format change owes.
 //
