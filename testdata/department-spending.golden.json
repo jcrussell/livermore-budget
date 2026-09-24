@@ -439,7 +439,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/capital-outlay",
@@ -459,7 +460,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/capital-outlay",
@@ -479,7 +481,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/capital-outlay",
@@ -499,7 +502,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/capital-outlay",
@@ -519,7 +523,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/debt-services",
@@ -539,7 +544,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/debt-services",
@@ -559,7 +565,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/debt-services",
@@ -579,7 +586,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/debt-services",
@@ -599,7 +607,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/debt-services",
@@ -619,7 +628,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -639,7 +649,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -659,7 +670,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -679,7 +691,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -699,7 +712,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -719,7 +733,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -739,7 +754,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -759,7 +775,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -779,7 +796,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -799,7 +817,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -819,7 +838,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -839,7 +859,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -859,7 +880,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -879,7 +901,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -899,7 +922,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -919,7 +943,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -939,7 +964,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -959,7 +985,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -979,7 +1006,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -999,7 +1027,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1019,7 +1048,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1039,7 +1069,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1059,7 +1090,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1079,7 +1111,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1099,7 +1132,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1119,7 +1153,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1139,7 +1174,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1159,7 +1195,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1179,7 +1216,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/services-and-supplies",
@@ -1199,7 +1237,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1219,7 +1258,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1239,7 +1279,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1259,7 +1300,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1279,7 +1321,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1299,7 +1342,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1319,7 +1363,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1339,7 +1384,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1359,7 +1405,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1379,7 +1426,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1399,7 +1447,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1419,7 +1468,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1439,7 +1489,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1459,7 +1510,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1479,7 +1531,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1499,7 +1552,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1519,7 +1573,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1539,7 +1594,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1559,7 +1615,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1579,7 +1636,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1599,7 +1657,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1619,7 +1678,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1639,7 +1699,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1659,7 +1720,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1679,7 +1741,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1699,7 +1762,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     },
     {
       "source": "expenditure/wages-and-benefits",
@@ -1719,7 +1783,8 @@
         }
       ],
       "derived": false,
-      "partition": true
+      "partition": true,
+      "contra": ""
     }
   ]
 }

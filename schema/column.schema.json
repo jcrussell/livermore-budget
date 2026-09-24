@@ -272,6 +272,11 @@
                 "partition": {
                   "description": "The ribbon divides one printed table along a second axis rather than following money the schedule prints as moving that way.",
                   "type": "boolean"
+                },
+                "contra": {
+                  "description": "The schedule this link is printed as a reduction of, in the words the page shows beside it. Present only on a link the document prints negative.",
+                  "type": "string",
+                  "minLength": 1
                 }
               },
               "allOf": [
@@ -303,6 +308,31 @@
                       "locators": {
                         "minItems": 1
                       }
+                    }
+                  }
+                },
+                {
+                  "description": "A NEGATIVE FIGURE NAMES THE SCHEDULE IT REDUCES, AND ONLY A NEGATIVE ONE DOES. The sign is what the page printed; the sentence is what a reader is owed beside a ribbon the chart draws at its magnitude. Stated as a biconditional rather than in a hand-written key check, so neither half can hold without the other.",
+                  "if": {
+                    "properties": {
+                      "value_cents": {
+                        "exclusiveMaximum": 0
+                      }
+                    },
+                    "required": [
+                      "value_cents"
+                    ]
+                  },
+                  "then": {
+                    "required": [
+                      "contra"
+                    ]
+                  },
+                  "else": {
+                    "not": {
+                      "required": [
+                        "contra"
+                      ]
                     }
                   }
                 }

@@ -540,6 +540,7 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 	if err := f.addParents(nodes); err != nil {
 		return nil, err
 	}
+	nameContraLinks(links, nodes)
 
 	sortLinks(links)
 	if err := checkDistinctLinks(links); err != nil {
@@ -1214,6 +1215,31 @@ func (f *fundFlows) label(e endpoint) string {
 // maps, so node creation and the caveats' arithmetic do not depend on map
 // iteration order. Links are re-sorted afterwards, but a node's first-touch, a
 // division's accumulation and a line's are all done here.
+// nameContraLinks gives every negative link the sentence naming the schedule it
+// is printed as a reduction of, and leaves every other link's empty. It runs
+// after addParents, because the parent it names may be a node the hierarchy
+// carries and no link touches.
+//
+// ONE POST-PASS AND NOT A FIELD SET WHERE THE LINK IS BUILT, because the sites
+// that can emit a negative are not a closed set: p127's reductions reach the
+// document as both a cell and its line rollup, and a third site would inherit
+// the invariant by construction rather than by a reviewer noticing it was owed.
+//
+// THE WORDS ARE THE ONES THE CLIENT USED TO COMPOSE, byte for byte, because the
+// page now reads them off the wire and a chart check compares the two.
+func nameContraLinks(links []Link, nodes map[string]Node) {
+	for i := range links {
+		if links[i].ValueCents >= 0 {
+			continue
+		}
+		if up, ok := nodes[nodes[links[i].Source].Parent]; ok {
+			links[i].Contra = "printed as a reduction of " + up.Label
+			continue
+		}
+		links[i].Contra = "printed rows netting to a reduction"
+	}
+}
+
 func sortedRevKeys(m map[revKey]*cellSum) []revKey {
 	out := make([]revKey, 0, len(m))
 	for k := range m {

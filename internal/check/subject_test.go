@@ -280,13 +280,14 @@ func TestTheCommittedCorpusVacuitySplit(t *testing.T) {
 		// that scope, because it and revenue-by-fund both publish transfer_in
 		// and one document holding both would double it. transfers-by-fund is
 		// that document, and declaredVacuous is empty as a result.
-		"transfer-legs-pair":              StatusPass,
-		"node-hierarchy-well-formed":      StatusPass,
-		"constraint-tier-vocabulary":      StatusPass,
-		"fact-departments-resolve":        StatusPass,
-		"fact-funds-resolve":              StatusPass,
-		"fact-revenue-lines-resolve":      StatusPass,
-		"rule-funds-match-their-headings": StatusPass,
+		"transfer-legs-pair":               StatusPass,
+		"node-hierarchy-well-formed":       StatusPass,
+		"constraint-tier-vocabulary":       StatusPass,
+		"contra-links-name-their-schedule": StatusPass,
+		"fact-departments-resolve":         StatusPass,
+		"fact-funds-resolve":               StatusPass,
+		"fact-revenue-lines-resolve":       StatusPass,
+		"rule-funds-match-their-headings":  StatusPass,
 	}
 	got := make(map[string]Status, len(rep.Results))
 	for _, res := range rep.Results {

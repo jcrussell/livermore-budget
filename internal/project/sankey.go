@@ -489,6 +489,22 @@ type Link struct {
 	// allowed to run from a finer tier to a coarser one, beside a rollup into
 	// the source's own parent. A link that is neither is still refused.
 	Partition bool `json:"partition"`
+	// Contra names the schedule a negative link is printed as a reduction of.
+	// Non-empty exactly when ValueCents is negative: the schemas state that
+	// biconditional as an if/then and contra-links-name-their-schedule holds it
+	// in both directions.
+	//
+	// IT IS THE DOCUMENT'S SENTENCE AND NOT THE CLIENT'S, which is the whole
+	// reason it is on the wire. The words name the parent the SCHEDULE prints
+	// the row under, and the client folds a line's parent away before the chart
+	// is drawn -- so a page composing this from what it has left would name a
+	// category the reader is not looking at, or name nothing at all.
+	//
+	// A SOURCE WHOSE PARENT THE DOCUMENT DOES NOT CARRY is named for what it is
+	// rather than for a category it is not. Unreachable on the committed corpus,
+	// where every negative link is one of Budget Book p127's two printed
+	// reductions and resolves to Property Taxes.
+	Contra string `json:"contra"`
 }
 
 // sankey projects the citywide spine as a flow diagram.

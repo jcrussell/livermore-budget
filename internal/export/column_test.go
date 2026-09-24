@@ -5,6 +5,8 @@ import (
 	"io/fs"
 	"reflect"
 	"slices"
+	"sort"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -154,4 +156,84 @@ func schemaRoles(t *testing.T) []string {
 		t.Fatalf("%s states no role enum, so this test compares nothing", schema.Column)
 	}
 	return got
+}
+
+// TestAReductionsSentenceSurvivesTheFoldIntoAColumn is the seam test for the one
+// field whose loss is silent.
+//
+// THE PACKAGER DECODES INTO AN ANONYMOUS STRUCT, so a key it does not name is
+// dropped without an error, without a warning and without failing any schema:
+// the column it writes is valid, every link is present, every figure is right,
+// and the only thing missing is the sentence that tells a reader the ribbon
+// drawn at $16,985,339 is a subtraction. Every other guard in this package
+// compares what the struct DOES carry against something, so none of them can
+// see a field that never arrived.
+//
+// Drop Contra from decoded.Links and this is what goes red.
+func TestAReductionsSentenceSurvivesTheFoldIntoAColumn(t *testing.T) {
+	const note = "printed as a reduction of Property Taxes"
+	doc := []byte(`{
+	  "schema_version": "1.0.0",
+	  "projection": "fund-flows",
+	  "metadata": {
+	    "fiscal_year": 2026, "fiscal_year_label": "FY2025-26", "basis": "adopted",
+	    "generated_by": "t", "currency": "USD", "units": "cents",
+	    "scopes": ["revenue-by-fund"], "sources": [], "counts": {}, "caveats": []
+	  },
+	  "nodes": [
+	    {"id": "a", "label": "ERAF", "tier": 1},
+	    {"id": "b", "label": "Property Taxes", "tier": 0}
+	  ],
+	  "links": [
+	    {"source": "a", "target": "b", "value_cents": -250, "kind": "external",
+	     "transfer_id": "", "fact_ids": ["fisc-f-0000000000aa"], "locators": [],
+	     "derived": false, "partition": false, "contra": ` + strconv.Quote(note) + `},
+	    {"source": "b", "target": "a", "value_cents": 250, "kind": "external",
+	     "transfer_id": "", "fact_ids": ["fisc-f-0000000000bb"], "locators": [],
+	     "derived": false, "partition": false, "contra": ""}
+	  ]
+	}`)
+
+	cols, _, err := ColumnsOf(map[string][]byte{"fund-flows": doc}, "t")
+	if err != nil {
+		t.Fatalf("ColumnsOf: %v", err)
+	}
+	col, ok := cols["fy2026-adopted.json"]
+	if !ok {
+		t.Fatalf("no fy2026-adopted column in %v", keysOf(cols))
+	}
+	sched, ok := col.Schedules["fund-flows"]
+	if !ok {
+		t.Fatalf("no fund-flows schedule in the column")
+	}
+	if len(sched.Links) != 2 {
+		t.Fatalf("%d link(s) folded, want 2", len(sched.Links))
+	}
+	var negative, positive ColumnLink
+	for _, l := range sched.Links {
+		if l.ValueCents < 0 {
+			negative = l
+		} else {
+			positive = l
+		}
+	}
+	if negative.Contra != note {
+		t.Errorf("the negative link's Contra is %q, want %q. A reduction that reaches the "+
+			"column without its sentence is drawn forward at its magnitude with nothing on "+
+			"the page saying it is a subtraction", negative.Contra, note)
+	}
+	// THE CONVERSE, because omitempty makes the empty case look like the absent
+	// one and a copy that filled it in would be inventing a reduction.
+	if positive.Contra != "" {
+		t.Errorf("the positive link's Contra is %q, want empty", positive.Contra)
+	}
+}
+
+func keysOf(m map[string]ColumnDoc) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }

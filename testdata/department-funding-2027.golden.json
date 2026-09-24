@@ -877,7 +877,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -897,7 +898,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -917,7 +919,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -937,7 +940,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -957,7 +961,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -977,7 +982,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -997,7 +1003,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -1017,7 +1024,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -1037,7 +1045,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -1057,7 +1066,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/100",
@@ -1077,7 +1087,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/200",
@@ -1097,7 +1108,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/201",
@@ -1117,7 +1129,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/202",
@@ -1137,7 +1150,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/203",
@@ -1157,7 +1171,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/204",
@@ -1177,7 +1192,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/205",
@@ -1197,7 +1213,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/206",
@@ -1217,7 +1234,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/210",
@@ -1237,7 +1255,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/221",
@@ -1257,7 +1276,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/222",
@@ -1277,7 +1297,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/223",
@@ -1297,7 +1318,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/224",
@@ -1317,7 +1339,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/225",
@@ -1337,7 +1360,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/240",
@@ -1357,7 +1381,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/240",
@@ -1377,7 +1402,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/240",
@@ -1397,7 +1423,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/241",
@@ -1417,7 +1444,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/242",
@@ -1437,7 +1465,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/282",
@@ -1457,7 +1486,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/283",
@@ -1477,7 +1507,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/284",
@@ -1497,7 +1528,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/285",
@@ -1517,7 +1549,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/286",
@@ -1537,7 +1570,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/287",
@@ -1557,7 +1591,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/288",
@@ -1577,7 +1612,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/289",
@@ -1597,7 +1633,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/310",
@@ -1617,7 +1654,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/311",
@@ -1637,7 +1675,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/320",
@@ -1657,7 +1696,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/321",
@@ -1677,7 +1717,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/330",
@@ -1697,7 +1738,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/331",
@@ -1717,7 +1759,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/400",
@@ -1737,7 +1780,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/401",
@@ -1757,7 +1801,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/402",
@@ -1777,7 +1822,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/510",
@@ -1797,7 +1843,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/550",
@@ -1817,7 +1864,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/551",
@@ -1837,7 +1885,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/552",
@@ -1857,7 +1906,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/553",
@@ -1877,7 +1927,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/560",
@@ -1897,7 +1948,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/561",
@@ -1917,7 +1969,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/600",
@@ -1937,7 +1990,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/610",
@@ -1957,7 +2011,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/612",
@@ -1977,7 +2032,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/620",
@@ -1997,7 +2053,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/622",
@@ -2017,7 +2074,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/623",
@@ -2037,7 +2095,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/640",
@@ -2057,7 +2116,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/642",
@@ -2077,7 +2137,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/643",
@@ -2097,7 +2158,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/700",
@@ -2117,7 +2179,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/710",
@@ -2137,7 +2200,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/720",
@@ -2157,7 +2221,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/730",
@@ -2177,7 +2242,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     },
     {
       "source": "fund/740",
@@ -2197,7 +2263,8 @@
         }
       ],
       "derived": false,
-      "partition": false
+      "partition": false,
+      "contra": ""
     }
   ]
 }

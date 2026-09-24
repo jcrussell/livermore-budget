@@ -752,3 +752,56 @@ func TestATierFiveParentIsCutAtTheFirstSlash(t *testing.T) {
 		}
 	}
 }
+
+// TestAReductionNamesTheCategoryTheSchedulePrintsItUnder is the projection half
+// of the claim the chart rests on.
+//
+// THE CHART DRAWS A REDUCTION FORWARD AT ITS MAGNITUDE, because a ribbon cannot
+// carry a minus sign, so the sentence is the only thing distinguishing it from
+// an addition of the same size. Budget Book p127 prints ERAF as its own row
+// under Property Taxes and prints it negative; it reaches the document TWICE --
+// once as the fund cell and once as that line's rollup into its category -- and
+// a pass that named only the site a link was built at would leave the other half
+// silent on the page.
+func TestAReductionNamesTheCategoryTheSchedulePrintsItUnder(t *testing.T) {
+	const eraf = "ERAF"
+	labels := fundFlowsLabels()
+	// ITS OWN PRINTED ROW, as p127 prints it. A reduction sharing a row with the
+	// additions beside it nets into one positive cell and the document draws no
+	// negative link at all -- which is a fixture that would hide the whole defect.
+	labels.lines[lineKey{"taxes/property", eraf, "revenue"}] = []string{
+		prefixRevenueLine + "taxes/property/eraf"}
+	reduction := fundFlowsFact(ScopeRevenueByFund, mapping.KindRevenue,
+		"taxes/property", "", "general", fact.FundNumber(100), -250, "r")
+	reduction.RowLabel = eraf
+	facts := append(fundFlowsFacts(), reduction)
+
+	var named, silent, wrong []string
+	for _, l := range buildFundFlows(t, facts, labels).Links {
+		where := l.Source + " -> " + l.Target
+		switch {
+		case l.ValueCents < 0 && l.Contra == "":
+			silent = append(silent, where)
+		case l.ValueCents < 0:
+			named = append(named, where)
+			if l.Contra != "printed as a reduction of Property Taxes" {
+				wrong = append(wrong, where+": "+l.Contra)
+			}
+		case l.Contra != "":
+			wrong = append(wrong, where+" is positive and says "+l.Contra)
+		}
+	}
+	if len(silent) > 0 {
+		t.Errorf("%d negative link(s) name no schedule: %v", len(silent), silent)
+	}
+	if len(wrong) > 0 {
+		t.Errorf("wrong sentence: %v", wrong)
+	}
+	// THE CELL AND THE LINE'S ROLLUP, which is why this is two and not one: a
+	// post-pass running at one emitting site passes a test asserting "at least
+	// one" and leaves half the reader's ribbons unexplained.
+	if len(named) != 2 {
+		t.Errorf("%d negative link(s) carry the sentence, want 2 -- the fund cell and "+
+			"its line's rollup into the category: %v", len(named), named)
+	}
+}

@@ -100,6 +100,10 @@ type ColumnLink struct {
 	Locators   json.RawMessage `json:"locators"`
 	Derived    bool            `json:"derived,omitempty"`
 	Partition  bool            `json:"partition,omitempty"`
+	// Contra is the sentence naming the schedule a negative link is printed as
+	// a reduction of, carried from the projection so the page reads it rather
+	// than composing it from a parent the fold has already blanked.
+	Contra string `json:"contra,omitempty"`
 }
 
 // decoded is a published document, read far enough to fold into a column.
@@ -125,6 +129,7 @@ type decoded struct {
 		Locators   json.RawMessage `json:"locators"`
 		Derived    bool            `json:"derived"`
 		Partition  bool            `json:"partition"`
+		Contra     string          `json:"contra"`
 	} `json:"links"`
 	Metadata struct {
 		FiscalYear      int             `json:"fiscal_year"`
@@ -287,7 +292,7 @@ func ColumnsOf(projections map[string][]byte, generatedBy string) (map[string]Co
 			links = append(links, ColumnLink{
 				From: from, To: to, ValueCents: l.ValueCents, Kind: l.Kind,
 				TransferID: l.TransferID, FactIDs: l.FactIDs, Locators: l.Locators,
-				Derived: l.Derived, Partition: l.Partition,
+				Derived: l.Derived, Partition: l.Partition, Contra: l.Contra,
 			})
 		}
 		col.Schedules[schedule] = ColumnSched{

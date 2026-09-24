@@ -113,12 +113,13 @@ func TestFixtureVerdicts(t *testing.T) {
 		// Same reason one step further on: no revenue-by-fund fact means the
 		// trends projection declares no slice, builds no document, and there is
 		// neither a point nor a series to examine.
-		"trend-points-tie-to-facts":  "vacuous over 0",
-		"trend-series-are-complete":  "vacuous over 0",
-		"node-hierarchy-well-formed": "vacuous over 0",
-		"constraint-tier-vocabulary": "vacuous over 0",
-		"fact-departments-resolve":   "vacuous over 0",
-		"fact-funds-resolve":         "vacuous over 0",
+		"trend-points-tie-to-facts":        "vacuous over 0",
+		"trend-series-are-complete":        "vacuous over 0",
+		"node-hierarchy-well-formed":       "vacuous over 0",
+		"constraint-tier-vocabulary":       "vacuous over 0",
+		"contra-links-name-their-schedule": "vacuous over 0",
+		"fact-departments-resolve":         "vacuous over 0",
+		"fact-funds-resolve":               "vacuous over 0",
 		// The fixture taxonomy nests taxes/property under `taxes`, and that is
 		// not a line: a line's parent is assignable, and no fixture fact is a
 		// revenue-by-fund row. Vacuous is the verdict the definition demands.
@@ -132,7 +133,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 23, Vacuous: 23, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 23, Vacuous: 24, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -154,8 +155,8 @@ func TestVacuousFailsOnlyUnderStrict(t *testing.T) {
 	lenient := Run(t.Context(), s, All(), ReportOptions{})
 	strict := Run(t.Context(), s, All(), ReportOptions{Strict: true})
 
-	if lenient.Counts.Vacuous != 23 {
-		t.Fatalf("vacuous count = %d, want 23", lenient.Counts.Vacuous)
+	if lenient.Counts.Vacuous != 24 {
+		t.Fatalf("vacuous count = %d, want 24", lenient.Counts.Vacuous)
 	}
 	if lenient.Failed() {
 		t.Error("a run with vacuous checks failed without --strict")
@@ -178,6 +179,7 @@ func TestVacuousChecksSayWhatIsAbsent(t *testing.T) {
 		"transfer-legs-pair":                    "no link carries a transfer_id",
 		"node-hierarchy-well-formed":            "no node carries a parent",
 		"constraint-tier-vocabulary":            "no node carries a constraint_tier",
+		"contra-links-name-their-schedule":      "no projection publishes a negative link",
 		"fact-departments-resolve":              "no fact carries a department",
 		"fact-funds-resolve":                    "no fact names a fund",
 		"fact-revenue-lines-resolve":            "no fact is a revenue row of scope revenue-by-fund",

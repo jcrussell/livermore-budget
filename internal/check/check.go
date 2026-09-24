@@ -203,6 +203,7 @@ func All() []Check {
 		&linkValuesTieToFacts{},
 		&linkLocatorsMatchTheirFacts{},
 		&linkKindsMatchTheirFacts{},
+		&contraLinksNameTheirSchedule{},
 		&countsReconcile{},
 		&fundFlowsCountsReconcile{},
 		&scheduleCountsReconcile{},

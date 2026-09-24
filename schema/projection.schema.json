@@ -107,7 +107,7 @@
         "type": "object",
         "required": [
           "source", "target", "value_cents", "kind", "transfer_id",
-          "fact_ids", "locators", "derived", "partition"
+          "fact_ids", "locators", "derived", "partition", "contra"
         ],
         "additionalProperties": false,
         "properties": {
@@ -128,7 +128,11 @@
             "items": { "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json" }
           },
           "derived": { "type": "boolean" },
-          "partition": { "type": "boolean" }
+          "partition": { "type": "boolean" },
+          "contra": {
+            "description": "The schedule this link is printed as a reduction of, in the words the page shows beside it. Empty on every link the document does not print negative.",
+            "type": "string"
+          }
         },
         "allOf": [
           {
@@ -140,6 +144,12 @@
                 "locators": { "minItems": 1 }
               }
             }
+          },
+          {
+            "description": "A NEGATIVE FIGURE NAMES THE SCHEDULE IT REDUCES, AND ONLY A NEGATIVE ONE DOES. The sign is what the page printed; the sentence is what a reader is owed beside a ribbon drawn at its magnitude. Stated here as a biconditional rather than in a hand-written key check, so neither half can hold without the other.",
+            "if": { "properties": { "value_cents": { "exclusiveMaximum": 0 } }, "required": ["value_cents"] },
+            "then": { "properties": { "contra": { "minLength": 1 } } },
+            "else": { "properties": { "contra": { "const": "" } } }
           }
         ]
       }
