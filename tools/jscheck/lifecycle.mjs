@@ -882,5 +882,64 @@ export async function checks() {
     }
   }
 
+  // ------------------------------------------------- a gesture that throws
+  //
+  // A DOM LISTENER IS THE ONE PLACE A THROW REACHES NOBODY. drillDown has had
+  // a .catch since openNode and showYear has one; a click handler had neither.
+  // A schedule served with no `sources` DRAWS -- nothing on the draw path
+  // reads them -- and then the first mark a reader pins throws out of
+  // citations(), uncaught: no banner, and the detail panel left half-built
+  // with the amount and the chips written and the Sources block never reached.
+  // The page looked fine until they touched it. fisc-a41p.
+  //
+  // THE SHAPE IS SERVED RATHER THAN SIMULATED, because the claim is about what
+  // a reader meets and a hand-thrown error would only prove the try/catch.
+  {
+    const config = twoYearConfig();
+    const broken = goldenGraph();
+    delete broken.metadata.sources;
+    const { app, main } = page({
+      config,
+      fetch: plannedFetch({ "data/sankey.json": { doc: broken } }),
+    });
+    await settle();
+
+    const drewFirst = (app.projection && app.projection.nodes || []).length;
+    const before = refusals(main).length;
+    // THE GESTURE AND NOT THE FUNCTION. Calling pin() directly would walk past
+    // the guard, which is on the listener -- and a check that did would report
+    // the throw it caused rather than the one a reader can cause.
+    const marks = app.dom.byId.get("chart")
+      ? Array.from(app.dom.byId.get("chart").querySelectorAll("g.node") || [])
+      : [];
+    const mark = marks[0];
+    let escaped = "";
+    if (mark) {
+      const handlers = (mark.listeners && mark.listeners.click) || [];
+      try {
+        for (const fn of handlers) {
+          fn.call(mark, { type: "click", timeStamp: 1000, stopPropagation() {}, preventDefault() {} });
+        }
+      } catch (e) {
+        escaped = String(e);
+      }
+    }
+    const banners = refusals(main);
+    const said = banners.length ? banners[0].textContent : "";
+    out.push({
+      name: "a gesture that throws leaves a refusal a reader can read, not a half-built panel",
+      ok: drewFirst > 0 && before === 0 && marks.length > 0 && escaped === "" &&
+        banners.length === 1 && said.includes("could not") &&
+        said.includes("chart on screen is unchanged"),
+      detail: !drewFirst
+        ? "the document with no metadata.sources drew nothing, so no gesture could reach " +
+          "the throw this arm is named for -- it asserted nothing"
+        : `the chart drew ${drewFirst} node(s) as ${marks.length} mark(s) with ${before} ` +
+          `banner(s), which is the half that makes this reachable; clicking the first ` +
+          `${escaped ? "THREW PAST THE GUARD (" + escaped + ")" : "was caught"} and left ` +
+          `${banners.length} banner(s)` + (banners.length ? `: ${JSON.stringify(said)}` : ""),
+    });
+  }
+
   return out;
 }

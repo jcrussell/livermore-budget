@@ -1264,7 +1264,10 @@ const GESTURE_WIRING = [
   '.attr("aria-keyshortcuts", "Enter Space")',
   "clickNode(d, e.timeStamp);",
   "doubleClickNode(d, e.timeStamp);",
-  "keyNode(d, e.key, e.timeStamp);",
+  // Inside guarded(), as the other two gestures are: a throw out of a DOM
+  // listener reaches no banner, so every gesture runs through it. The pin is
+  // still on the call, which is what fisc-k3zj is about.
+  'guarded("act on this mark", () => keyNode(d, e.key, e.timeStamp));',
   '.on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {',
 ];
 

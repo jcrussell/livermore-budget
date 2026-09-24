@@ -2259,6 +2259,43 @@ function collapseTier(tier) {
  * @param {LaidNode} d
  * @param {number} at the event's timestamp
  */
+/**
+ * Runs a reader's gesture and turns anything it throws into a refusal they can
+ * read.
+ *
+ * A DOM LISTENER IS THE ONE PLACE A THROW REACHES NOBODY. drillDown has had a
+ * .catch since openNode, and showYear has one; a click handler had neither, so
+ * a gesture that threw went to the console and left the page mid-render -- the
+ * detail panel half-built, with the amount and the chips written and the
+ * Sources block never reached, and no banner, because fail() is only called by
+ * code that knows it failed.
+ *
+ * MEASURED, and it is why this is a guard rather than a fix to one function: a
+ * schedule served with no `sources` DRAWS -- nothing on the draw path reads
+ * them -- and then the first node a reader pins throws out of citations(). The
+ * page looked fine until they touched it.
+ *
+ * IT DOES NOT VALIDATE ANYTHING. What shape a served document must have is
+ * schema/column.schema.json's claim, held against the bytes Go writes; a
+ * second copy of it here is the thing the boundary forbids. This only decides
+ * where the failure LANDS.
+ *
+ * @template T
+ * @param {string} gesture  what the reader did, for the sentence
+ * @param {() => T} run
+ * @returns {T | undefined}
+ */
+function guarded(gesture, run) {
+  try {
+    return run();
+  } catch (e) {
+    fail("This page could not " + gesture + ": " + String(e) +
+      ". The chart on screen is unchanged; the file it was drawn from is most likely " +
+      "not one this site published.");
+    return undefined;
+  }
+}
+
 function clickNode(d, at) {
   pin(d);
   if (d.id === keyActivation.id && at - keyActivation.at < ACTIVATION_WINDOW) return;
@@ -4604,9 +4641,9 @@ function render(laid) {
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => showTip(e, d))
     .on("pointerleave", hideTip)
-    .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => { showTip(e, d); pin(d); })
+    .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => guarded("show this flow", () => { showTip(e, d); pin(d); }))
     .on("blur", hideTip)
-    .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => { e.stopPropagation(); pin(d); });
+    .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => guarded("pin this flow", () => { e.stopPropagation(); pin(d); }));
 
   const node = gNodes.selectAll("g")
     .data(graph.nodes)
@@ -4630,7 +4667,7 @@ function render(laid) {
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointerleave", hideTip)
-    .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => { showTip(e, d); pin(d); })
+    .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => guarded("show this mark", () => { showTip(e, d); pin(d); }))
     .on("blur", hideTip)
     // Activating a node isolates its flows, the same toggle the legend does
     // for a fund group. Layout gets this chart down to 195 ribbon crossings and
@@ -4678,8 +4715,10 @@ function render(laid) {
     // meaning and 88% of them another, on the same mark shape, told apart only
     // by trying one.
     .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
-      e.stopPropagation();
-      clickNode(d, e.timeStamp);
+      guarded("pin this mark", () => {
+        e.stopPropagation();
+        clickNode(d, e.timeStamp);
+      });
     })
     // THE DOUBLE CLICK IS WIRED ON EVERY NODE AND NOT ONLY ON ONE THAT OPENS.
     // A reader who double clicks a mark that does not open has still made two
@@ -4688,15 +4727,17 @@ function render(laid) {
     // isolated before it. preventDefault is for the text selection a double
     // click otherwise leaves across the label.
     .on("dblclick", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
-      e.stopPropagation();
-      e.preventDefault();
-      doubleClickNode(d, e.timeStamp);
+      guarded("open this mark", () => {
+        e.stopPropagation();
+        e.preventDefault();
+        doubleClickNode(d, e.timeStamp);
+      });
     })
     .on("keydown", /** @param {KeyboardEvent} e @param {LaidNode} d */ (e, d) => {
       if (e.key !== "Enter" && e.key !== " ") return;
       if (e.repeat) return;
       e.preventDefault();
-      keyNode(d, e.key, e.timeStamp);
+      guarded("act on this mark", () => keyNode(d, e.key, e.timeStamp));
     });
 
   node.append("rect")
