@@ -804,7 +804,7 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, opened s
 	}
 	var marks []drawnMark
 	drawn := window.Graph()
-	if c, ok, err := export.ResidualOf(drawn, from, drawing, opened, s.Tiers, residual); err != nil {
+	if c, ok, err := export.ResidualOf(drawn, from, drawing, opened, s.Tiers, residual, s.ResidualGrain); err != nil {
 		return nil, nil, export.Graph{}, fmt.Errorf("the residual of %q: %w", opened, err)
 	} else if ok {
 		if window, err = spliceMark(drawn, c); err != nil {

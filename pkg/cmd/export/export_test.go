@@ -1344,7 +1344,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			// READ OFF THE CHECK, NOT SPELLED, because the check is the
 			// declaration: a literal here would be the second copy the
 			// declaration exists to prevent, kept green by nothing.
-			Residual: check.ResidualNodes(),
+			Residual:      check.ResidualNodes(),
+			ResidualGrain: "fund",
 			Description: "The revenue categories on the left are the citywide chart's own " +
 				"cells; this fund group is the mark in the middle, and its own funds are " +
 				"on the right, rescaled to the group's total \u2014 the citywide chart " +

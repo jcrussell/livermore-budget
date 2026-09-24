@@ -21,8 +21,13 @@ type Graph struct {
 // whether the document marks it derived -- which the client reads as "not
 // one of the opened node's parts" wherever the node is drawn.
 type GraphNode struct {
-	ID      string `json:"id"`
-	Tier    int    `json:"tier"`
+	ID   string `json:"id"`
+	Tier int    `json:"tier"`
+	// Label is the city's own word for the node, decoded because a mark's
+	// prose names the node it stands beside and that sentence is Go's: a
+	// residual says which flow the schedule does not split, and a gap says
+	// which cell the two documents disagree about.
+	Label   string `json:"label"`
 	Role    string `json:"role"`
 	Parent  string `json:"parent"`
 	Derived bool   `json:"derived"`

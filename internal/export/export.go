@@ -640,6 +640,26 @@ type DrillStep struct {
 	// from the JSON when empty, so the client reads an absent key as "this
 	// step carries nothing across", which is every same-document step.
 	Residual map[string]string `json:"residual,omitempty"`
+	// ResidualGrain is the grain the document this step draws does NOT split
+	// that money by, in the city's own singular word for it -- "fund". The mark
+	// is named "Not broken down by <grain>" and its rationale says the same word
+	// again, which is why the grain is declared and the sentences are not.
+	//
+	// A CLAIM ABOUT THE DOCUMENT AND NOT ABOUT THE TIER. The client hard-coded
+	// "Not broken down by fund", and it read correctly only because every
+	// residual on the committed corpus stands on a step that opens into funds. A
+	// step opening into divisions would have told a reader the schedule does not
+	// split by fund when what it does not split by is a division. Required
+	// wherever Residual is non-empty, so the pair cannot half-exist.
+	//
+	// NOT ON THE WIRE, and the tag says so deliberately. The grain is what Go
+	// composes the mark's label and rationale FROM; the page is served those
+	// sentences and has no use for the word itself, so shipping it would put a
+	// second source of the same claim in front of the client and invite it to
+	// compose a third. fisc-kops is the opposite failure -- a json:"-" on a
+	// field the client needed -- and the difference is whether anything on the
+	// far side reads it. Nothing does.
+	ResidualGrain string `json:"-"`
 	// Gaps is the set of nodes this step OPENS whose total the document it
 	// draws does not reach, each with the declared reason the two documents
 	// print one cell at two figures: node id to reason. The client draws the
@@ -1479,6 +1499,19 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 						"so it cannot share one with a step that names which nodes open",
 					v.Path, j, i, s.From, where, o.Role, s.Role)
 			}
+		}
+		if len(s.Residual) > 0 && s.ResidualGrain == "" {
+			return fmt.Errorf(
+				"view %q's step %d declares %d residual endpoint(s) and no residual_grain; "+
+					"the mark they hang on is named for the grain this step's document does "+
+					"not split that money by, and a step carrying a residual without saying "+
+					"so draws a mark named for whatever the client last hard-coded",
+				v.Path, i, len(s.Residual))
+		}
+		if len(s.Residual) == 0 && s.ResidualGrain != "" {
+			return fmt.Errorf(
+				"view %q's step %d declares residual_grain %q and no residual endpoint; the "+
+					"grain names a mark this step never draws", v.Path, i, s.ResidualGrain)
 		}
 		for _, id := range slices.Sorted(maps.Keys(s.Residual)) {
 			if id == "" || s.Residual[id] == "" {

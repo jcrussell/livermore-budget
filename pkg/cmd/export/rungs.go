@@ -122,6 +122,13 @@ type drawnMark struct {
 	InCents  int64    `json:"in_cents,omitempty"`
 	OutCents int64    `json:"out_cents,omitempty"`
 	Ends     []string `json:"ends,omitempty"`
+	// THE WORDS THE MARK CARRIES, and this struct is converted from
+	// export.Mark rather than copied field by field -- so a field added there
+	// and forgotten here does not compile. That conversion is the only thing
+	// holding the two in step and it is worth more than a copy would be.
+	Label      string `json:"label"`
+	Rationale  string `json:"rationale"`
+	SourceNote string `json:"source_note"`
 }
 
 // drawnTier is one column of one rung. ONE LIST IN COLUMN ORDER, rather than
@@ -548,7 +555,7 @@ func (rungWalker) answer(g, screen, from export.Graph, s export.DrillStep, opene
 	if s.Projection == "" {
 		residual = nil
 	}
-	if c, ok, err := export.ResidualOf(drawn, from, g, opened, s.Tiers, residual); err != nil {
+	if c, ok, err := export.ResidualOf(drawn, from, g, opened, s.Tiers, residual, s.ResidualGrain); err != nil {
 		return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
 	} else if ok {
 		if next, err = carry(drawn, c); err != nil {

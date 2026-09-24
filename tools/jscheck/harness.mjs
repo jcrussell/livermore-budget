@@ -60,14 +60,23 @@ export function goFields(file, name) {
   const fields = [...src.slice(open, end)
     .matchAll(/^\t(\w+)\s+[^`\n]*`json:"([^"]*)"`/gm)]
     .map((m) => ({ field: m[1], json: m[2].split(",")[0] }))
-    .filter((f) => f.json !== "" && f.json !== "-");
+    // A json:"-" FIELD IS DECLARED AND DELIBERATELY NOT SHIPPED, which is a
+    // third state and not the absence of one. Dropping it here told every
+    // caller "no such field", so a field the struct carries for Go's own use
+    // read as a parse that had invented one. Callers that are about the WIRE
+    // filter on json; the one that is about the LITERALS needs the name.
+    .filter((f) => f.json !== "");
   if (!fields.length) throw new Error(`${file}'s type ${name} ships no json key`);
   return fields;
 }
 
 /** The json keys a Go struct ships, in declaration order. */
 export function goJSONKeys(file, name) {
-  return goFields(file, name).map((f) => f.json);
+  // THE WIRE'S KEYS, so a field the struct declares and deliberately does not
+  // ship (json:"-") is not one. goFields keeps it, because the parse that
+  // reads data.go's literals needs the Go name; every caller here is asking
+  // what arrives at the client.
+  return goFields(file, name).filter((f) => f.json !== "-").map((f) => f.json);
 }
 
 /**
@@ -1537,6 +1546,11 @@ export function parseSpineRenderTiers(src) {
 export const KNOWN_STEP_FIELDS = [
   "Key", "After", "From", "Side", "Role", "Tiers", "Keep", "Widen", "Caps",
   "Projection", "Back", "Tail", "Noun", "Description", "Residual", "Gaps",
+  // ResidualGrain is the second row: it is a WORD the residual mark is named
+  // for, rendered into that mark's label and its rationale by Go, and no
+  // check here measures a shape from it. What holds it is the arm comparing
+  // the drawn mark against the served answer.
+  "ResidualGrain",
 ];
 
 export function parseStepShapes(src) {

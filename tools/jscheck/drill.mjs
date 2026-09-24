@@ -942,6 +942,28 @@ async function openInto(app, id) {
 }
 
 /** openInto, or a thrown error naming what the chart was left on. */
+/**
+ * The mark of one role that testdata/rungs.json answers for a rung, or null.
+ *
+ * READ FROM THE ARTIFACT AND NOT FROM app.js, because the whole point of the
+ * marks' prose being Go's is that one declaration reaches the page -- and a
+ * checker holding its own copy of the words cannot see the two disagree. It
+ * could only see the client disagree with the checker. fisc-jdsb.
+ *
+ * @param {string} stem
+ * @param {string[]} path
+ * @param {string} role
+ * @returns {any}
+ */
+function markInArtifact(stem, path, role) {
+  const column = (rungsAnswer().columns || []).find((/** @type {any} */ c) => c.stem === stem);
+  if (!column) return null;
+  const rung = (column.rungs || []).find((/** @type {any} */ r) =>
+    JSON.stringify(r.path) === JSON.stringify(path));
+  if (!rung) return null;
+  return (rung.marks || []).find((/** @type {any} */ m) => m.role === role) || null;
+}
+
 async function mustOpen(app, id) {
   const outcome = await openInto(app, id);
   if (outcome !== "drew" || topOf(app) !== id) {
@@ -2719,23 +2741,46 @@ export async function checks() {
     app.pin(laidNode);
     const panel = text(app.dom.byId.get("detail"));
     const opens = app.projection.nodes.filter((n) => app.isCarried(n.id) && app.drillable(n)).map((n) => n.id);
+
+    // THE WORDS ARE READ OFF THE SERVED ANSWER AND NOT SPELLED HERE, which is
+    // fisc-jdsb's whole subject. This arm used to compare the drawn label
+    // against the literal "Not broken down by fund" -- a second copy of a
+    // string app.js also held, so rewording BOTH files left every gate green
+    // and the checker agreed with whatever the client last said. Now the label
+    // and the rationale are declared once, in Go, and this reads them from the
+    // artifact the page is served.
+    const answered = markInArtifact(col.stem, ["fund-group/general"], "residual");
+    // AND THE WORDS APPEAR IN NO LITERAL IN app.js, which is the half the
+    // comparison above cannot make. A client hard-coding the same string Go
+    // ships is invisible to a drawn-vs-answered check -- both sides agree --
+    // and it is exactly the shape this lane removed. So the claim "the mark's
+    // prose is the document's" is asserted where it can fail: the served
+    // sentences are not in the file that draws them.
+    const spelled = answered
+      ? [answered.label, answered.rationale].filter((w) => w && app.source.includes(w))
+      : [];
     out.push({
       name: `${col.label}: the residual is marked as ours, says why in the check's words, and reaches the inferred list, the tooltip and the panel; nothing carried opens`,
-      ok: Boolean(r.node) && r.node.derived === true && r.node.label === "Not broken down by fund" &&
+      ok: Boolean(r.node) && r.node.derived === true && Boolean(answered) &&
+          r.node.label === answered.label && r.node.rationale === answered.rationale &&
+          spelled.length === 0 &&
           r.node.rationale !== "" && missingReasons.length === 0 &&
           r.node.source_note.includes("Carried, not computed") &&
           citedPages.every((pg) => r.node.source_note.includes(String(pg))) &&
-          listed.includes("Not broken down by fund") && listed.includes(r.node.rationale) &&
+          listed.includes(answered.label) && listed.includes(r.node.rationale) &&
           tip.includes("◇ inferred") && tip.includes(r.node.rationale) &&
           panel.includes("◇ our inference") && panel.includes(r.node.rationale) &&
           panel.includes(r.node.source_note) && opens.length === 0,
       detail: r.node
-        ? `derived=${r.node.derived}, label "${r.node.label}"; rationale carries ` +
+        ? `derived=${r.node.derived}, label "${r.node.label}" ` +
+          `${answered && r.node.label === answered.label ? "as the answer names it" : "WHERE THE ANSWER SAYS " + JSON.stringify(answered && answered.label)}` +
+          `; rationale ${answered && r.node.rationale === answered.rationale ? "is the answer's" : "IS NOT THE ANSWER'S"}` +
+          `${spelled.length ? ", and app.js SPELLS " + spelled.length + " of the answer's own sentence(s)" : ", spelled in no app.js literal"}, carries ` +
           `${carriedEnds.length - missingReasons.length} of ${carriedEnds.length} declared reasons` +
           (missingReasons.length ? ` (missing ${missingReasons.join(", ")})` : "") +
           `; source note names ${citedPages.every((pg) => r.node.source_note.includes(String(pg))) ? "" : "NOT "}` +
           `every cited page (${citedPages.join(", ")}); inferred list ` +
-          `${listed.includes("Not broken down by fund") ? "lists it" : "OMITS it"}; tooltip ` +
+          `${answered && listed.includes(answered.label) ? "lists it" : "OMITS it"}; tooltip ` +
           `${tip.includes("◇ inferred") ? "chips it inferred" : "chips it PRINTED"}; panel ` +
           `${panel.includes("◇ our inference") ? "chips it ours" : "chips it PRINTED"}; ` +
           `${opens.length ? opens.join(", ") + " WRONGLY open" : "no carried mark opens"}`

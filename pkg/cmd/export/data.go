@@ -705,8 +705,13 @@ func views(built result) []export.View {
 				// them is sub-pixel, in either column.
 				Caps: []export.TierCap{{Tier: 3, Cap: 8}},
 				Noun: "fund group",
-				Back: "All fund groups",
-				Tail: "funds",
+				// THE GRAIN THIS STEP'S DOCUMENT DOES NOT SPLIT THE CARRIED
+				// FLOWS BY. pp.127-140 print revenue and spending by fund and
+				// print no fund-balance row at all, so what the spine sends
+				// into a group as a draw reaches no fund here.
+				ResidualGrain: "fund",
+				Back:          "All fund groups",
+				Tail:          "funds",
 				// THE RESIDUAL IS A DECLARATION, READ, NOT COPIED.
 				// check.ResidualNodes names which spine endpoints
 				// pp.127-140 and 167-170 cannot decompose, each with its

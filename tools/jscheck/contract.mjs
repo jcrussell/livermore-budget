@@ -207,20 +207,35 @@ export function checks() {
     // measuring a step shape missing the new declaration, green. Now the
     // struct, the schema and the parse must name the same set, and the schema
     // is closed so the export refuses a field it has not been told about.
-    const shipped = goFields("internal/export/export.go", "DrillStep");
+    const declared = goFields("internal/export/export.go", "DrillStep");
+    // A FIELD TAGGED json:"-" IS DECLARED AND NOT SHIPPED, on purpose: the
+    // schema must NOT name it and the parse still must, because it appears in
+    // data.go's literals under its Go name. Folding the two states together is
+    // what made this arm refuse ResidualGrain, a field whose whole point is
+    // that nothing on the wire reads it.
+    const shipped = declared.filter((f) => f.json !== "-");
     const stated = Object.keys(at(root, "steps").items.properties);
-    const parsed = shipped.filter((f) => KNOWN_STEP_FIELDS.includes(f.field)).map((f) => f.json);
+    const parsed = declared.filter((f) => KNOWN_STEP_FIELDS.includes(f.field)).map((f) => f.field);
     const missFromSchema = shipped.map((f) => f.json).filter((k) => !stated.includes(k)).sort();
     const missFromStruct = stated.filter((k) => !shipped.some((f) => f.json === k)).sort();
-    const missFromParse = shipped.map((f) => f.json).filter((k) => !parsed.includes(k)).sort();
-    const unknown = KNOWN_STEP_FIELDS.filter((f) => !shipped.some((s) => s.field === f)).sort();
+    const missFromParse = declared.map((f) => f.field).filter((k) => !parsed.includes(k)).sort();
+    const unknown = KNOWN_STEP_FIELDS.filter((f) => !declared.some((s) => s.field === f)).sort();
+    // AND AN UNSHIPPED FIELD MUST NOT BE IN THE SCHEMA, which is what keeps
+    // json:"-" from becoming a way to hide a field from this arm.
+    const hidden = declared.filter((f) => f.json === "-")
+      .filter((f) => stated.includes(f.field.toLowerCase())).map((f) => f.field).sort();
     out.push({
       name: "a DrillStep field is named by the struct, the page's schema and harness.mjs's parse alike",
-      ok: !missFromSchema.length && !missFromStruct.length && !missFromParse.length && !unknown.length,
-      detail: (missFromSchema.length || missFromStruct.length || missFromParse.length || unknown.length)
+      ok: !missFromSchema.length && !missFromStruct.length && !missFromParse.length &&
+          !unknown.length && !hidden.length,
+      detail: (missFromSchema.length || missFromStruct.length || missFromParse.length ||
+          unknown.length || hidden.length)
         ? `shipped and unstated [${missFromSchema}]; stated and unshipped [${missFromStruct}]; ` +
-          `shipped and unparsed [${missFromParse}]; parsed and unshipped [${unknown}]`
-        : `${shipped.length} field(s), agreed three ways: ${shipped.map((f) => f.json).join(", ")}`,
+          `declared and unparsed [${missFromParse}]; parsed and undeclared [${unknown}]; ` +
+          `unshipped but in the schema [${hidden}]`
+        : `${shipped.length} field(s) agreed three ways: ${shipped.map((f) => f.json).join(", ")}` +
+          `; ${declared.length - shipped.length} declared and deliberately not shipped: ` +
+          `${declared.filter((f) => f.json === "-").map((f) => f.field).join(", ") || "none"}`,
     });
   }
 

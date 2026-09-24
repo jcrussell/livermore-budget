@@ -1179,8 +1179,26 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 			chartView(func(v *export.View) {
 				v.Steps[0].Projection = "sankey"
 				v.Steps[0].Residual = map[string]string{"transfers/in": ""}
+				// THE GRAIN IS SET SO THIS CASE REACHES THE ARM IT IS ABOUT.
+				// Without it the grain guard refuses first and the case goes
+				// red on a sentence it was not written to test -- which is
+				// indistinguishable, by exit code, from the reason guard
+				// working.
+				v.Steps[0].ResidualGrain = "fund"
 			})},
 			"declares residual endpoint \"transfers/in\" with reason \"\""},
+		{"a residual with no grain to name its mark", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].Residual = map[string]string{"transfers/in": "the reason"}
+			})},
+			"declares 1 residual endpoint(s) and no residual_grain"},
+		{"a grain naming a mark the step never draws", []export.View{ok,
+			chartView(func(v *export.View) {
+				v.Steps[0].Projection = "sankey"
+				v.Steps[0].ResidualGrain = "fund"
+			})},
+			"declares residual_grain \"fund\" and no residual endpoint"},
 		// A GAP NEEDS THE SAME TWO THINGS FOR A DIFFERENT REASON, and the two
 		// declarations are told apart by which node the key names -- an
 		// endpoint of the chart above for a residual, the opened node itself

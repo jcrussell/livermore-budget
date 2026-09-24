@@ -117,7 +117,10 @@
                     "required": [
                       "id",
                       "role",
-                      "tier"
+                      "tier",
+                      "label",
+                      "rationale",
+                      "source_note"
                     ],
                     "additionalProperties": false,
                     "properties": {
@@ -140,6 +143,20 @@
                       },
                       "out_cents": {
                         "type": "integer"
+                      },
+                      "label": {
+                        "description": "What the mark is called on the chart. A residual is named for the grain its step's document does not split that money by; a gap is named for the disagreement it stands for.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "rationale": {
+                        "description": "Why the mark exists, in the words the step declares. A claim about what the documents do and do not decompose, so it is composed here and not in the client.",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "source_note": {
+                        "description": "What the mark's figure is and is not. Empty on a residual, whose note renders the citations of the flows it carries and is the client's; stated on a gap, whose figure is a difference no page prints.",
+                        "type": "string"
                       },
                       "ends": {
                         "type": "array",

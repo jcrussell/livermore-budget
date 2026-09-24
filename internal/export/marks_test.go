@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 // TestGapOfIsMarkGapsArithmetic is markGap's rule on a hand-written chart,
@@ -111,8 +112,43 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 			if ok != tc.ok {
 				t.Fatalf("ok = %v, want %v", ok, tc.ok)
 			}
-			if diff := cmp.Diff(tc.want, got); diff != "" {
+			// THE ARITHMETIC AND THE WORDS ARE ASSERTED APART. The struct
+			// diff is about which mark exists, where it stands and what it is
+			// worth; a reworded sentence showing up as a changed rule would
+			// train a reader to re-baseline this diff without reading it.
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreFields(Mark{},
+				"Label", "Rationale", "SourceNote")); diff != "" {
 				t.Errorf("GapOf mismatch (-want +got):\n%s", diff)
+			}
+			if !tc.ok {
+				return
+			}
+			if got.Mark.Label != "Difference between the two schedules" {
+				t.Errorf("label = %q", got.Mark.Label)
+			}
+			// THE FIGURES IN THE SENTENCE ARE THE MARK'S OWN, which is the half
+			// a fixed-string comparison would not catch: a rationale quoting
+			// the wrong side of the difference reads perfectly.
+			var into, outOf int64
+			for _, l := range tc.drawn.Links {
+				if l.Target == opened {
+					into += l.ValueCents
+				}
+				if l.Source == opened {
+					outOf += l.ValueCents
+				}
+			}
+			for _, want := range []string{dollars(into), dollars(outOf), tc.gaps[opened]} {
+				if want == "" || strings.Contains(got.Mark.Rationale, want) {
+					continue
+				}
+				t.Errorf("rationale %q does not carry %q", got.Mark.Rationale, want)
+			}
+			// AND THE NOTE STOPS WHERE THE CHECKING DOES. It used to say both
+			// totals are figures `fisc verify` holds, which reads as covering
+			// the difference between them; no check holds that (fisc-4lsx).
+			if !strings.Contains(got.Mark.SourceNote, "not itself a figure any page prints or any check holds") {
+				t.Errorf("source note does not say what is unchecked: %q", got.Mark.SourceNote)
 			}
 		})
 	}
@@ -260,7 +296,7 @@ func TestResidualOfIsCarryResiduals(t *testing.T) {
 			if strings.HasPrefix(tc.name, "a node the document") {
 				opened = "X"
 			}
-			got, ok, err := ResidualOf(tc.drawn, from, doc, opened, tc.tiers, tc.residual)
+			got, ok, err := ResidualOf(tc.drawn, from, doc, opened, tc.tiers, tc.residual, "fund")
 			if tc.err != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.err) {
 					t.Fatalf("err = %v, want one containing %q", err, tc.err)
@@ -273,8 +309,38 @@ func TestResidualOfIsCarryResiduals(t *testing.T) {
 			if ok != tc.ok {
 				t.Fatalf("ok = %v, want %v", ok, tc.ok)
 			}
-			if diff := cmp.Diff(tc.want, got); diff != "" {
+			// The arithmetic and the words apart, as the gap's cases are.
+			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreFields(Mark{},
+				"Label", "Rationale", "SourceNote")); diff != "" {
 				t.Errorf("ResidualOf mismatch (-want +got):\n%s", diff)
+			}
+			if !tc.ok {
+				return
+			}
+			// THE GRAIN IS THE STEP'S AND IS SAID TWICE, so a mark carrying the
+			// label of one grain and the rationale of another cannot pass. That
+			// was reachable while the client hard-coded the label and derived
+			// nothing from the step.
+			if got.Mark.Label != "Not broken down by fund" {
+				t.Errorf("label = %q, want it named for the declared grain", got.Mark.Label)
+			}
+			if !strings.Contains(got.Mark.Rationale, "does not split by fund") ||
+				!strings.Contains(got.Mark.Rationale, "no fund here receives or pays it") {
+				t.Errorf("rationale does not say the grain the label names: %q", got.Mark.Rationale)
+			}
+			// AND EVERY DECLARED ENDPOINT'S REASON REACHES IT, in the step's own
+			// words. A rationale naming the endpoints and dropping a reason
+			// would read as complete.
+			for _, e := range got.Mark.Ends {
+				if why := tc.residual[e]; why != "" && !strings.Contains(got.Mark.Rationale, why) {
+					t.Errorf("rationale drops %s's declared reason %q", e, why)
+				}
+			}
+			// THE RESIDUAL'S NOTE IS THE CLIENT'S, because it renders the
+			// citations of the flows it carries and neither Graph nor this
+			// package's walk decodes a locator. fisc-tihl.
+			if got.Mark.SourceNote != "" {
+				t.Errorf("source note = %q, want empty: the residual's note is the client's", got.Mark.SourceNote)
 			}
 		})
 	}

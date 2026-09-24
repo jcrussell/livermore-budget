@@ -64,6 +64,21 @@ type Mark struct {
 	InCents  int64
 	OutCents int64
 	Ends     []string
+	// Label, Rationale and SourceNote are the words a reader meets on the mark.
+	//
+	// THEY ARE CLAIMS ABOUT THE DOCUMENTS AND SO THEY ARE GO'S. A residual says
+	// which flow a schedule does not split by fund and why; a gap says which
+	// cell two documents disagree about and by how much. Composed in the client
+	// they were sentences no Go check could be held against -- and one of them
+	// said `fisc verify` holds a difference it does not hold (fisc-4lsx).
+	//
+	// THE LABEL IS DECLARED AND NOT DERIVED FROM A TIER. "Not broken down by
+	// fund" was hard-coded in the client and right only because every residual
+	// on the committed corpus stands on a fund-group rung; it is the step's
+	// noun that makes it true, and the step is what names it here.
+	Label      string
+	Rationale  string
+	SourceNote string
 }
 
 // Carry is what one mark adds to the drawn chart and what it takes out: the
@@ -130,7 +145,34 @@ func GapOf(drawn Graph, opened string, tiers []int, gaps map[string]string) (Car
 	if len(tiers) == 0 {
 		return Carry{}, false, fmt.Errorf("the step draws no tiers, so the gap on %q has no column to stand in", opened)
 	}
-	m := Mark{ID: GapID(opened), Role: RoleGap}
+	centre := ""
+	for _, n := range drawn.Nodes {
+		if n.ID == opened {
+			centre = n.Label
+		}
+	}
+	if centre == "" {
+		centre = opened
+	}
+	m := Mark{
+		ID:    GapID(opened),
+		Role:  RoleGap,
+		Label: "Difference between the two schedules",
+		Rationale: "The chart above puts " + dollars(into) + " through " + centre +
+			" and the schedule this chart is drawn from accounts for " + dollars(outOf) +
+			" of it. " + gaps[opened] + " This mark is what is left, drawn so that the " +
+			"ribbons and the node agree; no page prints it as a figure of its own.",
+		// WHAT fisc verify ACTUALLY HOLDS, which is the reason this sentence is
+		// Go's rather than the client's. It used to say both totals are figures
+		// `fisc verify` holds to the pages the city printed, full stop -- and
+		// the difference between them reads as covered by that too. It is not:
+		// no check holds this difference to the reason declared above it
+		// (fisc-4lsx). The claim now stops where the checking does.
+		SourceNote: "Derived, not published: one document's total for this cell less the " +
+			"other's, taken from the two charts on screen. Each of those totals is built " +
+			"from figures `fisc verify` ties to the pages the city printed; the difference " +
+			"between them is not itself a figure any page prints or any check holds.",
+	}
 	var link GraphLink
 	if gap > 0 {
 		m.Tier, m.InCents = tiers[len(tiers)-1], gap
@@ -172,7 +214,7 @@ func GapOf(drawn Graph, opened string, tiers []int, gaps map[string]string) (Car
 // an error rather than a mark beside nothing. Its in and out differ by
 // construction: the difference is what the drawn document does not break
 // down, and the client sizes the mark at the larger.
-func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map[string]string) (Carry, bool, error) {
+func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map[string]string, grain string) (Carry, bool, error) {
 	if len(residual) == 0 {
 		return Carry{}, false, nil
 	}
@@ -276,7 +318,46 @@ func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map
 	if !placed {
 		return Carry{}, false, fmt.Errorf("%q has no part at a tier this step draws to stand the residual beside", opened)
 	}
-	c.Mark = Mark{ID: id, Role: RoleResidual, Tier: tier, Ends: slices.Sorted(slices.Values(ends))}
+	sortedEnds := slices.Sorted(slices.Values(ends))
+	label := func(n string) string {
+		for _, g := range doc.Nodes {
+			if g.ID == n && g.Label != "" {
+				return g.Label
+			}
+		}
+		for _, g := range from.Nodes {
+			if g.ID == n && g.Label != "" {
+				return g.Label
+			}
+		}
+		return n
+	}
+	// THE REASONS ARE THE STEP'S OWN WORDS, one per declared endpoint, in the
+	// order the mark carries them. They are why a reader is told no part of the
+	// opened node receives that flow, in the words the check that guards the
+	// identity declares it in rather than in a paraphrase.
+	reasons := make([]string, 0, len(sortedEnds))
+	for _, e := range sortedEnds {
+		why := residual[e]
+		if why == "" {
+			why = "no reason declared"
+		}
+		reasons = append(reasons, label(e)+": "+why+".")
+	}
+	c.Mark = Mark{
+		ID: id, Role: RoleResidual, Tier: tier, Ends: sortedEnds,
+		Label: "Not broken down by " + grain,
+		// NO PLURAL IS FORMED FROM THE GRAIN. "the opened node's parts" says
+		// what "the funds" said without a rule for turning one word into
+		// another, which is a rule this would get wrong on the first grain that
+		// does not take an s.
+		Rationale: "Money the chart above prints for " + label(opened) + " as a whole and " +
+			"that the schedule this chart is drawn from does not split by " + grain + ", so " +
+			"no " + grain + " here receives or pays it. It is drawn beside the opened node's " +
+			"parts rather than attributed to one of them, and what flows in and what flows " +
+			"out need not balance: the difference is what that schedule does not break " +
+			"down. " + strings.Join(reasons, " "),
+	}
 	for _, l := range c.Links {
 		if l.Target == id {
 			c.Mark.InCents += l.ValueCents

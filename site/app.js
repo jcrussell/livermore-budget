@@ -3731,17 +3731,23 @@ function carryResidual(drawn, from, rung, mark) {
 
   const node = {
     id: id,
-    label: "Not broken down by fund",
+    // THE LABEL AND THE RATIONALE ARE THE DOCUMENT'S AND ARRIVE ON THE MARK.
+    // Both are claims about what the schedule this chart is drawn from does
+    // not split, and the grain they name is the step's declaration rather
+    // than a word this file once hard-coded.
+    label: mark.label,
     tier: tier,
     parent: opened,
     constraint_tier: "",
     role: "residual",
     derived: true,
-    rationale: "Money the chart above prints for " + (labels.get(opened) || opened) +
-      " as a whole and that the schedule this chart is drawn from does not split by fund, so " +
-      "no fund here receives or pays it. It is drawn beside the funds rather than attributed " +
-      "to one, and what flows in and what flows out need not balance: the difference is what " +
-      "that schedule does not break down. " + reasons.join(" "),
+    rationale: mark.rationale,
+    // THE NOTE IS THIS PAGE'S, AND IT IS THE ONE PIECE OF MARK PROSE THAT IS.
+    // It renders the citations of the ribbons actually carried onto this mark,
+    // and neither export.Graph nor the rungs walk decodes a locator, so Go
+    // cannot name the pages without a second decode and the document titles
+    // the page config carries. fisc-tihl. Go ships "" here and the schema
+    // states that a residual's source_note may be empty.
     source_note: "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
       " of the chart above with figures and citations unchanged \u2014 " + where + ".",
   };
@@ -3852,7 +3858,11 @@ function markGap(drawn, rung, mark) {
   const id = mark.id;
   const node = {
     id: id,
-    label: "Difference between the two schedules",
+    // ALL THREE ARE THE DOCUMENT'S. A gap's every sentence is about two
+    // schedules disagreeing and by how much, which is nothing this page can
+    // see; Go has both totals and the declared reason, and its note is the
+    // one that says where the checking stops.
+    label: mark.label,
     tier: mark.tier,
     // PARENTLESS, WHICH DRAWS IT --muted, and that is the claim: it belongs to
     // neither document's hierarchy.
@@ -3860,13 +3870,8 @@ function markGap(drawn, rung, mark) {
     constraint_tier: "",
     role: "gap",
     derived: true,
-    rationale: "The chart above puts " + fmt(into) + " through " + centre.label +
-      " and the schedule this chart is drawn from accounts for " + fmt(outOf) + " of it. " +
-      declared + " This mark is what is left, drawn so that the ribbons and the node agree; " +
-      "no page prints it as a figure of its own.",
-    source_note: "Derived, not published: one document's total for this cell less the other's, " +
-      "taken from the two charts on screen. Both of those totals are figures `fisc verify` " +
-      "holds to the pages the city printed.",
+    rationale: mark.rationale,
+    source_note: mark.source_note,
   };
   const link = mark.in_cents
     ? { source: opened, target: id, value_cents: mark.in_cents }
