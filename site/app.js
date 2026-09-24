@@ -3067,6 +3067,39 @@ function windowFor(onScreen, stepDoc, rung, answer) {
 }
 
 /**
+ * The region a mark's arriving ribbons hang into, for a mark printed net of
+ * reductions drawn forward, and null for every other mark.
+ *
+ * WHY THERE IS ANYTHING TO DRAW. A category's positive lines alone come to the
+ * published figure PLUS the reductions, so a box whose height is that figure is
+ * a box the arriving stack must exceed -- by twice the reductions, which is
+ * arithmetic on the widths and no stacking order changes. Measured on
+ * FY2025-26: box 459.35px, arriving stack 684.00px, so 224.65px of ribbon ends
+ * below the face of the mark it arrives at.
+ *
+ * SO THE CHOICE IS WHICH MISMATCH A READER SEES, not whether there is one:
+ * a box inflated to $103,430,092, a figure no page prints, or a box that is the
+ * published figure with the excess drawn and named. This is the second, and
+ * without it every surface would have to disclose the hang in words -- which
+ * puts the unprinted figure back on the page.
+ *
+ * IT IS PIXELS AND CARRIES NO CENTS. The band is computed from drawn widths and
+ * has no label, because the amount it stands for is already on the mark's own
+ * note, once, under the site's diamond.
+ *
+ * @param {LaidNode} d
+ * @returns {{y:number, height:number} | null}
+ */
+function contraBand(d) {
+  if (!d.targetLinks.some((l) => l.contra)) return null;
+  const arriving = d.targetLinks.reduce((sum, l) => sum + l.width, 0);
+  const excess = arriving - (d.y1 - d.y0);
+  // HALF A PIXEL AND NOT ZERO: a node whose reductions round to nothing would
+  // otherwise draw a hairline band that means nothing a reader can see.
+  return excess > 0.5 ? { y: d.y1, height: excess } : null;
+}
+
+/**
  * Draws a node at the figure Go named for it, where Go named one.
  *
  * WHY A MARK'S FIGURE IS NOT THE LAYOUT'S TO DECIDE. d3-sankey sizes a node at
@@ -4236,7 +4269,14 @@ function restackLinks(graph) {
 
   for (const node of graph.nodes) {
     node.sourceLinks.sort(byOtherEnd((l) => l.target));
-    node.targetLinks.sort(byOtherEnd((l) => l.source));
+    // CONTRA LAST ON THE ARRIVING SIDE, so the reductions stack at the bottom
+    // and fall inside the band rather than being cut through by the face of a
+    // mark that is shorter than they are. It is a tiebreak and not a reorder:
+    // every other ribbon keeps the order its other end gives it, which is the
+    // property nodeRank's crossing count rests on.
+    node.targetLinks.sort((a, b) =>
+      Number(Boolean(a.contra)) - Number(Boolean(b.contra)) ||
+      byOtherEnd((l) => l.source)(a, b));
   }
   for (const node of graph.nodes) {
     let leaving = node.y0;
@@ -4660,6 +4700,23 @@ function render(laid) {
     .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
     .attr("height", /** @param {LaidNode} d */ (d) => Math.max(2, d.y1 - d.y0))
     .attr("rx", 2);
+
+  // THE BAND, ON EVERY MARK AND DISPLAYED ON THE ONES THAT HANG. It is appended
+  // to every g.node rather than to a filtered selection because the shipped
+  // d3 selection this file uses has no filter(), and a second pass keyed on id
+  // would be a second place the set is decided.
+  //
+  // pointer-events NONE, because it is not the mark: a click landing on it
+  // would pin a node whose face the reader is not over, and a hover would
+  // tooltip a figure the band does not carry.
+  node.append("rect")
+    .attr("class", "contra-band")
+    .attr("display", /** @param {LaidNode} d */ (d) => (contraBand(d) ? null : "none"))
+    .attr("x", /** @param {LaidNode} d */ (d) => d.x0)
+    .attr("y", /** @param {LaidNode} d */ (d) => (contraBand(d) || { y: 0 }).y)
+    .attr("width", /** @param {LaidNode} d */ (d) => d.x1 - d.x0)
+    .attr("height", /** @param {LaidNode} d */ (d) => (contraBand(d) || { height: 0 }).height)
+    .attr("pointer-events", "none");
 
   // Every node is directly labelled. That is the relief the palette's
   // contrast check requires, and it is why the chart still reads for someone

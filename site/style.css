@@ -791,6 +791,27 @@ svg.sankey .node.contra tspan.value {
   fill: var(--critical);
 }
 
+/* The disclosure band: the region a category's arriving ribbons hang into when
+   its mark is drawn at the figure the city publishes rather than at the sum of
+   what arrives. contraBand in app.js decides which marks have one and how tall
+   it is; this says only what it looks like.
+
+   OUTLINED AND NOT FILLED, and that is the whole design. A filled block would
+   paint OVER the two reduction ribbons it exists to mark off -- nodes render
+   after links -- so the reader would lose the very thing the band is pointing
+   at. What is wanted is an accountant's bracket: the mark's face is the
+   published figure, and below it is ruled off the money that cancels.
+
+   --critical is the contra hue the ribbons and the mark's own value already
+   take, so the band reads as part of the same statement rather than as a
+   fourth thing on the chart. */
+svg.sankey .contra-band {
+  fill: none;
+  stroke: var(--critical);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
 svg.sankey .node.dim {
   opacity: 0.3;
 }

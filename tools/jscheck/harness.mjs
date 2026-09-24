@@ -733,6 +733,11 @@ const NAMES = [
   // while the committed corpus ties, and isGap is what tells it from a residual.
   "markGap", "gapID", "isGap",
   "loadColumn", "selectSchedule", "scheduleOf", "labelOfRung", "openableColumns", "joinOr", "linkClass", "markContra",
+  // AND THE BAND, which is geometry rather than a document: contraBand decides
+  // which marks are drawn shorter than the ribbons arriving at them and how far
+  // those hang. layout.test.mjs asks it directly, because a band re-derived
+  // there would be the checker's arithmetic rather than the page's.
+  "contraBand", "markAmounts",
   // THE TRAIL, NOT ONLY ONE RUNG'S WORDS. labelOfRung answers for a rung alone
   // and cannot see a sibling it reads the same as, so the qualifying rule is
   // its own function and is reached here rather than re-spelled.

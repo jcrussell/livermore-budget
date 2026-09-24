@@ -1224,3 +1224,111 @@ describe("a column drawn out to every mark it holds", () => {
     }, detail);
   });
 });
+
+// The category window is the one chart on the site whose mark is SHORTER than
+// the ribbons arriving at it, and the band is what makes that legible rather
+// than broken. Measured over the committed FY 2025-26 capture at this file's
+// one pinned width.
+const CONTRA_WINDOW = "revenue/taxes/property";
+const CONTRA_BAND = { box: 459.35, arriving: 684.00, excess: 224.65 };
+
+describe("a mark drawn at the figure the city publishes, and the band its ribbons hang into", () => {
+  /** @type {any} */ let app;
+  /** @type {any} */ let centre;
+  before(async () => {
+    app = await openedWindow(CONTRA_WINDOW);
+    centre = app.layOut(app.projection).nodes.find((/** @type {any} */ n) => n.id === CONTRA_WINDOW);
+    assert.ok(centre, `the window draws no ${CONTRA_WINDOW}; this suite cannot pose its question`);
+  });
+
+  test("the box is the published figure and the arriving stack exceeds it by twice the reductions", (t) => {
+    const box = centre.y1 - centre.y0;
+    const arriving = centre.targetLinks.reduce((sum, /** @type {any} */ l) => sum + l.width, 0);
+    const reductions = centre.targetLinks
+      .filter((/** @type {any} */ l) => l.contra)
+      .reduce((sum, /** @type {any} */ l) => sum + l.width, 0);
+
+    // THE BOX IS value x ky AND NOTHING ELSE, which is what says the mark is
+    // drawn at the figure rather than at what the layout made of its ribbons.
+    const ky = centre.targetLinks[0].width / centre.targetLinks[0].value;
+    assert.ok(Math.abs(box - centre.value * ky) < 1e-9,
+      `box ${box} is not value x ky (${centre.value * ky})`);
+
+    // AND THE EXCESS IS EXACTLY TWICE THE REDUCTIONS, because each is drawn
+    // forward at its magnitude where the schedule subtracts it. This is the
+    // arithmetic that makes the band unavoidable in one direction or the
+    // other, and it is asserted rather than described.
+    assert.ok(Math.abs((arriving - box) - 2 * reductions) < 1e-9,
+      `the stack exceeds the box by ${arriving - box}, want 2 x ${reductions}`);
+
+    assert.equal(Number(box.toFixed(2)), CONTRA_BAND.box);
+    assert.equal(Number(arriving.toFixed(2)), CONTRA_BAND.arriving);
+    t.diagnostic(`box ${box.toFixed(2)}px at value x ky; arriving stack ${arriving.toFixed(2)}px, ` +
+      `exceeding it by ${(arriving - box).toFixed(2)}px = 2 x ${reductions.toFixed(2)}px of reductions`);
+  });
+
+  test("the band covers the excess, and covers nothing on a mark that does not hang", (t) => {
+    const band = app.contraBand(centre);
+    assert.ok(band, "the centre hangs and has no band");
+    const box = centre.y1 - centre.y0;
+    const arriving = centre.targetLinks.reduce((sum, /** @type {any} */ l) => sum + l.width, 0);
+
+    assert.ok(Math.abs(band.height - (arriving - box)) < 1e-9,
+      `band is ${band.height}px over ${arriving - box}px of excess`);
+    assert.ok(Math.abs(band.y - centre.y1) < 1e-9, "the band does not start at the mark's foot");
+    assert.equal(Number(band.height.toFixed(2)), CONTRA_BAND.excess);
+
+    // EVERY OTHER MARK ON THE SAME CHART HAS NONE. A band on a mark whose
+    // ribbons do add up would be ruling off money that cancels nothing.
+    const others = app.layOut(app.projection).nodes
+      .filter((/** @type {any} */ n) => n.id !== CONTRA_WINDOW)
+      .filter((/** @type {any} */ n) => app.contraBand(n));
+    // here() BECAUSE THE MEASURED SIDE IS OF THE vm'S REALM and deepStrictEqual
+    // compares prototypes: a measured [] is not deep-equal to one written here,
+    // and both print identically.
+    assert.deepEqual(here(Array.from(others, (/** @type {any} */ n) => n.id)), [],
+      "a mark whose ribbons add up was given a band");
+    t.diagnostic(`band ${band.height.toFixed(2)}px from y ${band.y.toFixed(2)}, covering the ` +
+      `excess exactly; 0 of the other marks on this chart carry one`);
+  });
+
+  test("the band's class is one the stylesheet paints, and it is painted unfilled", (t) => {
+    // A BAND WHOSE RULE DOES NOT MATCH IS NOT AN INVISIBLE BAND, which is why
+    // this is here and not filed as tidiness. An SVG rect with no fill declared
+    // paints SOLID BLACK, so a renamed class or a dropped rule puts an opaque
+    // block over the reduction ribbons the band exists to reveal -- the worst
+    // reading of this chart there is, arrived at by a one-word typo, and
+    // nothing in this tree parses CSS (fisc-6at).
+    const css = stylesheet();
+    const drawn = (app.source.match(/\.attr\("class",\s*"(contra-band)"\)/) || [])[1];
+    assert.equal(drawn, "contra-band", "app.js no longer gives the band that class");
+    const rule = (css.match(/svg\.sankey \.contra-band \{([^}]*)\}/) || [])[1];
+    assert.ok(rule, "site/style.css states no rule for svg.sankey .contra-band");
+    assert.match(rule, /fill:\s*none/,
+      "the band declares no fill:none, so it paints solid black over the ribbons it marks off");
+    assert.match(rule, /stroke:\s*var\(--critical\)/,
+      "the band is not painted in the hue its ribbons and its mark's value take");
+    t.diagnostic(`app.js draws class "${drawn}" and style.css paints it ` +
+      `${rule.trim().replace(/\s+/g, " ")}`);
+  });
+
+  test("the reductions stack last, so they fall inside the band rather than through the mark's face", (t) => {
+    const arriving = centre.targetLinks;
+    const firstContra = arriving.findIndex((/** @type {any} */ l) => l.contra);
+    const lastPlain = arriving.reduce(
+      (/** @type {number} */ at, /** @type {any} */ l, /** @type {number} */ i) => (l.contra ? at : i), -1);
+    assert.ok(firstContra > lastPlain,
+      `a reduction stacks at ${firstContra}, before a printed line at ${lastPlain}`);
+
+    // AND THEY LAND WHERE THE BAND IS. Contra-last is only worth asserting if
+    // it puts them in the region the band rules off; the ordering alone would
+    // pass on a chart drawn with no band at all.
+    const band = app.contraBand(centre);
+    const strays = arriving.filter((/** @type {any} */ l) => l.contra)
+      .filter((/** @type {any} */ l) => l.y1 - l.width / 2 < band.y - 1e-9);
+    assert.deepEqual(here(Array.from(strays, (/** @type {any} */ l) => l.source.id)), [],
+      "a reduction starts above the band");
+    t.diagnostic(`${arriving.length} arriving ribbons, the ${arriving.length - firstContra} ` +
+      `reduction(s) last and all inside the band`);
+  });
+});
