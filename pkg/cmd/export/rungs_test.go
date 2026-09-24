@@ -29,11 +29,11 @@ import (
 // the site never served, and a buildAll that dropped the file would leave
 // that pin green.
 //
-// THE VACUITY GUARDS ARE THE POINT. tools/jscheck/rungs.mjs holds the client
-// to this file, and a file in which every column's ids are empty, in which no
+// THE VACUITY GUARDS ARE THE POINT. The client's tests hold the client to
+// this file, and a file in which every column's ids are empty, in which no
 // column holds more than a cap the client would fold, or which answers for
-// one year, is one the arm could report PASS against without the comparison
-// it exists for ever running. Each guard below names the shape it refuses and
+// one year, is one they could report PASS against without the comparison
+// they exist for ever running. Each guard below names the shape it refuses and
 // where the committed corpus supplies the opposite.
 //
 // WHAT HOLDS A COLUMN'S MEMBERSHIP, now that the client reads this artifact

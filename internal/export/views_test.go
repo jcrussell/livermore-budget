@@ -690,7 +690,7 @@ func TestTheCaveatsPagePromisesAChartFlagOnlyWhereThereIsAChart(t *testing.T) {
 
 // TestTheCaveatsPagePromisesAChartFlagOnAStepsDocument is the promise one
 // rung down: a document a chart OPENS INTO is drawn -- its marks are chipped
-// and its caveats linked at depth 1, which tools/jscheck/drill.mjs measures --
+// and its caveats linked at depth 1, which the client's tests measure --
 // and on the merged site both fund-flows documents are reached that way
 // alone.
 //
@@ -917,7 +917,7 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// BELOW. app.js keeps the pointer to the closed flow table through a
 		// drill by taking the description's last sentence, so a description
 		// that does not close runs into the template's pointer and the drilled
-		// reader loses it. Every test and jscheck fixture supplied a terminated
+		// reader loses it. Every Go test and client fixture supplied a terminated
 		// sentence, so the whole suite was green over a shape a caller can send.
 		{"a drill with no tiers", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Tiers = nil })},
@@ -2112,13 +2112,9 @@ func yearsIn(t *testing.T, page string) []struct {
 // repainting them changes nothing.
 //
 // THE FOOTER'S BASIS IS ASSERTED IN THE MARKUP TOO, and that is not redundant
-// with the jscheck check that paints it. tools/jscheck's DOM stub fabricates
-// any id in TEMPLATE_IDS, so a check that "paintYearWords writes #page-basis"
-// passes whether or not index.html.tmpl renders the span. If the span is
-// dropped, maybeEl returns null, the guard swallows it, and the footer silently
-// stops following the year -- the original defect, reached through the harness
-// that was supposed to catch it. Only a Go assertion on the shipped markup
-// closes that.
+// with the client test that paints it. If the span is dropped, maybeEl returns
+// null, the guard swallows it, and the footer silently stops following the
+// year. Only a Go assertion on the shipped markup closes that.
 func TestEachYearCarriesItsOwnBasisAndTitle(t *testing.T) {
 	page, err := twoYearSankey(t, export.View{}, func(meta map[string]any) {
 		meta["basis"] = "revised"
@@ -2151,8 +2147,8 @@ func TestEachYearCarriesItsOwnBasisAndTitle(t *testing.T) {
 	}
 }
 
-// TestACallersOwnTitleSurvivesEveryYear pins the half of fisc-rn0 that the
-// jscheck check cannot see: it is about what the PACKAGER hands over.
+// TestACallersOwnTitleSurvivesEveryYear pins the half of fisc-rn0 that a
+// client test cannot see: it is about what the PACKAGER hands over.
 //
 // The caller's title is carried verbatim onto every year rather than having a
 // year appended, and refusing a Title on this template was rejected -- see
@@ -2819,12 +2815,10 @@ func TestTheApparatusShipsClosedOnEveryChartPage(t *testing.T) {
 }
 
 // TestTheColumnControlShipsInertOnEveryChartPage closes the same fail-open
-// TestEachYearCarriesItsOwnBasisAndTitle names one control over:
-// tools/jscheck's DOM stub fabricates any id in TEMPLATE_IDS, so every check
-// that presses this control passes whether or not the templates render it. If
-// they stop, maybeEl returns null, wireColumns' `if (fewer && more)` swallows
-// it, and the reader silently loses the only way to ask for a fourth column
-// while every jscheck arm about it stays green.
+// TestEachYearCarriesItsOwnBasisAndTitle names one control over: if the
+// templates stop rendering it, maybeEl returns null, wireColumns'
+// `if (fewer && more)` swallows it, and the reader silently loses the only way
+// to ask for a fourth column.
 //
 // AND IT ASSERTS THE disabled ATTRIBUTE, not merely the element. The control is
 // entirely a client behaviour -- app.js lays the chart out and these buttons
@@ -2842,8 +2836,7 @@ func TestTheColumnControlShipsInertOnEveryChartPage(t *testing.T) {
 		} {
 			if !strings.Contains(html, want) {
 				t.Errorf("%s does not render %s, so the column control is either absent or "+
-					"ships live; app.js enables it and jscheck cannot tell either case "+
-					"from a working page", page, want)
+					"ships live; app.js enables it either way", page, want)
 			}
 		}
 	}

@@ -3,7 +3,7 @@
 > Evidence for AGENTS.md, "Prove it can fail" and for AGENTS.md, "Go vets,
 > JavaScript renders". This file states no rule. It is one measurement, taken
 > once, of what a battery of mutations against Go's rung walk is caught by after
-> `tools/jscheck/rungs.mjs`'s membership arm stops being a second party — with
+> the client's membership check stops being a second party — with
 > seven of its rows re-run, in two later rounds, as the Go-side guards they
 > asked for landed. Every row is now CAUGHT or INERT.
 
@@ -21,7 +21,7 @@ is RIGHT rather than merely STABLE?
 
 Taken on `e13-sankey-merge` at `e577338`.
 
-1. The suite was run from an untracked copy of `tools/jscheck/run.mjs` importing
+1. The client's suite was run from an untracked copy of its runner importing
    the other seven modules and not `rungs.mjs`, which is how the suite behaves
    once that arm goes vacuous. `chart.mjs` stayed live. Blinded and unmutated,
    that suite is green.

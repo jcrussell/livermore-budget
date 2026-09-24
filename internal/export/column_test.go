@@ -89,7 +89,7 @@ func TestRoleFundGroupIsOneOfTheSchemasRoles(t *testing.T) {
 // the schema rejects, so a key ADDED to the struct is caught by
 // additionalProperties. A key the schema stops REQUIRING is not: every column
 // this corpus produces still carries it, so the export stays green and the only
-// thing that noticed was a hand-written list in tools/jscheck.
+// thing that noticed was a hand-written list in the client's tests.
 func TestTheSchemaStatesWhatAColumnCarries(t *testing.T) {
 	stated, err := schema.Names(schema.Column)
 	if err != nil {

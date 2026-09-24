@@ -101,7 +101,7 @@ lines printed under it and the fund groups it reaches, and the rollups are its
 whole left half. Every other tier set drops them, each for its own reason: where
 tier 1 folds to tier 0 both ends fold to the category and a link whose ends fold
 together is dropped, and at `{2,5,4}`, `{2,3,4}` and `{3,4,5}` neither end has a
-column. `tools/jscheck/drill.mjs` asserts both halves over every view the page
+column. The client's tests assert both halves over every view the page
 opens rather than leaving it to the per-view pins, which cannot tell a rollup
 that was dropped from one that was never published.
 
@@ -357,7 +357,7 @@ So the client folds. The rule, in full:
   row's figure came from. Those figures are kept as the measurement that
   justified the union; the chain's rungs, which now draw this document, fold
   it differently and carry their own row counts, which
-  `tools/jscheck/drill.mjs` pins.
+  the client's tests pin.
 - **A link whose ends fold to the same node is dropped.** It was a flow inside
   what is now one box. This is the tier-4-to-5 case warned about above, and it
   **cites nothing away**: the fund-to-department link that survives carries the
@@ -383,11 +383,9 @@ So the client folds. The rule, in full:
 now.** It became two pages split where the money changes hands, and those
 became the rungs of one chain under `index.html`, the site's one chart page
 (`fisc-ko1j`, owner decisions of 2026-09-08). The chain is declared once, in
-`views()`, and `tools/jscheck/drill.mjs` spells none of it a second time: the
-`from`, the tier sets, the caps and each step's description are read out of the
-Go source, and the residual set out of the check that declares it. Nothing here
+`views()`, and the client's tests spell none of it a second time. Nothing here
 is held by a Go test — that test pins `views()` against a literal in the *test
-file* and reads nothing in `tools/jscheck`, which is how both a reworded
+file* and reads nothing in the client's tests, which is how both a reworded
 description (`fisc-vsu8`) and a changed cap went green on both sides at once:
 
 Every rung of that chain is a WINDOW: the node the reader clicked in the middle,
@@ -497,7 +495,7 @@ pins every opened view's against the fact ids the committed goldens publish.
 (`fisc-ppkq`). The vendored build takes the column count from topology and
 clamps the align into it, so expanding one group draws the funds and the
 divisions in the same column while the unexpanded ribbons span two — which
-`tools/jscheck/layout.test.mjs`'s `bands()` refuses. The shape that works is
+the client's layout test refuses. The shape that works is
 filtering to one node and rescaling to its own total.
 
 **Rescaling alone is not enough, and `fisc-ppkq` says it is.** Measured:
@@ -524,7 +522,7 @@ inside the node being opened. Cap before fold, because the cap produces several
 ribbons from one source to the aggregate and the fold is what merges them,
 summing the values and unioning the fact ids and locators.
 
-`tools/jscheck/drill.mjs` re-measures all of this on every `make js`, opening
+The client's tests re-measure all of this on every `make js`, opening
 every node the chain offers — 6 fund groups and, under the General Fund, 23
 divisions — rather than a sample.
 
@@ -539,7 +537,7 @@ opened view is 51.38px, at Patrol, and `drill.mjs` pins it there.
 **What the fold does not fix.** At the `{0,2,4}` set, seven of the 52 ribbons
 laid out under 1px and four of the 40 node rects under 2px, and `render()` floors
 both — `Math.max(1, width - RIBBON_GAP)` and `Math.max(2, y1 - y0)` — so those
-marks do not encode their values. `tools/jscheck/fold.mjs` pins **both** counts,
+marks do not encode their values. The client's tests pin **both** counts,
 so neither can grow unnoticed. The chain's rungs are better on this and not
 free of it, and neither count is the same in both years: the General Fund at
 depth 1 draws 2 sub-pixel ribbons of 37 in FY2025-26 and 3 of 37 in FY2026-27,
@@ -556,8 +554,8 @@ merged links still name every fact behind every ribbon.
 
 **Every rung this chain can reach, answered once, in one file for every
 published year.** Go walks the declared steps over the built documents and
-writes what each column of each rung HOLDS; `tools/jscheck/rungs.mjs` holds the
-client's own walk to that answer, and the page fetches it under the name the
+writes what each column of each rung HOLDS; the client's tests hold the
+client to that answer, and the page fetches it under the name the
 config carries. The committed `testdata/rungs.json` is pinned to the bytes the
 export serves, so a fixture and a served file cannot be two answers.
 
@@ -616,7 +614,7 @@ because each file is valid on its own.
   endpoints, and a gap carries exactly one of `in_cents` and `out_cents`, which
   is the side the short one stands on. **Their prose is not here.** A mark's
   rationale and source note are built from labels and locators this walk does
-  not decode, and `tools/jscheck/drill.mjs` is what holds those.
+  not decode, and the client's tests are what hold those.
 
 ### What it deliberately does not carry
 

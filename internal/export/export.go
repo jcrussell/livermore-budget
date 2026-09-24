@@ -238,10 +238,8 @@ type View struct {
 	// several parents, so one chart is reachable from several -- which makes
 	// the shape a DAG over a strictly decreasing declaration order, and leaves
 	// every walk of it finite for the reason After's comment gives. Flat
-	// rather than nested because tools/jscheck/harness.mjs reads this literal
-	// out of the Go source and slices it on indentation, and because the
-	// packager resolves one step document per entry. What a declared tree must
-	// satisfy is validateSteps'.
+	// rather than nested because the packager resolves one step document per
+	// entry. What a declared tree must satisfy is validateSteps'.
 	//
 	// The behaviour is entirely the client's, like the fold. This package ships
 	// the declaration.
@@ -431,7 +429,7 @@ type Section struct {
 // fisc-ppkq: the vendored d3-sankey derives its column count from topology and
 // clamps the align function into it, so expanding one node in place draws that
 // node's children in the same column as the next tier while the unexpanded
-// ribbons span two -- which tools/jscheck/layout.test.mjs's bands() refuses outright.
+// ribbons span two -- which the client's layout test refuses outright.
 // Filtering to one node keeps every tier set uniform, which is the only shape
 // this build lays out.
 //

@@ -204,5 +204,5 @@ new hazard, but the collision of names is worth knowing before you try it.
   publishing records has one. The second is the fail-closed arm for a field
   whose absence is legal: a caller publishing no records is not a caller
   publishing a base pointing nowhere.
-- `tools/jscheck` — the fold unions locators with de-duplication, and a
+- the client's tests — the fold unions locators with de-duplication, and a
   document missing `links[].locators` is refused before the page repaints.

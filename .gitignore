@@ -6,8 +6,8 @@ dist/
 # for the package. The Makefile uses `go run` and never leaves one, so these
 # appear only when someone builds a tool by hand -- and a `git add -A` after
 # that sweeps several megabytes into a commit.
-# One line per Go main under tools/, plus cmd/fisc. tools/jscheck is .mjs and
-# builds nothing.
+# One line per Go main under tools/, plus cmd/fisc. The client's tests are .mjs
+# and build nothing.
 /beadcheck
 /beadrefs
 /codehash

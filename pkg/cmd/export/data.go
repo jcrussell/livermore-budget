@@ -610,8 +610,8 @@ func views(built result) []export.View {
 		// columns are d3's own inference -- View.RenderTiers says why, and
 		// validateSteps refuses the kept flank without it.
 		//
-		// MEASURED, BOTH YEARS, BEFORE IT WAS DECLARED. Driven through
-		// tools/jscheck's harness over the two committed spine goldens, the
+		// MEASURED, BOTH YEARS, BEFORE IT WAS DECLARED. Driven through the
+		// client's tests over the two committed spine goldens, the
 		// drawn document and the laid geometry are identical either way: the
 		// same nodes and links in the same order carrying the same values, and
 		// every node's depth, x0, y0 and y1 and every ribbon's y0, y1 and
@@ -619,7 +619,7 @@ func views(built result) []export.View {
 		// lucky -- the spine is a clean three-layer DAG whose tier 0 is pure
 		// source and tier 5 pure sink, and sankeyJustify's own rule puts a
 		// link-less sink in the LAST column, which is where indexOf puts tier
-		// 5. tools/jscheck/layout.test.mjs keeps that measurement in the tree.
+		// 5. The client's layout test keeps that measurement in the tree.
 		RenderTiers: []int{0, 2, 5},
 	}
 	// THE SPINE OPENS INTO FUND-FLOWS, AND FUND-FLOWS INTO ITSELF: one page
@@ -632,8 +632,8 @@ func views(built result) []export.View {
 	//
 	// EVERY TIER SET AND EVERY CAP BELOW IS MEASURED, laying the graph out
 	// with the shipped vendor/d3-sankey at app.js's own constants against the
-	// two committed goldens. tools/jscheck/drill.mjs walks the chain on every
-	// run and pins the figures: the depth-1 General Fund at 39 nodes and 37
+	// two committed goldens. The client's tests walk the chain on every
+	// run and pin the figures: the depth-1 General Fund at 39 nodes and 37
 	// links, of which the residual is one derived node, its four carried
 	// endpoints and their four links, with 2 sub-pixel ribbons in FY2025-26
 	// and 3 in FY2026-27; special-revenue's 32 funds folded to 8
@@ -742,7 +742,7 @@ func views(built result) []export.View {
 				// their groups tie to the cent with no mark at all.
 				Residual: check.ResidualNodes(),
 				// THE FIGURES IN THIS SENTENCE ARE MEASURED off both
-				// committed goldens, and tools/jscheck/drill.mjs pins them
+				// committed goldens, and the client's tests pin them
 				// per column: fund/100 takes 49.18% of the fund column's
 				// inflow in FY2026 and 50.79% in FY2027, and the smallest
 				// fund -- fund/550 at $5,000, then fund/202 at $3,000 -- is
@@ -793,7 +793,7 @@ func views(built result) []export.View {
 				// columns: 6 nodes and 6 links at tiers {2,3}, 23 and 23 at
 				// {3,4}, 44 and 44 at {4,5} -- every adjacent pair of these four
 				// columns carries ribbons, which is the condition a sankey band
-				// is counted under (tools/jscheck/layout.test.mjs bands()).
+				// is counted under (the client's layout test).
 				//
 				// BOTH DECLARATIONS, AND THEY SAY DIFFERENT THINGS. Tiers is
 				// where the column is drawn -- at the end away from the kept
@@ -944,7 +944,7 @@ func views(built result) []export.View {
 	// Measured off both committed columns: services-and-supplies reaches 29
 	// divisions and wages-and-benefits 26, against 5 for debt-services and 5
 	// (FY2025-26) or 4 (FY2026-27) for capital-outlay. Uncapped, the smallest
-	// services ribbon lays out under a pixel; tools/jscheck/drill.mjs pins the
+	// services ribbon lays out under a pixel; the client's tests pin the
 	// fold on all four.
 	//
 	// THE GAP IS THE CHECK'S DECLARATION, READ, NOT COPIED -- the argument the
@@ -1065,12 +1065,6 @@ func views(built result) []export.View {
 	// window for this rung to hang off, and validateSteps would refuse the view
 	// by name rather than the site dropping one page.
 	//
-	// APPENDED LAST RATHER THAN BESIDE THE STEP IT MIRRORS. tools/jscheck reads
-	// declared steps by key now (fisc-7e1g) and not by position, so the order
-	// is no longer load-bearing -- but an INSERT into the first literal moves
-	// every index after it, and the cheapest way not to depend on having fixed
-	// all of them is not to insert.
-	//
 	// NO CAP, MEASURED RATHER THAN ASSUMED. The widest fund this step opens
 	// draws 5 departments (fund/240 in FY2023-24 actual; 3 in both adopted
 	// columns), against the 11 on fund/100, which opens elsewhere. A cap
@@ -1083,13 +1077,6 @@ func views(built result) []export.View {
 	// description below says it on the chart. A residual is for an endpoint of
 	// the chart above that the drawn document cannot decompose; the flank this
 	// window keeps is carried verbatim off that chart, so there is none.
-	//
-	// ONE GUARD AND NOT TWO NESTED ONES, so the literal below sits at the
-	// indent every other step literal here sits at. tools/jscheck/harness.mjs
-	// slices step entries on a brace at a fixed depth and cross-checks the
-	// count against the `Key:`, `From:` and `After:` fields it finds -- it
-	// threw rather than dropping the step, which is the guard working, and
-	// keeping the shape uniform is cheaper than widening the parse.
 	_, openable := stepByKey(spine.Steps, "fund-group")
 	if openable && opensInto(export.PrimaryProjection, project.DepartmentFundingProjection, projections) {
 		spine.Steps = append(spine.Steps, []export.DrillStep{

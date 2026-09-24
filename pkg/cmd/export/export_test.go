@@ -1413,11 +1413,11 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		}
 	}
 
-	// THE CHAIN'S ACTUAL VALUES, because tools/jscheck/drill.mjs carries a COPY
-	// of them -- there is no seam between Go and node, so the copy is a claim
-	// and this is the only thing that can keep it honest. Asserting merely
-	// that a step EXISTS would leave drill.mjs free to measure a configuration
-	// no page ships: change a cap, a tier set or a description here and every
+	// THE CHAIN'S ACTUAL VALUES, because the client's tests measure against
+	// them -- there is no seam between Go and node, so what they measure
+	// against is a claim and this is the only thing that can keep it honest.
+	// Asserting merely that a step EXISTS would leave them free to measure a
+	// configuration no page ships: change a cap, a tier set or a description here and every
 	// gate stays green while the checks go on pinning the old one.
 	//
 	// A STEP NAMES A SCHEDULE, not a file and not a per-year map. Which
@@ -1601,8 +1601,8 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 		},
 	}
 	if diff := cmp.Diff(want, spine.Steps); diff != "" {
-		t.Errorf("the spine's steps (-want +got):\n%s\ntools/jscheck/drill.mjs's PAGE "+
-			"carries a copy of this and measures against it", diff)
+		t.Errorf("the spine's steps (-want +got):\n%s\nthe client's tests measure "+
+			"against this", diff)
 	}
 	// THE COLUMN ORDER IS PINNED AS THE STEPS ARE, and by hand, because it is
 	// the declaration every kept flank is placed against: a step keeping tier
@@ -2231,8 +2231,8 @@ func TestStemForRefusesADocumentWithNoColumns(t *testing.T) {
 // of them would be a transcription of the same schedules the mapping rules
 // already read.
 //
-// So the fixture exists for tools/jscheck, which has no Go and no facts.jsonl
-// and cannot lay out a document it is not handed. What this test buys is that
+// So the fixture exists for the client's tests, which have no Go and no
+// facts.jsonl and cannot lay out a document they are not handed. What this test buys is that
 // the document it lays out is the one `fisc export` writes -- without it, the
 // fold could be proved to work on a drill-down that stopped being ours.
 func TestTheFundFlowsFixtureIsTheDocumentTheSiteDraws(t *testing.T) {
@@ -2257,7 +2257,7 @@ func TestTheFundFlows2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) {
 // column's capture the way the drill-down's is pinned.
 //
 // IT EXISTS BECAUSE THE RESIDUAL READS THE SPINE. Until the chart carried the
-// residual, tools/jscheck could serve FY2026's spine under both years' paths --
+// residual, the client's tests could serve FY2026's spine under both years' paths --
 // the drill read nothing off it but the clicked node's id -- and one spine
 // golden was enough. The residual node copies the spine's own links into the
 // opened group, and the two columns differ exactly where the declared set
@@ -2309,7 +2309,7 @@ func TestTheDepartmentFunding2027FixtureIsTheDocumentTheSiteDraws(t *testing.T) 
 // TestTheTransfersByFundFixtureIsTheDocumentTheSiteDraws keeps the capture of
 // Budget Book p76 honest.
 //
-// THIS DOCUMENT IS THE ONE SHAPE tools/jscheck CANNOT INFER FROM ANOTHER. Every
+// THIS DOCUMENT IS THE ONE SHAPE THE CLIENT'S TESTS CANNOT INFER FROM ANOTHER. Every
 // other captured document draws one ribbon per printed cell; this one draws TWO
 // per printed figure, a receiving leg and a paying one carrying the same
 // transfer_id, so a harness handed any other fixture would measure a chart whose

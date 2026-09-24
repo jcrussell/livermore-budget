@@ -34,9 +34,8 @@ import (
 // data/extracted/ itself, or at data/pdf/, is NOT -- measured, both leave fisc
 // verify fully green. So the two known directories get their own arm.
 //
-// This is a hand-maintained list that fails closed, the same trade
-// tools/jscheck's TEMPLATE_IDS and KNOWN_SELECTORS make: adding data is meant
-// to be a decision, and a decision leaves a diff here.
+// This is a hand-maintained list that fails closed: adding data is meant to be
+// a decision, and a decision leaves a diff here.
 func TestEveryFileUnderDataIsValidatedBySomething(t *testing.T) {
 	const hint = "add a loader for it and add it here, or it is committed data " +
 		"nothing validates"

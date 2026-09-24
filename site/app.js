@@ -577,7 +577,7 @@ function chartWidth(n) {
  *
  * RECORDED HERE AND IN style.css, WHICH IS TWO PARTIES AND NOT TWO SPELLINGS.
  * The stylesheet subtracts it from 100vw and this file adds it to a chart width
- * to ask at what viewport that chart fits; tools/jscheck/layout.test.mjs reads both
+ * to ask at what viewport that chart fits; the client's layout test reads both
  * and refuses a disagreement, the way `fisc verify` cross-checks a hash
  * tools/extract.py computed independently. One side reading the other would be
  * a lookup, and a lookup cannot disagree.
@@ -820,8 +820,8 @@ function fundColorVar(id) {
  * out under node with the vendored d3 and restacked, FY2026 comes to 195 ribbon
  * crossings and $457,434,169 of overlapping ribbon, against 285 and
  * $966,956,035 under a sort by size, 297 under the input order, and 246 under
- * d3's own pass. tools/jscheck re-measures every one of those figures on every
- * run and pins it, so editing this comment without re-measuring fails.
+ * d3's own pass. The client's tests re-measure every one of those figures on
+ * every run and pin them, so editing this comment without re-measuring fails.
  *
  * An exact search -- one-sided crossing minimisation is solvable for columns
  * this small -- reaches 177 crossings, but spends $491M of overlap doing it, so
@@ -1787,7 +1787,7 @@ function drawnColumns(budget) {
  * Measured through drillDown over every view the page opens, both published
  * columns: partitioning by stem gives the same two numbers, view for view, as
  * partitioning the drawn ribbons' fact ids by membership of the drawn
- * document's own -- which is what tools/jscheck/drill.mjs asserts, from the
+ * document's own -- which is what the client's tests assert, from the
  * committed goldens rather than from this function.
  *
  * SEPARATE FROM paintYearWords BECAUSE A DRILL CHANGES IT TOO. It was inline
@@ -2246,11 +2246,8 @@ function collapseTier(tier) {
  * One click on a node: it follows that node's money, whether or not the node
  * also opens.
  *
- * NAMED RATHER THAN INLINE IN render(), and that is what makes the gesture
- * checkable at all. The stub tools/jscheck runs against answers no "#chart"
- * selector, so d3 lays its selection over a null node and every handler
- * render() registers is registered on nothing -- a closure there executes in no
- * check, however many checks the page has. Here it is reached by name.
+ * NAMED RATHER THAN INLINE IN render(), so a test reaches the gesture by name
+ * rather than only through a drawn mark.
  *
  * THE ECHO GUARD IS ON THE ACTIVATION AND NOT ON THE DEVICE: a click on the
  * node a key has just activated is that key's own click, synthesised by
@@ -2395,9 +2392,8 @@ function restoreFocus(hadFocus) {
   if (!hadFocus) return;
   // focus() IS ON HTMLElement AND SVGElement, NOT ON Element, so the runtime
   // test stays and the cast is what tells tsc --checkJs the same thing. The
-  // test is not redundant with the cast: the SVG marks are <g> elements and the
-  // jscheck stub's nodes are plain objects, neither of which is obliged to have
-  // it.
+  // test is not redundant with the cast: the SVG marks are <g> elements, which
+  // are not obliged to have it.
   const focus = (/** @type {Element | null} */ target) => {
     const el = /** @type {any} */ (target);
     if (!el || typeof el.focus !== "function") return false;
@@ -2751,7 +2747,7 @@ function tailNoun(tier) {
  * AND NOT THE RUNG'S OWN DOCUMENT: across a document switch the node was
  * clicked in the chart one depth up, and that chart's file is the one that
  * prints its label. Both documents may carry the id and print different words
- * for it, which is what tools/jscheck/drill.mjs relabels its fixtures to catch.
+ * for it, which is what the client's tests relabel their fixtures to catch.
  * @param {number} k
  * @returns {string}
  */
@@ -3387,7 +3383,7 @@ function nodeClass(d) {
  *
  * THEY COMPOSE, because nothing stops a node being an inference that also
  * opens. They draw in that order with nothing between them, so a pair costs
- * the label two glyph widths -- which is the width tools/jscheck/layout.test.mjs
+ * the label two glyph widths -- which is the width the client's layout test
  * fits it against, by calling this rather than by spelling it a second time.
  *
  * ONE PAIR IS REAL AND THE OTHER IS LATENT, and the difference is worth
@@ -3550,7 +3546,7 @@ function isCarried(id) {
  * already covered by link-values-tie-to-facts and
  * link-locators-match-their-facts, so the figure on screen is a published one
  * with its provenance intact. Nothing here sums, subtracts or allocates, and
- * tools/jscheck/drill.mjs holds each carried link byte-equal to its original.
+ * the client's tests hold each carried link byte-equal to its original.
  *
  * NOT RE-POINTED ONTO A FUND. Capital has 11 funds and internal-service 5,
  * and pp.127-140 do not say which one a draw belongs to; attributing it would
@@ -3935,8 +3931,8 @@ function markGap(drawn, rung, mark) {
  *
  * At the step's cap of 8 the same window draws 19 ribbons with none under a
  * pixel and its smallest at 3.971px; the capital group goes from 2 sub-pixel
- * of 16 to none of 14. tools/jscheck/fold.mjs re-measures all six of those
- * figures and fails if this sentence drifts from them.
+ * of 16 to none of 14. The client's tests re-measure all six of those
+ * figures and fail if this sentence drifts from them.
  *
  * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
  * sum, fact ids and locators union, so the aggregate ribbon cites every page
@@ -3980,7 +3976,7 @@ function capColumn(doc, tier, cap, opened, noun) {
   // every line tied at zero and the tail was whichever eight sorted last by
   // id. On the columns capped before -- funds and divisions -- the two agree,
   // because a fund's outflow never exceeds its inflow and a division's equals
-  // it, and tools/jscheck/drill.mjs pins every opened view at the figures it
+  // it, and the client's tests pin every opened view at the figures it
   // had under inflow.
   //
   // BY MAGNITUDE, because a contra row is a printed line as large as its
@@ -4292,8 +4288,8 @@ function foldDocument(doc, tiers) {
  * and the last move is never followed by another sort, so a node can be left
  * handing its ribbons out in an order its neighbours no longer sit in. The
  * result is a pair of ribbons that cross immediately at the node face, for no
- * reason in the data -- 14 of them on FY2026. tools/jscheck counts them before
- * this function runs, and counts the 14 CROSSINGS they cost, which falls from
+ * reason in the data -- 14 of them on FY2026. The client's tests count them
+ * before this function runs, and count the 14 CROSSINGS they cost, which falls from
  * 209 to 195. It deliberately does not re-count the pairs afterwards: this
  * function sorts by the same key that count is derived from, so zero after is a
  * tautology and would assert nothing. Redoing the sort against the final
@@ -4348,7 +4344,7 @@ function restackLinks(graph) {
  * does not.
  *
  * THE SPINE'S OWN FIGURES DO NOT MOVE WHEN IT DECLARES ITS ORDER, and that is
- * measured rather than argued: tools/jscheck/layout.test.mjs lays the committed
+ * measured rather than argued: the client's layout test lays the committed
  * goldens out through this function, so the crossing and overlap figures below
  * are the ones the page draws under whatever the page declares. Both aligners
  * were run over both published spine columns and agreed to the digit, because
@@ -4539,7 +4535,7 @@ function labelPlacement(d, last) {
  * the breadcrumb says it -- and in the fund window, whose fourth column draws
  * the largest cells of eight different divisions, it draws six marks reading
  * "Wages & Benefits". The pair does not fit on one line either way: measured by
- * tools/jscheck/layout.test.mjs, "Fire Administration — Services & Supplies" wants
+ * the client's layout test, "Fire Administration — Services & Supplies" wants
  * 348px of a gutter that is 250px wide, so the qualifier is a line of its own
  * and is spent only where a reader could not otherwise tell two marks apart.
  *
@@ -4594,7 +4590,7 @@ function labelQualifiers(nodes) {
  * only duplicates anywhere are fund-flows' 44 tier-5 cells, and tier 5 is drawn
  * last in every window that reaches it -- so nothing draws this branch and no
  * check can see it. fisc-xhqt carries the measurement and what would retire it;
- * the vertical arm in tools/jscheck/layout.test.mjs is what would name an interior
+ * the vertical arm of the client's layout test is what would name an interior
  * pair if a real document ever drew one.
  *
  * @param {string} anchor
@@ -5958,9 +5954,7 @@ async function loadColumn(path, superseded) {
     // `e.name` and not `e instanceof SyntaxError`: instanceof compares against
     // THIS realm's constructor, and an error thrown by a response body parsed
     // in another one is not an instance of it. In a browser the two realms are
-    // the same and both work, which is what makes the difference invisible --
-    // under tools/jscheck's vm they are not, the instanceof arm was dead, and
-    // the branch below could never have been shown to work at all.
+    // the same and both work, which is what makes the difference invisible.
     fail(e && e.name === "SyntaxError"
       ? "Could not read " + path + ": the file is not valid JSON, so it is " +
         "truncated or was not the document this page expected."
@@ -6212,7 +6206,7 @@ async function showYear(year) {
  * headline survives with JavaScript off. This swaps them for another year's,
  * and every string it writes was built by the packager -- except the counts
  * line, whose shape depends on what is drawn, so paintCounts composes it from
- * the packager's counts and tools/jscheck/year.mjs pins its undrilled wording
+ * the packager's counts and the client's tests pin its undrilled wording
  * to the template's own sentence.
  * @param {FiscYear} year
  */
@@ -6339,10 +6333,7 @@ function paintYearWords(year) {
  * it and look like the page ignoring a click.
  *
  * It walks the fieldset's children and reads the checked property, rather than
- * asking querySelector for the checked input. That needs no selector engine, so
- * tools/jscheck can drive it -- and the stub's declared-selector check keeps
- * app.js honest about which selectors it uses, so adding one here would have to
- * be declared there too.
+ * asking querySelector for the checked input. That needs no selector engine.
  * THE FALLBACK IS THE LAST YEAR AND NOT THE FIRST: CONFIG.years is oldest
  * first, so the budget in force is its last entry. No key on the wire says
  * which; the order does, and the packager marks the same one `checked`.

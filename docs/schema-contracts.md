@@ -22,8 +22,8 @@ corpus grows one.
 
 ## One schema, three readers, one dependency
 
-Go validates fully, with `github.com/google/jsonschema-go`. `tools/jscheck`
-compares the schema's `required` arrays against `app.js`'s own refusals.
+Go validates fully, with `github.com/google/jsonschema-go`. The client's tests
+compare the schema's `required` arrays against `app.js`'s own refusals.
 `tools/extract.py` checks what it wrote against the same arrays.
 
 Only Go takes the dependency. The client ships without npm and the extractor
@@ -34,8 +34,7 @@ restated. A required-key list copied into either would be the second spelling th
 schema exists to remove.
 
 Hand-rolling the Go validator was the first plan and was rejected: it is the
-second implementation of a standard thing, which is the argument `tools/jscheck`
-already makes about not writing a selector engine.
+second implementation of a standard thing.
 
 ## Shape is checked before semantics
 
@@ -90,7 +89,7 @@ naming it, rather than shipped to a client that ignores it.
 
 Measured by adding `Grain []int` to `export.DrillStep` and to one step literal:
 `fisc export` refuses with `unexpected additional properties ["grain"]`,
-`tools/jscheck` refuses by name at the parse, and the two struct-to-schema parity
+the client's tests refuse it by name at the parse, and the two struct-to-schema parity
 tests go red. Before, all three were green.
 
 `manifest.schema.json` does not. `internal/corpus`'s own type documents that

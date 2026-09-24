@@ -434,7 +434,7 @@ button[aria-pressed="true"] {
    traded for an invisible one.
 
    NOTHING IN THE TREE CHECKS THESE SIX NUMBERS, or that this rule still differs
-   from the hover rule. No Go test and no jscheck module renders CSS; the export
+   from the hover rule. No Go test and no client test renders CSS; the export
    test that pins the disabled-hover fix matches SELECTORS, which survives any
    change to a declaration. Re-derive by hand before touching a colour here.
    Same hazard as the table further down this file, and the same bead: fisc-6at. */
@@ -647,7 +647,7 @@ button[aria-pressed="true"] {
    --chart-cushion IS RECORDED HERE AND IN app.js, WHICH IS TWO PARTIES AND NOT
    TWO SPELLINGS: this file subtracts it from 100vw, app.js adds it to a chart
    width to compose the media query at which that chart fits, and
-   tools/jscheck/layout.test.mjs reads both and refuses a disagreement. It is the
+   the client's layout test reads both and refuses a disagreement. It is the
    40px of body padding plus a 16px cushion for a classic scrollbar, which 100vw
    counts and the reader's window does not. */
 .chart-wrap {
@@ -1547,7 +1547,7 @@ noscript p {
      baseline   --muted        3.50:1   4.85:1
      group rule --muted        3.50:1   4.85:1
 
-   NOTHING READS THESE SIX NUMBERS (fisc-6at). No Go test and no jscheck module
+   NOTHING READS THESE SIX NUMBERS (fisc-6at). No Go test and no client test
    parses this file, so changing --ink-2, --ink-1, --critical or --muted in any
    of the three palette blocks falsifies the table above in silence. Re-derive by
    hand; do not treat it as a gate.

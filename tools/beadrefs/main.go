@@ -90,7 +90,7 @@ var exempt = map[string]string{
 // read as `fisc-` plus a short token, and so does a bead id.
 //
 // Renaming them would be the better fix and is not free: AGENTS.md requires a
-// change to site/app.js to ship its jscheck guard in the same commit, and these
+// change to site/app.js to ship its check in the same commit, and these
 // are strings a returning reader's browser already holds.
 //
 // Each names ONE file it lives in, and that is what its staleness is measured
@@ -109,7 +109,7 @@ var exempt = map[string]string{
 var exemptIDs = map[string]exemptID{
 	"fisc-theme":   {file: "site/app.js", what: "the localStorage key holding the reader's light/dark choice; also inlined in every site/*.html.tmpl"},
 	"fisc-year":    {file: "site/index.html.tmpl", what: "the radio-group name for the fiscal-year control"},
-	"fisc-columns": {file: "site/app.js", what: "the localStorage key holding the reader's chosen column count; also in tools/jscheck/lifecycle.mjs"},
+	"fisc-columns": {file: "site/app.js", what: "the localStorage key holding the reader's chosen column count"},
 }
 
 type exemptID struct {

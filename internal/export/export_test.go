@@ -1055,10 +1055,8 @@ func sorted(in []string) []string {
 // comment says it deliberately does not rely on alone.
 //
 // WHY THIS IS A STRING ASSERTION AND NOT A SPECIFICITY CALCULATOR. Computing
-// specificity in Go was the first plan and is the wrong shape: it is what
-// tools/jscheck refuses to do for selectors one layer up ("a selector engine
-// here would be a second implementation of a thing the browser already has"),
-// and it would model only ONE axis of the cascade — source order, !important,
+// specificity in Go was the first plan and is the wrong shape: it would model
+// only ONE axis of the cascade — source order, !important,
 // @layer and whether both rules match the same element are the others — so
 // asserting (0,2,2) > (0,3,1) would prove the arithmetic and not the outcome.
 // Parsing a thousand lines of hand-formatted CSS with the standard library
@@ -1142,9 +1140,9 @@ func TestTheDisabledYearToggleKeepsItsSelectionUnderTheCursor(t *testing.T) {
 // TestTheStylesheetHasOneTextMeasure witnesses ONE DECLARATION, NOT ONE
 // RENDERING, and the distinction is the whole of what this test is worth.
 //
-// Nothing in this tree parses or renders CSS (fisc-6at): tools/jscheck reads
-// style.css to harvest custom-property names and to read .chart-wrap's width
-// allowance as text, and the two tests below this one match selector strings.
+// Nothing in this tree parses or renders CSS (fisc-6at): the client's tests
+// read style.css as text, and the two tests below this one match selector
+// strings.
 // So this cannot say that --measure applies to any element a template renders,
 // that a line comes out at 68 characters, or that the wide tables stayed at the
 // container width. Those are read in a browser after `make site` and nowhere

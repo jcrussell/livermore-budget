@@ -49,7 +49,7 @@ type rungsDoc struct {
 }
 
 // rungColumn is one published year, by the spine document's stem, which is
-// how tools/jscheck names a column.
+// how the client names a column.
 type rungColumn struct {
 	Stem  string `json:"stem"`
 	Rungs []rung `json:"rungs"`
@@ -98,8 +98,8 @@ type rung struct {
 // carryResidual stands beside the opened node's parts. Go computes which
 // mark exists, the tier it stands at and the cents that arrive at it and
 // leave it, and NOT its prose: the rationale and the source note are built
-// from labels and locators the walk does not decode, and
-// tools/jscheck/drill.mjs holds those.
+// from labels and locators the walk does not decode, and the client's tests
+// hold those.
 //
 // ON THE RUNG AND NOT ON A COLUMN, because both marks index the step's
 // declared tiers and not the columns a budget left drawn, so a mark can

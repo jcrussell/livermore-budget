@@ -105,7 +105,7 @@ earlier measurement: by pass 3 every finding was the previous pass's.
 would have returned fewer than 47, or the same 47 spread thinner. What is
 measured is that one deferred loop over six commits did not decay — its last
 pass still returned 3 — and that its first pass was reading six commits at once.
-The lane is Go seams, a client and a jscheck suite, so it compares to the
+The lane is Go seams, a client and its test suite, so it compares to the
 2026-08-31 drill lane and not to `fisc-yj4w.14`'s templates and CSS.
 
 ## The fixes are the size of the feature
@@ -154,10 +154,9 @@ and records in its close reason the two premises that turned out wrong — both
 caught while implementing, not by any review pass.
 
 What the passes found instead was code shipped without its guard: `bd0a098`
-added 492 lines of `site/app.js` and 86 lines of `tools/jscheck`, **none of them
-covering the drill it had just written**, and the drill's whole check module was
-written *inside* the review passes (`git log --diff-filter=A --
-tools/jscheck/drill.mjs` → `a3fe8e8`). Across the session's sixteen review-fix
+added 492 lines of `site/app.js` and 86 lines of the client's tests, **none of
+them covering the drill it had just written**, and the drill's whole check module
+was written *inside* the review passes (added at `a3fe8e8`). Across the session's sixteen review-fix
 commits `drill.mjs` took **633** insertions against `app.js`'s 503 — the largest
 single sink of fix churn there was.
 
@@ -206,7 +205,7 @@ could be verified by hand.
 
 ## Green because the gate fired, not because the defect was prevented
 
-`tools/jscheck`'s `twoYearConfig` carried `docs: {}`. `citations()` opens
+A client test's `twoYearConfig` carried `docs: {}`. `citations()` opens
 `const doc = CONFIG.docs[source.doc_id]; if (!doc) continue` — so it returned
 before ever reaching `source.pages`, and **every** required-key check for a
 `[].pages` key was passing because `drawableSankey` rejected the document, never
