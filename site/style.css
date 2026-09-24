@@ -34,6 +34,7 @@
   --surface-1: #fcfcfb;
   --ink-1: #0b0b0b;
   --ink-2: #52514e;
+  --focus: #52514e;
   --muted: #898781;
   --grid: #e1e0d9;
   --rule: #c3c2b7;
@@ -83,6 +84,7 @@
     --surface-1: #1a1a19;
     --ink-1: #ffffff;
     --ink-2: #c3c2b7;
+    --focus: #c3c2b7;
     --muted: #898781;
     --grid: #2c2c2a;
     --rule: #383835;
@@ -113,6 +115,7 @@
   --surface-1: #1a1a19;
   --ink-1: #ffffff;
   --ink-2: #c3c2b7;
+  --focus: #c3c2b7;
   --muted: #898781;
   --grid: #2c2c2a;
   --rule: #383835;
@@ -276,8 +279,15 @@ button[aria-pressed="true"] {
   border-color: var(--rule);
 }
 
+/* FOCUS HAS ITS OWN TOKEN AND IS NOT THE TEXT COLOUR. --ink-1 is #ffffff in
+   both dark blocks, so every focus indicator on the page was pure white -- and
+   a white rectangle appearing under the pointer reads as "clicking put a border
+   on this" rather than as focus, which is what it was reported as. --focus is
+   --ink-2's value, which already carries a measured contrast ratio against the
+   plane, and having a name of its own means the next change to a text colour
+   does not move it. */
 :focus-visible {
-  outline: 2px solid var(--ink-1);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -437,7 +447,7 @@ button[aria-pressed="true"] {
 /* The outline follows the hidden input onto its label, or keyboard focus would
    be invisible. */
 .year-toggle input:focus-visible + label {
-  outline: 2px solid var(--ink-1);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -765,7 +775,7 @@ svg.sankey .node:focus-visible {
 }
 
 svg.sankey .node:focus-visible rect {
-  stroke: var(--ink-1);
+  stroke: var(--focus);
   stroke-width: 2;
   stroke-dasharray: none;
 }
@@ -780,7 +790,20 @@ svg.sankey .node:focus-visible rect {
    around empty space. If it still reads wrong it wants a drawn focus echo
    rather than a second guess here. */
 svg.sankey .link:focus-visible {
-  outline-offset: 0;
+  /* NO OUTLINE AT ALL, where this dropped the offset and kept the box. A
+     <path>'s bounding box is the whole bezier's rectangle, so the global rule
+     drew a large box around mostly empty space -- the original complaint, and
+     the thing the comment above predicted would need "a drawn focus echo
+     rather than a second guess here". This is that echo.
+
+     A GLOW AND NOT A STROKE, because stroke is the ribbon: d3-sankey draws a
+     link AS a stroke whose width is its value, and stroke-dasharray is already
+     carrying the derived and partition distinctions. drop-shadow is the one
+     channel left that traces the ribbon's own shape rather than its bounding
+     box, and it collides with nothing the chart is saying. */
+  outline: none;
+  stroke-opacity: 1;
+  filter: drop-shadow(0 0 2px var(--focus)) drop-shadow(0 0 2px var(--focus));
 }
 
 svg.sankey .node.contra rect {

@@ -1332,3 +1332,75 @@ describe("a mark drawn at the figure the city publishes, and the band its ribbon
       `reduction(s) last and all inside the band`);
   });
 });
+
+// Nothing in this tree renders or parses CSS, and the one Go assertion about
+// the stylesheet matches selector strings and never reads a colour -- which is
+// how var(--ink-1) sat on every focus indicator being #ffffff in both dark
+// blocks while every gate stayed green. fisc-6at names the cheap partial:
+// extract rule blocks by their selector string and compare one property.
+describe("the focus indicator is painted as focus and not as text", () => {
+  /** @type {string} */ let css;
+  // COMMENTS ARE STRIPPED FIRST, and finding that out cost a red run: the
+  // ribbon's own rule EXPLAINS why it avoids stroke-dasharray, so an arm
+  // asserting the rule does not mention it failed on the prose saying so. A
+  // property check that a comment can satisfy -- or break -- is checking the
+  // wrong text.
+  before(() => { css = stylesheet().replace(/\/\*[\s\S]*?\*\//g, ""); });
+
+  /** The declarations of one rule, by exact selector. */
+  const ruleFor = (/** @type {string} */ selector) => {
+    const at = css.indexOf(selector + " {");
+    assert.ok(at >= 0, `site/style.css states no rule for "${selector}"`);
+    return css.slice(at + selector.length + 2, css.indexOf("}", at));
+  };
+
+  test("every focus indicator takes --focus, and no palette makes that the text colour", (t) => {
+    const indicators = [
+      ":focus-visible",
+      "svg.sankey .node:focus-visible rect",
+      ".year-toggle input:focus-visible + label",
+    ];
+    for (const sel of indicators) {
+      const rule = ruleFor(sel);
+      assert.match(rule, /var\(--focus\)/, `${sel} does not take --focus`);
+      assert.doesNotMatch(rule, /var\(--ink-1\)/,
+        `${sel} still paints itself with the text colour, which is #ffffff in dark`);
+    }
+
+    // AND THE TOKEN IS DECLARED WHEREVER --ink-1 IS, or a palette falls back to
+    // an unset custom property and the indicator disappears entirely -- worse
+    // than the white box, and invisible to a check that only reads the rules.
+    const palettes = (css.match(/--ink-1:\s*#[0-9a-f]{6}/gi) || []).length;
+    const focuses = (css.match(/--focus:\s*#[0-9a-f]{6}/gi) || []).length;
+    assert.equal(focuses, palettes,
+      `--ink-1 is declared in ${palettes} palette(s) and --focus in ${focuses}`);
+
+    // THE VALUE IS READ, WHICH IS THE WHOLE POINT OF THE ARM. A --focus that
+    // resolved to #ffffff would satisfy every line above and be the reported
+    // defect exactly.
+    const values = (css.match(/--focus:\s*(#[0-9a-f]{6})/gi) || [])
+      .map((m) => m.split(":")[1].trim().toLowerCase());
+    assert.deepEqual(here(values.filter((v) => v === "#ffffff")), [],
+      "a palette paints focus pure white, which is the defect this arm exists for");
+    t.diagnostic(`${indicators.length} indicator(s) take --focus; ${focuses} palette(s) ` +
+      `declare it as ${[...new Set(values)].join(", ")}`);
+  });
+
+  test("a ribbon gets a drawn echo and not a box around its bounding rectangle", (t) => {
+    const rule = ruleFor("svg.sankey .link:focus-visible");
+    // A <path>'s bounding box is the whole bezier's rectangle, so ANY outline
+    // on a ribbon is a box around mostly empty space. Dropping the offset was
+    // not enough and is what shipped.
+    assert.match(rule, /outline:\s*none/,
+      "a focused ribbon still takes the global outline, whose box is its whole bezier");
+    assert.match(rule, /drop-shadow\([^)]*var\(--focus\)/,
+      "a focused ribbon has no drawn echo, so focus on it is invisible");
+    // AND NOT THROUGH A CHANNEL THE CHART IS ALREADY USING: stroke is the
+    // ribbon's own value and stroke-dasharray carries derived and partition.
+    assert.doesNotMatch(rule, /stroke-dasharray/,
+      "the echo reuses the dash, which already distinguishes derived from partition");
+    assert.doesNotMatch(rule, /stroke-width/,
+      "the echo reuses stroke-width, which IS the ribbon's value");
+    t.diagnostic(`the ribbon's focus rule is ${rule.trim().replace(/\s+/g, " ")}`);
+  });
+});

@@ -1303,9 +1303,24 @@ func TestTheChartsFocusRingIsDeclaredOnTheMarkAndAfterTheDerivedRule(t *testing.
 	}
 
 	// A ribbon cannot take the node's fix -- its stroke and its dashes are both
-	// published distinctions -- so it keeps the box and loses the offset.
-	if !strings.Contains(css, "svg.sankey .link:focus-visible {\n  outline-offset: 0;\n}") {
-		t.Error("style.css does not drop the focus offset on a ribbon, so the ring " +
-			"stands 2px off a shape it already traces")
+	// published distinctions -- and it cannot keep the box either: a <path>'s
+	// bounding box is the whole bezier's rectangle, so any outline on one is a
+	// ring around mostly empty space. It takes neither, and a drawn echo
+	// instead.
+	iLink := strings.Index(css, "svg.sankey .link:focus-visible {")
+	if iLink < 0 {
+		t.Fatal("style.css states no focus rule for a ribbon")
+	}
+	linkBlock := css[iLink:]
+	if end := strings.Index(linkBlock, "}"); end >= 0 {
+		linkBlock = linkBlock[:end]
+	}
+	if !strings.Contains(linkBlock, "outline: none") {
+		t.Error("style.css leaves a focused ribbon taking the global outline, whose box " +
+			"is the whole bezier's rectangle rather than the ribbon")
+	}
+	if !strings.Contains(linkBlock, "drop-shadow") {
+		t.Error("style.css gives a focused ribbon no drawn echo, so dropping the outline " +
+			"leaves focus on a ribbon invisible")
 	}
 }
