@@ -2760,6 +2760,26 @@ export async function checks() {
       ? [answered.label, answered.rationale].filter((w) => w && app.source.includes(w))
       : [];
 
+    // A PRINTED FIGURE RE-POINTED ONTO A MARK OF OURS SAYS SO, on every
+    // surface that names where a ribbon came from. carryResidual takes a flow
+    // p66 prints -- Transfers In to the General Fund group -- and re-points it
+    // at a node no page prints; the cents and the citation are the city's and
+    // the far end is ours. Every surface said "printed by the city" flatly,
+    // which is a claim about the FLOW and not about the figure (fisc-rgzz).
+    const carriedPrinted = laidNode.targetLinks.filter((/** @type {any} */ l) => !l.derived);
+    const wrongProvenance = carriedPrinted.filter((/** @type {any} */ l) => {
+      const said = app.linkDescription(l);
+      return !said.includes("re-pointed onto a mark of ours") || said.includes(", printed by the city");
+    }).map((/** @type {any} */ l) => l.source.id);
+    // AND THE TABLE SAYS IT TOO, read off the drawn row rather than the
+    // function: a cell still reading "printed" is the same false claim in the
+    // one place a reader can sort by it.
+    const tableBody = app.dom.document.getElementById("flow-table").selectable.tbody;
+    const carriedRow = (tableBody ? tableBody.children : []).find((/** @type {any} */ tr) =>
+      tr.children[1] && tr.children[1].textContent === "Not broken down by fund" &&
+      tr.children[0].textContent === "Transfers In");
+    const carriedCell = carriedRow ? carriedRow.children[4].textContent : "";
+
     // WHAT THE INFERRED LIST COUNTS, AND THAT IT COUNTS EACH FLOW ONCE.
     // Two sentences sit two lines apart in this list and are true of different
     // sets: the residual's own note counts the ribbons it CARRIES -- printed
@@ -2799,6 +2819,8 @@ export async function checks() {
           citedPages.every((pg) => r.node.source_note.includes(String(pg))) &&
           listed.includes(answered.label) && listed.includes(r.node.rationale) &&
           listedFlows === wantFlowLines && namedOnce && saysCarried &&
+          carriedPrinted.length > 0 && wrongProvenance.length === 0 &&
+          carriedCell === "\u25c7 re-pointed by us" &&
           tip.includes("◇ inferred") && tip.includes(r.node.rationale) &&
           panel.includes("◇ our inference") && panel.includes(r.node.rationale) &&
           panel.includes(r.node.source_note) && opens.length === 0,
@@ -2815,7 +2837,10 @@ export async function checks() {
           `${listedFlows} "N inferred flows" line(s) (want ${wantFlowLines}) beside a ` +
           `${saysCarried ? "carried" : "MISSING carried"} ` +
           `count, and names each of its ${derivedLinks.length} inferred flow(s) ` +
-          `${namedOnce ? "once" : "MORE THAN ONCE"}; tooltip ` +
+          `${namedOnce ? "once" : "MORE THAN ONCE"}; its ${carriedPrinted.length} printed ` +
+          `carried flow(s) ${wrongProvenance.length ? "WRONGLY claim the city printed the flow (" +
+            wrongProvenance.join(", ") + ")" : "say the figure is the city's and the re-pointing ours"}` +
+          `, table cell ${JSON.stringify(carriedCell)}; tooltip ` +
           `${tip.includes("◇ inferred") ? "chips it inferred" : "chips it PRINTED"}; panel ` +
           `${panel.includes("◇ our inference") ? "chips it ours" : "chips it PRINTED"}; ` +
           `${opens.length ? opens.join(", ") + " WRONGLY open" : "no carried mark opens"}`

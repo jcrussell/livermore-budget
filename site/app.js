@@ -4824,6 +4824,43 @@ function applyEmphasis() {
  * ------------------------------------------------------------------ */
 
 /**
+ * Whether a ribbon is a printed figure re-pointed onto a mark of ours.
+ *
+ * THE FIGURE AND THE FLOW HAVE DIFFERENT PROVENANCE HERE, and only on this
+ * shape. carryResidual takes a flow the chart above prints -- Transfers In to
+ * the General Fund group, $480,400, cited to p66 -- and re-points it at the
+ * residual, a node no page prints. The cents and the citation are the city's;
+ * the ribbon's far end is ours, and no schedule prints money moving to "Not
+ * broken down by fund".
+ *
+ * SO "printed by the city" IS WRONG ON IT, flatly, and that is what a reader
+ * was told: AGENTS.md, "Published and derived are different things". It is not
+ * "inferred by us" either -- nothing about the figure is inferred -- which is
+ * why this is a third phrase rather than a reclassification of the link.
+ *
+ * @param {boolean} derived  the ribbon's own flag
+ * @param {boolean} ontoOurs  whether either end is a mark we drew
+ * @returns {string}
+ */
+function provenanceOf(derived, ontoOurs) {
+  if (derived) return "inferred by us";
+  return ontoOurs ? CARRIED_NOTE : "printed by the city";
+}
+
+/**
+ * What a printed figure re-pointed onto a derived mark is, in the one place
+ * the words for it live -- PARTITION_NOTE's pattern, and for its reason: four
+ * spellings of one claim about provenance is four things to keep true.
+ */
+const CARRIED_NOTE = "figure printed by the city, re-pointed onto a mark of ours";
+
+/**
+ * The short form of the same claim, for a chip. The diamond is the site's mark
+ * for "this part is ours", and what is ours here is the re-pointing.
+ */
+const CARRIED_CHIP = "\u25c7 re-pointed by us";
+
+/**
  * @param {LaidLink} d
  * @returns {string}
  */
@@ -4832,7 +4869,7 @@ function linkDescription(d) {
     (/** @type {Record<string,string>} */ (KIND_LABEL)[d.kind] || d.kind) +
     (d.contra ? ", " + d.contra : "") +
     (d.partition ? ", " + PARTITION_NOTE : "") +
-    (d.derived ? ", inferred by us" : ", printed by the city");
+    ", " + provenanceOf(d.derived, Boolean(d.source.derived || d.target.derived));
 }
 
 /**
@@ -5094,7 +5131,9 @@ function showTip(event, d) {
     const l = /** @type {LaidLink} */ (d);
     meta.append(h("span", "chip", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
     meta.append(document.createTextNode(" "));
-    meta.append(h("span", l.derived ? "chip derived" : "chip", l.derived ? "◇ inferred" : "printed"));
+    const lentTo = Boolean(l.source.derived || l.target.derived);
+    meta.append(h("span", l.derived || lentTo ? "chip derived" : "chip",
+      l.derived ? "◇ inferred" : lentTo ? CARRIED_CHIP : "printed"));
     if (l.contra) {
       meta.append(document.createTextNode(" "));
       meta.append(h("span", "chip contra", "reduction"));
@@ -5191,7 +5230,9 @@ function pin(d) {
   if (asLink) {
     const l = /** @type {LaidLink} */ (d);
     chips.append(h("span", "chip", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
-    chips.append(h("span", l.derived ? "chip derived" : "chip", l.derived ? "◇ our inference" : "printed by the city"));
+    const lent = Boolean(l.source.derived || l.target.derived);
+    chips.append(h("span", l.derived || lent ? "chip derived" : "chip",
+      l.derived ? "◇ our inference" : lent ? CARRIED_CHIP : "printed by the city"));
     if (l.contra) chips.append(h("span", "chip contra", "reduction"));
     if (l.partition) chips.append(h("span", "chip partition", "cross-tab"));
     panel.append(chips);
@@ -5392,6 +5433,10 @@ function tableRows(doc) {
   const out = [];
   if (!doc) return out;
   const labels = new Map(doc.nodes.map((n) => [n.id, n.label]));
+  // THE TABLE READS ITS LINKS OFF THE DOCUMENT and not off the laid graph, so
+  // an endpoint is an id here where the tooltip has the node. Same claim, one
+  // lookup further away.
+  const ours = new Set(doc.nodes.filter((n) => n.derived).map((n) => n.id));
 
   for (const l of doc.links) {
     const tr = document.createElement("tr");
@@ -5405,7 +5450,8 @@ function tableRows(doc) {
     tr.append(h("td", "", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
     tr.append(h("td", "", l.derived ? "◇ inferred"
       : l.contra ? l.contra
-        : l.partition ? PARTITION_NOTE : "printed"));
+        : l.partition ? PARTITION_NOTE
+          : ours.has(l.source) || ours.has(l.target) ? CARRIED_CHIP : "printed"));
     tr.append(h("td", "ids", l.fact_ids.join(" ")));
     // PER ROW, not per document. The column header says "Source" and until
     // this it printed the same 36 anchors on all 52 drill-down rows -- a
