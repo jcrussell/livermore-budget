@@ -10,7 +10,8 @@
     "primary",
     "metadata",
     "years",
-    "docs"
+    "docs",
+    "wording"
   ],
   "additionalProperties": false,
   "properties": {
@@ -417,6 +418,123 @@
       "type": "string",
       "minLength": 1,
       "description": "Where Go's answer for every rung this page opens is served. OMITTED MEANS NOBODY ANSWERS THIS PAGE'S RUNGS -- a page whose steps the walk never reached must not be handed another page's."
+    },
+    "wording": {
+      "description": "Every sentence app.js composes about the chart on screen, as templates it fills. `{name}` is a variable's value and `{name:one|many}` is the value followed by the singular or the plural word, by whether the value is 1. Declared by the packager so the words are its and a test can reword them and watch the page follow.",
+      "type": "object",
+      "required": [
+        "counts",
+        "counts_partial",
+        "counts_carried",
+        "counts_carried_from",
+        "opened_hint",
+        "open_further",
+        "open_into",
+        "nothing_further",
+        "nothing_opens",
+        "follow",
+        "expand",
+        "swatch",
+        "in_column",
+        "column_left",
+        "column_middle",
+        "column_right",
+        "go_back",
+        "back_control"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The counts line over a chart drawn whole: {links}, {nodes}, {facts}."
+        },
+        "counts_partial": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The counts line over a chart that draws some of its document's facts: {links}, {nodes}, {cited}, {facts}."
+        },
+        "counts_carried": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The counts line over a chart carrying ribbons from the chart above: {links}, {nodes}, {own}, {cited}, {facts}, {carried}."
+        },
+        "counts_carried_from": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Appended to counts_carried when every carried ribbon came from one document: {above}, {theirs}."
+        },
+        "opened_hint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The chart hint's opening sentence on a rung: {label}."
+        },
+        "open_further": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint on a rung whose nodes open: {where}, which is in_column or empty."
+        },
+        "open_into": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint on an overview whose nodes open: {where}."
+        },
+        "nothing_further": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint on a rung nothing opens from."
+        },
+        "nothing_opens": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint on an overview nothing opens from."
+        },
+        "follow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint's sentence about the isolating gesture."
+        },
+        "expand": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint's sentence about a folded tail, where the chart draws one."
+        },
+        "swatch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The hint's sentence about the legend, where the overview draws one."
+        },
+        "in_column": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The clause naming the openable columns: {columns}, already joined."
+        },
+        "column_left": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The leftmost column's name in that clause."
+        },
+        "column_middle": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A middle column's name."
+        },
+        "column_right": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The rightmost column's name."
+        },
+        "go_back": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The description's sentence about the way back from a rung."
+        },
+        "back_control": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A breadcrumb control's text: {back}, the step's back."
+        }
+      }
     }
   }
 }

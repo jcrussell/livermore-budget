@@ -258,7 +258,7 @@ for (const year of YEARS) {
       assert.deepEqual(placedTiers(app), step.tiers);
       assert.ok(ribbons.length > 0);
       assert.deepEqual(ribbons.map((l) => l.target).sort(), departments.slice().sort());
-      assert.deepEqual(at.crumbControls, ["← " + groupStep.back, "← " + step.back]);
+      assert.deepEqual(at.crumbControls, [app.say("back_control", { back: groupStep.back }), app.say("back_control", { back: step.back })]);
     });
 
     test(`${year.label} departments: a fund the cap folds away is reachable by expanding the column, and opens into every department it pays`, async (t) => {
@@ -337,7 +337,7 @@ for (const year of YEARS) {
       assert.equal(fetch.asked.length, asked);
       assert.ok(at.title.startsWith(year.chart_title), at.title);
       assert.ok(at.title.endsWith(label), at.title);
-      assert.deepEqual(at.crumbControls, ["← " + step.back]);
+      assert.deepEqual(at.crumbControls, [app.say("back_control", { back: step.back })]);
       assert.ok(at.crumbHere.includes(label), at.crumbHere);
       assert.equal(at.legend, 0);
       assert.ok(!app.projection.nodes.some((n) => app.drillable(n)), "something opens further");
@@ -579,7 +579,7 @@ for (const year of YEARS) {
       assert.deepEqual(placedTiers(app), step.tiers);
       assert.deepEqual(atTier(app, 4), []);
       assert.ok(at.title.startsWith(year.chart_title) && at.title.endsWith(label), at.title);
-      assert.deepEqual(at.crumbControls, ["← " + step.back]);
+      assert.deepEqual(at.crumbControls, [app.say("back_control", { back: step.back })]);
       assert.ok(at.crumbHere.includes(label), at.crumbHere);
       assert.equal(at.legend, 0);
       assert.ok(at.desc.includes(label) && at.desc.includes(step.description), at.desc);
@@ -607,7 +607,7 @@ for (const year of YEARS) {
       assert.deepEqual(placedTiers(app), [2, 3, 4]);
       assert.deepEqual(folded, []);
       assert.equal(offers(app, CHAIN[2]), true, "a division does not open");
-      assert.deepEqual(at.crumbControls, ["← " + groupStep.back, "← " + fundStep.back]);
+      assert.deepEqual(at.crumbControls, [app.say("back_control", { back: groupStep.back }), app.say("back_control", { back: fundStep.back })]);
       assert.ok(at.desc.includes(label) && at.desc.includes(fundStep.description), at.desc);
       assert.ok(fundStep.description.includes("what it takes in is its revenue"));
       assert.ok(fundStep.description.includes("less the money the group takes in that no fund receives"));
@@ -632,7 +632,7 @@ for (const year of YEARS) {
       assert.deepEqual(placedTiers(app), steps[2].tiers);
       for (const l of labels) assert.ok(at.title.includes(l), `the title lacks ${l}: ${at.title}`);
       assert.ok(at.title.endsWith(labels[2]), at.title);
-      assert.deepEqual(at.crumbControls, steps.map((s) => "← " + s.back));
+      assert.deepEqual(at.crumbControls, steps.map((s) => app.say("back_control", { back: s.back })));
       assert.ok(at.crumbHere.includes(labels[2]), at.crumbHere);
       assert.ok(at.desc.includes(steps[2].description), at.desc);
       assert.ok(at.desc.endsWith(pointerOf(served)), "the table pointer is dropped");

@@ -620,8 +620,10 @@ describe("the drill's drawing", () => {
     const hint = document.getElementById("chart-hint").textContent;
     t.diagnostic(`hint "${hint}"; joinOr over one, two and three reads "${app.joinOr(["a"])}", ` +
       `"${app.joinOr(["a", "b"])}", "${app.joinOr(["a", "b", "c"])}"`);
-    assert.deepEqual(app.openableColumns(), ["left-hand", "middle", "right-hand"]);
-    assert.ok(hint.includes("Double click a node in the left-hand, middle or right-hand column"), hint);
+    const w = CONFIG.wording;
+    assert.deepEqual(app.openableColumns(), [w.column_left, w.column_middle, w.column_right]);
+    const where = app.say("in_column", { columns: app.joinOr([w.column_left, w.column_middle, w.column_right]) });
+    assert.ok(hint.startsWith(app.say("open_into", { where })), hint);
     assert.equal(app.joinOr([]), "");
     assert.equal(app.joinOr(["a"]), "a");
     assert.equal(app.joinOr(["a", "b"]), "a or b");
@@ -1070,5 +1072,40 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     // unstyled, and a dead rule is styled and set nowhere.
     for (const c of Object.keys(HOOKS)) assert.ok(worn.has(c) && !rules.has(c), `${c} is no longer a hook`);
     for (const c of Object.keys(DEAD)) assert.ok(rules.has(c) && !worn.has(c) && !templates.has(c), `${c} is no longer dead`);
+  });
+});
+
+// The words on the page are the packager's: every sentence the client
+// composes is a wording template in the config that say() fills, so a
+// reworded config is followed on the page and no copy of the words survives
+// in app.js (fisc-xixn, fisc-jdsb).
+describe("the wording is the packager's", () => {
+  test("say fills a placeholder with the value, and a {name:one|many} with the value and the word its count picks", async () => {
+    const config = structuredClone(pageFixture().config);
+    config.wording.counts = "{links:flow|flows} over {nodes:node|nodes}; {unfilled} stays";
+    const { app } = await bootedApp({ config });
+    assert.equal(app.say("counts", { links: 1, nodes: 2 }), "1 flow over 2 nodes; {unfilled} stays");
+    assert.equal(app.say("counts", { links: 3, nodes: 1 }), "3 flows over 1 node; {unfilled} stays");
+    assert.equal(app.say("go_back"), config.wording.go_back);
+  });
+  test("a reworded config is followed by the counts line, the hint, the description and the breadcrumb", async (t) => {
+    const config = structuredClone(pageFixture().config);
+    for (const key of Object.keys(config.wording)) config.wording[key] = `«${key}» ` + config.wording[key];
+    const { app, document } = await bootedApp({ config, checkedStem: YEARS[0].stem });
+    const text = (id) => document.getElementById(id).textContent;
+    const hintWhole = text("chart-hint");
+    await opened(app, "fund-group/general");
+    const counts = text("counts-line");
+    const hint = text("chart-hint");
+    const desc = text("chart-desc");
+    const crumbs = [...document.querySelectorAll("#breadcrumb button.crumb-back")].map((b) => b.textContent);
+    t.diagnostic(`counts "${counts}"; hint "${hint.slice(0, 80)}…"; crumbs ${JSON.stringify(crumbs)}`);
+    assert.ok(hintWhole.startsWith("«open_into» ") && hintWhole.includes("«in_column» ") &&
+      hintWhole.includes("«column_left»") && hintWhole.includes(" «follow» "), hintWhole);
+    assert.ok(counts.startsWith("«counts_carried» ") || counts.startsWith("«counts_partial» "), counts);
+    assert.match(counts, /\d+ (flow|flows) between \d+ (node|nodes)/);
+    assert.ok(hint.startsWith("«opened_hint» This is "), hint);
+    assert.ok(desc.includes(" «go_back» Use the breadcrumb"), desc);
+    assert.deepEqual(crumbs, [`«back_control» \u2190 ${config.steps.find((s) => s.key === app.drilled[0].step.key).back}`]);
   });
 });

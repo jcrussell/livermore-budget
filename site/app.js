@@ -187,6 +187,8 @@
  * @property {string} [root]
  * @property {string} [rungs]  where Go's answer for every rung this page opens
  *   is served; absent means nobody answers this page's rungs
+ * @property {Record<string, string>} wording  every sentence this file
+ *   composes, as templates say() fills
  */
 
 /**
@@ -409,6 +411,28 @@ export const RENDER_TIERS = (CONFIG && CONFIG.render_tiers) || [];
  * @type {FiscDrillStep[]}
  */
 export const STEPS = (CONFIG && CONFIG.steps) || [];
+
+/**
+ * One sentence of the page's wording, filled in.
+ *
+ * THE WORDS ARE THE PACKAGER'S AND THE NUMBERS THE CHART'S. `{name}` is the
+ * variable's value; `{name:one|many}` is the value followed by the singular
+ * or the plural word, by whether the value is 1. A placeholder the caller
+ * does not fill is left as written, so a template that asks for more than
+ * the chart knows reads as one on the page rather than as a blank.
+ *
+ * @param {string} key
+ * @param {Record<string, string | number>} [vars]
+ * @returns {string}
+ */
+export function say(key, vars) {
+  const template = CONFIG.wording[key];
+  return template.replace(/\{(\w+)(?::([^|}]*)\|([^}]*))?\}/g, (whole, name, one, many) => {
+    if (!vars || !(name in vars)) return whole;
+    const v = vars[name];
+    return one === undefined ? String(v) : v + " " + (v === 1 ? one : many);
+  });
+}
 
 /**
  * The key of the step whose chart is on screen, "" on the overview.
@@ -1745,12 +1769,9 @@ export function paintCounts() {
   if (!counts || !shownYear) return;
   const links = projection ? projection.links.length : shownYear.counts.links;
   const nodes = projection ? projection.nodes.length : shownYear.counts.nodes;
-  // PLURALS, because a drilled division can draw one ribbon. Fire
-  // Administration and General Services each spend on a single object category,
-  // so opening either used to read "1 flows between 2 nodes" -- a sentence that
-  // was unreachable while every chart on the site drew many ribbons.
-  const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
-    n + " " + word + (n === 1 ? "" : "s");
+  // PLURALS ARE THE WORDING'S, because a drilled division can draw one ribbon:
+  // Fire Administration and General Services each spend on a single object
+  // category, so opening either once read "1 flows between 2 nodes".
   // BOTH NUMBERS, ALWAYS, and the gap between them stated rather than implied.
   //
   // This printed the document's fact total on every undrilled page, justified
@@ -1766,7 +1787,7 @@ export function paintCounts() {
   // that draws a slice as well as on one that draws the lot. The spine reads
   // "N flows between M nodes, from N of the document's F facts", where the
   // facts it does not draw are the printed zeros and the stocks.
-  let from = ", from " + plural(shownYear.counts.facts, "fact");
+  let text = say("counts", { links, nodes, facts: shownYear.counts.facts });
   if (projection) {
     const doc = drawnDoc();
     const drawnStem = doc ? doc.projection : "";
@@ -1805,28 +1826,27 @@ export function paintCounts() {
           ? d.metadata.counts.facts : fallback;
     const total = factsIn(doc, cited.size);
     if (!carried) {
-      from = cited.size === total
-        ? ", from " + plural(cited.size, "fact")
-        : ", from " + cited.size + " of the document's " + plural(total, "fact");
+      text = cited.size === total
+        ? say("counts", { links, nodes, facts: cited.size })
+        : say("counts_partial", { links, nodes, cited: cited.size, facts: total });
     } else {
       // THE RIBBONS ARE SPLIT BEFORE EITHER FACT COUNT IS GIVEN, so neither
       // number is left attached to the whole chart. "14 flows ..., from 29 of
       // the document's 73 facts" reads as a claim about all 14 while it is one
       // about 9 of them, which is the same sentence the carried ones were
       // wrongly inside.
-      from = ": " + (projection.links.length - carried) + " citing " + cited.size +
-        " of the document's " + plural(total, "fact") + ", and " + carried +
-        " carried unchanged from the chart above";
+      text = say("counts_carried", { links, nodes, own: projection.links.length - carried,
+        cited: cited.size, facts: total, carried });
       // NAMED ONLY WHERE ONE DOCUMENT IS NAMEABLE. carriedSource resolves a
       // stem against the stack; two stems, or a document with no counts block,
       // leave the clause as the count of ribbons alone rather than weigh the
       // carried facts against a total that is not theirs.
       const src = stems.size === 1 ? carriedSource(Array.from(stems)[0]) : null;
       const theirs = src ? factsIn(src, 0) : 0;
-      if (theirs) from += ", citing " + above.size + " of its " + plural(theirs, "fact");
+      if (theirs) text += say("counts_carried_from", { above: above.size, theirs });
     }
   }
-  counts.textContent = plural(links, "flow") + " between " + plural(nodes, "node") + from;
+  counts.textContent = text;
 }
 
 /**
@@ -2410,8 +2430,7 @@ export function paintChartName() {
     const said = step && typeof step.description === "string" && step.description
       ? step.description
       : trail + " on the left, and what it is made of on the right.";
-    desc.textContent = "Opened into " + trail + ". " + said +
-      " Use the breadcrumb above the chart, or press Escape, to go back. " + tablePointer;
+    desc.textContent = "Opened into " + trail + ". " + said + " " + say("go_back") + " " + tablePointer;
     return;
   }
   desc.textContent = baseDescription;
@@ -2478,7 +2497,7 @@ export function paintChartHint() {
   // (openableColumns), and "Click a node in the  column" is worse than the
   // shorter true sentence. internal/export refuses the view that would produce
   // it; a config handed to this file has still said it.
-  const where = column ? " in the " + column + " column" : "";
+  const where = column ? say("in_column", { columns: column }) : "";
   // THE ISOLATE IS NAMED ON EVERY VIEW, including one where nothing opens. It
   // is the gesture every node of every chart has, and the sentence that used to
   // stop at "nothing here opens further" left a reader on those charts told
@@ -2487,30 +2506,21 @@ export function paintChartHint() {
   // AND SPACE IS NAMED BECAUSE IT IS THE SURPRISE. A role="button" activates on
   // Space by convention and here Space never opens; a reader is entitled to
   // that convention until the page says otherwise, so the page says otherwise.
-  const follows = " A single click, or Space, follows one node's money.";
+  const follows = " " + say("follow");
   // THE FOLDED TAIL IS NAMED ONLY WHERE THERE IS ONE, and it is a sentence of
   // its own rather than a clause inside the opening one: on five of the nine
   // views that draw a tail, the tail is the ONLY thing the chart offers, and
   // "nothing here opens further" was the whole of what those readers were told.
   const tails = Boolean(projection) && projection.nodes.some(expandable);
-  const expands = tails
-    ? " The folded mark is several of them drawn as one; double click it, or tab to it and " +
-      "press Enter, to draw them separately."
-    : "";
+  const expands = tails ? " " + say("expand") : "";
   if (drilled.length) {
-    hint.textContent = "This is " + labelOfRung(drilled.length - 1) +
-      ", broken into its parts. " +
-      (anyOpens
-        ? "Double click a node" + where + " to open it further, or tab to one and press Enter."
-        : "Nothing here opens further; go back to open another.") + follows + expands;
+    hint.textContent = say("opened_hint", { label: labelOfRung(drilled.length - 1) }) + " " +
+      (anyOpens ? say("open_further", { where }) : say("nothing_further")) + follows + expands;
     return;
   }
   const swatches = buildLegendCount();
-  hint.textContent = (anyOpens
-    ? "Double click a node" + where + " to open it into its parts, " +
-      "or tab to one and press Enter."
-    : "Nothing on this chart opens.") + follows +
-    (swatches ? " A fund swatch follows one group's money without opening anything." : "");
+  hint.textContent = (anyOpens ? say("open_into", { where }) : say("nothing_opens")) + follows +
+    (swatches ? " " + say("swatch") : "");
 }
 
 /**
@@ -2551,7 +2561,7 @@ export function openableColumns() {
   const opening = new Set(projection.nodes.filter(drillable).map((n) => n.tier));
   return tiers.map((tier, at) => {
     if (!opening.has(tier)) return "";
-    return at === 0 ? "left-hand" : at === tiers.length - 1 ? "right-hand" : "middle";
+    return say(at === 0 ? "column_left" : at === tiers.length - 1 ? "column_right" : "column_middle");
   }).filter(Boolean);
 }
 
@@ -2604,7 +2614,7 @@ export function paintBreadcrumb() {
   // would get "divisions" and nobody would find out from a test.
   const controls = drilled.map((rung, k) => {
     const back = h("button", "crumb-back");
-    back.textContent = "\u2190 " + (rung.step.back || "Back");
+    back.textContent = say("back_control", { back: rung.step.back });
     back.setAttribute("type", "button");
     back.addEventListener("click", () => drillUp(k));
     return back;

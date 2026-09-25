@@ -125,7 +125,12 @@ describe("a year's words are the packager's, painted whole", () => {
     const template = pageFixture().html.match(/<span id="counts-line">([\s\S]*?)<\/span>/)[1].replace(/\s+/g, " ").trim();
     t.diagnostic(`the drawn page's counts-line reads "${drawn}"`);
     assert.ok(drawn.startsWith(head(template).split("N")[0]), `"${drawn}" does not open with the template's head "${template}"`);
-    assert.match(drawn, / of the document's \d+ facts$/);
+    // The tail is the wording's counts_partial past its {cited} placeholder,
+    // with the numbers and the plural left open.
+    const tail = pageFixture().config.wording.counts_partial.split("{cited}")[1];
+    const pattern = tail.replace(/[.*+?^$()[\]\\]/g, "\\$&")
+      .replace(/\{(\w+):([^|}]*)\|([^}]*)\}/g, "\\d+ (?:$2|$3)").replace(/\{\w+\}/g, "\\d+");
+    assert.match(drawn, new RegExp(pattern + "$"));
   });
   test("the chart's accessible name is the packager's chart_title, written whole", async (t) => {
     const { app, document } = await loadApp();

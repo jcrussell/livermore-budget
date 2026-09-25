@@ -1,14 +1,19 @@
 package export
 
 import (
+	"encoding/json"
+	"io/fs"
 	"reflect"
+	"regexp"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/schema"
+	"github.com/jcrussell/livermore-budget/site"
 )
 
 // TestTheSchemaStatesWhatThePageConfigCarries holds schema/page.schema.json to
@@ -96,5 +101,72 @@ func TestBasisLabelForRewritesOnlyTheAuditedBasisOfAnUnauditedDocument(t *testin
 				t.Errorf("basisLabelFor(%v, %q) = %q, want %q", tc.caveats, tc.basis, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestTheWordingFillsEveryPlaceholderTheClientHands holds each wording
+// template to the variables site/app.js fills it with: a placeholder the
+// client never hands is left on the page as written, and a variable the
+// template never names is a figure the reader is not shown.
+func TestTheWordingFillsEveryPlaceholderTheClientHands(t *testing.T) {
+	hands := map[string][]string{
+		"counts":              {"links", "nodes", "facts"},
+		"counts_partial":      {"links", "nodes", "cited", "facts"},
+		"counts_carried":      {"links", "nodes", "own", "cited", "facts", "carried"},
+		"counts_carried_from": {"above", "theirs"},
+		"opened_hint":         {"label"},
+		"open_further":        {"where"},
+		"open_into":           {"where"},
+		"in_column":           {"columns"},
+		"back_control":        {"back"},
+	}
+	blob, err := json.Marshal(defaultWording())
+	if err != nil {
+		t.Fatal(err)
+	}
+	var templates map[string]string
+	if err := json.Unmarshal(blob, &templates); err != nil {
+		t.Fatal(err)
+	}
+	placeholder := regexp.MustCompile(`\{(\w+)(?::[^|}]*\|[^}]*)?\}`)
+	for key, template := range templates {
+		if template == "" {
+			t.Errorf("wording %q is empty", key)
+		}
+		named := map[string]bool{}
+		for _, m := range placeholder.FindAllStringSubmatch(template, -1) {
+			named[m[1]] = true
+		}
+		want := map[string]bool{}
+		for _, v := range hands[key] {
+			want[v] = true
+			if !named[v] {
+				t.Errorf("wording %q never names {%s}, which the client hands it; the figure would not reach the page", key, v)
+			}
+		}
+		for v := range named {
+			if !want[v] {
+				t.Errorf("wording %q names {%s}, which the client never hands it; the page would print the placeholder", key, v)
+			}
+		}
+	}
+}
+
+// TestTheTemplatesCountsHeadIsTheWordingsCounts holds the counts line
+// site/index.html.tmpl renders before app.js runs to the wording app.js
+// repaints it with: the same sentence, the plural fixed as the template
+// prints it, so a reworded default reaches both or neither.
+func TestTheTemplatesCountsHeadIsTheWordingsCounts(t *testing.T) {
+	tmpl, err := fs.ReadFile(site.FS(), "index.html.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	served := strings.NewReplacer(
+		"{links:flow|flows}", "{{.Links}} flows",
+		"{nodes:node|nodes}", "{{.Nodes}} nodes",
+		"{facts:fact|facts}", "{{.Facts}} facts",
+	).Replace(defaultWording().Counts)
+	if !strings.Contains(string(tmpl), `<span id="counts-line">`+served+`</span>`) {
+		t.Errorf("site/index.html.tmpl does not render the counts line as %q; the page's first sentence and its repaint would differ", served)
 	}
 }

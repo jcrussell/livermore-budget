@@ -622,6 +622,64 @@ type clientDoc struct {
 	RecordsBase string `json:"records_base"`
 }
 
+// wording is every sentence site/app.js composes about the chart on screen,
+// as templates the client fills in: the counts line, the chart hint, the way
+// back and the breadcrumb's control. `{name}` is a variable's value and
+// `{name:one|many}` is the value followed by the singular or the plural word,
+// by whether the value is 1.
+//
+// DECLARED HERE AND FORMATTED THERE, so the words are the packager's and the
+// numbers the chart's. A sentence spelled in the client is one nothing can
+// hold to the template that renders its server-side twin, and rewording both
+// left every gate green; a template the client fills is data a test can
+// reword and watch the page follow.
+type wording struct {
+	Counts            string `json:"counts"`
+	CountsPartial     string `json:"counts_partial"`
+	CountsCarried     string `json:"counts_carried"`
+	CountsCarriedFrom string `json:"counts_carried_from"`
+	OpenedHint        string `json:"opened_hint"`
+	OpenFurther       string `json:"open_further"`
+	OpenInto          string `json:"open_into"`
+	NothingFurther    string `json:"nothing_further"`
+	NothingOpens      string `json:"nothing_opens"`
+	Follow            string `json:"follow"`
+	Expand            string `json:"expand"`
+	Swatch            string `json:"swatch"`
+	InColumn          string `json:"in_column"`
+	ColumnLeft        string `json:"column_left"`
+	ColumnMiddle      string `json:"column_middle"`
+	ColumnRight       string `json:"column_right"`
+	GoBack            string `json:"go_back"`
+	BackControl       string `json:"back_control"`
+}
+
+// defaultWording is the site's English. The counts sentence's head is also
+// rendered server-side by site/index.html.tmpl for the page before app.js
+// runs, and a test holds that line to Counts.
+func defaultWording() wording {
+	return wording{
+		Counts:            "{links:flow|flows} between {nodes:node|nodes}, from {facts:fact|facts}",
+		CountsPartial:     "{links:flow|flows} between {nodes:node|nodes}, from {cited} of the document's {facts:fact|facts}",
+		CountsCarried:     "{links:flow|flows} between {nodes:node|nodes}: {own} citing {cited} of the document's {facts:fact|facts}, and {carried} carried unchanged from the chart above",
+		CountsCarriedFrom: ", citing {above} of its {theirs:fact|facts}",
+		OpenedHint:        "This is {label}, broken into its parts.",
+		OpenFurther:       "Double click a node{where} to open it further, or tab to one and press Enter.",
+		OpenInto:          "Double click a node{where} to open it into its parts, or tab to one and press Enter.",
+		NothingFurther:    "Nothing here opens further; go back to open another.",
+		NothingOpens:      "Nothing on this chart opens.",
+		Follow:            "A single click, or Space, follows one node's money.",
+		Expand:            "The folded mark is several of them drawn as one; double click it, or tab to it and press Enter, to draw them separately.",
+		Swatch:            "A fund swatch follows one group's money without opening anything.",
+		InColumn:          " in the {columns} column",
+		ColumnLeft:        "left-hand",
+		ColumnMiddle:      "middle",
+		ColumnRight:       "right-hand",
+		GoBack:            "Use the breadcrumb above the chart, or press Escape, to go back.",
+		BackControl:       "\u2190 {back}",
+	}
+}
+
 // clientConfig is window.FISC_CONFIG: the metadata the page needs before it
 // has fetched anything, plus where to fetch the bulk from.
 type clientConfig struct {
@@ -634,6 +692,8 @@ type clientConfig struct {
 	// the packager so the client never composes a figure or a caveat itself.
 	Years []yearView           `json:"years"`
 	Docs  map[string]clientDoc `json:"docs"`
+	// Wording is every sentence the client composes, as templates it fills.
+	Wording wording `json:"wording"`
 	// RenderTiers is the node tiers the page draws, left to right; omitted
 	// when the page draws its document whole.
 	//
@@ -1557,6 +1617,7 @@ func buildSankeyPage(o *Options, v View, nav []navItem, byID map[string]Doc,
 		Metadata:      doc.Metadata,
 		Years:         years,
 		Docs:          clientDocs,
+		Wording:       defaultWording(),
 		RenderTiers:   v.RenderTiers,
 		Steps:         v.Steps,
 		// THE ANSWER IS THE SPINE'S, so only the spine is told where it is.
