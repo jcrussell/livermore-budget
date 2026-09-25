@@ -13,9 +13,11 @@
 
 import { describe, test, before } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
 import {
-  bootedApp, opened, expandAll, everyOffer, settle, refusals, rungsFixture, columnFixture, pageFixture, fire,
+  bootedApp, opened, expandAll, everyOffer, settle, refusals, rungsFixture, columnFixture, pageFixture, fire, repoRoot,
 } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
@@ -978,5 +980,95 @@ describe("arms no committed column reaches", () => {
     assert.deepEqual(app.labelLineShift("start"), end);
     assert.notEqual(end.qualifier, middle.qualifier);
     assert.equal(end.label, middle.label);
+  });
+});
+
+// A class the client sets that no rule styles is a silent no-op, and a rule
+// no page wears is dead ink; neither shows on any other check (fisc-a0fv).
+// Rules come from the injected stylesheet as jsdom parsed it, worn classes
+// off every element the page holds across the states the client can reach,
+// and the classes the other pages' templates set are theirs, not the client's.
+describe("the classes the client sets and the rules the stylesheet carries", () => {
+  /** Set by the client, styled by nothing, on purpose: hooks the tests and the gestures key on. */
+  const HOOKS = {
+    links: "the <g> the ribbons are drawn into",
+    nodes: "the <g> the marks are drawn into",
+    opens: "the drillable mark; its affordance is the flag tspan, not a style",
+    expands: "the folded tail, likewise",
+  };
+  /** Styled, set by nothing anywhere: dead ink until its bead lands. */
+  const DEAD = { btn: "fisc-bjx7" };
+
+  const classesIn = (attr) => (attr || "").split(/\s+/).filter(Boolean);
+  const templateClasses = () => {
+    const out = new Set();
+    for (const f of readdirSync(join(repoRoot, "site")).filter((f) => f.endsWith(".html.tmpl"))) {
+      const text = readFileSync(join(repoRoot, "site", f), "utf8");
+      // A template writes its class attributes around {{pipes}}; the words
+      // either side are the classes and the pipe is not.
+      for (const m of text.matchAll(/class="([^"]*)"/g)) {
+        for (const c of classesIn(m[1].replace(/\{\{[^}]*\}\}/g, " "))) out.add(c);
+      }
+    }
+    return out;
+  };
+  const ruleClasses = (document) => {
+    const out = new Set();
+    const walk = (rules) => {
+      for (const r of rules) {
+        if (r.selectorText) for (const m of r.selectorText.matchAll(/\.([A-Za-z_][\w-]*)/g)) out.add(m[1]);
+        if (r.cssRules) walk(r.cssRules);
+      }
+    };
+    for (const sheet of document.styleSheets) walk(sheet.cssRules);
+    return out;
+  };
+
+  test("every class the client sets is styled or a declared hook, and every rule is worn on some page or declared dead", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
+    const chart = document.getElementById("chart");
+    const worn = new Set();
+    const snap = () => {
+      for (const el of document.querySelectorAll("*")) for (const c of classesIn(el.getAttribute("class"))) worn.add(c);
+    };
+    // The overview, the tooltip on a mark and on a ribbon, the panel on a
+    // ribbon, a pin, an isolation, every view the drill offers, an expanded
+    // tail, and a refusal.
+    snap();
+    const mark = marksIn(chart)[0];
+    const ribbon = ribbonsIn(chart)[0];
+    app.showTip({ target: chart, clientX: 0, clientY: 0 }, mark.__data__); snap();
+    app.showTip({ target: chart, clientX: 0, clientY: 0 }, ribbon.__data__); snap();
+    app.pin(ribbon.__data__); snap();
+    app.pin(mark.__data__); snap();
+    fire(mark, "keydown", { key: " " }); await settle(); snap();
+    let expandedAt = "";
+    const walked = await everyOffer(app, async (path) => {
+      snap();
+      const laidRibbon = ribbonsIn(chart)[0];
+      if (laidRibbon) { app.showTip({ target: chart, clientX: 0, clientY: 0 }, laidRibbon.__data__); app.pin(laidRibbon.__data__); snap(); }
+      // The first view that folds a column is expanded once, for the chip.
+      if (!expandedAt && app.projection.nodes.some((n) => app.expandable(n))) {
+        expandAll(app); await settle(); snap();
+        expandedAt = path.join(" > ");
+      }
+    });
+    assert.equal(walked.refused, "");
+    assert.ok(expandedAt, "no view offered a column to expand");
+    app.fail("probe: a refusal, for its class"); snap();
+
+    const rules = ruleClasses(document);
+    const templates = templateClasses();
+    const unstyled = [...worn].filter((c) => !rules.has(c) && !(c in HOOKS)).sort();
+    const unworn = [...rules].filter((c) => !worn.has(c) && !templates.has(c) && !(c in DEAD)).sort();
+    t.diagnostic(`${worn.size} classes worn across ${walked.visited} views and the states above (expanded at ${expandedAt}); ${rules.size} classes styled; ` +
+      `${[...rules].filter((c) => !worn.has(c) && templates.has(c)).length} styled classes are other pages' templates'; ` +
+      `hooks ${Object.keys(HOOKS).join(", ")}; dead ${Object.keys(DEAD).join(", ")}`);
+    assert.deepEqual(unstyled, [], "set by the client and styled by no rule");
+    assert.deepEqual(unworn, [], "styled and worn by nothing on any page");
+    // The declarations cannot go stale in silence: a hook is worn and
+    // unstyled, and a dead rule is styled and set nowhere.
+    for (const c of Object.keys(HOOKS)) assert.ok(worn.has(c) && !rules.has(c), `${c} is no longer a hook`);
+    for (const c of Object.keys(DEAD)) assert.ok(rules.has(c) && !worn.has(c) && !templates.has(c), `${c} is no longer dead`);
   });
 });
