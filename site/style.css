@@ -257,8 +257,7 @@ h3 {
 
 /* ---------- controls ---------- */
 
-button,
-.btn {
+button {
   font: inherit;
   font-size: 13px;
   color: var(--ink-2);

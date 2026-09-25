@@ -998,8 +998,8 @@ describe("the classes the client sets and the rules the stylesheet carries", () 
     opens: "the drillable mark; its affordance is the flag tspan, not a style",
     expands: "the folded tail, likewise",
   };
-  /** Styled, set by nothing anywhere: dead ink until its bead lands. */
-  const DEAD = { btn: "fisc-bjx7" };
+  /** Styled, set by nothing anywhere: dead ink, declared with its bead until it goes. */
+  const DEAD = {};
 
   const classesIn = (attr) => (attr || "").split(/\s+/).filter(Boolean);
   const templateClasses = () => {
