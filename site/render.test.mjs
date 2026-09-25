@@ -89,13 +89,24 @@ function tailPromise(mark) {
  * @param {any} rung
  * @returns {Map<string, number>}
  */
-function answeredIDs(rung) {
+function answeredIDs(rung, step) {
   const ids = new Map();
   for (const d of rung.draws) {
     for (const id of d.ids) ids.set(id, d.tier);
     for (const id of d.carried || []) ids.set(id, d.tier);
   }
-  for (const m of rung.marks || []) ids.set(m.id, -1);
+  for (const m of rung.marks || []) {
+    ids.set(m.id, -1);
+    // A RESIDUAL'S LEAVING ENDPOINTS stand at the step's last declared tier
+    // (export.ResidualOf), and are answered on the mark rather than in a
+    // column; carryResidual draws them there and drops the leg with the
+    // column where the budget does not buy it, so they are read here as ids
+    // of that column.
+    if (m.role !== "residual") continue;
+    for (const e of m.ends || []) {
+      if (!ids.has(e)) ids.set(e, step.tiers[step.tiers.length - 1]);
+    }
+  }
   return ids;
 }
 
@@ -249,7 +260,7 @@ async function drive(year) {
         const folded = new Set(tails.map((m) => m.__data__.tier));
         seen.tails += tails.length;
         const columns = new Set(app.activeTiers());
-        const want = answeredIDs(answer);
+        const want = answeredIDs(answer, app.CONFIG.steps.find((s) => s.key === answer.step));
         const tailIDs = [...folded].map((t) => app.aggregateID(t));
         const unanswered = drawn.filter((id) => !want.has(id) && !tailIDs.includes(id));
         const offscreen = [...want.keys()].filter((id) => want.get(id) !== -1 && !columns.has(want.get(id)));

@@ -692,9 +692,26 @@ func views(built result) []export.View {
 				// decision of 2026-09-13 over the {0,3,4} chart this replaces,
 				// which drew the funds and the divisions and left the group the
 				// reader clicked off the screen entirely.
-				Keep:  []int{0},
-				Tiers: []int{0, 2, 3},
-				// ONE CAP WHERE THERE WERE TWO, because the division column is
+				Keep: []int{0},
+				// A FOURTH COLUMN WHERE THERE IS ROOM FOR ONE, and tier 4 is
+				// what is there to draw: the departments that spend each fund.
+				// Only the General Fund's document fills it -- pp.167-170
+				// decompose fund/100 and no other fund has a spending side --
+				// so on the other five groups' rungs Go answers tier 4 with no
+				// ids and the client drops the column (dropEmptyColumns) and
+				// draws the three it has. fisc-84y5.
+				//
+				// THIS IS THE ONLY OTHER STEP THAT CAN WIDEN, and the reason
+				// each of the five cannot is the document it draws: division
+				// ({3,4,5}) and revenue-category ({1,0,2}) already draw the
+				// last tier fund-flows has on their outward side; the
+				// object-category step draws department-spending, whose
+				// nodes are tiers 4 and 5 only; fund-departments draws
+				// department-funding, tiers 2 to 4 only; and transfers keeps
+				// no flank, which validateSteps refuses a widening on.
+				Tiers: []int{0, 2, 3, 4},
+				Widen: []int{4},
+				// ONE CAP AT THE FUND COLUMN, because the division column is
 				// a step further out now. Measured off both committed goldens:
 				// special-revenue draws 32 funds in FY2025-26 and 31 in
 				// FY2026-27 and folds to 8 either way; capital 11, enterprise 9,
@@ -703,7 +720,12 @@ func views(built result) []export.View {
 				// pixel in FY2025-26 and 7 of 41 in FY2026-27, with a smallest
 				// of 0.12px and 0.05px; capped it draws 19 ribbons and none of
 				// them is sub-pixel, in either column.
-				Caps: []export.TierCap{{Tier: 3, Cap: 8}},
+				//
+				// THE TIER-4 CAP IS THE FUND STEP'S, carried at the width it
+				// was declared at and inert for the same reason: fund/100's 23
+				// departments against 24. It names its own noun because the
+				// step's counts funds.
+				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "departments"}},
 				Noun: "fund group",
 				// THE GRAIN THIS STEP'S DOCUMENT DOES NOT SPLIT THE CARRIED
 				// FLOWS BY. pp.127-140 print revenue and spending by fund and
@@ -763,7 +785,10 @@ func views(built result) []export.View {
 					"divisions that spend it, from Budget Book pp.167-170, and every " +
 					"other fund into the departments it pays for, from pp.85-125. A fund " +
 					"no department's funding schedule names ends the drill — not " +
-					"missing, but not broken down in any published schedule.",
+					"missing, but not broken down in any published schedule. Where " +
+					"there is room for a fourth column, the General Fund's divisions " +
+					"from pp.167-170 are drawn beyond its funds; no other group has a " +
+					"fund those pages decompose, so their windows stay three columns.",
 			},
 			{
 				// THE ROLE IS THE MIRROR OF THE OTHER TWO GATES, and it is

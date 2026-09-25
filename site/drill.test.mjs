@@ -118,9 +118,24 @@ function offers(app, id) {
 
 /** The ids the answer says one rung draws at the columns this viewport lays out. */
 function answeredIDs(answer, tiers) {
-  return new Set(answer.draws.filter((d) => tiers.includes(d.tier))
+  const ids = new Set(answer.draws.filter((d) => tiers.includes(d.tier))
     .flatMap((d) => d.ids.concat(d.carried || []))
     .concat((answer.marks || []).map((m) => m.id)));
+  // A RESIDUAL'S LEAVING ENDPOINTS ARE NAMED ON THE MARK AND NOT IN A COLUMN:
+  // Go answers a column's ids off the documents, and an endpoint the spine
+  // draws at tier 5 is no document's node at the step's last tier. The client
+  // stands them in that column where the budget draws it and drops the leg
+  // where it does not (carryResidual), which is the rule read here.
+  const step = stepByKey(PAGE, answer.step);
+  const last = step.tiers[step.tiers.length - 1];
+  const answered = new Set(answer.draws.flatMap((d) => d.ids.concat(d.carried || [])));
+  for (const m of answer.marks || []) {
+    if (m.role !== "residual") continue;
+    for (const e of m.ends || []) {
+      if (!answered.has(e) && tiers.includes(last)) ids.add(e);
+    }
+  }
+  return ids;
 }
 
 /** The table pointer: everything after the served description's first sentence. */
@@ -458,8 +473,10 @@ describe("the window: three columns spliced on the node the reader clicked", () 
       `${JSON.stringify(placedTiers(app))}; kept column ${atTier(app, 0).length} node(s) sending ` +
       `${fromKept.length} ribbon(s) into the centre and ${residualEnds.length} past it; opened column ` +
       `${atTier(app, 3).length} node(s) taking ${toFunds.length} from it`);
-    assert.deepEqual(tiers, step.tiers.slice().sort((a, b) => a - b));
-    assert.deepEqual(placedTiers(app), step.tiers);
+    // AT THE BUDGET EVERY READER GETS, which does not buy the step's widening.
+    const own = step.tiers.filter((tier) => !(step.widen || []).includes(tier));
+    assert.deepEqual(tiers, own.slice().sort((a, b) => a - b));
+    assert.deepEqual(placedTiers(app), own);
     assert.deepEqual(atTier(app, 2), [CENTRE]);
     assert.equal(atTier(app, 0).length, kept.length);
     assert.equal(fromKept.length, kept.length - residualEnds.length);
@@ -561,7 +578,7 @@ for (const year of YEARS) {
       assert.equal(app.docAt(1).projection, stepByKey(config, "fund-group").projection);
     });
 
-    test(`${year.label} chain: depth 1 draws the General Fund at {0,2,3} as a window, and every sentence says so`, async (t) => {
+    test(`${year.label} chain: depth 1 draws the General Fund at {0,2,3} as a window at the budget every reader gets, and every sentence says so`, async (t) => {
       const { app, document, config } = await onYear(year.stem);
       const step = stepByKey(config, "fund-group");
       const served = words(app, document).desc;
@@ -576,7 +593,10 @@ for (const year of YEARS) {
         `"${at.crumbHere}"; ${JSON.stringify(opens)} open`);
       assert.equal(at.depth, 1);
       assert.equal(at.drawnIsYears, false);
-      assert.deepEqual(placedTiers(app), step.tiers);
+      // THE STEP DECLARES A FOURTH COLUMN AND THE DEFAULT BUDGET DOES NOT BUY
+      // IT: the placed tiers are the step's less its widening.
+      assert.deepEqual(placedTiers(app), step.tiers.filter((tier) => !step.widen.includes(tier)));
+      assert.deepEqual(placedTiers(app), [0, 2, 3]);
       assert.deepEqual(atTier(app, 4), []);
       assert.ok(at.title.startsWith(year.chart_title) && at.title.endsWith(label), at.title);
       assert.deepEqual(at.crumbControls, [app.say("back_control", { back: step.back })]);

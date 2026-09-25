@@ -237,6 +237,11 @@
                 "fund/561",
                 "fund/580"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ],
           "marks": [
@@ -523,6 +528,11 @@
                 "fund/401",
                 "fund/402"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ]
         },
@@ -655,6 +665,11 @@
                 "fund/642",
                 "fund/643"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ]
         },
@@ -967,6 +982,35 @@
               "ids": [
                 "fund/100"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": [
+                "dept/administrative-services",
+                "dept/building-and-safety",
+                "dept/city-attorney",
+                "dept/city-clerk",
+                "dept/city-council",
+                "dept/city-manager",
+                "dept/community-development-admin",
+                "dept/engineering",
+                "dept/environmental-services",
+                "dept/finance",
+                "dept/fire-administration",
+                "dept/general-services",
+                "dept/housing-and-human-services",
+                "dept/human-resources",
+                "dept/innovation-and-economic-devel",
+                "dept/library",
+                "dept/maintenance",
+                "dept/patrol",
+                "dept/planning",
+                "dept/police-administration",
+                "dept/public-works-administration",
+                "dept/special-operations",
+                "dept/support-services"
+              ]
             }
           ],
           "marks": [
@@ -975,12 +1019,15 @@
               "role": "residual",
               "tier": 3,
               "in_cents": 151455400,
+              "out_cents": 1473722200,
               "ends": [
                 "fund-balance/draw",
-                "transfers/in"
+                "fund-balance/reserve-increase",
+                "transfers/in",
+                "transfers/out"
               ],
               "label": "Not broken down by fund",
-              "rationale": "Money the chart above prints for General Fund as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it: measured, general 1,034,154, capital 2,500,213 and internal-service 6,147,533 in FY2026 adopted, and every fund-level inflow short by exactly that. Transfers In: pp.66-67 print Transfers In per fund group and pp.127-140 print it per fund for eight funds in three groups, to the cent. The general group has no such fund, so its 480,400 is residual and the other groups' is decomposed whole -- which is why the rule is per group, and that cell is the one exception the revenue-detail cut declares against the spine.",
+              "rationale": "Money the chart above prints for General Fund as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it: measured, general 1,034,154, capital 2,500,213 and internal-service 6,147,533 in FY2026 adopted, and every fund-level inflow short by exactly that. Addition to Reserves: a printed row of pp.66-67 that the city books against the group as a whole: general's 4,699,425 in FY2026 adopted has no division and no object category on pp.167-170, which decompose expenditure and nothing else. Transfers In: pp.66-67 print Transfers In per fund group and pp.127-140 print it per fund for eight funds in three groups, to the cent. The general group has no such fund, so its 480,400 is residual and the other groups' is decomposed whole -- which is why the rule is per group, and that cell is the one exception the revenue-detail cut declares against the spine. Transfers Out: pp.66-67 print Transfers Out per fund group and no fund-level schedule prints it from any fund: pp.167-170 decompose the General Fund's expenditure and stop there, so general's 10,037,797 in FY2026 adopted leaves the group beside its divisions rather than through one.",
               "source_note": ""
             }
           ]
@@ -1855,6 +1902,11 @@
                 "fund/730",
                 "fund/740"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ],
           "marks": [
@@ -2088,6 +2140,11 @@
                 "fund/330",
                 "fund/331"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ]
         },
@@ -3639,6 +3696,11 @@
                 "fund/561",
                 "fund/580"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ],
           "marks": [
@@ -3895,6 +3957,11 @@
                 "fund/401",
                 "fund/402"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ]
         },
@@ -4027,6 +4094,11 @@
                 "fund/642",
                 "fund/643"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ]
         },
@@ -4338,6 +4410,35 @@
               "ids": [
                 "fund/100"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": [
+                "dept/administrative-services",
+                "dept/building-and-safety",
+                "dept/city-attorney",
+                "dept/city-clerk",
+                "dept/city-council",
+                "dept/city-manager",
+                "dept/community-development-admin",
+                "dept/engineering",
+                "dept/environmental-services",
+                "dept/finance",
+                "dept/fire-administration",
+                "dept/general-services",
+                "dept/housing-and-human-services",
+                "dept/human-resources",
+                "dept/innovation-and-economic-devel",
+                "dept/library",
+                "dept/maintenance",
+                "dept/patrol",
+                "dept/planning",
+                "dept/police-administration",
+                "dept/public-works-administration",
+                "dept/special-operations",
+                "dept/support-services"
+              ]
             }
           ],
           "marks": [
@@ -4346,11 +4447,15 @@
               "role": "residual",
               "tier": 3,
               "in_cents": 48673500,
+              "out_cents": 1583030300,
               "ends": [
-                "transfers/in"
+                "fund-balance/contribution",
+                "fund-balance/reserve-increase",
+                "transfers/in",
+                "transfers/out"
               ],
               "label": "Not broken down by fund",
-              "rationale": "Money the chart above prints for General Fund as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Transfers In: pp.66-67 print Transfers In per fund group and pp.127-140 print it per fund for eight funds in three groups, to the cent. The general group has no such fund, so its 480,400 is residual and the other groups' is decomposed whole -- which is why the rule is per group, and that cell is the one exception the revenue-detail cut declares against the spine.",
+              "rationale": "Money the chart above prints for General Fund as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Contribution: the mirror of the draw: a positive change in working capital, drawn out of the group to the same inferred node. No fund pays it for the same reason no fund receives the draw. It carries nothing on FY2026's decomposed group, where general's change is a draw, and 2,351,098 on FY2027's, where it turns positive -- a set measured on one column alone would have missed it. Addition to Reserves: a printed row of pp.66-67 that the city books against the group as a whole: general's 4,699,425 in FY2026 adopted has no division and no object category on pp.167-170, which decompose expenditure and nothing else. Transfers In: pp.66-67 print Transfers In per fund group and pp.127-140 print it per fund for eight funds in three groups, to the cent. The general group has no such fund, so its 480,400 is residual and the other groups' is decomposed whole -- which is why the rule is per group, and that cell is the one exception the revenue-detail cut declares against the spine. Transfers Out: pp.66-67 print Transfers Out per fund group and no fund-level schedule prints it from any fund: pp.167-170 decompose the General Fund's expenditure and stop there, so general's 10,037,797 in FY2026 adopted leaves the group beside its divisions rather than through one.",
               "source_note": ""
             }
           ]
@@ -5225,6 +5330,11 @@
                 "fund/730",
                 "fund/740"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ],
           "marks": [
@@ -5457,6 +5567,11 @@
                 "fund/330",
                 "fund/331"
               ]
+            },
+            {
+              "tier": 4,
+              "role": "outward",
+              "ids": []
             }
           ]
         },

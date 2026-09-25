@@ -104,7 +104,9 @@ describe("the column control describes the chart on screen", () => {
   });
   test("a chart with one width offers no step, and says the width it has", async (t) => {
     const quiet = [];
-    for (const path of [[], ["fund-group/general"]]) {
+    // THE REVENUE CATEGORY, NOT THE FUND GROUP: the fund-group step widens
+    // (fisc-84y5), so its window has a second width and is the other test's.
+    for (const path of [[], ["revenue/taxes/property"]]) {
       const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 2000 });
       await opened(app, ...path);
       quiet.push({ where: path.length ? path[path.length - 1] : "(the overview)", ...read(app, document) });
@@ -177,14 +179,27 @@ describe("a widened step", () => {
       assert.equal(wide.bands.split("/").length, 3);
     });
   }
-  /** The fund-group step widened by `into`, over a copy of the pinned config. */
-  function widenFundGroup(into = [4]) {
+  /**
+   * The fund-group step widened to exactly `into` beyond its window's own
+   * three columns, over a copy of the pinned config: the shipped widening is
+   * replaced, not extended.
+   */
+  function widenFundGroup(into) {
     const config = structuredClone(pageFixture().config);
-    config.steps = config.steps.map((s) => (s.key === "fund-group" ? Object.assign({}, s, { tiers: s.tiers.concat(into), widen: into.slice() }) : s));
+    config.steps = config.steps.map((s) => {
+      if (s.key !== "fund-group") return s;
+      const own = s.tiers.filter((t) => !(s.widen || []).includes(t));
+      return Object.assign({}, s, { tiers: own.concat(into), widen: into.slice() });
+    });
     return config;
   }
-  /** The same widening in Go's answer: the General Fund's own nodes at each widened tier on its group's rung, read off the fund step's answer, and nothing on the other groups'. */
-  function widenFundGroupAnswer(into = [4]) {
+  /**
+   * The same widening in Go's answer: the General Fund's own nodes at each
+   * widened tier on its group's rung, read off the fund step's answer, and
+   * nothing on the other groups'. A tier the shipped answer already draws is
+   * left as answered.
+   */
+  function widenFundGroupAnswer(into) {
     const answer = rungsFixture();
     for (const column of answer.columns) {
       const fund = column.rungs.find((r) => r.path.join("|") === "fund-group/general|fund/100");
@@ -192,6 +207,7 @@ describe("a widened step", () => {
       for (const rung of column.rungs) {
         if (rung.step !== "fund-group") continue;
         for (const tier of into) {
+          if (rung.draws.some((d) => d.tier === tier)) continue;
           const at = fund.draws.find((d) => d.tier === tier);
           assert.ok(at, `${column.stem}'s fund/100 rung draws no tier ${tier}`);
           rung.draws.push({ tier: tier, role: "outward", ids: rung.path[0] === "fund-group/general" ? at.ids.slice() : [] });
@@ -201,9 +217,11 @@ describe("a widened step", () => {
     }
     return answer;
   }
+  // THE FUND-GROUP STEP SHIPS WIDENED TO TIER 4 (fisc-84y5), so these two
+  // drive the pinned config and Go's own answer rather than a synthetic pair.
   test("a widened column the document leaves empty is dropped, and the chart is re-laid at the columns it has", async (t) => {
     const worst = "fund-group/special-revenue";
-    const empty = await windowAt("sankey", 4, [worst], widenFundGroup(), widenFundGroupAnswer());
+    const empty = await windowAt("sankey", 4, [worst]);
     const asShipped = await windowAt("sankey", 3, [worst]);
     t.diagnostic(`${worst} widened to tier 4 draws ${empty.columns} column(s) at {${empty.tiers}}: ${empty.nodes} nodes, ${empty.links} links, bands ${empty.bands}, right edge ${empty.right}px, ${empty.banners} banner(s); the shipped step draws ${asShipped.nodes}/${asShipped.links}, bands ${asShipped.bands}`);
     assert.equal(empty.columns, 3);
@@ -215,7 +233,7 @@ describe("a widened step", () => {
     assert.equal(empty.bands, asShipped.bands);
   });
   test("the same widened step keeps its fourth column on the one group whose document fills it", async (t) => {
-    const filled = await windowAt("sankey", 4, ["fund-group/general"], widenFundGroup(), widenFundGroupAnswer());
+    const filled = await windowAt("sankey", 4, ["fund-group/general"]);
     t.diagnostic(`fund-group/general widened to tier 4 draws ${filled.columns} column(s) at {${filled.tiers}}: ${filled.nodes} nodes, ${filled.links} links, bands ${filled.bands}, ${filled.banners} banner(s)`);
     assert.equal(filled.columns, 4);
     assert.equal(filled.tiers, "0,2,3,4");
@@ -223,6 +241,39 @@ describe("a widened step", () => {
     assert.equal(filled.bands.split("/").length, 3);
     assert.ok(filled.bands.split("/").every((b) => Number(b) > 0));
   });
+  // A LEAVING LEG GOES WITH THE COLUMN ITS ENDPOINT STANDS IN. The General
+  // Fund's residual carries flows out of the group as well as into it, and Go
+  // stands the leaving endpoints at the step's last tier -- the widened one.
+  for (const stem of ["sankey", "sankey-2027"]) {
+    test(`${stem}: the residual's leaving leg is drawn in the fourth column and dropped with it`, async (t) => {
+      const legs = [];
+      for (const budget of [3, 4]) {
+        const { app, document } = await bootedApp({ checkedStem: stem });
+        app.setColumnBudget(budget);
+        await opened(app, "fund-group/general");
+        const laid = app.layOut(app.projection);
+        const residual = app.projection.nodes.find((n) => app.isResidual(n.id));
+        assert.ok(residual, "no residual on the General Fund's window");
+        const tierOf = new Map(app.projection.nodes.map((n) => [n.id, n.tier]));
+        const arriving = app.projection.links.filter((l) => l.target === residual.id);
+        const leaving = app.projection.links.filter((l) => l.source === residual.id);
+        const flat = laid.links.filter((l) => l.source.x0 === l.target.x0).length;
+        const last = app.activeTiers()[app.activeTiers().length - 1];
+        legs.push(`budget ${budget}: {${app.activeTiers()}}, ${arriving.length} arriving, ${leaving.length} leaving to ` +
+          `${JSON.stringify(leaving.map((l) => `${l.target}@${tierOf.get(l.target)}`))}, ${flat} ribbon(s) inside one column`);
+        assert.ok(arriving.length > 0);
+        assert.equal(flat, 0);
+        if (budget === 3) {
+          assert.equal(leaving.length, 0);
+          assert.ok(!app.projection.nodes.some((n) => n.id === "transfers/out"));
+        } else {
+          assert.ok(leaving.length > 0);
+          for (const l of leaving) assert.equal(tierOf.get(l.target), last);
+        }
+      }
+      t.diagnostic(legs.join("; "));
+    });
+  }
   // A CHILD WHOSE TIERS ARE A STRICT SUBSET OF ITS WIDENED PARENT'S IS DRAWN.
   // export.validateSteps refuses a step whose tiers EQUAL its parent's and
   // accepts a subset (fisc-ke1f); this is the client's half of that decision,

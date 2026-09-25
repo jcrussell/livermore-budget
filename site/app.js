@@ -3564,6 +3564,18 @@ export function carryResidual(drawn, from, rung, mark) {
   };
   /** @type {Map<string, boolean>} endpoint id to whether its flow arrives */
   const ends = new Map();
+  // A LEAVING FLOW GOES WITH THE COLUMN ITS ENDPOINT STANDS IN. Go answers a
+  // leaving endpoint at the step's last declared tier (export.ResidualOf), and
+  // the rung is answered once, unfolded; a budget that does not buy that
+  // column -- a widened one, or one the document left empty -- draws no
+  // column for the endpoint to stand in. Placing it in the last column the
+  // chart HAS put it beside the mark it flows out of, a ribbon of no length
+  // inside one column, measured on the General Fund's window at three
+  // columns. So the leg is drawn where its column is, and dropped where its
+  // column was, which is what heldFor does with every other ribbon of a
+  // column the budget dropped.
+  const active = activeTiers();
+  const leaves = active.includes(step.tiers[step.tiers.length - 1]);
   // THE ENDPOINTS ARE GO'S, IN GO'S ORDER, which is sorted -- so the rationale
   // reads the same on every build without this file sorting anything. Both
   // directions are looked for: which side of the opened node an endpoint's
@@ -3576,6 +3588,7 @@ export function carryResidual(drawn, from, rung, mark) {
       ends.set(e, true);
       spliced.add(l);
     }
+    if (!leaves) continue;
     for (const l of above((l) => l.source === opened && l.target === e)) {
       links.push(Object.assign({}, l, { source: id }));
       ends.set(e, false);
@@ -3633,9 +3646,6 @@ export function carryResidual(drawn, from, rung, mark) {
   // the chart it holds is folded and filtered.
   const tier = mark.tier;
 
-  const labels = new Map(from.nodes.map((n) => [n.id, n.label]));
-  const reasons = Array.from(ends.keys())
-    .map((e) => (labels.get(e) || e) + ": " + ((residual && residual[e]) || "no reason declared") + ".");
   /** @type {Map<string, Set<number>>} */
   const cited = new Map();
   for (const l of links) {

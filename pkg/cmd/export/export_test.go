@@ -1431,8 +1431,9 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			From:       2,
 			Projection: project.FundFlowsProjection,
 			Keep:       []int{0},
-			Tiers:      []int{0, 2, 3},
-			Caps:       []export.TierCap{{Tier: 3, Cap: 8}},
+			Tiers:      []int{0, 2, 3, 4},
+			Widen:      []int{4},
+			Caps:       []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "departments"}},
 			Noun:       "fund group",
 			Back:       "All fund groups",
 			Tail:       "funds",
@@ -1452,7 +1453,10 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 				"further: the General Fund into the divisions that spend it, from Budget " +
 				"Book pp.167-170, and every other fund into the departments it pays for, " +
 				"from pp.85-125. A fund no department's funding schedule names ends the " +
-				"drill \u2014 not missing, but not broken down in any published schedule.",
+				"drill \u2014 not missing, but not broken down in any published schedule. " +
+				"Where there is room for a fourth column, the General Fund's divisions " +
+				"from pp.167-170 are drawn beyond its funds; no other group has a " +
+				"fund those pages decompose, so their windows stay three columns.",
 		},
 		{
 			Key:   "fund",
