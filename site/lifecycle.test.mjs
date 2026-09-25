@@ -270,9 +270,17 @@ describe("a switch that fails", () => {
     t.diagnostic(split.length
       ? `${split.length} fixture(s) half-repainted: ${split.join("; ")}`
       : `${refused.length} refused with the page untouched [${refused}]; ` +
-        `${drewAnyway.length} drew with provenance missing and no banner [${drewAnyway}] -- ` +
+        `${drewAnyway.length} drew [${drewAnyway}] -- ` +
         "schema/column.schema.json requiring them is what stops such a file being written");
     assert.deepEqual(split, []);
+    // THE FOLD DEFAULTS NEITHER KEY. It reads fact_ids and locators off every
+    // link it merges, so a column lacking either fails the draw and the page
+    // says so with the first year still on it.
+    assert.deepEqual(refused, ["links[].fact_ids", "links[].locators[].pages", "links[].locators"]);
+    // The sources are first read at the pin, so a column lacking them draws.
+    // Accepted: the client adds no shape check for a file the export cannot
+    // write (fisc-wodu), and the pin is where the absence is met.
+    assert.deepEqual(drewAnyway, ["schedules.sankey.sources", "sources[].pages"]);
   });
 });
 

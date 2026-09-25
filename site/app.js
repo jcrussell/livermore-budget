@@ -4010,7 +4010,7 @@ export function foldDocument(doc, tiers) {
   /** @param {FiscSource[]} ss @returns {string[]} */
   const locatorKeys = (ss) => {
     const out = [];
-    for (const s of ss || []) {
+    for (const s of ss) {
       for (const p of s.pages) out.push(s.doc_id + "\u001f" + p);
     }
     return out;
@@ -4037,7 +4037,14 @@ export function foldDocument(doc, tiers) {
     const ids = cited.get(key);
     if (!at || !ids) {
       merged.set(key, Object.assign({}, l, { source: source, target: target }));
-      cited.set(key, new Set(l.fact_ids));
+      // ITERATED AND NOT WRAPPED, here and in locatorKeys: new Set(undefined)
+      // is an empty set, which would default an absent fact_ids to none and
+      // draw a ribbon citing nothing. Both keys are required of every link by
+      // schema/column.schema.json, so the loop throwing on a file that lacks
+      // one is the draw failing, which is what scheduleOf promises.
+      const first = new Set();
+      for (const id of l.fact_ids) first.add(id);
+      cited.set(key, first);
       located.set(key, new Set(locatorKeys(l.locators)));
       continue;
     }
