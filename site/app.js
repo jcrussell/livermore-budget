@@ -514,7 +514,7 @@ export const CHART_HEIGHT = 820;
 /**
  * Room reserved either side of the plot for node labels, in px. Sized from
  * the widest label this data produces — "Fund Balance Contribution  $12.8M ◇"
- * at roughly 230px — because a label that does not fit must not be clipped,
+ * — because a label that does not fit must not be clipped,
  * and there is nowhere else for a sankey node's name to go.
  *
  * IT DOES NOT GROW WITH THE COLUMN COUNT. A gutter is what a label anchored
@@ -712,7 +712,7 @@ export function isFundGroup(node) {
  * The fund group a node belongs to, walking node.parent until it reaches one.
  *
  * THE SPINE HAS NO HIERARCHY AND THIS IS WHY THE WALK IS SAFE THERE. Every one
- * of testdata/sankey.golden.json's 25 nodes carries parent: "", so the loop
+ * of testdata/sankey.golden.json's nodes carries parent: "", so the loop
  * exits on its first test and every node answers for itself exactly as
  * isFundGroup did. The drill-down is the first document with parents to walk:
  * a fund's group is its parent, and a department's is its fund's.
@@ -814,20 +814,19 @@ export function fundColorVar(id) {
  * .nodeSort() at all is what pins the fund column to the palette's order, and
  * d3's own pass would reorder it.
  *
- * Sorting on this is worth most of what the chart's legibility was losing. Laid
- * out under node with the vendored d3 and restacked, FY2026 comes to 195 ribbon
- * crossings and $457,434,169 of overlapping ribbon, against 285 and
- * $966,956,035 under a sort by size, 297 under the input order, and 246 under
- * d3's own pass. The client's tests re-measure every one of those figures on
- * every run and pin them, so editing this comment without re-measuring fails.
+ * Sorting on this is worth most of what the chart's legibility was losing:
+ * laid out under node with the vendored d3 and restacked, this ordering
+ * crosses fewer ribbons and overlaps less ribbon than a sort by size, the
+ * input order or d3's own pass. The layout tests under site/ measure the
+ * orderings still in the tree on every run, print the figures, and pin this
+ * one.
  *
  * An exact search -- one-sided crossing minimisation is solvable for columns
- * this small -- reaches 177 crossings, but spends $491M of overlap doing it, so
- * the two are points on a frontier rather than a right and a wrong answer. A
- * rule that reads the data is worth more here than 18 crossings: it needs no
- * re-derivation when a category is added or the fiscal year rolls over. That
- * search does not live in the tree, so unlike the figures above it is the one
- * number here nothing re-checks.
+ * this small -- crosses fewer still, but spends more overlap doing it, so the
+ * two are points on a frontier rather than a right and a wrong answer. A rule
+ * that reads the data is worth more here than the crossings it leaves: it
+ * needs no re-derivation when a category is added or the fiscal year rolls
+ * over. That search does not live in the tree, so nothing re-checks it.
  *
  * Ties are real and wanted. Three revenue categories touch only the General
  * Fund, so all three score exactly its index and fall to the caller's tie-break
@@ -1556,8 +1555,8 @@ export function rungKey(stem, path) {
  * is the same string in every year: both spine files declare "sankey", so a
  * key taken from there answers every year out of the first year's column. Its
  * memberships mostly coincide and its figures do not, which is how that was
- * found -- the residual beside FY2026-27's General Fund came to $486,735
- * against an answer stating FY2025-26's $1,514,554.
+ * found -- the residual beside FY2026-27's General Fund came to one figure
+ * against an answer stating FY2025-26's.
  *
  * THE STEP IS NOT CHECKED, because it cannot differ: the page's steps and the
  * rung answer's are written from one declaration by one export, and a copy of
@@ -1679,8 +1678,8 @@ export function drawnColumns(budget) {
  * THE FLOW COUNT IS A CLAIM ABOUT THE CHART, so it counts the marks that were
  * drawn rather than the rows the file holds. On a page drawn whole the two are
  * the same number and this is the packager's figure verbatim. On a chart that
- * folds or opens a node they are not: fund-flows.json holds 412 links over 238
- * nodes and the General Fund's window draws 13 over 15, and printing the
+ * folds or opens a node they are not: the General Fund's window draws a
+ * fraction of the links and nodes fund-flows.json holds, and printing the
  * file's figures there would have the page miscount what the reader can see.
  *
  * THE FACT TOTAL IS THE DRAWN DOCUMENT'S, and the word "drawn" is what two
@@ -1749,7 +1748,7 @@ export function paintCounts() {
   // PLURALS, because a drilled division can draw one ribbon. Fire
   // Administration and General Services each spend on a single object category,
   // so opening either used to read "1 flows between 2 nodes" -- a sentence that
-  // was unreachable while the smallest chart on the site had 29 marks.
+  // was unreachable while every chart on the site drew many ribbons.
   const plural = (/** @type {number} */ n, /** @type {string} */ word) =>
     n + " " + word + (n === 1 ? "" : "s");
   // BOTH NUMBERS, ALWAYS, and the gap between them stated rather than implied.
@@ -1757,7 +1756,7 @@ export function paintCounts() {
   // This printed the document's fact total on every undrilled page, justified
   // by "a page showing the whole document" -- a condition that is false of any
   // chart that filters or folds before it draws: a rung of the chain reads
-  // "37 flows between 39 nodes" over ribbons citing 141 of 280. Naming one
+  // "N flows between M nodes" over ribbons citing a fraction of the facts. Naming one
   // number and meaning the other is the failure; naming one when there are
   // two is what lets it happen.
   //
@@ -1765,8 +1764,8 @@ export function paintCounts() {
   // Facts and Links is the part of the schedule the chart cannot show, and
   // stating both is what makes it visible" -- and makes it visible on a page
   // that draws a slice as well as on one that draws the lot. The spine reads
-  // "58 flows between 25 nodes, from 58 of the document's 120 facts", where the
-  // 62 it does not draw are the printed zeros and the stocks.
+  // "N flows between M nodes, from N of the document's F facts", where the
+  // facts it does not draw are the printed zeros and the stocks.
   let from = ", from " + plural(shownYear.counts.facts, "fact");
   if (projection) {
     const doc = drawnDoc();
@@ -2614,7 +2613,7 @@ export function paintBreadcrumb() {
   // ONE CHIP PER EXPANDED COLUMN, AND IT IS THE ONLY WAY BACK. Expanding
   // removes the mark that was expanded, so unlike every other state this page
   // holds there is nothing on the chart left to gesture at; and the chart's own
-  // words cannot say it, because "32 funds" is not a thing the reader asked for
+  // words cannot say it, because "the N smaller funds" is not a thing the reader asked for
   // until they asked for it.
   //
   // THE COUNT IS READ OFF THE CHART ON SCREEN rather than remembered from the
@@ -3023,12 +3022,11 @@ export function windowFor(onScreen, stepDoc, rung, answer) {
  * WHY THERE IS ANYTHING TO DRAW. A category's positive lines alone come to the
  * published figure PLUS the reductions, so a box whose height is that figure is
  * a box the arriving stack must exceed -- by twice the reductions, which is
- * arithmetic on the widths and no stacking order changes. Measured on
- * FY2025-26: box 459.35px, arriving stack 684.00px, so 224.65px of ribbon ends
- * below the face of the mark it arrives at.
+ * arithmetic on the widths and no stacking order changes, so a band of ribbon
+ * ends below the face of the mark it arrives at.
  *
  * SO THE CHOICE IS WHICH MISMATCH A READER SEES, not whether there is one:
- * a box inflated to $103,430,092, a figure no page prints, or a box that is the
+ * a box inflated to the gross, a figure no page prints, or a box that is the
  * published figure with the excess drawn and named. This is the second, and
  * without it every surface would have to disclose the hang in words -- which
  * puts the unprinted figure back on the page.
@@ -3059,12 +3057,9 @@ export function contraBand(d) {
  * because a ribbon cannot carry a minus sign, so the arriving ribbons come to
  * the figure plus twice the reductions.
  *
- * Measured on FY2025-26: the ribbons
- * arriving at Property Taxes come to $103,430,092,
- * which is $16,985,339 of reductions among $86,444,753 of additions,
- * and the figure the overview labels that node
- * one click earlier is $69,459,414.
- * No page prints $103,430,092.
+ * On Property Taxes the ribbons arriving are the additions plus the
+ * reductions, and the figure the overview labels that node one click earlier
+ * is the net the schedule prints. No page prints the gross.
  *
  * SETTING IT AT THE VALUE AND NOT AT THE SURFACES is why the label tspan, the
  * tooltip, the detail panel, nodeDescription, both "printed by the city" chips
@@ -3260,9 +3255,9 @@ export function linkClass(d) {
  *
  * `expands` IS THE SAME KIND OF CLAIM ABOUT THE OTHER GESTURE, and it is
  * expandable's answer for expandable's reason. A folded tail is the other mark
- * a reader expects something to happen on, and it is rare. Measured over the
- * drill tree: 9 of the 76 views FY2025-26 opens draw one, and the same is true
- * of 9 of the 74 views FY2026-27 opens. What happens is a redraw of the column
+ * a reader expects something to happen on, and it is rare: a small share of
+ * the views either year opens draw one, and the drill tests print how many.
+ * What happens is a redraw of the column
  * it was cut out of rather than a rung.
  *
  * THE TWO ARE DISJOINT AND THE CLASS DOES NOT ENFORCE THAT. drillable refuses
@@ -3297,9 +3292,9 @@ export function nodeClass(d) {
  *
  * ONE PAIR IS REAL AND THE OTHER IS LATENT, and the difference is worth
  * stating. A folded tail is ALWAYS an inference -- capColumn writes derived on
- * it because the city printed no line called "24 smaller funds" -- so every
- * mark that expands carries the diamond beside the plus, on the 9 views of
- * each budget that draw one. The diamond-and-triangle pair is the one no committed
+ * it because the city printed no line called "N smaller funds" -- so every
+ * mark that expands carries the diamond beside the plus, on every view that
+ * draws one. The diamond-and-triangle pair is the one no committed
  * document produces, and a rule written only for the marks that exist would be
  * a rule the first derived openable node breaks silently, in the label's own
  * gutter.
@@ -3439,8 +3434,8 @@ export function isCarried(id) {
  * The spine prints a fund group's inflow and outflow whole; the fund-level
  * schedule prints the same money by fund and by division and carries no row
  * for a fund-balance draw, a reserve increase or a transfer out. Drawn as is,
- * the opened General Fund shows 144,650,802 flowing out of a group the chart
- * above said takes in 159,388,024 (FY2025-26, dollars), and nothing tells the
+ * the opened General Fund shows less flowing out of a group than the chart
+ * above said it takes in, and nothing tells the
  * reader why. The difference is the RESIDUAL: money the city printed at group
  * grain and nowhere finer. WHICH endpoints those are is Go's answer and not
  * this page's -- check.ResidualNodes declares them and the step ships the set
@@ -3488,14 +3483,13 @@ export function isCarried(id) {
  * the check declares it in.
  *
  * THE IMBALANCE IS THE POINT. The node's inflow and outflow differ by
- * construction -- general's in FY2025-26 is 1,514,554 in and 14,737,222 out --
+ * construction -- general's is a small figure in and a large one out --
  * and d3-sankey sizes a node at the larger of the two, so the difference
- * shows on the mark rather than being balanced away. drill.mjs re-measures
- * both figures over both columns.
+ * shows on the mark rather than being balanced away.
  *
  * WHY A CLIENT-SIDE DERIVED NODE IS RIGHT HERE, because the next reader will
  * ask. The capped tail is the precedent: derived: true, a rationale, a source
- * note, checked by drill.mjs and not by derived-nodes-justified. This is a
+ * note, checked by the client's tests and not by derived-nodes-justified. This is a
  * weaker claim than that one, because the aggregate SUMS and this COPIES.
  * The derived-node rule binds projections, and this page is neither a
  * projection nor a scenario; and the residual is a statement about the PAIR
@@ -3576,8 +3570,8 @@ export function carryResidual(drawn, from, rung, mark) {
   // THE ENDPOINTS COME WITH THEIR LINKS, placed at the first drawn tier when
   // the flow arrives and the last when it leaves. Their own tiers are the
   // chart above's columns, which the step's tier set need not contain, and a
-  // tier layOut's align cannot place is clamped to the first column -- the
-  // shape drill.mjs records d3-sankey dying on.
+  // tier layOut's align cannot place is clamped to the first column, the
+  // shape d3-sankey dies on.
   //
   // DRAWN AND NOT DECLARED, WHICH IS THE WHOLE OF THE SENTENCE ABOVE. A step
   // whose `widen` the budget does not buy draws fewer columns than it declares,
@@ -3676,9 +3670,9 @@ export function carryResidual(drawn, from, rung, mark) {
  * node into.
  *
  * ABSORBED IS THE FAILURE THIS EXISTS TO REFUSE. d3-sankey sizes a node at the
- * larger of what enters and what leaves, so a centre taking 130,502,087 from
- * the chart above and sending 130,252,087 into its parts draws at the larger
- * figure with 250,000 of node height and no ribbon against it. Nothing on the
+ * larger of what enters and what leaves, so a centre taking slightly more from
+ * the chart above than it sends into its parts draws at the larger figure,
+ * with the difference as node height and no ribbon against it. Nothing on the
  * page says so, and a reader who does not measure the marks sees a chart that
  * balances. That cell is FY2026-27 services-and-supplies, p0067 against Budget
  * Book pp.85-125, and it is the one the site actually draws.
@@ -3771,18 +3765,17 @@ export function markGap(drawn, rung, mark) {
  * Folds all but the largest `cap` nodes of one tier into a single node.
  *
  * WHY A CAP IS NEEDED AT ALL, and it is the half of fisc-ppkq that bead got
- * wrong. It says "rescaling is what makes special-revenue's 32 funds legible".
+ * wrong. It says "rescaling is what makes special-revenue's funds legible".
  * Measured on the window this page draws, FY2025-26's fund group at {0,2,3},
  * laid out with the shipped d3 at this file's own constants: drawn out whole,
- * special-revenue puts 9 of its 42 ribbons under one pixel and its smallest at
- * 0.124px, because the concentration is WITHIN the group -- its largest fund
- * is 34.9% of the column and its smallest 0.034%. Rescaling cannot fix a
+ * special-revenue puts several of its ribbons under one pixel, because the
+ * concentration is WITHIN the group -- its largest fund is a large share of
+ * the column and its smallest a vanishing one. Rescaling cannot fix a
  * distribution.
  *
- * At the step's cap of 8 the same window draws 19 ribbons with none under a
- * pixel and its smallest at 3.971px; the capital group goes from 2 sub-pixel
- * of 16 to none of 14. The client's tests re-measure all six of those
- * figures and fail if this sentence drifts from them.
+ * At the step's cap the same window draws no ribbon under a pixel, and the
+ * capital group's sub-pixel ribbons go too. The fold tests under site/
+ * measure both windows and print the figures.
  *
  * IT IS THE SAME OPERATION AS THE FOLD, which is what makes it citable: values
  * sum, fact ids and locators union, so the aggregate ribbon cites every page
@@ -3952,15 +3945,14 @@ export function capColumn(doc, tier, cap, opened, noun) {
  * Folds a document to the tiers this page draws.
  *
  * WHY A DOCUMENT IS FOLDED AT ALL, because it is the whole reason the
- * drill-down has a page. fund-flows.json's fund column is 61 nodes. d3-sankey
- * shrinks nodePadding to fit -- min(14, 796/60) = 13.267 -- and then divides
- * what is left among the values, and what is left is nothing: every node height
- * and every link width comes out at exactly zero. Nor is that a padding
- * problem. At zero padding 24 of the 61 funds are still sub-pixel and 45 are
- * under 8px, because the General Fund alone is 49% of the column; the smallest
- * fund reaches one pixel at a canvas 64,203px tall. The column cannot be drawn,
- * at any height, and folding it to its six fund groups is what makes the
- * document renderable.
+ * drill-down has a page. fund-flows.json's fund column is the schedule's 61
+ * funds. d3-sankey shrinks nodePadding to fit and then divides what is left
+ * among the values, and what is left is nothing: every node height and every
+ * link width comes out at exactly zero. Nor is that a padding problem. At
+ * zero padding most funds are still sub-pixel, because the General Fund alone
+ * is half the column; the smallest fund reaches one pixel only on a canvas
+ * many screens tall. The column cannot be drawn, at any height, and folding
+ * it to its six fund groups is what makes the document renderable.
  *
  * THE RULE. Each node folds to its nearest ancestor whose tier this page draws,
  * following node.parent. Links fold with their ends and merge on the folded
@@ -4126,9 +4118,9 @@ export function foldDocument(doc, tiers) {
  * and the last move is never followed by another sort, so a node can be left
  * handing its ribbons out in an order its neighbours no longer sit in. The
  * result is a pair of ribbons that cross immediately at the node face, for no
- * reason in the data -- 14 of them on FY2026. The client's tests count them
- * before this function runs, and count the 14 CROSSINGS they cost, which falls from
- * 209 to 195. It deliberately does not re-count the pairs afterwards: this
+ * reason in the data. The layout tests under site/ count them before this
+ * function runs, and count the crossings they cost. It deliberately does not
+ * re-count the pairs afterwards: this
  * function sorts by the same key that count is derived from, so zero after is a
  * tautology and would assert nothing. Redoing the sort against the final
  * positions is the whole fix.
@@ -4373,8 +4365,8 @@ export function labelPlacement(d, last) {
  * the breadcrumb says it -- and in the fund window, whose fourth column draws
  * the largest cells of eight different divisions, it draws six marks reading
  * "Wages & Benefits". The pair does not fit on one line either way: measured by
- * the client's layout test, "Fire Administration — Services & Supplies" wants
- * 348px of a gutter that is 250px wide, so the qualifier is a line of its own
+ * the layout tests under site/, "Fire Administration — Services & Supplies"
+ * wants more than the gutter is wide, so the qualifier is a line of its own
  * and is spent only where a reader could not otherwise tell two marks apart.
  *
  * THE PARENT IS LOOKED UP IN THE DOCUMENT, NOT IN THE LAID GRAPH. A window
@@ -4504,7 +4496,7 @@ export function render(laid) {
     .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => guarded("show this mark", () => { showTip(e, d); pin(d); }))
     .on("blur", hideTip)
     // Activating a node isolates its flows, the same toggle the legend does
-    // for a fund group. Layout gets this chart down to 195 ribbon crossings and
+    // for a fund group. Layout gets this chart's crossings down so far and
     // no further -- the rest are structural in a graph this dense -- so the way
     // through them is to take one flow out at a time.
     //
@@ -4533,21 +4525,20 @@ export function render(laid) {
     //
     // AN OPENED CHART IS WORTH ISOLATING ON, which is what makes two gestures
     // necessary rather than merely possible. A WINDOW is three columns at its
-    // narrowest, and the drill tree is walked and measured: of the 76 views
-    // FY2025-26 opens, 75 draw three columns at the page's own budget, and at
-    // a four-column budget 74 draw three and one draws four. Of the 74 views
-    // FY2026-27 opens it is 73 and then 72.
+    // narrowest, and the drill tests walk the tree and print the tally: all
+    // but one of the views either year opens draw three columns at the page's
+    // own budget, and one of them draws four at a four-column budget.
     //
     // THE ONE THAT IS NOT A WINDOW DRAWS TWO, and it is a step that keeps no
     // flank: transfers/in draws the opened node's parts alone, tiers 2 and 3,
     // which is a filter. Isolating there still dims, because two columns still
     // have ribbons between them -- what it does not have is a middle column.
     //
-    // AND THE ISOLATE IS THE GESTURE MOST MARKS HAVE. Of the 453 marks those
-    // views draw on FY2025-26, 55 open; on FY2026-27, 53 of 446. Putting the
-    // drill on the single click would give 12% of an opened chart's marks one
-    // meaning and 88% of them another, on the same mark shape, told apart only
-    // by trying one.
+    // AND THE ISOLATE IS THE GESTURE MOST MARKS HAVE. Of the marks those views
+    // draw, a small minority opens; the drill tests print the tally. Putting
+    // the drill on the single click would give that minority of an opened
+    // chart's marks one meaning and the rest another, on the same mark shape,
+    // told apart only by trying one.
     .on("click", /** @param {MouseEvent} e @param {LaidNode} d */ (e, d) => {
       guarded("pin this mark", () => {
         e.stopPropagation();
@@ -5146,7 +5137,7 @@ export function pin(d) {
   //
   // A LINK cites its locators: the pages its own facts were read from. Before
   // this, pinning any mark rendered the same list -- on the drill-down that is
-  // 18 pages x 2 shapes, identical for every one of the 52 ribbons, which
+  // the schedule's whole page list, identical for every ribbon, which
   // tells a reader where the CHART came from and nothing about the flow they
   // clicked.
   //
@@ -5239,7 +5230,7 @@ export function buildLegend() {
  * ONE ENTRY PER FLOW, WHICH IS THE DEFECT THIS EXISTS TO FIX. The list was
  * built per node from every derived link touching it, so a flow with a derived
  * node at BOTH ends was listed once under each and a reader met the same
- * $1,034,154 twice in one list, as though the chart inferred two of them.
+ * figure twice in one list, as though the chart inferred two of them.
  *
  * THE MARK IT ARRIVES AT WINS, and the tie-break is not arbitrary: an inferred
  * flow is evidence about the mark that RECEIVES it -- the residual carrying
@@ -5530,8 +5521,7 @@ export function applyColumns(redraw) {
  * RECORDING IT IS WHAT MAKES IT SURVIVE THE NEXT MEDIA CHANGE. Setting the
  * budget alone leaves columnOverride null, and the first query to fire after
  * that -- a rotation, a window drag across the threshold -- silently returns
- * the page to the viewport's answer over the reader's. lifecycle.mjs drives
- * exactly that.
+ * the page to the viewport's answer over the reader's.
  *
  * @param {number} delta
  */
@@ -5651,7 +5641,7 @@ export function clearRefusal() {
  * One schedule of a column document, in the shape the rest of this file reads.
  *
  * The column carries ONE node table and references it by index, which is what
- * de-duplicates the 122 marks its schedules share. Nothing downstream of here
+ * de-duplicates the marks its schedules share. Nothing downstream of here
  * knows that: a schedule arrives as {nodes, links, metadata} with ids on both
  * ends of every link, exactly as a per-projection document did.
  *
