@@ -1852,9 +1852,9 @@ export function paintCounts() {
 /**
  * Whether activating this node opens it.
  *
- * A NODE OPENS WHEN A STEP OPENS FROM IT, and that is stepFor's three matches:
- * the chart on screen, the node's tier, and its role where the step names
- * one. All three of the spine's drawn columns hold something that opens, into
+ * A NODE OPENS WHEN A STEP OPENS FROM IT, and that is stepFor's four matches:
+ * the chart on screen, the node's tier, its role where the step names one,
+ * and whether the step's document decomposes it (stepDecomposes). All three of the spine's drawn columns hold something that opens, into
  * two documents: a fund group into its funds, a revenue category into the lines
  * pp.127-140 print under it with the fund groups it reaches kept beside them,
  * and an object category into the divisions pp.85-125 give it. The categories
@@ -2107,16 +2107,30 @@ export async function drillDown(id) {
   // THE NODE THE READER ACTIVATED, OFF THE CHART THEY ACTIVATED IT ON. Which
   // step opens it is a question about that node -- its tier and its role --
   // and not about the depth; the argument is unchanged and only the document
-  // it is asked of moves. It has to move, because a window's kept flank is
-  // drawn from the chart above and its nodes need not exist in the rung's file
-  // at all: asked of the file, a fund group kept beside a departmentwide
-  // document is a node that document does not carry, and the click returns
-  // FAILED in silence. An id the chart does not draw, or one drillable
-  // refuses, opens nothing.
+  // it is asked of moves. It has to be the chart, because a window's kept
+  // flank is drawn from the chart above and its nodes need not exist in the
+  // rung's file at all.
+  //
+  // EVERY REFUSAL HERE IS SAID. The gestures ask drillable before they call
+  // this, so a reader meets these only when the chart changed under the
+  // gesture; the page's own callers meet them by name. A FAILED that no
+  // banner explains is the one outcome a reader cannot tell from a page that
+  // did nothing, and openNode's catch sees a throw, never a return.
   const chart = projection;
-  const node = chart ? chart.nodes.find((n) => n.id === id) : undefined;
-  const step = node && drillable(node) ? stepFor(node) : null;
-  if (!step || !from || !chart) return FAILED;
+  if (!chart || !from) {
+    fail("That could not be opened: there is no chart on screen to open it from.");
+    return FAILED;
+  }
+  const node = chart.nodes.find((n) => n.id === id);
+  if (!node) {
+    fail("That could not be opened: the chart on screen draws no mark called " + id + ".");
+    return FAILED;
+  }
+  const step = drillable(node) ? stepFor(node) : null;
+  if (!step) {
+    fail("That could not be opened: no step on this page opens " + node.label + ".");
+    return FAILED;
+  }
   const mine = ++opening;
   const token = switching;
   const overtaken = () => mine !== opening || token !== switching;
@@ -3479,14 +3493,6 @@ export function isCarried(id) {
  * answer. What is left here is the drawing -- which ribbons of the chart above
  * are re-pointed onto the mark, where its endpoints stand, and the words.
  *
- * AND THE RIBBONS ARE HELD TO THE FIGURE. The ribbons this re-points are the
- * published ones the page already holds; the mark's size is Go's. So they are
- * summed and compared, and a disagreement is refused by name rather than
- * drawn: a mark sized from the answer over ribbons that come to something else
- * is a node taller or shorter than the flows under it, with nothing saying so.
- * That comparison is not a second derivation -- Go's figure is a difference
- * across two documents and this is the arithmetic of what reached the screen.
- *
  * THE REASONS ARE STILL THE STEP'S. step.residual is check.ResidualNodes() as
  * the packager shipped it, ids to reasons, and each reason is carried into the
  * node's rationale so the reader is told why a flow has no fund in the words
@@ -3700,14 +3706,12 @@ export function carryResidual(drawn, from, rung, mark) {
  * pkg/cmd/export's TestRungsRefuseADriftTheStepDoesNotDeclare -- and the walk
  * writes the mark's tier and its one figure onto the rung.
  *
- * WHAT IS LEFT HERE IS THE SAME SUBTRACTION AS A CHECK, and it is not a second
- * derivation of the answer: it is the arithmetic of the chart that reached the
- * screen, held to the figure Go computed from the documents it was answered
- * from. A page served a document that has drifted from the one it was answered
- * against refuses by name rather than drawing a centre whose height nothing
- * under it accounts for. A step declaring no gap at all is left alone -- an
- * opened fund group is deliberately unbalanced and says so on its residual,
- * and a rule that demanded balance everywhere would refuse it.
+ * A STEP DECLARING NO GAP AT ALL IS LEFT ALONE -- an opened fund group is
+ * deliberately unbalanced and says so on its residual, and a rule that
+ * demanded balance everywhere would refuse it. Nothing here sums the chart:
+ * the figure and the side are read off the answered mark, and a chart that
+ * has drifted from the one it was answered against is a fault the page cannot
+ * see (fisc-ikp0).
  *
  * THE AMOUNT IS NOT DECLARED AND CANNOT BE. A gap is per fiscal column and a
  * step is declared once for every year the view lists, so what rides on the
@@ -3741,7 +3745,6 @@ export function markGap(drawn, rung, mark) {
   // says both which way the shortfall runs and how big it is: too little
   // leaving arrives AT the mark, too little arriving leaves it. The id is
   // Go's, under the prefix isGap keys on, for carryResidual's reason.
-  const declared = Object.prototype.hasOwnProperty.call(gaps, opened) ? gaps[opened] : "";
   const id = mark.id;
   const node = {
     id: id,

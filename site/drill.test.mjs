@@ -696,4 +696,35 @@ describe("the refusal a drill can still meet", () => {
     assert.equal(after.drawnIsYears, true);
     assert.equal(fetch.asked.length, asked);
   });
+
+  // THE GESTURES ASK drillable FIRST, so a reader meets these two only when
+  // the chart changed under the gesture; the page's own callers meet them by
+  // name. Each is a FAILED that used to say nothing (fisc-51qf).
+  for (const [what, id, names] of [
+    ["an id the chart does not draw", "fund/999", "fund/999"],
+    ["a drawn mark no step opens", "fund-balance/draw", "Fund Balance Draw"],
+  ]) {
+    test(`the drill refuses ${what}, in words that name it, and leaves the chart alone`, async (t) => {
+      const { app, document } = await bootedApp({});
+      const drawn = app.projection.nodes.some((n) => n.id === id);
+      assert.equal(drawn, id !== "fund/999");
+      if (drawn) assert.equal(app.drillable(app.projection.nodes.find((n) => n.id === id)), false);
+      const before = words(app, document);
+      assert.equal(refusals(document).length, 0);
+      const outcome = await app.drillDown(id);
+      await settle();
+      const banners = refusals(document).map((b) => b.textContent);
+      t.diagnostic(`drillDown(${id}) came to "${outcome}" with ${banners.length} banner(s)` +
+        `${banners.length ? `, reading "${banners[0]}"` : ""}`);
+      assert.equal(outcome, "failed");
+      assert.equal(app.drilled.length, 0);
+      assert.equal(topOf(app), "");
+      assert.equal(banners.length, 1);
+      assert.ok(banners[0].includes(names), banners[0]);
+      assert.deepEqual(words(app, document), before);
+      // AND THE BANNER DOES NOT OUTLIVE THE NEXT OPEN THAT DRAWS.
+      await opened(app, "fund-group/general");
+      assert.equal(refusals(document).length, 0);
+    });
+  }
 });
