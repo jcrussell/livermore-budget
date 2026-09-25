@@ -291,7 +291,7 @@ func TestScannableCoversWhatTheSiteAndTheToolingAreWrittenIn(t *testing.T) {
 	// the only Python. Every one was outside the first version of this filter.
 	for _, p := range []string{
 		"site/app.js", "site/index.html.tmpl", "site/style.css", "tools/extract.py",
-		"AGENTS.md", "internal/x.go", "tools/jscheck/a.mjs", "data/funds.yaml", "ci.yml",
+		"AGENTS.md", "internal/x.go", "site/x.test.mjs", "data/funds.yaml", "ci.yml",
 	} {
 		if !scannable(p) {
 			t.Errorf("scannable(%q) = false, want true", p)

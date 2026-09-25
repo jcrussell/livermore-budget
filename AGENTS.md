@@ -501,7 +501,7 @@ rather than inferring from the code.
 - **`app.js` quotes no measured figure about itself.** A figure that is evidence
   for a decision lives in the test that asserts it, printed with `t.diagnostic`
   so a reader of the run sees the measurement.
-- `fisc-rx1d` carries the audit of which of `app.js`'s paths no test drives.
+- `fisc-7477` lists the paths of `app.js` no test drives.
 
 Why, measured: [`docs/review-loop-evidence.md`](docs/review-loop-evidence.md).
 

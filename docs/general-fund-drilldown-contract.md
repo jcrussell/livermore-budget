@@ -486,8 +486,9 @@ citing 86 of the document's 280 facts, and 12 carried unchanged from the chart
 above, citing 12 of its 120 facts". Twelve of the thirteen are the spine's — ten
 the kept flank of revenue categories, and two its own endpoints re-pointed onto
 the residual, which adds one derived node and no ribbon of its own.
-`drill.mjs`'s chain walk pins that sentence per column, and its whole-tree walk
-pins every opened view's against the fact ids the committed goldens publish.
+The drill tests under `site/` hold every opened view's drawn nodes and ribbons
+to the ids Go's rung answer names for it; the sentence's figures are the
+packager's.
 
 ### Opening a node: filter, cap, fold
 
@@ -532,7 +533,8 @@ divisions — rather than a sample.
 *hidden* by the fold; it is unrenderable at this canvas, and offering it needs a
 view that rescales to one division rather than a fourth column — which is what
 the second step is. Measured over all 23 divisions, the smallest ribbon in any
-opened view is 51.38px, at Patrol, and `drill.mjs` pins it there.
+opened view is 51.38px, at Patrol; the drill tests under `site/` print the
+smallest ribbon of every view they open.
 
 **What the fold does not fix.** At the `{0,2,4}` set, seven of the 52 ribbons
 laid out under 1px and four of the 40 node rects under 2px, and `render()` floors
@@ -541,8 +543,9 @@ marks do not encode their values. The client's tests pin **both** counts,
 so neither can grow unnoticed. The chain's rungs are better on this and not
 free of it, and neither count is the same in both years: the General Fund at
 depth 1 draws 2 sub-pixel ribbons of 37 in FY2025-26 and 3 of 37 in FY2026-27,
-and special revenue, capped, 2 of 22 and then 1 of 22. All four are pinned per
-column in `drill.mjs`, which is the only reason the difference is visible.
+and special revenue, capped, 2 of 22 and then 1 of 22. The fold tests under
+`site/` print both counts per column, which is the only reason the difference
+is visible.
 
 **The page describes the folded document, not the fetched one.** The legend, the
 flow table, the inferred list and the flow count are all statements about what
