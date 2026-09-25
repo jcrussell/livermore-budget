@@ -870,6 +870,12 @@ describe("the drill's drawing", () => {
       // AT TWO OR MORE: a column of cap + 1 once folded ONE printed fund
       // into a mark labelled "1 smaller funds".
       assert.ok(count >= 2, agg.label);
+      // AND ITS NOTE SAYS WHAT IT CARRIES, at the figure the chart draws it
+      // at: the tail is not an inferred flow and gets no line in the inferred
+      // list, so this note is where its figure is written (fisc-hrfd).
+      const value = app.layOut(app.projection).nodes.find((n) => n.id === agg.id).value;
+      assert.ok(value > 0);
+      assert.ok(agg.source_note.includes("together " + app.fmt(value)), `${agg.source_note} does not carry ${app.fmt(value)}`);
     });
 
     test(`${year.label}: the breadcrumb says how many marks the expansion drew, and folds them back`, async (t) => {

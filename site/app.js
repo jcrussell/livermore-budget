@@ -3882,6 +3882,15 @@ export function capColumn(doc, tier, cap, opened, noun) {
     size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
   const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
   const folded = ranked.slice(cap);
+  // WHAT THE TAIL CARRIES, said in its own note: the larger of what its
+  // members take in and send out, which is the height d3-sankey draws it at
+  // once their ribbons are merged. A sum over published summands whose
+  // membership this fold decided (fisc-lwh5). The inferred list counts
+  // inferred flows and a tail's are printed, so this is the one place a
+  // reader sees the tail's figure written down (fisc-hrfd).
+  const carried = Math.max(
+    folded.reduce((sum, n) => sum + (inflow.get(n.id) || 0), 0),
+    folded.reduce((sum, n) => sum + (outflow.get(n.id) || 0), 0));
 
   // THE NOUN IS THE VIEW'S. It read `tier === 3 ? "funds" : "categories"`,
   // which is the same tier-number-to-word mapping paintBreadcrumb refuses two
@@ -3933,7 +3942,7 @@ export function capColumn(doc, tier, cap, opened, noun) {
       "mark because they cannot be drawn separately. Every figure inside it is printed; " +
       "the box around them is ours.",
     source_note: "The " + folded.length + " smallest of " + atTier.length +
-      " by value, at this page's cap of " + cap + ".",
+      " by value, at this page's cap of " + cap + ", together " + fmt(carried) + ".",
   };
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
