@@ -1361,6 +1361,15 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 				// sets are numbered by different hierarchies, and equal numbers
 				// are not the same chart -- the DrillStep doc comment says why
 				// validate cannot do better than skip.
+				//
+				// EQUALITY AND NOT CONTAINMENT, decided (fisc-ke1f). The same
+				// columns filtered to the opened node's subtree is the chart
+				// already on screen; a strict SUBSET of a widened parent's is
+				// not -- the fund step's {2,3,4,5} under a fund-group step
+				// drawing {0,2,3,4,5} is a narrower chart of one fund, which
+				// the client draws at every column budget (site/columns.test.mjs
+				// holds it). A parent's Widen is in p.tiers, so the comparison
+				// is against the parent at its widest.
 				case doc == p.doc && slices.Equal(p.tiers, s.Tiers):
 					return fmt.Errorf(
 						"view %q's step %d draws tiers %v of %q, the set step %q "+

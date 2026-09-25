@@ -177,23 +177,25 @@ describe("a widened step", () => {
       assert.equal(wide.bands.split("/").length, 3);
     });
   }
-  /** The fund-group step widened to tier 4, over a copy of the pinned config. */
-  function widenFundGroup() {
+  /** The fund-group step widened by `into`, over a copy of the pinned config. */
+  function widenFundGroup(into = [4]) {
     const config = structuredClone(pageFixture().config);
-    config.steps = config.steps.map((s) => (s.key === "fund-group" ? Object.assign({}, s, { tiers: s.tiers.concat([4]), widen: [4] }) : s));
+    config.steps = config.steps.map((s) => (s.key === "fund-group" ? Object.assign({}, s, { tiers: s.tiers.concat(into), widen: into.slice() }) : s));
     return config;
   }
-  /** The same widening in Go's answer: the General Fund's departments on its group's rung, nothing on the others'. */
-  function widenFundGroupAnswer() {
+  /** The same widening in Go's answer: the General Fund's own nodes at each widened tier on its group's rung, read off the fund step's answer, and nothing on the other groups'. */
+  function widenFundGroupAnswer(into = [4]) {
     const answer = rungsFixture();
     for (const column of answer.columns) {
       const fund = column.rungs.find((r) => r.path.join("|") === "fund-group/general|fund/100");
       assert.ok(fund, `${column.stem} answers no rung for fund-group/general > fund/100`);
-      const depts = fund.draws.find((d) => d.tier === 4);
-      assert.ok(depts, `${column.stem}'s fund/100 rung draws no tier 4`);
       for (const rung of column.rungs) {
         if (rung.step !== "fund-group") continue;
-        rung.draws.push({ tier: 4, role: "outward", ids: rung.path[0] === "fund-group/general" ? depts.ids.slice() : [] });
+        for (const tier of into) {
+          const at = fund.draws.find((d) => d.tier === tier);
+          assert.ok(at, `${column.stem}'s fund/100 rung draws no tier ${tier}`);
+          rung.draws.push({ tier: tier, role: "outward", ids: rung.path[0] === "fund-group/general" ? at.ids.slice() : [] });
+        }
         delete rung.marks;
       }
     }
@@ -220,6 +222,30 @@ describe("a widened step", () => {
     assert.equal(filled.banners, 0);
     assert.equal(filled.bands.split("/").length, 3);
     assert.ok(filled.bands.split("/").every((b) => Number(b) > 0));
+  });
+  // A CHILD WHOSE TIERS ARE A STRICT SUBSET OF ITS WIDENED PARENT'S IS DRAWN.
+  // export.validateSteps refuses a step whose tiers EQUAL its parent's and
+  // accepts a subset (fisc-ke1f); this is the client's half of that decision,
+  // over the one pair that makes one: the fund-group step widened to the
+  // whole fund-flows chain, under which the fund step's {2,3,4,5} is a subset
+  // of the {0,2,3,4,5} on screen. The fund window is a narrower chart of one
+  // fund and not a redraw, at every budget.
+  test("a step whose tiers are a strict subset of its widened parent's opens at every budget", async (t) => {
+    const path = ["fund-group/general", "fund/100"];
+    const seen = [];
+    for (const budget of [3, 4, 5]) {
+      const config = widenFundGroup([4, 5]);
+      const group = config.steps.find((s) => s.key === "fund-group");
+      const fund = config.steps.find((s) => s.key === "fund");
+      assert.ok(fund.tiers.every((tier) => group.tiers.includes(tier)) && fund.tiers.length < group.tiers.length);
+      const at = await windowAt("sankey", budget, path, config, widenFundGroupAnswer([4, 5]));
+      seen.push(`budget ${budget}: {${at.tiers}}, ${at.nodes} nodes, ${at.links} links, bands ${at.bands}, ${at.banners} banner(s)`);
+      assert.equal(at.banners, 0);
+      assert.equal(at.columns, Math.min(budget, 4));
+      assert.equal(at.tiers, budget === 3 ? "2,3,4" : "2,3,4,5");
+      assert.ok(at.bands.split("/").every((b) => Number(b) > 0), at.bands);
+    }
+    t.diagnostic(seen.join("; "));
   });
 });
 
