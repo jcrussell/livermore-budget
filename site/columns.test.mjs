@@ -222,3 +222,22 @@ describe("a widened step", () => {
     assert.ok(filled.bands.split("/").every((b) => Number(b) > 0));
   });
 });
+
+// fisc-7477: the storage arm, which some privacy modes reach by throwing on
+// the read rather than answering null.
+describe("a storage the browser refuses", () => {
+  test("a localStorage that throws on read is a saved count of none", async () => {
+    const { app } = await bootedApp({ storage: { "fisc-columns": "4" } });
+    assert.equal(app.savedColumns(), 4);
+    const prior = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true, writable: true,
+      value: { getItem() { throw new Error("denied"); }, setItem() { throw new Error("denied"); } },
+    });
+    try {
+      assert.equal(app.savedColumns(), null);
+    } finally {
+      Object.defineProperty(globalThis, "localStorage", prior);
+    }
+  });
+});

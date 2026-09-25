@@ -332,3 +332,16 @@ describe("the cap is what makes a fund group's column drawable", () => {
     assert.ok(sr.whole.sub > 0);
   });
 });
+
+// fisc-7477: the parent-chain arm node-hierarchy-well-formed keeps off every
+// column the export writes.
+describe("a parent the document does not carry", () => {
+  test("a node whose parent chain breaks belongs to no fund group", async () => {
+    const whole = await drawing([]);
+    const stray = { id: "fund/999", label: "stray", tier: 3, parent: "fund-group/ghost", role: "",
+      constraint_tier: "", derived: false, rationale: "", source_note: "" };
+    assert.equal(whole.fundGroupOf(stray), "");
+    const rooted = Object.assign({}, stray, { parent: "" });
+    assert.equal(whole.fundGroupOf(rooted), "");
+  });
+});

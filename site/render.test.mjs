@@ -934,3 +934,49 @@ describe("the drill's drawing", () => {
     });
   }
 });
+
+// Arms the committed columns never reach, driven over a clone of a pinned
+// column with one stated change, or a bare call where the arm is a pure
+// function. fisc-7477 measured them undriven.
+describe("arms no committed column reaches", () => {
+  const newest = YEARS[YEARS.length - 1];
+  test("a derived flow between two published nodes is listed as inferred on its own, with both ends named", async (t) => {
+    const col = structuredClone(columnFixture(newest.fixture));
+    const link = col.schedules.sankey.links.find((l) =>
+      !l.derived && !col.nodes[l.from].derived && !col.nodes[l.to].derived);
+    assert.ok(link, "the pinned column has no printed flow between two published nodes");
+    link.derived = true;
+    const from = col.nodes[link.from].label;
+    const to = col.nodes[link.to].label;
+    const { document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
+    assert.equal(refusals(document).length, 0);
+    const items = [...document.querySelectorAll("#derived-list li")];
+    const orphan = items.find((li) => li.textContent.includes("both endpoints are printed by the city"));
+    t.diagnostic(`${items.length} inferred entries; the orphan reads "${orphan ? orphan.textContent : "(none)"}"`);
+    assert.ok(orphan, "the inferred list does not mention the flow");
+    assert.ok(orphan.textContent.includes(from + " → " + to), orphan.textContent);
+  });
+  test("a schedule carrying no caveats gives every mark none, and the page still draws", async (t) => {
+    const col = structuredClone(columnFixture(newest.fixture));
+    delete col.schedules.sankey.caveats;
+    const { app, document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
+    assert.equal(refusals(document).length, 0);
+    const marks = document.querySelectorAll("#chart g.node").length;
+    const ids = app.projection.nodes.map((n) => n.id);
+    t.diagnostic(`${marks} marks drawn, ${ids.length} ids asked, all with no caveat`);
+    assert.ok(marks > 0);
+    assert.ok(ids.every((id) => app.caveatsFor(id).length === 0));
+    // The guard on a source with no caveats list at all, which scheduleOf's
+    // default keeps off the served path.
+    app.projection.metadata.caveats = undefined;
+    assert.deepEqual(app.caveatsFor(ids[0]), []);
+  });
+  test("a label anchored at an end shifts its qualifier less than one anchored in the middle", async () => {
+    const { app } = await bootedApp({ checkedStem: newest.stem });
+    const middle = app.labelLineShift("middle");
+    const end = app.labelLineShift("end");
+    assert.deepEqual(app.labelLineShift("start"), end);
+    assert.notEqual(end.qualifier, middle.qualifier);
+    assert.equal(end.label, middle.label);
+  });
+});

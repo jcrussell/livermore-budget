@@ -349,3 +349,18 @@ describe("a year switch and an open drill", () => {
     assert.notEqual(after.tail, folded.tail);
   });
 });
+
+// fisc-7477: the arm a single-view export reaches, where there is no
+// caveats.html for a caveat to link into.
+describe("a caveat with no page to link to", () => {
+  test("a caveat without an href is painted as plain text and not as an anchor into a file never written", async (t) => {
+    const { app, document } = await loadApp();
+    const year = shippedYear({ caveats: [{ id: "plain", summary: "plain summary", href: "" }, ...fixtureCaveats(1)] });
+    const got = painted(app, document, year);
+    t.diagnostic(got.caveats.map((c) => `"${c.text}" -> ${c.href || "(no link)"}`).join("; "));
+    assert.equal(got.caveats.length, 2);
+    assert.deepEqual(got.caveats[0], { text: "plain summary", href: "" });
+    assert.equal(got.caveats[1].href, year.caveats[1].href);
+    assert.equal(document.querySelectorAll("#caveats li a").length, 1);
+  });
+});
