@@ -211,10 +211,18 @@ describe("foldDocument's clauses, on the miniature", () => {
     orphan.links.push({ source: "revenue/tax", target: "stray", value_cents: 1, kind: "external", transfer_id: "", fact_ids: ["z"], locators: [{ doc_id: "d", pages: [1] }], derived: false });
     assert.throws(() => drill.foldDocument(orphan), (e) => /stray/.test(e.message) && /tier 9/.test(e.message));
   });
-  test("a printed flow and an inferred one are not folded into one mark", () => {
+  // Whether a printed leg and an inferred one may meet in one merge is Go's
+  // question, refused at the export by validateSteps (the views test named for
+  // a cap under which a printed flow and an inferred one would merge). The
+  // fold does not ask it again: the merged ribbon's flag is the first leg's.
+  test("a merged ribbon keeps the first leg's provenance flag and sums every leg", () => {
     const mixed = miniature();
     mixed.links.push({ source: "revenue/tax", target: "fund/101", value_cents: 7, kind: "external", transfer_id: "", fact_ids: ["y"], locators: [{ doc_id: "d", pages: [1] }], derived: true });
-    assert.throws(() => drill.foldDocument(mixed), /printed flow and an inferred one/);
+    const l = drill.foldDocument(mixed).links.find((x) => x.source === "revenue/tax" && x.target === "fund-group/general");
+    assert.ok(l);
+    assert.equal(l.derived, false);
+    assert.equal(l.value_cents, 307);
+    assert.deepEqual([...l.fact_ids].sort(), ["a", "b", "y"]);
   });
 });
 

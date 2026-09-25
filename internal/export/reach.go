@@ -40,6 +40,10 @@ type GraphLink struct {
 	Target     string `json:"target"`
 	ValueCents int64  `json:"value_cents"`
 	Kind       string `json:"kind"`
+	// Derived is whether the document infers the ribbon rather than reading
+	// it off a page; the fold may not merge a printed ribbon with an inferred
+	// one, and validateSteps refuses a cap under which it would.
+	Derived bool `json:"derived"`
 }
 
 // DecodeGraph reads a projection document down to its [Graph], and refuses

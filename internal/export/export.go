@@ -28,6 +28,7 @@
 package export
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -1569,11 +1570,75 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 			case slices.ContainsFunc(s.Caps[:j], func(o TierCap) bool { return o.Tier == c.Tier }):
 				return fmt.Errorf("view %q's step %d caps tier %d twice", v.Path, i, c.Tier)
 			}
+			if err := capMergesNoPrintedWithInferred(v.Path, i, c, docs[i], built); err != nil {
+				return err
+			}
 		}
 		if _, ok := built[doc]; s.Projection != "" && !ok {
 			// Named for the same reason v.Projection's refusal is.
 			return fmt.Errorf("view %q's step %d renders projection %q, which was not built",
 				v.Path, i, s.Projection)
+		}
+	}
+	return nil
+}
+
+// capMergesNoPrintedWithInferred refuses a cap under which two members of the
+// capped tier send a printed ribbon and an inferred one to one far end of one
+// kind, in every year's document of the schedule the step draws.
+//
+// THE FOLD MERGES BY FAR END AND KIND, so those two ribbons become one mark,
+// and one mark cannot be drawn dashed over an amount the city printed most
+// of nor listed whole under what was inferred. Which members fold is the
+// client's, by rank and by the reader's viewport, so any pair that disagrees
+// is a pair that may fold together. Every document of the schedule is read,
+// because a step opens into its own year's column.
+func capMergesNoPrintedWithInferred(path string, i int, c TierCap, doc string, built map[string][]byte) error {
+	type far struct {
+		end, kind string
+		outward   bool
+	}
+	type seen struct {
+		member  string
+		derived bool
+	}
+	for _, stem := range slices.Sorted(maps.Keys(built)) {
+		if scheduleKey(stem) != scheduleKey(doc) {
+			continue
+		}
+		var g Graph
+		if err := json.Unmarshal(built[stem], &g); err != nil {
+			return fmt.Errorf("view %q's step %d caps tier %d of %s, which does not decode: %w", path, i, c.Tier, stem, err)
+		}
+		capped := map[string]bool{}
+		for _, n := range g.Nodes {
+			if n.Tier == c.Tier {
+				capped[n.ID] = true
+			}
+		}
+		first := map[far]seen{}
+		for _, l := range g.Links {
+			for _, side := range []struct {
+				member, end string
+				outward     bool
+			}{{l.Source, l.Target, true}, {l.Target, l.Source, false}} {
+				if !capped[side.member] {
+					continue
+				}
+				key := far{side.end, l.Kind, side.outward}
+				prev, ok := first[key]
+				if !ok {
+					first[key] = seen{side.member, l.Derived}
+					continue
+				}
+				if prev.derived != l.Derived && prev.member != side.member {
+					return fmt.Errorf(
+						"view %q's step %d caps tier %d, and in %s two of that tier's nodes, %s and %s, "+
+							"send %s a printed flow and an inferred one of kind %q; folding them merges the "+
+							"two into one ribbon, which cannot be drawn as one mark",
+						path, i, c.Tier, stem, prev.member, side.member, side.end, l.Kind)
+				}
+			}
 		}
 	}
 	return nil

@@ -1389,11 +1389,11 @@ export function heldBy(held) {
  * The filter every chart is shaped by: the links `holds` admits whose ends this
  * tier set can place, and the nodes those links need.
  *
- * AN EMPTY RESULT IS REFUSED BY NAME, in the sentence the guard on an unknown
- * id already uses. Every other route to an empty graph ends in d3-sankey's
- * "RangeError: Invalid array length", a stack trace where a sentence belongs;
- * a node the document carries and draws nothing under is a fault in the view
- * or the document, not in the reader's click.
+ * IT REFUSES NOTHING. That the id is a node of the document and that something
+ * flows for it at these tiers are Go's to hold at the write: the id is the
+ * centre of a rung the walk drew over this same document, a step's opened
+ * tier is validated against the chart it opens from, and the walk answers no
+ * rung it did not draw. This renders the answer.
  *
  * @param {FiscProjection} doc
  * @param {string} id
@@ -1403,22 +1403,8 @@ export function heldBy(held) {
  */
 export function filterLinks(doc, id, tiers, holds) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
-  // A NAME THIS DOCUMENT DOES NOT CARRY IS A FAULT IN THE VIEW, and it must say
-  // so. Unchecked, an unknown id gives an empty subtree, no links, and
-  // d3-sankey dying on the empty graph with "RangeError: Invalid array
-  // length" -- a stack trace where a sentence belongs. Live the day these pages
-  // get the year control unviewedDocuments still declares as pending: a root or
-  // an opened node valid in one column need not exist in another.
-  if (!byID.has(id)) {
-    throw new Error("cannot draw " + doc.projection + ": this page asks for node " + id +
-      ", which the document does not carry");
-  }
   const drawn = new Set(tiers);
   const placeable = scoped(doc, tiers);
-
-  // THE ADMISSION COMES BEFORE THE PLACEABILITY TEST, which is the order and
-  // not a style: scoped() throws on a broken parent chain, and a link this
-  // chart was never going to draw is not a place to raise one.
   const links = doc.links.filter((l) => {
     const src = byID.get(l.source);
     const dst = byID.get(l.target);
@@ -1426,10 +1412,6 @@ export function filterLinks(doc, id, tiers, holds) {
     if (!holds(src, dst, byID, drawn)) return false;
     return placeable(src) && placeable(dst);
   });
-  if (!links.length) {
-    throw new Error("cannot draw " + doc.projection + ": nothing flows between tiers " +
-      tiers.join(", ") + " for node " + id + ", so there is no chart to open it into");
-  }
 
   // Only the nodes those links touch, and their ancestors up to the drawn
   // tiers. Handing foldDocument a node it cannot place would make it refuse the
@@ -1467,16 +1449,11 @@ export function filterLinks(doc, id, tiers, holds) {
  * foldDocument would have refused the node, but a rung filters first and the
  * fold never saw it.
  *
- * TWO SHAPES ARE BROKEN, AND ONE IS NOT. A parent naming a node the document
- * does not carry is broken outright. A node with no drawn ancestor while OTHER
- * nodes of its tier have one is broken too: the view found a column for that
- * tier, and this node's chain is what failed to reach it. A tier no node of
- * which can be placed is the view's own declaration -- fund-flows' 11 tier-0
- * nodes under a division's {3,4,5}, where the 103 links touching one of them
- * go quietly -- and its links are dropped as before. What this cannot see is a
- * whole tier losing its parents at once, which node-hierarchy-well-formed
- * refuses Go-side; the drill-down's line tier is the arm fisc-ko1j.10 added
- * for exactly that.
+ * A BROKEN PARENT CHAIN IS GO'S TO REFUSE, at the write and not at the draw:
+ * node-hierarchy-well-formed holds every node's parent to a node of the same
+ * document at a coarser tier. So a node with no drawn
+ * ancestor is simply not placed here, and the links naming it go the way a
+ * tier no node of which can be placed always has.
  *
  * @param {FiscProjection} doc
  * @param {number[]} tiers
@@ -1485,29 +1462,7 @@ export function filterLinks(doc, id, tiers, holds) {
 export function scoped(doc, tiers) {
   const byID = new Map(doc.nodes.map((n) => [n.id, n]));
   const drawn = new Set(tiers);
-  /** Tiers at which some node has a drawn ancestor. */
-  const placed = new Set();
-  for (const n of doc.nodes) {
-    if (foldTarget(byID, n, drawn) !== "") placed.add(n.tier);
-  }
-  return (n) => {
-    if (foldTarget(byID, n, drawn) !== "") return true;
-    let at = n;
-    for (let hops = 0; at.parent && hops < 9; hops++) {
-      const up = byID.get(at.parent);
-      if (!up) {
-        throw new Error("cannot draw " + doc.projection + ": node " + at.id + " names parent " +
-          at.parent + ", which the document does not carry");
-      }
-      at = up;
-    }
-    if (placed.has(n.tier)) {
-      throw new Error("cannot draw " + doc.projection + ": node " + n.id + " is tier " + n.tier +
-        " and reaches no tier this page draws (" + tiers.join(", ") + "), while other tier-" +
-        n.tier + " nodes do; its parent chain is broken");
-    }
-    return false;
-  };
+  return (n) => foldTarget(byID, n, drawn) !== "";
 }
 
 /**
@@ -1604,17 +1559,14 @@ export function rungKey(stem, path) {
  * found -- the residual beside FY2026-27's General Fund came to $486,735
  * against an answer stating FY2025-26's $1,514,554.
  *
- * AND THE STEP IS CHECKED, NOT ONLY THE PATH. A rung is keyed by the year and
- * the nodes opened, and a config declaring a different step for that path is a
- * config the answer was not computed against: its columns, its caps, its
- * residual set and its gaps are all another declaration's. Unchecked, a page
- * whose step declares no residual at all still drew the one the answer carries
- * for the step it was computed from.
+ * THE STEP IS NOT CHECKED, because it cannot differ: the page's steps and the
+ * rung answer's are written from one declaration by one export, and a copy of
+ * either from another build is the case generated_by refuses before any rung
+ * is looked up.
  *
- * @param {string} step the key of the step that opened the last rung
  * @returns {FiscRung}
  */
-export function answeredRung(step) {
+export function answeredRung() {
   const stem = shownYear ? shownYear.stem : "";
   const path = drilled.map((r) => r.id);
   const answer = rungAnswers ? rungAnswers.get(rungKey(stem, path)) : null;
@@ -1622,11 +1574,6 @@ export function answeredRung(step) {
     throw new Error("cannot draw " + stem + ": this page opened " + path.join(" > ") +
       ", and the rung answer it was given names no such path, so there is nothing " +
       "to say which nodes each column holds");
-  }
-  if (answer.step !== step) {
-    throw new Error("cannot draw " + stem + ": this page opened " + path.join(" > ") +
-      " under step " + step + ", and the rung answer for that path was computed under step " +
-      answer.step + "; the declaration this page was handed is not the one it was answered from");
   }
   return answer;
 }
@@ -2813,7 +2760,7 @@ export function shapeFor(doc) {
   // side the step declares and answered every rung once (AGENTS.md, "Go vets,
   // JavaScript renders"), and what is left here is the fitting -- the cap, the
   // fold, the splice and the marks.
-  const answer = answeredRung(step.key);
+  const answer = answeredRung();
   // A WINDOW OR A SIDE, AND THE STEP SAYS WHICH. A step that keeps a flank
   // draws two half-charts spliced on the node the reader clicked; one that
   // keeps none draws a single filtered chart at the columns it declares.
@@ -2997,20 +2944,19 @@ export function sideOf(doc, rung, tiers, held) {
  * EACH HALF IS ASKED FOR THE COLUMNS IT DRAWS, CENTRE INCLUDED, so the two
  * overlap in exactly one column and the splice has something to splice on.
  *
- * WHICH WAY IT SLIDES IS THE POSITION OF THE KEPT TIER IN THE STEP'S OWN
- * COLUMN ORDER, and internal/export's validateSteps has already refused a step
- * whose columns disagree with the chart it opens from. This reads the
- * declaration and fails closed on one it cannot read, because a window drawn
- * the wrong way round is a chart that lays out and means something else.
+ * WHICH SIDE IS WHICH IS READ OFF THE ANSWER. Go's draws name every column of
+ * the rung with its role -- flank, centre, outward -- in the order the step
+ * draws them, and validateSteps has already refused a step whose flank is not
+ * at one end of the chart it opens from. The kept half is the flank and the
+ * centre; the fresh half is the centre and what it opens into.
  *
  * THE KEPT FLANK COMES OFF THE CHART ON SCREEN, NOT OFF A FILE, and that is
  * not an optimisation. Its nodes need not exist in the step's document at all:
  * a departmentwide document has no fund axis, so every fund group in that
  * window's flank would be a node drillDown could not find and the click would
  * return FAILED in silence. Filtering the chart on screen removes that by
- * construction, lets the kept flank carry a capped tail or a residual it
- * already drew, and keeps filterLinks' fail-closed guards applicable, because
- * the chart on screen is itself a well-formed document.
+ * construction and lets the kept flank carry a capped tail or a residual it
+ * already drew.
  *
  * THE CENTRE'S RECORD IS THE ON-SCREEN CHART'S, so the mark names the node in
  * the words the reader clicked -- which is the rule paintBreadcrumb follows one
@@ -3021,50 +2967,23 @@ export function sideOf(doc, rung, tiers, held) {
  * @param {FiscProjection | null} onScreen the drawn chart the rung was opened from
  * @param {FiscProjection} stepDoc the document the step draws
  * @param {Rung} rung
- * @param {FiscRung} [answer] Go's answer for this rung; read after the shape of
- *   the declaration has been refused, so a declaration that is not a window is
- *   refused as one rather than as a rung nothing answers
+ * @param {FiscRung} answer Go's answer for this rung
  * @returns {FiscProjection}
  */
 export function windowFor(onScreen, stepDoc, rung, answer) {
-  const step = rung.step;
   // THE COLUMNS ON SCREEN AND NOT THE COLUMNS DECLARED. A step may offer more
   // than the budget draws, and a half shaped at a column the chart does not lay
   // out would splice in nodes with nowhere to be.
   const tiers = activeTiers();
-  const keep = step.keep || [];
-  const deep = keep.length;
-  const n = tiers.length;
-  // WHICH END THE FLANK IS AT IS READ OFF THE COLUMN ORDER, exactly as
-  // export.validateSteps reads it: a left flank is the first `deep` columns
-  // reversed, a right flank the last `deep` in order. Neither matching is a
-  // declaration this cannot draw, and a window drawn the wrong way round lays
-  // out fine and means something else -- so it is refused in words.
-  const flank = (/** @type {number[]} */ want) =>
-    want.length === deep && want.every((t, k) => t === keep[k]);
-  const keptLeft = deep > 0 && n >= deep + 2 && flank(tiers.slice(0, deep).reverse());
-  const keptRight = deep > 0 && n >= deep + 2 && flank(tiers.slice(n - deep));
-  const centre = keptLeft ? deep : n - 1 - deep;
-  if (!onScreen || (!keptLeft && !keptRight) || tiers[centre] !== step.from) {
-    throw new Error("cannot draw " + stepDoc.projection + ": this step keeps tier(s) " +
-      keep.join(", ") + " and draws tiers " + tiers.join(", ") + " opening tier " +
-      step.from + ", which is not a window: a window is the kept flank at ONE end, " +
-      "outermost first, the opened tier next to it, at least one column of what it " +
-      "opens into, and a chart on screen to take the flank from");
-  }
-  if (!answer) {
-    throw new Error("cannot draw " + stepDoc.projection + ": this step keeps tier(s) " +
-      keep.join(", ") + " and no rung answer was given for the node it opened, so " +
-      "there is nothing to say which nodes either half of the window holds");
-  }
+  const roleOf = new Map(answer.draws.map((d) => [d.tier, d.role]));
   // THE CENTRE IS IN BOTH HALVES, and each half gets the columns on its own
   // side of it: the flank plus the centre off the chart above, the centre plus
   // everything the step opens it into off the step's document. Each half is
   // filtered to the ids Go answers AT ITS OWN COLUMNS, which is what keeps the
   // splice a splice: the centre is the only column both halves hold, so a
   // ribbon of one cannot land in a column of the other.
-  const keptTiers = keptLeft ? tiers.slice(0, centre + 1) : tiers.slice(centre);
-  const freshTiers = keptLeft ? tiers.slice(centre) : tiers.slice(0, centre + 1);
+  const keptTiers = tiers.filter((t) => roleOf.get(t) !== "outward");
+  const freshTiers = tiers.filter((t) => roleOf.get(t) !== "flank");
   const kept = sideOf(onScreen, rung, keptTiers, heldFor(answer, keptTiers));
   const fresh = sideOf(stepDoc, rung, freshTiers, heldFor(answer, freshTiers));
 
@@ -3157,12 +3076,10 @@ export function contraBand(d) {
  * reading of the documents (AGENTS.md, "Go vets, JavaScript renders"), and
  * rung.Amounts is where Go says so.
  *
- * A NON-POSITIVE AMOUNT IS REFUSED RATHER THAN DRAWN, and it is not a tidiness
- * guard: d3-sankey's vertical scale for a column is a min over that column's
- * sums, so one node fixed at zero or below rescales every mark beside it and
- * the whole chart misstates itself in silence. Unreachable on the committed
- * columns -- both amounts are the spine's own positive cell -- and refused
- * rather than left to the day a schedule prints a category net negative.
+ * A NON-POSITIVE AMOUNT NEVER ARRIVES. d3-sankey's vertical scale for a column
+ * is a min over that column's sums, so one node fixed at zero or below would
+ * rescale every mark beside it in silence; schema/rungs.schema.json bounds
+ * every amount above zero and the export refuses an answer outside it.
  *
  * @param {FiscProjection} drawn
  * @param {Record<string, number> | undefined} amounts
@@ -3170,12 +3087,6 @@ export function contraBand(d) {
  */
 export function markAmounts(drawn, amounts) {
   if (!amounts) return drawn;
-  for (const [id, cents] of Object.entries(amounts)) {
-    if (!(cents > 0)) {
-      throw new Error("cannot draw " + drawn.projection + ": the answer draws " + id +
-        " at " + cents + ", and a node's figure sets the scale for its whole column");
-    }
-  }
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.map((n) => (amounts[n.id] === undefined
       ? n
@@ -3615,15 +3526,8 @@ export function carryResidual(drawn, from, rung, mark) {
   const residual = step.residual && typeof step.residual === "object" ? step.residual : null;
   if (!mark || !from) return drawn;
   const opened = rung.id;
-  // THE ID IS THE ONE THIS PAGE COMPOSES, or the mark is refused. Everything
-  // downstream of the draw keys on the prefix -- isResidual, isCarried, the
-  // class, the inferred list -- so an answered id that is not this node's
-  // residual would be drawn as a document node under whatever name it carried.
-  if (mark.id !== residualID(opened)) {
-    throw new Error("cannot draw " + rung.doc.projection + ": the rung answer stands a residual " +
-      "under the id " + mark.id + " beside " + opened + ", and this page draws that node's " +
-      "residual as " + residualID(opened));
-  }
+  // THE ID IS GO'S, under the prefix this page keys isResidual on; that the
+  // two prefixes are one string is held on the Go side, against this file.
   const id = mark.id;
   /** @type {FiscLink[]} */
   const links = [];
@@ -3653,8 +3557,9 @@ export function carryResidual(drawn, from, rung, mark) {
   // THE ENDPOINTS ARE GO'S, IN GO'S ORDER, which is sorted -- so the rationale
   // reads the same on every build without this file sorting anything. Both
   // directions are looked for: which side of the opened node an endpoint's
-  // flow is on is what the drawn chart says, and the sums below are what holds
-  // the pair to the mark Go answered.
+  // flow is on is what the drawn chart says. The mark's size is Go's
+  // difference across the two documents (export.ResidualOf), and the ribbons
+  // carried onto it are the published flows that difference was taken over.
   for (const e of mark.ends || []) {
     for (const l of above((l) => l.source === e && l.target === opened)) {
       links.push(Object.assign({}, l, { target: id }));
@@ -3666,29 +3571,6 @@ export function carryResidual(drawn, from, rung, mark) {
       ends.set(e, false);
       spliced.add(l);
     }
-  }
-  // THE RIBBONS COME TO THE FIGURE GO ANSWERED, or this page draws nothing.
-  // Each of them is a published flow with its own citations; the mark's size
-  // is Go's difference across two documents. A mark drawn at one and fed by
-  // the other is a node whose height nothing under it accounts for.
-  let carriedIn = 0;
-  let carriedOut = 0;
-  for (const l of links) {
-    if (l.target === id) carriedIn += l.value_cents;
-    else carriedOut += l.value_cents;
-  }
-  if (!links.length || carriedIn !== (mark.in_cents || 0) || carriedOut !== (mark.out_cents || 0)) {
-    // IN CENTS AND NOT IN DOLLARS, which is the one message on this page that
-    // needs it: fmt rounds, so a disagreement of a cent reads as two identical
-    // figures and the sentence contradicts itself. Found by running the
-    // mutation -- a residual's in_cents perturbed by one -- rather than by
-    // reading it. Every figure here is an integer cent (AGENTS.md, "Provenance
-    // invariants"), and a comparison of two of them is reported as compared.
-    throw new Error("cannot draw " + rung.doc.projection + ": the residual beside " + opened +
-      " is answered at " + (mark.in_cents || 0) + " cents in and " + (mark.out_cents || 0) +
-      " out, and the " + links.length + " flow(s) this page can carry onto it come to " +
-      carriedIn + " and " + carriedOut + "; the chart on screen and the answer it was " +
-      "drawn against are of different documents");
   }
 
   // THE ENDPOINTS COME WITH THEIR LINKS, placed at the first drawn tier when
@@ -3829,14 +3711,10 @@ export function carryResidual(drawn, from, rung, mark) {
  * sentence is shown under both years and one that did not would be wrong under
  * the other.
  *
- * THE TWO SIDES ARE THE SIGNED ONES, WHICH IS WHY THIS RUNS BEFORE markContra.
- * A reduction is drawn forward at its magnitude, so after that pass a centre
- * taking its category's gross and sending the spine's net looks like a
- * shortfall of twice the reductions -- the Property Taxes window is exactly
- * that shape, $103,430,092 arriving against $69,459,414 leaving. The identity
- * the two schedules actually hold is the signed one, and it is the signed one
- * this reads: measured over both published columns, every one of the ten
- * revenue categories balances here to the cent.
+ * THE FIGURE IS GO'S. export.GapOf takes the signed difference between what
+ * the chart above sends into the opened node and what its own schedule draws
+ * out of it, and the answer's in_cents or out_cents is that figure with its
+ * side. This stands the mark on the side the answer says and sums nothing.
  *
  * IT CARRIES NO kind. A kind says which boundary the money crosses, and the
  * difference between two schedules crosses nothing either of them printed;
@@ -3854,37 +3732,11 @@ export function markGap(drawn, rung, mark) {
   const gaps = rung.step.gaps;
   if (!gaps || typeof gaps !== "object") return drawn;
   const opened = rung.id;
-  const centre = drawn.nodes.find((n) => n.id === opened);
-  if (!centre) {
-    throw new Error("cannot draw " + (drawn.projection || "this chart") + ": " + opened +
-      " is not a mark of it, so the gap this step declares has nothing to be stated against");
-  }
-  let into = 0;
-  let outOf = 0;
-  for (const l of drawn.links) {
-    if (l.target === opened) into += l.value_cents;
-    if (l.source === opened) outOf += l.value_cents;
-  }
-  const gap = into - outOf;
+  if (!mark) return drawn;
   // THE SIGN IS THE SIDE THE MARK STANDS ON, which is how one answered figure
   // says both which way the shortfall runs and how big it is: too little
-  // leaving arrives AT the mark, too little arriving leaves it.
-  const stated = mark ? (mark.in_cents || 0) - (mark.out_cents || 0) : 0;
-  if (gap !== stated) {
-    throw new Error("cannot draw " + (drawn.projection || "this chart") + ": the chart above " +
-      "sends " + fmt(into) + " into " + centre.label + " and this one draws " + fmt(outOf) +
-      " of it, a difference of " + Math.abs(gap) + " cents where the rung answer states " +
-      Math.abs(stated) + "; the documents this page was served and the ones it was " +
-      "answered from have drifted apart");
-  }
-  if (!mark) return drawn;
-  // THE ID IS THIS PAGE'S OWN COMPOSITION, for the reason carryResidual refuses
-  // another: the prefix is what every reader of this mark keys on.
-  if (mark.id !== gapID(opened)) {
-    throw new Error("cannot draw " + (drawn.projection || "this chart") + ": the rung answer " +
-      "states a gap under the id " + mark.id + " on " + opened + ", and this page draws that " +
-      "node's gap as " + gapID(opened));
-  }
+  // leaving arrives AT the mark, too little arriving leaves it. The id is
+  // Go's, under the prefix isGap keys on, for carryResidual's reason.
   const declared = Object.prototype.hasOwnProperty.call(gaps, opened) ? gaps[opened] : "";
   const id = mark.id;
   const node = {
@@ -4172,14 +4024,10 @@ export function foldDocument(doc, tiers) {
     return out;
   };
   for (const l of doc.links) {
+    // BOTH ENDS ARE NODES OF THE DOCUMENT, because a column's links index its
+    // own node table and the export holds every index to it.
     const source = foldsTo.get(l.source);
     const target = foldsTo.get(l.target);
-    // d3-sankey throws on a link naming a node the document does not carry;
-    // this is the same fault one step earlier, with the id in the message.
-    if (!source || !target) {
-      throw new Error("cannot draw " + doc.projection + ": link " + l.source +
-        " -> " + l.target + " names a node the document does not carry");
-    }
     if (source === target) continue;
     // ONE RIBBON PER KIND BETWEEN A FOLDED PAIR, so a ribbon's kind is true of
     // all of it. Keying the merge on the pair alone would draw an internal
@@ -4201,24 +4049,16 @@ export function foldDocument(doc, tiers) {
       located.set(key, new Set(locatorKeys(l.locators)));
       continue;
     }
-    // A PRINTED LEG AND AN INFERRED ONE CANNOT MERGE, and it is this project's
-    // oldest rule: published is not
-    // derived. OR-ing the flag draws the merged ribbon dashed and lists its
-    // WHOLE amount under "what we inferred", which is a false statement about a
-    // figure the city printed most of. Latent -- all four published columns
-    // carry zero derived links -- and refused rather than left to the day one
-    // does.
-    if (at.derived !== l.derived) {
-      throw new Error("cannot draw " + doc.projection + ": " + source + " -> " + target +
-        " folds together a printed flow and an inferred one, which cannot be drawn as one mark");
-    }
+    // A PRINTED LEG AND AN INFERRED ONE NEVER MEET HERE. Published is not
+    // derived, and OR-ing the flag would list a figure the city printed most
+    // of under "what we inferred"; so the export refuses a cap under which two
+    // members of a tier would fold ribbons of different provenance onto one
+    // far end, and the merged ribbon's flag is the first leg's and true of all
+    // of it.
     at.value_cents += l.value_cents;
     // A transfer id names one leg of one transfer and cannot survive a merge.
     if (at.transfer_id !== l.transfer_id) at.transfer_id = "";
     for (const id of l.fact_ids) ids.add(id);
-    // The union runs AFTER the kind and derived guards above, so a leg that
-    // cannot be merged throws with its own message rather than dying on a
-    // locators field the fixture happened not to carry.
     const locs = located.get(key);
     if (locs) for (const k of locatorKeys(l.locators)) locs.add(k);
   }

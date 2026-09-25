@@ -1334,3 +1334,57 @@ func TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith(t *testing.T) {
 			"published year. A walk naming none would report nothing and pass", named)
 	}
 }
+
+// TestARungsAmountOfZeroIsRefusedAtTheWrite holds the schema's lower bound on
+// a rung's amounts: a mark drawn at zero or below sets the scale for its
+// whole column, and the client draws whatever figure it is answered.
+//
+// OVER THE BUILT ANSWER AND NOT A LITERAL, so the document that reaches the
+// schema is one every other key of which is what buildAll writes; the one
+// change is the figure.
+func TestARungsAmountOfZeroIsRefusedAtTheWrite(t *testing.T) {
+	built, err := buildAll(repoRootForTest(t))
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	spine, err := spineView(built)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []int64{0, -1} {
+		rungs, err := rungsOf(built.Projections, spine)
+		if err != nil {
+			t.Fatalf("rungsOf: %v", err)
+		}
+		if _, err = encodeRungs(rungs); err != nil {
+			t.Fatalf("the built answer does not encode: %v", err)
+		}
+		changed := ""
+		for _, col := range rungs.Columns {
+			for _, r := range col.Rungs {
+				for id := range r.Amounts {
+					r.Amounts[id] = bad
+					changed = col.Stem + " " + strings.Join(r.Path, " > ") + " " + id
+					break
+				}
+				if changed != "" {
+					break
+				}
+			}
+			if changed != "" {
+				break
+			}
+		}
+		if changed == "" {
+			t.Fatal("no rung answers an amount, so the bound cannot be exercised")
+		}
+		_, err = encodeRungs(rungs)
+		if err == nil {
+			t.Errorf("an amount of %d at %s was written; the client would draw a mark at that figure", bad, changed)
+			continue
+		}
+		if !strings.Contains(err.Error(), "amounts") {
+			t.Errorf("the refusal of an amount of %d does not name amounts: %v", bad, err)
+		}
+	}
+}

@@ -105,7 +105,8 @@
                   "type": "object",
                   "minProperties": 1,
                   "additionalProperties": {
-                    "type": "integer"
+                    "type": "integer",
+                    "exclusiveMinimum": 0
                   }
                 },
                 "marks": {
