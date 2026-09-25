@@ -756,6 +756,24 @@ svg.sankey .node.derived rect {
   stroke-dasharray: 4 3;
 }
 
+/* THE ISOLATED MARK IS MARKED, AND NOT ONLY BY DIMMING EVERYTHING ELSE. A
+   click isolates a node and applyEmphasis drops every unrelated mark to
+   .dim, which is a large change where the node has many neighbours and no
+   visible change where it has one -- and none at all to the node itself, so
+   a reader clicking the already-isolated node to release it had nothing on
+   it to say it was held. aria-pressed is the state (applyEmphasis keeps it),
+   and this is its paint: the mark's own outline in the text colour, which is
+   the one stroke on the chart that says "chosen" rather than "derived"
+   (dashed, --ink-2) or "focused" (--focus).
+
+   BEFORE THE FOCUS RULE, at equal specificity, so a mark that is both
+   isolated and focused shows focus; AFTER .node.derived rect, so an isolated
+   derived mark keeps its dash and takes this stroke. */
+svg.sankey .node[aria-pressed="true"] rect {
+  stroke: var(--ink-1);
+  stroke-width: 2.5;
+}
+
 /* THE FOCUS RING GOES ON THE MARK, NOT ON THE GROUP'S BOUNDING BOX. render()
    makes the <g> focusable, and that <g> holds the rect AND its label, which
    labelPlacement anchors up to LABEL_GUTTER away; an SVG outline follows the

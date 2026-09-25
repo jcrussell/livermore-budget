@@ -433,6 +433,21 @@ for (const year of YEARS) {
         `the outermost left depth ${back0.depth} reading "${back0.counts}"`);
     });
 
+    test(`${year.label}: closing the only rung by keyboard puts focus back on the mark that opened it`, async (t) => {
+      const { app, document } = await onYear(year.stem);
+      const first = document.querySelector("#chart g.node").__data__.id;
+      assert.notEqual(first, OPENS, "the mark opened is the first in document order, so the test cannot tell the two apart");
+      await keyOpen(app, document, OPENS, 1000);
+      assert.equal(app.drilled.length, 1);
+      escape(document);
+      await settle();
+      const active = document.activeElement;
+      const on = active && active.__data__ ? active.__data__.id : (active ? active.tagName : "nothing");
+      t.diagnostic(`after Escape focus is on ${on}; the first mark in document order is ${first}`);
+      assert.equal(app.drilled.length, 0);
+      assert.equal(on, OPENS);
+    });
+
     test(`${year.label} chain: a keyboard drill lands focus on the rung's return control, at every depth`, async (t) => {
       const { app, document } = await onYear(year.stem);
       const landed = [];

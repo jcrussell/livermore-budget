@@ -2027,6 +2027,9 @@ export function redrawStack(next) {
   // repaint below removes, so after it there is nothing left to ask about.
   const hadFocus = focusInChart();
   const was = drilled;
+  // THE RUNG THIS REDRAW CLOSES, if it closes one: the mark that opened it is
+  // on the chart being returned to, and is where focus goes back to.
+  const popped = was.length > next.length ? was[next.length].id : "";
   drilled = next;
   let drawn;
   let laid;
@@ -2077,7 +2080,7 @@ export function redrawStack(next) {
   buildDerivedList();
   buildTable(rows);
   render(laid);
-  restoreFocus(hadFocus);
+  restoreFocus(hadFocus, popped);
   return true;
 }
 
@@ -2363,10 +2366,19 @@ export function keyNode(d, key, at) {
  * for and fired only in the case its own comment says must not happen. The
  * question has to be asked while the answer still exists.
  *
+ * BACK ONTO THE MARK THE READER LEFT, on the way up. Popping a rung returns
+ * to a chart on which the node that was opened is drawn again, and a reader
+ * who arrived at it by keyboard is put back on it -- not on the first mark
+ * in document order, which was a ring on a mark nobody chose. Down a rung,
+ * the opened node is gone from the chart and the rung's own return control is
+ * the one element on the page that undoes what was just done.
+ *
  * @param {boolean} hadFocus whether focus was inside the chart before the
  *   repaint that just replaced it.
+ * @param {string} [popped] the id of the node whose rung this repaint closed,
+ *   or "" where it opened one
  */
-export function restoreFocus(hadFocus) {
+export function restoreFocus(hadFocus, popped = "") {
   if (!hadFocus) return;
   // focus() IS ON HTMLElement AND SVGElement, NOT ON Element, so the runtime
   // test stays and the cast is what tells tsc --checkJs the same thing. The
@@ -2395,7 +2407,11 @@ export function restoreFocus(hadFocus) {
     if (focus(controls[controls.length - 1] || null)) return;
   }
   const chart = maybeEl("chart");
-  focus(chart ? chart.querySelector("g.node") : null);
+  if (!chart) return;
+  const left = popped
+    ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} d */ (d) => d.id === popped).node()
+    : null;
+  focus(left || chart.querySelector("g.node"));
 }
 
 /**

@@ -1352,6 +1352,21 @@ describe("the focus indicator is painted as focus and not as text", () => {
       `declare it as ${[...new Set(values)].join(", ")}`);
   });
 
+  test("an isolated mark has an indicator of its own, distinct from focus, and focus wins where both apply", (t) => {
+    const pressed = "svg.sankey .node[aria-pressed=\"true\"] rect";
+    const rule = ruleFor(pressed);
+    assert.match(rule, /stroke:\s*var\(--[a-z0-9-]+\)/, "the isolated mark's stroke is not a palette token");
+    assert.doesNotMatch(rule, /var\(--focus\)/, "the isolated mark is painted as focus, so a reader cannot tell held from focused");
+    assert.doesNotMatch(rule, /stroke-dasharray/, "the rule resets the dash, so an isolated derived mark stops reading as derived");
+    // AT EQUAL SPECIFICITY SOURCE ORDER DECIDES, so the isolation rule has to
+    // sit after the derived rule (to take its stroke) and before the focus rule
+    // (to yield to it).
+    const at = (sel) => css.indexOf(sel + " {");
+    assert.ok(at("svg.sankey .node.derived rect") < at(pressed), "the isolation rule precedes the derived rule, which would override it");
+    assert.ok(at(pressed) < at("svg.sankey .node:focus-visible rect"), "the isolation rule follows the focus rule, which it would override");
+    t.diagnostic(`the isolated mark's rule is ${rule.trim().replace(/\s+/g, " ")}`);
+  });
+
   test("a ribbon gets a drawn echo and not a box around its bounding rectangle", (t) => {
     const rule = ruleFor("svg.sankey .link:focus-visible");
     // A <path>'s bounding box is the whole bezier's rectangle, so ANY outline
