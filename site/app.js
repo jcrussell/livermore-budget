@@ -677,22 +677,22 @@ export function fundGroups() {
 }
 
 /**
- * A fund group's place in the drawn order; past the end for one the column
- * does not carry.
+ * A fund group's place in the drawn order.
  *
  * ONE RULE FOR TWO CALLERS, which is the whole of what it is for. nodeRank and
- * buildLegend both order by this, and an unplaced group has to land in the
- * same place in each: last. Two spellings of the answer put it last in the
- * legend and first in the fund column, ahead of every group the palette knows,
- * on one chart. fisc-zojk.
+ * buildLegend both order by this and have to agree on every group; two
+ * spellings once put one group last in the legend and first in the fund
+ * column on the same chart. fisc-zojk.
+ *
+ * EVERY GROUP HAS A PLACE, and there is no fallback for one that does not:
+ * the order is built from the column's own node table, and the export holds
+ * every fund-group node to a place in it.
  *
  * @param {string} id
  * @returns {number}
  */
 export function fundGroupPlace(id) {
-  const groups = fundGroups();
-  const i = groups.findIndex((g) => g.id === id);
-  return i >= 0 ? i : groups.length;
+  return fundGroups().findIndex((g) => g.id === id);
 }
 
 /**

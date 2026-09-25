@@ -184,3 +184,53 @@ func TestEveryColumnIndexResolves(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder holds a column's
+// fund_groups to the node table it is built from: every node the column
+// marks role fund_group is in the list, and nothing else is.
+//
+// THE CLIENT ORDERS BY THIS LIST AND HAS NO FALLBACK. site/app.js's
+// fundGroupPlace answers the list's index and nothing else, so a group the
+// list omitted would sort by -1 in the fund column and the legend alike. The
+// case is refused here rather than survived there.
+func TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder(t *testing.T) {
+	built, err := buildAll(repoRootForTest(t))
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	columns, _, err := export.ColumnsOf(built.Projections, "fisc test")
+	if err != nil {
+		t.Fatalf("columnsOf: %v", err)
+	}
+	held := 0
+	for name, col := range columns {
+		listed := map[string]bool{}
+		for _, g := range col.FundGroups {
+			listed[g.ID] = true
+		}
+		nodes := map[string]bool{}
+		for _, n := range col.Nodes {
+			// The role vocabulary is schema/column.schema.json's; the schema
+			// test beside this one holds the string.
+			if n.Role != "fund_group" {
+				continue
+			}
+			nodes[n.ID] = true
+			if !listed[n.ID] {
+				t.Errorf("%s carries fund-group node %s and its fund_groups omit it; the client would place it nowhere", name, n.ID)
+			}
+			held++
+		}
+		for id := range listed {
+			if !nodes[id] {
+				t.Errorf("%s lists %s among its fund groups and carries no such node", name, id)
+			}
+		}
+	}
+	if held == 0 {
+		t.Fatal("no column carries a fund-group node, so this test holds nothing")
+	}
+	if !t.Failed() {
+		t.Logf("%d fund-group node(s) across %d column(s), each in its column's order", held, len(columns))
+	}
+}

@@ -282,15 +282,6 @@ describe("the spine's fund groups", () => {
     assert.equal(seventh.vars.at(-1), "--muted");
     assert.ok(seventh.vars.slice(0, -1).every((v) => v !== "--muted"));
   });
-  test("a fund group the served order omits is drawn last, in the column and in the legend alike", async (t) => {
-    const spine = await spineLegend();
-    const short = await spineLegend((c) => { c.fund_groups = c.fund_groups.filter((g) => g.id !== "fund-group/general"); });
-    t.diagnostic(`legend ${short.ids.map((id) => id.replace("fund-group/", "")).join(", ")}; column ${short.column.map((id) => id.replace("fund-group/", "")).join(", ")}`);
-    assert.equal(short.ids.length, spine.ids.length);
-    assert.equal(short.ids.at(-1), "fund-group/general");
-    assert.equal(short.column.at(-1), "fund-group/general");
-    assert.deepEqual(short.ids.slice(0, -1), spine.ids.filter((id) => id !== "fund-group/general"));
-  });
   test("a fund group is one by its role, even where its id is not under fund-group/", async (t) => {
     const spine = await spineLegend();
     const odd = await spineLegend((c) => withGroup(c, "fund-type/permanent", "Permanent Funds", true));
