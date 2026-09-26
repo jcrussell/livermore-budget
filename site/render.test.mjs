@@ -642,6 +642,23 @@ describe("the drill's drawing", () => {
     assert.equal(app.joinOr(["a", "b", "c"]), "a, b or c");
   });
 
+  test("on a chart of four columns the hint names an inner column by its place, not as the middle", async (t) => {
+    const w = CONFIG.wording;
+    const said = [];
+    for (const path of [["fund-group/general"], ["fund-group/general", "fund/100"]]) {
+      const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem, viewport: 2000 });
+      await opened(app, ...path);
+      const tiers = app.activeTiers();
+      const opening = new Set(app.projection.nodes.filter(app.drillable).map((n) => n.tier));
+      const hint = document.getElementById("chart-hint").textContent;
+      said.push(`${path[path.length - 1]} at {${tiers}} opens from {${[...opening]}}: "${hint}"`);
+      assert.equal(tiers.length, 4);
+      assert.deepEqual([...opening].map((tier) => tiers.indexOf(tier)), [2]);
+      assert.deepEqual(app.openableColumns(), [w.column_third]);
+      assert.ok(hint.includes(app.say("in_column", { columns: w.column_third })), hint);
+    }
+    t.diagnostic(said.join("; "));
+  });
   test("a partition ribbon says it is a cross-tab in its class, its two labels and the flow table", async (t) => {
     const step = stepByKey("object-category");
     const { app, document } = await bootedApp({ checkedStem: YEARS[0].stem });
@@ -957,6 +974,42 @@ describe("the drill's drawing", () => {
   }
 });
 
+describe("a gap mark", () => {
+  // Every gap Go answers, in whichever column answers one.
+  const gaps = rungsFixture().columns.flatMap((c) => c.rungs.flatMap((r) =>
+    (r.marks || []).filter((m) => m.role === "gap").map((m) => ({ stem: c.stem, path: r.path, mark: m }))));
+  test("the pinned answer carries a gap to drive", () => assert.ok(gaps.length > 0));
+  for (const { stem, path, mark } of gaps) {
+    test(`${stem} ${path.join(" > ")}: the gap and its ribbon cite Go's pages and say what they are, with no empty label`, async (t) => {
+      const { app, document } = await bootedApp({ checkedStem: stem });
+      await opened(app, ...path);
+      const chart = document.getElementById("chart");
+      const detail = document.getElementById("detail");
+      const node = marksIn(chart).find((m) => m.__data__.id === mark.id);
+      const ribbon = [...chart.querySelectorAll("path")].find((p) => p.__data__ && p.__data__.source &&
+        (p.__data__.source.id === mark.id || p.__data__.target.id === mark.id));
+      assert.ok(node && ribbon, `${mark.id} or its ribbon is not drawn`);
+      const pdfPages = () => [...detail.querySelectorAll("a")].map((a) => a.getAttribute("href") || "")
+        .filter((href) => href.includes("#page=")).map((href) => Number(href.split("#page=")[1]));
+      const want = mark.locators.flatMap((l) => l.pages);
+      app.pin(node.__data__);
+      const nodeCites = pdfPages();
+      app.pin(ribbon.__data__);
+      const ribbonCites = pdfPages();
+      const panel = detail.textContent;
+      const chips = [...detail.querySelectorAll(".chip")].map((c) => c.textContent);
+      const aria = ribbon.getAttribute("aria-label") || "";
+      t.diagnostic(`Go cites pp.${want.join(",")}; the node's panel pp.${nodeCites.join(",")}, the ribbon's pp.${ribbonCites.join(",")}; chips ${JSON.stringify(chips)}; aria "${aria}"`);
+      assert.deepEqual(nodeCites, want);
+      assert.deepEqual(ribbonCites, want);
+      assert.ok(!panel.includes("Facts:"), panel);
+      assert.ok(panel.includes(mark.source_note), panel);
+      assert.ok(chips.every((c) => c !== ""), JSON.stringify(chips));
+      assert.doesNotMatch(aria, /, ,/);
+    });
+  }
+});
+
 // Arms the committed columns never reach, driven over a clone of a pinned
 // column with one stated change, or a bare call where the arm is a pure
 // function. fisc-7477 measured them undriven.
@@ -977,6 +1030,44 @@ describe("arms no committed column reaches", () => {
     t.diagnostic(`${items.length} inferred entries; the orphan reads "${orphan ? orphan.textContent : "(none)"}"`);
     assert.ok(orphan, "the inferred list does not mention the flow");
     assert.ok(orphan.textContent.includes(from + " → " + to), orphan.textContent);
+  });
+  test("a derived flow between two published nodes wears the inference chip in its panel, and a published one does not", async (t) => {
+    const col = structuredClone(columnFixture(newest.fixture));
+    const printed = (l) => !l.derived && !col.nodes[l.from].derived && !col.nodes[l.to].derived;
+    const [link, other] = col.schedules.sankey.links.filter(printed);
+    assert.ok(link && other, "the pinned column has no two printed flows between published nodes");
+    link.derived = true;
+    const ids = (l) => [col.nodes[l.from].id, col.nodes[l.to].id].join(">");
+    const { app, document } = await bootedApp({ checkedStem: newest.stem, plan: { [newest.path]: { doc: col } } });
+    const ribbon = (l) => [...document.querySelectorAll("#chart path")].find((p) => p.__data__ && p.__data__.source &&
+      p.__data__.source.id + ">" + p.__data__.target.id === ids(l));
+    const chipsOf = (l) => {
+      const p = ribbon(l);
+      assert.ok(p, `${ids(l)} is not drawn`);
+      app.pin(p.__data__);
+      return [...document.querySelectorAll("#detail .chip")].map((c) => c.className + ":" + c.textContent);
+    };
+    const derived = chipsOf(link);
+    const published = chipsOf(other);
+    t.diagnostic(`derived ${ids(link)}: ${JSON.stringify(derived)}; printed ${ids(other)}: ${JSON.stringify(published)}`);
+    assert.ok(derived.includes("chip derived:\u25c7 our inference"), JSON.stringify(derived));
+    assert.ok(published.includes("chip:printed by the city"), JSON.stringify(published));
+  });
+  test("a derived node wears the inference chip in its panel, and a published one does not", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: newest.stem });
+    const nodes = marksIn(document.getElementById("chart")).map((m) => m.__data__);
+    const derived = nodes.find((n) => n.derived);
+    const published = nodes.find((n) => !n.derived);
+    assert.ok(derived && published, "the overview draws no derived node beside a published one");
+    const chipsOf = (n) => {
+      app.pin(n);
+      return [...document.querySelectorAll("#detail .chip")].map((c) => c.className + ":" + c.textContent);
+    };
+    const d = chipsOf(derived);
+    const p = chipsOf(published);
+    t.diagnostic(`${derived.id}: ${JSON.stringify(d)}; ${published.id}: ${JSON.stringify(p)}`);
+    assert.ok(d.includes("chip derived:\u25c7 our inference"), JSON.stringify(d));
+    assert.ok(p.includes("chip:printed by the city"), JSON.stringify(p));
   });
   test("a schedule carrying no caveats gives every mark none, and the page still draws", async (t) => {
     const col = structuredClone(columnFixture(newest.fixture));

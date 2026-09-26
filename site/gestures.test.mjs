@@ -299,7 +299,7 @@ for (const year of YEARS) {
 }
 
 describe("the kept flank", () => {
-  test("nothing on a kept flank opens, and a residual's declared endpoint does not either -- by two different gates", async (t) => {
+  test("nothing on a kept flank opens, and a residual's declared endpoint does not either", async (t) => {
     const { app, document } = await bootedApp();
     await opened(app, OPENS);
     const drawn = app.projection;
@@ -310,14 +310,14 @@ describe("the kept flank", () => {
     assert.ok(endpoint, "the window draws a carried endpoint");
     assert.ok(fund, "the window draws fund/100");
 
-    // THE TWO GATES: a kept mark is refused because no step names its chart
-    // (stepFor is null) and it is not a carried mark; a residual's endpoint is
-    // refused because it IS one.
+    // NO STEP NAMES EITHER on the shipped config; the carried gate is the
+    // next test's.
     assert.equal(category.carried_from, "sankey");
     assert.equal(app.isCarried(category.id), false);
     assert.equal(app.stepFor(category), null);
     assert.equal(app.drillable(category), false);
     assert.equal(app.isCarried(endpoint.id), true);
+    assert.equal(app.stepFor(endpoint), null);
     assert.equal(app.drillable(endpoint), false);
     assert.equal(Boolean(fund.carried_from), false);
     assert.equal(app.drillable(fund), true);
@@ -338,6 +338,28 @@ describe("the kept flank", () => {
     assert.equal(app.drilled.length, 2);
     t.diagnostic(`${category.id} is kept from "${category.carried_from}" and no step names its chart; ` +
       `${endpoint.id} is carried; the one mark that opens is ${fund.id}`);
+  });
+});
+
+describe("a carried mark under a step that would open it", () => {
+  test("a residual stays closed where a step names its tier, role and no opens set", async (t) => {
+    // The fund step with no role and no opens set, both of which the packager
+    // may ship: stepFor then answers for the residual beside fund/100.
+    const config = structuredClone(PAGE);
+    const at = config.steps.findIndex((s) => s.key === "fund");
+    delete config.steps[at].role;
+    for (const y of config.years) delete y.steps[at].opens;
+    const { app, document } = await bootedApp({ config });
+    await opened(app, OPENS);
+    const residual = app.projection.nodes.find((n) => app.isResidual(n.id));
+    assert.ok(residual, `${OPENS} draws no residual`);
+    const step = app.stepFor(residual);
+    t.diagnostic(`${residual.id} at tier ${residual.tier}: stepFor answers ${step ? step.key : "nothing"}, drillable ${app.drillable(residual)}`);
+    assert.ok(step, "no step answers for the residual, so the carried gate is not what refuses it");
+    assert.equal(app.drillable(residual), false);
+    fire(markOf(app, document, residual.id), "dblclick", { timeStamp: 1000 });
+    await settle();
+    assert.equal(topOf(app), OPENS);
   });
 });
 

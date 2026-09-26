@@ -331,6 +331,52 @@ describe("a year switch and an open drill", () => {
     assert.equal(outcome, "drew");
     assert.equal(app.drilled.length, 0);
   });
+  test("a year switch from a four-column rung says the width the overview draws", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 2000 });
+    const control = () => ["column-count", "column-more", "column-fewer"].map((id) => {
+      const el = document.getElementById(id);
+      return id === "column-count" ? el.textContent : (el.hasAttribute("disabled") ? "disabled" : "live");
+    }).join(" / ");
+    const overview = control();
+    await opened(app, "fund-group/general", "fund/100");
+    const drilled = control();
+    clickYear(document, "sankey-2027");
+    await settle();
+    const switched = control();
+    t.diagnostic(`count / more / fewer: overview "${overview}", fund/100 "${drilled}", after the switch "${switched}" over ${app.drawnColumns()} drawn column(s)`);
+    assert.equal(drilled, "4 columns / disabled / live");
+    assert.equal(app.drilled.length, 0);
+    assert.equal(switched, overview);
+    assert.equal(switched, app.drawnColumns() + " columns / disabled / disabled");
+  });
+  test("a year whose chart will not lay out leaves the page on the year it was, stack and all", async (t) => {
+    // A link whose target is past the end of the node table: selectSchedule
+    // takes it, and the lay-out throws on it.
+    const broken = structuredClone(columnFixture("fy2027-adopted"));
+    broken.schedules.sankey.links[0].to = broken.nodes.length;
+    const { app, document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": { doc: broken } } });
+    const cents = () => app.projection.links.reduce((a, l) => a + l.value_cents, 0);
+    const overview = cents();
+    await opened(app, "fund-group/general");
+    const title = document.title;
+    clickYear(document, "sankey-2027");
+    await settle();
+    const after = {
+      path: app.drilled.map((r) => r.id).join(" > "), title: document.title,
+      year: app.column.column.fiscal_year, crumb: !document.getElementById("breadcrumb").hasAttribute("hidden"),
+      banners: refusals(document).map((b) => b.textContent),
+    };
+    document.querySelector("#breadcrumb button").click();
+    await settle();
+    t.diagnostic(`after the refused switch: stack "${after.path}", title "${after.title}", column FY${after.year}, breadcrumb ${after.crumb ? "shown" : "hidden"}, banners ${JSON.stringify(after.banners)}; back to the overview drew ${cents()} cents against ${overview} at boot`);
+    assert.equal(after.banners.length, 1);
+    assert.equal(after.path, "fund-group/general");
+    assert.equal(after.title, title);
+    assert.equal(after.year, 2026);
+    assert.ok(after.crumb);
+    assert.equal(app.drilled.length, 0);
+    assert.equal(cents(), overview);
+  });
   test("a year switch drops the expansion with the rung it was made on", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
     const group = "fund-group/special-revenue";

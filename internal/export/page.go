@@ -649,6 +649,8 @@ type wording struct {
 	InColumn          string `json:"in_column"`
 	ColumnLeft        string `json:"column_left"`
 	ColumnMiddle      string `json:"column_middle"`
+	ColumnSecond      string `json:"column_second"`
+	ColumnThird       string `json:"column_third"`
 	ColumnRight       string `json:"column_right"`
 	GoBack            string `json:"go_back"`
 	BackControl       string `json:"back_control"`
@@ -674,6 +676,8 @@ func defaultWording() wording {
 		InColumn:          " in the {columns} column",
 		ColumnLeft:        "left-hand",
 		ColumnMiddle:      "middle",
+		ColumnSecond:      "second",
+		ColumnThird:       "third",
 		ColumnRight:       "right-hand",
 		GoBack:            "Use the breadcrumb above the chart, or press Escape, to go back.",
 		BackControl:       "\u2190 {back}",

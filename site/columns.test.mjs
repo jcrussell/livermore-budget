@@ -9,7 +9,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  bootedApp, opened, settle, pageFixture, rungsFixture, refusals,
+  bootedApp, opened, settle, pageFixture, rungsFixture, columnFixture, refusals,
 } from "./testlib.mjs";
 
 const disabled = (b) => !b || b.hasAttribute("disabled");
@@ -131,6 +131,31 @@ describe("the column control describes the chart on screen", () => {
     assert.ok(now.marks > was.marks);
     assert.equal(now.label, now.drawn + " columns");
     assert.ok(now.more);
+  });
+});
+
+describe("a budget whose chart will not draw", () => {
+  test("leaves the budget and the control on the chart that stayed", async (t) => {
+    // Links into one fourth-column node with their fact_ids removed: the
+    // three-column window never reads them, and the four-column one throws.
+    const broken = structuredClone(columnFixture("fy2026-adopted"));
+    const into = broken.nodes.findIndex((n) => n.id === "expenditure/engineering/wages-and-benefits");
+    const cut = broken.schedules["fund-flows"].links.filter((l) => l.to === into);
+    for (const l of cut) delete l.fact_ids;
+    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 800, plan: { "fy2026-adopted.json": { doc: broken } } });
+    await opened(app, "fund-group/general", "fund/100");
+    const nodes = app.projection.nodes.length;
+    document.getElementById("column-more").click();
+    await settle();
+    const label = document.getElementById("column-count").textContent;
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`${cut.length} link(s) cut; after + the budget is ${app.columnBudget}, the count reads "${label}", ${app.projection.nodes.length} node(s) drawn against ${nodes}, banners ${JSON.stringify(banners)}`);
+    assert.ok(cut.length > 0);
+    assert.equal(banners.length, 1);
+    assert.equal(app.projection.nodes.length, nodes);
+    assert.equal(app.columnBudget, 3);
+    assert.equal(app.drawnColumns(), 3);
+    assert.equal(label, "3 columns");
   });
 });
 
@@ -289,6 +314,46 @@ describe("a widened step", () => {
       assert.equal(at[3].drawn + held, at[4].drawn);
       legs.push(`note at 3: "${at[3].note}"`);
       t.diagnostic(legs.join("; "));
+    });
+  }
+  // THE FIGURES ARE GO'S AT EVERY WIDTH, formatted here without the page's
+  // formatter, against the cents the answer carries.
+  const dollars = (cents) => new Intl.NumberFormat("en-US",
+    { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(cents / 100);
+  for (const stem of ["sankey", "sankey-2027"]) {
+    test(`${stem}: the residual states Go's figures in and out whether or not its leaving legs are drawn`, async (t) => {
+      const mark = rungsFixture().columns.find((c) => c.stem === stem).rungs
+        .find((r) => r.path.join("|") === "fund-group/general").marks.find((m) => m.role === "residual");
+      assert.ok(mark.in_cents > 0 && mark.out_cents > 0, "the General Fund's residual is not answered both ways");
+      const said = {};
+      for (const budget of [3, 4]) {
+        const { app, document } = await bootedApp({ checkedStem: stem });
+        app.setColumnBudget(budget);
+        await opened(app, "fund-group/general");
+        const chart = document.getElementById("chart");
+        const g = [...chart.querySelectorAll("g.node")].find((m) => m.__data__.id === mark.id);
+        assert.ok(g, `${mark.id} is not drawn at ${budget} columns`);
+        app.showTip({ target: chart, clientX: 0, clientY: 0 }, g.__data__);
+        const tip = document.getElementById("tooltip");
+        app.pin(g.__data__);
+        const panel = document.getElementById("detail");
+        // THE NOTE DIFFERS BY WIDTH, saying which legs are held back; the
+        // figures do not.
+        const words = (e) => e.textContent.replace(g.__data__.source_note, "");
+        said[budget] = {
+          label: g.textContent, aria: g.getAttribute("aria-label"),
+          tipValue: tip.querySelector(".tip-value").textContent, tip: words(tip),
+          amount: panel.querySelector(".amount").textContent, panel: words(panel),
+          share: app.columnShare(g.__data__),
+        };
+      }
+      const flows = `${dollars(mark.in_cents)} in, ${dollars(mark.out_cents)} out`;
+      t.diagnostic(`Go answers ${mark.in_cents} in and ${mark.out_cents} out; at 3 columns "${said[3].aria}", ` +
+        `share "${said[3].share}"; at 4 "${said[4].aria}", share "${said[4].share}"`);
+      assert.deepEqual(said[3], said[4]);
+      assert.equal(said[3].tipValue, dollars(Math.max(mark.in_cents, mark.out_cents)));
+      assert.equal(said[3].amount, dollars(Math.max(mark.in_cents, mark.out_cents)));
+      for (const where of ["aria", "tip", "panel"]) assert.ok(said[3][where].includes(flows), said[3][where]);
     });
   }
   // A RESIDUAL WITH NO LEAVING FLOW HOLDS NOTHING BACK AT ANY WIDTH: the

@@ -390,6 +390,29 @@ for (const year of YEARS) {
       assert.ok(erafRow, "the flow table has no contra row for ERAF");
       assert.equal(erafRow.children[4].textContent, eraf.contra);
     });
+    test(`${year.label} category: a contra line's own mark does not say it is part reductions; the category it reduces does`, async (t) => {
+      const { app, document } = await onYear(year.stem);
+      await opened(app, PROPERTY);
+      const chart = document.getElementById("chart");
+      const SENTENCE = "of this category is printed as reductions";
+      const said = (id) => {
+        const m = [...chart.querySelectorAll("g.node")].find((g) => g.__data__ && g.__data__.id === id);
+        assert.ok(m, `${id} is not drawn`);
+        app.showTip({ target: chart, clientX: 0, clientY: 0 }, m.__data__);
+        const tip = document.getElementById("tooltip").textContent;
+        app.pin(m.__data__);
+        const panel = document.getElementById("detail").textContent;
+        return { contra: app.isContraNode(m.__data__), tip, panel, aria: m.getAttribute("aria-label") || "" };
+      };
+      const eraf = said("revenue-line/taxes/property/eraf");
+      const category = said(PROPERTY);
+      t.diagnostic(`ERAF (contra line: ${eraf.contra}) aria "${eraf.aria}"; ${PROPERTY} aria "${category.aria}"`);
+      assert.ok(eraf.contra);
+      for (const where of ["tip", "panel", "aria"]) {
+        assert.ok(!eraf[where].includes(SENTENCE), `ERAF's ${where}: ${eraf[where]}`);
+        assert.ok(category[where].includes(SENTENCE), `${PROPERTY}'s ${where}: ${category[where]}`);
+      }
+    });
   });
 
   describe(`${year.label}: the object-category windows`, () => {

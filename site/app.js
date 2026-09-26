@@ -47,6 +47,9 @@
  *   publishes: the cap folds a column's tail by VALUE, which nothing in the
  *   parent chain records, so caveatsFor cannot reach those ids by walking. It
  *   is optional because every real node lacks it.
+ * @property {number} [in_cents] a residual's or a gap's figure, as Go answered it
+ * @property {number} [out_cents]
+ * @property {FiscSource[]} [locators] a gap's citations, as Go answered them
  */
 
 /**
@@ -2579,7 +2582,8 @@ export function paintChartHint() {
 
 /**
  * Which columns of the chart on screen hold a node that opens -- "left-hand",
- * "middle", "right-hand", left to right -- or none when nothing here opens.
+ * "middle", "right-hand", left to right, and "second" and "third" between the
+ * edges of a wider chart -- or none when nothing here opens.
  *
  * IN THE DECLARED ORDER AND NOT IN TIER ORDER. layOut aligns a node on
  * indexOf(tier) in the set the document was shaped by (alignFor), so THAT list
@@ -2613,10 +2617,16 @@ export function openableColumns() {
   const tiers = activeTiers().filter((t) => drawn.has(t));
   if (tiers.length < 2) return [];
   const opening = new Set(projection.nodes.filter(drillable).map((n) => n.tier));
-  return tiers.map((tier, at) => {
+  const inner = tiers.length === 3 ? ["column_middle"] : ["column_second", "column_third"];
+  const names = tiers.map((tier, at) => {
     if (!opening.has(tier)) return "";
-    return say(at === 0 ? "column_left" : at === tiers.length - 1 ? "column_right" : "column_middle");
-  }).filter(Boolean);
+    const key = at === 0 ? "column_left" : at === tiers.length - 1 ? "column_right" : inner[at - 1];
+    return key ? say(key) : null;
+  });
+  // A COLUMN THE WORDING HAS NO NAME FOR DROPS THE CLAUSE, rather than leave a
+  // list that reads as every column that opens.
+  if (names.includes(null)) return [];
+  return /** @type {string[]} */ (names.filter(Boolean));
 }
 
 /**
@@ -3285,7 +3295,11 @@ export function isPartitionNode(d) {
 
 /**
  * The figure a laid mark prints: negative for a contra ribbon and for a line
- * whose every ribbon is one, and d3's value otherwise.
+ * whose every ribbon is one, Go's larger side for a residual, and d3's value
+ * otherwise.
+ *
+ * A RESIDUAL'S IS GO'S AT EVERY WIDTH: a budget that holds its leaving legs
+ * back draws a shorter mark, and the figure stays the one answered.
  * @param {LaidLink | LaidNode} d
  * @returns {number}
  */
@@ -3295,32 +3309,34 @@ export function markCents(d) {
     return l.contra ? -l.value_cents : l.value_cents;
   }
   const n = /** @type {LaidNode} */ (d);
+  if (isResidual(n.id)) return Math.max(n.in_cents || 0, n.out_cents || 0);
   return isContraNode(n) ? -n.value : n.value;
 }
 
 /**
- * What a mark's figure is net of, for a node with contra ribbons among others,
- * and "" for every other node.
+ * A residual's two figures, Go's, where money both enters and leaves it; ""
+ * for every other mark.
+ * @param {LaidNode} d
+ * @returns {string}
+ */
+export function residualFlows(d) {
+  if (!isResidual(d.id) || !d.in_cents || !d.out_cents) return "";
+  return fmt(d.in_cents) + " in, " + fmt(d.out_cents) + " out";
+}
+
+/**
+ * How much of a mark's figure is printed as reductions, for a node with contra
+ * ribbons among others, and "" for every other node -- a contra line's own
+ * mark included, whose figure is the reduction and is already signed.
  *
- * IT IS A SUM OVER PUBLISHED SUMMANDS AND NOT A DIFFERENCE, which is what
- * changed when the figure became the document's. The mark used to print the
- * gross of its reductions and this sentence computed the net beside it --
- * arithmetic the client had no business doing, on a figure no page printed.
- * The mark now prints the net Go named, so there is no difference left to
- * compute and what remains is the total the reader cannot otherwise see: the
- * reductions are drawn forward at their magnitude, so nothing on the chart
- * says how much of the arriving ribbon is subtraction.
- *
- * THE DIAMOND STAYS, and it travels with this sentence rather than sitting on
- * the mark. columnShare is the pattern: what is OURS is labelled where it is
- * said. The figure beside it is the city's and nodeFlags gives it no diamond,
- * deliberately -- every node figure on this chart is a sum of its ribbons, so
- * a diamond owed here would be owed on every mark.
+ * THE DIAMOND TRAVELS WITH THIS SENTENCE: the figure is the city's, the
+ * sentence is ours.
  *
  * @param {LaidNode} d
  * @returns {string}
  */
 export function contraNote(d) {
+  if (isContraNode(d)) return "";
   const arriving = d.targetLinks.reduce((sum, l) => sum + l.value, 0);
   const leaving = d.sourceLinks.reduce((sum, l) => sum + l.value, 0);
   const side = arriving >= leaving ? d.targetLinks : d.sourceLinks;
@@ -3772,6 +3788,8 @@ export function carryResidual(drawn, from, rung, mark) {
     constraint_tier: "",
     role: "residual",
     derived: true,
+    in_cents: mark.in_cents || 0,
+    out_cents: mark.out_cents || 0,
     rationale: mark.rationale,
     // THE NOTE IS THIS PAGE'S, AND IT IS THE ONE PIECE OF MARK PROSE THAT IS.
     // It renders the citations of the ribbons actually carried onto this mark,
@@ -3826,11 +3844,8 @@ export function carryResidual(drawn, from, rung, mark) {
  * has drifted from the one it was answered against is a fault the page cannot
  * see (fisc-ikp0).
  *
- * THE AMOUNT IS NOT DECLARED AND CANNOT BE. A gap is per fiscal column and a
- * step is declared once for every year the view lists, so what rides on the
- * declaration is the REASON -- which names its own column, because the same
- * sentence is shown under both years and one that did not would be wrong under
- * the other.
+ * THE AMOUNT IS NOT DECLARED AND CANNOT BE: a gap is per fiscal column and a
+ * step is declared once for every year, so only the REASON rides on it.
  *
  * THE FIGURE IS GO'S. export.GapOf takes the signed difference between what
  * the chart above sends into the opened node and what its own schedule draws
@@ -3875,6 +3890,7 @@ export function markGap(drawn, rung, mark) {
     derived: true,
     rationale: mark.rationale,
     source_note: mark.source_note,
+    locators: mark.locators,
   };
   const link = mark.in_cents
     ? { source: opened, target: id, value_cents: mark.in_cents }
@@ -3882,7 +3898,7 @@ export function markGap(drawn, rung, mark) {
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat([node]),
     links: drawn.links.concat([Object.assign({
-      kind: "", transfer_id: "", fact_ids: [], locators: [], derived: true,
+      kind: "", transfer_id: "", fact_ids: [], locators: mark.locators, derived: true,
     }, link)]),
   });
 }
@@ -4868,8 +4884,9 @@ export const CARRIED_CHIP = "\u25c7 re-pointed by us";
  * @returns {string}
  */
 export function linkDescription(d) {
-  return d.source.label + " to " + d.target.label + ", " + fmtSigned(markCents(d)) + ", " +
-    (/** @type {Record<string,string>} */ (KIND_LABEL)[d.kind] || d.kind) +
+  const kind = /** @type {Record<string,string>} */ (KIND_LABEL)[d.kind] || d.kind;
+  return d.source.label + " to " + d.target.label + ", " + fmtSigned(markCents(d)) +
+    (kind ? ", " + kind : "") +
     (d.contra ? ", " + d.contra : "") +
     (d.partition ? ", " + PARTITION_NOTE : "") +
     ", " + provenanceOf(d.derived, Boolean(d.source.derived || d.target.derived));
@@ -4906,7 +4923,8 @@ export function nodeDescription(d) {
   // class on the ribbon and the chip in the tooltip both need eyes; a mark
   // whose every flow is a partition announces the same qualification here, in
   // the words the chips stand for.
-  return d.label + ", total " + fmtSigned(markCents(d)) +
+  const flows = residualFlows(d);
+  return d.label + (flows ? ", " + flows : ", total " + fmtSigned(markCents(d))) +
     (d.derived ? ", inferred by us" : ", printed by the city") +
     (isPartitionNode(d) ? ", " + PARTITION_NOTE : "") +
     (note ? ", " + note.replace(/^\u25c7 /, "") : "") + what;
@@ -5057,19 +5075,20 @@ export function carriedSource(stem) {
  * city printed; a share is not, and the word "of" carries that -- "8.4% of this
  * column" is self-evidently a ratio rather than a line item, in a way that a
  * bare "8.4%" beside a dollar figure would not be. It is computed from the
- * DRAWN values, so on an opened node it is a share of that node's own total,
- * which is what the reader is looking at.
+ * DRAWN values -- a residual's figure being markCents's -- so on an opened node
+ * it is a share of that node's own total, which is what the reader is looking at.
  *
  * @param {LaidNode} d
  * @returns {string}
  */
 export function columnShare(d) {
-  if (!d.value) return "";
+  const size = (/** @type {LaidNode} */ n) => (isResidual(n.id) ? markCents(n) : n.value);
+  if (!size(d)) return "";
   let total = 0;
   let siblings = 0;
   for (const other of laidNodes) {
     if (other.layer === d.layer) {
-      total += other.value;
+      total += size(other);
       siblings++;
     }
   }
@@ -5079,7 +5098,7 @@ export function columnShare(d) {
   // construction rather than by measurement. A share says how a column divides,
   // and an undivided one has nothing to say.
   if (!total || siblings < 2) return "";
-  const pct = (100 * d.value) / total;
+  const pct = (100 * size(d)) / total;
   // A CEILING AS WELL AS A FLOOR. toFixed(1) rounds, so a mark that is 99.9943%
   // of a divided column renders "100.0" -- the exact chip the siblings guard
   // above exists to prevent, reached by arithmetic instead of by topology.
@@ -5181,6 +5200,8 @@ export function showTip(event, d) {
         ? "\u26a0 1 caveat" : "\u26a0 " + cavs.length + " caveats"));
     }
     tip.append(meta);
+    const flows = residualFlows(n);
+    if (flows) tip.append(h("div", "tip-meta", flows));
     if (n.rationale) tip.append(h("div", "tip-meta", n.rationale));
     const note = contraNote(n);
     if (note) tip.append(h("div", "tip-meta", note));
@@ -5232,7 +5253,8 @@ export function pin(d) {
   const chips = h("div", "prov");
   if (asLink) {
     const l = /** @type {LaidLink} */ (d);
-    chips.append(h("span", "chip", /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind));
+    const kind = /** @type {Record<string,string>} */ (KIND_LABEL)[l.kind] || l.kind;
+    if (kind) chips.append(h("span", "chip", kind));
     const lent = Boolean(l.source.derived || l.target.derived);
     chips.append(h("span", l.derived || lent ? "chip derived" : "chip",
       l.derived ? "◇ our inference" : lent ? CARRIED_CHIP : "printed by the city"));
@@ -5241,8 +5263,11 @@ export function pin(d) {
     panel.append(chips);
     if (l.contra) panel.append(h("p", "why", l.contra));
     if (l.partition) panel.append(h("p", "why", PARTITION_NOTE));
-    const ids = h("div", "facts", "Facts: " + l.fact_ids.join(" "));
-    panel.append(ids);
+    // A DERIVED RIBBON WITH NO FACT OF ITS OWN says what it is in its derived
+    // end's words, which are Go's.
+    const end = l.source.derived ? l.source : l.target;
+    if (l.fact_ids.length) panel.append(h("div", "facts", "Facts: " + l.fact_ids.join(" ")));
+    else if (l.derived && end.source_note) panel.append(h("p", "subtle", end.source_note));
   } else {
     const n = /** @type {LaidNode} */ (d);
     chips.append(h("span", "chip", n.role.replace(/_/g, " ")));
@@ -5251,6 +5276,8 @@ export function pin(d) {
     const share = columnShare(n);
     if (share) chips.append(h("span", "chip derived", share));
     panel.append(chips);
+    const flows = residualFlows(n);
+    if (flows) panel.append(h("p", "subtle", flows));
     if (n.rationale) panel.append(h("p", "why", n.rationale));
     if (n.source_note) panel.append(h("p", "subtle", n.source_note));
     const note = contraNote(n);
@@ -5305,7 +5332,8 @@ export function pin(d) {
     : mark && isResidual(mark.id) ? docAt(drilled.length - 1)
       : null;
   const ofDocument = (of && of.metadata && of.metadata.sources) || projection.metadata.sources;
-  for (const c of citations(asLink ? /** @type {LaidLink} */ (d).locators : ofDocument)) {
+  const cited = asLink ? /** @type {LaidLink} */ (d).locators : (mark && mark.locators) || ofDocument;
+  for (const c of citations(cited)) {
     prov.append(link(c.label, c.href));
   }
   panel.append(prov);
@@ -5645,11 +5673,13 @@ export function syncColumns() {
  */
 export function applyColumns(redraw) {
   const before = drawnColumns();
+  const budget = columnBudget;
   const moved = setColumnBudget(columnOverride === null ? viewportColumns() : columnOverride);
+  // A REFUSED REDRAW LEAVES THE OLD CHART, so the budget goes back with it.
+  if (moved && redraw && projection && drawnColumns() !== before && !redrawStack(drilled)) {
+    columnBudget = budget;
+  }
   syncColumns();
-  if (!moved || !redraw || !projection) return;
-  if (drawnColumns() === before) return;
-  redrawStack(drilled);
 }
 
 /**
@@ -6089,40 +6119,25 @@ export async function showYear(year) {
   // other schedule is selected by the step that opens into it, never fetched.
   const doc = selectSchedule(loaded, CONFIG.primary);
   if (!doc) return FAILED;
-  column = loaded;
 
-  // LAY OUT BEFORE MUTATING ANYTHING. Every throw left in the draw is in here
-  // -- a link naming a node the document does not carry is the realistic one --
-  // and while this ran at the END of the repaint, such a throw left the page
-  // showing the new year's words over the old year's chart (fisc-bsg). Doing it
-  // first means a failure propagates to the change handler's .catch with the
-  // page still wholly the year it was already on.
-  // THE FOLD IS PART OF THE LAY-OUT AND SITS INSIDE THE SAME GUARANTEE. It
-  // throws on a node it cannot place, which is a fault in this page's tier set
-  // rather than in the document, and it must throw here -- before the repaint --
-  // for the same reason layOut does.
+  // SWAPPED BECAUSE shapeFor READS THEM, and swapped back on a throw so the
+  // page is still wholly the year it was on. The stack goes with the year: a
+  // rung opened in one year may name a node the other does not carry.
+  const was = { column, fetched, drilled };
+  column = loaded;
   fetched = doc;
-  // A DRILL BELONGS TO THE YEAR IT WAS MADE IN, and this reset has to happen
-  // BEFORE the shaping rather than with the pin and the isolation below it. A
-  // fund group opened in FY2025-26 may not exist in FY2023-24 -- that column
-  // carries a seventh, permanent (fisc-zojk) -- and shapeFor would filter the
-  // new document to a subtree of nothing and hand d3-sankey an empty graph.
-  // The pin and the isolation are cleared after the draw because they only
-  // decorate it; this decides what is drawn.
-  //
-  // THE WHOLE STACK, AND THE STEP DOCUMENTS WITH IT. A step's file was fetched
-  // for the year it was opened in, and the next drill fetches it again for
-  // this one rather than draw the year the reader left one rung down.
   drilled = [];
-  const drawn = shapeFor(doc);
-  const laid = layOut(drawn);
-  // WITH THE SHAPE AND THE LAY-OUT, and inside the same guarantee. Building a
-  // row reads every link's fact ids and locators; done during the repaint it
-  // was the one step of a draw that could throw AFTER paintYearWords had
-  // written the new year's words, which is the fisc-bsg split. Done here it
-  // propagates to the caller's .catch with the page still wholly the year it
-  // was on.
-  const rows = tableRows(drawn);
+  let drawn;
+  let laid;
+  let rows;
+  try {
+    drawn = shapeFor(doc);
+    laid = layOut(drawn);
+    rows = tableRows(drawn);
+  } catch (e) {
+    ({ column, fetched, drilled } = was);
+    throw e;
+  }
 
   // THE FOLDED DOCUMENT IS THE ONE THE PAGE DESCRIBES, not the one it fetched.
   // The legend, the flow table, the inferred list, the tooltips and the detail
@@ -6147,6 +6162,7 @@ export async function showYear(year) {
 
   paintYearWords(year);
   paintBreadcrumb();
+  syncColumns();
   buildLegend();
   paintChartHint();
   buildDerivedList();

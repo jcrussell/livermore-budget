@@ -438,6 +438,8 @@
         "in_column",
         "column_left",
         "column_middle",
+        "column_second",
+        "column_third",
         "column_right",
         "go_back",
         "back_control"
@@ -517,7 +519,17 @@
         "column_middle": {
           "type": "string",
           "minLength": 1,
-          "description": "A middle column's name."
+          "description": "The middle column's name, on a chart of three."
+        },
+        "column_second": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The second column's name, on a chart of more than three."
+        },
+        "column_third": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The third column's name, on a chart of more than three."
         },
         "column_right": {
           "type": "string",

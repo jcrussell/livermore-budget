@@ -1041,18 +1041,16 @@ const OVER_GUTTER = {
     "revenue-line/taxes/sales/prop-172-public-sfty-augmnt",
     "revenue-line/use-of-money-and-property/multi-service-center-rentals",
   ],
-  // TWO OF THIS COLUMN'S MARKS ARE DERIVED AND NEITHER IS IN THE OTHER'S.
   // gap/expenditure/services-and-supplies is the declared 250,000 shortfall
   // p0067 prints in FY2026-27 and not in FY2025-26, and it is the widest label
-  // the tree draws anywhere; residual/fund-group/general carries a different
-  // endpoint's words in each column.
+  // the tree draws anywhere.
   "FY 2026-27": [
     "department/innovation-and-economic-development",
     "dept/administrative-services", "dept/community-development-admin",
     "dept/innovation-and-economic-devel", "dept/public-works-administration",
     "fund/280", "fund/282", "fund/283", "fund/320", "fund/513", "fund/551",
     "fund/552", "fund/623", "fund/730",
-    "gap/expenditure/services-and-supplies", "residual/fund-group/general",
+    "gap/expenditure/services-and-supplies",
     "revenue-line/charges-for-services/administrative-cost-recovery",
     "revenue-line/charges-for-services/engineering-inspection-fees",
     "revenue-line/charges-for-services/fire-plan-check-and-inspct-fee",
