@@ -166,8 +166,53 @@
                           "type": "string",
                           "minLength": 1
                         }
+                      },
+                      "locators": {
+                        "description": "A gap's citations: every page a ribbon touching the opened node was read from, in the chart above's document and in the drawn one -- the pages of the two totals its rationale subtracts.",
+                        "type": "array",
+                        "minItems": 1,
+                        "items": {
+                          "$ref": "https://jcrussell.github.io/livermore-budget/schema/locator.schema.json"
+                        }
                       }
-                    }
+                    },
+                    "allOf": [
+                      {
+                        "description": "A gap states what its figure is and cites the pages of both totals.",
+                        "if": {
+                          "properties": {
+                            "role": {
+                              "const": "gap"
+                            }
+                          }
+                        },
+                        "then": {
+                          "required": [
+                            "locators"
+                          ],
+                          "properties": {
+                            "source_note": {
+                              "minLength": 1
+                            }
+                          }
+                        }
+                      },
+                      {
+                        "description": "A residual names the endpoints whose flow it carries.",
+                        "if": {
+                          "properties": {
+                            "role": {
+                              "const": "residual"
+                            }
+                          }
+                        },
+                        "then": {
+                          "required": [
+                            "ends"
+                          ]
+                        }
+                      }
+                    ]
                   }
                 }
               }

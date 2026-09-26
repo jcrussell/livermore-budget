@@ -1,6 +1,7 @@
 package export
 
 import (
+	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
@@ -79,6 +80,8 @@ type Mark struct {
 	Label      string
 	Rationale  string
 	SourceNote string
+	// Locators is a gap's citations: the pages of the two totals it subtracts.
+	Locators []Locator
 }
 
 // Carry is what one mark adds to the drawn chart and what it takes out: the
@@ -99,27 +102,51 @@ type Carry struct {
 	Splice []int
 }
 
+// Gap licenses one gap mark: the column it may stand in, the signed cents it
+// comes to there -- what the chart above sends into the opened node less what
+// the drawn document draws out of it -- and why the two documents differ, as
+// terminated sentences.
+type Gap struct {
+	FiscalYear int
+	Basis      string
+	Cents      int64
+	Reason     string
+}
+
+// Gaps is one node's licences, one per column it differs in. On the wire it
+// is the reasons alone: the client reads only that a gap is declared.
+type Gaps []Gap
+
+// MarshalJSON writes the licences' reasons as one string.
+func (g Gaps) MarshalJSON() ([]byte, error) {
+	reasons := make([]string, 0, len(g))
+	for _, l := range g {
+		reasons = append(reasons, l.Reason)
+	}
+	return json.Marshal(strings.Join(reasons, " "))
+}
+
 // GapOf is markGap's arithmetic: what the drawn chart's ribbons send into
 // opened, less what they send out of it, stated as one mark where the step
-// declares a reason for it. ok is false where the step declares no gap at
-// all or the centre balances; a non-zero difference on a node the
-// declaration does not name is an error, which is the client's throw and
-// the only teeth a declaration has.
+// licenses exactly that difference in this column. ok is false where the step
+// declares no gap at all or the centre balances unlicensed; any other
+// difference -- unlicensed, licensed in another column, or at another figure
+// -- is an error, and so is a licence for a centre that balances.
 //
 // SIGNED, OVER THE DRAWN CHART AS IT STANDS. The sums are of ValueCents as
 // the fold left them, reductions negative, which is what the client reads
 // before markContra makes them positive; after that pass a centre taking a
 // category's gross against the spine's net reads as a shortfall of twice
-// the reductions. An absolute-valued pre-fold total would be the wrong input
-// here for both of those reasons, which is why this reads the chart the rung
-// actually drew.
+// the reductions.
 //
 // THE SHORT SIDE DECIDES WHERE THE MARK GOES: too little leaving stands at
 // the last of tiers, too little arriving at the first, and the one ribbon
-// runs from opened to the mark or from the mark to opened accordingly. An
-// empty declaration is no declaration, which is what the client is handed:
-// the step's map is omitted from the JSON when empty.
-func GapOf(drawn Graph, opened string, tiers []int, gaps map[string]string) (Carry, bool, error) {
+// runs from opened to the mark or from the mark to opened accordingly.
+//
+// The mark cites every page a ribbon touching opened was read from, in from
+// (the chart above's document) and in doc (the drawn one): the pages of the
+// two totals its rationale subtracts.
+func GapOf(drawn, from, doc Graph, col ColumnKey, opened string, tiers []int, gaps map[string]Gaps) (Carry, bool, error) {
 	if len(gaps) == 0 {
 		return Carry{}, false, nil
 	}
@@ -136,42 +163,58 @@ func GapOf(drawn Graph, opened string, tiers []int, gaps map[string]string) (Car
 		}
 	}
 	gap := into - outOf
-	if gap == 0 {
-		return Carry{}, false, nil
+	where := fmt.Sprintf("FY%d %s", col.FiscalYear, col.Basis)
+	var licence *Gap
+	for _, l := range gaps[opened] {
+		if l.FiscalYear == col.FiscalYear && l.Basis == col.Basis && l.Reason != "" {
+			licence = &l
+		}
 	}
-	if gaps[opened] == "" {
-		return Carry{}, false, fmt.Errorf("the chart above sends %d into %q and this one draws %d of it, a difference of %d cents that no declaration on this step accounts for; the two documents have drifted apart", into, opened, outOf, abs(gap))
+	switch {
+	case gap == 0 && licence == nil:
+		return Carry{}, false, nil
+	case gap == 0:
+		return Carry{}, false, fmt.Errorf("the step declares a gap of %d cents on %q in %s and the chart balances there", licence.Cents, opened, where)
+	case licence == nil:
+		return Carry{}, false, fmt.Errorf("the chart above sends %d into %q and this one draws %d of it, a difference of %d cents that no declaration on this step accounts for in %s; the two documents have drifted apart", into, opened, outOf, abs(gap), where)
+	case licence.Cents != gap:
+		return Carry{}, false, fmt.Errorf("the step declares a gap of %d cents on %q in %s and the charts differ there by %d", licence.Cents, opened, where, gap)
 	}
 	if len(tiers) == 0 {
 		return Carry{}, false, fmt.Errorf("the step draws no tiers, so the gap on %q has no column to stand in", opened)
 	}
-	centre := ""
+	cites, err := citedAround(opened, from, doc)
+	if err != nil {
+		return Carry{}, false, err
+	}
+	if len(cites) == 0 {
+		return Carry{}, false, fmt.Errorf("no ribbon touching %q cites a page, so the gap on it could cite none", opened)
+	}
+	centre := opened
 	for _, n := range drawn.Nodes {
-		if n.ID == opened {
+		if n.ID == opened && n.Label != "" {
 			centre = n.Label
 		}
 	}
-	if centre == "" {
-		centre = opened
+	lead := "In " + col.Label + " " + col.Basis + ", the chart above puts " + dollars(into) + " through " +
+		centre + " and the schedule this chart is drawn from accounts for " + dollars(outOf) +
+		" of it, " + dollars(gap) + " less."
+	if gap < 0 {
+		lead = "In " + col.Label + " " + col.Basis + ", the schedule this chart is drawn from accounts for " +
+			dollars(outOf) + " through " + centre + ", " + dollars(-gap) + " more than the " + dollars(into) +
+			" the chart above puts through it."
 	}
 	m := Mark{
 		ID:    GapID(opened),
 		Role:  RoleGap,
 		Label: "Difference between the two schedules",
-		Rationale: "The chart above puts " + dollars(into) + " through " + centre +
-			" and the schedule this chart is drawn from accounts for " + dollars(outOf) +
-			" of it. " + gaps[opened] + " This mark is what is left, drawn so that the " +
-			"ribbons and the node agree; no page prints it as a figure of its own.",
-		// WHAT fisc verify ACTUALLY HOLDS, which is the reason this sentence is
-		// Go's rather than the client's. It used to say both totals are figures
-		// `fisc verify` holds to the pages the city printed, full stop -- and
-		// the difference between them reads as covered by that too. It is not:
-		// no check holds this difference to the reason declared above it
-		// (fisc-4lsx). The claim now stops where the checking does.
+		Rationale: lead + " " + licence.Reason + " This mark is that " + dollars(abs(gap)) +
+			", drawn so that the ribbons and the node agree; no page prints it as a figure of its own.",
 		SourceNote: "Derived, not published: one document's total for this cell less the " +
-			"other's, taken from the two charts on screen. Each of those totals is built " +
-			"from figures `fisc verify` ties to the pages the city printed; the difference " +
-			"between them is not itself a figure any page prints or any check holds.",
+			"other's. Each total is built from figures `fisc verify` ties to the pages the city " +
+			"printed, and the difference is the one declared for this column; no page prints " +
+			"it as a figure of its own.",
+		Locators: cites,
 	}
 	var link GraphLink
 	if gap > 0 {
@@ -183,6 +226,39 @@ func GapOf(drawn Graph, opened string, tiers []int, gaps map[string]string) (Car
 	}
 	node := GraphNode{ID: m.ID, Tier: m.Tier, Role: RoleGap, Parent: "", Derived: true}
 	return Carry{Mark: m, Nodes: []GraphNode{node}, Links: []GraphLink{link}}, true, nil
+}
+
+// citedAround is every page cited by a ribbon of gs with an end at opened or
+// inside it, merged per document, documents and pages sorted.
+func citedAround(opened string, gs ...Graph) ([]Locator, error) {
+	pages := map[string]map[int]bool{}
+	for _, g := range gs {
+		chains, err := ancestry(g, indexNodes(g))
+		if err != nil {
+			return nil, err
+		}
+		inside := func(id string) bool {
+			return slices.ContainsFunc(chains[id], func(a GraphNode) bool { return a.ID == opened })
+		}
+		for _, l := range g.Links {
+			if !inside(l.Source) && !inside(l.Target) {
+				continue
+			}
+			for _, loc := range l.Locators {
+				if pages[loc.DocID] == nil {
+					pages[loc.DocID] = map[int]bool{}
+				}
+				for _, p := range loc.Pages {
+					pages[loc.DocID][p] = true
+				}
+			}
+		}
+	}
+	var out []Locator
+	for _, d := range slices.Sorted(maps.Keys(pages)) {
+		out = append(out, Locator{DocID: d, Pages: slices.Sorted(maps.Keys(pages[d]))})
+	}
+	return out, nil
 }
 
 // ResidualOf is carryResidual's rule: the flows the chart above prints for

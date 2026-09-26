@@ -42,40 +42,36 @@ import "maps"
 // for, and a test pins that the two tables name the same nodes: an endpoint is
 // a flow that sits outside the hierarchy, and sitting outside the hierarchy is
 // exactly what makes it undecomposable by a schedule that IS the hierarchy.
-// The money each reason quotes is what cuts-tie-along-the-lattice compares --
-// the fund-level cuts print no fund-balance row and no transfer out by
-// declaration (structure.BudgetBookCuts), and the general group's transfer in
-// is a declared exception. Deriving this set from those declarations rather
-// than restating it beside them is fisc-8wn7 too.
+// The reasons quote no figure, because one reason is shown under every
+// column; the ribbons carry the money. What cuts-tie-along-the-lattice
+// compares is the claim under them -- the fund-level cuts print no
+// fund-balance row and no transfer out by declaration
+// (structure.BudgetBookCuts), and the general group's transfer in is a
+// declared exception. Deriving this set from those declarations rather than
+// restating it beside them is fisc-8wn7 too.
 var residualNodes = map[string]string{
 	"fund-balance/draw": "a negative change in working capital, inferred from pp.66-67's " +
 		"Change in Working Capital row and drawn into the group. pp.127-140 print no " +
-		"fund-balance row at all, so no fund receives it: measured, general 1,034,154, " +
-		"capital 2,500,213 and internal-service 6,147,533 in FY2026 adopted, and every " +
-		"fund-level inflow short by exactly that",
+		"fund-balance row at all, so no fund receives it",
 
 	"fund-balance/contribution": "the mirror of the draw: a positive change in working " +
 		"capital, drawn out of the group to the same inferred node. No fund pays it " +
-		"for the same reason no fund receives the draw. It carries nothing on FY2026's " +
-		"decomposed group, where general's change is a draw, and 2,351,098 on FY2027's, " +
-		"where it turns positive -- a set measured on one column alone would have " +
-		"missed it",
+		"for the same reason no fund receives the draw",
 
 	"fund-balance/reserve-increase": "a printed row of pp.66-67 that the city books against " +
-		"the group as a whole: general's 4,699,425 in FY2026 adopted has no division " +
-		"and no object category on pp.167-170, which decompose expenditure and nothing " +
-		"else",
+		"the group as a whole: it has no division and no object category on pp.167-170, " +
+		"which decompose expenditure and nothing else",
 
-	"transfers/in": "pp.66-67 print Transfers In per fund group and pp.127-140 print it per " +
-		"fund for eight funds in three groups, to the cent. The general group has no " +
-		"such fund, so its 480,400 is residual and the other groups' is decomposed " +
-		"whole -- which is why the rule is per group, and that cell is the one " +
-		"exception the revenue-detail cut declares against the spine",
+	"transfers/in": "pp.66-67 print Transfers In per fund group, and pp.127-140 print it per " +
+		"fund to the cent everywhere but the General Fund, which they print no Transfers In " +
+		"row for. The general group's transfer in is therefore carried here whole; p.76 " +
+		"prints it per fund, and the transfers chart draws it from there",
 
-	"transfers/out": "pp.66-67 print Transfers Out per fund group and no fund-level " +
-		"schedule prints it from any fund: pp.167-170 decompose the General Fund's " +
-		"expenditure and stop there, so general's 10,037,797 in FY2026 adopted leaves " +
-		"the group beside its divisions rather than through one",
+	"transfers/out": "pp.66-67 print Transfers Out per fund group and p.76 prints it per paying " +
+		"fund, which the transfers chart draws. The schedules this chart is drawn from carry " +
+		"none of it: pp.167-170 decompose the General Fund's expenditure and print no " +
+		"transfer out, so the group's transfer out leaves beside its divisions rather than " +
+		"through one",
 }
 
 // ResidualNodes is the declared residual set, for the seam that carries it to

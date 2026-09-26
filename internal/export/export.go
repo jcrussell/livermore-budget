@@ -660,10 +660,9 @@ type DrillStep struct {
 	// far side reads it. Nothing does.
 	ResidualGrain string `json:"-"`
 	// Gaps is the set of nodes this step OPENS whose total the document it
-	// draws does not reach, each with the declared reason the two documents
-	// print one cell at two figures: node id to reason. The client draws the
-	// shortfall as one derived node beside the opened node's parts, in that
-	// reason's words.
+	// draws does not reach, each with its licences: node id to the columns it
+	// differs in, by how much, and why. The client draws the shortfall as one
+	// derived node beside the opened node's parts, in the words GapOf composes.
 	//
 	// NOT [DrillStep.Residual], AND THE KEY IS WHAT SEPARATES THEM. A residual
 	// key is an ENDPOINT of the chart above whose flow into or out of the
@@ -674,14 +673,10 @@ type DrillStep struct {
 	// the node the reader clicked as carried from the chart above, which it is
 	// not.
 	//
-	// THE REASON IS DECLARED AND THE AMOUNT IS NOT. A gap is per fiscal column
-	// -- Budget Book pp.85-125's services-and-supplies falls 250,000 short of
-	// p0067's in FY2026-27 and ties to the cent in FY2025-26 -- while a step is
-	// declared once for every year the view lists, so a declared figure would
-	// need a year axis this map cannot have. The client takes the difference
-	// between the two sides of the node it drew and the reason names the column
-	// it is of; GapOf takes the same difference off the drawn graph at export
-	// time and refuses one no declaration here accounts for.
+	// EACH LICENCE NAMES ITS COLUMN AND ITS CENTS, because a gap is per fiscal
+	// column while a step is declared once for every year the view lists.
+	// GapOf takes the difference off the drawn graph at export time and
+	// refuses one no licence names at that column and that figure.
 	//
 	// A STEP DECLARING ONE CLAIMS EVERY OTHER NODE IT OPENS BALANCES. The
 	// client refuses a shortfall on a node named nowhere here rather than
@@ -690,7 +685,7 @@ type DrillStep struct {
 	// deliberately unbalanced and says so through [DrillStep.Residual] instead.
 	//
 	// ONLY ON A STEP THAT SWITCHES DOCUMENT, for Residual's reason.
-	Gaps map[string]string `json:"gaps,omitempty"`
+	Gaps map[string]Gaps `json:"gaps,omitempty"`
 }
 
 // SideSource is [DrillStep.Side] for a step opening the node its chart's links
@@ -1531,12 +1526,12 @@ func (v View) validateSteps(built map[string][]byte, ix ColumnIndex) error {
 			}
 		}
 		for _, id := range slices.Sorted(maps.Keys(s.Gaps)) {
-			if id == "" || s.Gaps[id] == "" {
+			if id == "" || len(s.Gaps[id]) == 0 || slices.ContainsFunc(s.Gaps[id], func(g Gap) bool { return g.Reason == "" }) {
 				return fmt.Errorf(
-					"view %q's step %d declares a gap on node %q with reason %q; the only "+
-						"thing separating a declared gap from two documents drifting apart "+
+					"view %q's step %d declares a gap on node %q with no reason in some column; the "+
+						"only thing separating a declared gap from two documents drifting apart "+
 						"is the reason the mark states, and an empty one draws the drift "+
-						"unexplained", v.Path, i, id, s.Gaps[id])
+						"unexplained", v.Path, i, id)
 			}
 		}
 		// EVERY YEAR THE VIEW LISTS OPENS INTO SOMETHING, asked of the column

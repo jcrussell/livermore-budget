@@ -36,7 +36,7 @@ func TestTheSchemaStatesWhatTheRungAnswerCarries(t *testing.T) {
 		t.Fatalf("%s is not valid JSON: %v", schema.Rungs, err)
 	}
 
-	stated, err := schema.Names(schema.Rungs)
+	stated, err := schema.NamesDeep(schema.Rungs)
 	if err != nil {
 		t.Fatalf("read %s: %v", schema.Rungs, err)
 	}

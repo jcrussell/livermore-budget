@@ -153,12 +153,14 @@ func StructNames(t reflect.Type, prefix string) []string {
 		if f.Type == reflect.TypeOf(json.RawMessage(nil)) {
 			continue
 		}
+		// A TYPE THAT MARSHALS ITSELF IS A LEAF, as encoding/json treats it.
+		marshals := func(t reflect.Type) bool { return t.Implements(reflect.TypeFor[json.Marshaler]()) }
 		ft := f.Type
-		for ft.Kind() == reflect.Slice || ft.Kind() == reflect.Pointer ||
-			ft.Kind() == reflect.Map {
+		for !marshals(ft) && (ft.Kind() == reflect.Slice || ft.Kind() == reflect.Pointer ||
+			ft.Kind() == reflect.Map) {
 			ft = ft.Elem()
 		}
-		if ft.Kind() == reflect.Struct {
+		if ft.Kind() == reflect.Struct && !marshals(ft) {
 			out = append(out, StructNames(ft, name)...)
 		}
 	}

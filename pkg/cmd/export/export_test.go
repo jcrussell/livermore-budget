@@ -1531,7 +1531,7 @@ func TestViewsOpensOnTheSpineAndGivesYearsToItAlone(t *testing.T) {
 			// over: cuts-tie-along-the-lattice pins both sides of every
 			// entry this set is built from, and a literal here would be a
 			// second spelling nothing holds to it.
-			Gaps: check.SpendingGaps(),
+			Gaps: spendingGaps(),
 			Description: "The fund groups that pay for this object category are on the " +
 				"left; the divisions that spend it are on the right \u2014 Budget Book " +
 				"pp.85-125's rows for this category, every division in the city that " +
@@ -2367,8 +2367,83 @@ func fixtureIsTheDocumentExported(t *testing.T, stem, fixture string) {
 		strings.Split(string(stamp.ReplaceAll(want, blank)), "\n"),
 		strings.Split(string(stamp.ReplaceAll(got, blank)), "\n"),
 	); diff != "" {
-		t.Errorf("testdata/%s is no longer what fisc export writes at %s.json "+
-			"(-fixture +built); re-capture it with `fisc export` and restore the "+
-			"generated_by line:\n%s", fixture, stem, diff)
+		// fisc export folds the document into its column and writes no file of
+		// its own, so the built bytes are written here with the fixture's stamp.
+		rebuilt := filepath.Join(root, "bin", strings.TrimSuffix(fixture, ".json")+"-rebuilt.json")
+		if err := os.MkdirAll(filepath.Dir(rebuilt), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(rebuilt, stamp.ReplaceAll(got, stamp.Find(want)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Errorf("testdata/%s is no longer what buildProjections builds at %s (-fixture +built); "+
+			"regenerate with `cp -f %s testdata/%s` and read the diff:\n%s", fixture, stem, rebuilt, fixture, diff)
+	}
+}
+
+// TestEveryServedStampIsTheExportsOwn is one real export's build stamps held
+// to each other: every page's exported_by and every served JSON's top-level
+// generated_by. The client refuses a rung answer or a column whose stamp is
+// not its page's, so one written from a second call that disagreed would be
+// a site refusing itself on first load.
+func TestEveryServedStampIsTheExportsOwn(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	opts, _, _, _ := testOptions(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = buildAll
+	if runErr := exportRun(opts); runErr != nil {
+		t.Fatalf("exportRun: %v", runErr)
+	}
+	exported := regexp.MustCompile(`"exported_by":"([^"]*)"`)
+	stamps := map[string]string{}
+	walkErr := filepath.WalkDir(opts.OutputDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(opts.OutputDir, path)
+		switch filepath.Ext(path) {
+		case ".html":
+			for _, m := range exported.FindAllSubmatch(b, -1) {
+				stamps[rel+" exported_by"] = string(m[1])
+			}
+		case ".json":
+			var top map[string]json.RawMessage
+			if bytes.HasPrefix(bytes.TrimSpace(b), []byte("[")) {
+				return nil
+			}
+			if err := json.Unmarshal(b, &top); err != nil {
+				return fmt.Errorf("%s: %w", rel, err)
+			}
+			if top["generated_by"] == nil {
+				return nil
+			}
+			var s string
+			if err := json.Unmarshal(top["generated_by"], &s); err != nil {
+				return fmt.Errorf("%s: generated_by: %w", rel, err)
+			}
+			stamps[rel+" generated_by"] = s
+		}
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatal(walkErr)
+	}
+	want := stamps["index.html exported_by"]
+	for _, must := range []string{"index.html exported_by", rungsServedPath + " generated_by", "fy2026-adopted.json generated_by"} {
+		if _, ok := stamps[must]; !ok {
+			t.Fatalf("the export wrote no %s, so the comparison below is missing the stamp it exists for", must)
+		}
+	}
+	for where, got := range stamps {
+		if got != want {
+			t.Errorf("%s is %q and index.html's exported_by is %q", where, got, want)
+		}
 	}
 }

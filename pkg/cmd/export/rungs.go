@@ -96,10 +96,8 @@ type rung struct {
 // gap markGap states between what the chart above sends into the opened
 // node and what the drawn document breaks it into, and the residual
 // carryResidual stands beside the opened node's parts. Go computes which
-// mark exists, the tier it stands at and the cents that arrive at it and
-// leave it, and NOT its prose: the rationale and the source note are built
-// from labels and locators the walk does not decode, and the client's tests
-// hold those.
+// mark exists, the tier it stands at, the cents that arrive at it and leave
+// it, and its words; the client draws them as answered.
 //
 // ON THE RUNG AND NOT ON A COLUMN, because both marks index the step's
 // declared tiers and not the columns a budget left drawn, so a mark can
@@ -126,9 +124,10 @@ type drawnMark struct {
 	// export.Mark rather than copied field by field -- so a field added there
 	// and forgotten here does not compile. That conversion is the only thing
 	// holding the two in step and it is worth more than a copy would be.
-	Label      string `json:"label"`
-	Rationale  string `json:"rationale"`
-	SourceNote string `json:"source_note"`
+	Label      string           `json:"label"`
+	Rationale  string           `json:"rationale"`
+	SourceNote string           `json:"source_note"`
+	Locators   []export.Locator `json:"locators,omitempty"`
 }
 
 // drawnTier is one column of one rung. ONE LIST IN COLUMN ORDER, rather than
@@ -366,11 +365,17 @@ func (w rungWalker) walk(chart, from export.Graph, openedKey string, path []stri
 		if err != nil {
 			return fmt.Errorf("step %q: %s: %w", s.Key, stem, err)
 		}
+		var col export.ColumnKey
+		if len(s.Gaps) > 0 {
+			if col, err = export.ColumnKeyOf(raw); err != nil {
+				return fmt.Errorf("step %q declares a gap and %s: %w", s.Key, stem, err)
+			}
+		}
 		for _, n := range chart.Nodes {
 			if n.Tier != s.From || (s.Role != "" && n.Role != s.Role) || !slices.Contains(opens, n.ID) {
 				continue
 			}
-			r, next, err := w.answer(g, chart, from, s, n.ID, nearIsSource, outward)
+			r, next, err := w.answer(g, chart, from, col, s, n.ID, nearIsSource, outward)
 			if err != nil {
 				return fmt.Errorf("%s > %s: %w", strings.Join(path, " > "), n.ID, err)
 			}
@@ -399,7 +404,7 @@ func (w rungWalker) walk(chart, from export.Graph, openedKey string, path []stri
 // rung's own flank; on the committed spine it is always this rung's centre,
 // which is why a walk carrying only the fresh half would have gone
 // unnoticed.
-func (rungWalker) answer(g, screen, from export.Graph, s export.DrillStep, opened string, nearIsSource bool, outward []int) (rung, export.Graph, error) {
+func (rungWalker) answer(g, screen, from export.Graph, col export.ColumnKey, s export.DrillStep, opened string, nearIsSource bool, outward []int) (rung, export.Graph, error) {
 	centre := len(s.Keep) > 0
 	// THE DOCUMENT IS ASKED FOR EVERY COLUMN THIS HALF DECLARES, CENTRE
 	// INCLUDED, which is what windowFor hands sideOf; a step with no centre is
@@ -564,7 +569,7 @@ func (rungWalker) answer(g, screen, from export.Graph, s export.DrillStep, opene
 		marks = append(marks, drawnMark(c.Mark))
 		drawn = next.Graph()
 	}
-	if c, ok, err := export.GapOf(drawn, opened, s.Tiers, s.Gaps); err != nil {
+	if c, ok, err := export.GapOf(drawn, from, g, col, opened, s.Tiers, s.Gaps); err != nil {
 		return rung{}, export.Graph{}, fmt.Errorf("step %q opens %q: %w", s.Key, opened, err)
 	} else if ok {
 		if next, err = carry(drawn, c); err != nil {

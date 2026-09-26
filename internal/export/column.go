@@ -3,6 +3,7 @@ package export
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"path"
 	"regexp"
 	"slices"
@@ -190,6 +191,21 @@ func (ix ColumnIndex) PublishedPath(stem string) string {
 func (ix ColumnIndex) Column(stem string) (string, bool) {
 	col, ok := ix.columns[stem]
 	return col, ok
+}
+
+// ColumnKeyOf is the column a built document states itself of, refusing one
+// that states no fiscal year, basis or label.
+func ColumnKeyOf(raw []byte) (ColumnKey, error) {
+	var d decoded
+	if err := json.Unmarshal(raw, &d); err != nil {
+		return ColumnKey{}, fmt.Errorf("decode column: %w", err)
+	}
+	m := d.Metadata
+	if m.FiscalYear == 0 || m.Basis == "" || m.FiscalYearLabel == "" {
+		return ColumnKey{}, fmt.Errorf("the document states no whole column: fiscal year %d, basis %q, label %q",
+			m.FiscalYear, m.Basis, m.FiscalYearLabel)
+	}
+	return ColumnKey{FiscalYear: m.FiscalYear, Basis: m.Basis, Label: m.FiscalYearLabel}, nil
 }
 
 // ColumnsOf folds every published document into one document per column.
@@ -437,7 +453,18 @@ func fundGroupsOf(nodes []ColumnNode) ([]ColumnFundGroup, error) {
 
 // encodeColumn renders one column and refuses bytes that do not match the
 // published schema.
+//
+// A DERIVED NODE WITHOUT ITS WORDS IS REFUSED HERE and not by the schema,
+// which cannot join a schedule's node to the table entry saying it is derived.
 func encodeColumn(doc ColumnDoc) ([]byte, error) {
+	for _, key := range slices.Sorted(maps.Keys(doc.Schedules)) {
+		for _, sn := range doc.Schedules[key].Nodes {
+			if sn.Node < len(doc.Nodes) && doc.Nodes[sn.Node].Derived && (sn.Rationale == "" || sn.SourceNote == "") {
+				return nil, fmt.Errorf("the column for FY%d %s: schedule %s draws derived node %q without both a rationale and a source note",
+					doc.Column.FiscalYear, doc.Column.Basis, key, doc.Nodes[sn.Node].ID)
+			}
+		}
+	}
 	b, err := json.MarshalIndent(doc, "", " ")
 	if err != nil {
 		return nil, fmt.Errorf("encode column: %w", err)
@@ -460,9 +487,10 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 }
 
 // StepStems is the document each declared step draws for one year, in
-// declaration order: the step's own schedule where it names one, the step
-// before it's where it names none. The first step draws `year` itself if it
-// names no schedule of its own.
+// declaration order: the step's own schedule where it names one, and where it
+// names none the document of the chart its After opens from -- `year` itself
+// for "" -- which is validateSteps' resolution and site/app.js's
+// stepDocument's. Parents drawing two documents are refused, as there.
 //
 // ONE SPELLING, TWO CALLERS -- stepDocuments here and the rung walk in
 // pkg/cmd/export. They were two, and they disagreed: where a step's year
@@ -482,26 +510,48 @@ func encodeColumn(doc ColumnDoc) ([]byte, error) {
 // document stating no fiscal year is still walkable.
 func StepStems(steps []DrillStep, year string, ix ColumnIndex) ([]string, error) {
 	out := make([]string, len(steps))
-	prev := year
+	index := make(map[string]int, len(steps))
 	for i, s := range steps {
-		if s.Projection != "" {
-			column, folded := ix.Column(year)
-			if !folded {
-				return nil, fmt.Errorf(
-					"step %d opens into schedule %q and year %q folded into no column, so "+
-						"there is nothing to select that schedule out of",
-					i, s.Projection, year)
+		index[s.Key] = i
+	}
+	for i, s := range steps {
+		if s.Projection == "" {
+			doc := ""
+			for _, a := range s.After {
+				parent := year
+				if a != "" {
+					j, ok := index[a]
+					if !ok || j >= i {
+						return nil, fmt.Errorf("step %d opens from %q, which names no earlier step", i, a)
+					}
+					parent = out[j]
+				}
+				if doc != "" && parent != doc {
+					return nil, fmt.Errorf("step %d names no schedule and opens from charts drawing %q and %q", i, doc, parent)
+				}
+				doc = parent
 			}
-			stem, ok := ix.Stem(column, s.Projection)
-			if !ok {
-				return nil, fmt.Errorf(
-					"step %d opens into schedule %q and column %s (year %q) carries no such "+
-						"schedule; a reader on that year would open a node into nothing",
-					i, s.Projection, column, year)
+			if doc == "" {
+				return nil, fmt.Errorf("step %d names no schedule and opens from no chart", i)
 			}
-			prev = stem
+			out[i] = doc
+			continue
 		}
-		out[i] = prev
+		column, folded := ix.Column(year)
+		if !folded {
+			return nil, fmt.Errorf(
+				"step %d opens into schedule %q and year %q folded into no column, so "+
+					"there is nothing to select that schedule out of",
+				i, s.Projection, year)
+		}
+		stem, ok := ix.Stem(column, s.Projection)
+		if !ok {
+			return nil, fmt.Errorf(
+				"step %d opens into schedule %q and column %s (year %q) carries no such "+
+					"schedule; a reader on that year would open a node into nothing",
+				i, s.Projection, column, year)
+		}
+		out[i] = stem
 	}
 	return out, nil
 }

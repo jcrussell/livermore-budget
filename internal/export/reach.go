@@ -44,6 +44,15 @@ type GraphLink struct {
 	// it off a page; the fold may not merge a printed ribbon with an inferred
 	// one, and validateSteps refuses a cap under which it would.
 	Derived bool `json:"derived"`
+	// Locators is what the document cites for the ribbon. A fold and a
+	// [Chart] drop it: a merged ribbon's citations are no one's.
+	Locators []Locator `json:"locators,omitempty"`
+}
+
+// Locator is which pages of which source document a figure was read from.
+type Locator struct {
+	DocID string `json:"doc_id"`
+	Pages []int  `json:"pages"`
 }
 
 // DecodeGraph reads a projection document down to its [Graph], and refuses
@@ -76,9 +85,8 @@ type Reach struct {
 	Drawn Graph
 }
 
-// maxHops is how far up a parent chain a placement walks before giving up,
-// which is the client's own bound; node-hierarchy-well-formed refuses a cycle
-// Go-side, so on a verified store the bound is never the reason a walk stops.
+// maxHops is the longest parent chain a placement walks, which is the
+// client's own bound; ancestry refuses a longer one rather than truncating it.
 const maxHops = 9
 
 // ReachOf is the client's filter, fold and prune as one rule: what site/app.js
@@ -246,15 +254,18 @@ func drawnSet(tiers []int) map[int]bool {
 	return drawn
 }
 
-// ancestry is the parent chain of every node up to maxHops, the node itself
-// first, or an error on a parent the document does not carry, which is the
-// one shape the client refuses to answer "no" for.
+// ancestry is the parent chain of every node, the node itself first, or an
+// error on a parent the document does not carry or a chain that does not end
+// within maxHops -- a cycle, which a truncated chain would answer as a root.
 func ancestry(g Graph, byID map[string]GraphNode) (map[string][]GraphNode, error) {
 	chains := make(map[string][]GraphNode, len(g.Nodes))
 	for _, n := range g.Nodes {
 		var chain []GraphNode
-		at, ok := n, true
-		for hops := 0; ok && hops < maxHops; hops++ {
+		at := n
+		for {
+			if len(chain) == maxHops {
+				return nil, fmt.Errorf("node %q's parent chain does not reach a root within %d hops", n.ID, maxHops)
+			}
 			chain = append(chain, at)
 			if at.Parent == "" {
 				break
@@ -263,7 +274,7 @@ func ancestry(g Graph, byID map[string]GraphNode) (map[string][]GraphNode, error
 			if !found {
 				return nil, fmt.Errorf("node %q names parent %q, which the document does not carry", at.ID, at.Parent)
 			}
-			at, ok = up, true
+			at = up
 		}
 		chains[n.ID] = chain
 	}

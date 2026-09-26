@@ -471,10 +471,10 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 		s := []export.DrillStep{
 			{Key: "a", After: []string{""}, From: 2, Projection: "fund-flows",
 				Tiers: []int{0, 3, 4}, Back: "Back", Noun: "thing", Tail: "funds", Description: "One."},
-			{Key: "b", After: []string{""}, From: 0, Tiers: []int{0, 3},
+			{Key: "b", After: []string{""}, From: 0, Side: export.SideSource, Tiers: []int{0, 2},
 				Back: "Back", Noun: "thing", Tail: "lines", Description: "Two."},
-			{Key: "c", After: []string{"a", "b"}, From: 3, Projection: "fund-flows",
-				Tiers: []int{3, 4}, Back: "Back", Noun: "thing", Tail: "divisions", Description: "Three."},
+			{Key: "c", After: []string{"a", "b"}, From: 0, Side: export.SideSource, Projection: "fund-flows",
+				Tiers: []int{0, 3}, Back: "Back", Noun: "thing", Tail: "divisions", Description: "Three."},
 		}
 		breaks(s)
 		return s
@@ -505,7 +505,7 @@ func TestAStepIsPlacedAgainstEveryChartItOpensFrom(t *testing.T) {
 		{"the second parent cannot reach it", func(s []export.DrillStep) {
 			// Tier 4 is a column of "a" and not of "b".
 			s[2].From, s[2].Tiers = 4, []int{4, 5}
-		}, "step \"b\" draws tiers [0 3]"},
+		}, "step \"b\" draws tiers [0 2]"},
 		{"the two parents draw different documents", func(s []export.DrillStep) {
 			s[2].Projection = ""
 		}, "needs ONE document before it"},
@@ -1208,15 +1208,15 @@ func TestWriteRefusesAnUnrenderableViewSet(t *testing.T) {
 		// separating a declared gap from a defect.
 		{"a gap on a step that switches no document", []export.View{ok,
 			chainView(func(v *export.View) {
-				v.Steps[1].Gaps = map[string]string{"expenditure/services-and-supplies": "a reason"}
+				v.Steps[1].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "A reason."}}}
 			})},
 			"a step that switches no document has only one"},
 		{"a gap with no reason", []export.View{ok,
 			chartView(func(v *export.View) {
 				v.Steps[0].Projection = "sankey"
-				v.Steps[0].Gaps = map[string]string{"expenditure/services-and-supplies": ""}
+				v.Steps[0].Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2027, Basis: "adopted", Cents: 1}}}
 			})},
-			"declares a gap on node \"expenditure/services-and-supplies\" with reason \"\""},
+			"declares a gap on node \"expenditure/services-and-supplies\" with no reason in some column"},
 		{"a cap on a tier the step does not draw", []export.View{ok,
 			chartView(func(v *export.View) { v.Steps[0].Caps = []export.TierCap{{Tier: 4, Cap: 8}} })},
 			"the cap would fold nothing, in silence"},

@@ -383,6 +383,20 @@
                       }
                     }
                   }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "source_note"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "source_note": {
+                        "minLength": 1
+                      }
+                    }
+                  }
                 }
               ]
             }

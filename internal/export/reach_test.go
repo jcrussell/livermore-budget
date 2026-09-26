@@ -95,3 +95,17 @@ func TestReachOfCarriesTheFoldedChart(t *testing.T) {
 		t.Errorf("ReachOf (-want +got):\n%s", diff)
 	}
 }
+
+// TestFoldRefusesAParentCycle is a two-node parent ring. Truncated at the
+// hop bound, each chain reads as ending at a root, and Fold draws the ring's
+// ribbon folded to whichever node the bound happened to stop on.
+func TestFoldRefusesAParentCycle(t *testing.T) {
+	g := Graph{
+		Nodes: []GraphNode{{ID: "a", Tier: 0}, {ID: "x", Tier: 1, Parent: "y"}, {ID: "y", Tier: 1, Parent: "x"}},
+		Links: []GraphLink{{Source: "a", Target: "x", ValueCents: 1}},
+	}
+	_, err := Fold(g, []int{0, 1})
+	if err == nil || !strings.Contains(err.Error(), "does not reach a root within") {
+		t.Fatalf("Fold over a parent cycle: err = %v", err)
+	}
+}

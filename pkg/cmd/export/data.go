@@ -521,6 +521,17 @@ func assertPublishedReachable(vs []export.View, built map[string][]byte) error {
 	return nil
 }
 
+// spendingGaps is check.SpendingGaps as the step declares it.
+func spendingGaps() map[string]export.Gaps {
+	out := map[string]export.Gaps{}
+	for id, gaps := range check.SpendingGaps() {
+		for _, g := range gaps {
+			out[id] = append(out[id], export.Gap(g))
+		}
+	}
+	return out
+}
+
 // stepByKey is the declared step with this key, and whether one was declared.
 //
 // A STEP IS NAMED AND NOT COUNTED, which is fisc-7e1g's rule arriving on the
@@ -997,7 +1008,7 @@ func views(built result) []export.View {
 				Noun:       "object category",
 				Back:       "All object categories",
 				Tail:       "divisions",
-				Gaps:       check.SpendingGaps(),
+				Gaps:       spendingGaps(),
 				Description: "The fund groups that pay for this object category are on the " +
 					"left; the divisions that spend it are on the right \u2014 Budget Book " +
 					"pp.85-125's rows for this category, every division in the city that " +

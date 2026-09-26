@@ -637,7 +637,14 @@ func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
 				from = froms[above]
 			}
 			opened, drawing := r.Path[len(r.Path)-1], of(stems[si])
-			draws, marks, next, err := replayRung(s, drawing, screen, from, opened)
+			var ck export.ColumnKey
+			if len(s.Gaps) > 0 {
+				if ck, err = export.ColumnKeyOf(built.Projections[stems[si]]); err != nil {
+					t.Errorf("%s %s: %v", col.Stem, key, err)
+					continue
+				}
+			}
+			draws, marks, next, err := replayRung(s, drawing, screen, from, ck, opened)
 			if err != nil {
 				t.Errorf("%s %s: %v", col.Stem, key, err)
 				continue
@@ -709,7 +716,7 @@ func TestTheRungArtifactIsWhatTheReachPrimitivesAnswer(t *testing.T) {
 // failed the walk before an artifact existed to replay, and those shapes
 // have refusal tests of their own; what is repeated here is only what gets
 // written down.
-func replayRung(s export.DrillStep, drawing, screen, from export.Graph, opened string) ([]drawnTier, []drawnMark, export.Graph, error) {
+func replayRung(s export.DrillStep, drawing, screen, from export.Graph, ck export.ColumnKey, opened string) ([]drawnTier, []drawnMark, export.Graph, error) {
 	nearIsSource, outward, centre := s.Side == export.SideSource, slices.Clone(s.Tiers), len(s.Keep) > 0
 	var keptTiers []int
 	if centre {
@@ -812,7 +819,7 @@ func replayRung(s export.DrillStep, drawing, screen, from export.Graph, opened s
 		}
 		marks, drawn = append(marks, drawnMark(c.Mark)), window.Graph()
 	}
-	if c, ok, err := export.GapOf(drawn, opened, s.Tiers, s.Gaps); err != nil {
+	if c, ok, err := export.GapOf(drawn, from, drawing, ck, opened, s.Tiers, s.Gaps); err != nil {
 		return nil, nil, export.Graph{}, fmt.Errorf("the gap of %q: %w", opened, err)
 	} else if ok {
 		if window, err = spliceMark(drawn, c); err != nil {
@@ -902,12 +909,12 @@ func TestRungsAnswerAColumnTheDocumentDrawsNothingIn(t *testing.T) {
 	}
 }
 
-// TestRungsRefuseADriftTheStepDoesNotDeclare is the refusal a declaration
+// TestRungsRefuseADriftTheStepDoesNotDeclare is the refusals a declaration
 // can provoke, inert on the committed declarations and shown firing on a
-// one-field change: the object-category step declaring a gap on another
-// node and none on services-and-supplies, while p0067 and pp.85-125 still
-// print FY2026-27's cell 250,000 dollars apart. The client meets the same
-// drift as a throw in a browser; this is where it fails the build.
+// one-field change: the object-category step licensing a gap on another node
+// alone, or services-and-supplies' gap in the column that ties, or at another
+// figure, while p.67 and pp.85-125 still print FY 2026-27's cell 250,000
+// dollars apart.
 //
 // DROPPING THE WHOLE MAP IS NOT THE MUTATION, measured: a step that declares
 // no gap at all makes no claim that its nodes balance, so rungsOf builds
@@ -933,9 +940,19 @@ func TestRungsRefuseADriftTheStepDoesNotDeclare(t *testing.T) {
 		want       string
 	}{
 		{"a gap declared on another node alone", "object-category", func(s *export.DrillStep) {
-			s.Gaps = map[string]string{"expenditure/debt-services": "a reason for a node that ties"}
+			s.Gaps = map[string]export.Gaps{"expenditure/debt-services": {{FiscalYear: 1999, Basis: "adopted", Cents: 1, Reason: "A reason for a column not drawn."}}}
 		},
-			`opens "expenditure/services-and-supplies": the chart above sends 13050208700 into "expenditure/services-and-supplies" and this one draws 13025208700 of it, a difference of 25000000 cents that no declaration on this step accounts for`},
+			`opens "expenditure/services-and-supplies": the chart above sends 13050208700 into "expenditure/services-and-supplies" and this one draws 13025208700 of it, a difference of 25000000 cents that no declaration on this step accounts for in FY2027 adopted`},
+		{"the gap licensed in the other column", "object-category", func(s *export.DrillStep) {
+			g := s.Gaps["expenditure/services-and-supplies"]
+			s.Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: 2026, Basis: g[0].Basis, Cents: g[0].Cents, Reason: g[0].Reason}}}
+		},
+			`declares a gap of 25000000 cents on "expenditure/services-and-supplies" in FY2026 adopted and the chart balances there`},
+		{"the gap licensed at another figure", "object-category", func(s *export.DrillStep) {
+			g := s.Gaps["expenditure/services-and-supplies"]
+			s.Gaps = map[string]export.Gaps{"expenditure/services-and-supplies": {{FiscalYear: g[0].FiscalYear, Basis: g[0].Basis, Cents: g[0].Cents + 1, Reason: g[0].Reason}}}
+		},
+			`declares a gap of 25000001 cents on "expenditure/services-and-supplies" in FY2027 adopted and the charts differ there by 25000000`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1386,5 +1403,56 @@ func TestARungsAmountOfZeroIsRefusedAtTheWrite(t *testing.T) {
 		if !strings.Contains(err.Error(), "amounts") {
 			t.Errorf("the refusal of an amount of %d does not name amounts: %v", bad, err)
 		}
+	}
+}
+
+// TestAMarkWithoutItsWordsIsRefusedAtTheWrite holds the schema's per-role
+// requirements on a mark: a gap states what its figure is and cites the pages
+// of both totals, and a residual names the endpoints it carries. Each row
+// blanks one field of one mark of the built answer, which encodes whole.
+func TestAMarkWithoutItsWordsIsRefusedAtTheWrite(t *testing.T) {
+	built, err := buildAll(repoRootForTest(t))
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	spine, err := spineView(built)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, role string
+		blank      func(*drawnMark)
+	}{
+		{"a gap with no source note", export.RoleGap, func(m *drawnMark) { m.SourceNote = "" }},
+		{"a gap citing no page", export.RoleGap, func(m *drawnMark) { m.Locators = nil }},
+		{"a gap with no rationale", export.RoleGap, func(m *drawnMark) { m.Rationale = "" }},
+		{"a residual naming no endpoint", export.RoleResidual, func(m *drawnMark) { m.Ends = nil }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rungs, err := rungsOf(built.Projections, spine)
+			if err != nil {
+				t.Fatalf("rungsOf: %v", err)
+			}
+			if _, err = encodeRungs(rungs); err != nil {
+				t.Fatalf("the built answer does not encode: %v", err)
+			}
+			blanked := false
+			for _, col := range rungs.Columns {
+				for _, r := range col.Rungs {
+					for i := range r.Marks {
+						if !blanked && r.Marks[i].Role == tc.role {
+							tc.blank(&r.Marks[i])
+							blanked = true
+						}
+					}
+				}
+			}
+			if !blanked {
+				t.Fatalf("no rung answers a %s mark, so nothing was blanked", tc.role)
+			}
+			if _, err = encodeRungs(rungs); err == nil || !strings.Contains(err.Error(), "does not match") {
+				t.Errorf("encodeRungs with %s: err = %v, want the schema's refusal", tc.name, err)
+			}
+		})
 	}
 }

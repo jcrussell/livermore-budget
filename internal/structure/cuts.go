@@ -358,10 +358,10 @@ func BudgetBookExceptions() []Exception {
 			Printed: "neither side, nor the difference: this corpus prints no citywide object-category total, so " +
 				"both sums are arithmetic and the entry is grounded by differing by exactly what the fund-group " +
 				"cut, whose figures are printed, holds apart",
-			Reason: "pp.85-125's division rows are an independent witness rather than a sixth copy of the same " +
-				"schedule: they decompose the money by department, division and object with no fund axis, and " +
-				"they still put p0067's 250,000 in services-and-supplies in FY2026-27 and in none of the other " +
-				"seven cells, which tie to the cent",
+			Reason: "Budget Book pp.85-125 print this spending by department, division and object with no " +
+				"fund at all, and they differ from p.67 in this object category and in no other. p.67's " +
+				"Internal Service Funds column is the one cell in the book that disagrees with the rest of " +
+				"it, and it is drawn as printed because the corrected figure is printed nowhere",
 			Bead: "fisc-av0w",
 		},
 	}

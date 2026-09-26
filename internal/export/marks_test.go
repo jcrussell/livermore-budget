@@ -13,8 +13,9 @@ import (
 // each row a branch of it: no declaration draws nothing; a centre that
 // balances draws nothing; too little leaving stands at the last tier with
 // the ribbon running out of the centre, too little arriving at the first
-// with the ribbon running in; and a difference the declaration does not
-// name is refused rather than drawn.
+// with the ribbon running in; and a difference no licence names at this
+// column and this figure is refused rather than drawn, as is a licence on a
+// centre that balances.
 //
 // THE SUMS ARE SIGNED. The fourth row's centre takes 100 and sends 60
 // forward and 40 as a reduction, which is a chart that balances as printed
@@ -23,36 +24,45 @@ import (
 func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 	chart := func(links ...GraphLink) Graph {
 		return Graph{
-			Nodes: []GraphNode{{ID: "a", Tier: 0}, {ID: "c", Tier: 1}, {ID: "p", Tier: 2}, {ID: "q", Tier: 2}},
+			Nodes: []GraphNode{{ID: "a", Tier: 0}, {ID: "c", Tier: 1, Label: "Centre"}, {ID: "p", Tier: 2}, {ID: "q", Tier: 2}},
 			Links: links,
 		}
 	}
-	tiers := []int{0, 1, 2}
-	declared := map[string]string{"c": "declared reason"}
+	// The two documents the totals are read from, each citing its own page.
+	cite := func(page int) []Locator { return []Locator{{DocID: "d", Pages: []int{page}}} }
+	from := Graph{Nodes: []GraphNode{{ID: "a"}, {ID: "c"}, {ID: "z"}}, Links: []GraphLink{
+		{Source: "a", Target: "c", Locators: cite(67)}, {Source: "a", Target: "z", Locators: cite(1)}}}
+	doc := Graph{Nodes: []GraphNode{{ID: "c"}, {ID: "p"}}, Links: []GraphLink{{Source: "c", Target: "p", Locators: cite(90)}}}
+	col := ColumnKey{FiscalYear: 2027, Basis: "adopted", Label: "FY 2026-27"}
+	licence := func(cents int64) map[string]Gaps {
+		return map[string]Gaps{"c": {{FiscalYear: 2026, Basis: "adopted", Cents: 5, Reason: "Another column's reason."},
+			{FiscalYear: 2027, Basis: "adopted", Cents: cents, Reason: "Declared reason."}}}
+	}
+	short := chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 60})
 	cases := []struct {
 		name  string
 		drawn Graph
-		gaps  map[string]string
+		gaps  map[string]Gaps
 		want  Carry
 		ok    bool
 		err   string
 	}{
 		{
 			name:  "no declaration at all",
-			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 60}),
+			drawn: short,
 			gaps:  nil,
 		},
 		{
 			name:  "a centre that balances",
 			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 60}, GraphLink{Source: "c", Target: "q", ValueCents: 40}),
-			gaps:  declared,
+			gaps:  map[string]Gaps{"q": {{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "Another node's reason."}}},
 		},
 		{
 			name:  "too little leaving",
-			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 60}),
-			gaps:  declared,
+			drawn: short,
+			gaps:  licence(40),
 			want: Carry{
-				Mark:  Mark{ID: "gap/c", Role: RoleGap, Tier: 2, InCents: 40},
+				Mark:  Mark{ID: "gap/c", Role: RoleGap, Tier: 2, InCents: 40, Locators: []Locator{{DocID: "d", Pages: []int{67, 90}}}},
 				Nodes: []GraphNode{{ID: "gap/c", Tier: 2, Role: RoleGap, Derived: true}},
 				Links: []GraphLink{{Source: "c", Target: "gap/c", ValueCents: 40}},
 			},
@@ -61,14 +71,14 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 		{
 			name:  "a reduction read as printed",
 			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 140}, GraphLink{Source: "c", Target: "q", ValueCents: -40}),
-			gaps:  declared,
+			gaps:  map[string]Gaps{"q": {{FiscalYear: 2027, Basis: "adopted", Cents: 1, Reason: "Another node's reason."}}},
 		},
 		{
 			name:  "too little arriving",
 			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 70}, GraphLink{Source: "c", Target: "p", ValueCents: 100}),
-			gaps:  declared,
+			gaps:  licence(-30),
 			want: Carry{
-				Mark:  Mark{ID: "gap/c", Role: RoleGap, Tier: 0, OutCents: 30},
+				Mark:  Mark{ID: "gap/c", Role: RoleGap, Tier: 0, OutCents: 30, Locators: []Locator{{DocID: "d", Pages: []int{67, 90}}}},
 				Nodes: []GraphNode{{ID: "gap/c", Tier: 0, Role: RoleGap, Derived: true}},
 				Links: []GraphLink{{Source: "gap/c", Target: "c", ValueCents: 30}},
 			},
@@ -76,20 +86,38 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 		},
 		{
 			name:  "a difference the declaration does not name",
-			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 60}),
-			gaps:  map[string]string{"q": "another node's reason"},
-			err:   `a difference of 40 cents that no declaration on this step accounts for`,
+			drawn: short,
+			gaps:  map[string]Gaps{"q": {{FiscalYear: 2027, Basis: "adopted", Cents: 40, Reason: "Another node's reason."}}},
+			err:   `a difference of 40 cents that no declaration on this step accounts for in FY2027 adopted`,
 		},
 		{
 			name:  "a reason declared empty",
-			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 60}),
-			gaps:  map[string]string{"c": ""},
+			drawn: short,
+			gaps:  map[string]Gaps{"c": {{FiscalYear: 2027, Basis: "adopted", Cents: 40}}},
 			err:   `no declaration on this step accounts for`,
+		},
+		{
+			name:  "a licence in another column only",
+			drawn: short,
+			gaps:  map[string]Gaps{"c": {{FiscalYear: 2026, Basis: "adopted", Cents: 40, Reason: "Another column's reason."}}},
+			err:   `no declaration on this step accounts for in FY2027 adopted`,
+		},
+		{
+			name:  "a licence at another figure",
+			drawn: short,
+			gaps:  licence(41),
+			err:   `declares a gap of 41 cents on "c" in FY2027 adopted and the charts differ there by 40`,
+		},
+		{
+			name:  "a licence on a centre that balances",
+			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 100}),
+			gaps:  licence(40),
+			err:   `declares a gap of 40 cents on "c" in FY2027 adopted and the chart balances there`,
 		},
 		{
 			name:  "a centre the chart does not draw",
 			drawn: chart(GraphLink{Source: "a", Target: "p", ValueCents: 100}),
-			gaps:  map[string]string{"x": "reason"},
+			gaps:  map[string]Gaps{"x": {{FiscalYear: 2027, Basis: "adopted", Reason: "Reason."}}},
 			err:   `"x" is not a mark of the drawn chart`,
 		},
 	}
@@ -99,7 +127,7 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 			if tc.name == "a centre the chart does not draw" {
 				opened = "x"
 			}
-			got, ok, err := GapOf(tc.drawn, opened, tiers, tc.gaps)
+			got, ok, err := GapOf(tc.drawn, from, doc, col, opened, tiers3, tc.gaps)
 			if tc.err != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.err) {
 					t.Fatalf("err = %v, want one containing %q", err, tc.err)
@@ -113,9 +141,10 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 				t.Fatalf("ok = %v, want %v", ok, tc.ok)
 			}
 			// THE ARITHMETIC AND THE WORDS ARE ASSERTED APART. The struct
-			// diff is about which mark exists, where it stands and what it is
-			// worth; a reworded sentence showing up as a changed rule would
-			// train a reader to re-baseline this diff without reading it.
+			// diff is about which mark exists, where it stands, what it is
+			// worth and what it cites; a reworded sentence showing up as a
+			// changed rule would train a reader to re-baseline this diff
+			// without reading it.
 			if diff := cmp.Diff(tc.want, got, cmpopts.IgnoreFields(Mark{},
 				"Label", "Rationale", "SourceNote")); diff != "" {
 				t.Errorf("GapOf mismatch (-want +got):\n%s", diff)
@@ -128,7 +157,9 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 			}
 			// THE FIGURES IN THE SENTENCE ARE THE MARK'S OWN, which is the half
 			// a fixed-string comparison would not catch: a rationale quoting
-			// the wrong side of the difference reads perfectly.
+			// the wrong side of the difference reads perfectly. The column is
+			// named in the page's own words, the reason is this column's and
+			// not another's, and a shortfall is not called a surplus.
 			var into, outOf int64
 			for _, l := range tc.drawn.Links {
 				if l.Target == opened {
@@ -138,21 +169,28 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 					outOf += l.ValueCents
 				}
 			}
-			for _, want := range []string{dollars(into), dollars(outOf), tc.gaps[opened]} {
-				if want == "" || strings.Contains(got.Mark.Rationale, want) {
-					continue
-				}
-				t.Errorf("rationale %q does not carry %q", got.Mark.Rationale, want)
+			side := " less."
+			if into < outOf {
+				side = " more than the " + dollars(into)
 			}
-			// AND THE NOTE STOPS WHERE THE CHECKING DOES. It used to say both
-			// totals are figures `fisc verify` holds, which reads as covering
-			// the difference between them; no check holds that (fisc-4lsx).
-			if !strings.Contains(got.Mark.SourceNote, "not itself a figure any page prints or any check holds") {
-				t.Errorf("source note does not say what is unchecked: %q", got.Mark.SourceNote)
+			for _, want := range []string{"In FY 2026-27 adopted, ", dollars(into), dollars(outOf), "Centre", "Declared reason.", side} {
+				if !strings.Contains(got.Mark.Rationale, want) {
+					t.Errorf("rationale %q does not carry %q", got.Mark.Rationale, want)
+				}
+			}
+			for _, refused := range []string{"Another column's reason.", ".00", "fisc-"} {
+				if strings.Contains(got.Mark.Rationale, refused) {
+					t.Errorf("rationale %q carries %q", got.Mark.Rationale, refused)
+				}
+			}
+			if !strings.Contains(got.Mark.SourceNote, "Derived, not published") {
+				t.Errorf("source note does not say the figure is derived: %q", got.Mark.SourceNote)
 			}
 		})
 	}
 }
+
+var tiers3 = []int{0, 1, 2}
 
 // TestMarkIDsAreTwoPrefixes pins that a residual's id and a gap's id cannot
 // be mistaken for each other or for a document node's: a check counting one
