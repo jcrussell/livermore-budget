@@ -983,6 +983,64 @@ func TestTheServedPageIsWhatGoRenders(t *testing.T) {
 	})
 }
 
+// TestEveryRecordsShardIsNamedLikeItsPageText holds the one rule site/app.js
+// relies on to cite records: a shard's file is its page text's, with .jsonl
+// for .txt, so the client composes both from the one spelling the served page
+// carries.
+func TestEveryRecordsShardIsNamedLikeItsPageText(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	opts, _, _, _ := testOptions(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = buildAll
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	page := readPage(t, opts.OutputDir)
+	const open = "window.FISC_CONFIG = "
+	_, rest, ok := strings.Cut(page, open)
+	if !ok {
+		t.Fatal("the served page carries no FISC_CONFIG")
+	}
+	body, _, _ := strings.Cut(rest, ";</script>")
+	var config struct {
+		Docs map[string]struct {
+			PageTextBase string `json:"page_text_base"`
+			RecordsBase  string `json:"records_base"`
+		} `json:"docs"`
+	}
+	if err := json.Unmarshal([]byte(body), &config); err != nil {
+		t.Fatalf("decode FISC_CONFIG: %v", err)
+	}
+	shards := 0
+	for id, doc := range config.Docs {
+		if doc.RecordsBase == "" {
+			continue
+		}
+		entries, err := os.ReadDir(filepath.Join(opts.OutputDir, filepath.FromSlash(doc.RecordsBase)))
+		if err != nil {
+			t.Errorf("%s: records_base %q: %v", id, doc.RecordsBase, err)
+			continue
+		}
+		for _, e := range entries {
+			stem, ok := strings.CutSuffix(e.Name(), ".jsonl")
+			if !ok {
+				continue
+			}
+			shards++
+			text := doc.PageTextBase + stem + ".txt"
+			if _, err := os.Stat(filepath.Join(opts.OutputDir, filepath.FromSlash(text))); err != nil {
+				t.Errorf("%s: the shard %s%s has no page text at %s: %v", id, doc.RecordsBase, e.Name(), text, err)
+			}
+		}
+	}
+	if shards == 0 {
+		t.Fatal("the export wrote no records shard under any records_base, so this test asserts nothing")
+	}
+}
+
 // TestTheColumnArtifactsAreWhatGoEncodes pins the two spine columns the page
 // fetches, testdata/fy2026-adopted.column.json and
 // testdata/fy2027-adopted.column.json, to what `fisc export` writes at the

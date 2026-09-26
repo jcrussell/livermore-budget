@@ -18,6 +18,7 @@ import { join } from "node:path";
 
 import {
   bootedApp, opened, expandAll, everyOffer, settle, refusals, rungsFixture, columnFixture, pageFixture, fire, repoRoot,
+  dollars, shortDollars,
 } from "./testlib.mjs";
 
 const CONFIG = pageFixture().config;
@@ -325,7 +326,7 @@ async function drive(year) {
         // compose them: comparing d.label against d.label would pass on a
         // label render() never wrote.
         if (!tspans.includes(d.label)) bad.push(`no tspan reading ${JSON.stringify(d.label)}`);
-        const amount = "  " + app.fmtShortSigned(app.markCents(d));
+        const amount = "  " + shortDollars(app.markCents(d));
         if (!tspans.includes(amount)) bad.push(`no tspan reading ${JSON.stringify(amount)}`);
         seen.attributes += 3;
         if (bad.length) {
@@ -893,7 +894,7 @@ describe("the drill's drawing", () => {
       // list, so this note is where its figure is written (fisc-hrfd).
       const value = app.layOut(app.projection).nodes.find((n) => n.id === agg.id).value;
       assert.ok(value > 0);
-      assert.ok(agg.source_note.includes("together " + app.fmt(value)), `${agg.source_note} does not carry ${app.fmt(value)}`);
+      assert.ok(agg.source_note.includes("together " + dollars(value)), `${agg.source_note} does not carry ${dollars(value)}`);
     });
 
     test(`${year.label}: the breadcrumb says how many marks the expansion drew, and folds them back`, async (t) => {

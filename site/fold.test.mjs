@@ -150,7 +150,7 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
     const tail = side.nodes.find((n) => app.isAggregate(n.id));
     assert.ok(tail, "nothing folded");
     t.diagnostic(`the tail's note reads "${tail.source_note}"`);
-    assert.ok(tail.source_note.endsWith(", together " + app.fmt(4000) + "."), tail.source_note);
+    assert.ok(tail.source_note.endsWith(", together $40."), tail.source_note);
   });
 
   // A REDUCTION OF ANOTHER KIND IS NOT NETTED, because foldDocument merges by

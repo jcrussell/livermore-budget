@@ -117,6 +117,23 @@ func TestScanReadsEveryProseField(t *testing.T) {
 	}
 }
 
+func TestScanReadsCommentText(t *testing.T) {
+	rec := map[string]any{"id": "fisc-test", "comments": []any{
+		map[string]any{"id": "c1", "author": "this bead used to say", "text": "Fine."},
+		map[string]any{"id": "c2", "text": "This bead used to say otherwise."},
+	}}
+	hits, _, err := scan(issues(t, rec))
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(hits) != 1 {
+		t.Fatalf("found %d hits in the comments, want 1: %v", len(hits), hits)
+	}
+	if diff := cmp.Diff(commentField, hits[0].field); diff != "" {
+		t.Errorf("reported field (-want +got):\n%s", diff)
+	}
+}
+
 // A non-prose field is not scanned, so a bead id or a timestamp that happens to
 // contain a refused phrase cannot report one.
 func TestScanIgnoresFieldsAReaderIsNotShown(t *testing.T) {

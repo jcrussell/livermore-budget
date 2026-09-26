@@ -395,3 +395,21 @@ export function keydownListeners(document) {
   };
   return attached;
 }
+
+const wholeDollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+const compactDollars = new Intl.NumberFormat("en-US", {
+  style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1,
+});
+
+/**
+ * Cents as the page should print them, formatted HERE and not by app.js, so an
+ * expectation built with it cannot move with the formatter it checks.
+ */
+export function dollars(cents) {
+  return (cents < 0 ? "−" : "") + wholeDollars.format(Math.abs(cents) / 100);
+}
+
+/** The short form a mark's own label carries, formatted here for the same reason. */
+export function shortDollars(cents) {
+  return (cents < 0 ? "−" : "") + compactDollars.format(Math.abs(cents) / 100);
+}

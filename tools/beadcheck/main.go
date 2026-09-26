@@ -67,6 +67,10 @@ var errata = []*regexp.Regexp{
 // means adding it here.
 var prose = []string{"title", "description", "notes", "design", "close_reason", "acceptance_criteria"}
 
+// commentField is how a hit in a comment's text is reported; a comment is
+// shown by `bd show` like any field in prose.
+const commentField = "comments[].text"
+
 // hit is one refused phrase: which bead, which field, and what matched.
 type hit struct {
 	id    string
@@ -140,13 +144,15 @@ func scan(path string) ([]hit, int, error) {
 		}
 		examined++
 		for _, field := range prose {
-			body, ok := rec[field].(string)
-			if !ok {
-				continue
+			if body, ok := rec[field].(string); ok {
+				hits = appendErrata(hits, id, field, body)
 			}
-			for _, re := range errata {
-				for _, loc := range re.FindAllStringIndex(body, -1) {
-					hits = append(hits, hit{id: id, field: field, text: excerpt(body, loc[0], loc[1])})
+		}
+		comments, _ := rec["comments"].([]any)
+		for _, c := range comments {
+			if m, ok := c.(map[string]any); ok {
+				if body, ok := m["text"].(string); ok {
+					hits = appendErrata(hits, id, commentField, body)
 				}
 			}
 		}
@@ -164,6 +170,15 @@ func scan(path string) ([]hit, int, error) {
 		return hits[i].field < hits[j].field
 	})
 	return hits, examined, nil
+}
+
+func appendErrata(hits []hit, id, field, body string) []hit {
+	for _, re := range errata {
+		for _, loc := range re.FindAllStringIndex(body, -1) {
+			hits = append(hits, hit{id: id, field: field, text: excerpt(body, loc[0], loc[1])})
+		}
+	}
+	return hits
 }
 
 // excerpt quotes the match with enough either side to recognise it, on one line
