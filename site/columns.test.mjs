@@ -9,7 +9,7 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  bootedApp, opened, settle, pageFixture, rungsFixture, columnFixture, refusals,
+  bootedApp, opened, settle, pageFixture, rungsFixture, columnFixture, refusals, fire, topOf,
 } from "./testlib.mjs";
 
 const disabled = (b) => !b || b.hasAttribute("disabled");
@@ -117,8 +117,21 @@ describe("the column control describes the chart on screen", () => {
       assert.equal(q.label, q.drawn + " columns", q.where);
     }
   });
+  // A BROWSER BLURS A BUTTON AS IT IS DISABLED, and jsdom keeps the focus, so
+  // without this the hand-off is invisible to a test.
+  function blurOnDisable(window, t) {
+    const proto = window.HTMLButtonElement.prototype;
+    const set = proto.setAttribute;
+    proto.setAttribute = function (name, value) {
+      // Before, because jsdom will not blur a button that is already disabled.
+      if (name === "disabled" && this.ownerDocument.activeElement === this) this.blur();
+      set.call(this, name, value);
+    };
+    t.after(() => { proto.setAttribute = set; });
+  }
   test("a step that reaches its bound hands focus to the other step", async (t) => {
-    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 1440 });
+    const { app, document, window } = await bootedApp({ checkedStem: "sankey", viewport: 1440 });
+    blurOnDisable(window, t);
     await opened(app, "fund-group/general", "fund/100");
     const more = document.getElementById("column-more");
     more.focus();
@@ -128,6 +141,24 @@ describe("the column control describes the chart on screen", () => {
     t.diagnostic(`after + reached ${app.drawnColumns()} columns: + ${disabled(more) ? "disabled" : "live"}, focus on "${focused}"`);
     assert.ok(disabled(more));
     assert.equal(focused, "column-fewer");
+  });
+  test("a redraw that disables nothing leaves focus on the button, and none goes to a disabled one", async (t) => {
+    const { app, document, window } = await bootedApp({ checkedStem: "sankey", viewport: 1440 });
+    blurOnDisable(window, t);
+    await opened(app, "fund-group/general", "fund/100");
+    const more = document.getElementById("column-more");
+    more.focus();
+    app.syncColumns();
+    const kept = document.activeElement ? document.activeElement.id : "";
+    // Back to the overview, where both steps are disabled.
+    app.drillUp(0);
+    await settle();
+    const fewer = document.getElementById("column-fewer");
+    const landed = document.activeElement;
+    t.diagnostic(`a sync on the live + left focus on "${kept}"; closing to the overview left + ${disabled(more) ? "disabled" : "live"}, - ${disabled(fewer) ? "disabled" : "live"} and focus on <${landed ? landed.tagName.toLowerCase() : ""}${landed && landed.id ? "#" + landed.id : ""}>`);
+    assert.equal(kept, "column-more");
+    assert.ok(disabled(more) && disabled(fewer));
+    assert.ok(landed !== fewer && landed !== more);
   });
   test("a chart with a second width offers it, takes it, and reports what it drew", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 1440 });
@@ -172,6 +203,40 @@ describe("a budget whose chart will not draw", () => {
     assert.equal(app.columnBudget, 3);
     assert.equal(app.drawnColumns(), 3);
     assert.equal(label, "3 columns");
+  });
+  test("a rung that will not close banners the close, not an open", async (t) => {
+    // The same plant, reached by closing: a division opened at three columns,
+    // then a budget of four, then Escape back to fund/100 reshaped at four.
+    const broken = structuredClone(columnFixture("fy2026-adopted"));
+    const into = broken.nodes.findIndex((n) => n.id === "expenditure/engineering/wages-and-benefits");
+    for (const l of broken.schedules["fund-flows"].links.filter((l) => l.to === into)) delete l.fact_ids;
+    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 800, plan: { "fy2026-adopted.json": { doc: broken } } });
+    await opened(app, "fund-group/general", "fund/100");
+    const division = app.projection.nodes.find((n) => app.drillable(n) && n.id.startsWith("dept/"));
+    await opened(app, division.id);
+    app.setColumnBudget(4);
+    fire(document, "keydown", { key: "Escape" });
+    await settle();
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`Escape from ${division.id} at a budget of 4: on ${topOf(app)}, banners ${JSON.stringify(banners)}`);
+    assert.equal(topOf(app), division.id);
+    assert.equal(banners.length, 1);
+    assert.ok(banners[0].startsWith("That chart could not be closed"), banners[0]);
+  });
+  test("a tail that will not fold back banners the fold, not an open", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 2000 });
+    await opened(app, "fund-group/general", "fund/100");
+    const tail = app.projection.nodes.find((n) => app.isAggregate(n.id));
+    app.expandTier(tail);
+    await settle();
+    // Planted under the expanded chart, so only the fold back reads it.
+    for (const l of app.drilled[app.drilled.length - 1].doc.links) delete l.fact_ids;
+    app.collapseTier(tail.tier);
+    await settle();
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`collapsing ${tail.id} over a document with no fact_ids: banners ${JSON.stringify(banners)}`);
+    assert.equal(banners.length, 1);
+    assert.ok(banners[0].startsWith("That column could not be folded back"), banners[0]);
   });
 });
 

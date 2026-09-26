@@ -2172,7 +2172,7 @@ export async function drillDown(id) {
 export function drillUp(depth) {
   if (depth < 0 || depth >= drilled.length) return;
   opening++;
-  redrawStack(drilled.slice(0, depth));
+  redrawStack(drilled.slice(0, depth), "That chart could not be closed");
 }
 
 /**
@@ -2227,7 +2227,8 @@ export function collapseTier(tier) {
   if (!rung || !rung.expanded || !rung.expanded.has(tier)) return;
   const expanded = new Set(rung.expanded);
   expanded.delete(tier);
-  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]));
+  redrawStack(drilled.slice(0, at).concat([Object.assign({}, rung, { expanded: expanded })]),
+    "That column could not be folded back");
 }
 
 /**
@@ -3519,15 +3520,6 @@ export function isResidual(id) {
  * figures, which no page prints at all. markGap says which is which.
  */
 export const GAP_PREFIX = "gap/";
-
-/**
- * The id of the node an opened node's undecomposed difference is drawn at.
- * @param {string} opened
- * @returns {string}
- */
-export function gapID(opened) {
-  return GAP_PREFIX + opened;
-}
 
 /**
  * Whether an id names a gap node.
@@ -4855,7 +4847,7 @@ export function applyEmphasis() {
  * the General Fund group, $480,400, cited to p66 -- and re-points it at the
  * residual, a node no page prints. The cents and the citation are the city's;
  * the ribbon's far end is ours, and no schedule prints money moving to "Not
- * broken down by fund".
+ * split by fund here".
  *
  * SO "printed by the city" IS WRONG ON IT, flatly, and that is what a reader
  * was told: AGENTS.md, "Published and derived are different things". It is not
@@ -6363,8 +6355,8 @@ export function checkedYear(years) {
  * Wires the year radio group.
  *
  * The control is rendered server-side, so this only adds the behaviour. A year
- * that fails to load leaves the radio where the reader put it and shows the
- * refusal: moving it back would claim the page is showing a year it is not.
+ * that fails to load shows the refusal and moves the radio back to the year
+ * still on screen.
  *
  * IT DOES NOT ASSUME THE CONTROL SHOWS THE FIRST YEAR, which main() is where
  * that matters -- see checkedYear.
