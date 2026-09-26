@@ -20,11 +20,12 @@ import (
 // at the receiving fund and at the paying end -- and nothing else in
 // internal/structure sees it.
 //
-// THREE ARMS. A shared cell no identity covers is a finding. A shared cell
+// FOUR ARMS. A shared cell no identity covers is a finding. A shared cell
 // under an identity whose amounts differ is a finding: the pages disagree on
-// a figure the identity says is one. A declared identity that no shared cell
-// bears out is refused, because an exemption over a cell nobody prints
-// exempts nothing.
+// a figure the identity says is one. A non-zero cell under an identity that
+// one side prints and the other does not is a finding unless an exception
+// declares the absence. A declared identity that no shared cell bears out is
+// refused, because an exemption over a cell nobody prints exempts nothing.
 //
 // WHAT A VIEW DOES WITH IT is decided at construction, not here: a cut set
 // holding both readings is refused by structure.NewView unless it names which
@@ -43,18 +44,22 @@ func (*peersOverlapOnlyByDeclaredIdentity) Description() string {
 		"whose two readings agree to the cent, and every declared identity covers a cell"
 }
 
+// budgetBookIdentities is a seam so a test can declare an identity the tree
+// does not.
+var budgetBookIdentities = structure.BudgetBookIdentities
+
 func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (Result, error) {
 	cuts := structure.AllCuts()
-	identities := structure.BudgetBookIdentities()
+	identities := budgetBookIdentities()
+	exceptions := budgetBookExceptions()
 
 	var findings []Finding
 	if err := structure.ValidateIdentities(cuts, identities); err != nil {
 		findings = append(findings, finding("identities", "%v", err))
 	}
 
-	// A cut no fact falls in is not a peer of anything; the grain arm of
-	// cuts-tie-along-the-lattice is what goes red on it over the committed
-	// corpus.
+	// A cut no fact falls in is not a peer of anything;
+	// cuts-tie-along-the-lattice is what goes red on it.
 	isEmpty := map[string]bool{}
 	for _, c := range cuts {
 		none := true
@@ -81,7 +86,7 @@ func (*peersOverlapOnlyByDeclaredIdentity) Run(_ context.Context, s *Subject) (R
 			if a.Level != b.Level || isEmpty[a.Name] || isEmpty[b.Name] {
 				continue
 			}
-			o, err := structure.Peers(s.Facts, a, b, identities)
+			o, err := structure.Peers(s.Facts, a, b, identities, exceptions)
 			if err != nil {
 				refused = append(refused, err.Error())
 				continue

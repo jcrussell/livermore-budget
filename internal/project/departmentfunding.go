@@ -212,6 +212,12 @@ func (d *departmentFunding) Document(facts []fact.Fact, o Options) (*DepartmentF
 		}
 		dst := endpoint{id: prefixDepartment + k.department, tier: tierDepartment,
 			role: roleWholeDepartment}
+		if d.Labels != nil {
+			if l, ok := d.Labels.DepartmentLabel(k.department); !ok || l == "" {
+				return nil, fmt.Errorf("department-funding: data/departments.yaml lists no "+
+					"department %q, so the row has no department to draw", k.department)
+			}
+		}
 		d.addNode(nodes, src)
 		d.addNode(nodes, dst)
 		for _, id := range c.factIDs {
@@ -464,9 +470,8 @@ func (d *departmentFunding) label(e endpoint) string {
 				}
 			}
 		case tierDepartment:
-			if l, ok := d.Labels.DepartmentLabel(e.id[len(prefixDepartment):]); ok && l != "" {
-				return l
-			}
+			l, _ := d.Labels.DepartmentLabel(e.id[len(prefixDepartment):])
+			return l
 		}
 	}
 	return slugLabel(e.id)

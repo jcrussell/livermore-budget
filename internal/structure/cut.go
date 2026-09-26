@@ -436,3 +436,37 @@ func (c Cut) admitsNone(facts []fact.Fact) bool {
 	}
 	return true
 }
+
+// TierMisfits is one line per (cut, department) pair where a fact in a cut
+// declaring a DepartmentTier names a department inTier says that tier does not
+// list. A slug the registry lists in both tiers fits either.
+func TierMisfits(facts []fact.Fact, cuts []Cut, inTier func(tier, slug string) bool) []string {
+	var out []string
+	for _, c := range cuts {
+		if c.DepartmentTier == "" {
+			continue
+		}
+		misfits := map[string]int{}
+		for i := range facts {
+			f := &facts[i]
+			if c.admits(f) && !inTier(c.DepartmentTier, f.Department) {
+				misfits[orAbsent(f.Department)]++
+			}
+		}
+		for _, slug := range sortedKeys(misfits) {
+			out = append(out, fmt.Sprintf("cut %q names departments at the %s tier and %d of its "+
+				"facts name %q, which data/departments.yaml does not list as a %s",
+				c.Name, c.DepartmentTier, misfits[slug], slug, c.DepartmentTier))
+		}
+	}
+	return out
+}
+
+func sortedKeys(m map[string]int) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}

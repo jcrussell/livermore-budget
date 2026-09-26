@@ -55,9 +55,13 @@ func (*cutsTieAlongTheLattice) Description() string {
 		"both sides to a printed residual"
 }
 
+// budgetBookExceptions is a seam so a test can declare an exception the tree
+// does not.
+var budgetBookExceptions = structure.BudgetBookExceptions
+
 func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error) {
 	cuts := structure.AllCuts()
-	exceptions := structure.BudgetBookExceptions()
+	exceptions := budgetBookExceptions()
 
 	var findings []Finding
 	if err := structure.ValidateExceptions(exceptions); err != nil {
@@ -71,12 +75,11 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	// grain, and a subject with none loaded says so rather than skipping this
 	// arm silently.
 	//
-	// A CUT NO FACT FALLS IN IS NOT COMPARED, and is named. Which cuts those
-	// are is ValidateCuts' answer and is read from it, never re-decided here
-	// by whether the cut's SCOPE has a fact: a cut selecting by rule shares
-	// its scope with a sibling, so a scope with facts says nothing about
-	// whether the cut has any. Where ValidateCuts refused or did not run -- a
-	// fixture loads no rule file -- the same admission rule is asked directly.
+	// A CUT NO FACT FALLS IN IS REFUSED when the rule files are loaded: a cut
+	// is a claim about pages, and a store that carries none of them has lost
+	// a schedule. Which cuts those are is ValidateCuts' answer, never
+	// re-decided by scope. Where ValidateCuts refused or did not run -- a
+	// fixture loads no rule file -- the empty cuts are named and not compared.
 	levelsChecked := false
 	var empty []string
 	emptyKnown := false
@@ -91,6 +94,10 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 				findings = append(findings, finding("cuts", "%v", err))
 			} else {
 				empty, emptyKnown = names, true
+				for _, name := range names {
+					findings = append(findings, finding("cuts", "cut %q carries no fact; the "+
+						"schedule it declares was dropped from the store, or the cut should go", name))
+				}
 			}
 		}
 	}
@@ -100,6 +107,16 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 	isEmpty := map[string]bool{}
 	for _, name := range empty {
 		isEmpty[name] = true
+	}
+
+	for _, m := range structure.TierMisfits(s.Facts, cuts, func(tier, slug string) bool {
+		if tier == "division" {
+			_, ok := s.Vocabulary.Division(slug)
+			return ok
+		}
+		return s.Vocabulary.Department(slug)
+	}) {
+		findings = append(findings, finding("tier", "%s", m))
 	}
 
 	// EVERY FACT IS IN ONE CUT OR A DECLARED RESIDUE. A comparison covers the
@@ -141,7 +158,7 @@ func (*cutsTieAlongTheLattice) Run(_ context.Context, s *Subject) (Result, error
 					e.Name, structure.Cents(e.Residual), c.Name(), len(e.Cells), e.Reason, e.Printed, e.Bead))
 			}
 			clause := fmt.Sprintf("%s at %s: %d cells over %s, %d one-sided and agreeing at zero",
-				c.Name(), c.At, r.Subjects, joinComma(c.Columns), c.OneSided)
+				c.Name(), c.At, r.Subjects, joinComma(c.Columns), r.AgreeAtZero)
 			if n := len(r.Excused); n > 0 {
 				clause += fmt.Sprintf(", %d exception(s) held apart and NOT among the %d", n, r.Subjects)
 			}

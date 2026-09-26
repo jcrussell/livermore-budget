@@ -39,42 +39,8 @@ func TestDepartmentsResolveAcceptsEitherTier(t *testing.T) {
 	if res.Status != StatusPass {
 		t.Fatalf("Status = %s (%s), want pass", res.Status, res.Summary)
 	}
-	// THE TIER SPLIT IS THE POINT OF THE SUMMARY, not decoration. One total
-	// reads the same whether a schedule resolved at the grain its rules meant
-	// or at the other one, so a whole block silently re-graining itself would
-	// pass unseen.
-	for _, want := range []string{
-		"1 facts name one of 1 divisions",
-		"1 facts name one of 1 departments",
-	} {
-		if !strings.Contains(res.Summary, want) {
-			t.Errorf("summary %q does not say %q", res.Summary, want)
-		}
-	}
-}
-
-// TestDepartmentsResolveCountsABothTierSlugAsADivision pins the tie-break. Five
-// slugs in the real file name a department AND its single division of the same
-// name, because that is what the city prints. The division is the finer grain
-// and the one every rule predating the funding schedule meant, so reading such
-// a slug as the coarser tier would re-grain those facts in the counts above
-// while the verdict stayed green.
-func TestDepartmentsResolveCountsABothTierSlugAsADivision(t *testing.T) {
-	const both = `schema_version: 1
-departments:
-  - {slug: city-council, label: City Council, document_term: CITY COUNCIL, pages: [167]}
-divisions:
-  - {slug: city-council, label: City Council, department: city-council, pages: [167]}
-`
-	res, err := (&factDepartmentsResolve{}).Run(context.Background(), &Subject{
-		Facts:      []fact.Fact{departmentFact("f1", "city-council")},
-		Vocabulary: vocabularyWithDepartments(t, both),
-	})
-	if err != nil {
-		t.Fatalf("Run: %v", err)
-	}
-	if !strings.Contains(res.Summary, "1 facts name one of 1 divisions and 0 facts") {
-		t.Errorf("summary %q does not count the both-tier slug as a division", res.Summary)
+	if !strings.Contains(res.Summary, "2 facts name one of 2 slugs") {
+		t.Errorf("summary %q does not count both facts", res.Summary)
 	}
 }
 

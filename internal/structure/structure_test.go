@@ -260,6 +260,34 @@ func TestTheGeneralFundDepartmentsDecomposeTheSpine(t *testing.T) {
 	}
 }
 
+// TestAnExcusedCellIsNotCountedAsAgreeingAtZero holds AgreeAtZero to the
+// cells Reconcile compared: a one-sided cell an exception holds apart neither
+// ties nor was compared.
+func TestAnExcusedCellIsNotCountedAsAgreeingAtZero(t *testing.T) {
+	facts := committedFacts(t)
+	for _, name := range []string{"revenue-detail", "transfers-detail"} {
+		c, err := structure.Compare(facts, cutNamed(t, name), cutNamed(t, "spine"))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		r := structure.Reconcile(c, structure.BudgetBookExceptions())
+		excusedOneSided := 0
+		for _, e := range r.Excused {
+			for _, p := range e.Cells {
+				if !p.Cut.Present || !p.Against.Present {
+					excusedOneSided++
+				}
+			}
+		}
+		if excusedOneSided == 0 {
+			t.Fatalf("%s: no excused one-sided cell, so this proves nothing", name)
+		}
+		if diff := cmp.Diff(c.OneSided-excusedOneSided, r.AgreeAtZero); diff != "" {
+			t.Errorf("%s: one-sided and agreeing at zero (-want +got):\n%s", name, diff)
+		}
+	}
+}
+
 // TestARefusedPairIsNamedRatherThanCompared is the arm that keeps this from
 // reporting a clean comparison of two things that do not compare. Each case is
 // a pair the lattice offers and the documents do not support.

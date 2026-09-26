@@ -73,17 +73,7 @@ func TestEveryDeclarationCarriesItsReasonAndItsBead(t *testing.T) {
 // point in one test: --strict stops being a gate on how much is mapped and
 // becomes a gate on whether anyone has looked.
 func TestADeclaredVacancyPassesStrictAndAnUndeclaredOneDoesNot(t *testing.T) {
-	// A declared id. Chosen from the map rather than typed, so this test cannot
-	// drift away from what is actually declared.
-	var declared string
-	for id := range declaredVacuous {
-		if declared == "" || id < declared {
-			declared = id
-		}
-	}
-	if declared == "" {
-		t.Skip("nothing is declared vacuous, so there is nothing to pass strict")
-	}
+	declared, _ := testVacancy(t)
 
 	rep := run(t, nil, ReportOptions{Strict: true}, passed("a"), vacant(declared))
 	if rep.Counts.Vacuous != 1 {

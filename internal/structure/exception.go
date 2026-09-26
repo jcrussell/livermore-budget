@@ -157,6 +157,9 @@ type Reconciled struct {
 	// neither compared nor agreed at zero, so counting it would overstate what
 	// the tie covers.
 	Subjects int
+	// AgreeAtZero is how many of those Subjects only one cut produced and
+	// that tie, the other side being zero.
+	AgreeAtZero int
 	// Findings are the disagreements no exception covers, and the exceptions
 	// that could not be applied.
 	Findings []string
@@ -232,6 +235,8 @@ func Reconcile(c Comparison, exceptions []Exception) Reconciled {
 		out.Subjects++
 		if !cell.Ties() {
 			out.Findings = append(out.Findings, c.Finding(cell))
+		} else if !cell.Cut.Present || !cell.Against.Present {
+			out.AgreeAtZero++
 		}
 	}
 	sort.Slice(out.Excused, func(i, j int) bool { return out.Excused[i].Name < out.Excused[j].Name })

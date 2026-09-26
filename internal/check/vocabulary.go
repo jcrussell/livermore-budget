@@ -235,17 +235,11 @@ var departmentSlug = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 //   - no department collides with a data/taxonomy.yaml category slug, which is
 //     the near miss the taxonomy warns about.
 //
-// THE FIRST CLAIM SPANS TWO TIERS, AND THAT WEAKENS NOTHING MEASURABLE. The
-// field holds a division on pp.167-170 and on pp.85-125's upper block, and a
-// DEPARTMENT on pp.85-125's Department Funding Sources block, whose schedule is
-// printed per department with no division on it — six of the eleven departments
-// are not division slugs, so one tier cannot hold both populations. What keeps
-// "resolves" from becoming "matches something, somewhere" is that the two tiers
-// are each closed and disjoint from the category axis: data/departments.yaml
-// refuses a duplicate slug within a tier and refuses EITHER tier's slug that is
-// also a data/taxonomy.yaml category, and the summary below reports the two
-// tiers separately, so a schedule silently resolving at the wrong grain shows up
-// as a count rather than passing unseen.
+// THE FIRST CLAIM SPANS TWO TIERS. The field holds a division on pp.167-170 and
+// on pp.85-125's upper block, and a DEPARTMENT on pp.85-125's Department Funding
+// Sources block, whose schedule is printed per department with no division on
+// it. Which tier a schedule's facts must resolve at is its cut's DepartmentTier,
+// held by cuts-tie-along-the-lattice; this check cannot tell the two apart.
 //
 // THE LAST TWO ARE NOW BELT AND BRACES, and they stay. The registry refuses a
 // slug that is a category slug on both tiers, so a resolving department cannot
@@ -276,12 +270,6 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 	subjects := 0
 	spellings := map[string][]string{} // normalized -> spellings as written
 	departments := map[string]bool{}
-	// Counted per TIER and reported separately below. One total would let the
-	// whole of pp.85-125 resolve at the department grain when it was meant to
-	// resolve at the division grain, or the reverse, and say the same number
-	// either way.
-	divisionFacts, departmentFacts := 0, 0
-	divisionSlugs, departmentSlugs := map[string]bool{}, map[string]bool{}
 
 	for _, f := range s.Facts {
 		if f.Department == "" {
@@ -308,21 +296,8 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 					"one segment", f.DocID, f.Page, f.RowLabel, f.Department))
 			continue
 		}
-		// Division first, then department, and a slug naming both counts as a
-		// division: five slugs name both tiers, because the city prints a
-		// department with a single division of the same name. The division is
-		// the finer grain and the one every rule that predates the funding
-		// schedule meant, so reading it as the coarser one would silently
-		// re-grain those facts in the tier counts below.
-		_, isDivision := s.Vocabulary.Division(f.Department)
-		switch {
-		case isDivision:
-			divisionFacts++
-			divisionSlugs[f.Department] = true
-		case s.Vocabulary.Department(f.Department):
-			departmentFacts++
-			departmentSlugs[f.Department] = true
-		default:
+		if _, isDivision := s.Vocabulary.Division(f.Department); !isDivision &&
+			!s.Vocabulary.Department(f.Department) {
 			findings = append(findings, finding(f.ID,
 				"%s p%d %q: department %q is neither a division nor a department %s lists, "+
 					"so the fact joins to nothing",
@@ -345,9 +320,8 @@ func (*factDepartmentsResolve) Run(_ context.Context, s *Subject) (Result, error
 	return conclusion{
 		subjects: subjects,
 		unit:     "departments",
-		held: fmt.Sprintf("%d facts name one of %d divisions and %d facts name one of %d "+
-			"departments, each listed in %s: %s",
-			divisionFacts, len(divisionSlugs), departmentFacts, len(departmentSlugs),
+		held: fmt.Sprintf("%d facts name one of %d slugs, each a division or a department "+
+			"%s lists: %s", subjects, len(departments),
 			departmentsFile, joinComma(slices.Sorted(maps.Keys(departments)))),
 		nothing: "no fact carries a department: the citywide spine crosses category against " +
 			"fund group and has no department axis (pp.167-170 are fisc-5gk.2)",

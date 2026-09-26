@@ -292,8 +292,18 @@ func TestTheFundingGraphRefusesWhatItCannotPlace(t *testing.T) {
 			name:  "a fund data/funds.yaml does not list",
 			facts: fundingFacts(t, nil),
 			labels: stubFundFlows{types: map[int]string{100: "general"},
-				departments: map[string]string{}},
+				departments: fundingLabels().departments},
 			want: "records no type for fund",
+		},
+		{
+			// A funding row naming a slug the department tier does not list.
+			name: "a department data/departments.yaml does not list",
+			facts: fundingFacts(t, func(f *fact.Fact) {
+				if f.Department == "police-department" {
+					f.Department = "patrol"
+				}
+			}),
+			want: `lists no department "patrol"`,
 		},
 		{
 			name:  "two columns in one graph",

@@ -95,7 +95,7 @@ func TestEveryScopeInTheStoreIsACut(t *testing.T) {
 func TestThePeersSharingCellsAreOneMovementReadFromTwoEnds(t *testing.T) {
 	facts := committedFacts(t)
 	o, err := structure.Peers(facts, allCutNamed(t, "revenue-detail"), allCutNamed(t, "transfers-detail"),
-		structure.BudgetBookIdentities())
+		structure.BudgetBookIdentities(), structure.BudgetBookExceptions())
 	if err != nil {
 		t.Fatalf("peers: %v", err)
 	}
@@ -146,7 +146,7 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 		if moved == 0 {
 			t.Fatal("no p76 transfer into fund 400 to move")
 		}
-		o, err := structure.Peers(planted, rd, td, identities)
+		o, err := structure.Peers(planted, rd, td, identities, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -161,7 +161,7 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 	})
 
 	t.Run("with no identity declared every shared cell is a finding", func(t *testing.T) {
-		o, err := structure.Peers(facts, rd, td, nil)
+		o, err := structure.Peers(facts, rd, td, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -173,17 +173,35 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 		}
 	})
 
+	t.Run("the one-sided General Fund cells are held by the exceptions declaring them absent", func(t *testing.T) {
+		o, err := structure.Peers(facts, rd, td, identities, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(o.Findings) != 2 {
+			t.Fatalf("%d findings, want the 2 General Fund transfer-in cells:\n  %s", len(o.Findings), strings.Join(o.Findings, "\n  "))
+		}
+		for _, f := range o.Findings {
+			if !strings.Contains(f, "fund=100") || !strings.Contains(f, "no exception declares the absence") {
+				t.Errorf("finding is not the General Fund's transfer in: %s", f)
+			}
+		}
+	})
+
 	t.Run("an identity over a pair sharing no cell is refused", func(t *testing.T) {
 		gf, fb := allCutNamed(t, "acfr-general-fund-summary"), allCutNamed(t, "acfr-fund-balances/general")
 		id := structure.Identity{Name: "invented", A: gf.Name, B: fb.Name,
 			Kinds: []mapping.Kind{mapping.KindFundBalance}, Reason: "a claim nothing bears out"}
-		o, err := structure.Peers(facts, gf, fb, []structure.Identity{id})
+		o, err := structure.Peers(facts, gf, fb, []structure.Identity{id}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(o.Findings) != 1 || !strings.Contains(o.Findings[0], `identity "invented"`) ||
-			!strings.Contains(o.Findings[0], "share no cell") {
-			t.Fatalf("findings = %v, want the identity refused for covering nothing", o.Findings)
+		if len(o.Findings) == 0 {
+			t.Fatal("no findings, want the identity refused for covering nothing")
+		}
+		last := o.Findings[len(o.Findings)-1]
+		if !strings.Contains(last, `identity "invented"`) || !strings.Contains(last, "share no cell") {
+			t.Fatalf("findings end %q, want the identity refused for covering nothing", last)
 		}
 	})
 
@@ -195,7 +213,7 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 		// names them -- which is fisc-n6yq's re-measured pair, reproduced.
 		spine := allCutNamed(t, "spine")
 		spine.Level = structure.LevelFundByCategory
-		o, err := structure.Peers(facts, spine, td, identities)
+		o, err := structure.Peers(facts, spine, td, identities, structure.BudgetBookExceptions())
 		if err != nil {
 			t.Fatal(err)
 		}

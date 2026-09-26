@@ -106,7 +106,8 @@ type Overlap struct {
 	// Shared is every cell both cuts produced, in a stable order.
 	Shared []Shared
 	// Findings is one line per overlap no identity covers, per covered cell
-	// whose readings differ, and per identity this pair bears out nowhere.
+	// whose readings differ, per undeclared one-sided cell under an identity,
+	// and per identity this pair bears out nowhere.
 	Findings []string
 }
 
@@ -123,7 +124,12 @@ type Overlap struct {
 // PER KIND, because a key carries no kind and an identity covers kinds.
 // pp.127-140 and p76 share transfers-in cells and nothing else; an overlap of
 // another kind at the same address would be one the identity does not cover.
-func Peers(facts []fact.Fact, a, b Cut, identities []Identity) (Overlap, error) {
+//
+// A NON-ZERO CELL ONE PEER PRINTS AND THE OTHER DOES NOT, of a kind an identity
+// covers and in a column both print, is a finding too: the identity says each
+// prints the figure. Unless a declared exception pins the missing side absent
+// at that cell's coarsening -- pp.127-130 print no General Fund transfer in.
+func Peers(facts []fact.Fact, a, b Cut, identities []Identity, exceptions []Exception) (Overlap, error) {
 	if a.Level != b.Level {
 		return Overlap{}, fmt.Errorf("peers %q (%s) and %q (%s): not at one level", a.Name, a.Level, b.Name, b.Level)
 	}
@@ -144,18 +150,34 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity) (Overlap, error) 
 		if err != nil {
 			return Overlap{}, err
 		}
+		identity := ""
+		for _, id := range identities {
+			if id.covers(a.Name, b.Name, k) {
+				identity = id.Name
+				break
+			}
+		}
 		for _, key := range unionKeys(as, bs) {
 			sa, sb := as[key], bs[key]
 			if !sa.Present || !sb.Present {
+				if identity != "" && a.prints(mapping.Basis(key.Basis)) && b.prints(mapping.Basis(key.Basis)) &&
+					sa.Cents+sb.Cents != 0 {
+					present, missing := a, b
+					if !sa.Present {
+						present, missing = b, a
+					}
+					if !absenceDeclared(facts, present, missing, one, key, exceptions) {
+						out.Findings = append(out.Findings, fmt.Sprintf(
+							"%s %s: identity %q says %q and %q print one figure, and %q prints %s here "+
+								"where %q has no such cell, and no exception declares the absence",
+							key, k, identity, a.Name, b.Name, present.Name, cents(sa.Cents+sb.Cents), missing.Name))
+					}
+				}
 				continue
 			}
-			cell := Shared{Key: key, Kind: k, A: sa, B: sb}
-			for _, id := range identities {
-				if id.covers(a.Name, b.Name, k) {
-					cell.Identity = id.Name
-					borne[id.Name] = true
-					break
-				}
+			cell := Shared{Key: key, Kind: k, A: sa, B: sb, Identity: identity}
+			if identity != "" {
+				borne[identity] = true
 			}
 			out.Shared = append(out.Shared, cell)
 			switch {
@@ -200,6 +222,33 @@ func Peers(facts []fact.Fact, a, b Cut, identities []Identity) (Overlap, error) 
 		return out.Shared[i].Kind < out.Shared[j].Kind
 	})
 	return out, nil
+}
+
+// absenceDeclared says whether, for every fact of present at key, an
+// exception pins missing absent at the cell that fact falls in at the
+// exception's level.
+func absenceDeclared(facts []fact.Fact, present, missing Cut, r restriction, key Key, exceptions []Exception) bool {
+	seen := false
+	for i := range facts {
+		f := &facts[i]
+		if !present.admits(f) || !r.admits(f) || KeyOf(f, key.Level) != key {
+			continue
+		}
+		seen = true
+		pinned := false
+		for _, e := range exceptions {
+			for _, p := range e.Cells {
+				if KeyOf(f, e.At) == e.Key(p) &&
+					((e.Cut == missing.Name && !p.Cut.Present) || (e.Against == missing.Name && !p.Against.Present)) {
+					pinned = true
+				}
+			}
+		}
+		if !pinned {
+			return false
+		}
+	}
+	return seen
 }
 
 // A View is a set of cuts a total may be taken over: an antichain of the

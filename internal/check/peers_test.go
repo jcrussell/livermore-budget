@@ -7,6 +7,7 @@ import (
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // TestTheCommittedPeersOverlapOnlyByDeclaredIdentity pins, by name, what the
@@ -40,9 +41,7 @@ func TestTheCommittedPeersOverlapOnlyByDeclaredIdentity(t *testing.T) {
 }
 
 // TestThePeerCheckGoesRed runs the amount mutation through the registered
-// check, so what is proven is the line fisc verify prints. The identity
-// deletion and the invented identity are run through the binary in the commit
-// message, since the check reads the declarations from the package.
+// check, so what is proven is the line fisc verify prints.
 func TestThePeerCheckGoesRed(t *testing.T) {
 	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
 	if err != nil {
@@ -110,5 +109,81 @@ func TestADocumentSelectingBothReadingsIsAFinding(t *testing.T) {
 	}
 	if !strings.Contains(res.Findings[1].Detail, "not an antichain") {
 		t.Errorf("the nested finding does not name the lattice: %s", res.Findings[1].Detail)
+	}
+}
+
+// TestThePeerCheckReportsItsDeclarations drives the arms that read the
+// declarations rather than the store, through the seam.
+func TestThePeerCheckReportsItsDeclarations(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	run := func(t *testing.T, ids []structure.Identity) Result {
+		t.Helper()
+		prev := budgetBookIdentities
+		budgetBookIdentities = func() []structure.Identity { return ids }
+		t.Cleanup(func() { budgetBookIdentities = prev })
+		return resultFor(t, runOne(t, s, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+	}
+
+	t.Run("an identity ValidateIdentities refuses is reported", func(t *testing.T) {
+		res := run(t, append(structure.BudgetBookIdentities(), structure.Identity{
+			Name: "unnamed-cut", A: "no-such-cut", B: "spine",
+			Kinds: []mapping.Kind{mapping.KindRevenue}, Reason: "a plant",
+		}))
+		var reported bool
+		for _, f := range res.Findings {
+			if f.Subject == "identities" && strings.Contains(f.Detail, `names cut "no-such-cut"`) {
+				reported = true
+			}
+		}
+		if !reported {
+			t.Fatalf("status %s, want the identities arm:\n  %v", res.Status, res.Findings)
+		}
+	})
+
+	t.Run("an identity between peers that were never compared covers nothing", func(t *testing.T) {
+		res := run(t, append(structure.BudgetBookIdentities(), structure.Identity{
+			Name: "never-compared", A: "spine", B: "acfr-general-fund-summary",
+			Kinds: []mapping.Kind{mapping.KindRevenue}, Reason: "a plant",
+		}))
+		if len(res.Findings) != 1 || res.Findings[0].Subject != "never-compared" ||
+			!strings.Contains(res.Findings[0].Detail, "covers nothing") {
+			t.Fatalf("status %s, want exactly the covers-nothing arm:\n  %v", res.Status, res.Findings)
+		}
+	})
+}
+
+// TestAOneSidedCellUnderAnIdentityGoesRed moves pp.127-140's transfers into
+// fund 610 to fund 621: every cell stays one-sided, none is shared, and
+// without the one-sided arm the check is green.
+func TestAOneSidedCellUnderAnIdentityGoesRed(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	mutated := *s
+	mutated.Facts = make([]fact.Fact, len(s.Facts))
+	copy(mutated.Facts, s.Facts)
+	moved := 0
+	for i := range mutated.Facts {
+		f := &mutated.Facts[i]
+		if f.Scope == "revenue-by-fund" && f.Kind == mapping.KindTransferIn && f.Fund != nil && *f.Fund == 610 {
+			f.Fund = fact.FundNumber(621)
+			moved++
+		}
+	}
+	if moved == 0 {
+		t.Fatal("no pp.127-140 transfer into fund 610 to move")
+	}
+	res := resultFor(t, runOne(t, &mutated, &peersOverlapOnlyByDeclaredIdentity{}), "peers-overlap-only-by-declared-identity")
+	var one, other bool
+	for _, f := range res.Findings {
+		one = one || strings.Contains(f.Detail, "fund=610") && strings.Contains(f.Detail, "no exception declares the absence")
+		other = other || strings.Contains(f.Detail, "fund=621") && strings.Contains(f.Detail, "no exception declares the absence")
+	}
+	if res.Status != StatusFail || !one || !other {
+		t.Fatalf("status %s, want both ends of the move named:\n  %v", res.Status, res.Findings)
 	}
 }

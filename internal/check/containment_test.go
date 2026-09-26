@@ -1,6 +1,7 @@
 package check
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/mapping"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // TestTheCommittedCutsTieAlongTheLattice pins what the one lattice-driven
@@ -32,6 +34,8 @@ func TestTheCommittedCutsTieAlongTheLattice(t *testing.T) {
 		"general-fund-departments -> spine at fund-group-by-category",
 		"departmentwide ~ spine at category",
 		"funding-sources ~ spine at fund-group",
+		// Excused cells are neither compared nor agreeing at zero.
+		"transfers-detail -> spine at fund-group-by-category: 18 cells over FY2026 adopted, FY2027 adopted, 8 one-sided and agreeing at zero",
 		// The refusals, each a claim about the documents.
 		`"revenue-detail" against "transfers-detail": both are at "fund-by-category"`,
 		`"general-fund-departments" names departments at the "division" tier and "funding-sources" at the "department" tier`,
@@ -207,4 +211,110 @@ func TestTheCutsCheckGoesRed(t *testing.T) {
 func runOne(t *testing.T, s *Subject, c Check) *Report {
 	t.Helper()
 	return Run(t.Context(), s, []Check{c}, ReportOptions{GeneratedBy: testVersion})
+}
+
+// TestTheCutsCheckHoldsTheStoreToEveryCut plants what the check's arms beyond
+// the comparison exist for, each through the registered check.
+func TestTheCutsCheckHoldsTheStoreToEveryCut(t *testing.T) {
+	s, err := Load(LoadOptions{Root: repoRoot(t), Version: testVersion})
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	subjectsNamed := func(res Result, subject, want string) bool {
+		for _, f := range res.Findings {
+			if f.Subject == subject && strings.Contains(f.Detail, want) {
+				return true
+			}
+		}
+		return false
+	}
+
+	t.Run("a cut whose every rule left the mapping with its facts is refused", func(t *testing.T) {
+		const prefix = "acfr-p0041-"
+		mutated := *s
+		mutated.Facts = nil
+		for i := range s.Facts {
+			if !strings.HasPrefix(s.Facts[i].RuleID, prefix) {
+				mutated.Facts = append(mutated.Facts, s.Facts[i])
+			}
+		}
+		if len(mutated.Facts) == len(s.Facts) {
+			t.Fatalf("the store carries no fact of a %s rule", prefix)
+		}
+		mutated.Files = nil
+		for _, f := range s.Files {
+			c := *f
+			c.Rules = nil
+			for _, r := range f.Rules {
+				if !strings.HasPrefix(r.ID, prefix) {
+					c.Rules = append(c.Rules, r)
+				}
+			}
+			mutated.Files = append(mutated.Files, &c)
+		}
+		res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+		if res.Status != StatusFail || !subjectsNamed(res, "cuts", `cut "acfr-general-fund-summary" carries no fact`) {
+			t.Fatalf("status %s, want the empty cut refused by name:\n  %v", res.Status, res.Findings)
+		}
+	})
+
+	for _, tc := range []struct{ scope, from, to, cut string }{
+		{"department-funding-sources", "fire-department", "fire-administration", "funding-sources"},
+		{"departmentwide-expenditures", "patrol", "police-department", "departmentwide"},
+	} {
+		t.Run(tc.from+" read as "+tc.to+" in "+tc.cut+" is refused at the cut's tier", func(t *testing.T) {
+			mutated := *s
+			mutated.Facts = make([]fact.Fact, len(s.Facts))
+			copy(mutated.Facts, s.Facts)
+			moved := 0
+			for i := range mutated.Facts {
+				f := &mutated.Facts[i]
+				if f.Scope == tc.scope && f.Department == tc.from {
+					f.Department = tc.to
+					moved++
+				}
+			}
+			if moved == 0 {
+				t.Fatalf("no %s fact in %s", tc.from, tc.scope)
+			}
+			res := resultFor(t, runOne(t, &mutated, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+			if !subjectsNamed(res, "tier", fmt.Sprintf(`cut %q names departments`, tc.cut)) ||
+				!subjectsNamed(res, "tier", fmt.Sprintf("%q", tc.to)) {
+				t.Fatalf("status %s, want the tier arm naming %s in %s:\n  %v", res.Status, tc.to, tc.cut, res.Findings)
+			}
+		})
+	}
+
+	t.Run("an exception ValidateExceptions refuses is reported", func(t *testing.T) {
+		withExceptions(t, append(structure.BudgetBookExceptions(), structure.Exception{
+			Name: "invalid", Cut: "revenue-detail", Against: "spine", At: structure.LevelFundGroupByCategory,
+		}))
+		res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+		if !subjectsNamed(res, "exceptions", `exception "invalid"`) {
+			t.Fatalf("status %s, want the exceptions arm:\n  %v", res.Status, res.Findings)
+		}
+	})
+
+	t.Run("an exception on a pair no comparison relates is refused as inert", func(t *testing.T) {
+		pin := structure.Pin{Year: 2026, Basis: "adopted",
+			Coords: map[structure.Axis]string{structure.AxisCategory: "transfers/in"},
+			Cut:    structure.Sum{Cents: 1, Present: true}, Against: structure.Sum{Cents: 2, Present: true}}
+		withExceptions(t, append(structure.BudgetBookExceptions(), structure.Exception{
+			Name: "inert", Cut: "revenue-detail", Against: "transfers-detail", At: structure.LevelCategory,
+			Cells: []structure.Pin{pin}, Residual: 1, Printed: "nowhere", Reason: "a plant", Bead: "none",
+		}))
+		res := resultFor(t, runOne(t, s, &cutsTieAlongTheLattice{}), "cuts-tie-along-the-lattice")
+		if len(res.Findings) != 1 || res.Findings[0].Subject != "inert" ||
+			!strings.Contains(res.Findings[0].Detail, "no comparison relates that pair") {
+			t.Fatalf("status %s, want exactly the inert arm:\n  %v", res.Status, res.Findings)
+		}
+	})
+}
+
+// withExceptions declares exceptions in place of the tree's for one test.
+func withExceptions(t *testing.T, exceptions []structure.Exception) {
+	t.Helper()
+	prev := budgetBookExceptions
+	budgetBookExceptions = func() []structure.Exception { return exceptions }
+	t.Cleanup(func() { budgetBookExceptions = prev })
 }
