@@ -372,7 +372,7 @@ func TestResidualOfIsCarryResiduals(t *testing.T) {
 			// label of one grain and the rationale of another cannot pass. That
 			// was reachable while the client hard-coded the label and derived
 			// nothing from the step.
-			if got.Mark.Label != "Not broken down by fund" {
+			if got.Mark.Label != "Not split by fund here" {
 				t.Errorf("label = %q, want it named for the declared grain", got.Mark.Label)
 			}
 			if !strings.Contains(got.Mark.Rationale, "does not split by fund") ||

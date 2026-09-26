@@ -183,8 +183,8 @@ looking, so a page that guessed would be deciding what a published table means.
 mark that shows them.
 
 `node-tiers-are-declared` reads it as the **second** exception to "a link runs
-from a coarser tier to a finer one", beside a rollup into the source's own
-parent. A partition link may descend — the cross-tab's run `expenditure/<object>`
+from a coarser tier to a finer one", beside a revenue line rolled up into its own
+category. A partition link may descend — the cross-tab's run `expenditure/<object>`
 (tier 5) into `dept/<division>` (tier 4) — and a descending link that is neither
 a rollup nor a declared partition is still refused by name.
 

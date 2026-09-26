@@ -507,8 +507,8 @@ func departmentFundingCaveats() []Caveat {
 			ID: "what-a-fund-pays-departments-is-not-what-it-takes-in",
 			Summary: "What a fund pays departments here is not what that fund takes in, " +
 				"and the two are printed by different schedules.",
-			Text: "The chart that opens this one draws what a fund takes in, from Budget " +
-				"Book pp.127-140. What leaves the fund here is what pp.85-125 print the " +
+			Text: "What a fund takes in is printed by Budget Book pp.127-140. What leaves " +
+				"the fund here is what pp.85-125 print the " +
 				"city's departments drawing on it. Those are two schedules and not one " +
 				"figure read twice, and either side may be the larger.",
 			AppliesTo: []string{},

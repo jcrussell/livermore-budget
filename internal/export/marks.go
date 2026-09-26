@@ -422,7 +422,7 @@ func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map
 	}
 	c.Mark = Mark{
 		ID: id, Role: RoleResidual, Tier: tier, Ends: sortedEnds,
-		Label: "Not broken down by " + grain,
+		Label: "Not split by " + grain + " here",
 		// NO PLURAL IS FORMED FROM THE GRAIN. "the opened node's parts" says
 		// what "the funds" said without a rule for turning one word into
 		// another, which is a rule this would get wrong on the first grain that

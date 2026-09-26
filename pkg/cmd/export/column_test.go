@@ -3,8 +3,11 @@ package export
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -232,5 +235,132 @@ func TestEveryFundGroupNodeHasAPlaceInItsColumnsOrder(t *testing.T) {
 	}
 	if !t.Failed() {
 		t.Logf("%d fund-group node(s) across %d column(s), each in its column's order", held, len(columns))
+	}
+}
+
+// exportedSite runs `fisc export` over the committed store into a temp dir.
+func exportedSite(t *testing.T) string {
+	t.Helper()
+	opts, _, _, _ := testOptions(t)
+	root := repoRootForTest(t)
+	opts.RepoRoot = func() (string, error) { return root, nil }
+	opts.Build = buildAll
+	if err := exportRun(opts); err != nil {
+		t.Fatalf("exportRun: %v", err)
+	}
+	return opts.OutputDir
+}
+
+// TestEveryServedColumnIsTheScheduleItFolds reads the four column files the
+// export writes, not ColumnsOf: fy2024-actual.json and fy2025-revised.json
+// have no golden. Each link's ends are the projection's, and its facts are of
+// the column's year and basis, sum to its value and are the pages it cites.
+func TestEveryServedColumnIsTheScheduleItFolds(t *testing.T) {
+	dir := exportedSite(t)
+	root := repoRootForTest(t)
+	_, facts, err := readFactStore(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	byID := map[string]int{}
+	for i, f := range facts {
+		byID[f.ID] = i
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	_, ix, err := export.ColumnsOf(built.Projections, "fisc test")
+	if err != nil {
+		t.Fatalf("ColumnsOf: %v", err)
+	}
+	type locator struct {
+		DocID string `json:"doc_id"`
+		Pages []int  `json:"pages"`
+	}
+	for _, served := range []string{"fy2024-actual.json", "fy2025-revised.json", "fy2026-adopted.json", "fy2027-adopted.json"} {
+		raw, err := os.ReadFile(filepath.Join(dir, served)) // #nosec G304 -- a temp dir this test wrote.
+		if err != nil {
+			t.Fatalf("fisc export wrote no %s: %v", served, err)
+		}
+		var col export.ColumnDoc
+		if err := json.Unmarshal(raw, &col); err != nil {
+			t.Fatalf("decode %s: %v", served, err)
+		}
+		cited := 0
+		for schedule, sched := range col.Schedules {
+			stem, ok := ix.Stem(served, schedule)
+			if !ok {
+				t.Errorf("%s serves schedule %s, which no built document is", served, schedule)
+				continue
+			}
+			var doc struct {
+				Links []struct{ Source, Target string } `json:"links"`
+			}
+			if err := json.Unmarshal(built.Projections[stem], &doc); err != nil {
+				t.Fatalf("decode %s: %v", stem, err)
+			}
+			if len(doc.Links) != len(sched.Links) {
+				t.Errorf("%s %s serves %d links and %s draws %d", served, schedule, len(sched.Links), stem, len(doc.Links))
+				continue
+			}
+			for i, l := range sched.Links {
+				at := fmt.Sprintf("%s %s link %d", served, schedule, i)
+				if l.From < 0 || l.From >= len(col.Nodes) || l.To < 0 || l.To >= len(col.Nodes) {
+					t.Errorf("%s joins %d -> %d of %d nodes", at, l.From, l.To, len(col.Nodes))
+					continue
+				}
+				src, dst := col.Nodes[l.From].ID, col.Nodes[l.To].ID
+				if src != doc.Links[i].Source || dst != doc.Links[i].Target {
+					t.Errorf("%s is %s -> %s and %s draws %s -> %s", at, src, dst, stem, doc.Links[i].Source, doc.Links[i].Target)
+				}
+				if len(l.FactIDs) == 0 {
+					if !l.Derived {
+						t.Errorf("%s cites no fact and is not derived", at)
+					}
+					continue
+				}
+				cited++
+				var sum int64
+				pages := map[string]bool{}
+				for _, id := range l.FactIDs {
+					j, ok := byID[id]
+					if !ok {
+						t.Errorf("%s cites %s, which facts/facts.jsonl does not carry", at, id)
+						continue
+					}
+					f := facts[j]
+					if f.FiscalYear != col.Column.FiscalYear || string(f.Basis) != col.Column.Basis {
+						t.Errorf("%s cites %s of FY%d %s", at, id, f.FiscalYear, f.Basis)
+					}
+					sum += f.AmountCents
+					pages[fmt.Sprintf("%s p%d", f.DocID, f.Page)] = true
+				}
+				// The draw leg carries its facts' negation, as link-values-tie-to-facts allows.
+				if src == project.NodeFundBalanceDraw {
+					sum = -sum
+				}
+				if sum != l.ValueCents {
+					t.Errorf("%s carries %d and its facts come to %d", at, l.ValueCents, sum)
+				}
+				var locs []locator
+				if err := json.Unmarshal(l.Locators, &locs); err != nil {
+					t.Fatalf("%s locators: %v", at, err)
+				}
+				located := map[string]bool{}
+				for _, loc := range locs {
+					for _, pg := range loc.Pages {
+						located[fmt.Sprintf("%s p%d", loc.DocID, pg)] = true
+					}
+				}
+				want, got := slices.Sorted(maps.Keys(pages)), slices.Sorted(maps.Keys(located))
+				if !slices.Equal(want, got) {
+					t.Errorf("%s locates %v and its facts are on %v", at, got, want)
+				}
+			}
+		}
+		if cited == 0 {
+			t.Errorf("%s serves no cited link, so nothing of it was held", served)
+		}
 	}
 }

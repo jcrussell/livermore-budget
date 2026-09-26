@@ -674,11 +674,11 @@ func fundFlowsCaveats(twice int, nodes []Node) []Caveat {
 			// can have one. "The other 1 groups' revenue ends at their funds"
 			// would have gone into the caveat, the caveats page and every
 			// tooltip badge on a column with a single truncated group.
-			Summary: fmt.Sprintf("Only the General Fund has a spending side; the other %s "+
-				"revenue ends at their funds.", plural(truncated, "group")),
-			Text: fmt.Sprintf("Only the General Fund has a spending side IN THIS DOCUMENT. "+
-				"Budget Book pp.167-170 decompose that fund alone, so the other %s revenue "+
-				"ends at their funds here -- the money is not missing.", plural(truncated, "fund group")),
+			Summary: fmt.Sprintf("Only the General Fund opens into divisions and object "+
+				"categories; the other %s funds do not.", plural(truncated, "group")),
+			Text: fmt.Sprintf("Budget Book pp.167-170 break the General Fund alone down by "+
+				"division and object category, so the other %s money is not drawn at "+
+				"that grain.", plural(truncated, "fund group")),
 			// THE GROUPS THAT STOP, AND THE ONE THAT DOES NOT. Marking fund/100
 			// alone was half the sentence: this caveat is about the six fund
 			// groups whose money ends at their funds, and the badge landed on

@@ -641,7 +641,7 @@ type DrillStep struct {
 	Residual map[string]string `json:"residual,omitempty"`
 	// ResidualGrain is the grain the document this step draws does NOT split
 	// that money by, in the city's own singular word for it -- "fund". The mark
-	// is named "Not broken down by <grain>" and its rationale says the same word
+	// is named "Not split by <grain> here" and its rationale says the same word
 	// again, which is why the grain is declared and the sentences are not.
 	//
 	// A CLAIM ABOUT THE DOCUMENT AND NOT ABOUT THE TIER. The client hard-coded

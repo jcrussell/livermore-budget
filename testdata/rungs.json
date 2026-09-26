@@ -253,7 +253,7 @@
               "ends": [
                 "fund-balance/draw"
               ],
-              "label": "Not broken down by fund",
+              "label": "Not split by fund here",
               "rationale": "Money the chart above prints for Capital Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
               "source_note": ""
             }
@@ -1026,7 +1026,7 @@
                 "transfers/in",
                 "transfers/out"
               ],
-              "label": "Not broken down by fund",
+              "label": "Not split by fund here",
               "rationale": "Money the chart above prints for General Fund as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it. Addition to Reserves: a printed row of pp.66-67 that the city books against the group as a whole: it has no division and no object category on pp.167-170, which decompose expenditure and nothing else. Transfers In: pp.66-67 print Transfers In per fund group, and pp.127-140, which this chart draws the funds from, print it for none of this group's funds, so the group's transfer in is carried here whole. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
               "source_note": ""
             }
@@ -1918,7 +1918,7 @@
               "ends": [
                 "fund-balance/draw"
               ],
-              "label": "Not broken down by fund",
+              "label": "Not split by fund here",
               "rationale": "Money the chart above prints for Internal Service Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
               "source_note": ""
             }
@@ -3591,7 +3591,7 @@
               "tier": 4,
               "in_cents": 25000000,
               "label": "Difference between the two schedules",
-              "rationale": "In FY 2026-27 adopted, the chart above puts $130,502,087 through Services \u0026 Supplies and the schedule this chart is drawn from accounts for $130,252,087 of it, $250,000 less. Budget Book pp.85-125 print this spending by department, division and object with no fund at all, and they differ from p.67 in this object category and in no other. p.67's Internal Service Funds column is the one cell in the book that disagrees with the rest of it, and it is drawn as printed because the corrected figure is printed nowhere. This mark is that $250,000, drawn so that the ribbons and the node agree; no page prints it as a figure of its own.",
+              "rationale": "In FY 2026-27 adopted, the chart above puts $130,502,087 through Services \u0026 Supplies and the schedule this chart is drawn from accounts for $130,252,087 of it, $250,000 less. Budget Book pp.85-125 print this spending by department, division and object with no fund at all, and they differ from p.67 in this object category by $250,000 and in no other. The chart draws p.67 as printed. This mark is that $250,000, drawn so that the ribbons and the node agree; no page prints it as a figure of its own.",
               "source_note": "Derived, not published: one document's total for this cell less the other's. Each total is built from figures `fisc verify` ties to the pages the city printed, and the difference is the one declared for this column; no page prints it as a figure of its own.",
               "locators": [
                 {
@@ -3732,7 +3732,7 @@
               "ends": [
                 "fund-balance/draw"
               ],
-              "label": "Not broken down by fund",
+              "label": "Not split by fund here",
               "rationale": "Money the chart above prints for Capital Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
               "source_note": ""
             }
@@ -4474,7 +4474,7 @@
                 "transfers/in",
                 "transfers/out"
               ],
-              "label": "Not broken down by fund",
+              "label": "Not split by fund here",
               "rationale": "Money the chart above prints for General Fund as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Contribution: a positive change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn out of the group. pp.127-140 print no fund-balance row at all, so no fund pays it. Addition to Reserves: a printed row of pp.66-67 that the city books against the group as a whole: it has no division and no object category on pp.167-170, which decompose expenditure and nothing else. Transfers In: pp.66-67 print Transfers In per fund group, and pp.127-140, which this chart draws the funds from, print it for none of this group's funds, so the group's transfer in is carried here whole. Transfers Out: pp.66-67 print Transfers Out per fund group, and the pages this chart is drawn from print no transfer out, so the group's transfer out leaves beside its funds rather than through one.",
               "source_note": ""
             }
@@ -5366,7 +5366,7 @@
               "ends": [
                 "fund-balance/draw"
               ],
-              "label": "Not broken down by fund",
+              "label": "Not split by fund here",
               "rationale": "Money the chart above prints for Internal Service Funds as a whole and that the schedule this chart is drawn from does not split by fund, so no fund here receives or pays it. It is drawn beside the opened node's parts rather than attributed to one of them, and what flows in and what flows out need not balance: the difference is what that schedule does not break down. Fund Balance Draw: a negative change in working capital, inferred from pp.66-67's Change in Working Capital row and drawn into the group. pp.127-140 print no fund-balance row at all, so no fund receives it.",
               "source_note": ""
             }

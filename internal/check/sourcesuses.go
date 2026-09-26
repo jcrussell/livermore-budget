@@ -16,7 +16,7 @@ const categoryReserveIncrease = "fund-balance/reserve-increase"
 // balances: revenue + transfers in - expenditure - transfers out - reserve
 // increase == fund-balance/change, exactly.
 //
-// A column that prints flows and no change line is a finding, not a skip: the
+// A column that prints any term and no change line is a finding, not a skip: the
 // change is what the draw and contribution links are drawn from.
 type fundGroupSourcesEqualUses struct{}
 
@@ -43,7 +43,7 @@ func (k sourcesUsesKey) String() string {
 
 type sourcesUses struct {
 	revenue, transfersIn, expenditure, transfersOut, reserve, change int64
-	flows, changes                                                   int
+	terms, changes                                                   int
 }
 
 func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, error) {
@@ -62,10 +62,8 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 		switch {
 		case f.Kind == mapping.KindRevenue:
 			c.revenue += f.AmountCents
-			c.flows++
 		case f.Kind == mapping.KindExpenditure:
 			c.expenditure += f.AmountCents
-			c.flows++
 		case f.Kind == mapping.KindTransferIn:
 			c.transfersIn += f.AmountCents
 		case f.Kind == mapping.KindTransferOut:
@@ -75,11 +73,15 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 		case f.Category == categoryFundBalanceChange:
 			c.change += f.AmountCents
 			c.changes++
+			continue
 		case f.Category == categoryFundBalanceBeginning, f.Category == categoryFundBalanceEnding:
+			continue
 		default:
 			findings = append(findings, finding(f.ID,
 				"%s carries kind %q and category %q, which is no term of sources = uses", k, f.Kind, f.Category))
+			continue
 		}
+		c.terms++
 	}
 	keys := make([]sourcesUsesKey, 0, len(columns))
 	for k := range columns {
@@ -91,9 +93,9 @@ func (*fundGroupSourcesEqualUses) Run(_ context.Context, s *Subject) (Result, er
 	for _, k := range keys {
 		c := columns[k]
 		if c.changes == 0 {
-			if c.flows > 0 {
+			if c.terms > 0 {
 				findings = append(findings, finding(k.String(),
-					"prints revenue or expenditure and no %s, so its sources and uses balance against nothing",
+					"prints a term of sources = uses and no %s, so its sources and uses balance against nothing",
 					categoryFundBalanceChange))
 			}
 			continue

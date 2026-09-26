@@ -207,13 +207,32 @@ func TestARollupIsTheOnlyDescendingLinkAllowed(t *testing.T) {
 	}
 	var saw bool
 	for _, f := range res.Findings {
-		if strings.Contains(f.Detail, "is not") && strings.Contains(f.Detail, "own parent") {
+		if strings.Contains(f.Detail, "is not a revenue line rolled up into its own category") {
 			saw = true
 		}
 	}
 	if !saw {
 		t.Errorf("no finding says the target is not the source's own parent; got %v",
 			res.Findings)
+	}
+
+	// A PARENT -> CHILD LINK REVERSED is child -> own parent too, and the
+	// client drops it silently, so only a revenue line may roll up.
+	for _, rev := range []struct{ parent, child project.Node }{
+		{project.Node{ID: "fund-group/capital", Tier: 2}, project.Node{ID: "fund/510", Tier: 3}},
+		{project.Node{ID: "dept/police-patrol", Tier: 4},
+			project.Node{ID: "expenditure/police-patrol/wages-and-benefits", Tier: 5}},
+	} {
+		s := tieredSubject(t)
+		g := s.graphs()[0].Graph
+		rev.child.Parent = rev.parent.ID
+		g.Nodes = append(g.Nodes, rev.parent, rev.child)
+		g.Links = append(g.Links, project.Link{Source: rev.child.ID, Target: rev.parent.ID,
+			ValueCents: 1, Kind: project.KindExternal, FactIDs: []string{"x"}})
+		if res := runNodeTiers(t, s); res.Status != StatusFail {
+			t.Errorf("%s -> its own parent %s is %s, want FAIL", rev.child.ID, rev.parent.ID,
+				res.Status)
+		}
 	}
 }
 
@@ -278,7 +297,7 @@ func TestAPartitionIsTheOTHERDescendingLinkAllowed(t *testing.T) {
 	var saw bool
 	for _, f := range res.Findings {
 		if strings.Contains(f.Detail, "declares no partition") &&
-			strings.Contains(f.Detail, "own parent") {
+			strings.Contains(f.Detail, "rolled up into its own category") {
 			saw = true
 		}
 	}

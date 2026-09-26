@@ -2063,7 +2063,7 @@
     {
      "id": "what-a-fund-pays-departments-is-not-what-it-takes-in",
      "summary": "What a fund pays departments here is not what that fund takes in, and the two are printed by different schedules.",
-     "text": "The chart that opens this one draws what a fund takes in, from Budget Book pp.127-140. What leaves the fund here is what pp.85-125 print the city's departments drawing on it. Those are two schedules and not one figure read twice, and either side may be the larger.",
+     "text": "What a fund takes in is printed by Budget Book pp.127-140. What leaves the fund here is what pp.85-125 print the city's departments drawing on it. Those are two schedules and not one figure read twice, and either side may be the larger.",
      "applies_to": []
     },
     {
@@ -5001,8 +5001,8 @@
     },
     {
      "id": "the-revenue-schedule-is-published-twice",
-     "summary": "Budget Book pp.127-140 are published twice here: the chart draws one adopted column of their rows, and the Revenue tables print all four.",
-     "text": "Budget Book pp.127-140 are published in two places on this site, and the two are the same money rather than two figures. A chart here draws ONE column of that schedule, one adopted year at a time, while the Revenue tables print all four columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. A row found in both places is one printed figure shown once in each, so neither view is a second measurement of it and the two are never to be added.",
+     "summary": "Budget Book pp.127-140 are published twice on this site: the chart draws their adopted columns one year at a time, and the Revenue tables print all four.",
+     "text": "Budget Book pp.127-140 are published in two places on this site, and the two are the same money rather than two figures. The site's chart draws ONE adopted column of that schedule at a time, while the Revenue tables print all four columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. A row found in both places is one printed figure shown once in each, so neither view is a second measurement of it and the two are never to be added.",
      "applies_to": []
     },
     {
@@ -5013,8 +5013,8 @@
     },
     {
      "id": "only-the-general-fund-is-decomposed",
-     "summary": "Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.",
-     "text": "Only the General Fund has a spending side IN THIS DOCUMENT. Budget Book pp.167-170 decompose that fund alone, so the other 5 fund groups' revenue ends at their funds here -- the money is not missing.",
+     "summary": "Only the General Fund opens into divisions and object categories; the other 5 groups' funds do not.",
+     "text": "Budget Book pp.167-170 break the General Fund alone down by division and object category, so the other 5 fund groups' money is not drawn at that grain.",
      "applies_to": [
       "fund-group/capital",
       "fund-group/debt-service",
@@ -14554,7 +14554,7 @@
     {
      "id": "the-paying-side-is-not-the-whole-of-transfers-out",
      "summary": "p76's grand total is the transfers-IN side; the city's transfers out are larger, and the difference is a column this page does not list.",
-     "text": "Each receiving section of p76 equals the matching TRANSFER IN cell on Budget Book pp.66-67 to the cent, so the paying legs drawn here sum to the transfers-in total and not to the city's transfers out. What pp.66-67 fold into TRANSFER OUT and p76 does not list is the transfers each fund makes to the Capital Improvement Program, which pp.72-75 print under a heading of their own: $38,086,737 in FY 2025-26 and $50,762,251 in FY 2026-27. Do not read a fund's paying leg here as the whole of what it transfers out.",
+     "text": "Each receiving section of p76 equals the matching TRANSFER IN cell on Budget Book pp.66-67 to the cent, so the paying legs drawn here sum to the transfers-in total and not to the city's transfers out. What pp.66-67 fold into TRANSFER OUT and p76 does not list is the transfers each fund makes to the Capital Improvement Program: $38,086,737 in FY 2025-26 and $50,762,251 in FY 2026-27. Do not read a fund's paying leg here as the whole of what it transfers out.",
      "applies_to": []
     }
    ],

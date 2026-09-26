@@ -103,11 +103,11 @@ type Caveat struct {
 func revenueSchedulePublishedTwiceCaveat() Caveat {
 	return Caveat{
 		ID: "the-revenue-schedule-is-published-twice",
-		Summary: "Budget Book pp.127-140 are published twice here: the chart draws one adopted " +
-			"column of their rows, and the Revenue tables print all four.",
+		Summary: "Budget Book pp.127-140 are published twice on this site: the chart draws their " +
+			"adopted columns one year at a time, and the Revenue tables print all four.",
 		Text: "Budget Book pp.127-140 are published in two places on this site, and the two " +
-			"are the same money rather than two figures. A chart here draws ONE column of that " +
-			"schedule, one adopted year at a time, while the Revenue tables print all four " +
+			"are the same money rather than two figures. The site's chart draws ONE adopted " +
+			"column of that schedule at a time, while the Revenue tables print all four " +
 			"columns it carries: FY2023-24 actual, FY2024-25 revised, and both adopted years. " +
 			"A row found in both places is one printed figure shown once in each, so neither " +
 			"view is a second measurement of it and the two are never to be added.",

@@ -86,9 +86,9 @@ type rung struct {
 	// (AGENTS.md, "Go vets, JavaScript renders").
 	//
 	// THE FIGURE IS THE SIGNED SUM AND NOT A SECOND DERIVATION. It is what the
-	// document's own arithmetic comes to, which is why rung-amounts-are-the-
-	// spine's-cell can hold it against the node the overview labels one click
-	// earlier rather than against a rule restated here.
+	// document's own arithmetic comes to, which is why
+	// TestARungsAmountIsTheFigureTheOverviewLabelsTheNodeWith can hold it
+	// against the node the overview labels one click earlier.
 	Amounts map[string]int64 `json:"amounts,omitempty"`
 }
 

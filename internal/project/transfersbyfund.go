@@ -99,7 +99,7 @@ type TransfersByFundDocument struct {
 //
 // THE PAYER IS ITS OWN ID FORM BECAUSE fund/<a> -> fund/<b> CANNOT BE DRAWN.
 // The natural link runs tier 3 to tier 3: node-tiers-are-declared refuses it,
-// since it is neither a rollup into the source's own parent nor a partition --
+// since it is neither a revenue line's rollup into its category nor a partition --
 // p76 IS money moving, not one table read along a second axis, and declaring
 // otherwise would be a false claim on the wire -- and d3-sankey cannot lay it
 // out either, both ends taking the same column index. `transfer-from/<number>`
@@ -614,8 +614,8 @@ func transfersByFundCaveats() []Caveat {
 				"Budget Book pp.66-67 to the cent, so the paying legs drawn here sum to " +
 				"the transfers-in total and not to the city's transfers out. What pp.66-67 " +
 				"fold into TRANSFER OUT and p76 does not list is the transfers each fund " +
-				"makes to the Capital Improvement Program, which pp.72-75 print under a " +
-				"heading of their own: $38,086,737 in FY 2025-26 and $50,762,251 in " +
+				"makes to the Capital Improvement Program: $38,086,737 in FY 2025-26 and " +
+				"$50,762,251 in " +
 				"FY 2026-27. Do not read a fund's paying leg here as the whole of what it " +
 				"transfers out.",
 			AppliesTo: []string{},

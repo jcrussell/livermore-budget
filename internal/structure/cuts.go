@@ -341,11 +341,9 @@ func BudgetBookExceptions() []Exception {
 			Residual: 25000000,
 			Printed: "both sides: p0067.txt:34 prints TOTAL EXPENDITURES 26,544,515 for the Internal Service Funds, " +
 				"and 26,294,515 is printed on p0183.txt:64, p0075.txt:53, p0205 and p0209",
-			Reason: "p0067's Internal Service Funds column is the one cell in this book that disagrees with the " +
-				"rest of it: its Services & Supplies prints 16,796,010 for FY2026-27 and the five internal " +
-				"service funds' own rows on pp.172-183 sum to 250,000 less, and no FY2026-27 figure of 250,000 " +
-				"appears on any internal service fund anywhere in the corpus. The store publishes p0067 as " +
-				"printed because the corrected figure is printed nowhere",
+			Reason: "p0067's Internal Service Funds column prints Services & Supplies of 16,796,010 for " +
+				"FY2026-27, and the five internal service funds' own rows on pp.172-183 sum to 250,000 less. " +
+				"The store publishes p0067 as printed",
 			Bead: "fisc-av0w",
 		},
 		{
@@ -359,9 +357,8 @@ func BudgetBookExceptions() []Exception {
 				"both sums are arithmetic and the entry is grounded by differing by exactly what the fund-group " +
 				"cut, whose figures are printed, holds apart",
 			Reason: "Budget Book pp.85-125 print this spending by department, division and object with no " +
-				"fund at all, and they differ from p.67 in this object category and in no other. p.67's " +
-				"Internal Service Funds column is the one cell in the book that disagrees with the rest of " +
-				"it, and it is drawn as printed because the corrected figure is printed nowhere",
+				"fund at all, and they differ from p.67 in this object category by $250,000 and in no " +
+				"other. The chart draws p.67 as printed",
 			Bead: "fisc-av0w",
 		},
 	}

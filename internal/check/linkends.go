@@ -80,7 +80,7 @@ func (*linkEndsMatchTheirFacts) Description() string {
 
 func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
-	tiers := departmentTiers()
+	tiers := departmentTiers(structure.AllCuts())
 	links := 0
 	for _, p := range s.linkedDocuments() {
 		selected := factIndex(factsFor(s.Facts, p.Options))
@@ -147,9 +147,9 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 
 // departmentTiers is the department tier each scope's cut declares. A scope
 // two cuts give different tiers maps to "", which matches neither form.
-func departmentTiers() map[string]string {
+func departmentTiers(cuts []structure.Cut) map[string]string {
 	out := map[string]string{}
-	for _, c := range structure.AllCuts() {
+	for _, c := range cuts {
 		if c.DepartmentTier == "" {
 			continue
 		}
@@ -184,10 +184,11 @@ func (e linkEnd) mismatch(id string, source bool) (string, bool) {
 			}
 			sum += f.AmountCents
 		}
-		// A draw and a contribution cite the same category, told apart by sign.
+		// A draw and a contribution cite the same category, told apart by sign;
+		// a zero sum is neither.
 		if len(e.facts) > 0 && ((id == "fund-balance/draw" && sum >= 0) ||
 			(id == "fund-balance/contribution" && sum <= 0)) {
-			return fmt.Sprintf("%s cites facts summing to %d cents, the other sign", id, sum), true
+			return fmt.Sprintf("%s cites facts summing to %d cents; a draw is negative and a contribution positive", id, sum), true
 		}
 		return "", true
 	}

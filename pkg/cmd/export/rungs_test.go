@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1198,7 +1197,8 @@ func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 // proseDenial is the rule the served prose is held to: a step description,
 // a residual or gap reason or a caveat says what its own chart draws and
 // from which pages, and denies nothing about what any other schedule prints.
-var proseDenial = regexp.MustCompile(`(?i)no published|not broken down|no schedule|nothing published|prints? none|in any published`)
+// It is a tripwire, not a parser: it does not chase paraphrases.
+var proseDenial = regexp.MustCompile(`(?i)no published|not broken down|no schedule|nothing published|prints? none|in any published|nowhere`)
 
 // residualFigure is a figure in a residual reason, once its page citations
 // are gone: one reason is shown under every column, so any figure in it is
@@ -1208,56 +1208,75 @@ var (
 	residualFigure = regexp.MustCompile(`(?i)[\d$]|\b(hundred|thousand|million|billion|dollars?)\b`)
 )
 
-// TestServedProseDeniesNothingAndResidualsQuoteNoFigure holds every step
-// description, residual reason, gap reason and projection caveat the export
-// serves to proseDenial, and every residual reason to residualFigure.
+// TestServedProseDeniesNothingAndResidualsQuoteNoFigure holds the text of
+// every HTML page and every string in every JSON file one real export serves
+// to proseDenial, and every residual reason to residualFigure. Page texts and
+// fact records are the city's own words and are not read.
 func TestServedProseDeniesNothingAndResidualsQuoteNoFigure(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	dir := exportedSite(t)
+	type text struct{ where, words string }
+	var prose []text
+	var strs func(where string, v any)
+	strs = func(where string, v any) {
+		switch v := v.(type) {
+		case string:
+			prose = append(prose, text{where, v})
+		case []any:
+			for _, e := range v {
+				strs(where, e)
+			}
+		case map[string]any:
+			for k, e := range v {
+				strs(where+" "+k, e)
+			}
+		}
+	}
+	pages, docs := 0, 0
+	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, _ := filepath.Rel(dir, path)
+		raw, err := os.ReadFile(path) // #nosec G304 -- a temp dir this test wrote.
+		if err != nil {
+			return err
+		}
+		switch filepath.Ext(path) {
+		case ".html":
+			pages++
+			prose = append(prose, text{rel, htmlTag.ReplaceAllString(htmlStyle.ReplaceAllString(string(raw), " "), " ")})
+		case ".json":
+			var v any
+			if err := json.Unmarshal(raw, &v); err != nil {
+				return fmt.Errorf("%s: %w", rel, err)
+			}
+			docs++
+			strs(rel, v)
+		}
+		return nil
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	built, err := buildAll(root)
+	built, err := buildAll(repoRootForTest(t))
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	type text struct{ where, words string }
-	var prose, residuals []text
+	var residuals []text
 	for _, v := range views(built) {
 		for _, s := range v.Steps {
-			at := v.Path + " step " + s.Key
-			prose = append(prose, text{at + " description", s.Description})
 			for id, why := range s.Residual {
-				residuals = append(residuals, text{at + " residual " + id, why})
-			}
-			for id, g := range s.Gaps {
-				for _, l := range g {
-					prose = append(prose, text{at + " gap " + id, l.Reason})
-				}
+				residuals = append(residuals, text{v.Path + " step " + s.Key + " residual " + id, why})
 			}
 		}
 	}
-	prose = append(prose, residuals...)
-	caveats := 0
-	for _, name := range slices.Sorted(maps.Keys(built.Projections)) {
-		var doc struct {
-			Metadata struct {
-				Caveats []struct{ ID, Summary, Text string } `json:"caveats"`
-			} `json:"metadata"`
-		}
-		if err := json.Unmarshal(built.Projections[name], &doc); err != nil {
-			t.Fatalf("decode %s: %v", name, err)
-		}
-		for _, c := range doc.Metadata.Caveats {
-			caveats++
-			prose = append(prose, text{name + " caveat " + c.ID, c.Summary + " " + c.Text})
-		}
-	}
-	if len(residuals) == 0 || caveats == 0 {
-		t.Fatalf("%d residual reasons and %d caveats served; the rule reached nothing", len(residuals), caveats)
+	if pages == 0 || docs == 0 || len(residuals) == 0 {
+		t.Fatalf("%d pages, %d JSON files and %d residual reasons served; the rule reached nothing", pages, docs, len(residuals))
 	}
 	for _, p := range prose {
 		if m := proseDenial.FindString(p.words); m != "" {
-			t.Errorf("%s says %q: %s", p.where, m, p.words)
+			i := strings.Index(p.words, m)
+			t.Errorf("%s says %q: ...%s...", p.where, m, p.words[max(0, i-120):min(len(p.words), i+120)])
 		}
 	}
 	for _, r := range residuals {
@@ -1266,6 +1285,11 @@ func TestServedProseDeniesNothingAndResidualsQuoteNoFigure(t *testing.T) {
 		}
 	}
 }
+
+var (
+	htmlStyle = regexp.MustCompile(`(?is)<style.*?</style>`)
+	htmlTag   = regexp.MustCompile(`<[^>]*>`)
+)
 
 // TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins holds each column's gap
 // marks to the exceptions structure declares, per (year, basis, cell): the

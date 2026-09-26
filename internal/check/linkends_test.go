@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // TestEveryIdFormSaysWhatItNames holds endNames to hierarchyTiers, so a form
@@ -124,6 +125,15 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 				l.Source, l.Target = "fund-balance/draw", "fund-group/enterprise"
 			}}},
 			"fund-balance/draw cites facts summing to"},
+		{"a draw drawn as a contribution", []edit{{"sankey", "fund-balance/draw", "fund-group/general",
+			func(l *project.Link) {
+				l.Source, l.Target = "fund-group/general", "fund-balance/contribution"
+			}}},
+			"fund-balance/contribution cites facts summing to"},
+		{"a revenue line re-pointed to the category that shares its label", []edit{{"fund-flows",
+			"revenue-line/charges-for-services/charges-for-services", "fund/210",
+			source("revenue-line/charges-for-services")}},
+			"revenue-line/charges-for-services is a line under"},
 		{"a division's category swapped", []edit{{"department-spending", "expenditure/wages-and-benefits",
 			"dept/city-attorney", source("expenditure/services-and-supplies")}},
 			`expenditure/services-and-supplies names "services-and-supplies"`},
@@ -180,6 +190,32 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 		}
 	})
 
+	// A ZERO SUM IS NEITHER A DRAW NOR A CONTRIBUTION.
+	for _, end := range [][2]string{
+		{"fund-balance/draw", "fund-group/general"},
+		{"fund-group/enterprise", "fund-balance/contribution"},
+	} {
+		t.Run("a zero-sum "+end[0]+" -> "+end[1], func(t *testing.T) {
+			l := find(t, "sankey", end[0], end[1])
+			orig := s.Facts
+			facts := slices.Clone(orig)
+			s.Facts = facts
+			t.Cleanup(func() { s.Facts = orig })
+			for j := range facts {
+				if slices.Contains(l.FactIDs, facts[j].ID) {
+					facts[j].AmountCents = 0
+				}
+			}
+			res, err := c.Run(t.Context(), s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.Status != StatusFail || !strings.Contains(findingDetails(res), "cites facts summing to 0 cents") {
+				t.Fatalf("status %s, findings %v; want a fail on the zero sum", res.Status, res.Findings)
+			}
+		})
+	}
+
 	// THE REGISTRY ARM ALONE: the link and its facts agree on a group that
 	// data/funds.yaml does not put the fund in.
 	t.Run("a fund in a group data/funds.yaml does not put it in", func(t *testing.T) {
@@ -211,4 +247,19 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 			t.Fatalf("status %s, findings %v; want one fail naming the registry's group", res.Status, res.Findings)
 		}
 	})
+}
+
+// TestDepartmentTiersRefusesAScopeTwoCutsDisagreeOn: a scope declared at both
+// tiers matches neither form.
+func TestDepartmentTiersRefusesAScopeTwoCutsDisagreeOn(t *testing.T) {
+	got := departmentTiers([]structure.Cut{
+		{Scope: "a", DepartmentTier: "division"},
+		{Scope: "a", DepartmentTier: "department"},
+		{Scope: "a", DepartmentTier: "division"},
+		{Scope: "b", DepartmentTier: "department"},
+		{Scope: "c"},
+	})
+	if diff := cmp.Diff(map[string]string{"a": "", "b": "department"}, got); diff != "" {
+		t.Errorf("departmentTiers (-want +got):\n%s", diff)
+	}
 }

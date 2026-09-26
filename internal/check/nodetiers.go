@@ -115,9 +115,9 @@ var endpointTiers = map[string]int{
 // in a view that drew it backwards. What has to be established per link is that
 // the link is not a FLOW at all, and there are exactly two ways to establish it:
 //
-//   - A ROLLUP. The target is the SOURCE'S OWN PARENT, the edge the client
-//     already folds along, so the "flow" is a node being added into the box it
-//     is part of.
+//   - A ROLLUP. A `revenue-line/` node into its own `revenue/` parent, the
+//     edge the client already folds along. No other tier pair rolls up: the
+//     client drops a fund -> fund-group link silently.
 //   - A DECLARED PARTITION. [project.Link.Partition] says the projection read
 //     one printed matrix along its second axis, so neither end is upstream of
 //     the other and the direction drawn is the chart's choice. It is the
@@ -145,8 +145,8 @@ func (*nodeTiersAreDeclared) Tier() int  { return 1 }
 func (*nodeTiersAreDeclared) Full() bool { return false }
 func (*nodeTiersAreDeclared) Description() string {
 	return "every node's tier is the one docs/sankey-contract.md's table gives for its id " +
-		"form, and every link runs from a coarser tier to a finer one unless it is a rollup " +
-		"into the source's own parent or a declared partition, which a document declares on " +
+		"form, and every link runs from a coarser tier to a finer one unless it is a revenue " +
+		"line rolled up into its own category or a declared partition, which a document declares on " +
 		"every link or none and along one pair of tiers"
 }
 
@@ -228,18 +228,18 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 				continue
 			}
 			switch {
-			case parentOf[l.Source] == l.Target:
+			case isRollup(l.Source, l.Target, parentOf):
 				rollups++
 			case l.Partition:
 			default:
 				findings = append(findings, finding(p.String(),
-					"link %q -> %q runs from tier %d to tier %d, %q is not %q's own "+
-						"parent, and the link declares no partition. A flow in this diagram "+
-						"goes from a coarser tier to a finer one, from a node into the box "+
-						"it folds into, or along the second axis of one printed table; one "+
-						"that does none of the three is drawn as a ribbon running against "+
-						"every other ribbon on the page",
-					l.Source, l.Target, src, dst, l.Target, l.Source))
+					"link %q -> %q runs from tier %d to tier %d, is not a revenue line "+
+						"rolled up into its own category, and declares no partition. A flow in "+
+						"this diagram goes from a coarser tier to a finer one, from a revenue "+
+						"line into its category, or along the second axis of one printed "+
+						"table; one that does none of the three is drawn as a ribbon running "+
+						"against every other ribbon on the page, or dropped by the client",
+					l.Source, l.Target, src, dst))
 			}
 		}
 
@@ -272,7 +272,7 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		unit:     "nodes",
 		held: fmt.Sprintf("%d nodes over %d graph document(s), each at the tier its id form "+
 			"declares, and %d links each running from a coarser tier to a finer one or, for "+
-			"%d of them, from a node into the box it folds into and, for %d, along the "+
+			"%d of them, from a revenue line into its category and, for %d, along the "+
 			"second axis of one printed table; the declared forms are %s, plus %d flow "+
 			"endpoints named individually",
 			nodes, len(s.linkedDocuments()), links, rollups, partitions, describeForms(),
@@ -280,6 +280,13 @@ func (*nodeTiersAreDeclared) Run(_ context.Context, s *Subject) (Result, error) 
 		nothing:  "no projection carries a node, so no tier has been read",
 		findings: findings,
 	}.result(), nil
+}
+
+// isRollup is a revenue line added into the category it is printed under, the
+// only child -> parent link any document draws.
+func isRollup(source, target string, parentOf map[string]string) bool {
+	return strings.HasPrefix(source, "revenue-line/") && strings.HasPrefix(target, "revenue/") &&
+		parentOf[source] == target
 }
 
 // declaredTier is the tier an id form declares, and whether the form is one the
