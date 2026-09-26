@@ -504,16 +504,13 @@ func departmentFundingCaveats() []Caveat {
 			AppliesTo: []string{},
 		},
 		{
-			ID: "a-fund-takes-in-more-than-it-pays-departments",
+			ID: "what-a-fund-pays-departments-is-not-what-it-takes-in",
 			Summary: "What a fund pays departments here is not what that fund takes in, " +
 				"and the two are printed by different schedules.",
-			Text: "The chart that opens this one draws a fund's REVENUE, from Budget Book " +
-				"pp.127-140. What leaves the fund here is what pp.85-125 print the city's " +
-				"departments drawing on it. Those are two schedules and not one figure read " +
-				"twice: the difference is money the city transfers out of the fund and adds " +
-				"to its reserves, which pp.66-67 print for the fund GROUP and pp.198-209 " +
-				"print per fund, and which this chart does not draw. A fund drawn here taking in more than it " +
-				"pays out is that difference and is not a gap in these pages.",
+			Text: "The chart that opens this one draws what a fund takes in, from Budget " +
+				"Book pp.127-140. What leaves the fund here is what pp.85-125 print the " +
+				"city's departments drawing on it. Those are two schedules and not one " +
+				"figure read twice, and either side may be the larger.",
 			AppliesTo: []string{},
 		},
 		{

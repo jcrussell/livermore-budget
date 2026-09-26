@@ -2023,9 +2023,10 @@ export async function stepDocument(step, from, superseded) {
  * year switch; this is the same hazard one gesture over.
  *
  * @param {Rung[]} next
+ * @param {string} [refused] the banner's opening words when the redraw is refused
  * @returns {boolean} whether the new depth is on screen
  */
-export function redrawStack(next) {
+export function redrawStack(next, refused = "That could not be opened") {
   // ASKED BEFORE ANYTHING IS REPAINTED. The element focus is on is one the
   // repaint below removes, so after it there is nothing left to ask about.
   const hadFocus = focusInChart();
@@ -2065,7 +2066,7 @@ export function redrawStack(next) {
     drilled = was;
     laidNodes = laidWas;
     groupIndex = groupsWas;
-    fail("That could not be opened: " + (e instanceof Error ? e.message : String(e)));
+    fail(refused + ": " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
   clearRefusal();
@@ -5652,8 +5653,14 @@ export function syncColumns() {
     const want = Math.min(OFFERED_COLUMNS, Math.max(NARROW_COLUMNS, columnBudget + delta));
     return want !== columnBudget && drawnColumns(want) !== drawnColumns();
   };
+  const had = document.activeElement;
   bound("column-fewer", !moves(-1));
   bound("column-more", !moves(1));
+  // A disabled button drops focus to <body>, so the sibling takes it.
+  const pair = [maybeEl("column-fewer"), maybeEl("column-more")];
+  const at = had ? pair.indexOf(/** @type {HTMLElement} */ (had)) : -1;
+  const other = at < 0 ? null : pair[1 - at];
+  if (at >= 0 && had.hasAttribute("disabled") && other && !other.hasAttribute("disabled")) other.focus();
 }
 
 /**
@@ -5681,7 +5688,8 @@ export function applyColumns(redraw) {
   const moved = setColumnBudget(columnOverride === null ? viewportColumns() : columnOverride);
   let drew = true;
   // A REFUSED REDRAW LEAVES THE OLD CHART, so the budget goes back with it.
-  if (moved && redraw && projection && drawnColumns() !== before && !redrawStack(drilled)) {
+  if (moved && redraw && projection && drawnColumns() !== before &&
+      !redrawStack(drilled, "The chart could not be redrawn at " + drawnColumns() + " columns")) {
     columnBudget = budget;
     drew = false;
   }
@@ -6372,12 +6380,16 @@ export function wireYears(years) {
     const target = /** @type {HTMLInputElement} */ (e.target);
     const year = years.find((y) => y.stem === target.value);
     if (!year) return;
-    // A .catch, which main() has had all along and this has not. showYear no
-    // longer rejects for a bad document -- both awaits are inside its try -- so
-    // this is the last resort rather than the handler for a known case, and it
-    // must say so rather than repeat the fetch advice. Without it a rejection
-    // here is unhandled: no banner, and the page left mid-repaint.
-    void showYear(year).catch((e) => fail("The chart failed to draw: " + String(e)));
+    // A refused switch leaves the page on the year it was, so the control goes
+    // back to it; the banner says what failed.
+    const back = () => {
+      if (!shownYear) return;
+      for (const r of group.querySelectorAll("input[type=radio]")) r.checked = r.value === shownYear.stem;
+    };
+    void showYear(year).then((got) => { if (got === FAILED) back(); }, (e) => {
+      back();
+      fail("The chart failed to draw: " + String(e));
+    });
   });
 }
 

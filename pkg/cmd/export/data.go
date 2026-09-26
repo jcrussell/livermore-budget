@@ -796,9 +796,8 @@ func views(built result) []export.View {
 					"group takes in here is what its funds take in. Every fund a " +
 					"department draws on opens further: the General Fund into the " +
 					"divisions that spend it, from Budget Book pp.167-170, and every " +
-					"other fund into the departments it pays for, from pp.85-125. A fund " +
-					"no department's funding schedule names ends the drill — not " +
-					"missing, but not broken down in any published schedule. Where " +
+					"other fund into the departments it pays for, from pp.85-125. Any " +
+					"other fund ends the drill. Where " +
 					"there is room for a fourth column, the General Fund's divisions " +
 					"from pp.167-170 are drawn beyond its funds; no other group has a " +
 					"fund those pages decompose, so their windows stay three columns.",
@@ -889,10 +888,7 @@ func views(built result) []export.View {
 					"what pp.66-67 print for the fund group as a whole — the money the city " +
 					"transfers out and sets aside in its balances and reserves — less the " +
 					"money the group takes in that no fund receives, which the chart above " +
-					"carries to a node of its own beside the funds. p.76 prints the " +
-					"transfers per fund, and the transfers chart draws them from there; " +
-					"pp.198-209 print each fund's transfers and change in balance, which " +
-					"this chart does not draw.",
+					"carries to a node of its own beside the funds.",
 			},
 			{
 				Key:   "division",
@@ -1076,10 +1072,7 @@ func views(built result) []export.View {
 					"receive them are on the right. One ribbon is one figure the page prints, " +
 					"and a fund that both pays and receives is drawn once on each side, under " +
 					"the same name. This is the money coming IN, which is what the mark on " +
-					"the citywide chart counts; what the city transfers OUT is larger, " +
-					"because pp.72-75 print the transfers each fund makes to the Capital " +
-					"Improvement Program under a heading of their own and p76 does not list " +
-					"them.",
+					"the citywide chart counts.",
 			},
 		}...)
 	}
@@ -1135,26 +1128,15 @@ func views(built result) []export.View {
 				Noun:  "fund",
 				Back:  "All funds",
 				Tail:  "departments",
-				// THE DIFFERENCE IS NAMED IN BOTH DIRECTIONS. "Transfers out
-				// and adds to its reserves" is true of fund/100 and false of a
-				// fund that pays departments MORE than its revenue. Measured
-				// over both committed columns: 7 of the 54 funds this step
-				// opens in FY2025-26 and 5 of the 52 in FY2026-27 pay out more
-				// than pp.127-140 give them, the widest being fund/240 at
-				// 1,064,044 against 322,600. A sentence that is wrong on one
-				// window in eight is worse than no sentence, because only the
-				// reader who checks can tell which they have.
+				// NO DIRECTION AND NO ACCOUNT OF THE DIFFERENCE: either side
+				// is the larger on some fund in both committed columns.
 				Description: "The fund group this fund belongs to is on the left and the " +
 					"city departments it pays for are on the right \u2014 that fund's rows " +
 					"of Budget Book pp.85-125, rescaled to its total. The two sides of the " +
 					"fund in the middle are read from two different schedules and are not " +
-					"one figure: what it takes in is its revenue, from pp.127-140, and what " +
-					"leaves it here is what the departments draw on it. Either side may be " +
-					"the larger. The difference is money the city moves between its own " +
-					"funds and into or out of accumulated balance, which pp.66-67 print for " +
-					"the fund group as a whole. p.76 prints the transfers per fund, and the " +
-					"transfers chart draws them from there; pp.198-209 print each fund's " +
-					"transfers and change in balance, which this chart does not draw. A department here is the WHOLE department across every fund that " +
+					"one figure: what it takes in, from pp.127-140, and what the " +
+					"departments draw on it here. Either side may be the larger. " +
+					"A department here is the WHOLE department across every fund that " +
 					"pays it, which is a coarser thing than the divisions the General Fund " +
 					"opens into \u2014 five names belong to both tiers, so do not read one " +
 					"as the other.",

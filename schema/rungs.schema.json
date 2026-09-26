@@ -221,7 +221,7 @@
                         }
                       },
                       {
-                        "description": "A residual names the endpoints whose flow it carries, and cites through them rather than through locators of its own.",
+                        "description": "A residual names the endpoints whose flow it carries, carries a positive figure on at least one side, and cites through its endpoints rather than through locators or a note of its own.",
                         "if": {
                           "properties": {
                             "role": {
@@ -232,6 +232,29 @@
                         "then": {
                           "required": [
                             "ends"
+                          ],
+                          "properties": {
+                            "source_note": {
+                              "maxLength": 0
+                            },
+                            "in_cents": {
+                              "minimum": 1
+                            },
+                            "out_cents": {
+                              "minimum": 1
+                            }
+                          },
+                          "anyOf": [
+                            {
+                              "required": [
+                                "in_cents"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "out_cents"
+                              ]
+                            }
                           ],
                           "not": {
                             "required": [

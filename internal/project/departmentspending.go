@@ -474,8 +474,7 @@ func departmentSpendingCaveats() []Caveat {
 				"header the row sits under. These rows have no such header, so that question " +
 				"cannot be asked of them and every expenditure ribbon is published as " +
 				"external. Internal Service Fund spending is INSIDE these figures rather " +
-				"than beside them: the citywide spine puts it at 25,077,367 of 254,095,412 " +
-				"in FY2025-26 and 26,544,515 of 252,854,896 in FY2026-27. Do not add a " +
+				"than beside them. Do not add a " +
 				"figure from this document to an external total taken from another.",
 			AppliesTo: []string{},
 		},

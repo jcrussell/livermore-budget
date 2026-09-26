@@ -377,6 +377,19 @@ describe("a year switch and an open drill", () => {
     assert.equal(app.drilled.length, 0);
     assert.equal(cents(), overview);
   });
+  test("a refused year switch puts the year control back on the year still shown", async (t) => {
+    const broken = structuredClone(columnFixture("fy2027-adopted"));
+    broken.schedules.sankey.links[0].to = broken.nodes.length;
+    const checked = (document) => document.querySelector("#year-toggle input[type=radio]:checked").value;
+    for (const [how, entry] of [["a 404", null], ["a lay-out that throws", { doc: broken }]]) {
+      const { document } = await bootedApp({ checkedStem: "sankey", plan: { "fy2027-adopted.json": entry } });
+      clickYear(document, "sankey-2027");
+      await settle();
+      t.diagnostic(`after ${how}: the control reads "${checked(document)}", ${refusals(document).length} banner(s)`);
+      assert.equal(checked(document), "sankey", how);
+      assert.equal(refusals(document).length, 1, how);
+    }
+  });
   test("a year whose table will not build leaves the lay-out of the year it was", async (t) => {
     // Only citations reads CONFIG.docs unguarded, so the throw is the table's.
     const config = structuredClone(pageFixture().config);

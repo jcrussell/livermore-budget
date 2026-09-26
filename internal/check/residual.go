@@ -62,16 +62,13 @@ var residualNodes = map[string]string{
 		"the group as a whole: it has no division and no object category on pp.167-170, " +
 		"which decompose expenditure and nothing else",
 
-	"transfers/in": "pp.66-67 print Transfers In per fund group, and pp.127-140 print it per " +
-		"fund to the cent everywhere but the General Fund, which they print no Transfers In " +
-		"row for. The general group's transfer in is therefore carried here whole; p.76 " +
-		"prints it per fund, and the transfers chart draws it from there",
+	"transfers/in": "pp.66-67 print Transfers In per fund group, and pp.127-140, which this " +
+		"chart draws the funds from, print it for none of this group's funds, so the group's " +
+		"transfer in is carried here whole",
 
-	"transfers/out": "pp.66-67 print Transfers Out per fund group and p.76 prints it per paying " +
-		"fund, which the transfers chart draws. The schedules this chart is drawn from carry " +
-		"none of it: pp.167-170 decompose the General Fund's expenditure and print no " +
-		"transfer out, so the group's transfer out leaves beside its divisions rather than " +
-		"through one",
+	"transfers/out": "pp.66-67 print Transfers Out per fund group, and the pages this chart " +
+		"is drawn from print no transfer out, so the group's transfer out leaves beside its " +
+		"funds rather than through one",
 }
 
 // ResidualNodes is the declared residual set, for the seam that carries it to

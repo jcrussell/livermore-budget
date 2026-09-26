@@ -415,8 +415,8 @@ func ResidualOf(drawn, from, doc Graph, opened string, tiers []int, residual map
 	reasons := make([]string, 0, len(sortedEnds))
 	for _, e := range sortedEnds {
 		why := residual[e]
-		if why == "" {
-			why = "no reason declared"
+		if strings.TrimSpace(why) == "" {
+			return Carry{}, false, fmt.Errorf("%q is carried onto the residual mark with no reason declared for it", e)
 		}
 		reasons = append(reasons, label(e)+": "+why+".")
 	}

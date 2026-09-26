@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -1194,11 +1195,23 @@ func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 	}
 }
 
-// TestNoSentenceDeniesTheTransfersPerFund: p.76 prints every transfer per
-// paying and receiving fund, and pp.198-209 print each fund's transfers and
-// change in balance, so a step or caveat saying no schedule breaks the fund
-// group's difference down by fund is false beside the transfers chart.
-func TestNoSentenceDeniesTheTransfersPerFund(t *testing.T) {
+// proseDenial is the rule the served prose is held to: a step description,
+// a residual or gap reason or a caveat says what its own chart draws and
+// from which pages, and denies nothing about what any other schedule prints.
+var proseDenial = regexp.MustCompile(`(?i)no published|not broken down|no schedule|nothing published|prints? none|in any published`)
+
+// residualFigure is a figure in a residual reason, once its page citations
+// are gone: one reason is shown under every column, so any figure in it is
+// one column's.
+var (
+	pageCite       = regexp.MustCompile(`\bpp?\.\s?\d+(-\d+)?`)
+	residualFigure = regexp.MustCompile(`(?i)[\d$]|\b(hundred|thousand|million|billion|dollars?)\b`)
+)
+
+// TestServedProseDeniesNothingAndResidualsQuoteNoFigure holds every step
+// description, residual reason, gap reason and projection caveat the export
+// serves to proseDenial, and every residual reason to residualFigure.
+func TestServedProseDeniesNothingAndResidualsQuoteNoFigure(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -1207,28 +1220,49 @@ func TestNoSentenceDeniesTheTransfersPerFund(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildAll: %v", err)
 	}
-	denial := regexp.MustCompile(`(?i)no (published )?schedule (breaks|attributes)`)
-	transfers := 0
+	type text struct{ where, words string }
+	var prose, residuals []text
 	for _, v := range views(built) {
 		for _, s := range v.Steps {
-			if m := denial.FindString(s.Description); m != "" {
-				t.Errorf("%s step %q says %q: %s", v.Path, s.Key, m, s.Description)
+			at := v.Path + " step " + s.Key
+			prose = append(prose, text{at + " description", s.Description})
+			for id, why := range s.Residual {
+				residuals = append(residuals, text{at + " residual " + id, why})
 			}
-			if strings.Contains(strings.ToLower(s.Description), "transfers out") ||
-				strings.Contains(s.Description, "between its own funds") {
-				transfers++
-				if !regexp.MustCompile(`\bp\.?76\b`).MatchString(s.Description) {
-					t.Errorf("%s step %q discusses transfers and does not name p.76: %s", v.Path, s.Key, s.Description)
+			for id, g := range s.Gaps {
+				for _, l := range g {
+					prose = append(prose, text{at + " gap " + id, l.Reason})
 				}
 			}
 		}
 	}
-	if transfers < 2 {
-		t.Errorf("%d step descriptions discuss transfers; the fund and fund-departments steps both do", transfers)
+	prose = append(prose, residuals...)
+	caveats := 0
+	for _, name := range slices.Sorted(maps.Keys(built.Projections)) {
+		var doc struct {
+			Metadata struct {
+				Caveats []struct{ ID, Summary, Text string } `json:"caveats"`
+			} `json:"metadata"`
+		}
+		if err := json.Unmarshal(built.Projections[name], &doc); err != nil {
+			t.Fatalf("decode %s: %v", name, err)
+		}
+		for _, c := range doc.Metadata.Caveats {
+			caveats++
+			prose = append(prose, text{name + " caveat " + c.ID, c.Summary + " " + c.Text})
+		}
 	}
-	for name, b := range built.Projections {
-		if m := denial.Find(b); m != nil {
-			t.Errorf("projection %s says %q", name, m)
+	if len(residuals) == 0 || caveats == 0 {
+		t.Fatalf("%d residual reasons and %d caveats served; the rule reached nothing", len(residuals), caveats)
+	}
+	for _, p := range prose {
+		if m := proseDenial.FindString(p.words); m != "" {
+			t.Errorf("%s says %q: %s", p.where, m, p.words)
+		}
+	}
+	for _, r := range residuals {
+		if m := residualFigure.FindString(pageCite.ReplaceAllString(r.words, "")); m != "" {
+			t.Errorf("%s quotes %q, which is one column's: %s", r.where, m, r.words)
 		}
 	}
 }
@@ -1490,6 +1524,13 @@ func TestAMarkWithoutItsWordsIsRefusedAtTheWrite(t *testing.T) {
 		{"a gap on both sides", export.RoleGap, func(m *drawnMark) { m.InCents, m.OutCents = 1, 1 }},
 		{"a gap on neither side", export.RoleGap, func(m *drawnMark) { m.InCents, m.OutCents = 0, 0 }},
 		{"a gap of negative cents", export.RoleGap, func(m *drawnMark) { m.InCents, m.OutCents = -m.InCents-m.OutCents, 0 }},
+		{"a gap of negative out cents", export.RoleGap, func(m *drawnMark) { m.InCents, m.OutCents = 0, -m.InCents-m.OutCents }},
+		{"a residual on neither side", export.RoleResidual, func(m *drawnMark) { m.InCents, m.OutCents = 0, 0 }},
+		{"a residual of negative in cents", export.RoleResidual, func(m *drawnMark) { m.InCents = -m.InCents - m.OutCents }},
+		{"a residual of negative out cents", export.RoleResidual, func(m *drawnMark) { m.OutCents = -m.InCents - m.OutCents }},
+		{"a residual with a note of its own", export.RoleResidual, func(m *drawnMark) { m.SourceNote = "Derived." }},
+		{"a gap at a tier the rung draws no column at", export.RoleGap, func(m *drawnMark) { m.Tier = 99 }},
+		{"a residual at a tier the rung draws no column at", export.RoleResidual, func(m *drawnMark) { m.Tier = 99 }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rungs, err := rungsOf(built.Projections, spine)
@@ -1513,8 +1554,12 @@ func TestAMarkWithoutItsWordsIsRefusedAtTheWrite(t *testing.T) {
 			if !blanked {
 				t.Fatalf("no rung answers a %s mark, so nothing was blanked", tc.role)
 			}
-			if _, err = encodeRungs(rungs); err == nil || !strings.Contains(err.Error(), "does not match") {
-				t.Errorf("encodeRungs with %s: err = %v, want the schema's refusal", tc.name, err)
+			want := "does not match"
+			if strings.Contains(tc.name, "tier") {
+				want = "which the rung draws no column at"
+			}
+			if _, err = encodeRungs(rungs); err == nil || !strings.Contains(err.Error(), want) {
+				t.Errorf("encodeRungs with %s: err = %v, want one containing %q", tc.name, err, want)
 			}
 		})
 	}

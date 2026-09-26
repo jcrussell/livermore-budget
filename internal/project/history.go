@@ -147,8 +147,8 @@ var (
 		Summary: "All Other Governmental Funds prints no Assigned row, so that block has four components, not five.",
 		Text: "p167's All Other Governmental Funds block prints Nonspendable, Restricted, " +
 			"Committed and Unassigned, and no Assigned line in any year. The row is absent " +
-			"from the schedule, not zero: a published zero is a printed dash, and the page " +
-			"prints none there.",
+			"from the schedule, not zero: a published zero is a printed dash, and there " +
+			"is no dash there.",
 		AppliesTo: []string{},
 	}
 	caveatGovernmentalFundsOnly = Caveat{

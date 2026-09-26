@@ -117,6 +117,18 @@ describe("the column control describes the chart on screen", () => {
       assert.equal(q.label, q.drawn + " columns", q.where);
     }
   });
+  test("a step that reaches its bound hands focus to the other step", async (t) => {
+    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 1440 });
+    await opened(app, "fund-group/general", "fund/100");
+    const more = document.getElementById("column-more");
+    more.focus();
+    more.click();
+    await settle();
+    const focused = document.activeElement ? document.activeElement.id : "";
+    t.diagnostic(`after + reached ${app.drawnColumns()} columns: + ${disabled(more) ? "disabled" : "live"}, focus on "${focused}"`);
+    assert.ok(disabled(more));
+    assert.equal(focused, "column-fewer");
+  });
   test("a chart with a second width offers it, takes it, and reports what it drew", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 1440 });
     await opened(app, "fund-group/general", "fund/100");
@@ -155,6 +167,7 @@ describe("a budget whose chart will not draw", () => {
     assert.deepEqual(choice(), chosen);
     assert.ok(cut.length > 0);
     assert.equal(banners.length, 1);
+    assert.ok(banners[0].includes("The chart could not be redrawn at 4 columns"), banners[0]);
     assert.equal(app.projection.nodes.length, nodes);
     assert.equal(app.columnBudget, 3);
     assert.equal(app.drawnColumns(), 3);

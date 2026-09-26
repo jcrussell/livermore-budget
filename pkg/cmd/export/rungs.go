@@ -607,6 +607,18 @@ func carry(drawn export.Graph, c export.Carry) (*export.Chart, error) {
 // encodeRungs is the artifact's one encoding: indented, so a regenerated
 // file's diff can be read by eye against the rule drawnTier states.
 func encodeRungs(doc rungsDoc) ([]byte, error) {
+	// A mark's tier against its rung's columns is a cross-reference the schema
+	// cannot state.
+	for _, col := range doc.Columns {
+		for _, r := range col.Rungs {
+			for _, m := range r.Marks {
+				if !slices.ContainsFunc(r.Draws, func(d drawnTier) bool { return d.Tier == m.Tier }) {
+					return nil, fmt.Errorf("%s %s: mark %q stands at tier %d, which the rung draws no column at",
+						col.Stem, strings.Join(r.Path, " > "), m.ID, m.Tier)
+				}
+			}
+		}
+	}
 	b, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
 		return nil, err

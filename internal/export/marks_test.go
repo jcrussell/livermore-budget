@@ -338,6 +338,7 @@ func TestResidualOfIsCarryResiduals(t *testing.T) {
 		},
 		{name: "nothing to carry draws nothing", drawn: window, tiers: []int{0, 2, 3}, residual: map[string]string{"tin": "why"}},
 		{name: "no part at a declared tier", drawn: window, tiers: []int{0, 2}, residual: declared, err: `"G" has no part at a tier this step draws`},
+		{name: "a carried endpoint with no reason", drawn: window, tiers: []int{0, 2, 3}, residual: map[string]string{"e1": " "}, err: `"e1" is carried onto the residual mark with no reason`},
 		{name: "a node the document does not carry", drawn: window, tiers: []int{0, 2, 3}, residual: declared, err: `does not carry node "X"`},
 	}
 	for _, tc := range cases {

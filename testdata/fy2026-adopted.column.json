@@ -2075,9 +2075,9 @@
      "applies_to": []
     },
     {
-     "id": "a-fund-takes-in-more-than-it-pays-departments",
+     "id": "what-a-fund-pays-departments-is-not-what-it-takes-in",
      "summary": "What a fund pays departments here is not what that fund takes in, and the two are printed by different schedules.",
-     "text": "The chart that opens this one draws a fund's REVENUE, from Budget Book pp.127-140. What leaves the fund here is what pp.85-125 print the city's departments drawing on it. Those are two schedules and not one figure read twice: the difference is money the city transfers out of the fund and adds to its reserves, which pp.66-67 print for the fund GROUP and pp.198-209 print per fund, and which this chart does not draw. A fund drawn here taking in more than it pays out is that difference and is not a gap in these pages.",
+     "text": "The chart that opens this one draws what a fund takes in, from Budget Book pp.127-140. What leaves the fund here is what pp.85-125 print the city's departments drawing on it. Those are two schedules and not one figure read twice, and either side may be the larger.",
      "applies_to": []
     },
     {
@@ -3787,7 +3787,7 @@
     {
      "id": "the-boundary-is-not-classified-here",
      "summary": "Every expenditure ribbon is published as external because these rows name no fund group to classify it by.",
-     "text": "Elsewhere in this project a flow is external or an internal service charge according to the fund group at its far end, read off the section header the row sits under. These rows have no such header, so that question cannot be asked of them and every expenditure ribbon is published as external. Internal Service Fund spending is INSIDE these figures rather than beside them: the citywide spine puts it at 25,077,367 of 254,095,412 in FY2025-26 and 26,544,515 of 252,854,896 in FY2026-27. Do not add a figure from this document to an external total taken from another.",
+     "text": "Elsewhere in this project a flow is external or an internal service charge according to the fund group at its far end, read off the section header the row sits under. These rows have no such header, so that question cannot be asked of them and every expenditure ribbon is published as external. Internal Service Fund spending is INSIDE these figures rather than beside them. Do not add a figure from this document to an external total taken from another.",
      "applies_to": []
     }
    ],
@@ -5118,7 +5118,7 @@
     {
      "id": "only-the-general-fund-is-decomposed",
      "summary": "Only the General Fund has a spending side; the other 5 groups' revenue ends at their funds.",
-     "text": "Only the General Fund has a spending side IN THIS DOCUMENT. Budget Book pp.167-170 decompose that fund alone, so the other 5 fund groups' revenue ends at their funds here -- the money is not missing. What IS published for every fund is pp.85-125's Department Funding Sources, which says which departments each fund pays for; this site draws that as a chart of its own. What no schedule publishes is any other fund's spending broken down by object category, which is the grain this document holds the General Fund at.",
+     "text": "Only the General Fund has a spending side IN THIS DOCUMENT. Budget Book pp.167-170 decompose that fund alone, so the other 5 fund groups' revenue ends at their funds here -- the money is not missing.",
      "applies_to": [
       "fund-group/capital",
       "fund-group/debt-service",
