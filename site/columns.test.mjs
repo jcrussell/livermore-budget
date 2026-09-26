@@ -142,14 +142,17 @@ describe("a budget whose chart will not draw", () => {
     const into = broken.nodes.findIndex((n) => n.id === "expenditure/engineering/wages-and-benefits");
     const cut = broken.schedules["fund-flows"].links.filter((l) => l.to === into);
     for (const l of cut) delete l.fact_ids;
-    const { app, document } = await bootedApp({ checkedStem: "sankey", viewport: 800, plan: { "fy2026-adopted.json": { doc: broken } } });
+    const { app, document, window } = await bootedApp({ checkedStem: "sankey", viewport: 800, plan: { "fy2026-adopted.json": { doc: broken } } });
     await opened(app, "fund-group/general", "fund/100");
     const nodes = app.projection.nodes.length;
+    const choice = () => ({ override: app.columnOverride, stored: window.localStorage.getItem("fisc-columns") });
+    const chosen = choice();
     document.getElementById("column-more").click();
     await settle();
     const label = document.getElementById("column-count").textContent;
     const banners = refusals(document).map((b) => b.textContent);
-    t.diagnostic(`${cut.length} link(s) cut; after + the budget is ${app.columnBudget}, the count reads "${label}", ${app.projection.nodes.length} node(s) drawn against ${nodes}, banners ${JSON.stringify(banners)}`);
+    t.diagnostic(`${cut.length} link(s) cut; after + the budget is ${app.columnBudget}, the count reads "${label}", ${app.projection.nodes.length} node(s) drawn against ${nodes}, banners ${JSON.stringify(banners)}; the reader's choice ${JSON.stringify(choice())} against ${JSON.stringify(chosen)} before`);
+    assert.deepEqual(choice(), chosen);
     assert.ok(cut.length > 0);
     assert.equal(banners.length, 1);
     assert.equal(app.projection.nodes.length, nodes);
@@ -326,6 +329,7 @@ describe("a widened step", () => {
         .find((r) => r.path.join("|") === "fund-group/general").marks.find((m) => m.role === "residual");
       assert.ok(mark.in_cents > 0 && mark.out_cents > 0, "the General Fund's residual is not answered both ways");
       const said = {};
+      const shares = {};
       for (const budget of [3, 4]) {
         const { app, document } = await bootedApp({ checkedStem: stem });
         app.setColumnBudget(budget);
@@ -337,20 +341,25 @@ describe("a widened step", () => {
         const tip = document.getElementById("tooltip");
         app.pin(g.__data__);
         const panel = document.getElementById("detail");
-        // THE NOTE DIFFERS BY WIDTH, saying which legs are held back; the
-        // figures do not.
-        const words = (e) => e.textContent.replace(g.__data__.source_note, "");
+        // THE NOTE AND THE SHARE DIFFER BY WIDTH, saying which legs are held
+        // back and how the drawn column divides; the figures do not.
+        const words = (e) => e.textContent.replace(g.__data__.source_note, "").replace(app.columnShare(g.__data__), "");
         said[budget] = {
           label: g.textContent, aria: g.getAttribute("aria-label"),
           tipValue: tip.querySelector(".tip-value").textContent, tip: words(tip),
           amount: panel.querySelector(".amount").textContent, panel: words(panel),
-          share: app.columnShare(g.__data__),
         };
+        // THE SHARE IS OF THE COLUMN AS DRAWN, read off the marks' heights.
+        const height = (d) => d.y1 - d.y0;
+        const column = [...chart.querySelectorAll("g.node")].map((m) => m.__data__).filter((d) => d.x0 === g.__data__.x0);
+        const pct = (100 * height(g.__data__)) / column.reduce((a, d) => a + height(d), 0);
+        shares[budget] = { share: app.columnShare(g.__data__), drawn: "\u25c7 our " + pct.toFixed(1) + "% of this column" };
       }
       const flows = `${dollars(mark.in_cents)} in, ${dollars(mark.out_cents)} out`;
       t.diagnostic(`Go answers ${mark.in_cents} in and ${mark.out_cents} out; at 3 columns "${said[3].aria}", ` +
-        `share "${said[3].share}"; at 4 "${said[4].aria}", share "${said[4].share}"`);
+        `share ${JSON.stringify(shares[3])}; at 4 "${said[4].aria}", share ${JSON.stringify(shares[4])}`);
       assert.deepEqual(said[3], said[4]);
+      for (const budget of [3, 4]) assert.equal(shares[budget].share, shares[budget].drawn, `at ${budget} columns`);
       assert.equal(said[3].tipValue, dollars(Math.max(mark.in_cents, mark.out_cents)));
       assert.equal(said[3].amount, dollars(Math.max(mark.in_cents, mark.out_cents)));
       for (const where of ["aria", "tip", "panel"]) assert.ok(said[3][where].includes(flows), said[3][where]);

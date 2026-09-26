@@ -2,8 +2,8 @@
 // against the cents and locators Go pinned in testdata/ and formatted by the
 // test, never by app.js.
 //
-// A few figures are also written out literally, so that the test's own
-// formatter is itself pinned to what the city printed.
+// A few figures are also written out literally, pinning the test's own
+// formatter: ERAF's as the city printed it, Property Taxes' as the sum of rows it printed.
 
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -87,6 +87,8 @@ for (const year of YEARS) {
       const mark = markOf(chart, ERAF);
       assert.ok(mark.getAttribute("aria-label").startsWith(`ERAF, total ${year.eraf},`), mark.getAttribute("aria-label"));
       assert.equal(shown(app, document, mark.__data__).tip, year.eraf);
+      const tspans = [...mark.querySelectorAll("tspan")].map((s) => s.textContent);
+      assert.ok(tspans.includes("  " + shortDollars(printed.value_cents)), JSON.stringify(tspans));
       const row = [...document.querySelectorAll("#flow-table tbody tr")]
         .find((tr) => tr.children[0].textContent === "ERAF");
       assert.ok(row, "the flow table has no ERAF row");

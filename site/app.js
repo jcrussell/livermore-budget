@@ -2033,6 +2033,8 @@ export function redrawStack(next) {
   // THE RUNG THIS REDRAW CLOSES, if it closes one: the mark that opened it is
   // on the chart being returned to, and is where focus goes back to.
   const popped = was.length > next.length ? was[next.length].id : "";
+  const laidWas = laidNodes;
+  const groupsWas = groupIndex;
   drilled = next;
   let drawn;
   let laid;
@@ -2061,6 +2063,8 @@ export function redrawStack(next) {
     // declaration rather than in the reader's click, and leaving the chart
     // drawn as it was is the only outcome that does not punish them for it.
     drilled = was;
+    laidNodes = laidWas;
+    groupIndex = groupsWas;
     fail("That could not be opened: " + (e instanceof Error ? e.message : String(e)));
     return false;
   }
@@ -5075,20 +5079,19 @@ export function carriedSource(stem) {
  * city printed; a share is not, and the word "of" carries that -- "8.4% of this
  * column" is self-evidently a ratio rather than a line item, in a way that a
  * bare "8.4%" beside a dollar figure would not be. It is computed from the
- * DRAWN values -- a residual's figure being markCents's -- so on an opened node
- * it is a share of that node's own total, which is what the reader is looking at.
+ * DRAWN values, a residual's included: its label states Go's figures, but at a
+ * width that holds its leaving legs back its drawn height is less.
  *
  * @param {LaidNode} d
  * @returns {string}
  */
 export function columnShare(d) {
-  const size = (/** @type {LaidNode} */ n) => (isResidual(n.id) ? markCents(n) : n.value);
-  if (!size(d)) return "";
+  if (!d.value) return "";
   let total = 0;
   let siblings = 0;
   for (const other of laidNodes) {
     if (other.layer === d.layer) {
-      total += size(other);
+      total += other.value;
       siblings++;
     }
   }
@@ -5098,7 +5101,7 @@ export function columnShare(d) {
   // construction rather than by measurement. A share says how a column divides,
   // and an undivided one has nothing to say.
   if (!total || siblings < 2) return "";
-  const pct = (100 * size(d)) / total;
+  const pct = (100 * d.value) / total;
   // A CEILING AS WELL AS A FLOOR. toFixed(1) rounds, so a mark that is 99.9943%
   // of a divided column renders "100.0" -- the exact chip the siblings guard
   // above exists to prevent, reached by arithmetic instead of by topology.
@@ -5670,16 +5673,20 @@ export function syncColumns() {
  * the reader's pin and their isolation for nothing.
  *
  * @param {boolean} redraw false during boot, where there is no document yet
+ * @returns {boolean} false when the redraw was refused
  */
 export function applyColumns(redraw) {
   const before = drawnColumns();
   const budget = columnBudget;
   const moved = setColumnBudget(columnOverride === null ? viewportColumns() : columnOverride);
+  let drew = true;
   // A REFUSED REDRAW LEAVES THE OLD CHART, so the budget goes back with it.
   if (moved && redraw && projection && drawnColumns() !== before && !redrawStack(drilled)) {
     columnBudget = budget;
+    drew = false;
   }
   syncColumns();
+  return drew;
 }
 
 /**
@@ -5699,12 +5706,17 @@ export function stepColumns(delta) {
   // reader's way of handing the decision back, and without it the first press
   // of either button would deafen the page to the window for good.
   const released = want === viewportColumns();
+  const override = columnOverride;
   columnOverride = released ? null : want;
+  // A REFUSED STEP IS NOT THE READER'S CHOICE: kept, it would fail on every visit.
+  if (!applyColumns(true)) {
+    columnOverride = override;
+    return;
+  }
   try {
     if (released) localStorage.removeItem("fisc-columns");
     else localStorage.setItem("fisc-columns", String(want));
   } catch (e) { /* private mode: the choice still holds for this visit */ }
-  applyColumns(true);
 }
 
 /**
@@ -6123,7 +6135,7 @@ export async function showYear(year) {
   // SWAPPED BECAUSE shapeFor READS THEM, and swapped back on a throw so the
   // page is still wholly the year it was on. The stack goes with the year: a
   // rung opened in one year may name a node the other does not carry.
-  const was = { column, fetched, drilled };
+  const was = { column, fetched, drilled, laidNodes, groupIndex };
   column = loaded;
   fetched = doc;
   drilled = [];
@@ -6135,7 +6147,7 @@ export async function showYear(year) {
     laid = layOut(drawn);
     rows = tableRows(drawn);
   } catch (e) {
-    ({ column, fetched, drilled } = was);
+    ({ column, fetched, drilled, laidNodes, groupIndex } = was);
     throw e;
   }
 

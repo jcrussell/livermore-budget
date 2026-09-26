@@ -738,6 +738,36 @@ describe("the refusal a drill can still meet", () => {
     assert.equal(fetch.asked.length, asked);
   });
 
+  test("a rung whose table will not build leaves the lay-out it was opened from", async (t) => {
+    // A gap's locators reach the table unfolded, and nothing before it reads them.
+    const answer = structuredClone(rungsFixture());
+    const rung = answer.columns.find((c) => c.stem === "sankey-2027").rungs
+      .find((r) => r.path.join("|") === "expenditure/services-and-supplies");
+    const gap = rung.marks.find((m) => m.role === "gap");
+    delete gap.locators;
+    const { app, document } = await bootedApp({ checkedStem: "sankey-2027", plan: { "rungs.json": { doc: answer } } });
+    const g = [...document.querySelectorAll("#chart g.node")].find((m) => m.__data__.id === "fund-group/general");
+    app.pin(g.__data__);
+    const read = () => ({
+      share: app.columnShare(g.__data__), laid: app.laidNodes, groups: app.groupIndex,
+      table: document.querySelector("#flow-table tbody").innerHTML, projection: app.projection,
+    });
+    const before = read();
+    const outcome = await app.drillDown("expenditure/services-and-supplies");
+    await settle();
+    const after = read();
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`drillDown came to "${outcome}"; share "${after.share}" against "${before.share}", banners ${JSON.stringify(banners)}`);
+    assert.equal(outcome, "failed");
+    assert.equal(banners.length, 1);
+    assert.ok(before.share !== "");
+    assert.equal(after.share, before.share);
+    assert.equal(after.laid, before.laid);
+    assert.equal(after.groups, before.groups);
+    assert.equal(after.table, before.table);
+    assert.equal(after.projection, before.projection);
+  });
+
   // THE GESTURES ASK drillable FIRST, so a reader meets these two only when
   // the chart changed under the gesture; the page's own callers meet them by
   // name. Each is a FAILED that used to say nothing (fisc-51qf).

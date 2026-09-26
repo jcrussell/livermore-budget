@@ -377,6 +377,33 @@ describe("a year switch and an open drill", () => {
     assert.equal(app.drilled.length, 0);
     assert.equal(cents(), overview);
   });
+  test("a year whose table will not build leaves the lay-out of the year it was", async (t) => {
+    // Only citations reads CONFIG.docs unguarded, so the throw is the table's.
+    const config = structuredClone(pageFixture().config);
+    const { app, document } = await bootedApp({ checkedStem: "sankey", config });
+    const g = [...document.querySelectorAll("#chart g.node")].find((m) => m.__data__.id === "fund-group/general");
+    app.pin(g.__data__);
+    const read = () => ({
+      share: app.columnShare(g.__data__), laid: app.laidNodes, groups: app.groupIndex,
+      table: document.querySelector("#flow-table tbody").innerHTML, projection: app.projection,
+      year: app.column.column.fiscal_year,
+    });
+    const before = read();
+    delete config.docs;
+    clickYear(document, "sankey-2027");
+    await settle();
+    const after = read();
+    const banners = refusals(document).map((b) => b.textContent);
+    t.diagnostic(`after the refused switch: FY${after.year}, share "${after.share}" against "${before.share}", banners ${JSON.stringify(banners)}`);
+    assert.equal(banners.length, 1);
+    assert.ok(before.share !== "");
+    assert.equal(after.year, before.year);
+    assert.equal(after.share, before.share);
+    assert.equal(after.laid, before.laid);
+    assert.equal(after.groups, before.groups);
+    assert.equal(after.table, before.table);
+    assert.equal(after.projection, before.projection);
+  });
   test("a year switch drops the expansion with the rung it was made on", async (t) => {
     const { app, document } = await bootedApp({ checkedStem: "sankey" });
     const group = "fund-group/special-revenue";
