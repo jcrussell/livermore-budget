@@ -784,8 +784,11 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 			continue
 		}
 		role := roles[id]
-		receiving := func(l project.Link) bool { return role[l.Source] == project.RoleTransferSource }
-		paying := func(l project.Link) bool { return role[l.Target] == project.RoleTransferSink }
+		source := func(l project.Link) bool { return role[l.Source] == project.RoleTransferSource }
+		sink := func(l project.Link) bool { return role[l.Target] == project.RoleTransferSink }
+		// Exclusive, so a leg drawn from payer's end to receiver's end is neither.
+		receiving := func(l project.Link) bool { return source(l) && !sink(l) }
+		paying := func(l project.Link) bool { return sink(l) && !source(l) }
 		if (!receiving(pair[0]) || !paying(pair[1])) && (!paying(pair[0]) || !receiving(pair[1])) {
 			findings = append(findings, finding(id, "its two legs are not one receiving and one paying: %s",
 				describeLegs(pair)))

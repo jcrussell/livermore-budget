@@ -341,8 +341,13 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		// facts carry and the cut does not declare is a column the comparison
 		// would silently leave out; a declared basis no fact carries is a claim
 		// nothing bears out. Both are refused by name.
+		type column struct {
+			year  int
+			basis mapping.Basis
+		}
 		seen := map[mapping.Basis]bool{}
-		kinds := map[mapping.Kind]bool{}
+		kinds := map[column]map[mapping.Kind]bool{}
+		var columns []column
 		for i := range facts {
 			f := &facts[i]
 			if !c.admits(f) {
@@ -352,18 +357,26 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 				return nil, fmt.Errorf("cut %q carries a %q column and declares bases %v", c.Name, f.Basis, c.Bases)
 			}
 			seen[f.Basis] = true
-			kinds[f.Kind] = true
+			col := column{f.FiscalYear, f.Basis}
+			if kinds[col] == nil {
+				kinds[col] = map[mapping.Kind]bool{}
+				columns = append(columns, col)
+			}
+			kinds[col][f.Kind] = true
 		}
 		for _, b := range c.Bases {
 			if !seen[b] {
 				return nil, fmt.Errorf("cut %q declares basis %q and carries no such column", c.Name, b)
 			}
 		}
-		// A declared kind no fact carries is a dropped rule the cut would
-		// otherwise compare as present.
-		for _, k := range c.Kinds {
-			if !kinds[k] {
-				return nil, fmt.Errorf("cut %q declares kind %q and carries no fact of it", c.Name, k)
+		// A declared kind a column carries no fact of is a dropped rule the
+		// cut would otherwise compare as present.
+		for _, col := range columns {
+			for _, k := range c.Kinds {
+				if !kinds[col][k] {
+					return nil, fmt.Errorf("cut %q declares kind %q and its FY%d %s column carries no fact of it",
+						c.Name, k, col.year, col.basis)
+				}
 			}
 		}
 		want := derived

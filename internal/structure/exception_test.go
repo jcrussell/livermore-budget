@@ -427,4 +427,24 @@ func TestAPairIsComparedOnlyWhereTheLatticeSaysHow(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("a column that loses a kind the cut's other columns carry is refused", func(t *testing.T) {
+		byRule, err := structure.LevelOfRule(facts, committedFiles(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var kept []fact.Fact
+		for i := range facts {
+			if facts[i].RuleID != "spine-fund-balance" || facts[i].FiscalYear != 2027 {
+				kept = append(kept, facts[i])
+			}
+		}
+		if len(kept) == len(facts) {
+			t.Fatal("spine-fund-balance carries no FY2027 fact to drop")
+		}
+		_, err = structure.ValidateCuts(kept, byRule, structure.AllCuts())
+		if err == nil || !strings.Contains(err.Error(), `cut "spine" declares kind "fund_balance" and its FY2027 adopted column`) {
+			t.Errorf("ValidateCuts = %v, want the spine's FY2027 column refused for the kind it lost", err)
+		}
+	})
 }

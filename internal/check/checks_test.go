@@ -65,7 +65,8 @@ func TestFixtureVerdicts(t *testing.T) {
 		// Two fund balances, general and enterprise, each with all three of its
 		// lines. Both satisfy beginning + change == ending; neither did before
 		// this check was written. See fixtureCells.
-		"fund-balance-identity": "pass over 2",
+		"fund-balance-identity":         "pass over 2",
+		"fund-group-sources-equal-uses": "pass over 2",
 		// The fixture is a miniature of the SPINE and carries no ACFR
 		// Changes in Fund Balances fact, so there is no column to recompute.
 		// TestTheCommittedCorpusVacuitySplit is where its real verdict is
@@ -134,7 +135,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 24, Vacuous: 24, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 25, Vacuous: 24, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -1034,6 +1035,8 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 		{"two unequal legs", []int64{5_000, 4_000}, StatusFail, "off by $10.00"},
 		{"one leg", []int64{5_000}, StatusFail, "names 1 legs, want 2"},
 		{"two receiving legs", []int64{5_000, 5_000}, StatusFail, "not one receiving and one paying"},
+		{"two legs from a payer's end to a receiver's", []int64{5_000, 5_000}, StatusFail,
+			"not one receiving and one paying"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1054,9 +1057,15 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 			}
 			setRole(g.Links[0].Source, project.RoleTransferSource)
 			if len(tt.values) > 1 {
-				if tt.name == "two receiving legs" {
+				switch tt.name {
+				case "two receiving legs":
 					setRole(g.Links[1].Source, project.RoleTransferSource)
-				} else {
+				case "two legs from a payer's end to a receiver's":
+					for _, l := range g.Links[:2] {
+						setRole(l.Source, project.RoleTransferSource)
+						setRole(l.Target, project.RoleTransferSink)
+					}
+				default:
 					setRole(g.Links[1].Target, project.RoleTransferSink)
 				}
 			}

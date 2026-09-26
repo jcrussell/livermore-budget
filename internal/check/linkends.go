@@ -8,6 +8,7 @@ import (
 
 	"github.com/jcrussell/livermore-budget/internal/fact"
 	"github.com/jcrussell/livermore-budget/internal/project"
+	"github.com/jcrussell/livermore-budget/internal/structure"
 )
 
 // endName is what a link end's id names, read against the facts the link cites.
@@ -18,34 +19,48 @@ const (
 	namesFund endName = iota + 1
 	// namesFundGroup: every cited fact carries the fund group the id names.
 	namesFundGroup
-	// namesDepartment: every cited fact's `department` is the id's slug, at
-	// either tier -- which tier is node-tiers-are-declared's.
+	// namesDivision and namesDepartment: every cited fact's `department` is
+	// the id's slug, read from a schedule whose cut declares that tier.
+	namesDivision
 	namesDepartment
 	// namesPartnerFund: the id numbers the fund at the OTHER leg of the same
 	// transfer_id, because p76's facts carry their own end's fund only.
 	namesPartnerFund
-	// namesNeither: a category or line, which names no fund and no department.
-	namesNeither
+	// namesCategory: every cited fact's category is the id's slug -- in the
+	// drill-down, its division and category, `<division>/<category>`.
+	namesCategory
+	// namesLine: the id is a data/taxonomy.yaml line under each cited fact's
+	// category, printed as that fact's row label.
+	namesLine
 )
 
 // endNames is what each hierarchy id form names. Its keys are hierarchyTiers'
-// and a test holds them equal, so a new form is declared here or refused. The
-// flow endpoints of endpointTiers name neither, by the same declaration.
+// and a test holds them equal, so a new form is declared here or refused.
 var endNames = map[string]endName{
-	"revenue":       namesNeither,
-	"revenue-line":  namesNeither,
+	"revenue":       namesCategory,
+	"revenue-line":  namesLine,
 	"fund-group":    namesFundGroup,
 	"transfer-from": namesPartnerFund,
 	"fund":          namesFund,
-	"dept":          namesDepartment,
+	"dept":          namesDivision,
 	"department":    namesDepartment,
-	"expenditure":   namesNeither,
+	"expenditure":   namesCategory,
 	"transfer-to":   namesPartnerFund,
 }
 
-// linkEndsMatchTheirFacts asserts a link's ends name the fund, fund group and
-// department its facts carry, and that a fund group's link into a fund goes to
-// one of its own funds.
+// endpointCategories is the category every fact behind each flow endpoint
+// carries. Its keys are endpointTiers' and a test holds them equal.
+var endpointCategories = map[string]string{
+	"transfers/in":                  "transfers/in",
+	"transfers/out":                 "transfers/out",
+	"fund-balance/draw":             "fund-balance/change",
+	"fund-balance/contribution":     "fund-balance/change",
+	"fund-balance/reserve-increase": "fund-balance/reserve-increase",
+}
+
+// linkEndsMatchTheirFacts asserts a link's ends name the fund, fund group,
+// department, category and line its facts carry, and that a fund group's link
+// into a fund goes to one of its own funds.
 //
 // link-values-tie-to-facts holds a link's VALUE to its fact_ids and nothing
 // held its ENDS: swapping two departments' ids, or re-pointing a fund's
@@ -58,24 +73,24 @@ func (*linkEndsMatchTheirFacts) ID() string { return "link-ends-match-their-fact
 func (*linkEndsMatchTheirFacts) Tier() int  { return 1 }
 func (*linkEndsMatchTheirFacts) Full() bool { return false }
 func (*linkEndsMatchTheirFacts) Description() string {
-	return "every link end naming a fund, fund group or department names the one its facts " +
-		"carry, a transfer's payer and receiver ends name its other leg's fund, and a fund " +
-		"group's link into a fund goes to a fund data/funds.yaml puts in that group"
+	return "every link end names the fund, fund group, department or division, category and " +
+		"line its facts carry, a transfer's payer and receiver ends name its other leg's fund, " +
+		"and a fund group's link into a fund goes to a fund data/funds.yaml puts in that group"
 }
 
 func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, error) {
 	var findings []Finding
+	tiers := departmentTiers()
 	links := 0
 	for _, p := range s.linkedDocuments() {
 		selected := factIndex(factsFor(s.Facts, p.Options))
-		legs := map[string][]project.Link{}
-		for _, l := range p.Links {
+		legs := map[string][]int{}
+		for i, l := range p.Links {
 			if l.TransferID != "" {
-				legs[l.TransferID] = append(legs[l.TransferID], l)
+				legs[l.TransferID] = append(legs[l.TransferID], i)
 			}
 		}
-		for _, l := range p.Links {
-			links++
+		for i, l := range p.Links {
 			subject := fmt.Sprintf("%s %s -> %s", p, l.Source, l.Target)
 			var facts []fact.Fact
 			for _, id := range l.FactIDs {
@@ -84,13 +99,26 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 					facts = append(facts, f)
 				}
 			}
+			e := linkEnd{link: l, facts: facts, vocab: s.Vocabulary, tiers: tiers,
+				divisionExpenditure: p.FundFlows != nil}
+			for _, j := range legs[l.TransferID] {
+				if j != i {
+					e.others = append(e.others, p.Links[j])
+				}
+			}
+			checked := false
 			for _, end := range []struct {
 				id     string
 				source bool
 			}{{l.Source, true}, {l.Target, false}} {
-				if msg := endMismatch(end.id, end.source, l, facts, legs[l.TransferID]); msg != "" {
+				msg, ok := e.mismatch(end.id, end.source)
+				checked = checked || ok
+				if msg != "" {
 					findings = append(findings, finding(subject, "%s", msg))
 				}
+			}
+			if checked && len(facts) > 0 {
+				links++
 			}
 			group, gok := strings.CutPrefix(l.Source, fundGroupPrefix)
 			number, fok := strings.CutPrefix(l.Target, fundNodePrefix)
@@ -110,56 +138,132 @@ func (*linkEndsMatchTheirFacts) Run(_ context.Context, s *Subject) (Result, erro
 	return conclusion{
 		subjects: links,
 		unit:     "links",
-		held: fmt.Sprintf("%d links, each ending at the funds, fund groups and departments its facts carry",
+		held: fmt.Sprintf("%d links, each ending at what its facts carry",
 			links),
-		nothing:  "no projection carries a link",
+		nothing:  "no projection carries a link whose ends name anything its facts carry",
 		findings: findings,
 	}.result(), nil
 }
 
-// endMismatch is why one end of l does not name what its facts carry, or "".
-func endMismatch(id string, source bool, l project.Link, facts []fact.Fact, pair []project.Link) string {
-	if _, ok := endpointTiers[id]; ok {
-		return ""
+// departmentTiers is the department tier each scope's cut declares. A scope
+// two cuts give different tiers maps to "", which matches neither form.
+func departmentTiers() map[string]string {
+	out := map[string]string{}
+	for _, c := range structure.AllCuts() {
+		if c.DepartmentTier == "" {
+			continue
+		}
+		if have, ok := out[c.Scope]; ok && have != c.DepartmentTier {
+			out[c.Scope] = ""
+			continue
+		}
+		out[c.Scope] = c.DepartmentTier
+	}
+	return out
+}
+
+// linkEnd is one link read against its facts and its transfer's other legs.
+type linkEnd struct {
+	link   project.Link
+	facts  []fact.Fact
+	others []project.Link
+	vocab  Vocabulary
+	tiers  map[string]string
+	// divisionExpenditure: the drill-down's expenditure ids carry the division.
+	divisionExpenditure bool
+}
+
+// mismatch is why the end id does not name what the link's facts carry, or
+// "", and whether the end was held to anything.
+func (e linkEnd) mismatch(id string, source bool) (string, bool) {
+	if want, ok := endpointCategories[id]; ok {
+		var sum int64
+		for _, f := range e.facts {
+			if f.Category != want {
+				return fmt.Sprintf("%s carries category %q and fact %s carries %q", id, want, f.ID, f.Category), true
+			}
+			sum += f.AmountCents
+		}
+		// A draw and a contribution cite the same category, told apart by sign.
+		if len(e.facts) > 0 && ((id == "fund-balance/draw" && sum >= 0) ||
+			(id == "fund-balance/contribution" && sum <= 0)) {
+			return fmt.Sprintf("%s cites facts summing to %d cents, the other sign", id, sum), true
+		}
+		return "", true
 	}
 	form, value, ok := strings.Cut(id, "/")
 	name, declared := endNames[form]
 	if !ok || !declared {
-		return fmt.Sprintf("%s is no declared id form, so what it names cannot be held to its facts", id)
+		return fmt.Sprintf("%s is no declared id form, so what it names cannot be held to its facts", id), false
 	}
-	for _, f := range facts {
+	if name == namesPartnerFund && e.link.TransferID == "" {
+		return fmt.Sprintf("%s names a transfer's other leg and the link carries no transfer_id", id), true
+	}
+	for _, f := range e.facts {
 		var carried string
 		switch name {
 		case namesFund:
 			carried = fact.FundString(f.Fund)
 		case namesFundGroup:
 			carried = f.FundGroup
-		case namesDepartment:
+		case namesDivision, namesDepartment:
 			carried = f.Department
+			tier := map[endName]string{namesDivision: "division", namesDepartment: "department"}[name]
+			if e.tiers[f.Scope] != tier {
+				return fmt.Sprintf("%s names a %s and fact %s is from %s, which no cut declares at that tier",
+					id, tier, f.ID, f.Scope), true
+			}
+		case namesCategory:
+			carried = f.Category
+			if e.divisionExpenditure && form == "expenditure" {
+				carried = f.Department + "/" + f.Category
+			}
+		case namesLine:
+			if msg := e.lineMismatch(id, value, f); msg != "" {
+				return msg, true
+			}
+			continue
 		default:
 			continue
 		}
 		if carried != value {
-			return fmt.Sprintf("%s names %q and fact %s carries %q", id, value, f.ID, carried)
+			return fmt.Sprintf("%s names %q and fact %s carries %q", id, value, f.ID, carried), true
 		}
 	}
 	if name != namesPartnerFund {
-		return ""
+		return "", true
 	}
 	// The payer's end of the receiving leg is the paying leg's source fund,
 	// and the receiver's end of the paying leg is the receiving leg's target.
-	for _, other := range pair {
-		if other.Source == l.Source && other.Target == l.Target {
-			continue
-		}
+	for _, other := range e.others {
 		want := other.Source
 		if !source {
 			want = other.Target
 		}
 		if want != fundNodePrefix+value {
 			return fmt.Sprintf("%s names fund %s and the other leg of transfer %s is %s -> %s",
-				id, value, l.TransferID, other.Source, other.Target)
+				id, value, e.link.TransferID, other.Source, other.Target), true
 		}
 	}
-	return ""
+	return "", true
+}
+
+// lineMismatch is why line is not the taxonomy line f's row was printed as.
+func (e linkEnd) lineMismatch(id, line string, f fact.Fact) string {
+	c, ok := e.vocab.Category(line)
+	if !ok {
+		return fmt.Sprintf("%s is no data/taxonomy.yaml line", id)
+	}
+	if c.Parent != f.Category {
+		return fmt.Sprintf("%s is a line under %q and fact %s carries %q", id, c.Parent, f.ID, f.Category)
+	}
+	if c.DocumentTerm == f.RowLabel {
+		return ""
+	}
+	for _, a := range c.Aliases {
+		if a.Term == f.RowLabel {
+			return ""
+		}
+	}
+	return fmt.Sprintf("%s is not printed as %q, fact %s's row", id, f.RowLabel, f.ID)
 }

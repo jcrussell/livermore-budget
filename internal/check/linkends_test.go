@@ -17,6 +17,9 @@ func TestEveryIdFormSaysWhatItNames(t *testing.T) {
 	if diff := cmp.Diff(slices.Sorted(maps.Keys(hierarchyTiers)), slices.Sorted(maps.Keys(endNames))); diff != "" {
 		t.Errorf("hierarchyTiers and endNames name different forms (-tiers +names):\n%s", diff)
 	}
+	if diff := cmp.Diff(slices.Sorted(maps.Keys(endpointTiers)), slices.Sorted(maps.Keys(endpointCategories))); diff != "" {
+		t.Errorf("endpointTiers and endpointCategories name different endpoints (-tiers +categories):\n%s", diff)
+	}
 }
 
 // TestLinkEndsMatchTheirFactsIsFailable re-points one link per plant over the
@@ -45,47 +48,110 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 		t.Fatalf("no document %q", name)
 		return nil
 	}
-	// plant rewrites the first link of doc matching (source, target) and
-	// restores it when the subtest ends.
-	plant := func(t *testing.T, doc, source, target string, edit func(l *project.Link)) {
+	// find is the first link of doc's first document drawing source -> target.
+	find := func(t *testing.T, doc, source, target string) *project.Link {
 		t.Helper()
 		links := docLinks(t, doc)
 		for i := range links {
 			if links[i].Source == source && links[i].Target == target {
-				was := links[i]
-				edit(&links[i])
-				t.Cleanup(func() { links[i] = was })
-				return
+				return &links[i]
 			}
 		}
 		t.Fatalf("%s draws no %s -> %s", doc, source, target)
+		return nil
 	}
+	type edit struct {
+		doc, source, target string
+		fn                  func(l *project.Link)
+	}
+	target := func(to string) func(l *project.Link) { return func(l *project.Link) { l.Target = to } }
+	source := func(from string) func(l *project.Link) { return func(l *project.Link) { l.Source = from } }
 	for _, tc := range []struct {
-		name, doc, source, target string
-		edit                      func(l *project.Link)
-		want                      string
+		name  string
+		edits []edit
+		want  string
 	}{
-		{"two departments swapped", "department-funding", "fund/100", "department/city-attorney",
-			func(l *project.Link) { l.Target = "department/city-manager" },
+		{"two departments swapped", []edit{{"department-funding", "fund/100", "department/city-attorney",
+			target("department/city-manager")}},
 			`department/city-manager names "city-manager"`},
-		{"a fund's division re-pointed", "fund-flows", "fund/100", "dept/administrative-services",
-			func(l *project.Link) { l.Target = "dept/building-and-safety" },
+		{"a department drawn as the division of one slug", []edit{{"department-funding", "fund/100",
+			"department/city-attorney", target("dept/city-attorney")}},
+			"dept/city-attorney names a division and fact"},
+		{"a fund's division re-pointed", []edit{{"fund-flows", "fund/100", "dept/administrative-services",
+			target("dept/building-and-safety")}},
 			`dept/building-and-safety names "building-and-safety"`},
-		{"a transfer's receiver re-pointed", "transfers-by-fund", "transfer-from/100", "fund/210",
-			func(l *project.Link) { l.Target = "fund/310" },
+		{"a transfer's receiver re-pointed", []edit{{"transfers-by-fund", "transfer-from/100", "fund/210",
+			target("fund/310")}},
 			`fund/310 names "310"`},
-		{"a transfer's payer end re-pointed", "transfers-by-fund", "transfer-from/100", "fund/210",
-			func(l *project.Link) { l.Source = "transfer-from/286" },
+		{"a transfer's payer end re-pointed", []edit{{"transfers-by-fund", "transfer-from/100", "fund/210",
+			source("transfer-from/286")}},
 			`transfer-from/286 names fund 286 and the other leg`},
-		{"a fund group into another group's fund", "fund-flows", "fund-group/capital", "fund/510",
-			func(l *project.Link) { l.Target = "fund/100" },
+		{"a transfer's receiver end re-pointed", []edit{{"transfers-by-fund", "fund/100", "transfer-to/210",
+			target("transfer-to/310")}},
+			`transfer-to/310 names fund 310 and the other leg`},
+		{"a transfer's two legs collapsed into one", []edit{
+			{"transfers-by-fund", "transfer-from/100", "fund/210", target("transfer-to/210")},
+			{"transfers-by-fund", "fund/100", "transfer-to/210", source("transfer-from/100")}},
+			`transfer-from/100 names fund 100 and the other leg`},
+		{"a transfer end with no transfer id", []edit{{"transfers-by-fund", "transfer-from/100", "fund/210",
+			func(l *project.Link) { l.TransferID = "" }}},
+			"transfer-from/100 names a transfer's other leg and the link carries no transfer_id"},
+		{"a fund group into another group's fund", []edit{{"fund-flows", "fund-group/capital", "fund/510",
+			target("fund/100")}},
 			`fund/100 names "100"`},
-		{"an id form nothing declares", "fund-flows", "fund/100", "dept/administrative-services",
-			func(l *project.Link) { l.Target = "division/administrative-services" },
+		{"a fund group into a fund no registry lists", []edit{{"fund-flows", "fund-group/capital", "fund/510",
+			target("fund/999")}},
+			"fund/999 is no fund data/funds.yaml lists"},
+		{"a draw into another fund group", []edit{{"sankey", "fund-balance/draw", "fund-group/general",
+			target("fund-group/special-revenue")}},
+			`fund-group/special-revenue names "special-revenue"`},
+		{"general's two object categories swapped", []edit{
+			{"sankey", "fund-group/general", "expenditure/wages-and-benefits", target("expenditure/services-and-supplies")},
+			{"sankey", "fund-group/general", "expenditure/services-and-supplies", target("expenditure/wages-and-benefits")}},
+			`expenditure/services-and-supplies names "services-and-supplies"`},
+		{"two revenue sources swapped into general", []edit{
+			{"sankey", "revenue/taxes/sales", "fund-group/general", source("revenue/licenses-and-permits")},
+			{"sankey", "revenue/licenses-and-permits", "fund-group/general", source("revenue/taxes/sales")}},
+			`revenue/licenses-and-permits names "licenses-and-permits"`},
+		{"capital's transfers out re-pointed to a contribution", []edit{{"sankey", "fund-group/capital",
+			"transfers/out", target("fund-balance/contribution")}},
+			`fund-balance/contribution carries category "fund-balance/change"`},
+		{"a reserve increase re-pointed to a contribution", []edit{{"sankey", "fund-group/general",
+			"fund-balance/reserve-increase", target("fund-balance/contribution")}},
+			`fund-balance/contribution carries category "fund-balance/change"`},
+		{"a contribution drawn as a draw", []edit{{"sankey", "fund-group/enterprise",
+			"fund-balance/contribution", func(l *project.Link) {
+				l.Source, l.Target = "fund-balance/draw", "fund-group/enterprise"
+			}}},
+			"fund-balance/draw cites facts summing to"},
+		{"a division's category swapped", []edit{{"department-spending", "expenditure/wages-and-benefits",
+			"dept/city-attorney", source("expenditure/services-and-supplies")}},
+			`expenditure/services-and-supplies names "services-and-supplies"`},
+		{"one division's money in another division's box", []edit{{"fund-flows", "dept/city-attorney",
+			"expenditure/city-attorney/wages-and-benefits", target("expenditure/city-council/wages-and-benefits")}},
+			`expenditure/city-council/wages-and-benefits names "city-council/wages-and-benefits"`},
+		{"two revenue lines swapped into the general fund", []edit{
+			{"fund-flows", "revenue-line/charges-for-services/library-fees", "fund/100",
+				source("revenue-line/charges-for-services/weed-abatement")},
+			{"fund-flows", "revenue-line/charges-for-services/weed-abatement", "fund/100",
+				source("revenue-line/charges-for-services/library-fees")}},
+			"revenue-line/charges-for-services/weed-abatement is not printed as"},
+		{"an id form nothing declares", []edit{{"fund-flows", "fund/100", "dept/administrative-services",
+			target("division/administrative-services")}},
 			"is no declared id form"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			plant(t, tc.doc, tc.source, tc.target, tc.edit)
+			// Located before any is applied, so a swap's second edit finds
+			// the link the first has not yet rewritten.
+			var at []*project.Link
+			for _, e := range tc.edits {
+				at = append(at, find(t, e.doc, e.source, e.target))
+			}
+			for i, e := range tc.edits {
+				was := *at[i]
+				e.fn(at[i])
+				t.Cleanup(func() { *at[i] = was })
+			}
 			res, err := c.Run(t.Context(), s)
 			if err != nil {
 				t.Fatal(err)
@@ -95,6 +161,24 @@ func TestLinkEndsMatchTheirFactsIsFailable(t *testing.T) {
 			}
 		})
 	}
+
+	// A link citing no fact holds its ends to nothing, so it is not counted.
+	t.Run("links that cite no fact are not counted", func(t *testing.T) {
+		for _, p := range s.linkedDocuments() {
+			for i := range p.Links {
+				was := p.Links[i].FactIDs
+				p.Links[i].FactIDs = nil
+				t.Cleanup(func() { p.Links[i].FactIDs = was })
+			}
+		}
+		res, err := c.Run(t.Context(), s)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if res.Status != StatusVacuous {
+			t.Fatalf("status %s (%s), want vacuous", res.Status, res.Summary)
+		}
+	})
 
 	// THE REGISTRY ARM ALONE: the link and its facts agree on a group that
 	// data/funds.yaml does not put the fund in.

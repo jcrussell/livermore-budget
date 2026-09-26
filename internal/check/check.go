@@ -188,6 +188,7 @@ func All() []Check {
 		&rowFundsMatchTheirAnchors{},
 		&fundBalanceIdentity{},
 		&excessOfRevenuesIdentity{},
+		&fundGroupSourcesEqualUses{},
 
 		&projectionsBuild{},
 		&publishedProjectionBuilt{},
