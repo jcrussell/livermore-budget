@@ -102,6 +102,41 @@ function smallest(graph) {
   };
 }
 
+describe("the tail's note carries the figure the tail is drawn at", () => {
+  // FIVE LINES INTO ONE CATEGORY, ONE OF THEM A REDUCTION, capped at two: the
+  // tail is $60, -$30 and $10, which merge into one ribbon of $40 -- not the
+  // $100 their magnitudes come to, which is what the ranking sorts by.
+  function lines() {
+    const node = (id, tier, parent) => ({
+      id, label: id, tier, parent, constraint_tier: "", role: "",
+      derived: false, rationale: "", source_note: "",
+    });
+    const link = (source, target, cents) => ({
+      source, target, value_cents: cents, kind: "external", transfer_id: "",
+      fact_ids: [source], locators: [{ doc_id: "d", pages: [1] }], derived: false,
+    });
+    return {
+      schema_version: 1, projection: "lines", metadata: { sources: [{ doc_id: "d", pages: [1] }] },
+      nodes: [node("revenue/tax", 2, ""), node("line/a", 0, ""), node("line/b", 0, ""),
+        node("line/c", 0, ""), node("line/d", 0, ""), node("line/e", 0, "")],
+      links: [link("line/a", "revenue/tax", 10000), link("line/b", "revenue/tax", 8000),
+        link("line/c", "revenue/tax", 6000), link("line/d", "revenue/tax", -3000), link("line/e", "revenue/tax", 1000)],
+    };
+  }
+  test("a reduction folded into the tail is netted, as the merged ribbon draws it", async (t) => {
+    const app = await drawing(DRAWN);
+    const capped = app.capColumn(lines(), 0, 2, "", "lines");
+    const tail = capped.nodes.find((n) => app.isAggregate(n.id));
+    assert.ok(tail, "nothing folded");
+    assert.equal(tail.label, "3 smaller lines");
+    const laid = app.layOut(app.foldDocument(capped));
+    const drawnAt = laid.nodes.find((n) => n.id === tail.id).value;
+    t.diagnostic(`the tail is laid out at ${drawnAt} cents and its note reads "${tail.source_note}"`);
+    assert.equal(drawnAt, 4000);
+    assert.ok(tail.source_note.endsWith("together " + app.fmt(4000) + "."), tail.source_note);
+  });
+});
+
 describe("the drill-down is drawable only folded", () => {
   const COLUMNS = [
     { label: "FY 2025-26", stem: "fy2026-adopted", hairlines: 7, slivers: 4 },

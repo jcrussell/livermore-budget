@@ -117,22 +117,20 @@ function offers(app, id) {
 }
 
 /** The ids the answer says one rung draws at the columns this viewport lays out. */
-function answeredIDs(answer, tiers) {
+function answeredIDs(answer, tiers, app) {
   const ids = new Set(answer.draws.filter((d) => tiers.includes(d.tier))
     .flatMap((d) => d.ids.concat(d.carried || []))
     .concat((answer.marks || []).map((m) => m.id)));
   // A RESIDUAL'S LEAVING ENDPOINTS ARE NAMED ON THE MARK AND NOT IN A COLUMN:
   // Go answers a column's ids off the documents, and an endpoint the spine
-  // draws at tier 5 is no document's node at the step's last tier. The client
-  // stands them in that column where the budget draws it and drops the leg
-  // where it does not (carryResidual), which is the rule read here.
+  // draws at tier 5 is no document's node at the step's last tier. Whether
+  // the client draws them at these columns is the shipped rule's answer.
   const step = stepByKey(PAGE, answer.step);
-  const last = step.tiers[step.tiers.length - 1];
   const answered = new Set(answer.draws.flatMap((d) => d.ids.concat(d.carried || [])));
   for (const m of answer.marks || []) {
     if (m.role !== "residual") continue;
     for (const e of m.ends || []) {
-      if (!answered.has(e) && tiers.includes(last)) ids.add(e);
+      if (!answered.has(e) && app.leavingLegDrawn(step, tiers)) ids.add(e);
     }
   }
   return ids;
@@ -187,7 +185,7 @@ for (const year of YEARS) {
         const answered = r.draws.filter((d) => tiers.includes(d.tier));
         if (answered.length < r.draws.length) narrowed++;
         marks += (r.marks || []).length;
-        const want = answeredIDs(r, tiers);
+        const want = answeredIDs(r, tiers, app);
         // FOLDED, THE CHART DRAWS A SUBSET AND THE TAIL; EXPANDED, THE SET.
         const folded = app.projection.nodes.map((n) => n.id);
         const strays = folded.filter((id) => !want.has(id) && !app.isAggregate(id));
@@ -219,7 +217,7 @@ for (const year of YEARS) {
       await opened(app, "transfers/in");
       const answer = answerFor(year.stem, ["transfers/in"]);
       const drawn = app.projection.nodes.map((n) => n.id).sort();
-      const want = [...answeredIDs(answer, app.activeTiers())].sort();
+      const want = [...answeredIDs(answer, app.activeTiers(), app)].sort();
       t.diagnostic(`${year.label} transfers: ${app.projection.nodes.length} nodes, ` +
         `${app.projection.links.length} links in columns ${JSON.stringify(placedTiers(app))}`);
       assert.equal(app.drilled.length, 1);

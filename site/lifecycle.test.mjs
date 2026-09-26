@@ -124,7 +124,10 @@ describe("a click during the opening fetch", () => {
       `isolation is ${JSON.stringify(app.isolated)}, pin is ${app.pinned}`);
     assert.deepEqual(errors, []);
     assert.equal(app.isolated, "");
-    assert.equal(app.pinned, null);
+    // A BOOLEAN, NOT THE PIN: a failing assert.equal hands node:test the laid
+    // mark as `actual`, whose graph reaches the whole jsdom window, and
+    // serializing it for the report takes every byte the machine has.
+    assert.ok(app.pinned === null, "Escape left a pin");
   });
 });
 

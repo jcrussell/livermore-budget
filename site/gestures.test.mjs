@@ -279,9 +279,12 @@ for (const year of YEARS) {
       const controls = backControls(document);
       assert.equal(app.drilled.length, 2);
       assert.equal(back, wide, "Escape comes back to the expanded chart");
-      assert.equal(document.activeElement, controls[controls.length - 1]);
-      assert.ok(document.activeElement.textContent.endsWith(fundStep.back),
-        `focus is on the return control reading "${document.activeElement.textContent}"`);
+      // ON THE MARK THAT OPENED THE RUNG JUST CLOSED, not on the chip and not
+      // on a return control, and without pinning it.
+      assert.ok(controls.length > 0);
+      assert.equal(document.activeElement.__data__ ? document.activeElement.__data__.id : "", INERT,
+        `focus is on ${document.activeElement.tagName}.${document.activeElement.getAttribute("class")}`);
+      assert.ok(app.pinned === null, "restoring focus pinned the mark");
 
       // AND A RUNG OPENED AFRESH IS CAPPED AFRESH.
       escape(document);
@@ -384,8 +387,12 @@ for (const year of YEARS) {
       assert.equal(back2.depth, 2);
       assert.equal(back2.counts, at2.counts);
       assert.equal(back2.title, at2.title);
-      assert.equal(focusBack2, controls2[controls2.length - 1], "focus is on the innermost return control");
-      assert.ok(focusBack2.textContent.endsWith(fundStep.back));
+      // ON THE MARK THAT OPENED THE RUNG JUST CLOSED, which is drawn again
+      // on the chart returned to; the return control would undo a different
+      // rung.
+      assert.ok(controls2.length > 0);
+      assert.equal(focusBack2 && focusBack2.__data__ ? focusBack2.__data__.id : "", INERT,
+        `focus is on ${focusBack2 ? focusBack2.tagName + "." + focusBack2.getAttribute("class") : "nothing"}`);
       assert.equal(back1.depth, 1);
       assert.deepEqual(
         { counts: back1.counts, title: back1.title, controls: back1.crumbControls, hint: back1.hint, desc: back1.desc },
@@ -446,6 +453,8 @@ for (const year of YEARS) {
       t.diagnostic(`after Escape focus is on ${on}; the first mark in document order is ${first}`);
       assert.equal(app.drilled.length, 0);
       assert.equal(on, OPENS);
+      // AND IT IS NOT PINNED: the reader did not tab onto it.
+      assert.ok(app.pinned === null, "restoring focus pinned the mark");
     });
 
     test(`${year.label} chain: a keyboard drill lands focus on the rung's return control, at every depth`, async (t) => {

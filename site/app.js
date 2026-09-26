@@ -2147,7 +2147,6 @@ export async function drillDown(id) {
   //
   // ASKING ABOUT THE DOCUMENT ANSWERS BOTH ORDERINGS, because it is the thing
   // the gesture was actually opened against rather than a count of gestures.
-  // fisc-bccu's neighbour, found by pass two of /code-review.
   if (overtaken() || docAt(depth) !== from) return SUPERSEDED;
   if (!doc) return FAILED;
   return redrawStack(drilled.concat([{ id: id, doc: doc, step: step, chart: chart }]))
@@ -2366,12 +2365,16 @@ export function keyNode(d, key, at) {
  * for and fired only in the case its own comment says must not happen. The
  * question has to be asked while the answer still exists.
  *
- * BACK ONTO THE MARK THE READER LEFT, on the way up. Popping a rung returns
- * to a chart on which the node that was opened is drawn again, and a reader
- * who arrived at it by keyboard is put back on it -- not on the first mark
- * in document order, which was a ring on a mark nobody chose. Down a rung,
- * the opened node is gone from the chart and the rung's own return control is
- * the one element on the page that undoes what was just done.
+ * BACK ONTO THE MARK THE READER LEFT, on the way up, at every depth. Popping
+ * a rung returns to a chart on which the node that was opened is drawn again,
+ * and a reader who arrived at it by keyboard is put back on it -- not on the
+ * first mark in document order, which was a ring on a mark nobody chose, and
+ * not on a return control, which undoes a different rung from the one just
+ * closed. Where that mark is not drawn (folded into a tail), the innermost
+ * return control is the fallback below the overview and the first mark on
+ * it. Down a rung, the opened node is gone from the chart and the rung's own
+ * return control is the one element on the page that undoes what was just
+ * done.
  *
  * @param {boolean} hadFocus whether focus was inside the chart before the
  *   repaint that just replaced it.
@@ -2380,6 +2383,27 @@ export function keyNode(d, key, at) {
  */
 export function restoreFocus(hadFocus, popped = "") {
   if (!hadFocus) return;
+  // WITHOUT PINNING. A mark's focus handler shows its tooltip and pins it,
+  // which is right when the reader tabbed onto it and wrong when this put them
+  // back: a pop would open the panel of the mark just left, and the next
+  // Escape would spend itself clearing that pin instead of closing the next
+  // rung. The handlers ask `restoring` and leave a restored focus unpinned.
+  restoring = true;
+  try {
+    restoreFocusTo(popped);
+  } finally {
+    restoring = false;
+  }
+}
+
+/** Whether focus is being restored by restoreFocus rather than moved by the reader. */
+let restoring = false;
+
+/**
+ * restoreFocus's choice of target, made while `restoring` is set.
+ * @param {string} popped
+ */
+function restoreFocusTo(popped) {
   // focus() IS ON HTMLElement AND SVGElement, NOT ON Element, so the runtime
   // test stays and the cast is what tells tsc --checkJs the same thing. The
   // test is not redundant with the cast: the SVG marks are <g> elements, which
@@ -2400,18 +2424,18 @@ export function restoreFocus(hadFocus, popped = "") {
   // a rung. Under "the last button" a keyboard drill onto a chart whose column
   // the reader had expanded landed focus on the chip -- the one control in the
   // bar that does not go back.
+  const chart = maybeEl("chart");
+  const left = popped && chart
+    ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} d */ (d) => d.id === popped).node()
+    : null;
+  if (focus(left)) return;
   const bar = maybeEl("breadcrumb");
   if (drilled.length && bar) {
     const controls = Array.from(bar.children || []).filter((c) =>
       String(/** @type {any} */ (c).className || "").split(" ").indexOf("crumb-back") >= 0);
     if (focus(controls[controls.length - 1] || null)) return;
   }
-  const chart = maybeEl("chart");
-  if (!chart) return;
-  const left = popped
-    ? D3.select(chart).selectAll("g.node").filter(/** @param {LaidNode} d */ (d) => d.id === popped).node()
-    : null;
-  focus(left || chart.querySelector("g.node"));
+  focus(chart ? chart.querySelector("g.node") : null);
 }
 
 /**
@@ -3056,6 +3080,23 @@ export function windowFor(onScreen, stepDoc, rung, answer) {
 }
 
 /**
+ * Whether a residual's leaving leg is drawn at these columns: Go stands a
+ * leaving endpoint at the step's last declared tier (export.ResidualOf), so
+ * the leg is drawn exactly when that column is.
+ *
+ * ONE READER FOR THE RULE, because carryResidual draws by it and the client's
+ * tests read Go's answer by it; a second spelling of the rule in a test is a
+ * copy that stays green when this one moves.
+ *
+ * @param {FiscStep} step
+ * @param {number[]} tiers the columns the chart draws
+ * @returns {boolean}
+ */
+export function leavingLegDrawn(step, tiers) {
+  return tiers.includes(step.tiers[step.tiers.length - 1]);
+}
+
+/**
  * The region a mark's arriving ribbons hang into, for a mark printed net of
  * reductions drawn forward, and null for every other mark.
  *
@@ -3549,7 +3590,6 @@ export function isCarried(id) {
  */
 export function carryResidual(drawn, from, rung, mark) {
   const step = rung.step;
-  const residual = step.residual && typeof step.residual === "object" ? step.residual : null;
   if (!mark || !from) return drawn;
   const opened = rung.id;
   // THE ID IS GO'S, under the prefix this page keys isResidual on; that the
@@ -3590,8 +3630,7 @@ export function carryResidual(drawn, from, rung, mark) {
   // columns. So the leg is drawn where its column is, and dropped where its
   // column was, which is what heldFor does with every other ribbon of a
   // column the budget dropped.
-  const active = activeTiers();
-  const leaves = active.includes(step.tiers[step.tiers.length - 1]);
+  const leaves = leavingLegDrawn(step, activeTiers());
   // THE ENDPOINTS ARE GO'S, IN GO'S ORDER, which is sorted -- so the rationale
   // reads the same on every build without this file sorting anything. Both
   // directions are looked for: which side of the opened node an endpoint's
@@ -3697,8 +3736,13 @@ export function carryResidual(drawn, from, rung, mark) {
     // cannot name the pages without a second decode and the document titles
     // the page config carries. fisc-tihl. Go ships "" here and the schema
     // states that a residual's source_note may be empty.
-    source_note: "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
-      " of the chart above with figures and citations unchanged \u2014 " + where + ".",
+    source_note: "Carried, not computed: " + links.length +
+      (leaves ? "" : " of " + (mark.ends || []).length) + " flow" + (links.length === 1 ? "" : "s") +
+      " of the chart above with figures and citations unchanged \u2014 " + where + "." +
+      // THE MARK IS THE SAME AT EVERY WIDTH AND THE DRAWING IS NOT: Go's
+      // rationale names every endpoint the documents give the mark, and this
+      // note says which of them the columns on screen draw.
+      (leaves ? "" : " The flows leaving it are drawn where there is room for a further column."),
   };
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat(added, [node]),
@@ -3882,15 +3926,6 @@ export function capColumn(doc, tier, cap, opened, noun) {
     size(b.id) - size(a.id) || (a.id < b.id ? -1 : 1));
   const kept = new Set(ranked.slice(0, cap).map((n) => n.id));
   const folded = ranked.slice(cap);
-  // WHAT THE TAIL CARRIES, said in its own note: the larger of what its
-  // members take in and send out, which is the height d3-sankey draws it at
-  // once their ribbons are merged. A sum over published summands whose
-  // membership this fold decided (fisc-lwh5). The inferred list counts
-  // inferred flows and a tail's are printed, so this is the one place a
-  // reader sees the tail's figure written down (fisc-hrfd).
-  const carried = Math.max(
-    folded.reduce((sum, n) => sum + (inflow.get(n.id) || 0), 0),
-    folded.reduce((sum, n) => sum + (outflow.get(n.id) || 0), 0));
 
   // THE NOUN IS THE VIEW'S. It read `tier === 3 ? "funds" : "categories"`,
   // which is the same tier-number-to-word mapping paintBreadcrumb refuses two
@@ -3941,8 +3976,7 @@ export function capColumn(doc, tier, cap, opened, noun) {
       " smallest " + word + " in this column are drawn as one " +
       "mark because they cannot be drawn separately. Every figure inside it is printed; " +
       "the box around them is ours.",
-    source_note: "The " + folded.length + " smallest of " + atTier.length +
-      " by value, at this page's cap of " + cap + ", together " + fmt(carried) + ".",
+    source_note: "",
   };
   const tail = new Set(folded.map((n) => n.id));
   const remap = (/** @type {string} */ id) => (tail.has(id) ? aggregateID(tier) : id);
@@ -3981,12 +4015,39 @@ export function capColumn(doc, tier, cap, opened, noun) {
   // are latent on the shipped corpus, and latent is the state the comment above
   // claims not to leave things in.
   const present = new Set(nodes.map((n) => n.id));
-  return Object.assign({}, doc, {
-    nodes: nodes,
-    links: doc.links
-      .map((l) => Object.assign({}, l, { source: remap(l.source), target: remap(l.target) }))
-      .filter((l) => present.has(l.source) && present.has(l.target)),
-  });
+  const links = doc.links
+    .map((l) => Object.assign({}, l, { source: remap(l.source), target: remap(l.target) }))
+    .filter((l) => present.has(l.source) && present.has(l.target));
+
+  // WHAT THE TAIL CARRIES, said in its own note, AT THE HEIGHT IT IS DRAWN:
+  // foldDocument merges the re-pointed ribbons by their ends with a signed
+  // sum, markContra then draws a negative one at its magnitude, and
+  // d3-sankey sizes the mark at the larger of what arrives and what leaves.
+  // So the figure is the sum over end-pairs of the magnitude of each pair's
+  // signed sum -- not the ranking's magnitudes, which count a reduction folded
+  // beside an addition twice. Computed off the links that survive the fold,
+  // so a ribbon to a descendant orphaned() removed is not counted either. A
+  // sum over published summands whose membership this fold decided
+  // (fisc-lwh5); the inferred list counts inferred flows and a tail's are
+  // printed, so this is the one place the tail's figure is written down.
+  const agg = aggregateID(tier);
+  /** @type {Map<string, number>} */
+  const byEnds = new Map();
+  for (const l of links) {
+    if (l.source !== agg && l.target !== agg) continue;
+    const key = l.source + "\u001f" + l.target;
+    byEnds.set(key, (byEnds.get(key) || 0) + l.value_cents);
+  }
+  let arriving = 0;
+  let leaving = 0;
+  for (const [key, cents] of byEnds) {
+    if (key.endsWith("\u001f" + agg)) arriving += Math.abs(cents);
+    else leaving += Math.abs(cents);
+  }
+  aggregate.source_note = "The " + folded.length + " smallest of " + atTier.length +
+    " by value, at this page's cap of " + cap + ", together " + fmt(Math.max(arriving, leaving)) + ".";
+
+  return Object.assign({}, doc, { nodes: nodes, links: links });
 }
 
 /**
@@ -4522,7 +4583,7 @@ export function render(laid) {
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidLink} d */ (e, d) => showTip(e, d))
     .on("pointerleave", hideTip)
-    .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => guarded("show this flow", () => { showTip(e, d); pin(d); }))
+    .on("focus", /** @param {FocusEvent} e @param {LaidLink} d */ (e, d) => guarded("show this flow", () => { if (restoring) return; showTip(e, d); pin(d); }))
     .on("blur", hideTip)
     .on("click", /** @param {MouseEvent} e @param {LaidLink} d */ (e, d) => guarded("pin this flow", () => { e.stopPropagation(); pin(d); }));
 
@@ -4548,7 +4609,7 @@ export function render(laid) {
     .on("pointerenter", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointermove", /** @param {PointerEvent} e @param {LaidNode} d */ (e, d) => showTip(e, d))
     .on("pointerleave", hideTip)
-    .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => guarded("show this mark", () => { showTip(e, d); pin(d); }))
+    .on("focus", /** @param {FocusEvent} e @param {LaidNode} d */ (e, d) => guarded("show this mark", () => { if (restoring) return; showTip(e, d); pin(d); }))
     .on("blur", hideTip)
     // Activating a node isolates its flows, the same toggle the legend does
     // for a fund group. Layout gets this chart's crossings down so far and

@@ -694,7 +694,8 @@ func views(built result) []export.View {
 				// reader clicked off the screen entirely.
 				Keep: []int{0},
 				// A FOURTH COLUMN WHERE THERE IS ROOM FOR ONE, and tier 4 is
-				// what is there to draw: the departments that spend each fund.
+				// what is there to draw: the divisions that spend each fund,
+				// which is the fund step's tier-4 column and takes its noun.
 				// Only the General Fund's document fills it -- pp.167-170
 				// decompose fund/100 and no other fund has a spending side --
 				// so on the other five groups' rungs Go answers tier 4 with no
@@ -723,9 +724,10 @@ func views(built result) []export.View {
 				//
 				// THE TIER-4 CAP IS THE FUND STEP'S, carried at the width it
 				// was declared at and inert for the same reason: fund/100's 23
-				// departments against 24. It names its own noun because the
-				// step's counts funds.
-				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "departments"}},
+				// divisions against 24. It names its own noun because the
+				// step's counts funds, and the noun is the fund step's for the
+				// same column.
+				Caps: []export.TierCap{{Tier: 3, Cap: 8}, {Tier: 4, Cap: 24, Tail: "divisions"}},
 				Noun: "fund group",
 				// THE GRAIN THIS STEP'S DOCUMENT DOES NOT SPLIT THE CARRIED
 				// FLOWS BY. pp.127-140 print revenue and spending by fund and

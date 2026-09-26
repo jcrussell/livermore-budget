@@ -263,12 +263,20 @@ describe("a widened step", () => {
           `${JSON.stringify(leaving.map((l) => `${l.target}@${tierOf.get(l.target)}`))}, ${flat} ribbon(s) inside one column`);
         assert.ok(arriving.length > 0);
         assert.equal(flat, 0);
+        // AND THE NOTE SAYS WHICH OF THE MARK'S FLOWS THIS WIDTH DRAWS, since
+        // Go's rationale names every endpoint at every width.
+        const drawnFlows = arriving.length + leaving.length;
         if (budget === 3) {
           assert.equal(leaving.length, 0);
           assert.ok(!app.projection.nodes.some((n) => n.id === "transfers/out"));
+          assert.ok(residual.source_note.includes(`${drawnFlows} of ${residual.ends ? residual.ends.length : drawnFlows + 1}`) ||
+            residual.source_note.includes(`${drawnFlows} of `), residual.source_note);
+          assert.match(residual.source_note, /leaving it are drawn where there is room/);
         } else {
           assert.ok(leaving.length > 0);
           for (const l of leaving) assert.equal(tierOf.get(l.target), last);
+          assert.ok(residual.source_note.startsWith(`Carried, not computed: ${drawnFlows} flows of`), residual.source_note);
+          assert.doesNotMatch(residual.source_note, /where there is room/);
         }
       }
       t.diagnostic(legs.join("; "));
