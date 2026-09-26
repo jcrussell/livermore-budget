@@ -247,6 +247,8 @@ describe("a widened step", () => {
   for (const stem of ["sankey", "sankey-2027"]) {
     test(`${stem}: the residual's leaving leg is drawn in the fourth column and dropped with it`, async (t) => {
       const legs = [];
+      /** @type {Record<number, {note: string, drawn: number, leaving: number}>} */
+      const at = {};
       for (const budget of [3, 4]) {
         const { app, document } = await bootedApp({ checkedStem: stem });
         app.setColumnBudget(budget);
@@ -266,22 +268,49 @@ describe("a widened step", () => {
         // AND THE NOTE SAYS WHICH OF THE MARK'S FLOWS THIS WIDTH DRAWS, since
         // Go's rationale names every endpoint at every width.
         const drawnFlows = arriving.length + leaving.length;
+        at[budget] = { note: residual.source_note, drawn: drawnFlows, leaving: leaving.length };
+        assert.ok(residual.source_note.startsWith(
+          `Carried, not computed: ${drawnFlows} ${drawnFlows === 1 ? "flow" : "flows"} of the chart above`), residual.source_note);
         if (budget === 3) {
           assert.equal(leaving.length, 0);
           assert.ok(!app.projection.nodes.some((n) => n.id === "transfers/out"));
-          assert.ok(residual.source_note.includes(`${drawnFlows} of ${residual.ends ? residual.ends.length : drawnFlows + 1}`) ||
-            residual.source_note.includes(`${drawnFlows} of `), residual.source_note);
-          assert.match(residual.source_note, /leaving it are drawn where there is room/);
         } else {
           assert.ok(leaving.length > 0);
           for (const l of leaving) assert.equal(tierOf.get(l.target), last);
-          assert.ok(residual.source_note.startsWith(`Carried, not computed: ${drawnFlows} flows of`), residual.source_note);
           assert.doesNotMatch(residual.source_note, /where there is room/);
         }
       }
+      // THE FLOWS HELD BACK AT THREE COLUMNS ARE THE ONES FOUR DRAW, counted,
+      // with the verb agreeing with the count.
+      const held = at[4].leaving;
+      assert.ok(at[3].note.endsWith(
+        (held === 1 ? " The flow leaving it is" : ` The ${held} flows leaving it are`) +
+        " drawn where there is room for a further column."), at[3].note);
+      assert.equal(at[3].drawn + held, at[4].drawn);
+      legs.push(`note at 3: "${at[3].note}"`);
       t.diagnostic(legs.join("; "));
     });
   }
+  // A RESIDUAL WITH NO LEAVING FLOW HOLDS NOTHING BACK AT ANY WIDTH: the
+  // capital group's only draws on its balance, so its note says nothing about
+  // flows leaving it.
+  for (const stem of ["sankey", "sankey-2027"]) {
+    test(`${stem}: a residual with no leaving flow says nothing is held back, at either width`, async (t) => {
+      const notes = [];
+      for (const budget of [3, 4]) {
+        const { app } = await bootedApp({ checkedStem: stem });
+        app.setColumnBudget(budget);
+        await opened(app, "fund-group/capital");
+        const residual = app.projection.nodes.find((n) => app.isResidual(n.id));
+        assert.ok(residual, "no residual on the capital group's window");
+        assert.equal(app.projection.links.filter((l) => l.source === residual.id).length, 0);
+        notes.push(`budget ${budget}: "${residual.source_note}"`);
+        assert.doesNotMatch(residual.source_note, /leaving it/);
+      }
+      t.diagnostic(notes.join("; "));
+    });
+  }
+
   // A CHILD WHOSE TIERS ARE A STRICT SUBSET OF ITS WIDENED PARENT'S IS DRAWN.
   // export.validateSteps refuses a step whose tiers EQUAL its parent's and
   // accepts a subset (fisc-ke1f); this is the client's half of that decision,

@@ -2973,10 +2973,45 @@ export function sideOf(doc, rung, tiers, held) {
   // It is restored rather than exempted from the fold, because the fold's rule
   // is about the document's own well-formedness and this is a claim about the
   // FILE's hierarchy, which is what fundGroupOf walks.
+  //
+  // AND ITS NOTE IS FINISHED WITH THE FIGURE IT IS DRAWN AT, which only the
+  // folded document knows: see tailFigure.
   return Object.assign({}, drawn, {
-    nodes: drawn.nodes.map((n) =>
-      (isAggregate(n.id) ? Object.assign({}, n, { parent: parentOf.get(n.tier) || "" }) : n)),
+    nodes: drawn.nodes.map((n) => (isAggregate(n.id)
+      ? Object.assign({}, n, {
+        parent: parentOf.get(n.tier) || "",
+        source_note: n.source_note + ", together " + fmt(tailFigure(drawn, n.id)) + ".",
+      })
+      : n)),
   });
+}
+
+/**
+ * What a folded tail carries, at the height d3-sankey draws it: the larger of
+ * what arrives and what leaves, each ribbon at its magnitude as markContra
+ * draws a reduction.
+ *
+ * READ OFF THE FOLDED DOCUMENT AND NOT OFF capColumn'S OUTPUT, because
+ * foldDocument merges by source, target and kind -- so a reduction netted
+ * against an addition of the same kind is one ribbon, and one of another kind
+ * is two -- re-points ribbons whose far end sits in a tier not drawn, and
+ * drops those that fold into a loop; and a second cap can re-point ribbons
+ * the first tail already held. A sum over published summands whose membership
+ * the fold decided (fisc-lwh5); the inferred list counts inferred flows and a
+ * tail's are printed, so its note is the one place this figure is written.
+ *
+ * @param {FiscProjection} doc a folded document
+ * @param {string} id the tail's id
+ * @returns {number} cents
+ */
+export function tailFigure(doc, id) {
+  let arriving = 0;
+  let leaving = 0;
+  for (const l of doc.links) {
+    if (l.target === id) arriving += Math.abs(l.value_cents);
+    if (l.source === id) leaving += Math.abs(l.value_cents);
+  }
+  return Math.max(arriving, leaving);
 }
 
 /**
@@ -3631,6 +3666,11 @@ export function carryResidual(drawn, from, rung, mark) {
   // column was, which is what heldFor does with every other ribbon of a
   // column the budget dropped.
   const leaves = leavingLegDrawn(step, activeTiers());
+  // THE LEAVING FLOWS THIS WIDTH HOLDS BACK, counted and not inferred from
+  // the mark's endpoints: a mark with no leaving flow (a fund group whose
+  // residual only draws on its balance) has nothing held back at any width,
+  // and its note must not say otherwise.
+  let withheld = 0;
   // THE ENDPOINTS ARE GO'S, IN GO'S ORDER, which is sorted -- so the rationale
   // reads the same on every build without this file sorting anything. Both
   // directions are looked for: which side of the opened node an endpoint's
@@ -3643,7 +3683,10 @@ export function carryResidual(drawn, from, rung, mark) {
       ends.set(e, true);
       spliced.add(l);
     }
-    if (!leaves) continue;
+    if (!leaves) {
+      withheld += above((l) => l.source === opened && l.target === e).length;
+      continue;
+    }
     for (const l of above((l) => l.source === opened && l.target === e)) {
       links.push(Object.assign({}, l, { source: id }));
       ends.set(e, false);
@@ -3736,13 +3779,13 @@ export function carryResidual(drawn, from, rung, mark) {
     // cannot name the pages without a second decode and the document titles
     // the page config carries. fisc-tihl. Go ships "" here and the schema
     // states that a residual's source_note may be empty.
-    source_note: "Carried, not computed: " + links.length +
-      (leaves ? "" : " of " + (mark.ends || []).length) + " flow" + (links.length === 1 ? "" : "s") +
+    source_note: "Carried, not computed: " + links.length + " flow" + (links.length === 1 ? "" : "s") +
       " of the chart above with figures and citations unchanged \u2014 " + where + "." +
       // THE MARK IS THE SAME AT EVERY WIDTH AND THE DRAWING IS NOT: Go's
       // rationale names every endpoint the documents give the mark, and this
-      // note says which of them the columns on screen draw.
-      (leaves ? "" : " The flows leaving it are drawn where there is room for a further column."),
+      // note says which of its flows the columns on screen hold back.
+      (withheld ? " " + (withheld === 1 ? "The flow" : "The " + withheld + " flows") + " leaving it " +
+        (withheld === 1 ? "is" : "are") + " drawn where there is room for a further column." : ""),
   };
   return Object.assign({}, drawn, {
     nodes: drawn.nodes.concat(added, [node]),
@@ -4019,33 +4062,11 @@ export function capColumn(doc, tier, cap, opened, noun) {
     .map((l) => Object.assign({}, l, { source: remap(l.source), target: remap(l.target) }))
     .filter((l) => present.has(l.source) && present.has(l.target));
 
-  // WHAT THE TAIL CARRIES, said in its own note, AT THE HEIGHT IT IS DRAWN:
-  // foldDocument merges the re-pointed ribbons by their ends with a signed
-  // sum, markContra then draws a negative one at its magnitude, and
-  // d3-sankey sizes the mark at the larger of what arrives and what leaves.
-  // So the figure is the sum over end-pairs of the magnitude of each pair's
-  // signed sum -- not the ranking's magnitudes, which count a reduction folded
-  // beside an addition twice. Computed off the links that survive the fold,
-  // so a ribbon to a descendant orphaned() removed is not counted either. A
-  // sum over published summands whose membership this fold decided
-  // (fisc-lwh5); the inferred list counts inferred flows and a tail's are
-  // printed, so this is the one place the tail's figure is written down.
-  const agg = aggregateID(tier);
-  /** @type {Map<string, number>} */
-  const byEnds = new Map();
-  for (const l of links) {
-    if (l.source !== agg && l.target !== agg) continue;
-    const key = l.source + "\u001f" + l.target;
-    byEnds.set(key, (byEnds.get(key) || 0) + l.value_cents);
-  }
-  let arriving = 0;
-  let leaving = 0;
-  for (const [key, cents] of byEnds) {
-    if (key.endsWith("\u001f" + agg)) arriving += Math.abs(cents);
-    else leaving += Math.abs(cents);
-  }
+  // THE FIGURE IS NOT HERE: the note is finished after foldDocument, by
+  // tailFigure, because the fold merges and re-points these ribbons and a
+  // later cap can re-point them again.
   aggregate.source_note = "The " + folded.length + " smallest of " + atTier.length +
-    " by value, at this page's cap of " + cap + ", together " + fmt(Math.max(arriving, leaving)) + ".";
+    " by value, at this page's cap of " + cap;
 
   return Object.assign({}, doc, { nodes: nodes, links: links });
 }

@@ -103,6 +103,8 @@ function smallest(graph) {
 }
 
 describe("the tail's note carries the figure the tail is drawn at", () => {
+  // LAID OUT AS shapeFor LAYS IT OUT, markContra after the fold: a reduction
+  // is drawn at its magnitude, and layOut alone would size it signed.
   // FIVE LINES INTO ONE CATEGORY, ONE OF THEM A REDUCTION, capped at two: the
   // tail is $60, -$30 and $10, which merge into one ribbon of $40 -- not the
   // $100 their magnitudes come to, which is what the ranking sorts by.
@@ -111,11 +113,11 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
       id, label: id, tier, parent, constraint_tier: "", role: "",
       derived: false, rationale: "", source_note: "",
     });
-    const link = (source, target, cents) => ({
-      source, target, value_cents: cents, kind: "external", transfer_id: "",
+    const link = (source, target, cents, kind = "external") => ({
+      source, target, value_cents: cents, kind, transfer_id: "",
       fact_ids: [source], locators: [{ doc_id: "d", pages: [1] }], derived: false,
     });
-    return {
+    return { node, link,
       schema_version: 1, projection: "lines", metadata: { sources: [{ doc_id: "d", pages: [1] }] },
       nodes: [node("revenue/tax", 2, ""), node("line/a", 0, ""), node("line/b", 0, ""),
         node("line/c", 0, ""), node("line/d", 0, ""), node("line/e", 0, "")],
@@ -129,11 +131,62 @@ describe("the tail's note carries the figure the tail is drawn at", () => {
     const tail = capped.nodes.find((n) => app.isAggregate(n.id));
     assert.ok(tail, "nothing folded");
     assert.equal(tail.label, "3 smaller lines");
-    const laid = app.layOut(app.foldDocument(capped));
-    const drawnAt = laid.nodes.find((n) => n.id === tail.id).value;
-    t.diagnostic(`the tail is laid out at ${drawnAt} cents and its note reads "${tail.source_note}"`);
+    const folded = app.foldDocument(capped);
+    const drawnAt = app.layOut(app.markContra(folded)).nodes.find((n) => n.id === tail.id).value;
+    t.diagnostic(`the tail is laid out at ${drawnAt} cents and tailFigure reads ${app.tailFigure(folded, tail.id)}`);
     assert.equal(drawnAt, 4000);
-    assert.ok(tail.source_note.endsWith("together " + app.fmt(4000) + "."), tail.source_note);
+    assert.equal(app.tailFigure(folded, tail.id), 4000);
+  });
+
+  // THE PAGE'S OWN CAPPING FINISHES THE NOTE AFTER THE FOLD: before it the
+  // tail's three ribbons are $60, -$30 and $10 apart, $100 by magnitude, and
+  // only the merge makes them the one $40 ribbon the chart draws.
+  test("the page's capping writes the figure the fold leaves, not the one before it", async (t) => {
+    const app = await drawing(DRAWN);
+    const doc = lines();
+    const held = new Map(doc.nodes.map((n) => [n.id, n.tier === 0 ? 0 : 1]));
+    const rung = { id: "", step: { caps: [{ tier: 0, cap: 2 }], tail: "lines" } };
+    const side = app.sideOf(doc, rung, [0, 2], held);
+    const tail = side.nodes.find((n) => app.isAggregate(n.id));
+    assert.ok(tail, "nothing folded");
+    t.diagnostic(`the tail's note reads "${tail.source_note}"`);
+    assert.ok(tail.source_note.endsWith(", together " + app.fmt(4000) + "."), tail.source_note);
+  });
+
+  // A REDUCTION OF ANOTHER KIND IS NOT NETTED, because foldDocument merges by
+  // kind as well as ends: $60 external and -$30 internal to one category are
+  // two ribbons, drawn at $90 together.
+  test("a reduction of another kind is drawn beside the addition, not netted against it", async (t) => {
+    const app = await drawing(DRAWN);
+    const doc = lines();
+    doc.links[3] = doc.link("line/d", "revenue/tax", -3000, "internal");
+    const folded = app.foldDocument(app.capColumn(doc, 0, 2, "", "lines"));
+    const tail = folded.nodes.find((n) => app.isAggregate(n.id));
+    const drawnAt = app.layOut(app.markContra(folded)).nodes.find((n) => n.id === tail.id).value;
+    t.diagnostic(`${folded.links.filter((l) => l.source === tail.id).length} ribbon(s) leave the tail, laid out at ${drawnAt}`);
+    assert.equal(drawnAt, 10000);
+    assert.equal(app.tailFigure(folded, tail.id), drawnAt);
+  });
+
+  // A SECOND CAP RE-POINTS WHAT THE FIRST TAIL HELD: capping the categories
+  // after the lines merges the first tail's ribbons into ones between two
+  // tails, and a reduction among them nets only then.
+  test("a second cap's merge is what the first tail is drawn at", async (t) => {
+    const app = await drawing(DRAWN);
+    const doc = lines();
+    doc.nodes.push(doc.node("revenue/fees", 2, ""), doc.node("revenue/fines", 2, ""));
+    doc.links.push(doc.link("line/c", "revenue/fees", -2000), doc.link("line/e", "revenue/fines", 500),
+      doc.link("line/a", "revenue/fees", 1), doc.link("line/b", "revenue/fines", 1));
+    const capped = app.capColumn(app.capColumn(doc, 0, 2, "", "lines"), 2, 1, "", "categories");
+    const folded = app.foldDocument(capped);
+    const laid = app.layOut(app.markContra(folded));
+    const tails = folded.nodes.filter((n) => app.isAggregate(n.id));
+    assert.equal(tails.length, 2);
+    for (const tail of tails) {
+      const drawnAt = laid.nodes.find((n) => n.id === tail.id).value;
+      t.diagnostic(`${tail.label} laid out at ${drawnAt}`);
+      assert.equal(app.tailFigure(folded, tail.id), drawnAt);
+    }
   });
 });
 
