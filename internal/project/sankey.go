@@ -80,13 +80,13 @@ const (
 	roleObjectCategory  = "object_category"
 	roleTransferIn      = "transfer_in"
 	roleTransferOut     = "transfer_out"
-	// roleTransferSource and roleTransferSink are the payer's and the
+	// RoleTransferSource and RoleTransferSink are the payer's and the
 	// receiver's end of one printed movement, which only [transfersByFund]
 	// draws. They are not roleTransferIn and roleTransferOut: those two are the
 	// spine's single flow endpoints, and a step's Role is how `fisc export`
 	// tells one node at a tier from another.
-	roleTransferSource          = "transfer_source"
-	roleTransferSink            = "transfer_destination"
+	RoleTransferSource          = "transfer_source"
+	RoleTransferSink            = "transfer_destination"
 	roleReserveIncrease         = "reserve_increase"
 	roleFundBalanceDraw         = "fund_balance_draw"
 	roleFundBalanceContribution = "fund_balance_contribution"
@@ -244,13 +244,13 @@ type labels interface {
 	// what a node carrying one publishes as its rationale.
 	RestrictionNote(fund int) string
 	// DivisionLabel is the city's own words for a division slug, which is what
-	// a fact's `department` field holds. A miss is not an error: the slug is
-	// shown instead.
+	// a fact's `department` field holds. A projection drawing a division
+	// refuses a miss.
 	DivisionLabel(slug string) (string, bool)
 	// DepartmentLabel is the city's own words for a DEPARTMENT slug, which is
 	// the other thing a fact's `department` field holds: pp.85-125's funding
 	// rows name the ALL-CAPS tier where every other department-bearing rule
-	// names a division. A miss is not an error, as DivisionLabel's is not.
+	// names a division. A miss is refused, as DivisionLabel's is.
 	//
 	// IT IS A SECOND METHOD AND NOT A WIDENED FIRST ONE. Five slugs name a
 	// department and a division beneath it, so one lookup over both tiers would

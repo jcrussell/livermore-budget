@@ -385,10 +385,10 @@ func transferFundEnds(fa *fact.Fact) (transferEnds, error) {
 	}
 	n := strconv.Itoa(*fa.Fund)
 	return transferEnds{
-		from: endpoint{id: prefixTransferFrom + n, tier: tierFundGroup, role: roleTransferSource,
+		from: endpoint{id: prefixTransferFrom + n, tier: tierFundGroup, role: RoleTransferSource,
 			parent: nodeTransfersIn},
 		fund: endpoint{id: prefixFund + n, tier: tierFund, role: transferFundRole(*fa.Fund)},
-		to:   endpoint{id: prefixTransferTo + n, tier: tierObjectCategory, role: roleTransferSink},
+		to:   endpoint{id: prefixTransferTo + n, tier: tierObjectCategory, role: RoleTransferSink},
 	}, nil
 }
 

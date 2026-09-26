@@ -94,6 +94,7 @@ func TestFixtureVerdicts(t *testing.T) {
 		"revenue-lines-tie-to-their-categories": "vacuous over 0",
 		"derived-nodes-justified":               "pass over 2",
 		"link-locators-match-their-facts":       "pass over 7",
+		"link-ends-match-their-facts":           "pass over 7",
 		"link-values-tie-to-facts":              "pass over 7",
 		"link-kinds-match-their-facts":          "pass over 7",
 		"counts-reconcile":                      "pass over 1",
@@ -133,7 +134,7 @@ func TestFixtureVerdicts(t *testing.T) {
 	if diff := cmp.Diff(want, statuses(rep)); diff != "" {
 		t.Errorf("verdicts mismatch (-want +got):\n%s", diff)
 	}
-	if got := (counts{Pass: 23, Vacuous: 24, Skipped: 1}); got != rep.Counts {
+	if got := (counts{Pass: 24, Vacuous: 24, Skipped: 1}); got != rep.Counts {
 		t.Errorf("counts = %+v, want %+v", rep.Counts, got)
 	}
 	// The counts are pinned as numbers above rather than spelled in words here,
@@ -1032,6 +1033,7 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 		{"two equal legs", []int64{5_000, 5_000}, StatusPass, ""},
 		{"two unequal legs", []int64{5_000, 4_000}, StatusFail, "off by $10.00"},
 		{"one leg", []int64{5_000}, StatusFail, "names 1 legs, want 2"},
+		{"two receiving legs", []int64{5_000, 5_000}, StatusFail, "not one receiving and one paying"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1040,6 +1042,23 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 			for i, v := range tt.values {
 				g.Links[i].TransferID = "t-1"
 				g.Links[i].ValueCents = v
+			}
+			// Leg 0 receives from a payer's end; leg 1 pays into a receiver's,
+			// unless the case makes both receiving.
+			setRole := func(id, role string) {
+				for j := range g.Nodes {
+					if g.Nodes[j].ID == id {
+						g.Nodes[j].Role = role
+					}
+				}
+			}
+			setRole(g.Links[0].Source, project.RoleTransferSource)
+			if len(tt.values) > 1 {
+				if tt.name == "two receiving legs" {
+					setRole(g.Links[1].Source, project.RoleTransferSource)
+				} else {
+					setRole(g.Links[1].Target, project.RoleTransferSink)
+				}
 			}
 			res := resultFor(t, runChecks(t, s), "transfer-legs-pair")
 
@@ -1053,6 +1072,23 @@ func TestTransferLegsPairWhenLegsExist(t *testing.T) {
 				t.Errorf("findings %v do not contain %q", res.Findings, tt.want)
 			}
 		})
+	}
+}
+
+// TestTransferLegsPairSeesALegWithNoID: every link of p76's document is a
+// leg, so one carrying no transfer_id is half a movement the pairing would
+// otherwise skip, leaving the check vacuous over a document that drew legs.
+func TestTransferLegsPairSeesALegWithNoID(t *testing.T) {
+	res, err := (&transferLegsPair{}).Run(t.Context(), scheduleSubject())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if res.Status != StatusFail || !strings.Contains(findingDetails(res), "carries no transfer_id") {
+		t.Fatalf("status = %s (%s), findings %v; want a fail naming the leg with no transfer_id",
+			res.Status, res.Summary, res.Findings)
+	}
+	if n := len(res.Findings); n != 1 {
+		t.Errorf("%d findings, want the transfers document's one link; the other documents carry no legs", n)
 	}
 }
 

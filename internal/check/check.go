@@ -202,6 +202,7 @@ func All() []Check {
 		&derivedNodesJustified{},
 		&linkValuesTieToFacts{},
 		&linkLocatorsMatchTheirFacts{},
+		&linkEndsMatchTheirFacts{},
 		&linkKindsMatchTheirFacts{},
 		&contraLinksNameTheirSchedule{},
 		&countsReconcile{},

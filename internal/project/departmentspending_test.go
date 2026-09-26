@@ -71,6 +71,13 @@ func spendingFacts(t *testing.T, mutate func(f *fact.Fact)) []fact.Fact {
 	return out
 }
 
+// spendingLabels lists the fixture's divisions, because a division the registry
+// does not list is refused rather than drawn under its slug.
+func spendingLabels() stubFundFlows {
+	return stubFundFlows{stubLabels: goldenLabels, divisions: map[string]string{
+		"city-council": "City Council", "general-services": "General Services", "maintenance": "Maintenance"}}
+}
+
 func spendingOptions() Options {
 	return Options{
 		Columns: []Column{{FiscalYear: testYear, Basis: testBasis}},
@@ -81,7 +88,7 @@ func spendingOptions() Options {
 
 func buildSpending(t *testing.T, facts []fact.Fact) *DepartmentSpendingDocument {
 	t.Helper()
-	doc, err := (&departmentSpending{Labels: goldenLabels}).Document(facts, spendingOptions())
+	doc, err := (&departmentSpending{Labels: spendingLabels()}).Document(facts, spendingOptions())
 	if err != nil {
 		t.Fatalf("Document: %v", err)
 	}
@@ -214,9 +221,14 @@ func TestTheCrossTabRefusesAFactThatCarriesAFund(t *testing.T) {
 				f.Category = ""
 			}
 		}, "carries no category"},
+		{"a division the registry does not list", func(f *fact.Fact) {
+			if f.Department == "maintenance" {
+				f.Department = "police-department"
+			}
+		}, `lists no division "police-department"`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := (&departmentSpending{Labels: goldenLabels}).
+			_, err := (&departmentSpending{Labels: spendingLabels()}).
 				Document(spendingFacts(t, tc.mutate), spendingOptions())
 			if err == nil {
 				t.Fatalf("Document accepted the fact, want a refusal naming %q", tc.want)
@@ -255,11 +267,11 @@ func TestTheCrossTabRefusesTwoColumnsAndTheWrongSchedule(t *testing.T) {
 // TestTheCrossTabIsDeterministic is the property a rebuild-and-compare rests on.
 func TestTheCrossTabIsDeterministic(t *testing.T) {
 	facts := spendingFacts(t, nil)
-	first, err := (&departmentSpending{Labels: goldenLabels}).Build(facts, spendingOptions())
+	first, err := (&departmentSpending{Labels: spendingLabels()}).Build(facts, spendingOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
-	second, err := (&departmentSpending{Labels: goldenLabels}).Build(facts, spendingOptions())
+	second, err := (&departmentSpending{Labels: spendingLabels()}).Build(facts, spendingOptions())
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}

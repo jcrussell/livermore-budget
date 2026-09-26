@@ -54,9 +54,9 @@ var residualNodes = map[string]string{
 		"Change in Working Capital row and drawn into the group. pp.127-140 print no " +
 		"fund-balance row at all, so no fund receives it",
 
-	"fund-balance/contribution": "the mirror of the draw: a positive change in working " +
-		"capital, drawn out of the group to the same inferred node. No fund pays it " +
-		"for the same reason no fund receives the draw",
+	"fund-balance/contribution": "a positive change in working capital, inferred from " +
+		"pp.66-67's Change in Working Capital row and drawn out of the group. pp.127-140 " +
+		"print no fund-balance row at all, so no fund pays it",
 
 	"fund-balance/reserve-increase": "a printed row of pp.66-67 that the city books against " +
 		"the group as a whole: it has no division and no object category on pp.167-170, " +

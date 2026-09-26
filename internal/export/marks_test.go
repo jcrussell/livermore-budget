@@ -109,6 +109,18 @@ func TestGapOfIsMarkGapsArithmetic(t *testing.T) {
 			err:   `declares a gap of 41 cents on "c" in FY2027 adopted and the charts differ there by 40`,
 		},
 		{
+			name:  "a licence of the wrong sign",
+			drawn: short,
+			gaps:  licence(-40),
+			err:   `declares a gap of -40 cents on "c" in FY2027 adopted and the charts differ there by 40`,
+		},
+		{
+			name:  "a licence in this year on another basis",
+			drawn: short,
+			gaps:  map[string]Gaps{"c": {{FiscalYear: 2027, Basis: "revised", Cents: 40, Reason: "Another basis's reason."}}},
+			err:   `no declaration on this step accounts for in FY2027 adopted`,
+		},
+		{
 			name:  "a licence on a centre that balances",
 			drawn: chart(GraphLink{Source: "a", Target: "c", ValueCents: 100}, GraphLink{Source: "c", Target: "p", ValueCents: 100}),
 			gaps:  licence(40),

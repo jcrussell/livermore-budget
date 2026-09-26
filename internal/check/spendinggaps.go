@@ -36,7 +36,7 @@ type SpendingGap struct {
 // vocabulary is node ids rather than cells.
 func SpendingGaps() map[string][]SpendingGap {
 	out := map[string][]SpendingGap{}
-	for _, e := range structure.BudgetBookExceptions() {
+	for _, e := range budgetBookExceptions() {
 		if e.Cut != departmentwideCut || e.Against != spineCut || e.At != structure.LevelCategory {
 			continue
 		}

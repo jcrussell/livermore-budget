@@ -404,4 +404,27 @@ func TestAPairIsComparedOnlyWhereTheLatticeSaysHow(t *testing.T) {
 			t.Errorf("empty cuts (-want +got):\n%s", diff)
 		}
 	})
+
+	t.Run("a cut that loses one rule's kind is refused, not compared as whole", func(t *testing.T) {
+		byRule, err := structure.LevelOfRule(facts, committedFiles(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, rule := range []string{"acfr-p0041-gf-revenues", "acfr-p0041-gf-fund-balances", "acfr-p0041-gf-other-financing-sources"} {
+			var kept []fact.Fact
+			for i := range facts {
+				if facts[i].RuleID != rule {
+					kept = append(kept, facts[i])
+				}
+			}
+			if len(kept) == len(facts) {
+				t.Fatalf("%s carries no fact to drop", rule)
+			}
+			_, err := structure.ValidateCuts(kept, byRule, structure.AllCuts())
+			if err == nil || !strings.Contains(err.Error(), `"acfr-general-fund-summary"`) ||
+				!strings.Contains(err.Error(), "declares kind") {
+				t.Errorf("with %s dropped, ValidateCuts = %v, want acfr-general-fund-summary refused for a declared kind it lost", rule, err)
+			}
+		}
+	})
 }

@@ -40,10 +40,17 @@ func TestTheResidualSetIsTheEndpointSet(t *testing.T) {
 // group's transfer in is 480,400 in FY2026 and 486,735 in FY2027 -- and the
 // ribbons beside the mark already carry the money.
 func TestAResidualReasonHoldsUnderEveryColumn(t *testing.T) {
-	figure := regexp.MustCompile(`\d{1,3}(,\d{3})+|FY ?\d{4}`)
+	figure := regexp.MustCompile(`(?i)\$|\d{1,3}(,\d{3})+|\d{4,}|\d(\.\d+)?\s?(k|m|million|thousand)\b|FY ?\d{4}`)
 	for id, reason := range residualNodes {
 		if m := figure.FindString(reason); m != "" {
 			t.Errorf("%s's reason quotes %q, which is one column's: %s", id, m, reason)
+		}
+	}
+	// A reason is shown alone, under its own mark, so it cannot lean on another.
+	leans := regexp.MustCompile(`(?i)\bsame (reason|node)\b|\bmirror\b|\bthe (draw|contribution)\b|\bas (above|below)\b`)
+	for id, reason := range residualNodes {
+		if m := leans.FindString(reason); m != "" {
+			t.Errorf("%s's reason leans on another with %q: %s", id, m, reason)
 		}
 	}
 	// THE TRANSFERS ARE PRINTED PER FUND ON p.76, which the site draws; a

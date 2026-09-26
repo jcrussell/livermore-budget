@@ -889,8 +889,10 @@ func views(built result) []export.View {
 					"what pp.66-67 print for the fund group as a whole — the money the city " +
 					"transfers out and sets aside in its balances and reserves — less the " +
 					"money the group takes in that no fund receives, which the chart above " +
-					"carries to a node of its own beside the funds; no published schedule " +
-					"breaks either down by fund.",
+					"carries to a node of its own beside the funds. p.76 prints the " +
+					"transfers per fund, and the transfers chart draws them from there; " +
+					"pp.198-209 print each fund's transfers and change in balance, which " +
+					"this chart does not draw.",
 			},
 			{
 				Key:   "division",
@@ -1150,8 +1152,9 @@ func views(built result) []export.View {
 					"leaves it here is what the departments draw on it. Either side may be " +
 					"the larger. The difference is money the city moves between its own " +
 					"funds and into or out of accumulated balance, which pp.66-67 print for " +
-					"the fund group as a whole and no published schedule breaks down by " +
-					"fund. A department here is the WHOLE department across every fund that " +
+					"the fund group as a whole. p.76 prints the transfers per fund, and the " +
+					"transfers chart draws them from there; pp.198-209 print each fund's " +
+					"transfers and change in balance, which this chart does not draw. A department here is the WHOLE department across every fund that " +
 					"pays it, which is a coarser thing than the divisions the General Fund " +
 					"opens into \u2014 five names belong to both tiers, so do not read one " +
 					"as the other.",

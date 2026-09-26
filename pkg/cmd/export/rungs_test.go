@@ -1194,6 +1194,45 @@ func TestTheFundStepsSentenceIsItsArithmetic(t *testing.T) {
 	}
 }
 
+// TestNoSentenceDeniesTheTransfersPerFund: p.76 prints every transfer per
+// paying and receiving fund, and pp.198-209 print each fund's transfers and
+// change in balance, so a step or caveat saying no schedule breaks the fund
+// group's difference down by fund is false beside the transfers chart.
+func TestNoSentenceDeniesTheTransfersPerFund(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	built, err := buildAll(root)
+	if err != nil {
+		t.Fatalf("buildAll: %v", err)
+	}
+	denial := regexp.MustCompile(`(?i)no (published )?schedule (breaks|attributes)`)
+	transfers := 0
+	for _, v := range views(built) {
+		for _, s := range v.Steps {
+			if m := denial.FindString(s.Description); m != "" {
+				t.Errorf("%s step %q says %q: %s", v.Path, s.Key, m, s.Description)
+			}
+			if strings.Contains(strings.ToLower(s.Description), "transfers out") ||
+				strings.Contains(s.Description, "between its own funds") {
+				transfers++
+				if !regexp.MustCompile(`\bp\.?76\b`).MatchString(s.Description) {
+					t.Errorf("%s step %q discusses transfers and does not name p.76: %s", v.Path, s.Key, s.Description)
+				}
+			}
+		}
+	}
+	if transfers < 2 {
+		t.Errorf("%d step descriptions discuss transfers; the fund and fund-departments steps both do", transfers)
+	}
+	for name, b := range built.Projections {
+		if m := denial.Find(b); m != nil {
+			t.Errorf("projection %s says %q", name, m)
+		}
+	}
+}
+
 // TestAGapIsAnsweredOnlyOnTheColumnItsExceptionPins holds each column's gap
 // marks to the exceptions structure declares, per (year, basis, cell): the
 // FY2025-26 column answers no gap, because no pin names it, and the
@@ -1419,6 +1458,25 @@ func TestAMarkWithoutItsWordsIsRefusedAtTheWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var gapCites []export.Locator
+	{
+		rungs, err := rungsOf(built.Projections, spine)
+		if err != nil {
+			t.Fatalf("rungsOf: %v", err)
+		}
+		for _, col := range rungs.Columns {
+			for _, r := range col.Rungs {
+				for _, m := range r.Marks {
+					if m.Role == export.RoleGap && gapCites == nil {
+						gapCites = m.Locators
+					}
+				}
+			}
+		}
+		if len(gapCites) == 0 {
+			t.Fatal("no gap mark cites a page, so there is no locator to plant on a residual")
+		}
+	}
 	for _, tc := range []struct {
 		name, role string
 		blank      func(*drawnMark)
@@ -1427,6 +1485,11 @@ func TestAMarkWithoutItsWordsIsRefusedAtTheWrite(t *testing.T) {
 		{"a gap citing no page", export.RoleGap, func(m *drawnMark) { m.Locators = nil }},
 		{"a gap with no rationale", export.RoleGap, func(m *drawnMark) { m.Rationale = "" }},
 		{"a residual naming no endpoint", export.RoleResidual, func(m *drawnMark) { m.Ends = nil }},
+		{"a residual citing locators of its own", export.RoleResidual, func(m *drawnMark) { m.Locators = gapCites }},
+		{"a gap naming an endpoint", export.RoleGap, func(m *drawnMark) { m.Ends = []string{"transfers/in"} }},
+		{"a gap on both sides", export.RoleGap, func(m *drawnMark) { m.InCents, m.OutCents = 1, 1 }},
+		{"a gap on neither side", export.RoleGap, func(m *drawnMark) { m.InCents, m.OutCents = 0, 0 }},
+		{"a gap of negative cents", export.RoleGap, func(m *drawnMark) { m.InCents, m.OutCents = -m.InCents-m.OutCents, 0 }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rungs, err := rungsOf(built.Projections, spine)

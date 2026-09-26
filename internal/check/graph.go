@@ -718,7 +718,8 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 	}.result(), nil
 }
 
-// transferLegsPair asserts every transfer_id has two equal legs.
+// transferLegsPair asserts every transfer_id has two equal legs, one receiving
+// and one paying.
 //
 // ONE DOCUMENT GIVES IT A SUBJECT AND THE REST CANNOT. A leg can only carry a
 // pairing where a document draws each end of a movement as its own link, which
@@ -727,16 +728,13 @@ func (*headlineNaiveExpenditure) Run(_ context.Context, s *Subject) (Result, err
 // and the drill-down cannot select that scope at all, because it and
 // revenue-by-fund both publish transfer_in over the same money.
 //
-// AN EMPTY ID IS SKIPPED AND THAT IS WHAT MAKES THE CHECK FAILABLE, which reads
-// backwards until the mutation is stated. Blanking ONE leg does not hide the
-// pair: the other leg still carries the id, and this reports it as one leg where
-// it wants two. Run, 51 checks green beforehand: blanking a single receiving
-// leg's TransferID turns this FAIL with two findings, one per published column.
+// AN EMPTY ID IS SKIPPED EVERYWHERE BUT p76's DOCUMENT, where every link is a
+// leg and one with no id is a finding. Blanking one leg's TransferID reports
+// both halves: the blank leg, and its partner as one leg where two are wanted.
 //
 // WHAT IT DOES NOT WITNESS. That the two legs are the same printed figure is the
-// PROJECTION's guarantee -- pairTransferLegs refuses a group that is not one
-// receiving and one paying leg of equal value -- so a finding here means the
-// document drew half a movement, not that the page disagrees with itself.
+// PROJECTION's guarantee, so a finding here means the document drew half a
+// movement, or two of one half, not that the page disagrees with itself.
 type transferLegsPair struct{}
 
 var _ Check = (*transferLegsPair)(nil)
@@ -745,16 +743,28 @@ func (*transferLegsPair) ID() string { return "transfer-legs-pair" }
 func (*transferLegsPair) Tier() int  { return 1 }
 func (*transferLegsPair) Full() bool { return false }
 func (*transferLegsPair) Description() string {
-	return "every transfer_id names exactly two links of equal value, over the documents that " +
-		"draw each end of a movement as its own link"
+	return "every transfer_id names exactly two links of equal value, one receiving and one paying, " +
+		"over the documents that draw each end of a movement as its own link"
 }
 
 func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 	legs := map[string][]project.Link{}
+	roles := map[string]map[string]string{}
 	var ids []string
+	var findings []Finding
 	for _, p := range s.linkedDocuments() {
+		role := map[string]string{}
+		for _, n := range p.Nodes {
+			role[n.ID] = n.Role
+		}
 		for _, l := range p.Links {
 			if l.TransferID == "" {
+				// Every link p76's document draws is a leg, so one with no id
+				// is a leg this check would otherwise never see.
+				if p.TransfersByFund != nil {
+					findings = append(findings, finding(p.String(),
+						"%s -> %s carries no transfer_id, and every link of this document is a leg", l.Source, l.Target))
+				}
 				continue
 			}
 			key := p.String() + " transfer " + l.TransferID
@@ -762,15 +772,23 @@ func (*transferLegsPair) Run(_ context.Context, s *Subject) (Result, error) {
 				ids = append(ids, key)
 			}
 			legs[key] = append(legs[key], l)
+			roles[key] = role
 		}
 	}
 
-	var findings []Finding
 	for _, id := range ids {
 		pair := legs[id]
 		if len(pair) != 2 {
 			findings = append(findings, finding(id, "names %d legs, want 2: %s",
 				len(pair), describeLegs(pair)))
+			continue
+		}
+		role := roles[id]
+		receiving := func(l project.Link) bool { return role[l.Source] == project.RoleTransferSource }
+		paying := func(l project.Link) bool { return role[l.Target] == project.RoleTransferSink }
+		if (!receiving(pair[0]) || !paying(pair[1])) && (!paying(pair[0]) || !receiving(pair[1])) {
+			findings = append(findings, finding(id, "its two legs are not one receiving and one paying: %s",
+				describeLegs(pair)))
 			continue
 		}
 		if pair[0].ValueCents != pair[1].ValueCents {

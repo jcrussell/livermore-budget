@@ -211,6 +211,12 @@ func (d *departmentSpending) Document(facts []fact.Fact, o Options) (*Department
 			return nil, srcErr
 		}
 		dst := endpoint{id: prefixDept + k.division, tier: tierDepartment, role: roleDepartment}
+		if d.Labels != nil {
+			if l, ok := d.Labels.DivisionLabel(k.division); !ok || l == "" {
+				return nil, fmt.Errorf("department-spending: data/departments.yaml lists no "+
+					"division %q, so the row has no division to draw", k.division)
+			}
+		}
 		d.addNode(nodes, src)
 		d.addNode(nodes, dst)
 		for _, id := range c.factIDs {

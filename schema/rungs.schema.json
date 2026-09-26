@@ -178,7 +178,7 @@
                     },
                     "allOf": [
                       {
-                        "description": "A gap states what its figure is and cites the pages of both totals.",
+                        "description": "A gap states what its figure is, on exactly one side and positive, and cites the pages of both totals; it names no endpoint.",
                         "if": {
                           "properties": {
                             "role": {
@@ -193,12 +193,35 @@
                           "properties": {
                             "source_note": {
                               "minLength": 1
+                            },
+                            "in_cents": {
+                              "minimum": 1
+                            },
+                            "out_cents": {
+                              "minimum": 1
                             }
+                          },
+                          "oneOf": [
+                            {
+                              "required": [
+                                "in_cents"
+                              ]
+                            },
+                            {
+                              "required": [
+                                "out_cents"
+                              ]
+                            }
+                          ],
+                          "not": {
+                            "required": [
+                              "ends"
+                            ]
                           }
                         }
                       },
                       {
-                        "description": "A residual names the endpoints whose flow it carries.",
+                        "description": "A residual names the endpoints whose flow it carries, and cites through them rather than through locators of its own.",
                         "if": {
                           "properties": {
                             "role": {
@@ -209,7 +232,12 @@
                         "then": {
                           "required": [
                             "ends"
-                          ]
+                          ],
+                          "not": {
+                            "required": [
+                              "locators"
+                            ]
+                          }
                         }
                       }
                     ]

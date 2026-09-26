@@ -335,7 +335,7 @@ func lineExceptions(detail, spine map[detailKey]cellSum,
 	var findings []Finding
 	exempted := map[detailKey]bool{}
 
-	for _, e := range structure.BudgetBookExceptions() {
+	for _, e := range budgetBookExceptions() {
 		if e.Cut != revenueDetailCut || e.Against != spineCut {
 			continue
 		}

@@ -595,6 +595,13 @@ func TestFundFlowsRefusesWhatItCannotPlace(t *testing.T) {
 			},
 			want: "is in no data/funds.yaml entry",
 		},
+		{
+			name: "a division the registry does not list",
+			facts: []fact.Fact{
+				fundFlowsFact(exp, mapping.KindExpenditure, "wages-and-benefits", "police-department", "general", fact.FundNumber(100), 1, "z"),
+			},
+			want: `lists no division "police-department"`,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

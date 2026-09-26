@@ -188,6 +188,64 @@ func TestAPeerOverlapGoesRed(t *testing.T) {
 		}
 	})
 
+	// THE PIN MUST NAME THE MISSING SIDE AND SAY IT IS ABSENT. Each plant
+	// rewrites the two General Fund exceptions to excuse the cell from the
+	// wrong side, or to call the missing side present, and must not excuse.
+	t.Run("an exception excuses an absence only on the side it pins absent", func(t *testing.T) {
+		var gf []structure.Exception
+		for _, e := range structure.BudgetBookExceptions() {
+			if strings.HasPrefix(e.Name, "pp.127-130-print-no-general-fund-transfer-in-") {
+				gf = append(gf, e)
+			}
+		}
+		if len(gf) != 2 {
+			t.Fatalf("%d General Fund transfer-in exceptions, want 2", len(gf))
+		}
+		plant := func(edit func(e *structure.Exception, p *structure.Pin)) []structure.Exception {
+			out := make([]structure.Exception, 0, len(gf))
+			for _, e := range gf {
+				cells := slices.Clone(e.Cells)
+				e.Cells = cells
+				edit(&e, &e.Cells[0])
+				out = append(out, e)
+			}
+			return out
+		}
+		for _, tc := range []struct {
+			name     string
+			edit     func(e *structure.Exception, p *structure.Pin)
+			findings int
+		}{
+			{"as declared", func(*structure.Exception, *structure.Pin) {}, 0},
+			{"the missing side named as Against", func(e *structure.Exception, p *structure.Pin) {
+				e.Cut, e.Against = e.Against, e.Cut
+				p.Cut, p.Against = p.Against, p.Cut
+			}, 0},
+			{"the present side pinned absent", func(e *structure.Exception, _ *structure.Pin) {
+				e.Cut = "transfers-detail"
+			}, 2},
+			{"the present side pinned absent as Against", func(e *structure.Exception, p *structure.Pin) {
+				e.Cut, e.Against = e.Against, "transfers-detail"
+				p.Cut, p.Against = p.Against, p.Cut
+			}, 2},
+			{"the missing side pinned present", func(_ *structure.Exception, p *structure.Pin) {
+				p.Cut = structure.Sum{Cents: p.Against.Cents, Present: true}
+			}, 2},
+			{"the missing side pinned present as Against", func(e *structure.Exception, p *structure.Pin) {
+				e.Cut, e.Against = e.Against, e.Cut
+				p.Cut, p.Against = p.Against, structure.Sum{Cents: p.Against.Cents, Present: true}
+			}, 2},
+		} {
+			o, err := structure.Peers(facts, rd, td, identities, plant(tc.edit))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(o.Findings) != tc.findings {
+				t.Errorf("%s: %d findings, want %d:\n  %s", tc.name, len(o.Findings), tc.findings, strings.Join(o.Findings, "\n  "))
+			}
+		}
+	})
+
 	t.Run("an identity over a pair sharing no cell is refused", func(t *testing.T) {
 		gf, fb := allCutNamed(t, "acfr-general-fund-summary"), allCutNamed(t, "acfr-fund-balances/general")
 		id := structure.Identity{Name: "invented", A: gf.Name, B: fb.Name,

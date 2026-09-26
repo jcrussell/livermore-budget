@@ -37,7 +37,7 @@ func TestEveryDeclaredRoleIsInTheSchemasEnum(t *testing.T) {
 	declared := []string{
 		roleRevenueSource, roleRevenueLine, roleFundGroup, roleFund,
 		roleGeneralFund, roleDepartment, roleWholeDepartment, roleObjectCategory,
-		roleTransferIn, roleTransferOut, roleTransferSource, roleTransferSink,
+		roleTransferIn, roleTransferOut, RoleTransferSource, RoleTransferSink,
 		roleReserveIncrease, roleFundBalanceDraw, roleFundBalanceContribution,
 	}
 	slices.Sort(declared)

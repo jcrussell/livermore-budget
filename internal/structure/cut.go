@@ -342,6 +342,7 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 		// would silently leave out; a declared basis no fact carries is a claim
 		// nothing bears out. Both are refused by name.
 		seen := map[mapping.Basis]bool{}
+		kinds := map[mapping.Kind]bool{}
 		for i := range facts {
 			f := &facts[i]
 			if !c.admits(f) {
@@ -351,10 +352,18 @@ func ValidateCuts(facts []fact.Fact, byRule map[string]Level, cuts []Cut) (empty
 				return nil, fmt.Errorf("cut %q carries a %q column and declares bases %v", c.Name, f.Basis, c.Bases)
 			}
 			seen[f.Basis] = true
+			kinds[f.Kind] = true
 		}
 		for _, b := range c.Bases {
 			if !seen[b] {
 				return nil, fmt.Errorf("cut %q declares basis %q and carries no such column", c.Name, b)
+			}
+		}
+		// A declared kind no fact carries is a dropped rule the cut would
+		// otherwise compare as present.
+		for _, k := range c.Kinds {
+			if !kinds[k] {
+				return nil, fmt.Errorf("cut %q declares kind %q and carries no fact of it", c.Name, k)
 			}
 		}
 		want := derived

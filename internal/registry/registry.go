@@ -559,7 +559,7 @@ func (r *Registry) RestrictionNote(fund int) string {
 // registry.Division, so internal/project declaring it in [project.Labels] would
 // import this package, which is the coupling the narrow interface avoids.
 //
-// A miss is not an error: an unlabelled division renders as its slug.
+// A miss is the caller's to refuse; a projection drawing a division does.
 func (r *Registry) DivisionLabel(slug string) (string, bool) {
 	d, ok := r.divisions[slug]
 	if !ok || d.Label == "" {

@@ -493,7 +493,10 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 			}
 			continue
 		}
-		src := f.divisionEndpoint(k.division)
+		src, divErr := f.divisionEndpoint(k.division)
+		if divErr != nil {
+			return nil, divErr
+		}
 		dst := f.objectEndpoint(k.division, k.category)
 		f.addFundFlowNode(nodes, src)
 		f.addFundFlowNode(nodes, dst)
@@ -517,7 +520,10 @@ func (f *fundFlows) Document(facts []fact.Fact, o Options) (*FundFlowsDocument, 
 			continue
 		}
 		sort.Strings(d.factIDs)
-		dst := f.divisionEndpoint(division)
+		dst, divErr := f.divisionEndpoint(division)
+		if divErr != nil {
+			return nil, divErr
+		}
 		f.addFundFlowNode(nodes, fundNode)
 		f.addFundFlowNode(nodes, dst)
 		for _, id := range d.factIDs {
@@ -1088,8 +1094,12 @@ func (f *fundFlows) fundEndpoint(number int) (endpoint, error) {
 	return endpoint{id: prefixFund + strconv.Itoa(number), tier: tierFund, role: role}, nil
 }
 
-func (*fundFlows) divisionEndpoint(division string) endpoint {
-	return endpoint{id: prefixDept + division, tier: tierDepartment, role: roleDepartment}
+func (f *fundFlows) divisionEndpoint(division string) (endpoint, error) {
+	if l, ok := f.Labels.DivisionLabel(division); !ok || l == "" {
+		return endpoint{}, fmt.Errorf("fund-flows: data/departments.yaml lists no division %q, "+
+			"so the row has no division to draw", division)
+	}
+	return endpoint{id: prefixDept + division, tier: tierDepartment, role: roleDepartment}, nil
 }
 
 // objectEndpoint is a tier-5 node, and its id carries the DIVISION.
